@@ -1,9 +1,10 @@
 import { useState } from 'react'
-import { Shield, FolderKanban, ScrollText, Lightbulb } from 'lucide-react'
+import { Shield, FolderKanban, ScrollText, Lightbulb, Network } from 'lucide-react'
 import HUD from './components/HUD'
 import PortfolioPage from './components/PortfolioPage'
 import TodoPage from './components/TodoPage'
 import IdeasPage from './components/IdeasPage'
+import EcosystemPage from './components/EcosystemPage'
 import useSync from './hooks/useSync'
 import './index.css'
 
@@ -12,6 +13,7 @@ const TABS = [
   { id: 'portfolio', label: 'Portfolio', icon: FolderKanban },
   { id: 'todos', label: 'Quests', icon: ScrollText },
   { id: 'ideas', label: 'Ideas', icon: Lightbulb },
+  { id: 'ecosystem', label: 'Ecosystem', icon: Network },
 ]
 
 function App() {
@@ -49,6 +51,7 @@ function App() {
       {activeTab === 'portfolio' && <PortfolioPage sync={sync} />}
       {activeTab === 'todos' && <TodoPage sync={sync} />}
       {activeTab === 'ideas' && <IdeasPage sync={sync} />}
+      {activeTab === 'ecosystem' && <EcosystemPage />}
     </div>
   )
 }
