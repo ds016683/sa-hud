@@ -5,6 +5,8 @@ import storageAdapter, {
   STORAGE_KEY_ACTIVITY,
   STORAGE_KEY_PORTFOLIO,
   STORAGE_KEY_GAME_STATE,
+  STORAGE_KEY_TODOS,
+  STORAGE_KEY_IDEAS,
 } from './storageAdapter'
 import { fetchGist, updateGist, hasData } from './gistSync'
 
@@ -75,6 +77,8 @@ export function createSyncEngine() {
       activityLog: storageAdapter.getItem(STORAGE_KEY_ACTIVITY) || [],
       portfolio: storageAdapter.getItem(STORAGE_KEY_PORTFOLIO) || [],
       gameState: storageAdapter.getItem(STORAGE_KEY_GAME_STATE) || {},
+      todos: storageAdapter.getItem(STORAGE_KEY_TODOS) || [],
+      ideas: storageAdapter.getItem(STORAGE_KEY_IDEAS) || [],
     }
   }
 
@@ -87,6 +91,12 @@ export function createSyncEngine() {
     }
     if (remote.gameState !== null && remote.gameState !== undefined) {
       storageAdapter.setItem(STORAGE_KEY_GAME_STATE, remote.gameState)
+    }
+    if (remote.todos !== null && remote.todos !== undefined) {
+      storageAdapter.setItem(STORAGE_KEY_TODOS, remote.todos)
+    }
+    if (remote.ideas !== null && remote.ideas !== undefined) {
+      storageAdapter.setItem(STORAGE_KEY_IDEAS, remote.ideas)
     }
   }
 
@@ -136,8 +146,8 @@ export function createSyncEngine() {
     if (!remote) return null // Pull failed, stay on local
 
     const local = getAllLocalData()
-    const remoteHasData = hasData(remote.activityLog) || hasData(remote.portfolio) || hasData(remote.gameState)
-    const localHasData = hasData(local.activityLog) || hasData(local.portfolio) || hasData(local.gameState)
+    const remoteHasData = hasData(remote.activityLog) || hasData(remote.portfolio) || hasData(remote.gameState) || hasData(remote.todos) || hasData(remote.ideas)
+    const localHasData = hasData(local.activityLog) || hasData(local.portfolio) || hasData(local.gameState) || hasData(local.todos) || hasData(local.ideas)
 
     if (remoteHasData) {
       // Gist wins — overwrite local
@@ -176,7 +186,13 @@ export function createSyncEngine() {
 
     // Listen for localStorage writes from hooks
     unsubscribeStorage = storageAdapter.onChange((key) => {
-      const syncedKeys = [STORAGE_KEY_ACTIVITY, STORAGE_KEY_PORTFOLIO, STORAGE_KEY_GAME_STATE]
+      const syncedKeys = [
+        STORAGE_KEY_ACTIVITY,
+        STORAGE_KEY_PORTFOLIO,
+        STORAGE_KEY_GAME_STATE,
+        STORAGE_KEY_TODOS,
+        STORAGE_KEY_IDEAS,
+      ]
       if (syncedKeys.includes(key)) {
         schedulePush()
       }
@@ -199,6 +215,8 @@ export function createSyncEngine() {
             'activity-log.json': { content: JSON.stringify(local.activityLog) },
             'portfolio.json': { content: JSON.stringify(local.portfolio) },
             'game-state.json': { content: JSON.stringify(local.gameState) },
+            'todos.json': { content: JSON.stringify(local.todos) },
+            'ideas.json': { content: JSON.stringify(local.ideas) },
           },
         })
         // navigator.sendBeacon doesn't support auth headers, so use fetch keepalive
