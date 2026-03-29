@@ -142,7 +142,7 @@ const ActiveSkills = ({ sovereignty, setSovereignty }) => {
         `}>
           <div className="flex items-center gap-2">
             <span className="text-lg">{notification.icon}</span>
-            <span className="text-xs font-bold text-gray-100">
+            <span className="text-xs font-bold text-game-text">
               {notification.message}
             </span>
           </div>
@@ -163,7 +163,7 @@ const ActiveSkills = ({ sovereignty, setSovereignty }) => {
                 w-full p-2 rounded border text-left transition-all
                 ${canUse
                   ? `${skill.color} hover:bg-opacity-10 hover:scale-[1.02] cursor-pointer active:scale-95`
-                  : 'border-gray-700 opacity-50 cursor-not-allowed'}
+                  : 'border-game-border opacity-50 cursor-not-allowed'}
                 ${onCooldown ? 'animate-pulse' : ''}
               `}
             >
@@ -171,10 +171,10 @@ const ActiveSkills = ({ sovereignty, setSovereignty }) => {
                 <div className="flex items-center gap-2">
                   <span className="text-lg">{skill.icon}</span>
                   <div>
-                    <div className="font-bold text-sm text-white">
+                    <div className="font-bold text-sm text-game-text">
                       {skill.name}
                     </div>
-                    <div className="text-xs text-gray-400">
+                    <div className="text-xs text-game-text-muted">
                       {skill.id === 'sovereign_yield'
                         ? `+40%`
                         : `${skill.cost}%`}

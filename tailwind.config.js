@@ -7,26 +7,32 @@ export default {
   theme: {
     extend: {
       colors: {
-        // Dark fantasy game theme - improved contrast
-        'game-dark': '#0f1419',
-        'game-darker': '#0a0e14',
-        'game-panel': '#1c2333',
-        'game-border': '#3d4663',
-        'game-gold': '#f4d03f',
-        'game-red': '#ef4444',
-        'game-green': '#22c55e',
-        'game-blue': '#3b82f6',
-        'game-purple': '#a855f7',
-        'stat-s-plus': '#ff6b6b',
-        'stat-s': '#ff8c42',
-        'stat-a-plus': '#ffd93d',
-        'stat-a': '#6bcf7f',
-        'stat-c': '#95a5a6',
-        // Accessible text colors (WCAG AA compliant on dark backgrounds)
-        'game-text': '#e8eaed',        // Primary text - high contrast
-        'game-text-muted': '#9ca3af',  // Secondary text - good contrast
-        'game-text-dim': '#6b7280',    // Tertiary text - minimum acceptable
-        'game-text-subtle': '#4b5563', // Very subtle but still visible
+        // Light SaaS theme — token names preserved for component compatibility
+        'game-dark': '#F8F7FF',       // Page background (warm white with violet tint)
+        'game-darker': '#F3F0FF',     // Panel hover / subtle bg
+        'game-panel': '#FFFFFF',      // Panel/card surface
+        'game-border': '#E5E7EB',     // Default border
+        'game-gold': '#F59E0B',       // Warm gold accent
+        'game-red': '#EF4444',        // Danger
+        'game-green': '#10B981',      // Success
+        'game-blue': '#2D1B69',       // Primary deep purple
+        'game-purple': '#7C3AED',     // Accent violet
+        // Stat tier colors (updated for light bg)
+        'stat-s-plus': '#DC2626',     // S+: red
+        'stat-s': '#EA580C',          // S: orange
+        'stat-a-plus': '#D97706',     // A+: amber
+        'stat-a': '#16A34A',          // A: green
+        'stat-c': '#6B7280',          // C: gray
+        // Text system (light theme)
+        'game-text': '#0F0A1E',       // Primary text (dark on light bg)
+        'game-text-muted': '#4B5563', // Secondary text
+        'game-text-dim': '#9CA3AF',   // Muted text
+        'game-text-subtle': '#D1D5DB', // Very subtle text
+        // New tokens
+        'game-surface': '#FFFFFF',    // Card surface
+        'game-nav': '#1E1033',        // Nav/sidebar (stays dark)
+        'game-accent': '#7C3AED',     // Accent violet
+        'game-accent-light': '#EDE9FE', // Light violet bg
       },
       fontFamily: {
         'game': ['"Cinzel"', 'serif'],
@@ -38,8 +44,8 @@ export default {
       },
       keyframes: {
         glow: {
-          '0%, 100%': { boxShadow: '0 0 5px rgba(212, 175, 55, 0.5)' },
-          '50%': { boxShadow: '0 0 20px rgba(212, 175, 55, 0.8)' },
+          '0%, 100%': { boxShadow: '0 0 5px rgba(245,158,11,0.3)' },
+          '50%': { boxShadow: '0 0 20px rgba(245,158,11,0.5)' },
         }
       }
     },

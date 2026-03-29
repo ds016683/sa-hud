@@ -21,9 +21,10 @@ function App() {
   const sync = useSync()
 
   return (
-    <div className="min-h-screen w-full bg-game-darker">
-      {/* Tab navigation */}
-      <nav className="sticky top-0 z-40 bg-game-darker/95 backdrop-blur-sm border-b border-game-border/50">
+    <div className="min-h-screen w-full bg-game-dark">
+      {/* Tab navigation — dark nav bar */}
+      <nav className="sticky top-0 z-40 bg-game-nav backdrop-blur-sm border-b border-game-nav/80"
+           style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.25)' }}>
         <div className="max-w-5xl mx-auto px-4 flex gap-1">
           {TABS.map(tab => {
             const Icon = tab.icon
@@ -35,8 +36,9 @@ function App() {
                 className={`flex items-center gap-2 px-4 py-2.5 text-xs font-mono uppercase tracking-wider transition-colors border-b-2 ${
                   isActive
                     ? 'text-game-gold border-game-gold'
-                    : 'text-game-text-dim border-transparent hover:text-game-text-muted hover:border-game-border'
+                    : 'text-game-text-dim border-transparent hover:text-white hover:border-white/20'
                 }`}
+                style={{ color: isActive ? '#F59E0B' : 'rgba(156,163,175,0.9)' }}
               >
                 <Icon size={14} />
                 {tab.label}

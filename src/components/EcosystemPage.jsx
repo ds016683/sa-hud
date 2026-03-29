@@ -8,12 +8,12 @@ import {
 // ─── Ecosystem Data ────────────────────────────────────────────────────────────
 
 const CATEGORIES = {
-  core:        { label: 'Core',          color: '#f4d03f', textColor: '#0a0e14', bg: 'rgba(244,208,63,0.15)',  border: 'rgba(244,208,63,0.6)'  },
-  apps:        { label: 'Deployed Apps', color: '#3b82f6', textColor: '#e8eaed', bg: 'rgba(59,130,246,0.12)', border: 'rgba(59,130,246,0.5)'  },
-  integrations:{ label: 'Integrations',  color: '#a855f7', textColor: '#e8eaed', bg: 'rgba(168,85,247,0.12)', border: 'rgba(168,85,247,0.5)'  },
-  data:        { label: 'Data Sources',  color: '#22c55e', textColor: '#0a0e14', bg: 'rgba(34,197,94,0.12)',  border: 'rgba(34,197,94,0.5)'   },
-  infra:       { label: 'Infrastructure',color: '#ef4444', textColor: '#e8eaed', bg: 'rgba(239,68,68,0.12)',  border: 'rgba(239,68,68,0.5)'   },
-  sandbox:     { label: 'Sandboxes',     color: '#6b7280', textColor: '#e8eaed', bg: 'rgba(107,114,128,0.12)',border: 'rgba(107,114,128,0.5)' },
+  core:        { label: 'Core',          color: '#D97706', textColor: '#0F0A1E', bg: 'rgba(245,158,11,0.12)',  border: 'rgba(245,158,11,0.5)'  },
+  apps:        { label: 'Deployed Apps', color: '#2D1B69', textColor: '#0F0A1E', bg: 'rgba(45,27,105,0.08)',  border: 'rgba(45,27,105,0.35)'  },
+  integrations:{ label: 'Integrations',  color: '#7C3AED', textColor: '#0F0A1E', bg: 'rgba(124,58,237,0.08)', border: 'rgba(124,58,237,0.4)'  },
+  data:        { label: 'Data Sources',  color: '#059669', textColor: '#0F0A1E', bg: 'rgba(5,150,105,0.08)',  border: 'rgba(5,150,105,0.4)'   },
+  infra:       { label: 'Infrastructure',color: '#DC2626', textColor: '#0F0A1E', bg: 'rgba(220,38,38,0.08)',  border: 'rgba(220,38,38,0.4)'   },
+  sandbox:     { label: 'Sandboxes',     color: '#6B7280', textColor: '#0F0A1E', bg: 'rgba(107,114,128,0.08)',border: 'rgba(107,114,128,0.35)' },
 }
 
 const NODES = [
@@ -257,9 +257,9 @@ const NODES = [
 
 // Status styles
 const STATUS = {
-  live:    { label: 'LIVE',    dot: 'bg-game-green',  text: 'text-game-green'  },
-  dev:     { label: 'DEV',     dot: 'bg-yellow-400',  text: 'text-yellow-400'  },
-  offline: { label: 'OFFLINE', dot: 'bg-game-red',    text: 'text-game-red'    },
+  live:    { label: 'LIVE',    dot: 'bg-game-green',   text: 'text-emerald-600' },
+  dev:     { label: 'DEV',     dot: 'bg-amber-400',    text: 'text-amber-600'   },
+  offline: { label: 'OFFLINE', dot: 'bg-game-red',     text: 'text-red-600'     },
 }
 
 // ─── Layout: polar coordinate positions ──────────────────────────────────────
@@ -381,7 +381,7 @@ function EcoNode({ node, isSelected, onSelect, svgRef }) {
       <text
         y={half + 14}
         textAnchor="middle"
-        fill={node.isCenter ? cat.color : '#e8eaed'}
+        fill={node.isCenter ? cat.color : '#0F0A1E'}
         fontSize={node.isCenter ? 12 : 10}
         fontFamily="'Courier New', monospace"
         fontWeight={node.isCenter ? '700' : '500'}
@@ -393,7 +393,7 @@ function EcoNode({ node, isSelected, onSelect, svgRef }) {
         <text
           y={half + 26}
           textAnchor="middle"
-          fill="#6b7280"
+          fill="#6B7280"
           fontSize={8}
           fontFamily="'Courier New', monospace"
           style={{ pointerEvents: 'none', userSelect: 'none' }}
@@ -460,7 +460,7 @@ function NodePanel({ node, onClose }) {
           <p className="text-game-text-dim text-[10px] uppercase tracking-wider mb-1.5">Stack / Tech</p>
           <div className="flex flex-wrap gap-1.5">
             {node.stack.split(' · ').map(s => (
-              <span key={s} className="text-[10px] font-mono px-2 py-0.5 rounded-sm bg-game-darker border border-game-border/60 text-game-text-muted">
+              <span key={s} className="text-[10px] font-mono px-2 py-0.5 rounded-sm bg-game-darker border border-game-border text-game-text-muted">
                 {s}
               </span>
             ))}
@@ -512,9 +512,9 @@ function Legend() {
           <span className="text-[10px] font-mono text-game-text-muted uppercase tracking-wider">{cat.label}</span>
         </div>
       ))}
-      <div className="flex items-center gap-3 ml-2 pl-2 border-l border-game-border/40">
-        <span className="flex items-center gap-1 text-[10px] font-mono text-game-green"><span className="w-1.5 h-1.5 rounded-full bg-game-green" />Live</span>
-        <span className="flex items-center gap-1 text-[10px] font-mono text-yellow-400"><span className="w-1.5 h-1.5 rounded-full bg-yellow-400" />Dev</span>
+      <div className="flex items-center gap-3 ml-2 pl-2 border-l border-game-border">
+        <span className="flex items-center gap-1 text-[10px] font-mono text-emerald-600"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />Live</span>
+        <span className="flex items-center gap-1 text-[10px] font-mono text-amber-600"><span className="w-1.5 h-1.5 rounded-full bg-amber-400" />Dev</span>
       </div>
     </div>
   )
@@ -556,21 +556,21 @@ export default function EcosystemPage() {
       <div className="flex gap-4 flex-col lg:flex-row">
         {/* SVG Graph */}
         <div
-          className="flex-1 bg-game-darker border border-game-border/50 rounded-sm overflow-hidden"
+          className="flex-1 bg-white border border-game-border rounded-lg overflow-hidden shadow-sm"
           style={{ minHeight: 420 }}
         >
           <svg
             ref={svgRef}
             viewBox={`0 0 ${VW} ${VH}`}
             width="100%"
-            style={{ display: 'block', background: 'linear-gradient(180deg, #0a0e14 0%, #0d1219 100%)' }}
+            style={{ display: 'block', background: '#F8F7FF' }}
             onClick={handleBgClick}
           >
             <defs>
               {/* Radial bg glow at center */}
               <radialGradient id="centerGlow" cx="50%" cy="50%" r="30%">
-                <stop offset="0%" stopColor="rgba(244,208,63,0.08)" />
-                <stop offset="100%" stopColor="rgba(244,208,63,0)" />
+                <stop offset="0%" stopColor="rgba(245,158,11,0.12)" />
+                <stop offset="100%" stopColor="rgba(245,158,11,0)" />
               </radialGradient>
               {/* Line gradient per category */}
               {Object.entries(CATEGORIES).map(([key, cat]) => (
@@ -598,7 +598,7 @@ export default function EcosystemPage() {
                   x2={node.x} y2={node.y}
                   stroke={cat.color}
                   strokeWidth={selectedId === node.id ? 1.5 : 0.75}
-                  strokeOpacity={selectedId === node.id ? 0.7 : selectedId ? 0.12 : 0.3}
+                  strokeOpacity={selectedId === node.id ? 0.7 : selectedId ? 0.1 : 0.35}
                   strokeDasharray={node.status === 'dev' ? '4 4' : undefined}
                 />
               )
@@ -622,7 +622,7 @@ export default function EcosystemPage() {
           className={`lg:w-72 xl:w-80 transition-all duration-200 ${selectedNode ? 'opacity-100' : 'opacity-0 pointer-events-none lg:opacity-100 lg:pointer-events-auto'}`}
         >
           <div
-            className="bg-game-dark border border-game-border/60 rounded-sm p-4 h-full"
+            className="bg-white border border-game-border rounded-lg p-4 h-full shadow-sm"
             style={{ minHeight: 320 }}
           >
             {selectedNode ? (
@@ -644,7 +644,7 @@ export default function EcosystemPage() {
 
       {/* Mobile: selected node panel below graph */}
       {selectedNode && (
-        <div className="lg:hidden mt-4 bg-game-dark border border-game-border/60 rounded-sm p-4">
+        <div className="lg:hidden mt-4 bg-white border border-game-border rounded-lg p-4 shadow-sm">
           <NodePanel node={selectedNode} onClose={() => setSelectedId(null)} />
         </div>
       )}

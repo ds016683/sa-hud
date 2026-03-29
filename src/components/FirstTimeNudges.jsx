@@ -96,7 +96,7 @@ const FirstTimeNudges = ({
               <ChevronUp className="w-6 h-6 text-game-gold animate-bounce" />
             </div>
 
-            <div className="bg-zinc-900 border-2 border-game-gold rounded-lg p-4 shadow-2xl max-w-xs mt-4">
+            <div className="bg-white border border-game-border shadow-md rounded-lg p-4 shadow-2xl max-w-xs mt-4">
               <div className="flex justify-between items-start gap-2 mb-2">
                 <h4 className="font-game text-game-gold text-sm">SOVEREIGNTY CHECK</h4>
                 <button
@@ -121,7 +121,7 @@ const FirstTimeNudges = ({
       {!dismissed.phase && dismissed.sovereignty && (
         <div className="fixed bottom-4 left-4 z-40 animate-fade-in lg:bottom-auto lg:top-1/2 lg:-translate-y-1/2">
           <div className="relative">
-            <div className="bg-zinc-900 border-2 border-game-gold rounded-lg p-4 shadow-2xl max-w-xs">
+            <div className="bg-white border border-game-border shadow-md rounded-lg p-4 shadow-2xl max-w-xs">
               <div className="flex justify-between items-start gap-2 mb-2">
                 <h4 className="font-game text-game-gold text-sm">IDENTITY LOOP</h4>
                 <button
@@ -151,7 +151,7 @@ const FirstTimeNudges = ({
       {!dismissed.shadows && dismissed.sovereignty && dismissed.phase && (
         <div className="fixed bottom-4 right-4 z-40 animate-fade-in lg:bottom-auto lg:top-1/2 lg:-translate-y-1/2">
           <div className="relative">
-            <div className="bg-zinc-900 border-2 border-game-gold rounded-lg p-4 shadow-2xl max-w-xs">
+            <div className="bg-white border border-game-border shadow-md rounded-lg p-4 shadow-2xl max-w-xs">
               <div className="flex justify-between items-start gap-2 mb-2">
                 <h4 className="font-game text-game-gold text-sm">SHADOW SCAN</h4>
                 <button
@@ -182,7 +182,7 @@ const FirstTimeNudges = ({
         <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-40">
           <button
             onClick={handleSkipAll}
-            className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 border border-zinc-600 rounded text-xs text-game-text-dim hover:text-game-text transition-all"
+            className="px-4 py-2 bg-game-darker hover:bg-game-border border border-game-border rounded text-xs text-game-text-dim hover:text-game-text transition-all"
           >
             Skip setup →
           </button>

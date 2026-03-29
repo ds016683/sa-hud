@@ -7,7 +7,7 @@ const phases = [
   { name: 'Analysis', Icon: Brain, short: 'Making sense of it, strategic thinking', cost: 'Medium drain', costColor: 'text-amber-400' },
   { name: 'Design', Icon: Compass, short: 'Solo creation work, building, writing', cost: 'Medium drain', costColor: 'text-amber-400' },
   { name: 'Execution', Icon: Zap, short: 'Shipping, decisions, external output', cost: 'High drain', costColor: 'text-orange-400' },
-  { name: 'Holding', Icon: Users, short: 'Being present for others, meetings, leadership', cost: 'Highest drain', costColor: 'text-rose-400' },
+  { name: 'Holding', Icon: Users, short: 'Being present for others, meetings, leadership', cost: 'Highest drain', costColor: 'text-rose-600' },
   { name: 'Release', Icon: Waves, short: 'Letting go, surrendering outcomes', cost: 'Restoration', costColor: 'text-teal-400' },
   { name: 'Recovery', Icon: Moon, short: 'Rest, solitude, integration', cost: 'Restoration', costColor: 'text-teal-400' }
 ]
@@ -71,7 +71,7 @@ const OnboardingFlow = ({ onComplete }) => {
   // Step 1: Sovereignty Assessment
   if (step === 1) {
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-95 p-4">
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
         <div className="game-panel w-full max-w-md">
           <div className="text-center mb-6">
             <div className="text-game-gold font-game text-lg mb-2">SOVEREIGNTY CHECK</div>
@@ -92,7 +92,7 @@ const OnboardingFlow = ({ onComplete }) => {
               max="100"
               value={sovereignty}
               onChange={(e) => setSovereignty(parseInt(e.target.value))}
-              className="w-full h-3 bg-zinc-800 rounded-lg appearance-none cursor-pointer slider-gold"
+              className="w-full h-3 bg-zinc-800 rounded-lg appearance-none cursor-pointer "
             />
           </div>
 
@@ -103,8 +103,8 @@ const OnboardingFlow = ({ onComplete }) => {
                 onClick={() => setSovereignty(val)}
                 className={`py-2 rounded text-xs font-medium transition-all ${
                   Math.abs(sovereignty - val) < 10
-                    ? 'bg-game-gold text-black'
-                    : 'bg-zinc-800 text-game-text-muted hover:bg-zinc-700'
+                    ? 'bg-game-gold text-white'
+                    : 'bg-game-darker text-game-text-muted hover:bg-game-border'
                 }`}
               >
                 {val}%
@@ -141,7 +141,7 @@ const OnboardingFlow = ({ onComplete }) => {
   // Step 2: Loop Phase Selection
   if (step === 2) {
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-95 p-4">
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
         <div className="game-panel w-full max-w-md max-h-[90vh] overflow-y-auto">
           <div className="text-center mb-4">
             <div className="text-game-gold font-game text-lg mb-2">IDENTITY LOOP</div>
@@ -157,7 +157,7 @@ const OnboardingFlow = ({ onComplete }) => {
                 <button
                   key={phase.name}
                   onClick={() => handlePhaseSelect(index)}
-                  className="w-full flex items-center gap-3 p-3 rounded bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 hover:border-game-gold transition-all text-left"
+                  className="w-full flex items-center gap-3 p-3 rounded bg-game-darker hover:bg-game-accent-light border border-game-border hover:border-game-accent/40 transition-all text-left"
                 >
                   <IconComponent className="w-5 h-5 text-game-gold flex-shrink-0" strokeWidth={1.5} />
                   <div className="flex-1">
@@ -188,7 +188,7 @@ const OnboardingFlow = ({ onComplete }) => {
     const activeShadowCount = Object.keys(activeShadows).length
 
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-95 p-4">
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
         <div className="game-panel w-full max-w-md">
           <div className="text-center mb-4">
             <div className="text-game-gold font-game text-lg mb-2">SHADOW SCAN</div>
@@ -208,8 +208,8 @@ const OnboardingFlow = ({ onComplete }) => {
                   key={shadow.id}
                   className={`p-3 rounded border transition-all ${
                     isActive
-                      ? 'bg-rose-950 bg-opacity-30 border-rose-700'
-                      : 'bg-zinc-800 border-zinc-700'
+                      ? 'bg-rose-50 border-rose-200'
+                      : 'bg-game-darker border-game-border'
                   }`}
                 >
                   <button
@@ -217,24 +217,24 @@ const OnboardingFlow = ({ onComplete }) => {
                     className="w-full flex items-center gap-3 text-left"
                   >
                     <IconComponent
-                      className={`w-5 h-5 flex-shrink-0 ${isActive ? 'text-rose-400' : 'text-game-text-muted'}`}
+                      className={`w-5 h-5 flex-shrink-0 ${isActive ? 'text-rose-600' : 'text-game-text-muted'}`}
                       strokeWidth={1.5}
                     />
                     <div className="flex-1">
-                      <div className={`text-sm font-medium ${isActive ? 'text-rose-400' : 'text-game-text'}`}>
+                      <div className={`text-sm font-medium ${isActive ? 'text-rose-600' : 'text-game-text'}`}>
                         {shadow.name}
                       </div>
                       <div className="text-[10px] text-game-text-dim">{shadow.short}</div>
                     </div>
                     <div className={`w-4 h-4 rounded border-2 flex items-center justify-center ${
-                      isActive ? 'border-rose-400 bg-rose-400' : 'border-zinc-600'
+                      isActive ? 'border-rose-500 bg-rose-500' : 'border-zinc-600'
                     }`}>
                       {isActive && <span className="text-black text-xs">✓</span>}
                     </div>
                   </button>
 
                   {isActive && (
-                    <div className="flex gap-2 mt-3 pt-3 border-t border-rose-900">
+                    <div className="flex gap-2 mt-3 pt-3 border-t border-rose-200">
                       {['low', 'med', 'high'].map((level) => (
                         <button
                           key={level}
@@ -244,9 +244,9 @@ const OnboardingFlow = ({ onComplete }) => {
                               ? level === 'high'
                                 ? 'bg-rose-600 text-white'
                                 : level === 'med'
-                                  ? 'bg-zinc-500 text-white'
-                                  : 'bg-zinc-700 text-game-text'
-                              : 'bg-zinc-800 text-game-text-muted hover:bg-zinc-700'
+                                  ? 'bg-orange-300 text-orange-900'
+                                  : 'bg-amber-100 text-amber-800'
+                              : 'bg-game-darker text-game-text-muted hover:bg-game-border'
                           }`}
                         >
                           {level}

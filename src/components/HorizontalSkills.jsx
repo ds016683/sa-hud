@@ -6,8 +6,6 @@ const HorizontalSkills = ({ sovereignty, setSovereignty, onSkillActivate }) => {
   const [notification, setNotification] = useState(null)
   const [activeTooltip, setActiveTooltip] = useState(null)
 
-  // Skills ordered by energy flow: Restorative → Protective → Analytical → Activating → Depleting
-  // Color temperature indicates cost: Cool (restorative) → Warm (costly)
   const skills = [
     {
       id: 'sovereign_yield',
@@ -16,13 +14,12 @@ const HorizontalSkills = ({ sovereignty, setSovereignty, onSkillActivate }) => {
       cost: 0,
       cooldown: 120,
       effect: 'Restore',
-      // TEAL - Cool, calming, restorative
       theme: {
-        border: 'border-teal-600',
-        icon: 'text-teal-400',
-        low: 'bg-teal-950 hover:bg-teal-900',
-        med: 'bg-teal-800 hover:bg-teal-700',
-        high: 'bg-teal-500 hover:bg-teal-400 text-teal-950'
+        border: 'border-teal-400',
+        icon: 'text-teal-600',
+        low: 'bg-teal-50 hover:bg-teal-100 text-teal-800',
+        med: 'bg-teal-100 hover:bg-teal-200 text-teal-900',
+        high: 'bg-teal-600 hover:bg-teal-500 text-white'
       },
       impact: (intensity) => `+${intensity === 'low' ? '15' : intensity === 'med' ? '25' : '40'}% Sovereignty`,
       description: 'RESTORES resources through chosen surrender. Use when sovereignty is low, when over-control is active, or when Release phase has been skipped.',
@@ -39,13 +36,12 @@ const HorizontalSkills = ({ sovereignty, setSovereignty, onSkillActivate }) => {
       cost: 5,
       cooldown: 20,
       effect: 'Set boundary',
-      // EMERALD - Protective, grounding, defensive
       theme: {
-        border: 'border-emerald-600',
-        icon: 'text-emerald-400',
-        low: 'bg-emerald-950 hover:bg-emerald-900',
-        med: 'bg-emerald-800 hover:bg-emerald-700',
-        high: 'bg-emerald-500 hover:bg-emerald-400 text-emerald-950'
+        border: 'border-emerald-400',
+        icon: 'text-emerald-600',
+        low: 'bg-emerald-50 hover:bg-emerald-100 text-emerald-800',
+        med: 'bg-emerald-100 hover:bg-emerald-200 text-emerald-900',
+        high: 'bg-emerald-600 hover:bg-emerald-500 text-white'
       },
       impact: (intensity) => `Clear burden +${intensity === 'low' ? '3' : intensity === 'med' ? '6' : '10'}%`,
       description: 'Declare a boundary. Name what is NOT yours to carry. Use when False Responsibility is active or when doing others\' work.',
@@ -62,13 +58,12 @@ const HorizontalSkills = ({ sovereignty, setSovereignty, onSkillActivate }) => {
       cost: 5,
       cooldown: 30,
       effect: 'Cut complexity',
-      // SLATE/STEEL - Precise, analytical, surgical
       theme: {
         border: 'border-slate-400',
-        icon: 'text-slate-300',
-        low: 'bg-slate-800 hover:bg-slate-700',
-        med: 'bg-slate-600 hover:bg-slate-500',
-        high: 'bg-slate-300 hover:bg-slate-200 text-slate-900'
+        icon: 'text-slate-600',
+        low: 'bg-slate-50 hover:bg-slate-100 text-slate-800',
+        med: 'bg-slate-200 hover:bg-slate-300 text-slate-900',
+        high: 'bg-slate-700 hover:bg-slate-600 text-white'
       },
       impact: (intensity) => `Pattern Recognition +${intensity === 'low' ? '5' : intensity === 'med' ? '10' : '15'}%`,
       description: 'Cut through complexity to name the actual problem. Use when stuck in analysis paralysis or when the "real" problem is obscured.',
@@ -85,13 +80,12 @@ const HorizontalSkills = ({ sovereignty, setSovereignty, onSkillActivate }) => {
       cost: 15,
       cooldown: 60,
       effect: 'Force movement',
-      // AMBER - Warm, activating, costs energy
       theme: {
-        border: 'border-amber-500',
-        icon: 'text-amber-400',
-        low: 'bg-amber-950 hover:bg-amber-900',
-        med: 'bg-amber-700 hover:bg-amber-600',
-        high: 'bg-amber-400 hover:bg-amber-300 text-amber-950'
+        border: 'border-amber-400',
+        icon: 'text-amber-600',
+        low: 'bg-amber-50 hover:bg-amber-100 text-amber-800',
+        med: 'bg-amber-200 hover:bg-amber-300 text-amber-900',
+        high: 'bg-amber-500 hover:bg-amber-400 text-white'
       },
       impact: (intensity) => `Agency +${intensity === 'low' ? '10' : intensity === 'med' ? '20' : '30'}%`,
       description: 'Step in and change trajectory. Force movement when a situation has stalled and needs external force.',
@@ -108,13 +102,12 @@ const HorizontalSkills = ({ sovereignty, setSovereignty, onSkillActivate }) => {
       cost: 25,
       cooldown: 90,
       effect: 'Rally others',
-      // RED/ROSE - Hot, depleting, high cost
       theme: {
-        border: 'border-rose-500',
-        icon: 'text-rose-400',
-        low: 'bg-rose-950 hover:bg-rose-900',
-        med: 'bg-rose-700 hover:bg-rose-600',
-        high: 'bg-rose-500 hover:bg-rose-400 text-rose-950'
+        border: 'border-rose-400',
+        icon: 'text-rose-600',
+        low: 'bg-rose-50 hover:bg-rose-100 text-rose-800',
+        med: 'bg-rose-200 hover:bg-rose-300 text-rose-900',
+        high: 'bg-rose-600 hover:bg-rose-500 text-white'
       },
       impact: (intensity) => `Team +${intensity === 'low' ? '10' : intensity === 'med' ? '20' : '30'}%`,
       description: 'Rally others into motion. HIGH COST - depletes you while activating others. Use when a team needs activation and you have standing.',
@@ -136,7 +129,6 @@ const HorizontalSkills = ({ sovereignty, setSovereignty, onSkillActivate }) => {
       return
     }
 
-    // Scale cost by intensity
     const costMultiplier = intensity === 'low' ? 0.3 : intensity === 'med' ? 0.6 : 1
     const actualCost = Math.round(skill.cost * costMultiplier)
 
@@ -149,10 +141,8 @@ const HorizontalSkills = ({ sovereignty, setSovereignty, onSkillActivate }) => {
       return
     }
 
-    // Capture sovereignty before changes for undo
     const sovereigntyBefore = sovereignty
 
-    // Apply effects based on intensity
     if (skill.id === 'sovereign_yield') {
       const gain = intensity === 'low' ? 15 : intensity === 'med' ? 25 : 40
       setSovereignty(Math.min(100, sovereignty + gain))
@@ -168,12 +158,10 @@ const HorizontalSkills = ({ sovereignty, setSovereignty, onSkillActivate }) => {
       message: skill.impact(intensity)
     })
 
-    // Scale cooldown by intensity
     const cooldownMultiplier = intensity === 'low' ? 0.5 : intensity === 'med' ? 0.75 : 1
     setCooldowns({ ...cooldowns, [skill.id]: Math.round(skill.cooldown * cooldownMultiplier) })
     setTimeout(() => setNotification(null), 3000)
 
-    // Log the skill activation with sovereignty before for undo
     if (onSkillActivate) {
       onSkillActivate(skill.id, intensity, sovereigntyBefore)
     }
@@ -205,10 +193,10 @@ const HorizontalSkills = ({ sovereignty, setSovereignty, onSkillActivate }) => {
           <div className={`
             px-2 py-0.5 rounded text-[9px] font-semibold flex items-center gap-1.5
             ${notification.type === 'success'
-              ? 'bg-emerald-900 bg-opacity-50 text-emerald-400'
-              : 'bg-rose-900 bg-opacity-50 text-rose-400'}
+              ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+              : 'bg-rose-50 text-rose-700 border border-rose-200'}
           `}>
-            <div className={`w-1.5 h-1.5 rounded-full ${notification.type === 'success' ? 'bg-emerald-400' : 'bg-rose-400'}`}></div>
+            <div className={`w-1.5 h-1.5 rounded-full ${notification.type === 'success' ? 'bg-emerald-500' : 'bg-rose-500'}`}></div>
             <span>{notification.message}</span>
           </div>
         )}
@@ -225,14 +213,13 @@ const HorizontalSkills = ({ sovereignty, setSovereignty, onSkillActivate }) => {
             <div
               key={skill.id}
               className={`
-                relative rounded-lg border text-center transition-all flex flex-col
-                bg-zinc-900
-                ${onCooldown ? 'border-zinc-700 opacity-50' : theme.border}
+                relative rounded-lg border text-center transition-all flex flex-col bg-white shadow-sm
+                ${onCooldown ? 'border-game-border opacity-50' : theme.border}
               `}
             >
-              {/* Top section - Icon and Name (clickable for tooltip) */}
+              {/* Top section - Icon and Name */}
               <button
-                className="w-full p-3 pb-2 hover:bg-white hover:bg-opacity-5 rounded-t-lg transition-all flex-1 flex flex-col items-center justify-center"
+                className="w-full p-3 pb-2 hover:bg-game-darker rounded-t-lg transition-all flex-1 flex flex-col items-center justify-center"
                 onClick={() => setActiveTooltip(activeTooltip === skill.id ? null : skill.id)}
               >
                 <IconComponent className={`w-7 h-7 mb-2 ${theme.icon}`} strokeWidth={1.5} />
@@ -242,8 +229,8 @@ const HorizontalSkills = ({ sovereignty, setSovereignty, onSkillActivate }) => {
                 <div className="text-[10px] text-game-text-dim mt-1">{skill.effect}</div>
               </button>
 
-              {/* Intensity buttons - three equal sections */}
-              <div className="flex h-8 mx-2 mb-2 rounded overflow-hidden border border-zinc-700 flex-shrink-0">
+              {/* Intensity buttons */}
+              <div className="flex h-8 mx-2 mb-2 rounded overflow-hidden border border-game-border flex-shrink-0">
                 {['low', 'med', 'high'].map((intensity) => (
                   <button
                     key={intensity}
@@ -255,7 +242,7 @@ const HorizontalSkills = ({ sovereignty, setSovereignty, onSkillActivate }) => {
                       ${onCooldown
                         ? 'cursor-not-allowed opacity-40'
                         : 'cursor-pointer active:scale-95'}
-                      ${intensity !== 'high' ? 'border-r border-zinc-800' : ''}
+                      ${intensity !== 'high' ? 'border-r border-game-border' : ''}
                     `}
                   >
                     {intensity}
@@ -265,16 +252,16 @@ const HorizontalSkills = ({ sovereignty, setSovereignty, onSkillActivate }) => {
 
               {/* Cooldown overlay */}
               {onCooldown && (
-                <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-80 rounded-lg">
+                <div className="absolute inset-0 flex items-center justify-center bg-white/90 rounded-lg">
                   <span className="text-lg font-bold text-game-red">{onCooldown}s</span>
                 </div>
               )}
 
               {/* Cooldown progress bar */}
               {onCooldown && (
-                <div className="absolute bottom-0 left-0 right-0 h-1 bg-black bg-opacity-50 rounded-b-lg overflow-hidden">
+                <div className="absolute bottom-0 left-0 right-0 h-1 bg-game-darker rounded-b-lg overflow-hidden">
                   <div
-                    className="h-full bg-game-gold transition-all"
+                    className="h-full bg-game-accent transition-all"
                     style={{
                       width: `${((skill.cooldown - onCooldown) / skill.cooldown) * 100}%`
                     }}
@@ -289,7 +276,7 @@ const HorizontalSkills = ({ sovereignty, setSovereignty, onSkillActivate }) => {
       {/* Tooltip Overlay */}
       {activeTooltip && (
         <div
-          className="absolute inset-0 z-50 flex items-center justify-center bg-black bg-opacity-90 rounded-lg"
+          className="absolute inset-0 z-50 flex items-center justify-center bg-white/95 rounded-lg shadow-lg"
           onClick={() => setActiveTooltip(null)}
         >
           {skills.filter(s => s.id === activeTooltip).map(skill => {
@@ -298,7 +285,7 @@ const HorizontalSkills = ({ sovereignty, setSovereignty, onSkillActivate }) => {
             return (
               <div
                 key={skill.id}
-                className={`bg-zinc-900 border rounded-lg p-4 max-w-sm mx-4 shadow-2xl ${theme.border}`}
+                className={`bg-white border rounded-lg p-4 max-w-sm mx-4 shadow-md ${theme.border}`}
                 onClick={(e) => e.stopPropagation()}
               >
                 <div className="flex items-center gap-3 mb-3">
@@ -311,7 +298,7 @@ const HorizontalSkills = ({ sovereignty, setSovereignty, onSkillActivate }) => {
 
                 <p className="text-game-text text-sm mb-4">{skill.description}</p>
 
-                <div className="space-y-2 border-t border-zinc-700 pt-3">
+                <div className="space-y-2 border-t border-game-border pt-3">
                   <div className="flex items-start gap-2">
                     <span className={`text-[10px] font-semibold px-2 py-0.5 rounded min-w-[40px] text-center ${theme.low}`}>LOW</span>
                     <span className="text-xs text-game-text-muted">{skill.intensityGuide.low}</span>
@@ -327,7 +314,7 @@ const HorizontalSkills = ({ sovereignty, setSovereignty, onSkillActivate }) => {
                 </div>
 
                 <button
-                  className="mt-4 w-full py-2 bg-zinc-800 hover:bg-zinc-700 text-game-text-muted text-xs rounded transition-all border border-zinc-700"
+                  className="mt-4 w-full py-2 bg-game-darker hover:bg-game-border text-game-text-muted text-xs rounded transition-all border border-game-border"
                   onClick={() => setActiveTooltip(null)}
                 >
                   Close

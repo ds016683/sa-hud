@@ -33,9 +33,9 @@ const NotePrompt = ({ isOpen, onSubmit, onUndo, actionLabel }) => {
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-70 p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
       <div
-        className="game-panel w-full max-w-md"
+        className="game-panel w-full max-w-md shadow-xl"
         onKeyDown={handleKeyDown}
       >
         <div className="mb-3">
@@ -53,7 +53,7 @@ const NotePrompt = ({ isOpen, onSubmit, onUndo, actionLabel }) => {
               value={note}
               onChange={(e) => setNote(e.target.value)}
               placeholder="What was this about? What triggered it?"
-              className="w-full bg-gray-800 border border-gray-700 rounded-sm p-2 text-sm text-gray-200 placeholder-gray-600 focus:border-game-gold focus:outline-none resize-none"
+              className="w-full bg-white border border-game-border rounded-sm p-2 text-sm text-game-text placeholder-game-text-dim focus:border-game-accent focus:outline-none resize-none"
               rows={2}
             />
           </div>

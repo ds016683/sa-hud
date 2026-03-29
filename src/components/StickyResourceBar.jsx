@@ -7,7 +7,7 @@ const StickyResourceBar = ({ sovereignty, setSovereignty, onSovereigntyChange, s
 
   const getStatusColor = () => {
     if (sovereignty >= 80) return 'bg-game-green'
-    if (sovereignty >= 60) return 'bg-game-blue'
+    if (sovereignty >= 60) return 'bg-game-accent'
     if (sovereignty >= 40) return 'bg-yellow-500'
     return 'bg-game-red'
   }
@@ -41,10 +41,10 @@ const StickyResourceBar = ({ sovereignty, setSovereignty, onSovereigntyChange, s
         <div className="flex items-center gap-2 md:gap-4">
           {/* Title */}
           <div className="flex-shrink-0">
-            <span className="font-game text-xs md:text-sm text-game-gold glow-text">SOVEREIGNTY</span>
+            <span className="font-game text-xs md:text-sm text-game-gold">SOVEREIGNTY</span>
           </div>
 
-          {/* Bar - smaller text on mobile */}
+          {/* Bar */}
           <div className="flex-1 min-w-0">
             <div className="fantasy-stat-bar h-4 md:h-5">
               <div
@@ -80,7 +80,7 @@ const StickyResourceBar = ({ sovereignty, setSovereignty, onSovereigntyChange, s
               onMouseUp={handleSliderEnd}
               onTouchStart={handleSliderStart}
               onTouchEnd={handleSliderEnd}
-              className="w-full h-2 accent-game-gold cursor-pointer"
+              className="w-full h-2 cursor-pointer"
             />
           </div>
 

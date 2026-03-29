@@ -301,7 +301,7 @@ const DailyPrompts = ({ timeOfDay, onCheckinResponse }) => {
                     {categoryLabels[prompt.category] || prompt.category}
                   </span>
                 </div>
-                <p className="text-sm font-bold text-gray-100 mb-2">
+                <p className="text-sm font-bold text-game-text mb-2">
                   {prompt.question}
                 </p>
 
@@ -333,7 +333,7 @@ const DailyPrompts = ({ timeOfDay, onCheckinResponse }) => {
                     value={responses[prompt.id] || ''}
                     onChange={(e) => handleResponse(prompt.id, e.target.value)}
                     placeholder={prompt.placeholder}
-                    className="w-full bg-game-darker border border-game-border rounded p-2 text-sm text-gray-200 placeholder-gray-500 focus:border-game-gold focus:outline-none"
+                    className="w-full bg-white border border-game-border rounded p-2 text-sm text-game-text placeholder-game-text-dim focus:border-game-accent focus:outline-none"
                     rows="2"
                   />
                 )}
@@ -356,7 +356,7 @@ const DailyPrompts = ({ timeOfDay, onCheckinResponse }) => {
       ) : (
         /* Protocol Completed - Show Instructions */
         <div className="space-y-3">
-          <div className={`border rounded p-3 ${instruction.warning ? 'bg-amber-950 bg-opacity-30 border-amber-700 border-opacity-50' : 'bg-zinc-800 border-zinc-600'}`}>
+          <div className={`border rounded p-3 ${instruction.warning ? 'bg-amber-50 border-amber-200' : 'bg-game-darker border-game-border'}`}>
             <div className="flex items-center gap-2 mb-3">
               {instruction.warning ? (
                 <div className="w-5 h-5 rounded-full bg-amber-600 flex items-center justify-center">
@@ -367,7 +367,7 @@ const DailyPrompts = ({ timeOfDay, onCheckinResponse }) => {
                   <Check className="w-3 h-3 text-white" strokeWidth={2.5} />
                 </div>
               )}
-              <h4 className={`font-game text-sm ${instruction.warning ? 'text-amber-400' : 'text-game-text'}`}>
+              <h4 className={`font-game text-sm ${instruction.warning ? 'text-amber-700' : 'text-game-text'}`}>
                 {instruction.title}
               </h4>
             </div>
@@ -384,7 +384,7 @@ const DailyPrompts = ({ timeOfDay, onCheckinResponse }) => {
               </ul>
             </div>
 
-            <div className="pt-2 border-t border-zinc-700">
+            <div className="pt-2 border-t border-game-border">
               <p className="text-[10px] text-game-gold">
                 {instruction.reminder}
               </p>
@@ -393,8 +393,7 @@ const DailyPrompts = ({ timeOfDay, onCheckinResponse }) => {
 
           <button
             onClick={handleReset}
-            className="w-full px-3 py-1.5 bg-zinc-800 border border-zinc-700 rounded
-                     hover:border-zinc-500 transition-all text-xs text-game-text-muted"
+            className="w-full px-3 py-1.5 bg-game-darker border border-game-border rounded hover:bg-game-border transition-all text-xs text-game-text-muted"
           >
             Reset Protocol
           </button>

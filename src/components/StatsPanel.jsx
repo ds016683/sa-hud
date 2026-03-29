@@ -8,6 +8,14 @@ const StatsPanel = () => {
     { name: 'ENDURANCE', subtitle: 'Sustainment & Completion', tier: 'C', value: 30, color: 'bg-stat-c' }
   ]
 
+  const tierBg = {
+    'S+': 'bg-red-100 text-red-700',
+    'S': 'bg-orange-100 text-orange-700',
+    'A+': 'bg-amber-100 text-amber-700',
+    'A': 'bg-green-100 text-green-700',
+    'C': 'bg-gray-100 text-gray-600',
+  }
+
   return (
     <div className="game-panel">
       <h3 className="font-game text-lg text-game-gold mb-4">CORE ATTRIBUTES</h3>
@@ -17,20 +25,15 @@ const StatsPanel = () => {
           <div key={stat.name} className="group">
             <div className="flex justify-between items-center mb-1">
               <div className="flex items-center gap-2">
-                <span className={`
-                  px-2 py-0.5 text-xs font-bold rounded
-                  ${stat.tier === 'S+' || stat.tier === 'S' ? 'bg-red-600 text-white' : ''}
-                  ${stat.tier.startsWith('A') ? 'bg-yellow-600 text-white' : ''}
-                  ${stat.tier === 'C' ? 'bg-gray-600 text-white' : ''}
-                `}>
+                <span className={`px-2 py-0.5 text-xs font-bold rounded ${tierBg[stat.tier] || tierBg['C']}`}>
                   {stat.tier}
                 </span>
                 <div>
-                  <span className="text-sm font-bold text-gray-200">{stat.name}</span>
-                  <span className="text-xs text-gray-500 ml-2">{stat.subtitle}</span>
+                  <span className="text-sm font-bold text-game-text">{stat.name}</span>
+                  <span className="text-xs text-game-text-muted ml-2">{stat.subtitle}</span>
                 </div>
               </div>
-              <span className="text-sm font-bold text-gray-400">{stat.value}%</span>
+              <span className="text-sm font-bold text-game-text-muted">{stat.value}%</span>
             </div>
 
             <div className="stat-bar h-4">
@@ -43,7 +46,7 @@ const StatsPanel = () => {
         ))}
       </div>
 
-      <div className="mt-4 pt-4 border-t border-game-border text-xs text-gray-400 italic">
+      <div className="mt-4 pt-4 border-t border-game-border text-xs text-game-text-muted italic">
         "You are not broken where you are low. You are specialized."
       </div>
     </div>

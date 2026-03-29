@@ -3,34 +3,23 @@ import { phases } from '../constants/gameData'
 
 const LoopStatus = ({ onPhaseChange, entries = [], sovereignty = 50, initialPhase = null }) => {
   const [currentPhase, setCurrentPhase] = useState(initialPhase)
-  const [showSelector, setShowSelector] = useState(initialPhase === null) // Only show modal if no initial phase
-  const [activeTooltip, setActiveTooltip] = useState(null) // Which phase detail to show
+  const [showSelector, setShowSelector] = useState(initialPhase === null)
+  const [activeTooltip, setActiveTooltip] = useState(null)
 
   // Calculate days since last release from activity log
   const daysSinceRelease = useMemo(() => {
-    // Find last release event: Sovereign Yield skill OR Release check-in with "yes"
     const releaseEvents = entries.filter(entry => {
-      // Sovereign Yield skill activation
-      if (entry.type === 'skill' && entry.action === 'sovereign_yield') {
-        return true
-      }
-      // Release check-in answered with "yes" or "chosen surrender"
+      if (entry.type === 'skill' && entry.action === 'sovereign_yield') return true
       if (entry.type === 'checkin' && entry.data?.answer) {
         const answer = entry.data.answer.toLowerCase()
         return answer.includes('yes') || answer.includes('chosen') || answer.includes('surrender')
       }
-      // Loop completed
-      if (entry.type === 'loop' && entry.action === 'completed') {
-        return true
-      }
+      if (entry.type === 'loop' && entry.action === 'completed') return true
       return false
     })
 
-    if (releaseEvents.length === 0) {
-      return null // No release events recorded
-    }
+    if (releaseEvents.length === 0) return null
 
-    // Get most recent release
     const lastRelease = releaseEvents.reduce((latest, event) => {
       const eventDate = new Date(event.timestamp)
       return eventDate > latest ? eventDate : latest
@@ -42,24 +31,20 @@ const LoopStatus = ({ onPhaseChange, entries = [], sovereignty = 50, initialPhas
     return diffDays
   }, [entries])
 
-  // Derive status from sovereignty and days since release
   const status = useMemo(() => {
-    // If no release data yet, base status purely on sovereignty
     const hasReleaseData = daysSinceRelease !== null
-    const days = daysSinceRelease ?? 0 // Don't penalize for missing data
+    const days = daysSinceRelease ?? 0
 
-    // Critical: very low sovereignty OR (has data AND very overdue)
     if (sovereignty < 20 || (hasReleaseData && days >= 5)) {
-      return { label: 'CRITICAL', color: 'bg-rose-500', textColor: 'text-rose-400' }
+      return { label: 'CRITICAL', color: 'bg-rose-500', textColor: 'text-rose-600' }
     }
     if (sovereignty < 40) {
-      return { label: 'DEPLETED', color: 'bg-orange-500', textColor: 'text-orange-400' }
+      return { label: 'DEPLETED', color: 'bg-orange-500', textColor: 'text-orange-600' }
     }
-    // Strained: moderate sovereignty OR (has data AND somewhat overdue)
     if (sovereignty < 60 || (hasReleaseData && days >= 3)) {
-      return { label: 'STRAINED', color: 'bg-amber-500', textColor: 'text-amber-400' }
+      return { label: 'STRAINED', color: 'bg-amber-500', textColor: 'text-amber-600' }
     }
-    return { label: 'HEALTHY', color: 'bg-emerald-500', textColor: 'text-emerald-400' }
+    return { label: 'HEALTHY', color: 'bg-emerald-500', textColor: 'text-emerald-600' }
   }, [sovereignty, daysSinceRelease])
 
   const selectPhase = (index) => {
@@ -85,16 +70,16 @@ const LoopStatus = ({ onPhaseChange, entries = [], sovereignty = 50, initialPhas
               onClick={() => setActiveTooltip(index)}
               className={`
                 w-full flex items-center gap-2 p-1.5 rounded transition-all text-left
-                hover:bg-white hover:bg-opacity-5
+                hover:bg-game-darker
                 ${isActive
-                  ? 'bg-zinc-800 border-l-2 border-game-gold'
+                  ? 'bg-game-accent-light border-l-2 border-game-accent'
                   : isUnset
                     ? 'opacity-60'
                     : 'opacity-40'
                 }
               `}
             >
-              <IconComponent className={`w-4 h-4 ${isActive ? 'text-game-gold' : 'text-game-text-dim'}`} strokeWidth={1.5} />
+              <IconComponent className={`w-4 h-4 ${isActive ? 'text-game-accent' : 'text-game-text-dim'}`} strokeWidth={1.5} />
               <div className="flex-1 min-w-0">
                 <span className={`text-sm font-medium ${isActive ? 'text-game-text' : 'text-game-text-muted'}`}>
                   {phase.name}
@@ -104,7 +89,7 @@ const LoopStatus = ({ onPhaseChange, entries = [], sovereignty = 50, initialPhas
                 )}
               </div>
               {isActive && (
-                <span className="w-1.5 h-1.5 rounded-full bg-game-gold animate-pulse flex-shrink-0" />
+                <span className="w-1.5 h-1.5 rounded-full bg-game-accent animate-pulse flex-shrink-0" />
               )}
             </button>
           )
@@ -113,11 +98,11 @@ const LoopStatus = ({ onPhaseChange, entries = [], sovereignty = 50, initialPhas
 
       {/* Warning if Release is overdue */}
       {daysSinceRelease !== null && daysSinceRelease >= 3 && (
-        <div className="bg-rose-950 bg-opacity-50 border border-rose-700 rounded p-2 mb-2">
+        <div className="bg-rose-50 border border-rose-200 rounded p-2 mb-2">
           <div className="flex items-center gap-2">
             <div className="w-2 h-2 rounded-full bg-rose-500 animate-pulse"></div>
             <div>
-              <div className="text-xs font-semibold text-rose-400">RELEASE OVERDUE</div>
+              <div className="text-xs font-semibold text-rose-600">RELEASE OVERDUE</div>
               <div className="text-[10px] text-game-text-muted">
                 {daysSinceRelease} days ago
               </div>
@@ -136,17 +121,17 @@ const LoopStatus = ({ onPhaseChange, entries = [], sovereignty = 50, initialPhas
         </div>
         <div className="flex justify-between">
           <span>Last Release:</span>
-          <span className={`${daysSinceRelease === null ? 'text-game-text-dim italic' : daysSinceRelease >= 3 ? 'text-amber-400' : 'text-game-text'}`}>
+          <span className={`${daysSinceRelease === null ? 'text-game-text-dim italic' : daysSinceRelease >= 3 ? 'text-amber-600' : 'text-game-text'}`}>
             {daysSinceRelease === null ? 'Not tracked' : daysSinceRelease === 0 ? 'Today' : `${daysSinceRelease}d ago`}
           </span>
         </div>
       </div>
 
       {/* Change Phase Button */}
-      <div className="mt-2 pt-2 border-t border-zinc-700">
+      <div className="mt-2 pt-2 border-t border-game-border">
         <button
           onClick={() => setShowSelector(true)}
-          className="w-full bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 rounded px-2 py-1.5 text-[10px] text-game-text-muted transition-all"
+          className="w-full bg-game-darker hover:bg-game-accent-light border border-game-border rounded px-2 py-1.5 text-[10px] text-game-text-muted hover:text-game-text transition-all"
         >
           {currentPhase === null ? 'Select Current Phase' : `Change Phase (${phases[currentPhase].name})`}
         </button>
@@ -154,10 +139,10 @@ const LoopStatus = ({ onPhaseChange, entries = [], sovereignty = 50, initialPhas
 
       {/* Phase Selection Modal */}
       {showSelector && (
-        <div className="absolute inset-0 z-50 flex items-center justify-center bg-black bg-opacity-90 rounded-lg p-2">
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-white/95 rounded-lg p-2 shadow-lg">
           <div className="w-full max-h-full overflow-y-auto">
             <div className="text-center mb-3">
-              <h4 className="font-game text-game-gold text-sm">WHERE ARE YOU?</h4>
+              <h4 className="font-game text-game-blue text-sm">WHERE ARE YOU?</h4>
               <p className="text-[10px] text-game-text-muted mt-1">
                 Select your current phase in the loop
               </p>
@@ -170,9 +155,9 @@ const LoopStatus = ({ onPhaseChange, entries = [], sovereignty = 50, initialPhas
                   <button
                     key={phase.name}
                     onClick={() => selectPhase(index)}
-                    className="w-full flex items-center gap-2 p-2 rounded bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 hover:border-game-gold transition-all text-left"
+                    className="w-full flex items-center gap-2 p-2 rounded bg-game-darker hover:bg-game-accent-light border border-game-border hover:border-game-accent/40 transition-all text-left"
                   >
-                    <IconComponent className="w-4 h-4 text-game-gold flex-shrink-0" strokeWidth={1.5} />
+                    <IconComponent className="w-4 h-4 text-game-accent flex-shrink-0" strokeWidth={1.5} />
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center justify-between">
                         <span className="text-xs font-medium text-game-text">{phase.name}</span>
@@ -200,7 +185,7 @@ const LoopStatus = ({ onPhaseChange, entries = [], sovereignty = 50, initialPhas
       {/* Phase Detail Modal */}
       {activeTooltip !== null && (
         <div
-          className="absolute inset-0 z-50 flex items-center justify-center bg-black bg-opacity-95 rounded-lg p-2"
+          className="absolute inset-0 z-50 flex items-center justify-center bg-white/97 rounded-lg p-2 shadow-lg"
           onClick={() => setActiveTooltip(null)}
         >
           <div
@@ -215,9 +200,9 @@ const LoopStatus = ({ onPhaseChange, entries = [], sovereignty = 50, initialPhas
                 <div className="space-y-3">
                   {/* Header */}
                   <div className="flex items-center gap-3">
-                    <IconComponent className="w-6 h-6 text-game-gold" strokeWidth={1.5} />
+                    <IconComponent className="w-6 h-6 text-game-accent" strokeWidth={1.5} />
                     <div>
-                      <h4 className="font-game text-game-gold text-base">{phase.name}</h4>
+                      <h4 className="font-game text-game-blue text-base">{phase.name}</h4>
                       <div className={`text-[10px] ${phase.costColor}`}>{phase.cost}</div>
                     </div>
                   </div>
@@ -226,8 +211,8 @@ const LoopStatus = ({ onPhaseChange, entries = [], sovereignty = 50, initialPhas
                   <p className="text-sm text-game-text">{phase.description}</p>
 
                   {/* Signals */}
-                  <div className="bg-zinc-800 rounded p-2 border border-zinc-700">
-                    <div className="text-[10px] text-game-gold font-semibold mb-1.5">SIGNALS YOU'RE HERE:</div>
+                  <div className="bg-game-darker rounded p-2 border border-game-border">
+                    <div className="text-[10px] text-game-accent font-semibold mb-1.5">SIGNALS YOU'RE HERE:</div>
                     <ul className="space-y-1">
                       {phase.signals.map((signal, i) => (
                         <li key={i} className="text-[10px] text-game-text-muted flex items-start gap-1.5">
@@ -239,8 +224,8 @@ const LoopStatus = ({ onPhaseChange, entries = [], sovereignty = 50, initialPhas
                   </div>
 
                   {/* Note */}
-                  <div className="bg-amber-950 bg-opacity-30 rounded p-2 border border-amber-700 border-opacity-50">
-                    <div className="text-[10px] text-amber-400 font-semibold mb-1">NOTE:</div>
+                  <div className="bg-amber-50 rounded p-2 border border-amber-200">
+                    <div className="text-[10px] text-amber-700 font-semibold mb-1">NOTE:</div>
                     <p className="text-[10px] text-game-text-muted">{phase.note}</p>
                   </div>
 
@@ -258,14 +243,14 @@ const LoopStatus = ({ onPhaseChange, entries = [], sovereignty = 50, initialPhas
                           selectPhase(activeTooltip)
                           setActiveTooltip(null)
                         }}
-                        className="flex-1 py-2 bg-game-gold bg-opacity-20 hover:bg-opacity-30 border border-game-gold text-game-gold text-xs font-bold rounded transition-all"
+                        className="flex-1 py-2 bg-game-accent text-white text-xs font-bold rounded transition-all hover:bg-game-blue"
                       >
                         Set as Current
                       </button>
                     )}
                     <button
                       onClick={() => setActiveTooltip(null)}
-                      className={`${isCurrentPhase ? 'flex-1' : ''} py-2 px-4 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-game-text-muted text-xs rounded transition-all`}
+                      className={`${isCurrentPhase ? 'flex-1' : ''} py-2 px-4 bg-game-darker hover:bg-game-border border border-game-border text-game-text-muted text-xs rounded transition-all`}
                     >
                       {isCurrentPhase ? 'Close' : 'Back'}
                     </button>

@@ -66,15 +66,15 @@ const ActivityLog = ({ entries, onExport, onClear, onAddNote, onEditNote, onDele
             onClick={() => setShowStats(!showStats)}
             className={`px-2 py-1 text-[10px] rounded transition-all ${
               showStats
-                ? 'bg-game-gold bg-opacity-20 text-game-gold'
-                : 'bg-gray-800 text-game-text-muted hover:text-game-text'
+                ? 'bg-game-accent-light text-game-accent border border-game-accent/30'
+                : 'bg-game-darker text-game-text-muted hover:text-game-text border border-game-border'
             }`}
           >
             Stats
           </button>
           <button
             onClick={onExport}
-            className="px-2 py-1 bg-gray-800 hover:bg-gray-700 text-game-text-muted hover:text-game-text text-[10px] rounded transition-all"
+            className="px-2 py-1 bg-game-darker hover:bg-game-accent-light text-game-text-muted hover:text-game-text text-[10px] rounded transition-all border border-game-border"
             title="Download log as .txt file"
           >
             Export
@@ -84,7 +84,7 @@ const ActivityLog = ({ entries, onExport, onClear, onAddNote, onEditNote, onDele
 
       {/* Stats Panel */}
       {showStats && stats && (
-        <div className="mb-3 p-2 bg-gray-800 rounded border border-gray-700">
+        <div className="mb-3 p-2 bg-game-darker rounded border border-game-border shadow-sm">
           <div className="text-[10px] text-game-text-muted mb-2">THIS WEEK</div>
 
           {Object.keys(stats.skillCounts).length > 0 && (
@@ -94,7 +94,7 @@ const ActivityLog = ({ entries, onExport, onClear, onAddNote, onEditNote, onDele
                 {Object.entries(stats.skillCounts).map(([skill, count]) => (
                   <span
                     key={skill}
-                    className="px-1.5 py-0.5 bg-blue-900 bg-opacity-50 text-blue-300 text-[9px] rounded"
+                    className="px-1.5 py-0.5 bg-game-accent-light text-game-accent text-[9px] rounded border border-game-accent/20"
                   >
                     {skillNames[skill] || skill}: {count}
                   </span>
@@ -110,7 +110,7 @@ const ActivityLog = ({ entries, onExport, onClear, onAddNote, onEditNote, onDele
                 {Object.entries(stats.shadowCounts).map(([shadow, count]) => (
                   <span
                     key={shadow}
-                    className="px-1.5 py-0.5 bg-red-900 bg-opacity-50 text-red-300 text-[9px] rounded"
+                    className="px-1.5 py-0.5 bg-red-50 text-red-600 text-[9px] rounded border border-red-200"
                   >
                     {shadowNames[shadow] || shadow}: {count}
                   </span>
@@ -133,7 +133,7 @@ const ActivityLog = ({ entries, onExport, onClear, onAddNote, onEditNote, onDele
       {!showNoteInput ? (
         <button
           onClick={() => setShowNoteInput(true)}
-          className="mb-2 w-full py-1.5 border border-dashed border-gray-700 hover:border-gray-500 text-game-text-dim hover:text-gray-400 text-[10px] rounded transition-all"
+          className="mb-2 w-full py-1.5 border border-dashed border-game-border hover:border-game-accent/40 text-game-text-dim hover:text-game-text text-[10px] rounded transition-all"
         >
           + Add journal note
         </button>
@@ -143,7 +143,7 @@ const ActivityLog = ({ entries, onExport, onClear, onAddNote, onEditNote, onDele
             value={manualNote}
             onChange={(e) => setManualNote(e.target.value)}
             placeholder="What's on your mind?"
-            className="w-full bg-gray-800 border border-gray-700 rounded p-2 text-xs text-gray-200 placeholder-gray-600 focus:border-game-gold focus:outline-none resize-none mb-1"
+            className="w-full bg-white border border-game-border rounded p-2 text-xs text-game-text placeholder-game-text-dim focus:border-game-accent focus:outline-none resize-none mb-1"
             rows={2}
             autoFocus
           />
@@ -154,14 +154,14 @@ const ActivityLog = ({ entries, onExport, onClear, onAddNote, onEditNote, onDele
                 setShowNoteInput(false)
                 setManualNote('')
               }}
-              className="flex-1 py-1 bg-gray-800 hover:bg-gray-700 text-game-text-muted text-[10px] rounded"
+              className="flex-1 py-1 bg-game-darker hover:bg-game-border text-game-text-muted text-[10px] rounded border border-game-border"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={!manualNote.trim()}
-              className="flex-1 py-1 bg-game-gold bg-opacity-20 hover:bg-opacity-30 border border-game-gold text-game-gold text-[10px] font-bold rounded disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex-1 py-1 bg-game-gold/10 hover:bg-game-gold/20 border border-game-gold/40 text-game-gold text-[10px] font-bold rounded disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Add
             </button>
@@ -174,7 +174,7 @@ const ActivityLog = ({ entries, onExport, onClear, onAddNote, onEditNote, onDele
         {entries.length === 0 ? (
           <div className="text-center py-8">
             <div className="text-game-text-dim text-sm mb-1">No activity yet</div>
-            <div className="text-gray-700 text-[10px]">
+            <div className="text-game-text-subtle text-[10px]">
               Use skills or track shadows to start logging
             </div>
           </div>
@@ -187,10 +187,10 @@ const ActivityLog = ({ entries, onExport, onClear, onAddNote, onEditNote, onDele
                 key={entry.id}
                 className={`p-2 rounded border transition-all group ${
                   entry.type === 'shadow'
-                    ? 'bg-red-900 bg-opacity-10 border-red-900 border-opacity-30'
+                    ? 'bg-red-50 border-red-200'
                     : entry.type === 'note'
-                    ? 'bg-gray-800 border-gray-700'
-                    : 'bg-blue-900 bg-opacity-10 border-blue-900 border-opacity-30'
+                    ? 'bg-game-darker border-game-border'
+                    : 'bg-game-accent-light border-game-accent/20'
                 }`}
               >
                 <div className="flex items-start gap-2">
@@ -227,7 +227,7 @@ const ActivityLog = ({ entries, onExport, onClear, onAddNote, onEditNote, onDele
                           value={editingNote}
                           onChange={(e) => setEditingNote(e.target.value)}
                           placeholder="Add a note..."
-                          className="w-full bg-gray-900 border border-gray-700 rounded p-1.5 text-[10px] text-gray-200 placeholder-gray-600 focus:border-game-gold focus:outline-none resize-none"
+                          className="w-full bg-white border border-game-border rounded p-1.5 text-[10px] text-game-text placeholder-game-text-dim focus:border-game-accent focus:outline-none resize-none"
                           rows={2}
                           autoFocus
                         />
@@ -240,14 +240,14 @@ const ActivityLog = ({ entries, onExport, onClear, onAddNote, onEditNote, onDele
                           </button>
                           <button
                             onClick={handleSaveEdit}
-                            className="px-2 py-0.5 text-[9px] bg-game-gold bg-opacity-20 text-game-gold rounded"
+                            className="px-2 py-0.5 text-[9px] bg-game-gold/10 text-game-gold rounded border border-game-gold/30"
                           >
                             Save
                           </button>
                         </div>
                       </div>
                     ) : entry.note ? (
-                      <div className="text-[10px] text-game-text-muted italic mt-1 border-l-2 border-gray-700 pl-2">
+                      <div className="text-[10px] text-game-text-muted italic mt-1 border-l-2 border-game-accent/30 pl-2">
                         "{entry.note}"
                       </div>
                     ) : null}
@@ -267,7 +267,7 @@ const ActivityLog = ({ entries, onExport, onClear, onAddNote, onEditNote, onDele
 
       {/* Footer */}
       {entries.length > 0 && (
-        <div className="mt-2 pt-2 border-t border-gray-800 flex justify-between items-center">
+        <div className="mt-2 pt-2 border-t border-game-border flex justify-between items-center">
           <span className="text-[9px] text-game-text-dim">
             {entries.length} entries • Stored locally
           </span>
