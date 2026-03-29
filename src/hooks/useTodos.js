@@ -14,6 +14,14 @@ function saveTodos(todos) {
   storageAdapter.setItem(STORAGE_KEY, todos)
 }
 
+// Normalize a todo item: handle Gist schema (text) vs local schema (title)
+function normalizeTodo(item) {
+  if (!item.title && item.text) {
+    return { ...item, title: item.text }
+  }
+  return item
+}
+
 export default function useTodos() {
   const [todos, setTodos] = useState(loadTodos)
 
@@ -53,8 +61,9 @@ export default function useTodos() {
 
   const hydrateFromRemote = useCallback((remoteTodos) => {
     if (Array.isArray(remoteTodos)) {
-      setTodos(remoteTodos)
-      saveTodos(remoteTodos)
+      const normalized = remoteTodos.map(normalizeTodo)
+      setTodos(normalized)
+      saveTodos(normalized)
     }
   }, [])
 
