@@ -58,6 +58,7 @@ const storageAdapter = {
 }
 
 const STORAGE_KEY_TODOS = 'sovereign-architect-todos'
+const STORAGE_KEY_IDEAS = 'sovereign-architect-ideas'
 
 export {
   STORAGE_KEY_ACTIVITY,
@@ -65,6 +66,7 @@ export {
   STORAGE_KEY_GAME_STATE,
   STORAGE_KEY_SETUP,
   STORAGE_KEY_TODOS,
+  STORAGE_KEY_IDEAS,
 }
 
 export default storageAdapter
