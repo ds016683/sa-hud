@@ -4,7 +4,7 @@ import useTodos from '../hooks/useTodos'
 
 const PRIORITY_CONFIG = {
   high: { label: 'High', color: 'text-game-red', border: 'border-game-red/40', bg: 'bg-game-red/10', dot: 'bg-game-red' },
-  medium: { label: 'Med', color: 'text-game-gold', border: 'border-game-gold/40', bg: 'bg-game-gold/10', dot: 'bg-game-gold' },
+  medium: { label: 'Med', color: 'text-violet-600', border: 'border-violet-300', bg: 'bg-violet-50', dot: 'bg-violet-500' },
   low: { label: 'Low', color: 'text-game-blue', border: 'border-game-blue/40', bg: 'bg-game-blue/10', dot: 'bg-game-blue' },
 }
 
@@ -55,7 +55,7 @@ const TodoPage = ({ sync }) => {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="font-game text-lg text-game-gold tracking-wider uppercase">Quests</h1>
+          <h1 className="font-game text-lg text-[#2D1B69] tracking-wider uppercase">Quests</h1>
           <p className="text-[10px] font-mono text-game-text-dim mt-0.5">
             {activeTodos.length} active{completedTodos.length > 0 ? ` · ${completedTodos.length} completed` : ''}
           </p>
@@ -70,7 +70,7 @@ const TodoPage = ({ sync }) => {
             value={title}
             onChange={e => setTitle(e.target.value)}
             placeholder="Add a new quest..."
-            className="flex-1 bg-game-darker/60 border border-game-border/50 rounded px-3 py-2 text-sm font-mono text-game-text placeholder:text-game-text-dim focus:outline-none focus:border-game-gold/50"
+            className="flex-1 bg-game-darker/60 border border-game-border/50 rounded px-3 py-2 text-sm font-mono text-game-text placeholder:text-game-text-dim focus:outline-none focus:border-violet-400"
           />
           <div className="flex gap-2">
             <div className="relative">
@@ -79,7 +79,7 @@ const TodoPage = ({ sync }) => {
                 type="date"
                 value={dueDate}
                 onChange={e => setDueDate(e.target.value)}
-                className="bg-game-darker/60 border border-game-border/50 rounded pl-7 pr-2 py-2 text-xs font-mono text-game-text-muted focus:outline-none focus:border-game-gold/50 w-36"
+                className="bg-game-darker/60 border border-game-border/50 rounded pl-7 pr-2 py-2 text-xs font-mono text-game-text-muted focus:outline-none focus:border-violet-400 w-36"
               />
             </div>
             <div className="flex rounded border border-game-border/50 overflow-hidden">
@@ -100,7 +100,7 @@ const TodoPage = ({ sync }) => {
             </div>
             <button
               type="submit"
-              className="flex items-center gap-1.5 px-3 py-2 rounded bg-game-gold/20 border border-game-gold/40 text-game-gold text-xs font-mono hover:bg-game-gold/30 transition-colors"
+              className="flex items-center gap-1.5 px-3 py-2 rounded bg-violet-50 border border-violet-200 text-violet-700 text-xs font-mono hover:bg-violet-100 transition-colors"
             >
               <Plus size={14} /> Add
             </button>
@@ -120,7 +120,7 @@ const TodoPage = ({ sync }) => {
             onClick={() => setFilter(tab.id)}
             className={`px-3 py-1.5 text-[10px] font-mono uppercase tracking-wider rounded transition-colors ${
               filter === tab.id
-                ? 'text-game-gold bg-game-gold/10 border border-game-gold/30'
+                ? 'text-violet-700 bg-violet-50 border border-violet-200'
                 : 'text-game-text-dim hover:text-game-text-muted border border-transparent'
             }`}
           >
@@ -159,7 +159,7 @@ const TodoPage = ({ sync }) => {
                   className={`flex-shrink-0 w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
                     todo.completed
                       ? 'bg-game-green/20 border-game-green/50 text-game-green'
-                      : 'border-game-border hover:border-game-gold/50'
+                      : 'border-game-border hover:border-violet-400'
                   }`}
                 >
                   {todo.completed && <Check size={12} />}

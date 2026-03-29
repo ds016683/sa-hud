@@ -8,7 +8,7 @@ import {
 // ─── Ecosystem Data ────────────────────────────────────────────────────────────
 
 const CATEGORIES = {
-  core:        { label: 'Core',          color: '#D97706', textColor: '#0F0A1E', bg: 'rgba(245,158,11,0.12)',  border: 'rgba(245,158,11,0.5)'  },
+  core:        { label: 'Core',          color: '#F59E0B', textColor: '#0F0A1E', bg: 'rgba(245,158,11,0.12)',  border: 'rgba(245,158,11,0.5)'  },
   apps:        { label: 'Deployed Apps', color: '#2D1B69', textColor: '#0F0A1E', bg: 'rgba(45,27,105,0.08)',  border: 'rgba(45,27,105,0.35)'  },
   integrations:{ label: 'Integrations',  color: '#7C3AED', textColor: '#0F0A1E', bg: 'rgba(124,58,237,0.08)', border: 'rgba(124,58,237,0.4)'  },
   data:        { label: 'Data Sources',  color: '#059669', textColor: '#0F0A1E', bg: 'rgba(5,150,105,0.08)',  border: 'rgba(5,150,105,0.4)'   },
@@ -543,7 +543,7 @@ export default function EcosystemPage() {
       <div className="game-panel p-3 mb-4">
         <div className="flex items-center justify-between flex-wrap gap-2">
           <div>
-            <h1 className="font-game text-xl text-game-gold glow-text">ECOSYSTEM MAP</h1>
+            <h1 className="font-game text-xl text-[#2D1B69]">ECOSYSTEM MAP</h1>
             <p className="text-game-text-dim text-xs mt-0.5">
               {LAID_OUT.length} nodes · {Object.values(NODES.filter(n => n.status === 'live')).length} live
             </p>

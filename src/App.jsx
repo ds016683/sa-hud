@@ -35,10 +35,9 @@ function App() {
                 onClick={() => setActiveTab(tab.id)}
                 className={`flex items-center gap-2 px-4 py-2.5 text-xs font-mono uppercase tracking-wider transition-colors border-b-2 ${
                   isActive
-                    ? 'text-game-gold border-game-gold'
+                    ? 'text-violet-300 border-violet-400'
                     : 'text-game-text-dim border-transparent hover:text-white hover:border-white/20'
                 }`}
-                style={{ color: isActive ? '#F59E0B' : 'rgba(156,163,175,0.9)' }}
               >
                 <Icon size={14} />
                 {tab.label}
