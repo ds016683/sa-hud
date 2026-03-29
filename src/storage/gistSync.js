@@ -1,5 +1,5 @@
 // GitHub Gist API client.
-// Handles create, fetch, and update of a private Gist with 3 JSON files.
+// Handles create, fetch, and update of a private Gist with JSON files.
 
 const GIST_API = 'https://api.github.com/gists'
 
@@ -62,6 +62,8 @@ export async function createGist(token) {
         'activity-log.json': { content: '[]' },
         'portfolio.json': { content: '[]' },
         'game-state.json': { content: '{}' },
+        'todos.json': { content: '[]' },
+        'ideas.json': { content: '[]' },
       },
     }),
   })
@@ -83,6 +85,8 @@ export async function fetchGist(gistId, token) {
     activityLog: parseGistFile(gist, 'activity-log.json'),
     portfolio: parseGistFile(gist, 'portfolio.json'),
     gameState: parseGistFile(gist, 'game-state.json'),
+    todos: parseGistFile(gist, 'todos.json'),
+    ideas: parseGistFile(gist, 'ideas.json'),
   }
 }
 
@@ -96,6 +100,12 @@ export async function updateGist(gistId, token, data) {
   }
   if (data.gameState !== undefined) {
     files['game-state.json'] = { content: JSON.stringify(data.gameState) }
+  }
+  if (data.todos !== undefined) {
+    files['todos.json'] = { content: JSON.stringify(data.todos) }
+  }
+  if (data.ideas !== undefined) {
+    files['ideas.json'] = { content: JSON.stringify(data.ideas) }
   }
 
   const res = await fetch(`${GIST_API}/${gistId}`, {
