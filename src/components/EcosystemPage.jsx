@@ -88,6 +88,18 @@ const NODES = [
     stack: 'Python · ChromaDB',
     repo: 'th-business-development-apps',
   },
+  {
+    id: 'remotion',
+    label: 'Remotion',
+    subtitle: 'Video Generation',
+    category: 'apps',
+    icon: Zap,
+    status: 'dev',
+    description: 'Programmatic video generation workspace. Write React components, render to MP4. Used for animated data visualizations, client reports, and branded content.',
+    stack: 'React · Remotion · ffmpeg · Node.js',
+    host: 'DavidPC',
+    repo: 'workspace/remotion',
+  },
   // INTEGRATIONS
   {
     id: 'signal',
@@ -300,11 +312,11 @@ function buildLayout() {
   const center = { ...NODES.find(n => n.isCenter), x: CX, y: CY }
 
   const clusters = [
-    ...layoutCluster(byCategory.apps || [],         -155, -25,  230),
-    ...layoutCluster(byCategory.integrations || [],   15, 100,  220),
-    ...layoutCluster(byCategory.data || [],          105, 175,  230),
-    ...layoutCluster(byCategory.infra || [],         185, 290,  235),
-    ...layoutCluster(byCategory.sandbox || [],       300, 330,  210),
+    ...layoutCluster(byCategory.apps || [],         -160, -30,  245),
+    ...layoutCluster(byCategory.integrations || [],   -20,  80,  235),
+    ...layoutCluster(byCategory.data || [],           85, 170,  245),
+    ...layoutCluster(byCategory.infra || [],         175, 290,  250),
+    ...layoutCluster(byCategory.sandbox || [],       295, 340,  220),
   ]
 
   return [center, ...clusters]
@@ -656,3 +668,4 @@ export default function EcosystemPage() {
     </div>
   )
 }
+
