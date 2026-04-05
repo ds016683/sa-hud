@@ -1,12 +1,45 @@
 import { useState, useEffect } from 'react'
-import { DndContext, closestCenter, PointerSensor, TouchSensor, useSensor, useSensors } from '@dnd-kit/core'
-import { SortableContext, rectSortingStrategy, arrayMove } from '@dnd-kit/sortable'
-import { Plus, ChevronDown, ChevronRight, Download } from 'lucide-react'
+import { Plus, ChevronDown, ChevronRight, Download, Target } from 'lucide-react'
 import usePortfolio from '../hooks/usePortfolio'
 import ProjectCard from './ProjectCard'
 import RosterRow from './RosterRow'
 import CreateProjectModal from './CreateProjectModal'
 import ProjectDetail from './ProjectDetail'
+
+const SECTIONS = [
+  {
+    id: 'client',
+    label: 'Client Projects',
+    color: 'bg-violet-500',
+    accent: 'text-violet-700',
+    border: 'border-violet-200',
+    bg: 'bg-violet-50',
+  },
+  {
+    id: 'third-horizon',
+    label: 'Third Horizon Projects',
+    color: 'bg-blue-500',
+    accent: 'text-blue-700',
+    border: 'border-blue-200',
+    bg: 'bg-blue-50',
+  },
+  {
+    id: 'personal',
+    label: 'Personal Projects',
+    color: 'bg-emerald-500',
+    accent: 'text-emerald-700',
+    border: 'border-emerald-200',
+    bg: 'bg-emerald-50',
+  },
+  {
+    id: 'learning',
+    label: 'Learning Projects',
+    color: 'bg-amber-500',
+    accent: 'text-amber-700',
+    border: 'border-amber-200',
+    bg: 'bg-amber-50',
+  },
+]
 
 const PortfolioPage = ({ sync }) => {
   const {
@@ -17,13 +50,10 @@ const PortfolioPage = ({ sync }) => {
     updateProject,
     deleteProject,
     pinProject,
-    reorderSpotlight,
-    promoteToSpotlight,
     exportToMarkdown,
     hydrateFromRemote,
   } = usePortfolio()
 
-  // Hydrate portfolio from remote data when sync pulls
   useEffect(() => {
     if (sync?.remoteData?.portfolio) {
       hydrateFromRemote(sync.remoteData.portfolio)
@@ -33,23 +63,11 @@ const PortfolioPage = ({ sync }) => {
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [detailProjectId, setDetailProjectId] = useState(null)
   const [archiveOpen, setArchiveOpen] = useState(false)
+  const [collapsedSections, setCollapsedSections] = useState({})
 
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
-    useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 5 } })
-  )
+  const allActive = [...spotlight, ...roster]
 
-  const handleDragEnd = (event) => {
-    const { active, over } = event
-    if (!over || active.id === over.id) return
-
-    const oldIndex = spotlight.findIndex(p => p.id === active.id)
-    const newIndex = spotlight.findIndex(p => p.id === over.id)
-    if (oldIndex === -1 || newIndex === -1) return
-
-    const reordered = arrayMove(spotlight, oldIndex, newIndex)
-    reorderSpotlight(reordered.map(p => p.id))
-  }
+  const toggleSection = (id) => setCollapsedSections(prev => ({ ...prev, [id]: !prev[id] }))
 
   // If viewing a project detail
   const detailProject = detailProjectId
@@ -79,25 +97,29 @@ const PortfolioPage = ({ sync }) => {
     return acc
   }, {})
 
-  const isEmpty = spotlight.length === 0 && roster.length === 0
-
   return (
     <div className="max-w-5xl mx-auto px-4 py-6 space-y-8">
-      {/* Header */}
-      <div className="flex items-center justify-between">
+
+      {/* Header — What Must Be True */}
+      <div className="flex items-start justify-between">
         <div>
-          <h1 className="font-game text-lg text-game-gold tracking-wider uppercase">Portfolio</h1>
-          <p className="text-[10px] font-mono text-game-text-dim mt-0.5">
-            {spotlight.length + roster.length} active project{spotlight.length + roster.length !== 1 ? 's' : ''}
+          <div className="flex items-center gap-2 mb-1">
+            <Target size={18} className="text-game-gold" />
+            <h1 className="font-game text-lg text-game-text tracking-wider uppercase">
+              What Must Be True by June 30th
+            </h1>
+          </div>
+          <p className="text-xs font-mono text-game-text-dim ml-6">
+            {allActive.length} active project{allActive.length !== 1 ? 's' : ''} across {SECTIONS.filter(s => allActive.some(p => (p.category || 'client') === s.id)).length} tracks
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 shrink-0">
           <button
             onClick={exportToMarkdown}
             className="flex items-center gap-2 px-3 py-2 rounded border border-game-border text-game-text-dim text-xs font-mono hover:text-game-gold hover:border-game-gold/30 transition-colors"
             title="Export portfolio to Markdown"
           >
-            <Download size={14} /> Export .md
+            <Download size={14} /> Export
           </button>
           <button
             onClick={() => setShowCreateModal(true)}
@@ -108,68 +130,61 @@ const PortfolioPage = ({ sync }) => {
         </div>
       </div>
 
-      {/* Empty state */}
-      {isEmpty && (
-        <div className="bg-game-panel border border-game-border border-dashed rounded-lg p-12 text-center">
-          <p className="font-game text-game-text-muted text-sm mb-2">No projects yet</p>
-          <p className="text-game-text-dim text-xs font-mono mb-4">Add your first project to start tracking.</p>
-          <button
-            onClick={() => setShowCreateModal(true)}
-            className="px-4 py-2 rounded bg-game-gold/20 border border-game-gold/40 text-game-gold text-sm font-mono hover:bg-game-gold/30 transition-colors"
-          >
-            <Plus size={14} className="inline mr-1" /> Add your first project
-          </button>
-        </div>
-      )}
+      {/* Four category sections */}
+      {SECTIONS.map(section => {
+        const projects = allActive.filter(p => (p.category || 'client') === section.id)
+        const isCollapsed = collapsedSections[section.id]
 
-      {/* Spotlight Grid */}
-      {spotlight.length > 0 && (
-        <section>
-          <h2 className="font-game text-xs text-game-text-muted uppercase tracking-[0.2em] mb-3 flex items-center gap-2">
-            <span className="w-1.5 h-1.5 rounded-full bg-game-gold" />
-            Spotlight
-            <span className="text-game-text-dim">({spotlight.length})</span>
-          </h2>
-          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-            <SortableContext items={spotlight.map(p => p.id)} strategy={rectSortingStrategy}>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {spotlight.map(project => (
-                  <ProjectCard
-                    key={project.id}
-                    project={project}
-                    onUpdate={updateProject}
-                    onPin={pinProject}
-                    onNavigate={setDetailProjectId}
-                  />
-                ))}
-              </div>
-            </SortableContext>
-          </DndContext>
-        </section>
-      )}
+        return (
+          <section key={section.id}>
+            {/* Section header */}
+            <button
+              onClick={() => toggleSection(section.id)}
+              className="w-full flex items-center gap-3 mb-3 group text-left"
+            >
+              <span className={`w-2 h-2 rounded-full ${section.color} shrink-0`} />
+              <h2 className={`font-game text-sm ${section.accent} uppercase tracking-[0.15em] flex-1`}>
+                {section.label}
+              </h2>
+              <span className="text-xs font-mono text-game-text-dim">
+                {projects.length} project{projects.length !== 1 ? 's' : ''}
+              </span>
+              {isCollapsed
+                ? <ChevronRight size={14} className="text-game-text-dim group-hover:text-game-text-muted" />
+                : <ChevronDown size={14} className="text-game-text-dim group-hover:text-game-text-muted" />
+              }
+            </button>
 
-      {/* Roster List */}
-      {roster.length > 0 && (
-        <section>
-          <h2 className="font-game text-xs text-game-text-muted uppercase tracking-[0.2em] mb-3 flex items-center gap-2">
-            <span className="w-1.5 h-1.5 rounded-full bg-game-text-dim" />
-            Roster
-            <span className="text-game-text-dim">({roster.length})</span>
-          </h2>
-          <div className="bg-game-panel/30 border border-game-border/50 rounded-lg overflow-hidden">
-            {roster.map(project => (
-              <RosterRow
-                key={project.id}
-                project={project}
-                onUpdate={updateProject}
-                onPin={pinProject}
-                onPromote={promoteToSpotlight}
-                onNavigate={setDetailProjectId}
-              />
-            ))}
-          </div>
-        </section>
-      )}
+            {!isCollapsed && (
+              <>
+                {projects.length === 0 ? (
+                  <div className={`rounded-lg border border-dashed ${section.border} ${section.bg} px-4 py-6 text-center`}>
+                    <p className="text-xs font-mono text-game-text-dim">No {section.label.toLowerCase()} yet.</p>
+                    <button
+                      onClick={() => setShowCreateModal(true)}
+                      className={`mt-2 text-xs font-mono ${section.accent} hover:underline transition-colors`}
+                    >
+                      + Add one
+                    </button>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {projects.map(project => (
+                      <ProjectCard
+                        key={project.id}
+                        project={project}
+                        onUpdate={updateProject}
+                        onPin={pinProject}
+                        onNavigate={setDetailProjectId}
+                      />
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
+          </section>
+        )
+      })}
 
       {/* Completed Archive */}
       {archive.length > 0 && (
