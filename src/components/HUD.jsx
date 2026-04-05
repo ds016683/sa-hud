@@ -233,10 +233,7 @@ const HUD = () => {
               sovereignty={sovereigntyLevel}
               initialPhase={currentPhase}
             />
-            <ShadowMonitor
-              onShadowChange={handleShadowChange}
-              initialShadows={shadows}
-            />
+            {/* ShadowMonitor removed */}
           </div>
         </div>
 
@@ -245,20 +242,10 @@ const HUD = () => {
         </div>
       </div>
 
-      <NotePrompt
-        isOpen={notePrompt.isOpen}
-        onSubmit={handleNoteSubmit}
-        onUndo={handleNoteUndo}
-        actionLabel={notePrompt.actionLabel}
-      />
+      {/* NotePrompt removed */}
 
       {showNudges && (
-        <FirstTimeNudges
-          onComplete={handleNudgesComplete}
-          sovereigntySet={sovereigntySet}
-          phaseSet={phaseSet}
-          shadowsChecked={shadowsChecked}
-        />
+        {/* FirstTimeNudges removed */}
       )}
     </div>
   )
