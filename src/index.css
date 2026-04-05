@@ -54,7 +54,7 @@
     color: #7C3AED;
   }
 
-  /* Fantasy stat bar — now for light bg */
+  /* Fantasy stat bar */
   .fantasy-stat-bar {
     @apply relative h-4 overflow-hidden rounded-md bg-game-darker border border-game-border;
     box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.08);
@@ -68,12 +68,32 @@
     pointer-events: none;
   }
 
-  /* Fantasy Header Bar — now light/dark nav */
+  /* Nav header - dark with high-contrast white text */
   .fantasy-header {
     @apply relative;
     background: #1E1033;
     border-bottom: 1px solid rgba(124, 58, 237, 0.3);
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  }
+
+  /* Nav links — ensure white text on dark nav */
+  .fantasy-header a,
+  .fantasy-header button,
+  .fantasy-header span,
+  .fantasy-header svg {
+    color: rgba(255, 255, 255, 0.90) !important;
+    stroke: rgba(255, 255, 255, 0.90);
+  }
+
+  .fantasy-header a:hover,
+  .fantasy-header button:hover {
+    color: #FFFFFF !important;
+  }
+
+  /* Active nav item */
+  .fantasy-header .border-b-2 {
+    color: #FFFFFF !important;
+    border-color: #7C3AED;
   }
 
   /* Corner accents */
