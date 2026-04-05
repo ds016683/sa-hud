@@ -773,7 +773,7 @@ export const useActivityLog = () => {
   useEffect(() => {
     if (isLoaded) {
       try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify( entries)
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(entries))
       } catch (e) {
         console.error('Failed to save activity log:', e)
       }
