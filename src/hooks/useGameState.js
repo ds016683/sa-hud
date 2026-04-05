@@ -1,8 +1,5 @@
-// Persists sovereignty level, loop phase, and shadow intensities to localStorage.
-// These previously reset to defaults on every page load.
-
-import { useState, useEffect, useRef, useCallback } from 'react'
-import storageAdapter, { STORAGE_KEY_GAME_STATE } from '../storage/storageAdapter'
+import { useState, useEffect, useCallback } from 'react'
+import { supabase } from '../lib/supabase'
 
 const DEFAULTS = {
   sovereigntyLevel: 50,
@@ -16,54 +13,85 @@ const DEFAULTS = {
 }
 
 export default function useGameState() {
-  const [gameState, setGameState] = useState(() => {
-    const stored = storageAdapter.getItem(STORAGE_KEY_GAME_STATE)
-    if (stored && typeof stored === 'object') {
-      return { ...DEFAULTS, ...stored }
-    }
-    return { ...DEFAULTS }
-  })
-  const isLoaded = useRef(true)
+  const [gameState, setGameState] = useState(DEFAULTS)
+  const [loading, setLoading] = useState(true)
 
-  // Save to localStorage on change
-  useEffect(() => {
-    if (isLoaded.current) {
-      storageAdapter.setItem(STORAGE_KEY_GAME_STATE, {
-        ...gameState,
-        lastModified: new Date().toISOString(),
-      })
+  const fetchGameState = useCallback(async () => {
+    setLoading(true)
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) { setLoading(false); return }
+
+      const { data, error } = await supabase
+        .from('game_state')
+        .select('*')
+        .eq('user_id', session.user.id)
+        .single()
+
+      if (error && error.code !== 'PGRST116') {
+        console.error('fetchGameState error:', error)
+        return
+      }
+
+      if (data && data.data) {
+        setGameState(prev => ({ ...DEFAULTS, ...prev, ...data.data }))
+      }
+    } finally {
+      setLoading(false)
     }
-  }, [gameState])
+  }, [])
+
+  useEffect(() => {
+    fetchGameState()
+  }, [fetchGameState])
+
+  const saveGameState = useCallback(async (state) => {
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session) return
+
+    const { error } = await supabase
+      .from('game_state')
+      .upsert({
+        user_id: session.user.id,
+        data: state,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'user_id' })
+
+    if (error) console.error('saveGameState error:', error)
+  }, [])
 
   const setSovereigntyLevel = useCallback((value) => {
-    const level = typeof value === 'function'
-      ? value(gameState.sovereigntyLevel)
-      : value
-    setGameState(prev => ({ ...prev, sovereigntyLevel: level }))
-  }, [gameState.sovereigntyLevel])
+    setGameState(prev => {
+      const level = typeof value === 'function' ? value(prev.sovereigntyLevel) : value
+      const next = { ...prev, sovereigntyLevel: level }
+      saveGameState(next)
+      return next
+    })
+  }, [saveGameState])
 
   const setCurrentPhase = useCallback((phase) => {
-    setGameState(prev => ({ ...prev, currentPhase: phase }))
-  }, [])
+    setGameState(prev => {
+      const next = { ...prev, currentPhase: phase }
+      saveGameState(next)
+      return next
+    })
+  }, [saveGameState])
 
   const setShadows = useCallback((shadows) => {
-    setGameState(prev => ({ ...prev, shadows }))
-  }, [])
-
-  // Hydrate from remote data (called after sync pull)
-  const hydrateFromRemote = useCallback((remoteGameState) => {
-    if (remoteGameState && typeof remoteGameState === 'object') {
-      setGameState(prev => ({ ...prev, ...remoteGameState }))
-    }
-  }, [])
+    setGameState(prev => {
+      const next = { ...prev, shadows }
+      saveGameState(next)
+      return next
+    })
+  }, [saveGameState])
 
   return {
     sovereigntyLevel: gameState.sovereigntyLevel,
     currentPhase: gameState.currentPhase,
     shadows: gameState.shadows,
+    loading,
     setSovereigntyLevel,
     setCurrentPhase,
     setShadows,
-    hydrateFromRemote,
   }
 }
