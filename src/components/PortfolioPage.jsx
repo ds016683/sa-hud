@@ -6,7 +6,7 @@ import CreateProjectModal from './CreateProjectModal'
 import ProjectDetail from './ProjectDetail'
 
 const SECTIONS = [
-  { id: 'client', label: 'Client Projects', color: 'bg-violet-500', accent: 'text-violet-700', border: 'border-violet-200', bg: 'bg-violet-50' },
+  { id: 'client', label: 'Client Projects', color: 'bg-blue-600', accent: 'text-blue-800', border: 'border-blue-400', bg: 'bg-blue-600' },
   { id: 'third-horizon', label: 'Third Horizon Projects', color: 'bg-blue-500', accent: 'text-blue-700', border: 'border-blue-200', bg: 'bg-blue-50' },
   { id: 'personal', label: 'Personal Projects', color: 'bg-emerald-500', accent: 'text-emerald-700', border: 'border-emerald-200', bg: 'bg-emerald-50' },
   { id: 'learning', label: 'Learning Projects', color: 'bg-amber-500', accent: 'text-amber-700', border: 'border-amber-200', bg: 'bg-amber-50' },
