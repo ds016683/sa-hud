@@ -1,13 +1,13 @@
 import { useState, useEffect, useRef } from 'react'
 import TimeContext from './TimeContext'
 import ActivityLog from './ActivityLog'
-import NotePrompt from './NotePrompt'
+// NotePrompt removed
 import StickyResourceBar from './StickyResourceBar'
 import LoopStatus from './LoopStatus'
-import ShadowMonitor from './ShadowMonitor'
+// ShadowMonitor removed
 import DailyPrompts from './DailyPrompts'
 import HorizontalSkills from './HorizontalSkills'
-import FirstTimeNudges, { isFirstTime } from './FirstTimeNudges'
+// FirstTimeNudges removed
 import useActivityLog from '../hooks/useActivityLog'
 import useGameState from '../hooks/useGameState'
 
