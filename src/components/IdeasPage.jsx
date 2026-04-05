@@ -154,7 +154,7 @@ function IdeaCard({ idea, onAdvance, onUpdate, onDelete, isDragOverlay = false }
           )}
           <button
             onClick={() => onDelete(idea.id)}
-            className="text-gray-600 hover:text-red-400 transition-colors flex-shrink-0 opacity-0 group-hover:opacity-100"
+            className="text-gray-800 hover:text-red-400 transition-colors flex-shrink-0 opacity-0 group-hover:opacity-100"
             title="Delete"
           >
             <Trash2 size={12} />
@@ -195,7 +195,7 @@ function IdeaCard({ idea, onAdvance, onUpdate, onDelete, isDragOverlay = false }
           ) : (
             <button
               onClick={() => setAddingTag(true)}
-              className="flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] text-gray-600 hover:text-violet-600 transition-colors border border-dashed border-gray-200 hover:border-violet-300 rounded-full"
+              className="flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] text-gray-800 hover:text-violet-600 transition-colors border border-dashed border-gray-200 hover:border-violet-300 rounded-full"
             >
               <Tag size={8} /> tag
             </button>
@@ -204,12 +204,12 @@ function IdeaCard({ idea, onAdvance, onUpdate, onDelete, isDragOverlay = false }
 
         {/* Next action */}
         <div>
-          <label className="text-[10px] text-gray-600 uppercase tracking-wider font-mono">Next action</label>
+          <label className="text-[10px] text-gray-800 uppercase tracking-wider font-mono">Next action</label>
           <input
             value={idea.next_action || ''}
             onChange={e => onUpdate(idea.id, { next_action: e.target.value })}
             placeholder="What's the one thing to move this forward?"
-            className="w-full mt-0.5 text-xs text-gray-700 border border-gray-100 rounded px-2 py-1 focus:outline-none focus:border-violet-300 bg-gray-50 placeholder:text-gray-600"
+            className="w-full mt-0.5 text-xs text-gray-700 border border-gray-100 rounded px-2 py-1 focus:outline-none focus:border-violet-300 bg-gray-50 placeholder:text-gray-800"
           />
         </div>
 
@@ -217,7 +217,7 @@ function IdeaCard({ idea, onAdvance, onUpdate, onDelete, isDragOverlay = false }
         <div>
           <button
             onClick={() => setExpanded(e => !e)}
-            className="flex items-center gap-1 text-[10px] text-gray-600 hover:text-violet-600 transition-colors uppercase tracking-wider font-mono"
+            className="flex items-center gap-1 text-[10px] text-gray-800 hover:text-violet-600 transition-colors uppercase tracking-wider font-mono"
           >
             {expanded ? <ChevronUp size={10} /> : <ChevronDown size={10} />}
             Notes {idea.context ? '·' : '(empty)'}
@@ -228,19 +228,19 @@ function IdeaCard({ idea, onAdvance, onUpdate, onDelete, isDragOverlay = false }
               onChange={e => onUpdate(idea.id, { context: e.target.value })}
               placeholder="Add context, notes, or braindump…"
               rows={3}
-              className="w-full mt-1 text-xs text-gray-700 border border-gray-200 rounded px-2 py-1.5 focus:outline-none focus:border-violet-300 resize-none bg-gray-50 placeholder:text-gray-600"
+              className="w-full mt-1 text-xs text-gray-700 border border-gray-200 rounded px-2 py-1.5 focus:outline-none focus:border-violet-300 resize-none bg-gray-50 placeholder:text-gray-800"
             />
           )}
         </div>
 
         {/* Dropbox path */}
         <div>
-          <label className="text-[10px] text-gray-600 uppercase tracking-wider font-mono">Dropbox path</label>
+          <label className="text-[10px] text-gray-800 uppercase tracking-wider font-mono">Dropbox path</label>
           <input
             value={idea.dropbox_path || ''}
             onChange={e => onUpdate(idea.id, { dropbox_path: e.target.value })}
             placeholder="Optional — where does the material live?"
-            className="w-full mt-0.5 text-xs text-gray-700 border border-gray-100 rounded px-2 py-1 focus:outline-none focus:border-violet-300 bg-gray-50 placeholder:text-gray-600 font-mono"
+            className="w-full mt-0.5 text-xs text-gray-700 border border-gray-100 rounded px-2 py-1 focus:outline-none focus:border-violet-300 bg-gray-50 placeholder:text-gray-800 font-mono"
           />
         </div>
 
@@ -275,7 +275,7 @@ function IdeaCard({ idea, onAdvance, onUpdate, onDelete, isDragOverlay = false }
           <div>
             <button
               onClick={() => setShowHistory(h => !h)}
-              className="flex items-center gap-1 text-[10px] text-gray-600 hover:text-violet-600 transition-colors uppercase tracking-wider font-mono"
+              className="flex items-center gap-1 text-[10px] text-gray-800 hover:text-violet-600 transition-colors uppercase tracking-wider font-mono"
             >
               <Clock size={8} />
               History {showHistory ? '▲' : '▼'}
@@ -283,7 +283,7 @@ function IdeaCard({ idea, onAdvance, onUpdate, onDelete, isDragOverlay = false }
             {showHistory && (
               <div className="mt-1 space-y-0.5 pl-2 border-l border-gray-100">
                 {idea.stage_history.map((s, i) => (
-                  <p key={i} className="text-[10px] text-gray-600 font-mono">
+                  <p key={i} className="text-[10px] text-gray-800 font-mono">
                     → {STAGE_META[s]?.label || s}
                   </p>
                 ))}
@@ -294,9 +294,9 @@ function IdeaCard({ idea, onAdvance, onUpdate, onDelete, isDragOverlay = false }
 
         {/* Dates */}
         <div className="flex gap-3 pt-0.5">
-          <span className="text-[9px] text-gray-600 font-mono">Created {formatDateShort(idea.created_at)}</span>
+          <span className="text-[9px] text-gray-800 font-mono">Created {formatDateShort(idea.created_at)}</span>
           {idea.last_modified !== idea.created_at && (
-            <span className="text-[9px] text-gray-600 font-mono">Modified {formatDateShort(idea.last_modified)}</span>
+            <span className="text-[9px] text-gray-800 font-mono">Modified {formatDateShort(idea.last_modified)}</span>
           )}
         </div>
 
@@ -351,7 +351,7 @@ function SortableIdeaCard({ idea, onAdvance, onUpdate, onDelete }) {
         <div
           {...attributes}
           {...listeners}
-          className="absolute top-2 right-8 w-5 h-5 flex items-center justify-center text-gray-600 hover:text-violet-700 cursor-grab active:cursor-grabbing z-10 opacity-0 group-hover:opacity-100 transition-opacity"
+          className="absolute top-2 right-8 w-5 h-5 flex items-center justify-center text-gray-800 hover:text-violet-700 cursor-grab active:cursor-grabbing z-10 opacity-0 group-hover:opacity-100 transition-opacity"
           title="Drag to reorder"
         >
           ⠿
@@ -384,11 +384,11 @@ function KanbanColumn({ stage, ideas, onAdvance, onUpdate, onDelete, isFiltered 
           >
             {meta.label}
           </span>
-          <span className="text-xs text-gray-600 font-mono">
+          <span className="text-xs text-gray-800 font-mono">
             {stageIdeas.length}
           </span>
         </div>
-        <p className="text-[10px] text-gray-600 font-mono leading-relaxed px-0.5">{meta.description}</p>
+        <p className="text-[10px] text-gray-800 font-mono leading-relaxed px-0.5">{meta.description}</p>
       </div>
 
       {/* Cards */}
@@ -396,7 +396,7 @@ function KanbanColumn({ stage, ideas, onAdvance, onUpdate, onDelete, isFiltered 
         <div className="flex flex-col gap-2 flex-1">
           {stageIdeas.length === 0 ? (
             <div className="border border-dashed border-gray-200 rounded-lg p-4 text-center">
-              <p className="text-[11px] text-gray-600 font-mono italic">{meta.encouragement}</p>
+              <p className="text-[11px] text-gray-800 font-mono italic">{meta.encouragement}</p>
             </div>
           ) : (
             stageIdeas.map(idea => (
@@ -435,7 +435,7 @@ function AddIdeaModal({ onAdd, onClose }) {
       <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-5 space-y-4">
         <div className="flex items-center justify-between">
           <h2 className="font-semibold text-gray-900 text-base" style={{ color: '#2D1B69' }}>New Idea</h2>
-          <button onClick={onClose} className="text-gray-600 hover:text-gray-600 transition-colors">
+          <button onClick={onClose} className="text-gray-800 hover:text-gray-800 transition-colors">
             <X size={18} />
           </button>
         </div>
@@ -451,7 +451,7 @@ function AddIdeaModal({ onAdd, onClose }) {
             />
           </div>
           <div>
-            <label className="text-xs text-gray-700 font-mono uppercase tracking-wider block mb-1">Tags <span className="normal-case text-gray-600">(comma-separated, optional)</span></label>
+            <label className="text-xs text-gray-700 font-mono uppercase tracking-wider block mb-1">Tags <span className="normal-case text-gray-800">(comma-separated, optional)</span></label>
             <input
               value={tagsInput}
               onChange={e => setTagsInput(e.target.value)}
@@ -601,7 +601,7 @@ export default function IdeasPage() {
               <h1 className="font-mono text-lg font-bold uppercase tracking-widest" style={{ color: '#2D1B69' }}>
                 Ideas Pipeline
               </h1>
-              <p className="text-xs text-gray-600 font-mono mt-0.5">
+              <p className="text-xs text-gray-800 font-mono mt-0.5">
                 {totalIdeas} idea{totalIdeas !== 1 ? 's' : ''} in pipeline
               </p>
             </div>
@@ -617,14 +617,14 @@ export default function IdeasPage() {
 
         {/* Filter bar */}
         <div className="flex flex-wrap gap-2 mb-6 items-center">
-          <span className="text-[10px] text-gray-600 font-mono uppercase tracking-wider mr-1">Filter:</span>
+          <span className="text-[10px] text-gray-800 font-mono uppercase tracking-wider mr-1">Filter:</span>
 
           {/* Stage filter */}
           <div className="flex gap-1">
             <button
               onClick={() => setFilterStage('')}
               className={`px-2.5 py-1 text-[10px] font-mono rounded border transition-colors ${
-                !filterStage ? 'bg-violet-50 text-violet-700 border-violet-200' : 'text-gray-600 border-gray-200 hover:border-violet-200'
+                !filterStage ? 'bg-violet-50 text-violet-700 border-violet-200' : 'text-gray-800 border-gray-200 hover:border-violet-200'
               }`}
             >
               All stages
@@ -634,7 +634,7 @@ export default function IdeasPage() {
                 key={s}
                 onClick={() => setFilterStage(filterStage === s ? '' : s)}
                 className={`px-2.5 py-1 text-[10px] font-mono rounded border transition-colors ${
-                  filterStage === s ? 'bg-violet-50 text-violet-700 border-violet-200' : 'text-gray-600 border-gray-200 hover:border-violet-200'
+                  filterStage === s ? 'bg-violet-50 text-violet-700 border-violet-200' : 'text-gray-800 border-gray-200 hover:border-violet-200'
                 }`}
               >
                 {STAGE_META[s].label} ({stageCount[s]})
@@ -648,7 +648,7 @@ export default function IdeasPage() {
               <button
                 onClick={() => setFilterTag('')}
                 className={`px-2.5 py-1 text-[10px] font-mono rounded border transition-colors ${
-                  !filterTag ? 'bg-violet-50 text-violet-700 border-violet-200' : 'text-gray-600 border-gray-200 hover:border-violet-200'
+                  !filterTag ? 'bg-violet-50 text-violet-700 border-violet-200' : 'text-gray-800 border-gray-200 hover:border-violet-200'
                 }`}
               >
                 All tags
@@ -658,7 +658,7 @@ export default function IdeasPage() {
                   key={tag}
                   onClick={() => setFilterTag(filterTag === tag ? '' : tag)}
                   className={`px-2.5 py-1 text-[10px] font-mono rounded border transition-colors ${
-                    filterTag === tag ? 'bg-violet-50 text-violet-700 border-violet-200' : 'text-gray-600 border-gray-200 hover:border-violet-200'
+                    filterTag === tag ? 'bg-violet-50 text-violet-700 border-violet-200' : 'text-gray-800 border-gray-200 hover:border-violet-200'
                   }`}
                 >
                   #{tag}
@@ -709,7 +709,7 @@ export default function IdeasPage() {
               <Lightbulb size={28} className="text-violet-700" />
             </div>
             <p className="text-gray-700 font-mono text-sm">No ideas in the pipeline yet.</p>
-            <p className="text-gray-600 text-xs">Hit "New Idea" to plant the first seed.</p>
+            <p className="text-gray-800 text-xs">Hit "New Idea" to plant the first seed.</p>
           </div>
         )}
       </div>
