@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { X } from 'lucide-react'
 
-const CATEGORIES = ['client', 'internal', 'personal', 'research', 'ops']
+const CATEGORIES = ['client', 'third-horizon', 'personal', 'learning']
 const PRIORITIES = ['low', 'medium', 'high', 'urgent']
 
 const CreateProjectModal = ({ isOpen, onClose, onCreate }) => {
@@ -24,7 +24,7 @@ const CreateProjectModal = ({ isOpen, onClose, onCreate }) => {
       tags: tags ? tags.split(',').map(t => t.trim()).filter(Boolean) : [],
     })
     setName('')
-    setCategory('internal')
+    setCategory('client')
     setPriority('medium')
     setTargetDate('')
     setTags('')
