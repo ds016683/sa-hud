@@ -20,7 +20,7 @@ class ErrorBoundary extends Component {
   render() {
     if (this.state.hasError) {
       return (
-        <div style={{ padding: '40px', fontFamily: 'monospace', background: '#1E1033', color: 'white', minHeight: '100vh' }}>
+        <div style={{ padding: '40px', fontFamily: 'monospace', background: '#002C77', color: 'white', minHeight: '100vh' }}>
           <h2 style={{ color: '#EF4444', marginBottom: '16px' }}>Runtime Error</h2>
           <pre style={{ background: 'rgba(0,0,0,0.4)', padding: '16px', borderRadius: '8px', whiteSpace: 'pre-wrap', fontSize: '12px', color: '#FCA5A5' }}>
             {this.state.error?.toString()}{'\n\n'}{this.state.error?.stack}
@@ -62,7 +62,7 @@ function App() {
 
   if (session === undefined) {
     return (
-      <div style={{ minHeight: '100vh', background: '#1E1033', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ minHeight: '100vh', background: '#002C77', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <div style={{ color: 'rgba(255,255,255,0.4)', fontFamily: 'monospace', fontSize: '12px', letterSpacing: '2px' }}>LOADING...</div>
       </div>
     )
