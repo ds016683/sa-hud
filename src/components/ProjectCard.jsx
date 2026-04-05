@@ -66,11 +66,12 @@ export default function ProjectCard({ project, onUpdate, onPin, onNavigate }) {
               </h3>
             </div>
             {/* Actions â€” show on hover */}
-            <div className="flex items-center gap-1 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+            <div className="flex items-center gap-1 flex-shrink-0">
               <button
                 onClick={() => onPin(project.id)}
-                className="p-1 rounded hover:bg-gray-100 text-gray-400 hover:text-[#002C77] transition-colors"
-                title={project.pinned ? 'Deactivate' : 'Set as active'}
+                className="p-1.5 rounded-md hover:bg-gray-100 transition-colors"
+                style={{ color: project.pinned ? "#F59E0B" : "#CBD8E8" }}
+                title={project.pinned ? "Deactivate (move to inactive)" : "Activate (pin to top)"}
               >
                 <Pin size={12} className={project.pinned ? 'fill-current text-amber-500' : ''} />
               </button>
