@@ -71,6 +71,13 @@ export default function usePortfolio() {
   const [projects, setProjects] = useState([])
   const [loading, setLoading] = useState(true)
 
+  const safeSetProjects = useCallback((updater) => {
+    safeSetProjects(prev => {
+      const next = typeof updater === 'function' ? updater(prev) : updater
+      return next.map(normalizeProject)
+    })
+  }, [])
+
   const fetchAllProjects = useCallback(async () => {
     setLoading(true)
     try {
@@ -106,7 +113,7 @@ export default function usePortfolio() {
     if (error) { console.error('createProject error:', error); return null }
 
     const newProject = normalizeProject(data)
-    setProjects(prev => [newProject, ...prev])
+    safeSetProjects(prev => [newProject, ...prev])
     return newProject
   }, [])
 
@@ -132,7 +139,7 @@ export default function usePortfolio() {
       if (links.length > 0) await supabase.from('project_links').insert(links.map(l => ({ id: l.id, project_id: id, url: l.url, label: l.label || '', created_at: l.created_at })))
     }
 
-    setProjects(prev => prev.map(p => {
+    safeSetProjects(prev => prev.map(p => {
       if (p.id !== id) return p
       const updated = { ...p, ...projectRow }
       if (tasks !== undefined) updated.tasks = tasks
@@ -145,7 +152,7 @@ export default function usePortfolio() {
   const deleteProject = useCallback(async (id) => {
     const { error } = await supabase.from('projects').delete().eq('id', id)
     if (error) { console.error('deleteProject error:', error); return }
-    setProjects(prev => prev.filter(p => p.id !== id))
+    safeSetProjects(prev => prev.filter(p => p.id !== id))
   }, [])
 
   const pinProject = useCallback(async (id) => {
@@ -153,7 +160,7 @@ export default function usePortfolio() {
     if (!project) return
     const newPinned = !project.pinned
     await supabase.from('projects').update({ pinned: newPinned, last_activity_at: new Date().toISOString() }).eq('id', id)
-    setProjects(prev => prev.map(p => ({
+    safeSetProjects(prev => prev.map(p => ({
       ...p,
       pinned: p.id === id ? newPinned : p.pinned,
       last_activity_at: p.id === id ? new Date().toISOString() : p.last_activity_at,
@@ -164,7 +171,7 @@ export default function usePortfolio() {
     for (let i = 0; i < orderedIds.length; i++) {
       await supabase.from('projects').update({ manual_rank: i + 1 }).eq('id', orderedIds[i])
     }
-    setProjects(prev => {
+    safeSetProjects(prev => {
       const updated = [...prev]
       orderedIds.forEach((id, index) => {
         const idx = updated.findIndex(p => p.id === id)
