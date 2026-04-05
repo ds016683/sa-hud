@@ -6,10 +6,10 @@ import { getFreshnessTier } from '../hooks/usePortfolio'
 
 const PRIORITY_CYCLE = ['low', 'medium', 'high', 'urgent']
 const PRIORITY_COLORS = {
-  low: 'text-game-text-muted border-game-text-muted/30',
-  medium: 'text-game-blue border-game-blue/30',
-  high: 'text-game-gold border-game-gold/30',
-  urgent: 'text-game-red border-game-red/30',
+  low: 'text-gray-500 bg-gray-50 border-gray-200',
+  medium: 'text-blue-700 bg-blue-50 border-blue-200',
+  high: 'text-orange-600 bg-orange-50 border-orange-200',
+  urgent: 'text-red-600 bg-red-50 border-red-200',
 }
 const FRESHNESS_COLORS = {
   fresh: 'bg-game-green',
@@ -105,7 +105,7 @@ const ProjectCard = ({ project, onUpdate, onPin, onNavigate }) => {
           </span>
         )}
         {project.tags?.map(tag => (
-          <span key={tag} className="text-[10px] px-2 py-0.5 rounded border border-game-purple/30 text-game-purple font-mono">
+          <span key={tag} className="text-[11px] px-2 py-0.5 rounded-full bg-gray-100 text-[#002C77] border border-gray-200 font-sans">
             {tag}
           </span>
         ))}
