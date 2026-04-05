@@ -86,7 +86,7 @@ function StageProgressBar({ stage }) {
 function IdeaCard({ idea, onAdvance, onUpdate, onDelete, isDragOverlay = false }) {
   const [expanded, setExpanded] = useState(false)
   const [editingTitle, setEditingTitle] = useState(false)
-  const [titleDraft, setTitleDraft] = useState(idea.name)
+  const [titleDraft, setTitleDraft] = useState(idea.name || idea.title || 'Untitled')
   const [showHistory, setShowHistory] = useState(false)
   const [newTag, setNewTag] = useState('')
   const [addingTag, setAddingTag] = useState(false)
@@ -166,7 +166,7 @@ function IdeaCard({ idea, onAdvance, onUpdate, onDelete, isDragOverlay = false }
 
         {/* Stage label */}
         <p className="text-sm text-[#002C77] font-mono">
-          {currentMeta.label} — {currentMeta.description}
+          {currentMeta.label} — {idea.description || ''}
         </p>
 
         {/* Tags */}
@@ -248,7 +248,7 @@ function IdeaCard({ idea, onAdvance, onUpdate, onDelete, isDragOverlay = false }
         {isDisposition && (
           <div>
             <label className="text-xs text-[#2E5FA3] uppercase tracking-wider font-mono mb-1 block">Disposition</label>
-            <div className="flex flex-wrap gap-1.5">
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 4, maxWidth: "100%", overflow: "hidden" }}>
               {DISPOSITION_OPTIONS.map(opt => {
                 const selected = (idea.disposition_options || []).includes(opt)
                 return (
