@@ -4,229 +4,114 @@
 @tailwind components;
 @tailwind utilities;
 
-@layer base {
-  body {
-    @apply bg-game-dark text-game-text m-0 p-0;
-    font-family: 'Courier New', monospace;
-    min-height: 100vh;
-  }
+/* â”€â”€ Global: match MMA tracker exactly â”€â”€ */
+*, *::before, *::after { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 14px;
+  color: #002C77;
+  background: #F7F9FC;
+  -webkit-font-smoothing: antialiased;
 }
 
-@layer components {
-  .stat-bar {
-    @apply relative h-6 bg-game-darker border border-game-border overflow-hidden;
-  }
+/* Cinzel reserved for SA identity moments only */
+.font-game { font-family: 'Cinzel', serif; }
 
-  .stat-bar-fill {
-    @apply absolute top-0 left-0 h-full transition-all duration-500;
-  }
-
-  /* Clean SaaS Panel Style */
-  .game-panel {
-    @apply relative p-4 rounded-lg bg-white border border-game-border;
-    box-shadow:
-      0 1px 3px rgba(0, 0, 0, 0.06),
-      0 1px 2px rgba(0, 0, 0, 0.04);
-  }
-
-  .game-button {
-    @apply relative px-4 py-2 text-white font-bold transition-all cursor-pointer rounded-md;
-    background: #009DE0;
-    border: 1px solid #0088C4;
-    box-shadow:
-      0 1px 3px rgba(0, 157, 224, 0.3),
-      inset 0 1px 0 rgba(255, 255, 255, 0.1);
-  }
-
-  .game-button:hover {
-    background: #0088C4;
-    transform: translateY(-1px);
-    box-shadow:
-      0 4px 12px rgba(0, 157, 224, 0.4),
-      inset 0 1px 0 rgba(255, 255, 255, 0.15);
-  }
-
-  .game-button:active {
-    transform: translateY(1px) scale(0.98);
-  }
-
-  .glow-text {
-    color: #009DE0;
-  }
-
-  /* Fantasy stat bar */
-  .fantasy-stat-bar {
-    @apply relative h-4 overflow-hidden rounded-md bg-game-darker border border-game-border;
-    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.08);
-  }
-
-  .fantasy-stat-bar::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(180deg, rgba(255,255,255,0.4) 0%, transparent 50%);
-    pointer-events: none;
-  }
-
-  /* Nav header - dark with high-contrast white text */
-  .fantasy-header {
-    @apply relative;
-    background: #002C77;
-    border-bottom: 1px solid rgba(0, 157, 224, 0.3);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-  }
-
-  /* Nav links — ensure white text on dark nav */
-  .fantasy-header a,
-  .fantasy-header button,
-  .fantasy-header span,
-  .fantasy-header svg {
-    color: rgba(255, 255, 255, 0.95) !important;
-    stroke: rgba(255, 255, 255, 0.90);
-  }
-
-  .fantasy-header a:hover,
-  .fantasy-header button:hover {
-    color: #FFFFFF !important;
-  }
-
-  /* Active nav item */
-  .fantasy-header .border-b-2 {
-    color: #FFFFFF !important;
-    border-color: #009DE0;
-  }
-
-  /* Corner accents */
-  .corner-accent {
-    @apply relative;
-  }
-
-  .corner-accent::before,
-  .corner-accent::after {
-    content: '';
-    position: absolute;
-    width: 16px;
-    height: 16px;
-    border: 2px solid #B8E4F9;
-    pointer-events: none;
-  }
-
-  .corner-accent::before {
-    top: -1px;
-    left: -1px;
-    border-right: none;
-    border-bottom: none;
-  }
-
-  .corner-accent::after {
-    bottom: -1px;
-    right: -1px;
-    border-left: none;
-    border-top: none;
-  }
-
-  /* Custom scrollbar */
-  .overflow-x-auto::-webkit-scrollbar {
-    height: 6px;
-  }
-
-  .overflow-x-auto::-webkit-scrollbar-track {
-    @apply bg-game-darker;
-  }
-
-  .overflow-x-auto::-webkit-scrollbar-thumb {
-    background: #B8E4F9;
-    border-radius: 3px;
-  }
-
-  .overflow-x-auto::-webkit-scrollbar-thumb:hover {
-    background: #009DE0;
-  }
-
-  /* Divider */
-  .fantasy-divider {
-    @apply relative h-px my-4 bg-game-border;
-  }
-
-  /* Slider styling */
-  input[type="range"] {
-    -webkit-appearance: none;
-    appearance: none;
-    background: transparent;
-  }
-
-  input[type="range"]::-webkit-slider-runnable-track {
-    height: 6px;
-    background: #E6F5FD;
-    border: 1px solid #B8E4F9;
-    border-radius: 3px;
-  }
-
-  input[type="range"]::-webkit-slider-thumb {
-    -webkit-appearance: none;
-    appearance: none;
-    width: 16px;
-    height: 16px;
-    margin-top: -6px;
-    background: #009DE0;
-    border: 2px solid #0088C4;
-    border-radius: 3px;
-    cursor: pointer;
-    box-shadow: 0 1px 3px rgba(0, 157, 224, 0.3);
-  }
-
-  input[type="range"]::-webkit-slider-thumb:hover {
-    background: #0088C4;
-  }
-
-  input[type="range"]::-moz-range-track {
-    height: 6px;
-    background: #E6F5FD;
-    border: 1px solid #B8E4F9;
-    border-radius: 3px;
-  }
-
-  input[type="range"]::-moz-range-thumb {
-    width: 14px;
-    height: 14px;
-    background: #009DE0;
-    border: 2px solid #0088C4;
-    border-radius: 3px;
-    cursor: pointer;
-  }
-
-  /* Nudge fade-in animation */
-  .animate-fade-in {
-    animation: fadeIn 0.3s ease-out forwards;
-  }
-
-  @keyframes fadeIn {
-    from {
-      opacity: 0;
-      transform: translateY(10px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
+/* MMA-style card */
+.mma-card {
+  background: white;
+  border: 1px solid #E2E8F0;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+  transition: box-shadow 0.15s, border-color 0.15s;
 }
-/* ── Global pill badge style — MMA-style: outlined, not filled ── */
-.idea-tag {
+.mma-card:hover {
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+  border-color: rgba(0,157,224,0.3);
+}
+
+/* MMA-style section panel */
+.mma-panel {
+  background: white;
+  border: 1px solid #E2E8F0;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+
+/* MMA pill badge */
+.mma-badge {
   display: inline-flex;
   align-items: center;
-  gap: 2px;
-  padding: 2px 8px;
+  padding: 2px 10px;
   border-radius: 9999px;
-  font-size: 11px;
-  font-family: 'Courier New', monospace;
-  background: #F0F6FF;
-  color: #002C77;
-  border: 1px solid #CBD8E8;
+  font-size: 12px;
   font-weight: 500;
+  border: 1px solid #E2E8F0;
+  background: #F7F9FC;
+  color: #334E85;
+  font-family: Arial, Helvetica, sans-serif;
 }
 
-.idea-tag:hover {
-  background: #E6F0FB;
-  border-color: #009DE0;
+/* Nav button active state */
+.nav-active {
+  border-left: 3px solid #009DE0;
+  background: rgba(0,157,224,0.12);
+  color: #009DE0;
+  padding-left: calc(1.25rem - 3px);
 }
+
+/* Inactive roster row */
+.roster-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  border-bottom: 1px solid #F1F5F9;
+  transition: background 0.1s;
+}
+.roster-row:last-child { border-bottom: none; }
+.roster-row:hover { background: #F7F9FC; }
+
+/* MMA primary button */
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  background: #002C77;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  font-family: Arial, Helvetica, sans-serif;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.btn-primary:hover { background: #003D9E; }
+
+/* MMA secondary button */
+.btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  background: white;
+  color: #334E85;
+  border: 1px solid #CBD8E8;
+  border-radius: 8px;
+  font-size: 14px;
+  font-family: Arial, Helvetica, sans-serif;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.btn-secondary:hover { border-color: #009DE0; color: #009DE0; }
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: #F7F9FC; }
+::-webkit-scrollbar-thumb { background: #CBD8E8; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #009DE0; }
