@@ -125,12 +125,7 @@ const ProjectCard = ({ project, onUpdate, onPin, onNavigate }) => {
 
       {/* Actions — always visible, wrapping */}
       <div className="flex flex-wrap gap-1 pt-2 border-t border-game-border/30">
-        {project.status === 'active' && (
-          <CardAction onClick={() => onUpdate(project.id, { status: 'on_hold', manual_rank: null })}>
-            Pause
-          </CardAction>
-        )}
-        <CardAction onClick={() => onUpdate(project.id, { status: 'archived' })}>
+<CardAction onClick={() => onUpdate(project.id, { status: 'archived' })}>
           Archive
         </CardAction>
         <div className="flex-1" />
