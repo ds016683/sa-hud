@@ -25,9 +25,9 @@ const CompactStats = () => {
                 `}>
                   {stat.tier}
                 </span>
-                <span className="text-[10px] font-medium text-gray-300">{stat.name}</span>
+                <span className="text-[10px] font-medium text-game-text-dim">{stat.name}</span>
               </div>
-              <span className="text-[10px] font-bold text-gray-400">{stat.value}</span>
+              <span className="text-[10px] font-bold text-game-text-dim">{stat.value}</span>
             </div>
 
             <div className="stat-bar h-2">
