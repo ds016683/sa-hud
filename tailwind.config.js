@@ -7,33 +7,43 @@ export default {
   theme: {
     extend: {
       colors: {
-        // Light SaaS theme - token names preserved for component compatibility
-        'game-dark': '#F8F7FF',       // Page background (warm white with violet tint)
-        'game-darker': '#F3F0FF',     // Panel hover / subtle bg
-        'game-panel': '#FFFFFF',      // Panel/card surface
-        'game-border': '#E5E7EB',     // Default border
-        'game-gold': '#7C3AED',       // Violet accent (token repurposed)
-        'game-gold-true': '#F59E0B',  // True gold - reserved for Lumen/prestige moments only
-        'game-red': '#EF4444',        // Danger
-        'game-green': '#10B981',      // Success
-        'game-blue': '#2D1B69',       // Primary deep purple
-        'game-purple': '#7C3AED',     // Accent violet
-        // Stat tier colors
+        // High-contrast two-pole system
+        // LIGHT SURFACES: near-white backgrounds, near-black text
+        'game-dark': '#F5F4F9',         // Page background — very light lavender-white
+        'game-darker': '#ECEAF4',       // Slight depth — hover states, subtle sections
+        'game-panel': '#FFFFFF',        // Card/panel surface — pure white
+        'game-border': '#D4D0E8',       // Border — visible but not heavy
+        
+        // TEXT on light backgrounds — high contrast darks
+        'game-text': '#0D0B1A',         // Primary text — near black
+        'game-text-muted': '#1A1730',   // Secondary text — very dark purple-black
+        'game-text-dim': '#2D2A45',     // Tertiary text — dark enough to read clearly
+        'game-text-subtle': '#4A4568',  // Subtle — still readable (no more light grays)
+        
+        // ACCENT — violet, used sparingly
+        'game-gold': '#6D28D9',         // Primary violet accent
+        'game-gold-true': '#F59E0B',    // Gold — Lumen only
+        'game-purple': '#6D28D9',
+        'game-accent': '#6D28D9',
+        'game-accent-light': '#EDE9FE', // Light violet tint for backgrounds
+        
+        // NAV — stays dark, white text
+        'game-nav': '#120F2B',          // Nav — very deep dark purple, almost black
+        
+        // STATUS
+        'game-red': '#DC2626',
+        'game-green': '#16A34A',
+        'game-blue': '#1E3A8A',
+        
+        // Stat tiers
         'stat-s-plus': '#DC2626',
         'stat-s': '#EA580C',
         'stat-a-plus': '#D97706',
         'stat-a': '#16A34A',
-        'stat-c': '#6B7280',
-        // Text system (improved contrast on light violet backgrounds)
-        'game-text': '#0F0A1E',       // Primary text - near black
-        'game-text-muted': '#1F1635', // Secondary text - dark purple-black (was #4B5563)
-        'game-text-dim': '#374151',   // Muted text - dark gray (was #6B7280 - too light)
-        'game-text-subtle': '#4B5563', // Subtle text - medium-dark gray (was #9CA3AF - too light)
-        // Surface/nav tokens
+        'stat-c': '#374151',
+        
+        // Surface tokens
         'game-surface': '#FFFFFF',
-        'game-nav': '#1E1033',        // Nav stays dark
-        'game-accent': '#7C3AED',
-        'game-accent-light': '#EDE9FE',
       },
       fontFamily: {
         'game': ['"Cinzel"', 'serif'],
@@ -45,8 +55,8 @@ export default {
       },
       keyframes: {
         glow: {
-          '0%, 100%': { boxShadow: '0 0 5px rgba(124,58,237,0.3)' },
-          '50%': { boxShadow: '0 0 20px rgba(124,58,237,0.5)' },
+          '0%, 100%': { boxShadow: '0 0 5px rgba(109,40,217,0.3)' },
+          '50%': { boxShadow: '0 0 20px rgba(109,40,217,0.5)' },
         }
       }
     },
