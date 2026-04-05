@@ -30,7 +30,7 @@ const ResourceMeter = ({ sovereignty, setSovereignty }) => {
 
       <div className="mb-4">
         <div className="flex justify-between items-center mb-2">
-          <span className="text-sm font-bold text-gray-300">SOVEREIGNTY</span>
+          <span className="text-sm font-bold text-game-text-dim">SOVEREIGNTY</span>
           <span className="text-xl font-bold text-game-gold">{sovereignty}%</span>
         </div>
 
@@ -46,13 +46,13 @@ const ResourceMeter = ({ sovereignty, setSovereignty }) => {
         </div>
       </div>
 
-      <div className="text-xs text-gray-400 italic">
+      <div className="text-xs text-game-text-dim italic">
         Self-authored agency + Chosen surrender
       </div>
 
       {/* Quick Adjustment (for demo purposes) */}
       <div className="mt-4 pt-4 border-t border-game-border">
-        <p className="text-xs text-gray-500 mb-2">Adjust Level (Demo):</p>
+        <p className="text-xs text-game-text-muted mb-2">Adjust Level (Demo):</p>
         <input
           type="range"
           min="0"
