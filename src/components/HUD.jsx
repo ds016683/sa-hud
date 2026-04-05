@@ -4,7 +4,7 @@ import ActivityLog from './ActivityLog'
 // NotePrompt removed
 import StickyResourceBar from './StickyResourceBar'
 import LoopStatus from './LoopStatus'
-// ShadowMonitor removed
+import ShadowMonitor from './ShadowMonitor'
 import DailyPrompts from './DailyPrompts'
 import HorizontalSkills from './HorizontalSkills'
 // FirstTimeNudges removed
@@ -233,7 +233,10 @@ const HUD = () => {
               sovereignty={sovereigntyLevel}
               initialPhase={currentPhase}
             />
-            {/* ShadowMonitor removed */}
+            <ShadowMonitor
+          shadows={shadows}
+          onShadowChange={handleShadowChange}
+        />
           </div>
         </div>
 
