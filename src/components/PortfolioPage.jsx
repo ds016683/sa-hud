@@ -35,7 +35,7 @@ function InactiveRow({ project, onPin, onNavigate, onUpdate }) {
         <span className="text-xs text-gray-400 hidden md:block">{project.mma_accountable}</span>
       )}
       <button
-        onClick={() => onPin(project.id, false)}
+        onClick={() => onPin(project.id)}
         className="p-1 rounded text-gray-300 hover:text-[#002C77] transition-colors opacity-0 group-hover:opacity-100"
         title="Set as active"
       >
@@ -88,7 +88,7 @@ export default function PortfolioPage() {
         <div>
           <h1 className="text-xl font-bold text-[#002C77]">Portfolio</h1>
           <p className="text-sm text-gray-400 mt-0.5">
-            {allActive.filter(p => p.pinned).length} active &nbsp;Â·&nbsp; {allActive.filter(p => !p.pinned).length} inactive
+            {allActive.filter(p => p.pinned).length} active &nbsp;—&nbsp; {allActive.filter(p => !p.pinned).length} inactive
           </p>
         </div>
         <div className="flex gap-2">
@@ -118,7 +118,7 @@ export default function PortfolioPage() {
             What Must Be True by June 30th
           </span>
           <span className="text-xs text-gray-400">
-            {q2Active.length} active Â· {q2Inactive.length} inactive
+            {q2Active.length} active — {q2Inactive.length} inactive
           </span>
           {collapsed['q2'] ? <ChevronRight size={14} className="text-gray-300" /> : <ChevronDown size={14} className="text-gray-300" />}
         </button>
