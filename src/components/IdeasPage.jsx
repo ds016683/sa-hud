@@ -24,27 +24,27 @@ import useIdeas, { STAGES } from '../hooks/useIdeas'
 const STAGE_META = {
   ideation: {
     label: 'Ideation',
-    description: '\',
+    description: 'Raw thinking, no filter — voice memos, concept seeds',
     encouragement: "Every great idea started here. What's on your mind?",
   },
   concept: {
     label: 'Concept',
-    description: '\',
+    description: 'Raw thinking, no filter — voice memos, concept seeds',
     encouragement: 'Shape the clay. What does this actually want to be?',
   },
   attunement: {
     label: 'Attunement',
-    description: '\',
+    description: 'Raw thinking, no filter — voice memos, concept seeds',
     encouragement: 'Steel-man it. What breaks this idea?',
   },
   disposition: {
     label: 'Disposition',
-    description: '\',
+    description: 'Raw thinking, no filter — voice memos, concept seeds',
     encouragement: 'What does this become? Name its destiny.',
   },
   completion: {
     label: 'Completion',
-    description: '\',
+    description: 'Raw thinking, no filter — voice memos, concept seeds',
     encouragement: 'Finish strong. What does done look like?',
   },
 }
