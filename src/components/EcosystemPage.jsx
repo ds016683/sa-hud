@@ -1,671 +1,220 @@
-import { useState, useRef, useEffect, useCallback } from 'react'
-import {
-  Server, Globe, Database, MessageSquare, Mail, Hash, GitBranch,
-  Cloud, Wifi, FlaskConical, X, ExternalLink, Circle, Cpu,
-  HardDrive, Network, Boxes, Zap, FileText, Archive
-} from 'lucide-react'
+import { useState } from 'react'
 
-// ─── Ecosystem Data ────────────────────────────────────────────────────────────
-
-const CATEGORIES = {
-  core:        { label: 'Core',          color: '#F59E0B', textColor: '#0F0A1E', bg: 'rgba(245,158,11,0.12)',  border: 'rgba(245,158,11,0.5)'  },
-  apps:        { label: 'Deployed Apps', color: '#2D1B69', textColor: '#0F0A1E', bg: 'rgba(45,27,105,0.08)',  border: 'rgba(45,27,105,0.35)'  },
-  integrations:{ label: 'Integrations',  color: '#7C3AED', textColor: '#0F0A1E', bg: 'rgba(124,58,237,0.08)', border: 'rgba(124,58,237,0.4)'  },
-  data:        { label: 'Data Sources',  color: '#059669', textColor: '#0F0A1E', bg: 'rgba(5,150,105,0.08)',  border: 'rgba(5,150,105,0.4)'   },
-  infra:       { label: 'Infrastructure',color: '#DC2626', textColor: '#0F0A1E', bg: 'rgba(220,38,38,0.08)',  border: 'rgba(220,38,38,0.4)'   },
-  sandbox:     { label: 'Sandboxes',     color: '#6B7280', textColor: '#0F0A1E', bg: 'rgba(107,114,128,0.08)',border: 'rgba(107,114,128,0.35)' },
-}
-
-const NODES = [
-  // CORE
+const CATEGORIES = [
   {
-    id: 'lumen',
-    label: 'Lumen',
-    subtitle: 'OpenClaw Gateway',
-    category: 'core',
-    icon: Cpu,
-    status: 'live',
-    description: 'Always-on AI gateway running on DavidPC. The central intelligence hub — handles messaging, email, calendar, and all integrations.',
-    stack: 'Windows 10 · Node v24 · OpenClaw',
-    host: 'DavidPC',
-    isCenter: true,
-  },
-  // DEPLOYED APPS
-  {
-    id: 'mma-tracker',
-    label: 'MMA Tracker',
-    subtitle: 'GitHub Pages',
-    category: 'apps',
-    icon: Globe,
-    status: 'live',
-    description: 'Project/task/notes/people tracker for Third Horizon engagements. Full CRUD with Supabase backend.',
-    stack: 'React · TypeScript · Vite · Supabase',
-    url: 'https://ds016683.github.io/mma-tracker/',
-    repo: 'th-client-apps',
+    id: 'communication',
+    label: 'Communication',
+    color: '#009DE0',
+    angle: 0,
+    nodes: [
+      { id: 'signal',    label: 'Signal',         sub: 'Primary channel' },
+      { id: 'graph',     label: 'Graph API / O365', sub: 'Email + Calendar' },
+      { id: 'slack',     label: 'Slack',           sub: 'Team comms' },
+      { id: 'zoom',      label: 'Zoom API',        sub: 'Meetings (planned)' },
+    ]
   },
   {
-    id: 'sa-hud',
-    label: 'SA HUD',
-    subtitle: 'GitHub Pages',
-    category: 'apps',
-    icon: Globe,
-    status: 'live',
-    description: 'This app. Sovereign Architect personal management HUD — sovereignty tracking, activity log, portfolio, ideas.',
-    stack: 'React · Vite · Tailwind CSS',
-    url: 'https://ds016683.github.io/sa-hud/',
-    repo: 'personal-apps',
+    id: 'data',
+    label: 'Data & Intelligence',
+    color: '#00968F',
+    angle: 72,
+    nodes: [
+      { id: 'starset',   label: 'Starset Analytics', sub: '150B+ claims' },
+      { id: 'clarity',   label: 'Clarity',           sub: 'Cost intelligence' },
+      { id: 'bh-rate',   label: 'BH Rate Intel',     sub: 'Rate benchmarking' },
+      { id: 'naic',      label: 'NAIC Data',         sub: 'Deep dive pending' },
+    ]
   },
   {
-    id: 'clarity',
-    label: 'Clarity',
-    subtitle: 'Fly.io',
-    category: 'apps',
-    icon: FlaskConical,
-    status: 'live',
-    description: 'Starset Analytics demo app. Showcases price transparency and negotiated rate analysis capabilities.',
-    stack: 'Python · Flask · JavaScript',
-    repo: 'th-concept-apps',
+    id: 'platforms',
+    label: 'Client Platforms',
+    color: '#6D28D9',
+    angle: 144,
+    nodes: [
+      { id: 'mma',       label: 'MMA Tracker',      sub: 'Project management' },
+      { id: 'achp',      label: 'ACHP Intel',        sub: 'Policy AI' },
+      { id: 'apex',      label: 'Apex Media',        sub: 'Studio booking' },
+    ]
   },
   {
-    id: 'bh-rate-book',
-    label: 'BH Rate Book',
-    subtitle: 'Fly.io',
-    category: 'apps',
-    icon: FileText,
-    status: 'live',
-    description: 'Behavioral Health rates reference app. Python/Flask backend with JS frontend.',
-    stack: 'Python · Flask · JavaScript',
-    repo: 'th-concept-apps',
+    id: 'infrastructure',
+    label: 'Infrastructure',
+    color: '#DC2626',
+    angle: 216,
+    nodes: [
+      { id: 'github',    label: 'GitHub',            sub: 'ds016683' },
+      { id: 'supabase',  label: 'Supabase',          sub: 'SA HUD + MMA data' },
+      { id: 'vercel',    label: 'Vercel',             sub: 'Frontend hosting' },
+      { id: 'flyio',     label: 'Fly.io',             sub: 'Backend apps' },
+      { id: 'tailscale', label: 'Tailscale',          sub: 'Secure network' },
+    ]
   },
   {
-    id: 'achp-intel',
-    label: 'ACHP Intel',
-    subtitle: 'Local / Dev',
-    category: 'apps',
-    icon: Archive,
-    status: 'dev',
-    description: 'ACHP research intelligence tool. Uses ChromaDB for vector search over research documents.',
-    stack: 'Python · ChromaDB',
-    repo: 'th-business-development-apps',
-  },
-  {
-    id: 'remotion',
-    label: 'Remotion',
-    subtitle: 'Video Generation',
-    category: 'apps',
-    icon: Zap,
-    status: 'dev',
-    description: 'Programmatic video generation workspace. Write React components, render to MP4. Used for animated data visualizations, client reports, and branded content.',
-    stack: 'React · Remotion · ffmpeg · Node.js',
-    host: 'DavidPC',
-    repo: 'workspace/remotion',
-  },
-  // INTEGRATIONS
-  {
-    id: 'signal',
-    label: 'Signal',
-    subtitle: '+16302967614',
-    category: 'integrations',
-    icon: MessageSquare,
-    status: 'live',
-    description: "Lumen's primary messaging channel. Inbound/outbound messaging on a dedicated Signal number.",
-    stack: 'Signal API · Dedicated Number',
-  },
-  {
-    id: 'outlook',
-    label: 'Outlook / Graph',
-    subtitle: 'Lumen@thirdhorizon.com',
-    category: 'integrations',
-    icon: Mail,
-    status: 'live',
-    description: 'Microsoft Graph integration for THS email and calendar. Full read/write access.',
-    stack: 'Microsoft Graph API · OAuth2',
-  },
-  {
-    id: 'gmail',
-    label: 'Gmail',
-    subtitle: 'david.e.smith8@gmail.com',
-    category: 'integrations',
-    icon: Mail,
-    status: 'live',
-    description: 'Personal Gmail account. Read-only access for monitoring.',
-    stack: 'Gmail API · OAuth2',
-  },
-  {
-    id: 'slack',
-    label: 'Slack',
-    subtitle: 'Third Horizon workspace',
-    category: 'integrations',
-    icon: Hash,
-    status: 'live',
-    description: 'Third Horizon Slack workspace. Read, search, and limited write access.',
-    stack: 'Slack API · Bot Token',
-  },
-  {
-    id: 'harvest',
-    label: 'Harvest',
-    subtitle: 'Time & Expenses',
-    category: 'integrations',
-    icon: Zap,
-    status: 'live',
-    description: 'Time tracking and expense management. Full read/write — Lumen can log time and view reports.',
-    stack: 'Harvest API · Personal Access Token',
-  },
-  {
-    id: 'github',
-    label: 'GitHub',
-    subtitle: 'ds016683',
-    category: 'integrations',
-    icon: GitBranch,
-    status: 'live',
-    description: 'GitHub repos and Gist sync. Source for SA HUD cross-device state.',
-    stack: 'GitHub API · SSH + Token',
-    url: 'https://github.com/ds016683',
-  },
-  // DATA SOURCES
-  {
-    id: 'supabase',
-    label: 'Supabase',
-    subtitle: 'MMA Tracker DB',
-    category: 'data',
-    icon: Database,
-    status: 'live',
-    description: 'PostgreSQL backend for MMA Tracker. Stores projects, tasks, notes, and people.',
-    stack: 'Supabase · PostgreSQL · Row Level Security',
-  },
-  {
-    id: 'gist',
-    label: 'GitHub Gist',
-    subtitle: 'SA HUD Sync',
-    category: 'data',
-    icon: Database,
-    status: 'live',
-    description: 'Cross-device sync storage for SA HUD. Persists game-state, activity-log, and portfolio.',
-    stack: 'GitHub Gist API · JSON',
-  },
-  {
-    id: 'dropbox',
-    label: 'Dropbox (THS)',
-    subtitle: 'C:\\Users\\david\\THS Dropbox\\',
-    category: 'data',
-    icon: HardDrive,
-    status: 'live',
-    description: 'Primary file system for THS work — SNMI documents, client files, and personal THS data.',
-    stack: 'Dropbox · Local Mount',
-  },
-  {
-    id: 'starset',
-    label: 'Starset MMA National',
-    subtitle: 'BigQuery · 60B+ rows',
-    category: 'data',
-    icon: Database,
-    status: 'live',
-    description: 'National MMA price transparency and negotiated rates dataset. V8 live. The analytical backbone of Starset Analytics.',
-    stack: 'BigQuery · 60B+ rows · V8',
-  },
-  // INFRASTRUCTURE
-  {
-    id: 'davidpc',
-    label: 'DavidPC',
-    subtitle: '100.69.104.93',
-    category: 'infra',
-    icon: Server,
-    status: 'live',
-    description: 'Primary host machine. Windows 10, always on. Runs the OpenClaw gateway and all local services.',
-    stack: 'Windows 10 · Tailscale · OpenClaw Gateway',
-  },
-  {
-    id: 'macm5',
-    label: 'Mac M5',
-    subtitle: '100.73.172.56',
-    category: 'infra',
-    icon: Cpu,
-    status: 'live',
-    description: 'Secondary/portable machine. Apple Silicon M5, macOS 26. Connected via Tailscale.',
-    stack: 'macOS 26 · Apple M5 · Tailscale Node',
-  },
-  {
-    id: 'gh-actions',
-    label: 'GitHub Actions',
-    subtitle: 'CI/CD',
-    category: 'infra',
-    icon: Zap,
-    status: 'live',
-    description: 'Automated CI/CD pipelines. Builds and deploys sa-hud and mma-tracker to GitHub Pages on push.',
-    stack: 'GitHub Actions · Node.js · Vite',
-  },
-  {
-    id: 'flyio',
-    label: 'Fly.io',
-    subtitle: 'Docker Containers',
-    category: 'infra',
-    icon: Cloud,
-    status: 'live',
-    description: 'Hosts Clarity and BH Rate Book as Docker containers. Edge deployment across global PoPs.',
-    stack: 'Fly.io · Docker · Python/Flask',
-  },
-  {
-    id: 'tailscale',
-    label: 'Tailscale',
-    subtitle: 'VPN Mesh',
-    category: 'infra',
-    icon: Network,
-    status: 'live',
-    description: 'Private VPN mesh connecting DavidPC and Mac M5. Enables secure remote access without port forwarding.',
-    stack: 'Tailscale · WireGuard',
-  },
-  // SANDBOXES
-  {
-    id: 'ideation-apps',
-    label: 'ideation-apps',
-    subtitle: 'Empty · Ready',
-    category: 'sandbox',
-    icon: Boxes,
-    status: 'dev',
-    description: 'Clean sandbox repo for experiments and concept prototypes. Ready when inspiration strikes.',
-    stack: 'TBD',
+    id: 'integrations',
+    label: 'Integrations',
+    color: '#FF8C00',
+    angle: 288,
+    nodes: [
+      { id: 'harvest',   label: 'Harvest',           sub: 'Time & expenses' },
+      { id: 'anthropic', label: 'Anthropic API',      sub: 'Claude models' },
+      { id: 'openai',    label: 'OpenAI',             sub: 'Whisper + GPT' },
+      { id: 'vapi',      label: 'Vapi Voice',         sub: 'Voice interface' },
+      { id: 'granola',   label: 'Granola',            sub: 'Meeting notes (planned)' },
+    ]
   },
 ]
 
-// Status styles
-const STATUS = {
-  live:    { label: 'LIVE',    dot: 'bg-game-green',   text: 'text-emerald-600' },
-  dev:     { label: 'DEV',     dot: 'bg-amber-400',    text: 'text-amber-600'   },
-  offline: { label: 'OFFLINE', dot: 'bg-game-red',     text: 'text-red-600'     },
-}
+const CX = 500  // center x
+const CY = 420  // center y
+const CAT_R = 190  // category node radius from center
+const NODE_R = 290 // leaf node radius from center
 
-// ─── Layout: polar coordinate positions ──────────────────────────────────────
-// Center is at (50, 50) in % of SVG viewBox (1000×700)
-// Each cluster gets an arc + radius
+function toRad(deg) { return (deg * Math.PI) / 180 }
 
-const CX = 500
-const CY = 350
-const VW = 1000
-const VH = 700
-
-function polarToXY(angleDeg, radius) {
-  const rad = (angleDeg - 90) * (Math.PI / 180)
+function catPos(angle) {
   return {
-    x: CX + radius * Math.cos(rad),
-    y: CY + radius * Math.sin(rad),
+    x: CX + CAT_R * Math.cos(toRad(angle - 90)),
+    y: CY + CAT_R * Math.sin(toRad(angle - 90)),
   }
 }
 
-// Distribute nodes in a category around an arc
-function layoutCluster(nodes, startAngle, endAngle, radius) {
-  const count = nodes.length
-  return nodes.map((node, i) => {
-    const t = count === 1 ? 0.5 : i / (count - 1)
-    const angle = startAngle + t * (endAngle - startAngle)
-    const pos = polarToXY(angle, radius)
-    return { ...node, x: pos.x, y: pos.y }
-  })
+function nodePos(angle, idx, total) {
+  const spread = Math.min(40, 25 * (total - 1) / 2)
+  const startAngle = angle - spread
+  const step = total > 1 ? (spread * 2) / (total - 1) : 0
+  const a = startAngle + step * idx
+  return {
+    x: CX + NODE_R * Math.cos(toRad(a - 90)),
+    y: CY + NODE_R * Math.sin(toRad(a - 90)),
+  }
 }
-
-function buildLayout() {
-  const byCategory = {}
-  NODES.filter(n => !n.isCenter).forEach(n => {
-    if (!byCategory[n.category]) byCategory[n.category] = []
-    byCategory[n.category].push(n)
-  })
-
-  const center = { ...NODES.find(n => n.isCenter), x: CX, y: CY }
-
-  const clusters = [
-    ...layoutCluster(byCategory.apps || [],         -160, -30,  245),
-    ...layoutCluster(byCategory.integrations || [],   -20,  80,  235),
-    ...layoutCluster(byCategory.data || [],           85, 170,  245),
-    ...layoutCluster(byCategory.infra || [],         175, 290,  250),
-    ...layoutCluster(byCategory.sandbox || [],       295, 340,  220),
-  ]
-
-  return [center, ...clusters]
-}
-
-const LAID_OUT = buildLayout()
-
-// ─── Node Component ──────────────────────────────────────────────────────────
-
-function EcoNode({ node, isSelected, onSelect, svgRef }) {
-  const cat = CATEGORIES[node.category]
-  const Icon = node.icon
-  const nodeSize = node.isCenter ? 52 : 36
-  const half = nodeSize / 2
-
-  const handleClick = useCallback((e) => {
-    e.stopPropagation()
-    onSelect(node.id === isSelected ? null : node.id)
-  }, [node.id, isSelected, onSelect])
-
-  return (
-    <g
-      transform={`translate(${node.x},${node.y})`}
-      onClick={handleClick}
-      style={{ cursor: 'pointer' }}
-      className="group"
-    >
-      {/* Outer pulse ring for center node */}
-      {node.isCenter && (
-        <circle
-          cx={0} cy={0}
-          r={half + 14}
-          fill="none"
-          stroke={cat.color}
-          strokeWidth={1}
-          opacity={0.25}
-          style={{ animation: 'pulse 3s ease-in-out infinite' }}
-        />
-      )}
-      {/* Selection ring */}
-      {isSelected === node.id && (
-        <circle
-          cx={0} cy={0}
-          r={half + 8}
-          fill="none"
-          stroke={cat.color}
-          strokeWidth={2}
-          opacity={0.8}
-        />
-      )}
-      {/* Main circle */}
-      <circle
-        cx={0} cy={0}
-        r={half}
-        fill={cat.bg}
-        stroke={cat.border}
-        strokeWidth={node.isCenter ? 2.5 : 1.5}
-      />
-      {/* Icon — rendered via foreignObject so Lucide works */}
-      <foreignObject
-        x={-half + (node.isCenter ? 12 : 8)}
-        y={-half + (node.isCenter ? 12 : 8)}
-        width={node.isCenter ? 40 : 20}
-        height={node.isCenter ? 40 : 20}
-        style={{ overflow: 'visible', pointerEvents: 'none' }}
-      >
-        <div xmlns="http://www.w3.org/1999/xhtml"
-          style={{ color: cat.color, display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%' }}
-        >
-          <Icon size={node.isCenter ? 26 : 16} />
-        </div>
-      </foreignObject>
-      {/* Label */}
-      <text
-        y={half + 14}
-        textAnchor="middle"
-        fill={node.isCenter ? cat.color : '#0F0A1E'}
-        fontSize={node.isCenter ? 12 : 10}
-        fontFamily="'Courier New', monospace"
-        fontWeight={node.isCenter ? '700' : '500'}
-        style={{ pointerEvents: 'none', userSelect: 'none' }}
-      >
-        {node.label}
-      </text>
-      {!node.isCenter && (
-        <text
-          y={half + 26}
-          textAnchor="middle"
-          fill="#6B7280"
-          fontSize={8}
-          fontFamily="'Courier New', monospace"
-          style={{ pointerEvents: 'none', userSelect: 'none' }}
-        >
-          {node.subtitle}
-        </text>
-      )}
-    </g>
-  )
-}
-
-// ─── Side Panel ──────────────────────────────────────────────────────────────
-
-function NodePanel({ node, onClose }) {
-  if (!node) return null
-  const cat = CATEGORIES[node.category]
-  const Icon = node.icon
-  const st = STATUS[node.status] || STATUS.dev
-
-  return (
-    <div className="flex flex-col h-full">
-      {/* Header */}
-      <div className="flex items-start justify-between gap-3 mb-4">
-        <div className="flex items-center gap-3">
-          <div
-            className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
-            style={{ background: cat.bg, border: `1.5px solid ${cat.border}` }}
-          >
-            <Icon size={20} style={{ color: cat.color }} />
-          </div>
-          <div>
-            <h3 className="font-game text-base text-game-text leading-tight">{node.label}</h3>
-            <p className="text-game-text-dim text-xs mt-0.5">{node.subtitle}</p>
-          </div>
-        </div>
-        <button
-          onClick={onClose}
-          className="text-game-text-dim hover:text-game-text transition-colors flex-shrink-0 mt-1"
-        >
-          <X size={16} />
-        </button>
-      </div>
-
-      {/* Category + Status badges */}
-      <div className="flex items-center gap-2 mb-4">
-        <span
-          className="text-[10px] font-mono uppercase tracking-wider px-2 py-0.5 rounded-sm"
-          style={{ background: cat.bg, color: cat.color, border: `1px solid ${cat.border}` }}
-        >
-          {cat.label}
-        </span>
-        <span className={`flex items-center gap-1.5 text-[10px] font-mono uppercase tracking-wider ${st.text}`}>
-          <span className={`w-1.5 h-1.5 rounded-full ${st.dot} animate-pulse-slow`} />
-          {st.label}
-        </span>
-      </div>
-
-      {/* Description */}
-      <p className="text-game-text-muted text-xs leading-relaxed mb-4">{node.description}</p>
-
-      {/* Stack */}
-      {node.stack && (
-        <div className="mb-4">
-          <p className="text-game-text-dim text-[10px] uppercase tracking-wider mb-1.5">Stack / Tech</p>
-          <div className="flex flex-wrap gap-1.5">
-            {node.stack.split(' · ').map(s => (
-              <span key={s} className="text-[10px] font-mono px-2 py-0.5 rounded-sm bg-game-darker border border-game-border text-game-text-muted">
-                {s}
-              </span>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Additional fields */}
-      {node.host && (
-        <div className="mb-2">
-          <span className="text-game-text-dim text-[10px] uppercase tracking-wider">Host: </span>
-          <span className="text-game-text-muted text-xs">{node.host}</span>
-        </div>
-      )}
-      {node.repo && (
-        <div className="mb-2">
-          <span className="text-game-text-dim text-[10px] uppercase tracking-wider">Repo: </span>
-          <span className="text-game-text-muted text-xs">{node.repo}</span>
-        </div>
-      )}
-
-      {/* URL */}
-      {node.url && (
-        <a
-          href={node.url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="mt-auto flex items-center gap-2 text-xs font-mono text-game-blue hover:text-blue-400 transition-colors border border-game-blue/30 hover:border-blue-400/50 rounded-sm px-3 py-2"
-        >
-          <ExternalLink size={12} />
-          Open App
-        </a>
-      )}
-    </div>
-  )
-}
-
-// ─── Legend ──────────────────────────────────────────────────────────────────
-
-function Legend() {
-  return (
-    <div className="flex flex-wrap gap-x-4 gap-y-1.5">
-      {Object.entries(CATEGORIES).map(([key, cat]) => (
-        <div key={key} className="flex items-center gap-1.5">
-          <span
-            className="w-2.5 h-2.5 rounded-full"
-            style={{ background: cat.color }}
-          />
-          <span className="text-[10px] font-mono text-game-text-muted uppercase tracking-wider">{cat.label}</span>
-        </div>
-      ))}
-      <div className="flex items-center gap-3 ml-2 pl-2 border-l border-game-border">
-        <span className="flex items-center gap-1 text-[10px] font-mono text-emerald-600"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />Live</span>
-        <span className="flex items-center gap-1 text-[10px] font-mono text-amber-600"><span className="w-1.5 h-1.5 rounded-full bg-amber-400" />Dev</span>
-      </div>
-    </div>
-  )
-}
-
-// ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function EcosystemPage() {
-  const [selectedId, setSelectedId] = useState(null)
-  const svgRef = useRef(null)
-  const [svgSize, setSvgSize] = useState({ w: VW, h: VH })
+  const [active, setActive] = useState(null)
 
-  const selectedNode = selectedId ? LAID_OUT.find(n => n.id === selectedId) : null
-
-  const handleSelect = useCallback((id) => {
-    setSelectedId(id)
-  }, [])
-
-  const handleBgClick = useCallback(() => {
-    setSelectedId(null)
-  }, [])
+  const handleCatClick = (id) => setActive(prev => prev === id ? null : id)
 
   return (
-    <div className="w-full min-h-screen p-3 md:p-6">
-      {/* Page header */}
-      <div className="game-panel p-3 mb-4">
-        <div className="flex items-center justify-between flex-wrap gap-2">
-          <div>
-            <h1 className="font-game text-xl text-[#2D1B69]">ECOSYSTEM MAP</h1>
-            <p className="text-game-text-dim text-xs mt-0.5">
-              {LAID_OUT.length} nodes · {Object.values(NODES.filter(n => n.status === 'live')).length} live
-            </p>
-          </div>
-          <Legend />
-        </div>
+    <div style={{ maxWidth: 1100, margin: '0 auto', padding: '24px 16px', fontFamily: 'Arial, Helvetica, sans-serif' }}>
+      <div style={{ marginBottom: 20 }}>
+        <h1 style={{ fontSize: 20, fontWeight: 700, color: '#002C77', margin: 0 }}>Ecosystem Map</h1>
+        <p style={{ fontSize: 13, color: '#8096B2', margin: '3px 0 0' }}>Click a category to expand its connections</p>
       </div>
 
-      {/* Main content: graph + side panel */}
-      <div className="flex gap-4 flex-col lg:flex-row">
-        {/* SVG Graph */}
-        <div
-          className="flex-1 bg-white border border-game-border rounded-lg overflow-hidden shadow-sm"
-          style={{ minHeight: 420 }}
-        >
-          <svg
-            ref={svgRef}
-            viewBox={`0 0 ${VW} ${VH}`}
-            width="100%"
-            style={{ display: 'block', background: '#F8F7FF' }}
-            onClick={handleBgClick}
-          >
-            <defs>
-              {/* Radial bg glow at center */}
-              <radialGradient id="centerGlow" cx="50%" cy="50%" r="30%">
-                <stop offset="0%" stopColor="rgba(245,158,11,0.12)" />
-                <stop offset="100%" stopColor="rgba(245,158,11,0)" />
-              </radialGradient>
-              {/* Line gradient per category */}
-              {Object.entries(CATEGORIES).map(([key, cat]) => (
-                <linearGradient key={key} id={`lg-${key}`} gradientUnits="userSpaceOnUse">
-                  <stop offset="0%" stopColor={cat.color} stopOpacity="0.6" />
-                  <stop offset="100%" stopColor={cat.color} stopOpacity="0.1" />
-                </linearGradient>
-              ))}
-            </defs>
+      <div style={{ background: 'white', border: '1px solid #E2E8F0', borderRadius: 16, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', overflow: 'hidden' }}>
+        <svg viewBox="0 0 1000 840" width="100%" style={{ display: 'block' }}>
 
-            {/* Center glow */}
-            <ellipse
-              cx={CX} cy={CY}
-              rx={180} ry={140}
-              fill="url(#centerGlow)"
-            />
+          {/* Draw spokes to categories */}
+          {CATEGORIES.map(cat => {
+            const cp = catPos(cat.angle)
+            const isActive = active === cat.id
+            const isDimmed = active && !isActive
+            return (
+              <line key={`spoke-${cat.id}`}
+                x1={CX} y1={CY} x2={cp.x} y2={cp.y}
+                stroke={cat.color}
+                strokeWidth={isActive ? 2 : 1.5}
+                strokeOpacity={isDimmed ? 0.15 : isActive ? 0.9 : 0.4}
+                strokeDasharray={isActive ? "none" : "6,4"}
+              />
+            )
+          })}
 
-            {/* Connection lines */}
-            {LAID_OUT.filter(n => !n.isCenter).map(node => {
-              const cat = CATEGORIES[node.category]
+          {/* Draw spokes to leaf nodes for active category */}
+          {CATEGORIES.map(cat => {
+            if (active !== cat.id) return null
+            const cp = catPos(cat.angle)
+            return cat.nodes.map((node, i) => {
+              const np = nodePos(cat.angle, i, cat.nodes.length)
               return (
-                <line
-                  key={`line-${node.id}`}
-                  x1={CX} y1={CY}
-                  x2={node.x} y2={node.y}
-                  stroke={cat.color}
-                  strokeWidth={selectedId === node.id ? 1.5 : 0.75}
-                  strokeOpacity={selectedId === node.id ? 0.7 : selectedId ? 0.1 : 0.35}
-                  strokeDasharray={node.status === 'dev' ? '4 4' : undefined}
+                <line key={`leaf-${node.id}`}
+                  x1={cp.x} y1={cp.y} x2={np.x} y2={np.y}
+                  stroke={cat.color} strokeWidth={1.5} strokeOpacity={0.6}
                 />
               )
-            })}
+            })
+          })}
 
-            {/* Nodes */}
-            {LAID_OUT.map(node => (
-              <EcoNode
-                key={node.id}
-                node={node}
-                isSelected={selectedId}
-                onSelect={handleSelect}
-                svgRef={svgRef}
-              />
-            ))}
-          </svg>
-        </div>
+          {/* Leaf nodes for active category */}
+          {CATEGORIES.map(cat => {
+            if (active !== cat.id) return null
+            return cat.nodes.map((node, i) => {
+              const np = nodePos(cat.angle, i, cat.nodes.length)
+              return (
+                <g key={`node-${node.id}`}>
+                  <circle cx={np.x} cy={np.y} r={36} fill="white" stroke={cat.color} strokeWidth={1.5} />
+                  <text x={np.x} y={np.y - 4} textAnchor="middle" fontSize={10} fontWeight={600} fill="#002C77" fontFamily="Arial, sans-serif">{node.label}</text>
+                  <text x={np.x} y={np.y + 10} textAnchor="middle" fontSize={9} fill="#8096B2" fontFamily="Arial, sans-serif">{node.sub}</text>
+                </g>
+              )
+            })
+          })}
 
-        {/* Side panel */}
-        <div
-          className={`lg:w-72 xl:w-80 transition-all duration-200 ${selectedNode ? 'opacity-100' : 'opacity-0 pointer-events-none lg:opacity-100 lg:pointer-events-auto'}`}
-        >
-          <div
-            className="bg-white border border-game-border rounded-lg p-4 h-full shadow-sm"
-            style={{ minHeight: 320 }}
-          >
-            {selectedNode ? (
-              <NodePanel node={selectedNode} onClose={() => setSelectedId(null)} />
-            ) : (
-              <div className="flex flex-col items-center justify-center h-full text-center py-12">
-                <Network size={32} className="text-game-text-dim mb-3" />
-                <p className="text-game-text-dim text-xs font-mono uppercase tracking-wider">
-                  Select a node
-                </p>
-                <p className="text-game-text-subtle text-[10px] mt-1">
-                  Click any node to inspect
-                </p>
-              </div>
-            )}
+          {/* Category nodes */}
+          {CATEGORIES.map(cat => {
+            const cp = catPos(cat.angle)
+            const isActive = active === cat.id
+            const isDimmed = active && !isActive
+            const r = isActive ? 52 : 44
+            return (
+              <g key={`cat-${cat.id}`} onClick={() => handleCatClick(cat.id)} style={{ cursor: 'pointer' }}>
+                <circle cx={cp.x} cy={cp.y} r={r + 4} fill={cat.color} fillOpacity={isActive ? 0.12 : 0.06}
+                  opacity={isDimmed ? 0.3 : 1} />
+                <circle cx={cp.x} cy={cp.y} r={r} fill={isActive ? cat.color : 'white'}
+                  stroke={cat.color} strokeWidth={isActive ? 0 : 2}
+                  opacity={isDimmed ? 0.3 : 1} />
+                <text x={cp.x} y={cp.y - 4} textAnchor="middle"
+                  fontSize={isActive ? 11 : 10} fontWeight={700}
+                  fill={isActive ? 'white' : cat.color}
+                  fontFamily="Arial, sans-serif"
+                  opacity={isDimmed ? 0.3 : 1}>
+                  {cat.label.split(' ').map((word, wi) => (
+                    <tspan key={wi} x={cp.x} dy={wi === 0 ? 0 : 13}>{word}</tspan>
+                  ))}
+                </text>
+                <text x={cp.x} y={cp.y + (cat.label.includes(' ') ? 20 : 14)} textAnchor="middle"
+                  fontSize={9} fill={isActive ? 'rgba(255,255,255,0.8)' : '#8096B2'}
+                  fontFamily="Arial, sans-serif"
+                  opacity={isDimmed ? 0.3 : 1}>
+                  {cat.nodes.length} nodes
+                </text>
+              </g>
+            )
+          })}
+
+          {/* Center: Lumen */}
+          <circle cx={CX} cy={CY} r={58} fill="#002C77" />
+          <circle cx={CX} cy={CY} r={52} fill="white" />
+          <circle cx={CX} cy={CY} r={48} fill="#002C77" fillOpacity={0.08} />
+          <text x={CX} y={CY - 8} textAnchor="middle" fontSize={16} fontWeight={800} fill="#002C77" fontFamily="Arial, sans-serif">LUMEN</text>
+          <text x={CX} y={CY + 10} textAnchor="middle" fontSize={9} fill="#8096B2" fontFamily="Arial, sans-serif">AI Operations</text>
+          <text x={CX} y={CY + 23} textAnchor="middle" fontSize={9} fill="#009DE0" fontFamily="Arial, sans-serif">Third Horizon</text>
+
+          {/* Pulse ring */}
+          <circle cx={CX} cy={CY} r={62} fill="none" stroke="#F59E0B" strokeWidth={2} strokeOpacity={0.6} strokeDasharray="8,6" />
+
+        </svg>
+      </div>
+
+      {/* Active category detail */}
+      {active && (() => {
+        const cat = CATEGORIES.find(c => c.id === active)
+        return (
+          <div style={{ marginTop: 16, background: 'white', border: `1.5px solid ${cat.color}40`, borderRadius: 12, padding: '16px 20px', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: cat.color, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 12 }}>
+              {cat.label}
+            </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+              {cat.nodes.map(node => (
+                <div key={node.id} style={{ background: cat.color + '0D', border: `1px solid ${cat.color}30`, borderRadius: 8, padding: '8px 14px', minWidth: 140 }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: '#002C77', marginBottom: 2 }}>{node.label}</div>
+                  <div style={{ fontSize: 11, color: '#8096B2' }}>{node.sub}</div>
+                </div>
+              ))}
+            </div>
           </div>
-        </div>
-      </div>
-
-      {/* Mobile: selected node panel below graph */}
-      {selectedNode && (
-        <div className="lg:hidden mt-4 bg-white border border-game-border rounded-lg p-4 shadow-sm">
-          <NodePanel node={selectedNode} onClose={() => setSelectedId(null)} />
-        </div>
-      )}
-
-      {/* Footer note */}
-      <div className="mt-4 text-center text-game-text-dim text-[10px] font-mono uppercase tracking-wider">
-        Lumen · OpenClaw Gateway · DavidPC · Always On
-      </div>
+        )
+      })()}
     </div>
   )
 }
-
