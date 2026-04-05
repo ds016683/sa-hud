@@ -162,7 +162,7 @@ export default function PortfolioPage() {
               className="w-full flex items-center gap-3 px-5 py-4 text-left hover:bg-gray-50 rounded-xl transition-colors"
             >
               <span className="text-sm font-bold text-[#002C77] flex-1">{section.label}</span>
-              <span className="text-xs text-gray-400">{active.length} active Â· {inactive.length} inactive</span>
+              <span className="text-xs text-gray-400">{active.length} active &mdash; {inactive.length} inactive</span>
               {isCollapsed ? <ChevronRight size={14} className="text-gray-300" /> : <ChevronDown size={14} className="text-gray-300" />}
             </button>
 
