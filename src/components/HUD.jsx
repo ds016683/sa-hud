@@ -183,7 +183,7 @@ const HUD = () => {
               <div className="flex justify-between items-center">
                 <div>
                   <h1 className="font-game text-xl md:text-2xl text-game-gold glow-text">
-                    SOVEREIGN ARCHITECT
+                    COMMAND CENTER
                   </h1>
                   <p className="text-game-text-muted text-xs">
                     Meaning Under Chaos — v2.0
