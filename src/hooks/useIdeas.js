@@ -16,6 +16,17 @@ function normalizeIdea(idea) {
 export default function useIdeas() {
   const [ideas, setIdeas] = useState([])
   const [loading, setLoading] = useState(true)
+  const [sessionReady, setSessionReady] = useState(false)
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) setSessionReady(true)
+    })
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session) => {
+      setSessionReady(!!session)
+    })
+    return () => subscription.unsubscribe()
+  }, [])
 
   const fetchIdeas = useCallback(async () => {
     setLoading(true)
@@ -37,8 +48,8 @@ export default function useIdeas() {
   }, [])
 
   useEffect(() => {
-    fetchIdeas()
-  }, [fetchIdeas])
+    if (sessionReady) fetchIdeas()
+  }, [fetchIdeas, sessionReady])
 
   const addIdea = useCallback(async (name) => {
     const { data: { session } } = await supabase.auth.getSession()
