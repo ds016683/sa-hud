@@ -7,33 +7,33 @@ export default {
   theme: {
     extend: {
       colors: {
-        // Light SaaS theme — token names preserved for component compatibility
+        // Light SaaS theme - token names preserved for component compatibility
         'game-dark': '#F8F7FF',       // Page background (warm white with violet tint)
         'game-darker': '#F3F0FF',     // Panel hover / subtle bg
         'game-panel': '#FFFFFF',      // Panel/card surface
         'game-border': '#E5E7EB',     // Default border
-        'game-gold': '#7C3AED',       // Violet accent (token repurposed — use game-gold-true for actual gold)
-        'game-gold-true': '#F59E0B',  // True gold — reserved for Lumen/prestige moments only
+        'game-gold': '#7C3AED',       // Violet accent (token repurposed)
+        'game-gold-true': '#F59E0B',  // True gold - reserved for Lumen/prestige moments only
         'game-red': '#EF4444',        // Danger
         'game-green': '#10B981',      // Success
         'game-blue': '#2D1B69',       // Primary deep purple
         'game-purple': '#7C3AED',     // Accent violet
-        // Stat tier colors (updated for light bg)
-        'stat-s-plus': '#DC2626',     // S+: red
-        'stat-s': '#EA580C',          // S: orange
-        'stat-a-plus': '#D97706',     // A+: amber
-        'stat-a': '#16A34A',          // A: green
-        'stat-c': '#6B7280',          // C: gray
-        // Text system (light theme)
-        'game-text': '#0F0A1E',       // Primary text (dark on light bg)
-        'game-text-muted': '#4B5563', // Secondary text
-        'game-text-dim': '#6B7280',   // Muted text (readable slate gray)
-        'game-text-subtle': '#9CA3AF', // Subtle text (medium gray — still readable)
-        // New tokens
-        'game-surface': '#FFFFFF',    // Card surface
-        'game-nav': '#1E1033',        // Nav/sidebar (stays dark)
-        'game-accent': '#7C3AED',     // Accent violet
-        'game-accent-light': '#EDE9FE', // Light violet bg
+        // Stat tier colors
+        'stat-s-plus': '#DC2626',
+        'stat-s': '#EA580C',
+        'stat-a-plus': '#D97706',
+        'stat-a': '#16A34A',
+        'stat-c': '#6B7280',
+        // Text system (improved contrast on light violet backgrounds)
+        'game-text': '#0F0A1E',       // Primary text - near black
+        'game-text-muted': '#1F1635', // Secondary text - dark purple-black (was #4B5563)
+        'game-text-dim': '#374151',   // Muted text - dark gray (was #6B7280 - too light)
+        'game-text-subtle': '#4B5563', // Subtle text - medium-dark gray (was #9CA3AF - too light)
+        // Surface/nav tokens
+        'game-surface': '#FFFFFF',
+        'game-nav': '#1E1033',        // Nav stays dark
+        'game-accent': '#7C3AED',
+        'game-accent-light': '#EDE9FE',
       },
       fontFamily: {
         'game': ['"Cinzel"', 'serif'],
