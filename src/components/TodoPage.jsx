@@ -31,7 +31,7 @@ export default function TodoPage() {
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
         <div>
           <h1 style={{ fontSize: 20, fontWeight: 700, color: '#002C77', margin: 0 }}>Quests</h1>
-          <p style={{ fontSize: 13, color: '#8096B2', margin: '2px 0 0' }}>{open.length} open Â· {done.length} complete</p>
+          <p style={{ fontSize: 13, color: '#8096B2', margin: '2px 0 0' }}>{open.length} open &mdash; {done.length} complete</p>
         </div>
         <button
           onClick={() => setAdding(true)}
