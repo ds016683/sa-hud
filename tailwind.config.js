@@ -9,7 +9,7 @@ export default {
       colors: {
         // MMA-inspired palette — clean, professional, high-contrast
         'game-dark': '#F8FAFC',          // Page background — crisp white
-        'game-darker': '#EFF4FA',        // Subtle depth — hover, section bg
+        'game-darker': '#F3F6FA',        // Subtle depth — hover, section bg
         'game-panel': '#FFFFFF',         // Card surface — pure white
         'game-border': '#CBD8E8',        // Border — visible, not heavy
 
