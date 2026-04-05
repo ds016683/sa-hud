@@ -9,10 +9,10 @@ const FRESHNESS_COLORS = {
   stale: 'bg-game-text-dim',
 }
 const PRIORITY_COLORS = {
-  low: 'text-game-text-muted',
-  medium: 'text-game-blue',
-  high: 'text-game-gold',
-  urgent: 'text-game-red',
+  low: 'text-[#334E85]',
+  medium: 'text-[#002C77]',
+  high: 'text-[#002C77]',
+  urgent: 'text-[#002C77]',
 }
 const STATUS_LABELS = {
   active: 'Active',
@@ -79,21 +79,21 @@ const ProjectDetail = ({ project, onUpdate, onPin, onBack }) => {
       {/* Back button */}
       <button
         onClick={onBack}
-        className="flex items-center gap-2 text-game-text-muted hover:text-game-gold transition-colors text-sm font-mono"
+        className="flex items-center gap-2 text-[#334E85] hover:text-[#002C77] transition-colors text-sm "
       >
         <ArrowLeft size={14} /> Back to Portfolio
       </button>
 
       {/* Project header */}
-      <div className="bg-game-panel border border-game-border rounded-lg p-4">
+      <div className="bg-white border border-[#E2E8F0] rounded-lg p-4">
         <div className="flex items-center gap-3 mb-3">
           <span className={`w-3 h-3 rounded-full ${FRESHNESS_COLORS[freshness]}`} />
-          <h1 className="font-game text-xl text-game-gold flex-1">
+          <h1 className="font-game text-xl text-[#002C77] flex-1">
             <InlineName name={project.name} onRename={(name) => onUpdate(project.id, { name })} />
           </h1>
           <button
             onClick={() => onPin(project.id)}
-            className={`p-1.5 rounded border transition-colors ${project.pinned ? 'border-game-gold/40 text-game-gold' : 'border-game-border text-game-text-dim hover:text-game-gold'}`}
+            className={`p-1.5 rounded border transition-colors ${project.pinned ? 'border-[#E2E8F0]/40 text-[#002C77]' : 'border-[#E2E8F0] text-[#334E85] hover:text-[#002C77]'}`}
             title={project.pinned ? 'Unpin' : 'Pin as focus'}
           >
             <Pin size={14} className={project.pinned ? 'fill-current' : ''} />
@@ -101,23 +101,23 @@ const ProjectDetail = ({ project, onUpdate, onPin, onBack }) => {
         </div>
 
         <div className="flex flex-wrap gap-2 mb-3">
-          <span className="text-[10px] px-2 py-0.5 rounded border border-game-blue/30 text-game-blue font-mono uppercase tracking-wider">
+          <span className="text-[10px] px-2 py-0.5 rounded border border-[#E2E8F0]/30 text-[#002C77]  uppercase tracking-wider">
             {project.category}
           </span>
-          <span className={`text-[10px] px-2 py-0.5 rounded border border-current/30 font-mono uppercase tracking-wider ${PRIORITY_COLORS[project.priority]}`}>
+          <span className={`text-[10px] px-2 py-0.5 rounded border border-current/30  uppercase tracking-wider ${PRIORITY_COLORS[project.priority]}`}>
             {project.priority}
           </span>
-          <span className="text-[10px] px-2 py-0.5 rounded border border-game-border text-game-text-muted font-mono uppercase tracking-wider">
+          <span className="text-[10px] px-2 py-0.5 rounded border border-[#E2E8F0] text-[#334E85]  uppercase tracking-wider">
             {STATUS_LABELS[project.status]}
           </span>
           {project.tags?.map(tag => (
-            <span key={tag} className="text-[10px] px-2 py-0.5 rounded border border-game-purple/30 text-game-purple font-mono">
+            <span key={tag} className="text-[10px] px-2 py-0.5 rounded border border-[#E2E8F0]/30 text-[#002C77] ">
               {tag}
             </span>
           ))}
         </div>
 
-        <div className="text-[10px] font-mono text-game-text-dim space-x-4">
+        <div className="text-[10px]  text-[#334E85] space-x-4">
           {project.target_date && (
             <span>Deadline: {new Date(project.target_date).toLocaleDateString()}</span>
           )}
@@ -127,29 +127,29 @@ const ProjectDetail = ({ project, onUpdate, onPin, onBack }) => {
       </div>
 
       {/* Tasks */}
-      <div className="bg-game-panel border border-game-border rounded-lg p-4">
-        <h2 className="font-game text-sm text-game-gold uppercase tracking-wider mb-3">Tasks</h2>
+      <div className="bg-white border border-[#E2E8F0] rounded-lg p-4">
+        <h2 className="font-game text-sm text-[#002C77] uppercase tracking-wider mb-3">Tasks</h2>
 
         <div className="space-y-1 mb-3">
           {tasks.length === 0 && (
-            <p className="text-game-text-dim text-xs font-mono py-2">No tasks yet.</p>
+            <p className="text-[#334E85] text-xs  py-2">No tasks yet.</p>
           )}
           {tasks.map(task => (
             <div key={task.id} className="flex items-center gap-2 py-1 group">
               <button
                 onClick={() => toggleTask(task.id)}
                 className={`w-4 h-4 rounded border flex items-center justify-center flex-shrink-0 transition-colors ${
-                  task.done ? 'bg-game-green/20 border-game-green text-game-green' : 'border-game-border hover:border-game-gold/50'
+                  task.done ? 'bg-game-green/20 border-[#E2E8F0] text-[#00968F]' : 'border-[#E2E8F0] hover:border-[#E2E8F0]/50'
                 }`}
               >
                 {task.done && <Check size={10} />}
               </button>
-              <span className={`text-sm font-mono flex-1 ${task.done ? 'line-through text-game-text-dim' : 'text-game-text'}`}>
+              <span className={`text-sm  flex-1 ${task.done ? 'line-through text-[#334E85]' : 'text-[#002C77]'}`}>
                 {task.text}
               </span>
               <button
                 onClick={() => deleteTask(task.id)}
-                className="opacity-0 group-hover:opacity-100 text-game-text-dim hover:text-game-red transition-all"
+                className="opacity-0 group-hover:opacity-100 text-[#334E85] hover:text-[#002C77] transition-all"
               >
                 <Trash2 size={12} />
               </button>
@@ -163,12 +163,12 @@ const ProjectDetail = ({ project, onUpdate, onPin, onBack }) => {
             onChange={(e) => setNewTask(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && addTask()}
             placeholder="Add a task..."
-            className="flex-1 bg-game-darker border border-game-border rounded px-3 py-1.5 text-sm text-game-text placeholder:text-game-text-dim outline-none focus:border-game-gold/50 transition-colors font-mono"
+            className="flex-1 bg-[#F7F9FC] border border-[#E2E8F0] rounded px-3 py-1.5 text-sm text-[#002C77] placeholder:text-[#334E85] outline-none focus:border-[#E2E8F0]/50 transition-colors "
           />
           <button
             onClick={addTask}
             disabled={!newTask.trim()}
-            className="px-3 py-1.5 rounded bg-game-gold/20 border border-game-gold/40 text-game-gold text-sm font-mono hover:bg-game-gold/30 disabled:opacity-30 transition-colors"
+            className="px-3 py-1.5 rounded bg-game-gold/20 border border-[#E2E8F0]/40 text-[#002C77] text-sm  hover:bg-game-gold/30 disabled:opacity-30 transition-colors"
           >
             <Plus size={14} />
           </button>
@@ -176,30 +176,30 @@ const ProjectDetail = ({ project, onUpdate, onPin, onBack }) => {
       </div>
 
       {/* Links */}
-      <div className="bg-game-panel border border-game-border rounded-lg p-4">
-        <h2 className="font-game text-sm text-game-gold uppercase tracking-wider mb-3">Links</h2>
+      <div className="bg-white border border-[#E2E8F0] rounded-lg p-4">
+        <h2 className="font-game text-sm text-[#002C77] uppercase tracking-wider mb-3">Links</h2>
 
         <div className="space-y-1.5 mb-3">
           {links.length === 0 && (
-            <p className="text-game-text-dim text-xs font-mono py-2">No links yet.</p>
+            <p className="text-[#334E85] text-xs  py-2">No links yet.</p>
           )}
           {links.map(link => (
             <div key={link.id} className="flex items-center gap-2 py-1 group">
-              <ExternalLink size={12} className="text-game-blue flex-shrink-0" />
+              <ExternalLink size={12} className="text-[#002C77] flex-shrink-0" />
               <a
                 href={link.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-sm font-mono text-game-blue hover:text-game-gold transition-colors truncate flex-1"
+                className="text-sm  text-[#002C77] hover:text-[#002C77] transition-colors truncate flex-1"
               >
                 {link.label}
               </a>
-              <span className="text-[10px] font-mono text-game-text-dim hidden sm:inline truncate max-w-[200px]">
+              <span className="text-[10px]  text-[#334E85] hidden sm:inline truncate max-w-[200px]">
                 {link.url}
               </span>
               <button
                 onClick={() => deleteLink(link.id)}
-                className="opacity-0 group-hover:opacity-100 text-game-text-dim hover:text-game-red transition-all flex-shrink-0"
+                className="opacity-0 group-hover:opacity-100 text-[#334E85] hover:text-[#002C77] transition-all flex-shrink-0"
               >
                 <Trash2 size={12} />
               </button>
@@ -213,19 +213,19 @@ const ProjectDetail = ({ project, onUpdate, onPin, onBack }) => {
             onChange={(e) => setNewLinkUrl(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && addLink()}
             placeholder="https://..."
-            className="flex-1 bg-game-darker border border-game-border rounded px-3 py-1.5 text-sm text-game-text placeholder:text-game-text-dim outline-none focus:border-game-gold/50 transition-colors font-mono"
+            className="flex-1 bg-[#F7F9FC] border border-[#E2E8F0] rounded px-3 py-1.5 text-sm text-[#002C77] placeholder:text-[#334E85] outline-none focus:border-[#E2E8F0]/50 transition-colors "
           />
           <input
             value={newLinkLabel}
             onChange={(e) => setNewLinkLabel(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && addLink()}
             placeholder="Label (optional)"
-            className="w-36 bg-game-darker border border-game-border rounded px-3 py-1.5 text-sm text-game-text placeholder:text-game-text-dim outline-none focus:border-game-gold/50 transition-colors font-mono"
+            className="w-36 bg-[#F7F9FC] border border-[#E2E8F0] rounded px-3 py-1.5 text-sm text-[#002C77] placeholder:text-[#334E85] outline-none focus:border-[#E2E8F0]/50 transition-colors "
           />
           <button
             onClick={addLink}
             disabled={!newLinkUrl.trim()}
-            className="px-3 py-1.5 rounded bg-game-gold/20 border border-game-gold/40 text-game-gold text-sm font-mono hover:bg-game-gold/30 disabled:opacity-30 transition-colors"
+            className="px-3 py-1.5 rounded bg-game-gold/20 border border-[#E2E8F0]/40 text-[#002C77] text-sm  hover:bg-game-gold/30 disabled:opacity-30 transition-colors"
           >
             <Plus size={14} />
           </button>
@@ -233,17 +233,17 @@ const ProjectDetail = ({ project, onUpdate, onPin, onBack }) => {
       </div>
 
       {/* Notes */}
-      <div className="bg-game-panel border border-game-border rounded-lg p-4">
-        <h2 className="font-game text-sm text-game-gold uppercase tracking-wider mb-3">Notes</h2>
+      <div className="bg-white border border-[#E2E8F0] rounded-lg p-4">
+        <h2 className="font-game text-sm text-[#002C77] uppercase tracking-wider mb-3">Notes</h2>
 
         <div className="space-y-2 mb-3">
           {notes.length === 0 && (
-            <p className="text-game-text-dim text-xs font-mono py-2">No notes yet.</p>
+            <p className="text-[#334E85] text-xs  py-2">No notes yet.</p>
           )}
           {notes.map(note => (
-            <div key={note.id} className="bg-game-darker rounded p-2 border border-game-border/30">
-              <p className="text-sm font-mono text-game-text">{note.text}</p>
-              <span className="text-[10px] font-mono text-game-text-dim">
+            <div key={note.id} className="bg-[#F7F9FC] rounded p-2 border border-[#E2E8F0]/30">
+              <p className="text-sm  text-[#002C77]">{note.text}</p>
+              <span className="text-[10px]  text-[#334E85]">
                 {new Date(note.created_at).toLocaleString()}
               </span>
             </div>
@@ -256,12 +256,12 @@ const ProjectDetail = ({ project, onUpdate, onPin, onBack }) => {
             onChange={(e) => setNewNote(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && addNote()}
             placeholder="Add a note..."
-            className="flex-1 bg-game-darker border border-game-border rounded px-3 py-1.5 text-sm text-game-text placeholder:text-game-text-dim outline-none focus:border-game-gold/50 transition-colors font-mono"
+            className="flex-1 bg-[#F7F9FC] border border-[#E2E8F0] rounded px-3 py-1.5 text-sm text-[#002C77] placeholder:text-[#334E85] outline-none focus:border-[#E2E8F0]/50 transition-colors "
           />
           <button
             onClick={addNote}
             disabled={!newNote.trim()}
-            className="px-3 py-1.5 rounded bg-game-gold/20 border border-game-gold/40 text-game-gold text-sm font-mono hover:bg-game-gold/30 disabled:opacity-30 transition-colors"
+            className="px-3 py-1.5 rounded bg-game-gold/20 border border-[#E2E8F0]/40 text-[#002C77] text-sm  hover:bg-game-gold/30 disabled:opacity-30 transition-colors"
           >
             <Plus size={14} />
           </button>
