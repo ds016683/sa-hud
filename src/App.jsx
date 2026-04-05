@@ -65,8 +65,8 @@ function Sidebar({ active, onChange, onSignOut }) {
       >
         {/* Header */}
         <div className="border-b border-white/10 px-5 py-5">
-          <div className="text-white font-bold text-lg tracking-wide">SOVEREIGN</div>
-          <div className="text-white/50 text-xs tracking-widest mt-0.5">ARCHITECT HUD</div>
+          <div className="text-white font-bold text-lg tracking-wide">COMMAND CENTER</div>
+          <div className="text-white/50 text-xs tracking-widest mt-0.5">FOR DAVID SMITH</div>
         </div>
 
         {/* Nav */}
