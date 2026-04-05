@@ -28,9 +28,8 @@ function getEffortScore(project) {
 
 // Partition into spotlight / roster / archive
 function partitionProjects(projects) {
-  const active = projects.filter(p => p.status !== 'archived')
-  const archived = projects
-    .filter(p => p.status === 'archived')
+  const active = projects.filter(p => p.status !== 'archived' && !p.archived_at)
+  const archived = projects.filter(p => p.status === 'archived' || p.archived_at)
     .sort((a, b) => new Date(b.archived_at) - new Date(a.archived_at))
     .slice(0, 50)
 
