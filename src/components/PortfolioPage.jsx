@@ -10,6 +10,7 @@ const SECTIONS = [
   { id: 'third-horizon', label: 'Third Horizon Projects' },
   { id: 'personal',      label: 'Personal Projects' },
   { id: 'learning',      label: 'Learning Projects' },
+  { id: 'commercial-infra', label: 'Commercial Infrastructure' },
 ]
 
 // Compact inactive row â€” MMA roster style
