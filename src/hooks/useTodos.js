@@ -1,71 +1,91 @@
-import { useState, useCallback } from 'react'
-import storageAdapter, { STORAGE_KEY_TODOS as STORAGE_KEY } from '../storage/storageAdapter'
-
-function generateId() {
-  return crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2)
-}
-
-function loadTodos() {
-  const parsed = storageAdapter.getItem(STORAGE_KEY)
-  return Array.isArray(parsed) ? parsed : []
-}
-
-function saveTodos(todos) {
-  storageAdapter.setItem(STORAGE_KEY, todos)
-}
-
-// Normalize a todo item: handle Gist schema (text) vs local schema (title)
-function normalizeTodo(item) {
-  if (!item.title && item.text) {
-    return { ...item, title: item.text }
-  }
-  return item
-}
+import { useState, useEffect, useCallback } from 'react'
+import { supabase } from '../lib/supabase'
 
 export default function useTodos() {
-  const [todos, setTodos] = useState(loadTodos)
+  const [todos, setTodos] = useState([])
+  const [loading, setLoading] = useState(true)
 
-  const addTodo = useCallback(({ title, dueDate, priority }) => {
-    setTodos(prev => {
-      const next = [
-        {
-          id: generateId(),
-          title,
-          dueDate: dueDate || null,
-          priority: priority || 'medium',
-          completed: false,
-          createdAt: new Date().toISOString(),
-        },
-        ...prev,
-      ]
-      saveTodos(next)
-      return next
-    })
-  }, [])
+  const fetchTodos = useCallback(async () => {
+    setLoading(true)
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) { setLoading(false); return }
 
-  const toggleTodo = useCallback((id) => {
-    setTodos(prev => {
-      const next = prev.map(t => t.id === id ? { ...t, completed: !t.completed } : t)
-      saveTodos(next)
-      return next
-    })
-  }, [])
+      const { data, error } = await supabase
+        .from('todos')
+        .select('*')
+        .eq('user_id', session.user.id)
+        .order('created_at', { ascending: false })
 
-  const deleteTodo = useCallback((id) => {
-    setTodos(prev => {
-      const next = prev.filter(t => t.id !== id)
-      saveTodos(next)
-      return next
-    })
-  }, [])
+      if (error) { console.error('fetchTodos error:', error); return }
 
-  const hydrateFromRemote = useCallback((remoteTodos) => {
-    if (Array.isArray(remoteTodos)) {
-      const normalized = remoteTodos.map(normalizeTodo)
+      // Normalize: DB uses 'text'/'done', UI uses 'title'/'completed'
+      const normalized = (data || []).map(t => ({
+        ...t,
+        title: t.text,
+        completed: t.done,
+        dueDate: null,
+        createdAt: t.created_at,
+      }))
       setTodos(normalized)
-      saveTodos(normalized)
+    } finally {
+      setLoading(false)
     }
   }, [])
 
-  return { todos, addTodo, toggleTodo, deleteTodo, hydrateFromRemote }
+  useEffect(() => {
+    fetchTodos()
+  }, [fetchTodos])
+
+  const addTodo = useCallback(async ({ title, dueDate, priority }) => {
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session) return
+
+    const now = new Date().toISOString()
+    const { data, error } = await supabase
+      .from('todos')
+      .insert({
+        user_id: session.user.id,
+        text: title,
+        done: false,
+        priority: priority || 'medium',
+        created_at: now,
+      })
+      .select()
+      .single()
+
+    if (error) { console.error('addTodo error:', error); return }
+
+    const normalized = {
+      ...data,
+      title: data.text,
+      completed: data.done,
+      dueDate: dueDate || null,
+      createdAt: data.created_at,
+    }
+    setTodos(prev => [normalized, ...prev])
+  }, [])
+
+  const toggleTodo = useCallback(async (id) => {
+    const todo = todos.find(t => t.id === id)
+    if (!todo) return
+    const newDone = !todo.completed
+
+    const { error } = await supabase
+      .from('todos')
+      .update({ done: newDone })
+      .eq('id', id)
+
+    if (error) { console.error('toggleTodo error:', error); return }
+
+    setTodos(prev => prev.map(t => t.id === id ? { ...t, done: newDone, completed: newDone } : t))
+  }, [todos])
+
+  const deleteTodo = useCallback(async (id) => {
+    const { error } = await supabase.from('todos').delete().eq('id', id)
+    if (error) { console.error('deleteTodo error:', error); return }
+    setTodos(prev => prev.filter(t => t.id !== id))
+  }, [])
+
+  return { todos, loading, addTodo, toggleTodo, deleteTodo }
 }
