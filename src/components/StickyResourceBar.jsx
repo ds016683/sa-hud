@@ -1,7 +1,6 @@
 import { useState, useRef } from 'react'
-import SyncIndicator from './SyncIndicator'
 
-const StickyResourceBar = ({ sovereignty, setSovereignty, onSovereigntyChange, syncStatus, syncConnected, onSyncClick }) => {
+const StickyResourceBar = ({ sovereignty, setSovereignty, onSovereigntyChange }) => {
   const [isDragging, setIsDragging] = useState(false)
   const startValueRef = useRef(sovereignty)
 
@@ -29,7 +28,6 @@ const StickyResourceBar = ({ sovereignty, setSovereignty, onSovereigntyChange, s
     setIsDragging(false)
     const newValue = sovereignty
     const oldValue = startValueRef.current
-    // Only log if value actually changed
     if (newValue !== oldValue && onSovereigntyChange) {
       onSovereigntyChange(newValue, oldValue)
     }
@@ -39,12 +37,9 @@ const StickyResourceBar = ({ sovereignty, setSovereignty, onSovereigntyChange, s
     <div className="sticky top-[41px] z-50 fantasy-header py-2 px-3 md:px-4">
       <div className="max-w-7xl mx-auto">
         <div className="flex items-center gap-2 md:gap-4">
-          {/* Title */}
           <div className="flex-shrink-0">
             <span className="font-game text-xs md:text-sm text-game-gold">SOVEREIGNTY</span>
           </div>
-
-          {/* Bar */}
           <div className="flex-1 min-w-0">
             <div className="fantasy-stat-bar h-4 md:h-5">
               <div
@@ -62,13 +57,9 @@ const StickyResourceBar = ({ sovereignty, setSovereignty, onSovereigntyChange, s
               </div>
             </div>
           </div>
-
-          {/* Value */}
           <div className="flex-shrink-0 text-right">
             <span className="text-base md:text-lg font-bold text-game-gold">{sovereignty}%</span>
           </div>
-
-          {/* Slider */}
           <div className="flex-shrink-0 w-20 md:w-32">
             <input
               type="range"
@@ -83,13 +74,6 @@ const StickyResourceBar = ({ sovereignty, setSovereignty, onSovereigntyChange, s
               className="w-full h-2 cursor-pointer"
             />
           </div>
-
-          {/* Sync Indicator */}
-          <SyncIndicator
-            status={syncStatus}
-            isConnected={syncConnected}
-            onClick={onSyncClick}
-          />
         </div>
       </div>
     </div>
