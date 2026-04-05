@@ -33,10 +33,10 @@ function App() {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-2 px-4 py-2.5 text-xs font-mono uppercase tracking-wider transition-colors border-b-2 ${
+                className={`flex items-center gap-2 px-4 py-2 text-xs font-mono uppercase tracking-wider transition-all rounded-md my-1.5 border-b-0 ${
                   isActive
-                    ? 'text-white/80 border-violet-400'
-                    : 'text-game-text-dim border-transparent hover:text-white hover:border-white/20'
+                    ? 'bg-white text-game-nav font-bold shadow-sm'
+                    : 'text-white/60 hover:text-white/90 hover:bg-white/10'
                 }`}
               >
                 <Icon size={14} />
