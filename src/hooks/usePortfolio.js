@@ -72,7 +72,7 @@ export default function usePortfolio() {
   const [loading, setLoading] = useState(true)
 
   const safeSetProjects = useCallback((updater) => {
-    safeSetProjects(prev => {
+    setProjects(prev => {
       const next = typeof updater === 'function' ? updater(prev) : updater
       return next.map(normalizeProject)
     })
