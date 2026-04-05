@@ -1,131 +1,131 @@
 import { useState } from 'react'
-import { Plus, Trash2, Check, Calendar } from 'lucide-react'
+import { Plus, Check, Trash2, Circle } from 'lucide-react'
 import useTodos from '../hooks/useTodos'
 
-const PRIORITY_CONFIG = {
-  high: { label: 'High', color: 'text-game-red', border: 'border-game-red/40', bg: 'bg-game-red/10', dot: 'bg-game-red' },
-  medium: { label: 'Med', color: 'text-blue-800', border: 'border-blue-400', bg: 'bg-blue-600', dot: 'bg-blue-600' },
-  low: { label: 'Low', color: 'text-game-blue', border: 'border-game-blue/40', bg: 'bg-game-blue/10', dot: 'bg-game-blue' },
+const PRIORITY_BADGE = {
+  high:   'bg-red-50 text-red-600 border-red-200',
+  medium: 'bg-blue-50 text-blue-700 border-blue-200',
+  low:    'bg-gray-100 text-gray-500 border-gray-200',
 }
 
-const TodoPage = () => {
+export default function TodoPage() {
   const { todos, addTodo, toggleTodo, deleteTodo, loading } = useTodos()
-  const [title, setTitle] = useState('')
-  const [dueDate, setDueDate] = useState('')
+  const [text, setText] = useState('')
   const [priority, setPriority] = useState('medium')
-  const [filter, setFilter] = useState('active')
+  const [adding, setAdding] = useState(false)
 
-  const handleSubmit = (e) => {
-    e.preventDefault()
-    const trimmed = title.trim()
-    if (!trimmed) return
-    addTodo({ title: trimmed, dueDate, priority })
-    setTitle('')
-    setDueDate('')
-    setPriority('medium')
+  const handleAdd = async () => {
+    if (!text.trim()) return
+    await addTodo(text.trim(), priority)
+    setText('')
+    setAdding(false)
   }
 
-  const activeTodos = todos.filter(t => !t.completed)
-  const completedTodos = todos.filter(t => t.completed)
-  const filtered = filter === 'active' ? activeTodos : filter === 'completed' ? completedTodos : todos
-
-  const isOverdue = (dueDate) => {
-    if (!dueDate) return false
-    return new Date(dueDate + 'T23:59:59') < new Date()
-  }
-
-  const formatDate = (dateStr) => {
-    if (!dateStr) return null
-    const date = new Date(dateStr + 'T00:00:00')
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-  }
-
-  if (loading) {
-    return <div className="max-w-5xl mx-auto px-4 py-6 text-center text-game-text-muted text-sm font-mono">Loading quests...</div>
-  }
+  const open = todos.filter(t => !t.done)
+  const done = todos.filter(t => t.done)
 
   return (
-    <div className="max-w-5xl mx-auto px-4 py-6 space-y-6">
-      <div className="flex items-center justify-between">
+    <div style={{ maxWidth: 800, margin: '0 auto', padding: '24px 16px', fontFamily: 'Arial, Helvetica, sans-serif' }}>
+
+      {/* Header */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
         <div>
-          <h1 className="font-game text-lg text-[#002C77] tracking-wider uppercase">Quests</h1>
-          <p className="text-[10px] font-mono text-game-text-dim mt-0.5">
-            {activeTodos.length} active{completedTodos.length > 0 ? ` · ${completedTodos.length} completed` : ''}
-          </p>
+          <h1 style={{ fontSize: 20, fontWeight: 700, color: '#002C77', margin: 0 }}>Quests</h1>
+          <p style={{ fontSize: 13, color: '#8096B2', margin: '2px 0 0' }}>{open.length} open Â· {done.length} complete</p>
         </div>
+        <button
+          onClick={() => setAdding(true)}
+          className="btn-primary"
+        >
+          <Plus size={14} /> Add Quest
+        </button>
       </div>
 
-      <form onSubmit={handleSubmit} className="game-panel">
-        <div className="flex flex-col sm:flex-row gap-3">
-          <input type="text" value={title} onChange={e => setTitle(e.target.value)} placeholder="Add a new quest..." className="flex-1 bg-game-darker/60 border border-game-border/50 rounded px-3 py-2 text-sm font-mono text-game-text placeholder:text-game-text-dim focus:outline-none focus:border-blue-400" />
-          <div className="flex gap-2">
-            <div className="relative">
-              <Calendar size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-game-text-dim pointer-events-none" />
-              <input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} className="bg-game-darker/60 border border-game-border/50 rounded pl-7 pr-2 py-2 text-xs font-mono text-game-text-muted focus:outline-none focus:border-blue-400 w-36" />
-            </div>
-            <div className="flex rounded border border-game-border/50 overflow-hidden">
-              {['high', 'medium', 'low'].map(p => (
-                <button key={p} type="button" onClick={() => setPriority(p)} className={`px-2.5 py-2 text-[10px] font-mono uppercase tracking-wider transition-colors ${priority === p ? `${PRIORITY_CONFIG[p].bg} ${PRIORITY_CONFIG[p].color}` : 'text-game-text-dim hover:text-game-text-muted bg-game-darker/40'}`}>
-                  {PRIORITY_CONFIG[p].label}
-                </button>
-              ))}
-            </div>
-            <button type="submit" className="flex items-center gap-1.5 px-3 py-2 rounded bg-blue-600 border border-blue-400 text-blue-800 text-xs font-mono hover:bg-blue-600 transition-colors">
-              <Plus size={14} /> Add
-            </button>
+      {/* Add form */}
+      {adding && (
+        <div style={{ background: 'white', border: '1px solid #E2E8F0', borderRadius: 12, padding: 16, marginBottom: 16, boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
+          <input
+            autoFocus
+            value={text}
+            onChange={e => setText(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter') handleAdd(); if (e.key === 'Escape') setAdding(false) }}
+            placeholder="What needs to get done?"
+            style={{ width: '100%', border: '1px solid #CBD8E8', borderRadius: 8, padding: '8px 12px', fontSize: 14, fontFamily: 'Arial, Helvetica, sans-serif', color: '#002C77', outline: 'none', marginBottom: 10 }}
+          />
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            {['high','medium','low'].map(p => (
+              <button
+                key={p}
+                onClick={() => setPriority(p)}
+                style={{
+                  padding: '4px 12px', borderRadius: 9999, fontSize: 12, fontFamily: 'Arial, Helvetica, sans-serif', cursor: 'pointer', border: '1px solid',
+                  background: priority === p ? (p === 'high' ? '#FEF2F2' : p === 'medium' ? '#EFF6FF' : '#F9FAFB') : 'white',
+                  color: priority === p ? (p === 'high' ? '#DC2626' : p === 'medium' ? '#1D4ED8' : '#6B7280') : '#9CA3AF',
+                  borderColor: priority === p ? (p === 'high' ? '#FECACA' : p === 'medium' ? '#BFDBFE' : '#E5E7EB') : '#E5E7EB',
+                  fontWeight: priority === p ? 600 : 400,
+                }}
+              >{p}</button>
+            ))}
+            <div style={{ flex: 1 }} />
+            <button onClick={() => setAdding(false)} style={{ padding: '6px 14px', borderRadius: 8, border: '1px solid #E2E8F0', background: 'white', fontSize: 13, color: '#6B7280', cursor: 'pointer', fontFamily: 'Arial, Helvetica, sans-serif' }}>Cancel</button>
+            <button onClick={handleAdd} style={{ padding: '6px 14px', borderRadius: 8, border: 'none', background: '#002C77', color: 'white', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'Arial, Helvetica, sans-serif' }}>Add</button>
           </div>
         </div>
-      </form>
+      )}
 
-      <div className="flex gap-1">
-        {[
-          { id: 'active', label: `Active (${activeTodos.length})` },
-          { id: 'completed', label: `Done (${completedTodos.length})` },
-          { id: 'all', label: `All (${todos.length})` },
-        ].map(tab => (
-          <button key={tab.id} onClick={() => setFilter(tab.id)} className={`px-3 py-1.5 text-[10px] font-mono uppercase tracking-wider rounded transition-colors ${filter === tab.id ? 'text-blue-800 bg-blue-600 border border-blue-400' : 'text-game-text-dim hover:text-game-text-muted border border-transparent'}`}>
-            {tab.label}
-          </button>
-        ))}
-      </div>
-
-      {filtered.length === 0 ? (
-        <div className="bg-game-panel border border-game-border border-dashed rounded-lg p-12 text-center">
-          <p className="font-game text-game-text-muted text-sm mb-2">
-            {filter === 'completed' ? 'No completed quests' : filter === 'active' ? 'All quests complete' : 'No quests yet'}
-          </p>
-          <p className="text-game-text-dim text-xs font-mono">
-            {filter === 'active' ? 'Add a quest above to begin.' : 'Complete some quests to see them here.'}
-          </p>
+      {/* Open quests */}
+      {open.length > 0 && (
+        <div style={{ background: 'white', border: '1px solid #E2E8F0', borderRadius: 12, boxShadow: '0 1px 3px rgba(0,0,0,0.05)', marginBottom: 16, overflow: 'hidden' }}>
+          {open.map((todo, i) => (
+            <div key={todo.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', borderBottom: i < open.length - 1 ? '1px solid #F1F5F9' : 'none' }}>
+              <button
+                onClick={() => toggleTodo(todo.id)}
+                style={{ width: 20, height: 20, borderRadius: '50%', border: '2px solid #CBD8E8', background: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, padding: 0 }}
+              >
+                <Circle size={10} style={{ color: '#CBD8E8' }} />
+              </button>
+              <span style={{ flex: 1, fontSize: 14, color: '#002C77', fontFamily: 'Arial, Helvetica, sans-serif' }}>{todo.text}</span>
+              {todo.priority && (
+                <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 9999, border: '1px solid', fontFamily: 'Arial, Helvetica, sans-serif',
+                  background: todo.priority === 'high' ? '#FEF2F2' : todo.priority === 'medium' ? '#EFF6FF' : '#F9FAFB',
+                  color: todo.priority === 'high' ? '#DC2626' : todo.priority === 'medium' ? '#1D4ED8' : '#6B7280',
+                  borderColor: todo.priority === 'high' ? '#FECACA' : todo.priority === 'medium' ? '#BFDBFE' : '#E5E7EB',
+                }}>{todo.priority}</span>
+              )}
+              <button onClick={() => deleteTodo(todo.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#CBD8E8', padding: 4, borderRadius: 6, display: 'flex' }}
+                onMouseEnter={e => e.currentTarget.style.color = '#EF4444'} onMouseLeave={e => e.currentTarget.style.color = '#CBD8E8'}>
+                <Trash2 size={14} />
+              </button>
+            </div>
+          ))}
         </div>
-      ) : (
-        <div className="space-y-1.5">
-          {filtered.map(todo => {
-            const pri = PRIORITY_CONFIG[todo.priority] || PRIORITY_CONFIG.medium
-            const overdue = !todo.completed && isOverdue(todo.dueDate)
-            return (
-              <div key={todo.id} className={`group flex items-center gap-3 px-3 py-2.5 rounded border transition-all ${todo.completed ? 'bg-game-panel/20 border-game-border/20 opacity-50' : 'bg-game-panel/40 border-game-border/40 hover:border-game-border/70'}`}>
-                <button onClick={() => toggleTodo(todo.id)} className={`flex-shrink-0 w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${todo.completed ? 'bg-game-green/20 border-game-green/50 text-game-green' : 'border-game-border hover:border-blue-400'}`}>
-                  {todo.completed && <Check size={12} />}
-                </button>
-                <span className={`flex-shrink-0 w-1.5 h-1.5 rounded-full ${pri.dot}`} />
-                <span className={`flex-1 text-sm font-mono truncate ${todo.completed ? 'text-game-text-dim line-through' : 'text-game-text'}`}>{todo.title}</span>
-                {todo.dueDate && (
-                  <span className={`flex-shrink-0 flex items-center gap-1 text-[10px] font-mono ${overdue ? 'text-game-red' : 'text-game-text-dim'}`}>
-                    <Calendar size={10} /> {formatDate(todo.dueDate)}
-                  </span>
-                )}
-                <span className={`flex-shrink-0 text-[10px] font-mono uppercase px-1.5 py-0.5 rounded border ${pri.color} ${pri.border} ${pri.bg}`}>{pri.label}</span>
-                <button onClick={() => deleteTodo(todo.id)} className="flex-shrink-0 text-game-text-dim hover:text-game-red transition-colors opacity-0 group-hover:opacity-100">
-                  <Trash2 size={14} />
-                </button>
-              </div>
-            )
-          })}
+      )}
+
+      {!adding && open.length === 0 && (
+        <div style={{ textAlign: 'center', padding: '40px 0', color: '#8096B2', fontSize: 14 }}>
+          No open quests. <button onClick={() => setAdding(true)} style={{ background: 'none', border: 'none', color: '#009DE0', cursor: 'pointer', fontSize: 14, fontFamily: 'Arial, Helvetica, sans-serif' }}>Add one?</button>
+        </div>
+      )}
+
+      {/* Completed */}
+      {done.length > 0 && (
+        <div style={{ background: 'white', border: '1px solid #E2E8F0', borderRadius: 12, boxShadow: '0 1px 3px rgba(0,0,0,0.05)', overflow: 'hidden' }}>
+          <div style={{ padding: '8px 16px', borderBottom: '1px solid #F1F5F9' }}>
+            <span style={{ fontSize: 11, fontWeight: 600, color: '#8096B2', textTransform: 'uppercase', letterSpacing: '0.1em', fontFamily: 'Arial, Helvetica, sans-serif' }}>Completed ({done.length})</span>
+          </div>
+          {done.map((todo, i) => (
+            <div key={todo.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 16px', borderBottom: i < done.length - 1 ? '1px solid #F1F5F9' : 'none', opacity: 0.5 }}>
+              <button onClick={() => toggleTodo(todo.id)} style={{ width: 20, height: 20, borderRadius: '50%', border: '2px solid #009DE0', background: '#009DE0', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, padding: 0 }}>
+                <Check size={10} style={{ color: 'white' }} />
+              </button>
+              <span style={{ flex: 1, fontSize: 14, color: '#8096B2', textDecoration: 'line-through', fontFamily: 'Arial, Helvetica, sans-serif' }}>{todo.text}</span>
+              <button onClick={() => deleteTodo(todo.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#CBD8E8', padding: 4, borderRadius: 6, display: 'flex' }}>
+                <Trash2 size={14} />
+              </button>
+            </div>
+          ))}
         </div>
       )}
     </div>
   )
 }
-
-export default TodoPage
