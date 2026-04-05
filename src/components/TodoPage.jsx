@@ -4,7 +4,7 @@ import useTodos from '../hooks/useTodos'
 
 const PRIORITY_CONFIG = {
   high: { label: 'High', color: 'text-game-red', border: 'border-game-red/40', bg: 'bg-game-red/10', dot: 'bg-game-red' },
-  medium: { label: 'Med', color: 'text-violet-600', border: 'border-violet-300', bg: 'bg-violet-50', dot: 'bg-violet-500' },
+  medium: { label: 'Med', color: 'text-blue-800', border: 'border-blue-400', bg: 'bg-blue-600', dot: 'bg-blue-600' },
   low: { label: 'Low', color: 'text-game-blue', border: 'border-game-blue/40', bg: 'bg-game-blue/10', dot: 'bg-game-blue' },
 }
 
@@ -48,7 +48,7 @@ const TodoPage = () => {
     <div className="max-w-5xl mx-auto px-4 py-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="font-game text-lg text-[#2D1B69] tracking-wider uppercase">Quests</h1>
+          <h1 className="font-game text-lg text-[#002C77] tracking-wider uppercase">Quests</h1>
           <p className="text-[10px] font-mono text-game-text-dim mt-0.5">
             {activeTodos.length} active{completedTodos.length > 0 ? ` · ${completedTodos.length} completed` : ''}
           </p>
@@ -57,11 +57,11 @@ const TodoPage = () => {
 
       <form onSubmit={handleSubmit} className="game-panel">
         <div className="flex flex-col sm:flex-row gap-3">
-          <input type="text" value={title} onChange={e => setTitle(e.target.value)} placeholder="Add a new quest..." className="flex-1 bg-game-darker/60 border border-game-border/50 rounded px-3 py-2 text-sm font-mono text-game-text placeholder:text-game-text-dim focus:outline-none focus:border-violet-400" />
+          <input type="text" value={title} onChange={e => setTitle(e.target.value)} placeholder="Add a new quest..." className="flex-1 bg-game-darker/60 border border-game-border/50 rounded px-3 py-2 text-sm font-mono text-game-text placeholder:text-game-text-dim focus:outline-none focus:border-blue-400" />
           <div className="flex gap-2">
             <div className="relative">
               <Calendar size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-game-text-dim pointer-events-none" />
-              <input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} className="bg-game-darker/60 border border-game-border/50 rounded pl-7 pr-2 py-2 text-xs font-mono text-game-text-muted focus:outline-none focus:border-violet-400 w-36" />
+              <input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} className="bg-game-darker/60 border border-game-border/50 rounded pl-7 pr-2 py-2 text-xs font-mono text-game-text-muted focus:outline-none focus:border-blue-400 w-36" />
             </div>
             <div className="flex rounded border border-game-border/50 overflow-hidden">
               {['high', 'medium', 'low'].map(p => (
@@ -70,7 +70,7 @@ const TodoPage = () => {
                 </button>
               ))}
             </div>
-            <button type="submit" className="flex items-center gap-1.5 px-3 py-2 rounded bg-violet-50 border border-violet-200 text-violet-700 text-xs font-mono hover:bg-violet-100 transition-colors">
+            <button type="submit" className="flex items-center gap-1.5 px-3 py-2 rounded bg-blue-600 border border-blue-400 text-blue-800 text-xs font-mono hover:bg-blue-600 transition-colors">
               <Plus size={14} /> Add
             </button>
           </div>
@@ -83,7 +83,7 @@ const TodoPage = () => {
           { id: 'completed', label: `Done (${completedTodos.length})` },
           { id: 'all', label: `All (${todos.length})` },
         ].map(tab => (
-          <button key={tab.id} onClick={() => setFilter(tab.id)} className={`px-3 py-1.5 text-[10px] font-mono uppercase tracking-wider rounded transition-colors ${filter === tab.id ? 'text-violet-700 bg-violet-50 border border-violet-200' : 'text-game-text-dim hover:text-game-text-muted border border-transparent'}`}>
+          <button key={tab.id} onClick={() => setFilter(tab.id)} className={`px-3 py-1.5 text-[10px] font-mono uppercase tracking-wider rounded transition-colors ${filter === tab.id ? 'text-blue-800 bg-blue-600 border border-blue-400' : 'text-game-text-dim hover:text-game-text-muted border border-transparent'}`}>
             {tab.label}
           </button>
         ))}
@@ -105,7 +105,7 @@ const TodoPage = () => {
             const overdue = !todo.completed && isOverdue(todo.dueDate)
             return (
               <div key={todo.id} className={`group flex items-center gap-3 px-3 py-2.5 rounded border transition-all ${todo.completed ? 'bg-game-panel/20 border-game-border/20 opacity-50' : 'bg-game-panel/40 border-game-border/40 hover:border-game-border/70'}`}>
-                <button onClick={() => toggleTodo(todo.id)} className={`flex-shrink-0 w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${todo.completed ? 'bg-game-green/20 border-game-green/50 text-game-green' : 'border-game-border hover:border-violet-400'}`}>
+                <button onClick={() => toggleTodo(todo.id)} className={`flex-shrink-0 w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${todo.completed ? 'bg-game-green/20 border-game-green/50 text-game-green' : 'border-game-border hover:border-blue-400'}`}>
                   {todo.completed && <Check size={12} />}
                 </button>
                 <span className={`flex-shrink-0 w-1.5 h-1.5 rounded-full ${pri.dot}`} />
