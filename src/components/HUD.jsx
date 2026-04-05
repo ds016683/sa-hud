@@ -177,7 +177,7 @@ const HUD = () => {
       />
 
       <div className="p-3 md:p-6 pb-6">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-4">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-4 items-start">
           <div className="lg:col-span-2 space-y-3">
             <div className="game-panel p-3">
               <div className="flex justify-between items-center">
@@ -222,7 +222,7 @@ const HUD = () => {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-4">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-4 items-start">
           <div className="lg:col-span-1">
             <DailyPrompts timeOfDay={getTimeOfDay()} onCheckinResponse={handleCheckinResponse} />
           </div>
