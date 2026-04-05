@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
-import storageAdapter, { STORAGE_KEY_ACTIVITY as STORAGE_KEY } from '../storage/storageAdapter'
+// Activity log uses localStorage directly
+const STORAGE_KEY = 'sa-hud-activity-log'
 
 // Narrative templates for different action types
 const narrativeTemplates = {
@@ -758,7 +759,7 @@ export const useActivityLog = () => {
   // Load from LocalStorage on mount
   useEffect(() => {
     try {
-      const parsed = storageAdapter.getItem(STORAGE_KEY)
+      const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]')
       if (parsed) {
         setEntries(Array.isArray(parsed) ? parsed : [])
       }
@@ -772,7 +773,7 @@ export const useActivityLog = () => {
   useEffect(() => {
     if (isLoaded) {
       try {
-        storageAdapter.setItem(STORAGE_KEY, entries)
+        localStorage.setItem(STORAGE_KEY, JSON.stringify( entries)
       } catch (e) {
         console.error('Failed to save activity log:', e)
       }
