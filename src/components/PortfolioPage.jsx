@@ -6,16 +6,16 @@ import CreateProjectModal from './CreateProjectModal'
 import ProjectDetail from './ProjectDetail'
 
 const SECTIONS = [
-  { id: 'client', label: 'Client Projects', color: 'bg-blue-600', accent: 'text-blue-800', border: 'border-blue-400', bg: 'bg-blue-600' },
-  { id: 'third-horizon', label: 'Third Horizon Projects', color: 'bg-blue-500', accent: 'text-blue-700', border: 'border-blue-200', bg: 'bg-blue-50' },
-  { id: 'personal', label: 'Personal Projects', color: 'bg-emerald-500', accent: 'text-emerald-700', border: 'border-emerald-200', bg: 'bg-emerald-50' },
-  { id: 'learning', label: 'Learning Projects', color: 'bg-amber-500', accent: 'text-amber-700', border: 'border-amber-200', bg: 'bg-amber-50' },
+  { id: 'client', label: 'Client Projects', color: 'bg-white', accent: 'text-blue-800', border: 'border-gray-200', bg: 'bg-white' },
+  { id: 'third-horizon', label: 'Third Horizon Projects', color: 'bg-[#002C77]', accent: 'text-[#002C77]', border: 'border-gray-200', bg: 'bg-white' },
+  { id: 'personal', label: 'Personal Projects', color: 'bg-[#002C77]', accent: 'text-[#002C77]', border: 'border-gray-200', bg: 'bg-white' },
+  { id: 'learning', label: 'Learning Projects', color: 'bg-[#002C77]', accent: 'text-[#002C77]', border: 'border-gray-200', bg: 'bg-white' },
 ]
 
 const STATUS_COLORS = {
-  active: 'bg-emerald-500',
-  needs_attention: 'bg-amber-500',
-  on_track: 'bg-emerald-500',
+  active: 'bg-[#002C77]',
+  needs_attention: 'bg-[#002C77]',
+  on_track: 'bg-[#002C77]',
   complete: 'bg-gray-400',
   completed: 'bg-gray-400',
 }
@@ -40,8 +40,8 @@ function InactiveRow({ project, onPin, onNavigate }) {
       {project.priority && project.priority !== 'low' && (
         <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded hidden sm:block ${
           project.priority === 'urgent' ? 'text-red-600 bg-red-50' :
-          project.priority === 'high' ? 'text-amber-600 bg-amber-50' :
-          'text-blue-600 bg-blue-50'
+          project.priority === 'high' ? 'text-amber-600 bg-white' :
+          'text-blue-600 bg-white'
         }`}>
           {project.priority}
         </span>
@@ -107,7 +107,7 @@ const PortfolioPage = ({ sync }) => {
         <div>
           <h1 className="font-game text-lg text-game-text tracking-wider uppercase">Portfolio</h1>
           <p className="text-xs font-mono text-game-text-dim mt-0.5">
-            {allActive.filter(p => p.pinned).length} active Â· {allActive.filter(p => !p.pinned).length} inactive
+            {allActive.filter(p => p.pinned).length} active Â- {allActive.filter(p => !p.pinned).length} inactive
           </p>
         </div>
         <div className="flex gap-2">
@@ -133,11 +133,11 @@ const PortfolioPage = ({ sync }) => {
           className="w-full flex items-center gap-3 mb-3 group text-left"
         >
           <Target size={16} className="text-red-600 shrink-0" />
-          <h2 className="font-game text-sm text-red-700 uppercase tracking-[0.15em] flex-1">
+          <h2 className="font-game text-sm text-[#002C77] uppercase tracking-[0.15em] flex-1">
             What Must Be True by June 30th
           </h2>
           <span className="text-xs font-mono text-red-500">
-            {q2Active.length} active Â· {q2Inactive.length} inactive
+            {q2Active.length} active Â- {q2Inactive.length} inactive
           </span>
           {q2Collapsed ? <ChevronRight size={14} className="text-red-400" /> : <ChevronDown size={14} className="text-red-400" />}
         </button>
@@ -155,7 +155,7 @@ const PortfolioPage = ({ sync }) => {
 
             {/* Inactive Q2 rows */}
             {q2Inactive.length > 0 && (
-              <div className="rounded-lg border border-red-200 bg-white/60 overflow-hidden">
+              <div className="rounded-lg border border-gray-200 bg-white overflow-hidden">
                 <div className="px-4 py-1.5 bg-red-100/60 border-b border-red-200">
                   <span className="text-[10px] font-mono text-red-500 uppercase tracking-wider">Inactive</span>
                 </div>
@@ -193,7 +193,7 @@ const PortfolioPage = ({ sync }) => {
                 {section.label}
               </h2>
               <span className="text-xs font-mono text-game-text-dim">
-                {active.length} active Â· {inactive.length} inactive
+                {active.length} active Â- {inactive.length} inactive
               </span>
               {isCollapsed
                 ? <ChevronRight size={14} className="text-game-text-dim" />
@@ -214,7 +214,7 @@ const PortfolioPage = ({ sync }) => {
 
                 {/* Inactive compact rows */}
                 {inactive.length > 0 && (
-                  <div className={`rounded-lg border ${section.border} bg-white/60 overflow-hidden`}>
+                  <div className={`rounded-lg border border-gray-200 bg-white overflow-hidden`}>
                     <div className={`px-4 py-1.5 ${section.bg} border-b ${section.border}`}>
                       <span className={`text-[10px] font-mono ${section.accent} uppercase tracking-wider opacity-70`}>Inactive</span>
                     </div>
