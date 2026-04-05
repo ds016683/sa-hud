@@ -73,7 +73,7 @@ function StageProgressBar({ stage }) {
         <div
           key={s}
           className={`h-1 flex-1 rounded-full transition-colors ${
-            i <= currentIndex ? 'bg-violet-500' : 'bg-gray-200'
+            i <= currentIndex ? 'bg-blue-600' : 'bg-gray-200'
           }`}
         />
       ))}
@@ -129,7 +129,7 @@ function IdeaCard({ idea, onAdvance, onUpdate, onDelete, isDragOverlay = false }
       className={`bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition-shadow relative group ${
         isDragOverlay ? 'rotate-1 shadow-lg' : ''
       }`}
-      style={{ borderLeft: '3px solid #7C3AED' }}
+      style={{ borderLeft: '3px solid #009DE0' }}
     >
       <div className="p-3 space-y-2.5">
         {/* Title row */}
@@ -141,11 +141,11 @@ function IdeaCard({ idea, onAdvance, onUpdate, onDelete, isDragOverlay = false }
               onChange={e => setTitleDraft(e.target.value)}
               onBlur={handleTitleSave}
               onKeyDown={e => { if (e.key === 'Enter') handleTitleSave(); if (e.key === 'Escape') setEditingTitle(false) }}
-              className="flex-1 text-sm font-semibold text-gray-900 border border-violet-300 rounded px-1.5 py-0.5 focus:outline-none focus:ring-1 focus:ring-violet-400"
+              className="flex-1 text-base font-semibold text-gray-900 border border-blue-400 rounded px-1.5 py-0.5 focus:outline-none focus:ring-1 focus:ring-blue-400"
             />
           ) : (
             <h3
-              className="flex-1 text-sm font-semibold text-gray-900 leading-snug cursor-pointer hover:text-violet-700 transition-colors"
+              className="flex-1 text-base font-semibold text-gray-900 leading-snug cursor-pointer hover:text-blue-800 transition-colors"
               onClick={() => { setEditingTitle(true); setTitleDraft(idea.name) }}
               title="Click to edit"
             >
@@ -165,7 +165,7 @@ function IdeaCard({ idea, onAdvance, onUpdate, onDelete, isDragOverlay = false }
         <StageProgressBar stage={idea.stage} />
 
         {/* Stage label */}
-        <p className="text-[10px] text-violet-600 font-mono">
+        <p className="text-base text-blue-800 font-mono">
           {currentMeta.label} — {currentMeta.description}
         </p>
 
@@ -174,7 +174,7 @@ function IdeaCard({ idea, onAdvance, onUpdate, onDelete, isDragOverlay = false }
           {idea.tags.map(tag => (
             <span
               key={tag}
-              className="flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-mono bg-violet-50 text-violet-600 border border-violet-200 rounded-full"
+              className="flex items-center gap-1 px-1.5 py-0.5 text-base font-mono bg-blue-600 text-blue-800 border border-blue-400 rounded-full"
             >
               {tag}
               <button onClick={() => handleTagRemove(tag)} className="hover:text-red-400 transition-colors">
@@ -190,12 +190,12 @@ function IdeaCard({ idea, onAdvance, onUpdate, onDelete, isDragOverlay = false }
               onBlur={handleTagAdd}
               onKeyDown={e => { if (e.key === 'Enter') handleTagAdd(); if (e.key === 'Escape') { setAddingTag(false); setNewTag('') } }}
               placeholder="tag…"
-              className="w-16 text-[10px] font-mono border border-violet-300 rounded-full px-1.5 py-0.5 focus:outline-none focus:ring-1 focus:ring-violet-400"
+              className="w-16 text-base font-mono border border-blue-400 rounded-full px-1.5 py-0.5 focus:outline-none focus:ring-1 focus:ring-blue-400"
             />
           ) : (
             <button
               onClick={() => setAddingTag(true)}
-              className="flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] text-gray-800 hover:text-violet-600 transition-colors border border-dashed border-gray-200 hover:border-violet-300 rounded-full"
+              className="flex items-center gap-0.5 px-1.5 py-0.5 text-base text-gray-800 hover:text-blue-800 transition-colors border border-dashed border-gray-200 hover:border-blue-400 rounded-full"
             >
               <Tag size={8} /> tag
             </button>
@@ -204,12 +204,12 @@ function IdeaCard({ idea, onAdvance, onUpdate, onDelete, isDragOverlay = false }
 
         {/* Next action */}
         <div>
-          <label className="text-[10px] text-gray-800 uppercase tracking-wider font-mono">Next action</label>
+          <label className="text-base text-gray-800 uppercase tracking-wider font-mono">Next action</label>
           <input
             value={idea.next_action || ''}
             onChange={e => onUpdate(idea.id, { next_action: e.target.value })}
             placeholder="What's the one thing to move this forward?"
-            className="w-full mt-0.5 text-xs text-gray-700 border border-gray-100 rounded px-2 py-1 focus:outline-none focus:border-violet-300 bg-gray-50 placeholder:text-gray-800"
+            className="w-full mt-0.5 text-base text-gray-700 border border-gray-100 rounded px-2 py-1 focus:outline-none focus:border-blue-400 bg-gray-50 placeholder:text-gray-800"
           />
         </div>
 
@@ -217,7 +217,7 @@ function IdeaCard({ idea, onAdvance, onUpdate, onDelete, isDragOverlay = false }
         <div>
           <button
             onClick={() => setExpanded(e => !e)}
-            className="flex items-center gap-1 text-[10px] text-gray-800 hover:text-violet-600 transition-colors uppercase tracking-wider font-mono"
+            className="flex items-center gap-1 text-base text-gray-800 hover:text-blue-800 transition-colors uppercase tracking-wider font-mono"
           >
             {expanded ? <ChevronUp size={10} /> : <ChevronDown size={10} />}
             Notes {idea.context ? '·' : '(empty)'}
@@ -228,26 +228,26 @@ function IdeaCard({ idea, onAdvance, onUpdate, onDelete, isDragOverlay = false }
               onChange={e => onUpdate(idea.id, { context: e.target.value })}
               placeholder="Add context, notes, or braindump…"
               rows={3}
-              className="w-full mt-1 text-xs text-gray-700 border border-gray-200 rounded px-2 py-1.5 focus:outline-none focus:border-violet-300 resize-none bg-gray-50 placeholder:text-gray-800"
+              className="w-full mt-1 text-base text-gray-700 border border-gray-200 rounded px-2 py-1.5 focus:outline-none focus:border-blue-400 resize-none bg-gray-50 placeholder:text-gray-800"
             />
           )}
         </div>
 
         {/* Dropbox path */}
         <div>
-          <label className="text-[10px] text-gray-800 uppercase tracking-wider font-mono">Dropbox path</label>
+          <label className="text-base text-gray-800 uppercase tracking-wider font-mono">Dropbox path</label>
           <input
             value={idea.dropbox_path || ''}
             onChange={e => onUpdate(idea.id, { dropbox_path: e.target.value })}
             placeholder="Optional — where does the material live?"
-            className="w-full mt-0.5 text-xs text-gray-700 border border-gray-100 rounded px-2 py-1 focus:outline-none focus:border-violet-300 bg-gray-50 placeholder:text-gray-800 font-mono"
+            className="w-full mt-0.5 text-base text-gray-700 border border-gray-100 rounded px-2 py-1 focus:outline-none focus:border-blue-400 bg-gray-50 placeholder:text-gray-800 font-mono"
           />
         </div>
 
         {/* Disposition options — only when at disposition stage */}
         {isDisposition && (
           <div>
-            <label className="text-[10px] text-gray-700 uppercase tracking-wider font-mono mb-1 block">Disposition</label>
+            <label className="text-base text-gray-700 uppercase tracking-wider font-mono mb-1 block">Disposition</label>
             <div className="flex flex-wrap gap-1.5">
               {DISPOSITION_OPTIONS.map(opt => {
                 const selected = (idea.disposition_options || []).includes(opt)
@@ -255,10 +255,10 @@ function IdeaCard({ idea, onAdvance, onUpdate, onDelete, isDragOverlay = false }
                   <button
                     key={opt}
                     onClick={() => handleDispositionToggle(opt)}
-                    className={`flex items-center gap-1 px-2 py-0.5 text-[10px] font-mono rounded border transition-colors ${
+                    className={`flex items-center gap-1 px-2 py-0.5 text-base font-mono rounded border transition-colors ${
                       selected
-                        ? 'bg-violet-100 text-violet-700 border-violet-300'
-                        : 'bg-gray-50 text-gray-700 border-gray-200 hover:border-violet-200'
+                        ? 'bg-blue-600 text-blue-800 border-blue-400'
+                        : 'bg-gray-50 text-gray-700 border-gray-200 hover:border-blue-400'
                     }`}
                   >
                     {selected && <Check size={8} />}
@@ -275,7 +275,7 @@ function IdeaCard({ idea, onAdvance, onUpdate, onDelete, isDragOverlay = false }
           <div>
             <button
               onClick={() => setShowHistory(h => !h)}
-              className="flex items-center gap-1 text-[10px] text-gray-800 hover:text-violet-600 transition-colors uppercase tracking-wider font-mono"
+              className="flex items-center gap-1 text-base text-gray-800 hover:text-blue-800 transition-colors uppercase tracking-wider font-mono"
             >
               <Clock size={8} />
               History {showHistory ? '▲' : '▼'}
@@ -283,7 +283,7 @@ function IdeaCard({ idea, onAdvance, onUpdate, onDelete, isDragOverlay = false }
             {showHistory && (
               <div className="mt-1 space-y-0.5 pl-2 border-l border-gray-100">
                 {idea.stage_history.map((s, i) => (
-                  <p key={i} className="text-[10px] text-gray-800 font-mono">
+                  <p key={i} className="text-base text-gray-800 font-mono">
                     → {STAGE_META[s]?.label || s}
                   </p>
                 ))}
@@ -305,7 +305,7 @@ function IdeaCard({ idea, onAdvance, onUpdate, onDelete, isDragOverlay = false }
           {!isCompletion && (
             <button
               onClick={() => onAdvance(idea.id)}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-mono bg-violet-50 text-violet-700 border border-violet-200 rounded hover:bg-violet-100 transition-colors"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-base font-mono bg-blue-600 text-blue-800 border border-blue-400 rounded hover:bg-blue-600 transition-colors"
             >
               <Zap size={11} />
               Advance Stage
@@ -314,7 +314,7 @@ function IdeaCard({ idea, onAdvance, onUpdate, onDelete, isDragOverlay = false }
           {isCompletion && (
             <button
               onClick={() => alert('Graduate to Portfolio: coming soon. Wire into your Portfolio workflow.')}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-mono bg-emerald-50 text-emerald-700 border border-emerald-200 rounded hover:bg-emerald-100 transition-colors"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-base font-mono bg-emerald-50 text-emerald-700 border border-emerald-200 rounded hover:bg-emerald-100 transition-colors"
             >
               <GraduationCap size={11} />
               Graduate to Portfolio
@@ -351,7 +351,7 @@ function SortableIdeaCard({ idea, onAdvance, onUpdate, onDelete }) {
         <div
           {...attributes}
           {...listeners}
-          className="absolute top-2 right-8 w-5 h-5 flex items-center justify-center text-gray-800 hover:text-violet-700 cursor-grab active:cursor-grabbing z-10 opacity-0 group-hover:opacity-100 transition-opacity"
+          className="absolute top-2 right-8 w-5 h-5 flex items-center justify-center text-gray-800 hover:text-blue-800 cursor-grab active:cursor-grabbing z-10 opacity-0 group-hover:opacity-100 transition-opacity"
           title="Drag to reorder"
         >
           ⠿
@@ -379,16 +379,16 @@ function KanbanColumn({ stage, ideas, onAdvance, onUpdate, onDelete, isFiltered 
       <div className="mb-3">
         <div className="flex items-center justify-between mb-1">
           <span
-            className="text-xs font-semibold px-2.5 py-1 rounded-full font-mono uppercase tracking-wider"
-            style={{ background: '#EDE9FE', color: '#2D1B69' }}
+            className="text-base font-semibold px-2.5 py-1 rounded-full font-mono uppercase tracking-wider"
+            style={{ background: '#E6F5FD', color: '#002C77' }}
           >
             {meta.label}
           </span>
-          <span className="text-xs text-gray-800 font-mono">
+          <span className="text-base text-gray-800 font-mono">
             {stageIdeas.length}
           </span>
         </div>
-        <p className="text-[10px] text-gray-800 font-mono leading-relaxed px-0.5">{meta.description}</p>
+        <p className="text-base text-gray-800 font-mono leading-relaxed px-0.5">{meta.description}</p>
       </div>
 
       {/* Cards */}
@@ -434,43 +434,43 @@ function AddIdeaModal({ onAdd, onClose }) {
     <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-5 space-y-4">
         <div className="flex items-center justify-between">
-          <h2 className="font-semibold text-gray-900 text-base" style={{ color: '#2D1B69' }}>New Idea</h2>
+          <h2 className="font-semibold text-gray-900 text-base" style={{ color: '#002C77' }}>New Idea</h2>
           <button onClick={onClose} className="text-gray-800 hover:text-gray-800 transition-colors">
             <X size={18} />
           </button>
         </div>
         <form onSubmit={handleSubmit} className="space-y-3">
           <div>
-            <label className="text-xs text-gray-700 font-mono uppercase tracking-wider block mb-1">Title</label>
+            <label className="text-base text-gray-700 font-mono uppercase tracking-wider block mb-1">Title</label>
             <input
               autoFocus
               value={title}
               onChange={e => setTitle(e.target.value)}
               placeholder="What's the idea?"
-              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-violet-400 focus:border-transparent"
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-base text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent"
             />
           </div>
           <div>
-            <label className="text-xs text-gray-700 font-mono uppercase tracking-wider block mb-1">Tags <span className="normal-case text-gray-800">(comma-separated, optional)</span></label>
+            <label className="text-base text-gray-700 font-mono uppercase tracking-wider block mb-1">Tags <span className="normal-case text-gray-800">(comma-separated, optional)</span></label>
             <input
               value={tagsInput}
               onChange={e => setTagsInput(e.target.value)}
               placeholder="e.g. snmi, strategy, writing"
-              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-violet-400 focus:border-transparent"
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-base text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent"
             />
           </div>
           <div className="flex gap-2 pt-1">
             <button
               type="submit"
               disabled={!title.trim()}
-              className="flex-1 py-2 text-sm font-semibold rounded-lg bg-violet-600 text-white hover:bg-violet-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              className="flex-1 py-2 text-base font-semibold rounded-lg bg-blue-600 text-white hover:bg-blue-600 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
             >
               Add to Pipeline
             </button>
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-sm text-gray-700 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors"
+              className="px-4 py-2 text-base text-gray-700 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors"
             >
               Cancel
             </button>
@@ -594,21 +594,21 @@ export default function IdeasPage() {
       <div className="max-w-[1400px] mx-auto">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-lg bg-violet-100 flex items-center justify-center">
-              <Lightbulb size={18} className="text-violet-600" />
+            <div className="w-9 h-9 rounded-lg bg-blue-600 flex items-center justify-center">
+              <Lightbulb size={18} className="text-blue-800" />
             </div>
             <div>
-              <h1 className="font-mono text-lg font-bold uppercase tracking-widest" style={{ color: '#2D1B69' }}>
+              <h1 className="font-mono text-lg font-bold uppercase tracking-widest" style={{ color: '#002C77' }}>
                 Ideas Pipeline
               </h1>
-              <p className="text-xs text-gray-800 font-mono mt-0.5">
+              <p className="text-base text-gray-800 font-mono mt-0.5">
                 {totalIdeas} idea{totalIdeas !== 1 ? 's' : ''} in pipeline
               </p>
             </div>
           </div>
           <button
             onClick={() => setShowModal(true)}
-            className="flex items-center gap-2 px-4 py-2 text-sm font-semibold bg-violet-600 text-white rounded-lg hover:bg-violet-700 transition-colors shadow-sm"
+            className="flex items-center gap-2 px-4 py-2 text-base font-semibold bg-blue-600 text-white rounded-lg hover:bg-blue-600 transition-colors shadow-sm"
           >
             <Plus size={16} />
             New Idea
@@ -617,14 +617,14 @@ export default function IdeasPage() {
 
         {/* Filter bar */}
         <div className="flex flex-wrap gap-2 mb-6 items-center">
-          <span className="text-[10px] text-gray-800 font-mono uppercase tracking-wider mr-1">Filter:</span>
+          <span className="text-base text-gray-800 font-mono uppercase tracking-wider mr-1">Filter:</span>
 
           {/* Stage filter */}
           <div className="flex gap-1">
             <button
               onClick={() => setFilterStage('')}
-              className={`px-2.5 py-1 text-[10px] font-mono rounded border transition-colors ${
-                !filterStage ? 'bg-violet-50 text-violet-700 border-violet-200' : 'text-gray-800 border-gray-200 hover:border-violet-200'
+              className={`px-2.5 py-1 text-base font-mono rounded border transition-colors ${
+                !filterStage ? 'bg-blue-600 text-blue-800 border-blue-400' : 'text-gray-800 border-gray-200 hover:border-blue-400'
               }`}
             >
               All stages
@@ -633,8 +633,8 @@ export default function IdeasPage() {
               <button
                 key={s}
                 onClick={() => setFilterStage(filterStage === s ? '' : s)}
-                className={`px-2.5 py-1 text-[10px] font-mono rounded border transition-colors ${
-                  filterStage === s ? 'bg-violet-50 text-violet-700 border-violet-200' : 'text-gray-800 border-gray-200 hover:border-violet-200'
+                className={`px-2.5 py-1 text-base font-mono rounded border transition-colors ${
+                  filterStage === s ? 'bg-blue-600 text-blue-800 border-blue-400' : 'text-gray-800 border-gray-200 hover:border-blue-400'
                 }`}
               >
                 {STAGE_META[s].label} ({stageCount[s]})
@@ -647,8 +647,8 @@ export default function IdeasPage() {
             <div className="flex gap-1 items-center ml-2 pl-2 border-l border-gray-200">
               <button
                 onClick={() => setFilterTag('')}
-                className={`px-2.5 py-1 text-[10px] font-mono rounded border transition-colors ${
-                  !filterTag ? 'bg-violet-50 text-violet-700 border-violet-200' : 'text-gray-800 border-gray-200 hover:border-violet-200'
+                className={`px-2.5 py-1 text-base font-mono rounded border transition-colors ${
+                  !filterTag ? 'bg-blue-600 text-blue-800 border-blue-400' : 'text-gray-800 border-gray-200 hover:border-blue-400'
                 }`}
               >
                 All tags
@@ -657,8 +657,8 @@ export default function IdeasPage() {
                 <button
                   key={tag}
                   onClick={() => setFilterTag(filterTag === tag ? '' : tag)}
-                  className={`px-2.5 py-1 text-[10px] font-mono rounded border transition-colors ${
-                    filterTag === tag ? 'bg-violet-50 text-violet-700 border-violet-200' : 'text-gray-800 border-gray-200 hover:border-violet-200'
+                  className={`px-2.5 py-1 text-base font-mono rounded border transition-colors ${
+                    filterTag === tag ? 'bg-blue-600 text-blue-800 border-blue-400' : 'text-gray-800 border-gray-200 hover:border-blue-400'
                   }`}
                 >
                   #{tag}
@@ -705,11 +705,11 @@ export default function IdeasPage() {
         {/* Empty state (no ideas at all) */}
         {ideas.length === 0 && (
           <div className="text-center py-20 space-y-3">
-            <div className="w-16 h-16 rounded-2xl bg-violet-100 flex items-center justify-center mx-auto">
-              <Lightbulb size={28} className="text-violet-700" />
+            <div className="w-16 h-16 rounded-2xl bg-blue-600 flex items-center justify-center mx-auto">
+              <Lightbulb size={28} className="text-blue-800" />
             </div>
-            <p className="text-gray-700 font-mono text-sm">No ideas in the pipeline yet.</p>
-            <p className="text-gray-800 text-xs">Hit "New Idea" to plant the first seed.</p>
+            <p className="text-gray-700 font-mono text-base">No ideas in the pipeline yet.</p>
+            <p className="text-gray-800 text-base">Hit "New Idea" to plant the first seed.</p>
           </div>
         )}
       </div>
