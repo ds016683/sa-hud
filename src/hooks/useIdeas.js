@@ -3,6 +3,16 @@ import { supabase } from '../lib/supabase'
 
 export const STAGES = ['ideation', 'concept', 'attunement', 'disposition', 'completion']
 
+function normalizeTags(tags) {
+  if (Array.isArray(tags)) return tags
+  if (typeof tags === 'string') { try { return JSON.parse(tags) } catch { return [] } }
+  return []
+}
+
+function normalizeIdea(idea) {
+  return { ...idea, tags: normalizeTags(idea.tags) }
+}
+
 export default function useIdeas() {
   const [ideas, setIdeas] = useState([])
   const [loading, setLoading] = useState(true)
@@ -20,7 +30,7 @@ export default function useIdeas() {
         .order('created_at', { ascending: false })
 
       if (error) { console.error('fetchIdeas error:', error); return }
-      setIdeas(data || [])
+      setIdeas((data || []).map(normalizeIdea))
     } finally {
       setLoading(false)
     }
@@ -66,7 +76,7 @@ export default function useIdeas() {
       graduation_candidate: false,
       disposition_options: [],
     }
-    setIdeas(prev => [ideaWithExtras, ...prev])
+    setIdeas(prev => [normalizeIdea(ideaWithExtras), ...prev])
     return ideaWithExtras
   }, [])
 
