@@ -19,7 +19,7 @@ const HUD = () => {
   const [sovereigntySet, setSovereigntySet] = useState(false)
   const [phaseSet, setPhaseSet] = useState(false)
   const [shadowsChecked, setShadowsChecked] = useState(false)
-  const [showNudges, setShowNudges] = useState(() => isFirstTime())
+  const [showNudges, setShowNudges] = useState(false)
   const sessionLogged = useRef(false)
 
   const {
