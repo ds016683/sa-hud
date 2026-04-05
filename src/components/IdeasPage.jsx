@@ -82,12 +82,30 @@ function DetailPanel({ idea, onClose, onUpdate }) {
   const [title, setTitle] = useState(idea.name || idea.title || '')
   const [desc, setDesc] = useState(idea.description || '')
   const [nextAction, setNextAction] = useState(idea.next_action || '')
+  const [dropboxLink, setDropboxLink] = useState(idea.dropbox_link || '')
+  const [newTask, setNewTask] = useState('')
+  const [tasks, setTasks] = useState(idea.tasks || [])
   const [saved, setSaved] = useState(false)
 
   const save = () => {
-    onUpdate(idea.id, { name: title, title, description: desc, next_action: nextAction })
+    onUpdate(idea.id, { name: title, title, description: desc, next_action: nextAction, dropbox_link: dropboxLink, tasks })
     setSaved(true)
     setTimeout(() => setSaved(false), 1500)
+  }
+
+  const addTask = () => {
+    if (!newTask.trim()) return
+    const updated = [...tasks, { id: Date.now().toString(), text: newTask.trim(), done: false }]
+    setTasks(updated)
+    setNewTask('')
+  }
+
+  const toggleTask = (id) => {
+    setTasks(prev => prev.map(t => t.id === id ? { ...t, done: !t.done } : t))
+  }
+
+  const deleteTask = (id) => {
+    setTasks(prev => prev.filter(t => t.id !== id))
   }
 
   return (
