@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Plus, ChevronDown, ChevronRight, Download, Target, Pin } from 'lucide-react'
+import { Plus, ChevronDown, ChevronRight, Download, Target, Pin, Trash2 } from 'lucide-react'
 import usePortfolio from '../hooks/usePortfolio'
 import ProjectCard from './ProjectCard'
 import CreateProjectModal from './CreateProjectModal'
@@ -58,17 +58,7 @@ function InactiveRow({ project, onPin, onNavigate }) {
 }
 
 const PortfolioPage = ({ sync }) => {
-  const {
-    spotlight,
-    roster,
-    archive,
-    createProject,
-    updateProject,
-    deleteProject,
-    pinProject,
-    exportToMarkdown,
-    loading,
-  } = usePortfolio()
+  const { spotlight, roster, archive, createProject, updateProject, deleteProject, pinProject, exportToMarkdown, loading } = usePortfolio()
 
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [detailProjectId, setDetailProjectId] = useState(null)
@@ -264,9 +254,21 @@ const PortfolioPage = ({ sync }) => {
                   <h3 className="text-[10px] font-mono text-game-text-dim uppercase tracking-wider mb-2">{label}</h3>
                   <div className="bg-game-panel/20 border border-game-border/30 rounded-lg overflow-hidden">
                     {projects.map(project => (
-                      <div key={project.id} className="flex items-center gap-3 px-3 py-2 border-b border-game-border/20 last:border-0 opacity-50">
+                      <div key={project.id} className="flex items-center gap-3 px-3 py-2 border-b border-game-border/20 last:border-0 opacity-50 hover:opacity-70 group transition-opacity">
                         <span className="font-game text-sm text-game-text-muted flex-1 truncate">{project.name}</span>
+                        <span className="text-[10px] font-mono text-game-text-dim hidden sm:block">{project.category}</span>
                         <button onClick={() => setDetailProjectId(project.id)} className="text-game-text-dim hover:text-game-gold text-[10px] font-mono transition-colors">view</button>
+                        <button
+                          onClick={() => {
+                            if (window.confirm(`Permanently delete "${project.name}"? This cannot be undone.`)) {
+                              deleteProject(project.id)
+                            }
+                          }}
+                          className="text-game-text-dim hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100 p-0.5"
+                          title="Permanently delete"
+                        >
+                          <Trash2 size={12} />
+                        </button>
                       </div>
                     ))}
                   </div>
