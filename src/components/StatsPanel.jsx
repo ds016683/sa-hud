@@ -13,7 +13,7 @@ const StatsPanel = () => {
     'S': 'bg-orange-100 text-orange-700',
     'A+': 'bg-amber-100 text-amber-700',
     'A': 'bg-green-100 text-green-700',
-    'C': 'bg-gray-100 text-gray-600',
+    'C': 'bg-gray-100 text-game-text-muted',
   }
 
   return (
