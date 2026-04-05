@@ -24,27 +24,27 @@ import useIdeas, { STAGES } from '../hooks/useIdeas'
 const STAGE_META = {
   ideation: {
     label: 'Ideation',
-    description: 'Raw thinking, no filter — voice memo → concept seeds',
+    description: '\',
     encouragement: "Every great idea started here. What's on your mind?",
   },
   concept: {
     label: 'Concept',
-    description: 'Reviewing, tightening, first refinements',
+    description: '\',
     encouragement: 'Shape the clay. What does this actually want to be?',
   },
   attunement: {
     label: 'Attunement',
-    description: 'Counterarguments, stress-testing, controlling for weaknesses',
+    description: '\',
     encouragement: 'Steel-man it. What breaks this idea?',
   },
   disposition: {
     label: 'Disposition',
-    description: 'Deciding what to do with it — publish, pitch, build, share, archive',
+    description: '\',
     encouragement: 'What does this become? Name its destiny.',
   },
   completion: {
     label: 'Completion',
-    description: 'Defining done, closing the loop',
+    description: '\',
     encouragement: 'Finish strong. What does done look like?',
   },
 }
@@ -174,7 +174,7 @@ function IdeaCard({ idea, onAdvance, onUpdate, onDelete, isDragOverlay = false }
           {idea.tags.map(tag => (
             <span
               key={tag}
-              className="flex items-center gap-1 px-1.5 py-0.5 text-base font-mono bg-blue-600 text-blue-800 border border-blue-400 rounded-full"
+              className="idea-tag"
             >
               {tag}
               <button onClick={() => handleTagRemove(tag)} className="hover:text-red-400 transition-colors">
@@ -247,7 +247,7 @@ function IdeaCard({ idea, onAdvance, onUpdate, onDelete, isDragOverlay = false }
         {/* Disposition options — only when at disposition stage */}
         {isDisposition && (
           <div>
-            <label className="text-base text-gray-700 uppercase tracking-wider font-mono mb-1 block">Disposition</label>
+            <label className="text-xs text-[#2E5FA3] uppercase tracking-wider font-mono mb-1 block">Disposition</label>
             <div className="flex flex-wrap gap-1.5">
               {DISPOSITION_OPTIONS.map(opt => {
                 const selected = (idea.disposition_options || []).includes(opt)
@@ -441,7 +441,7 @@ function AddIdeaModal({ onAdd, onClose }) {
         </div>
         <form onSubmit={handleSubmit} className="space-y-3">
           <div>
-            <label className="text-base text-gray-700 font-mono uppercase tracking-wider block mb-1">Title</label>
+            <label className="text-xs text-[#2E5FA3] font-mono uppercase tracking-wider block mb-1">Title</label>
             <input
               autoFocus
               value={title}
@@ -451,7 +451,7 @@ function AddIdeaModal({ onAdd, onClose }) {
             />
           </div>
           <div>
-            <label className="text-base text-gray-700 font-mono uppercase tracking-wider block mb-1">Tags <span className="normal-case text-gray-800">(comma-separated, optional)</span></label>
+            <label className="text-xs text-[#2E5FA3] font-mono uppercase tracking-wider block mb-1">Tags <span className="normal-case text-gray-800">(comma-separated, optional)</span></label>
             <input
               value={tagsInput}
               onChange={e => setTagsInput(e.target.value)}
@@ -463,7 +463,7 @@ function AddIdeaModal({ onAdd, onClose }) {
             <button
               type="submit"
               disabled={!title.trim()}
-              className="flex-1 py-2 text-base font-semibold rounded-lg bg-blue-600 text-white hover:bg-blue-600 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              className="flex-1 py-2 text-base font-semibold rounded-lg bg-[#002C77] text-white hover:bg-blue-600 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
             >
               Add to Pipeline
             </button>
@@ -608,7 +608,7 @@ export default function IdeasPage() {
           </div>
           <button
             onClick={() => setShowModal(true)}
-            className="flex items-center gap-2 px-4 py-2 text-base font-semibold bg-blue-600 text-white rounded-lg hover:bg-blue-600 transition-colors shadow-sm"
+            className="flex items-center gap-2 px-4 py-2 text-base font-semibold bg-[#002C77] text-white rounded-lg hover:bg-blue-600 transition-colors shadow-sm"
           >
             <Plus size={16} />
             New Idea
