@@ -1,113 +1,150 @@
-import { useState, useEffect, Component } from 'react'
-import { Shield, FolderKanban, ScrollText, Lightbulb, Network, LogOut } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import {
+  LayoutGrid, Lightbulb, ScrollText, Network, Shield, LogOut, Menu, X
+} from 'lucide-react'
+import { getSession, onAuthStateChange, signOut } from './lib/auth'
+import LoginPage from './components/LoginPage'
 import HUD from './components/HUD'
 import PortfolioPage from './components/PortfolioPage'
 import TodoPage from './components/TodoPage'
 import IdeasPage from './components/IdeasPage'
 import EcosystemPage from './components/EcosystemPage'
-import LoginPage from './components/LoginPage'
-import { getSession, onAuthStateChange, signOut } from './lib/auth'
-import './index.css'
 
-class ErrorBoundary extends Component {
-  constructor(props) {
-    super(props)
-    this.state = { hasError: false, error: null }
-  }
-  static getDerivedStateFromError(error) {
-    return { hasError: true, error }
-  }
-  render() {
-    if (this.state.hasError) {
-      return (
-        <div style={{ padding: '40px', fontFamily: 'monospace', background: '#002C77', color: 'white', minHeight: '100vh' }}>
-          <h2 style={{ color: '#EF4444', marginBottom: '16px' }}>Runtime Error</h2>
-          <pre style={{ background: 'rgba(0,0,0,0.4)', padding: '16px', borderRadius: '8px', whiteSpace: 'pre-wrap', fontSize: '12px', color: '#FCA5A5' }}>
-            {this.state.error?.toString()}{'\n\n'}{this.state.error?.stack}
-          </pre>
-        </div>
-      )
-    }
-    return this.props.children
-  }
-}
-
-const TABS = [
-  { id: 'hud', label: 'HUD', icon: Shield },
-  { id: 'portfolio', label: 'Portfolio', icon: FolderKanban },
-  { id: 'todos', label: 'Quests', icon: ScrollText },
-  { id: 'ideas', label: 'Ideas', icon: Lightbulb },
-  { id: 'ecosystem', label: 'Ecosystem', icon: Network },
+const NAV_ITEMS = [
+  { id: 'portfolio', label: 'Portfolio',       icon: LayoutGrid },
+  { id: 'ideas',     label: 'Ideas Pipeline',  icon: Lightbulb  },
+  { id: 'todos',     label: 'Quests',          icon: ScrollText },
+  { id: 'hud',       label: 'HUD',             icon: Shield     },
+  { id: 'ecosystem', label: 'Ecosystem',        icon: Network    },
 ]
 
-function App() {
-  const [activeTab, setActiveTab] = useState('portfolio')
+function Sidebar({ active, onChange, onSignOut }) {
+  const [open, setOpen] = useState(false)
+  const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 1024)
+
+  useEffect(() => {
+    const onResize = () => {
+      const desktop = window.innerWidth >= 1024
+      setIsDesktop(desktop)
+      if (!desktop) setOpen(false)
+    }
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [])
+
+  const drawerVisible = open || isDesktop
+
+  const handleNav = (id) => {
+    onChange(id)
+    if (!isDesktop) setOpen(false)
+  }
+
+  return (
+    <>
+      {/* Mobile hamburger */}
+      {!isDesktop && (
+        <button
+          onClick={() => setOpen(!open)}
+          className="fixed top-3.5 left-3.5 z-[1000] flex h-[42px] w-[42px] items-center justify-center rounded-[10px] bg-[#001A41] text-white shadow-lg hover:bg-[#003366] transition-all"
+        >
+          {open ? <X size={20} /> : <Menu size={20} />}
+        </button>
+      )}
+
+      {/* Mobile overlay */}
+      {open && !isDesktop && (
+        <div className="fixed inset-0 z-[998] bg-[#001A41]/45" onClick={() => setOpen(false)} />
+      )}
+
+      {/* Sidebar */}
+      <aside
+        className={`fixed top-0 left-0 z-[999] flex h-screen w-[260px] flex-col shadow-[4px_0_24px_rgba(0,0,0,0.3)] transition-transform duration-300 ${
+          drawerVisible ? 'translate-x-0' : '-translate-x-full'
+        }`}
+        style={{ background: 'linear-gradient(180deg, #001A41 0%, #00111F 100%)', fontFamily: 'Arial, Helvetica, sans-serif' }}
+      >
+        {/* Header */}
+        <div className="border-b border-white/10 px-5 py-5">
+          <div className="text-white font-bold text-lg tracking-wide">SOVEREIGN</div>
+          <div className="text-white/50 text-xs tracking-widest mt-0.5">ARCHITECT HUD</div>
+        </div>
+
+        {/* Nav */}
+        <nav className="flex flex-1 flex-col gap-0.5 py-4">
+          {NAV_ITEMS.map(({ id, label, icon: Icon }) => {
+            const isActive = active === id
+            return (
+              <button
+                key={id}
+                onClick={() => handleNav(id)}
+                style={{ fontFamily: 'Arial, Helvetica, sans-serif', fontSize: '0.9rem' }}
+                className={`flex w-full items-center gap-3 border-none bg-transparent px-5 py-3.5 text-left font-medium transition-all ${
+                  isActive
+                    ? 'border-l-[3px] border-l-[#009DE0] bg-[#009DE0]/20 pl-[calc(1.25rem-3px)] text-[#009DE0]'
+                    : 'text-white/70 hover:bg-white/[0.08] hover:text-white'
+                }`}
+              >
+                <Icon size={18} className="flex-shrink-0" />
+                {label}
+              </button>
+            )
+          })}
+        </nav>
+
+        {/* Footer */}
+        <div className="border-t border-white/10 px-5 py-3">
+          <button
+            onClick={onSignOut}
+            style={{ fontFamily: 'Arial, Helvetica, sans-serif', fontSize: '0.85rem' }}
+            className="flex w-full items-center gap-3 rounded-md border-none bg-transparent px-2 py-2 text-left text-white/50 hover:text-red-400 transition-colors"
+          >
+            <LogOut size={16} />
+            Sign out
+          </button>
+        </div>
+      </aside>
+
+      {/* Desktop spacer */}
+      {isDesktop && <div className="w-[260px] flex-shrink-0" />}
+    </>
+  )
+}
+
+export default function App() {
   const [session, setSession] = useState(undefined)
+  const [active, setActive] = useState('portfolio')
 
   useEffect(() => {
     getSession().then(s => setSession(s))
-    const { data: { subscription } } = onAuthStateChange((s) => setSession(s))
+    const { data: { subscription } } = onAuthStateChange(s => setSession(s))
     return () => subscription.unsubscribe()
   }, [])
 
-  const handleLogin = async () => {
-    const s = await getSession()
-    setSession(s)
-  }
-
-  const handleLogout = async () => {
-    await signOut()
-    setSession(null)
-  }
-
   if (session === undefined) {
     return (
-      <div style={{ minHeight: '100vh', background: '#002C77', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <div style={{ color: 'rgba(255,255,255,0.4)', fontFamily: 'monospace', fontSize: '12px', letterSpacing: '2px' }}>LOADING...</div>
+      <div style={{ minHeight: '100vh', background: '#F7F9FC', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'Arial, Helvetica, sans-serif' }}>
+        <div style={{ color: '#8096B2', fontSize: '14px' }}>Loading...</div>
       </div>
     )
   }
 
-  if (!session) return <LoginPage onLogin={handleLogin} />
+  if (!session) return <LoginPage onLogin={() => getSession().then(s => setSession(s))} />
+
+  const handleSignOut = async () => {
+    await signOut()
+    setSession(null)
+  }
 
   return (
-    <div className="min-h-screen w-full bg-game-dark">
-      <nav className="sticky top-0 z-40 bg-game-nav backdrop-blur-sm border-b border-game-nav/80" style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.25)' }}>
-        <div className="max-w-5xl mx-auto px-4 flex gap-1 items-center">
-          <div className="flex gap-1 flex-1">
-            {TABS.map(tab => {
-              const Icon = tab.icon
-              const isActive = activeTab === tab.id
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center gap-2 px-4 py-2 text-xs font-mono uppercase tracking-wider transition-all rounded-md my-1.5 ${
-                    isActive ? 'bg-white text-game-nav font-bold shadow-sm' : 'text-white/60 hover:text-white/90 hover:bg-white/10'
-                  }`}
-                >
-                  <Icon size={14} />
-                  {tab.label}
-                </button>
-              )
-            })}
-          </div>
-          <button onClick={handleLogout} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-mono text-white/40 hover:text-white/80 transition-colors rounded-md hover:bg-white/10" title="Sign out">
-            <LogOut size={12} />
-            <span className="hidden sm:inline">LOGOUT</span>
-          </button>
-        </div>
-      </nav>
-
-      <ErrorBoundary>
-        {activeTab === 'hud' && <HUD />}
-        {activeTab === 'portfolio' && <PortfolioPage />}
-        {activeTab === 'todos' && <TodoPage />}
-        {activeTab === 'ideas' && <IdeasPage />}
-        {activeTab === 'ecosystem' && <EcosystemPage />}
-      </ErrorBoundary>
+    <div style={{ display: 'flex', minHeight: '100vh', background: '#F7F9FC', fontFamily: 'Arial, Helvetica, sans-serif' }}>
+      <Sidebar active={active} onChange={setActive} onSignOut={handleSignOut} />
+      <main style={{ flex: 1, minHeight: '100vh', overflowY: 'auto' }}>
+        {active === 'portfolio'  && <PortfolioPage />}
+        {active === 'ideas'      && <IdeasPage />}
+        {active === 'todos'      && <TodoPage />}
+        {active === 'hud'        && <HUD />}
+        {active === 'ecosystem'  && <EcosystemPage />}
+      </main>
     </div>
   )
 }
-
-export default App
