@@ -80,8 +80,18 @@ export default function usePortfolio() {
         .eq('user_id', session.user.id)
         .order('created_at', { ascending: false })
 
+      // Normalize tags - Supabase may return as string or array
+      const normalized = (projectRows || []).map(p => ({
+        ...p,
+        tags: Array.isArray(p.tags) ? p.tags : (typeof p.tags === 'string' ? JSON.parse(p.tags || '[]') : []),
+        tasks: p.tasks || [],
+        notes: p.notes || [],
+        links: p.links || [],
+        people: p.people || [],
+      }))
+
       if (error) { console.error('fetchAllProjects error:', error); return }
-      setProjects(projectRows || [])
+      setProjects(normalized)
     } finally {
       setLoading(false)
     }
@@ -114,7 +124,17 @@ export default function usePortfolio() {
       .select()
       .single()
 
-    if (error) { console.error('createProject error:', error); return null }
+    // Normalize tags - Supabase may return as string or array
+      const normalized = (projectRows || []).map(p => ({
+        ...p,
+        tags: Array.isArray(p.tags) ? p.tags : (typeof p.tags === 'string' ? JSON.parse(p.tags || '[]') : []),
+        tasks: p.tasks || [],
+        notes: p.notes || [],
+        links: p.links || [],
+        people: p.people || [],
+      }))
+
+      if (error) { console.error('createProject error:', error); return null }
 
     const newProject = { ...data, tasks: [], notes: [], links: [], people: [] }
     setProjects(prev => [newProject, ...prev])
@@ -138,7 +158,17 @@ export default function usePortfolio() {
       .update(projectRow)
       .eq('id', id)
 
-    if (error) { console.error('updateProject error:', error); return }
+    // Normalize tags - Supabase may return as string or array
+      const normalized = (projectRows || []).map(p => ({
+        ...p,
+        tags: Array.isArray(p.tags) ? p.tags : (typeof p.tags === 'string' ? JSON.parse(p.tags || '[]') : []),
+        tasks: p.tasks || [],
+        notes: p.notes || [],
+        links: p.links || [],
+        people: p.people || [],
+      }))
+
+      if (error) { console.error('updateProject error:', error); return }
 
     // Handle tasks replacement if provided
     if (tasks !== undefined) {
@@ -184,7 +214,17 @@ export default function usePortfolio() {
 
   const deleteProject = useCallback(async (id) => {
     const { error } = await supabase.from('projects').delete().eq('id', id)
-    if (error) { console.error('deleteProject error:', error); return }
+    // Normalize tags - Supabase may return as string or array
+      const normalized = (projectRows || []).map(p => ({
+        ...p,
+        tags: Array.isArray(p.tags) ? p.tags : (typeof p.tags === 'string' ? JSON.parse(p.tags || '[]') : []),
+        tasks: p.tasks || [],
+        notes: p.notes || [],
+        links: p.links || [],
+        people: p.people || [],
+      }))
+
+      if (error) { console.error('deleteProject error:', error); return }
     setProjects(prev => prev.filter(p => p.id !== id))
   }, [])
 
