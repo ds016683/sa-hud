@@ -1,155 +1,267 @@
-import { useState, useEffect } from 'react'
-import { Activity, Target, Zap, Brain, Clock, TrendingUp } from 'lucide-react'
+import { useState, useEffect, useRef } from 'react'
+import TimeContext from './TimeContext'
+import ActivityLog from './ActivityLog'
+// NotePrompt removed
+import StickyResourceBar from './StickyResourceBar'
+import LoopStatus from './LoopStatus'
+// ShadowMonitor removed
+import DailyPrompts from './DailyPrompts'
+import HorizontalSkills from './HorizontalSkills'
+// FirstTimeNudges removed
+import useActivityLog from '../hooks/useActivityLog'
+import useGameState from '../hooks/useGameState'
 
-const S = {
-  page: { maxWidth: 1000, margin: '0 auto', padding: '24px 16px', fontFamily: 'Arial, Helvetica, sans-serif' },
-  header: { marginBottom: 24 },
-  h1: { fontSize: 20, fontWeight: 700, color: '#002C77', margin: 0 },
-  sub: { fontSize: 13, color: '#8096B2', margin: '3px 0 0' },
-  grid: { display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 20 },
-  card: { background: 'white', border: '1px solid #E2E8F0', borderRadius: 12, padding: '20px 24px', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' },
-  cardLabel: { fontSize: 11, fontWeight: 700, color: '#8096B2', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 },
-  cardValue: { fontSize: 28, fontWeight: 700, color: '#002C77', lineHeight: 1.2 },
-  cardSub: { fontSize: 12, color: '#8096B2', marginTop: 4 },
-  section: { background: 'white', border: '1px solid #E2E8F0', borderRadius: 12, padding: '20px 24px', boxShadow: '0 1px 3px rgba(0,0,0,0.05)', marginBottom: 16 },
-  sectionHeader: { fontSize: 13, fontWeight: 700, color: '#002C77', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 },
-  row: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #F1F5F9' },
-  rowLabel: { fontSize: 14, color: '#334E85', fontFamily: 'Arial, Helvetica, sans-serif' },
-  rowValue: { fontSize: 13, color: '#8096B2', fontFamily: 'Arial, Helvetica, sans-serif' },
-  badge: (color) => ({ display: 'inline-block', padding: '2px 10px', borderRadius: 9999, fontSize: 11, fontWeight: 600, background: color + '15', color: color, border: `1px solid ${color}40` }),
-  sliderWrap: { marginBottom: 12 },
-  sliderLabel: { display: 'flex', justifyContent: 'space-between', marginBottom: 4 },
-  sliderName: { fontSize: 13, color: '#002C77', fontFamily: 'Arial, Helvetica, sans-serif' },
-  sliderVal: { fontSize: 12, fontWeight: 700, color: '#009DE0', fontFamily: 'Arial, Helvetica, sans-serif' },
-  track: { height: 6, background: '#EFF4FA', borderRadius: 3, overflow: 'hidden' },
-  fill: (pct, color) => ({ height: '100%', width: `${pct}%`, background: color, borderRadius: 3, transition: 'width 0.3s' }),
-}
+const HUD = () => {
+  const [currentTime, setCurrentTime] = useState(new Date())
+  const gameState = useGameState()
+  const { sovereigntyLevel, setSovereigntyLevel, currentPhase, shadows } = gameState
 
-const ATTRIBUTES = [
-  { id: 'perception',       label: 'Perception',       tier: 'S+', value: 95, color: '#DC2626' },
-  { id: 'will',             label: 'Will',              tier: 'S',  value: 90, color: '#EA580C' },
-  { id: 'agency',           label: 'Agency',            tier: 'A+', value: 85, color: '#D97706' },
-  { id: 'creative_entropy', label: 'Creative Entropy',  tier: 'A+', value: 85, color: '#D97706' },
-  { id: 'relational',       label: 'Relational',        tier: 'A',  value: 75, color: '#16A34A' },
-  { id: 'endurance',        label: 'Endurance',         tier: 'C',  value: 30, color: '#8096B2' },
-]
+  const [sovereigntySet, setSovereigntySet] = useState(false)
+  const [phaseSet, setPhaseSet] = useState(false)
+  const [shadowsChecked, setShadowsChecked] = useState(false)
+  const [showNudges, setShowNudges] = useState(() => isFirstTime())
+  const sessionLogged = useRef(false)
 
-function getTimeOfDay() {
-  const h = new Date().getHours()
-  if (h >= 5 && h < 12) return { label: 'Morning Orientation', emoji: 'ðŸŒ…' }
-  if (h >= 12 && h < 17) return { label: 'Mid-Day Status', emoji: 'â˜€ï¸' }
-  if (h >= 17 && h < 21) return { label: 'Evening Integration', emoji: 'ðŸŒ†' }
-  return { label: 'Night Watch', emoji: 'ðŸŒ™' }
-}
+  const {
+    entries,
+    logSkill,
+    logShadow,
+    logSovereignty,
+    logLoopPhase,
+    logLoopComplete,
+    logCheckin,
+    logManualNote,
+    logSessionStart,
+    addNoteToEntry,
+    editEntryNote,
+    deleteEntry,
+    exportLog,
+    clearLog,
+    getStats
+  } = useActivityLog()
 
-export default function HUD() {
-  const [time, setTime] = useState(new Date())
-  const [sovereignty, setSovereignty] = useState(72)
-  const { label, emoji } = getTimeOfDay()
+  const [notePrompt, setNotePrompt] = useState({
+    isOpen: false,
+    pendingEntryId: null,
+    actionLabel: '',
+    undoData: null,
+  })
 
   useEffect(() => {
-    const t = setInterval(() => setTime(new Date()), 60000)
-    return () => clearInterval(t)
+    const timer = setInterval(() => setCurrentTime(new Date()), 60000)
+    return () => clearInterval(timer)
   }, [])
 
-  const timeStr = time.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
-  const dateStr = time.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })
+  const getTimeOfDay = () => {
+    const hour = currentTime.getHours()
+    if (hour >= 5 && hour < 12) return 'morning'
+    if (hour >= 12 && hour < 17) return 'afternoon'
+    if (hour >= 17 && hour < 21) return 'evening'
+    return 'night'
+  }
+
+  const getGreeting = () => {
+    const greetings = {
+      morning: 'Morning Orientation',
+      afternoon: 'Mid-Day Status',
+      evening: 'Evening Integration',
+      night: 'Night Watch'
+    }
+    return greetings[getTimeOfDay()]
+  }
+
+  const skillNames = {
+    gordian_cut: 'Gordian Cut',
+    decisive_intervention: 'Decisive Intervention',
+    galvanic_surge: 'Galvanic Surge',
+    sovereign_yield: 'Sovereign Yield',
+    walling: 'Walling'
+  }
+
+  const shadowNames = {
+    over_control: 'Over-Control State',
+    isolation_spiral: 'Isolation Spiral',
+    intensity_addiction: 'Intensity Addiction',
+    false_responsibility: 'False Responsibility'
+  }
+
+  const handleSkillActivate = (skillId, intensity, sovereigntyBefore) => {
+    const entryId = logSkill(skillId, intensity)
+    setNotePrompt({
+      isOpen: true,
+      pendingEntryId: entryId,
+      actionLabel: `${skillNames[skillId] || skillId} (${intensity.toUpperCase()})`,
+      undoData: { type: 'skill', sovereigntyBefore }
+    })
+  }
+
+  const handleShadowChange = (shadowId, intensity, previousIntensity) => {
+    setShadowsChecked(true)
+    gameState.setShadows({ ...shadows, [shadowId]: intensity })
+    const entryId = logShadow(shadowId, intensity)
+    const action = intensity ? 'detected' : 'cleared'
+    setNotePrompt({
+      isOpen: true,
+      pendingEntryId: entryId,
+      actionLabel: `${shadowNames[shadowId] || shadowId} ${action}${intensity ? ` (${intensity.toUpperCase()})` : ''}`,
+      undoData: { type: 'shadow', shadowId, previousIntensity }
+    })
+  }
+
+  const handleSovereigntyChange = (newValue, oldValue) => {
+    setSovereigntySet(true)
+    const entryId = logSovereignty(newValue, oldValue)
+    setNotePrompt({
+      isOpen: true,
+      pendingEntryId: entryId,
+      actionLabel: `Sovereignty: ${oldValue}% -> ${newValue}%`,
+      undoData: { type: 'sovereignty', previousValue: oldValue }
+    })
+  }
+
+  const handleLoopPhaseChange = (phase, previousPhase) => {
+    setPhaseSet(true)
+    gameState.setCurrentPhase(phase)
+    const entryId = logLoopPhase(phase)
+    setNotePrompt({
+      isOpen: true,
+      pendingEntryId: entryId,
+      actionLabel: `Loop phase: ${phase}`,
+      undoData: { type: 'loop', previousPhase }
+    })
+  }
+
+  const handleCheckinResponse = (question, answer) => {
+    const entryId = logCheckin(question, answer)
+    setNotePrompt({
+      isOpen: true,
+      pendingEntryId: entryId,
+      actionLabel: `Check-in: ${question} - ${answer}`,
+      undoData: { type: 'checkin' }
+    })
+  }
+
+  const handleNoteSubmit = (note) => {
+    if (note && notePrompt.pendingEntryId) {
+      addNoteToEntry(notePrompt.pendingEntryId, note)
+    }
+    setNotePrompt({ isOpen: false, pendingEntryId: null, actionLabel: '', undoData: null })
+  }
+
+  const handleNoteUndo = () => {
+    const { pendingEntryId, undoData } = notePrompt
+    if (pendingEntryId) deleteEntry(pendingEntryId)
+    if (undoData) {
+      if (undoData.type === 'sovereignty' && undoData.previousValue !== undefined) {
+        setSovereigntyLevel(undoData.previousValue)
+      } else if (undoData.type === 'skill' && undoData.sovereigntyBefore !== undefined) {
+        setSovereigntyLevel(undoData.sovereigntyBefore)
+      }
+    }
+    setNotePrompt({ isOpen: false, pendingEntryId: null, actionLabel: '', undoData: null })
+  }
+
+  const handleNudgesComplete = () => {
+    if (sessionLogged.current) return
+    sessionLogged.current = true
+    setShowNudges(false)
+    logSessionStart(sovereigntyLevel, null, {})
+  }
 
   return (
-    <div style={S.page}>
-      {/* Header */}
-      <div style={S.header}>
-        <h1 style={S.h1}>Command Center â€” David Smith</h1>
-        <p style={S.sub}>{emoji} {label} &nbsp;Â·&nbsp; {dateStr} &nbsp;Â·&nbsp; {timeStr}</p>
-      </div>
+    <div className="w-full min-h-screen">
+      <StickyResourceBar
+        sovereignty={sovereigntyLevel}
+        setSovereignty={setSovereigntyLevel}
+        onSovereigntyChange={handleSovereigntyChange}
+      />
 
-      {/* Stat cards */}
-      <div style={S.grid}>
-        <div style={S.card}>
-          <div style={S.cardLabel}><Target size={13} /> Sovereignty Level</div>
-          <div style={{ display: 'flex', alignItems: 'flex-end', gap: 12, marginBottom: 8 }}>
-            <div style={S.cardValue}>{sovereignty}</div>
-            <div style={{ fontSize: 13, color: '#8096B2', paddingBottom: 4 }}>/ 100</div>
-          </div>
-          <div style={{ height: 6, background: '#EFF4FA', borderRadius: 3, overflow: 'hidden' }}>
-            <div style={S.fill(sovereignty, sovereignty >= 70 ? '#00968F' : sovereignty >= 40 ? '#F59E0B' : '#EF4444')} />
-          </div>
-          <input type="range" min="0" max="100" value={sovereignty} onChange={e => setSovereignty(Number(e.target.value))}
-            style={{ width: '100%', marginTop: 8, accentColor: '#009DE0' }} />
-        </div>
-
-        <div style={S.card}>
-          <div style={S.cardLabel}><Zap size={13} /> Current Phase</div>
-          <div style={{ ...S.cardValue, fontSize: 18, lineHeight: 1.4 }}>Era 4</div>
-          <div style={S.cardSub}>Insurgent Systems Architect</div>
-          <div style={{ marginTop: 8 }}>
-            <span style={S.badge('#009DE0')}>Platform Leverage</span>
-          </div>
-        </div>
-
-        <div style={S.card}>
-          <div style={S.cardLabel}><Clock size={13} /> Loop Status</div>
-          <div style={{ ...S.cardValue, fontSize: 18, color: '#00968F' }}>Open Water</div>
-          <div style={S.cardSub}>Calm-generated meaning</div>
-          <div style={{ marginTop: 8 }}>
-            <span style={S.badge('#00968F')}>Steel Cable Active</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Core Attributes */}
-      <div style={S.section}>
-        <div style={S.sectionHeader}><Brain size={15} /> Core Attributes</div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 32px' }}>
-          {ATTRIBUTES.map(attr => (
-            <div key={attr.id} style={S.sliderWrap}>
-              <div style={S.sliderLabel}>
-                <span style={S.sliderName}>
-                  <span style={{ display: 'inline-block', width: 26, height: 16, borderRadius: 4, background: attr.color + '20', color: attr.color, fontSize: 10, fontWeight: 700, textAlign: 'center', lineHeight: '16px', marginRight: 6 }}>{attr.tier}</span>
-                  {attr.label}
-                </span>
-                <span style={S.sliderVal}>{attr.value}</span>
-              </div>
-              <div style={S.track}>
-                <div style={S.fill(attr.value, attr.color)} />
+      <div className="p-3 md:p-6 pb-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-4">
+          <div className="lg:col-span-2 space-y-3">
+            <div className="game-panel p-3">
+              <div className="flex justify-between items-center">
+                <div>
+                  <h1 className="font-game text-xl md:text-2xl text-game-gold glow-text">
+                    COMMAND CENTER
+                  </h1>
+                  <p className="text-game-text-muted text-xs">
+                    Meaning Under Chaos — v2.0
+                  </p>
+                </div>
+                <div className="text-right">
+                  <div className="text-lg font-game text-game-gold">
+                    {currentTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
+                  </div>
+                  <div className="text-xs text-game-text-muted">
+                    {currentTime.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
+                  </div>
+                </div>
               </div>
             </div>
-          ))}
+
+            <TimeContext timeOfDay={getTimeOfDay()} greeting={getGreeting()} />
+
+            <HorizontalSkills
+              sovereignty={sovereigntyLevel}
+              setSovereignty={setSovereigntyLevel}
+              onSkillActivate={handleSkillActivate}
+            />
+          </div>
+
+          <div className="h-full">
+            <ActivityLog
+              entries={entries}
+              onExport={exportLog}
+              onClear={clearLog}
+              onAddNote={logManualNote}
+              onEditNote={editEntryNote}
+              onDelete={deleteEntry}
+              stats={getStats()}
+            />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-4">
+          <div className="lg:col-span-1">
+            <DailyPrompts timeOfDay={getTimeOfDay()} onCheckinResponse={handleCheckinResponse} />
+          </div>
+          <div className="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4">
+            <LoopStatus
+              onPhaseChange={handleLoopPhaseChange}
+              entries={entries}
+              sovereignty={sovereigntyLevel}
+              initialPhase={currentPhase}
+            />
+            <ShadowMonitor
+              onShadowChange={handleShadowChange}
+              initialShadows={shadows}
+            />
+          </div>
+        </div>
+
+        <div className="mt-6 text-center text-game-text-dim text-xs">
+          <p>{getTimeOfDay().toUpperCase()} PROTOCOL ACTIVE</p>
         </div>
       </div>
 
-      {/* Where Are You / Shadow Monitor */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-        <div style={S.section}>
-          <div style={S.sectionHeader}><Activity size={15} /> Where Are You</div>
-          {[
-            { label: 'Emotional State', value: 'Regulated', color: '#00968F' },
-            { label: 'Energy Level', value: 'High Focus', color: '#009DE0' },
-            { label: 'Primary Mode', value: 'Builder', color: '#002C77' },
-            { label: 'Engagement', value: 'Fully Present', color: '#00968F' },
-          ].map(item => (
-            <div key={item.label} style={S.row}>
-              <span style={S.rowLabel}>{item.label}</span>
-              <span style={S.badge(item.color)}>{item.value}</span>
-            </div>
-          ))}
-        </div>
+      <NotePrompt
+        isOpen={notePrompt.isOpen}
+        onSubmit={handleNoteSubmit}
+        onUndo={handleNoteUndo}
+        actionLabel={notePrompt.actionLabel}
+      />
 
-        <div style={S.section}>
-          <div style={S.sectionHeader}><TrendingUp size={15} /> Active Context</div>
-          {[
-            { label: 'Priority Track', value: 'Q2 Deployment' },
-            { label: 'Key Initiative', value: 'SNMI' },
-            { label: 'Platform Focus', value: 'SA HUD + MMA' },
-            { label: 'Personal Work', value: 'Steel Cable Phase' },
-          ].map(item => (
-            <div key={item.label} style={S.row}>
-              <span style={S.rowLabel}>{item.label}</span>
-              <span style={S.rowValue}>{item.value}</span>
-            </div>
-          ))}
-        </div>
-      </div>
+      {showNudges && (
+        <FirstTimeNudges
+          onComplete={handleNudgesComplete}
+          sovereigntySet={sovereigntySet}
+          phaseSet={phaseSet}
+          shadowsChecked={shadowsChecked}
+        />
+      )}
     </div>
   )
 }
+
+export default HUD
