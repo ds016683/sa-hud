@@ -483,7 +483,7 @@ function AddIdeaModal({ onAdd, onClose }) {
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
-export default function IdeasPage({ sync }) {
+export default function IdeasPage() {
   const { ideas, addIdea, advanceStage, updateIdea, deleteIdea } = useIdeas()
   const [showModal, setShowModal] = useState(false)
   const [filterTag, setFilterTag] = useState('')
