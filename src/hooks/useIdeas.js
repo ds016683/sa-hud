@@ -30,7 +30,7 @@ export default function useIdeas() {
         .order('created_at', { ascending: false })
 
       if (error) { console.error('fetchIdeas error:', error); return }
-      setIdeas((data || []).map(normalizeIdea))
+      setIdeas((data || []).map(idea => normalizeIdea({ ...idea, name: idea.title || idea.name || "Untitled" })))
     } finally {
       setLoading(false)
     }
