@@ -1,725 +1,238 @@
-import { useState, useCallback } from 'react'
-import {
-  Lightbulb, ChevronDown, ChevronUp, Zap, GraduationCap,
-  Plus, Trash2, X, Tag, Clock, ChevronRight, Pencil, Check
-} from 'lucide-react'
-import {
-  DndContext,
-  DragOverlay,
-  PointerSensor,
-  useSensor,
-  useSensors,
-  closestCorners,
-} from '@dnd-kit/core'
-import {
-  SortableContext,
-  useSortable,
-  verticalListSortingStrategy,
-} from '@dnd-kit/sortable'
-import { CSS } from '@dnd-kit/utilities'
-import useIdeas, { STAGES } from '../hooks/useIdeas'
+import { useState } from 'react'
+import { Plus, X, ChevronRight, Trash2 } from 'lucide-react'
+import useIdeas from '../hooks/useIdeas'
 
-// ─── Constants ────────────────────────────────────────────────────────────────
+const STAGES = ['ideation', 'concept', 'attunement', 'disposition', 'completion']
 
 const STAGE_META = {
-  ideation: {
-    label: 'Ideation',
-    description: 'Raw thinking, no filter — voice memos, concept seeds',
-    encouragement: "Every great idea started here. What's on your mind?",
-  },
-  concept: {
-    label: 'Concept',
-    description: 'Raw thinking, no filter — voice memos, concept seeds',
-    encouragement: 'Shape the clay. What does this actually want to be?',
-  },
-  attunement: {
-    label: 'Attunement',
-    description: 'Raw thinking, no filter — voice memos, concept seeds',
-    encouragement: 'Steel-man it. What breaks this idea?',
-  },
-  disposition: {
-    label: 'Disposition',
-    description: 'Raw thinking, no filter — voice memos, concept seeds',
-    encouragement: 'What does this become? Name its destiny.',
-  },
-  completion: {
-    label: 'Completion',
-    description: 'Raw thinking, no filter — voice memos, concept seeds',
-    encouragement: 'Finish strong. What does done look like?',
-  },
+  ideation:   { label: 'Ideation',    color: '#002C77', count_color: '#8096B2' },
+  concept:    { label: 'Concept',     color: '#002C77', count_color: '#8096B2' },
+  attunement: { label: 'Attunement',  color: '#002C77', count_color: '#8096B2' },
+  disposition:{ label: 'Disposition', color: '#002C77', count_color: '#8096B2' },
+  completion: { label: 'Completion',  color: '#002C77', count_color: '#8096B2' },
 }
 
-const DISPOSITION_OPTIONS = ['Publish', 'Pitch', 'Build', 'Share', 'Archive']
-
-function formatDate(iso) {
-  if (!iso) return ''
-  const d = new Date(iso)
-  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+const S = {
+  page: { maxWidth: 1200, margin: '0 auto', padding: '24px 16px', fontFamily: 'Arial, Helvetica, sans-serif' },
+  header: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 },
+  h1: { fontSize: 20, fontWeight: 700, color: '#002C77', margin: 0 },
+  sub: { fontSize: 13, color: '#8096B2', margin: '2px 0 0' },
+  addBtn: { display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 16px', background: '#002C77', color: 'white', border: 'none', borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'Arial, Helvetica, sans-serif' },
+  filterRow: { display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 20 },
+  filterBtn: (active) => ({ padding: '4px 12px', borderRadius: 9999, border: '1px solid', fontSize: 12, cursor: 'pointer', fontFamily: 'Arial, Helvetica, sans-serif', fontWeight: active ? 600 : 400, background: active ? '#002C77' : 'white', color: active ? 'white' : '#334E85', borderColor: active ? '#002C77' : '#CBD8E8', transition: 'all 0.15s' }),
+  kanban: { display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 12, alignItems: 'start' },
+  col: { background: '#F7F9FC', borderRadius: 10, border: '1px solid #E2E8F0', overflow: 'hidden' },
+  colHeader: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', borderBottom: '1px solid #E2E8F0' },
+  colLabel: { fontSize: 11, fontWeight: 700, color: '#002C77', textTransform: 'uppercase', letterSpacing: '0.08em', fontFamily: 'Arial, Helvetica, sans-serif' },
+  colCount: { fontSize: 13, fontWeight: 700, color: '#8096B2', fontFamily: 'Arial, Helvetica, sans-serif' },
+  colBody: { padding: 8, display: 'flex', flexDirection: 'column', gap: 8, minHeight: 120 },
+  card: { background: 'white', border: '1px solid #E2E8F0', borderRadius: 8, padding: '10px 12px', boxShadow: '0 1px 2px rgba(0,0,0,0.04)', cursor: 'pointer', transition: 'box-shadow 0.15s, border-color 0.15s' },
+  cardTitle: { fontSize: 13, fontWeight: 600, color: '#002C77', marginBottom: 6, lineHeight: 1.4, fontFamily: 'Arial, Helvetica, sans-serif', wordBreak: 'break-word' },
+  cardDesc: { fontSize: 12, color: '#565656', lineHeight: 1.5, marginBottom: 6, fontFamily: 'Arial, Helvetica, sans-serif', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' },
+  tagRow: { display: 'flex', flexWrap: 'wrap', gap: 4 },
+  tag: { fontSize: 10, padding: '2px 6px', borderRadius: 4, background: '#EEF2F7', color: '#334E85', border: '1px solid #CBD8E8', fontFamily: 'Arial, Helvetica, sans-serif', whiteSpace: 'nowrap', maxWidth: 80, overflow: 'hidden', textOverflow: 'ellipsis' },
+  advBtn: { marginTop: 8, width: '100%', padding: '5px 0', background: 'white', border: '1px solid #CBD8E8', borderRadius: 6, fontSize: 11, color: '#8096B2', cursor: 'pointer', fontFamily: 'Arial, Helvetica, sans-serif', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4, transition: 'all 0.15s' },
 }
 
-function formatDateShort(iso) {
-  if (!iso) return ''
-  const d = new Date(iso)
-  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-}
-
-// ─── Stage Progress Bar ───────────────────────────────────────────────────────
-
-function StageProgressBar({ stage }) {
-  const currentIndex = STAGES.indexOf(stage)
-  return (
-    <div className="flex gap-0.5">
-      {STAGES.map((s, i) => (
-        <div
-          key={s}
-          className={`h-1 flex-1 rounded-full transition-colors ${
-            i <= currentIndex ? 'bg-gray-100' : 'bg-gray-200'
-          }`}
-        />
-      ))}
-    </div>
-  )
-}
-
-// ─── Idea Card ────────────────────────────────────────────────────────────────
-
-function IdeaCard({ idea, onAdvance, onUpdate, onDelete, isDragOverlay = false }) {
-  const [expanded, setExpanded] = useState(false)
-  const [editingTitle, setEditingTitle] = useState(false)
-  const [titleDraft, setTitleDraft] = useState(idea.name || idea.title || 'Untitled')
-  const [showHistory, setShowHistory] = useState(false)
-  const [newTag, setNewTag] = useState('')
-  const [addingTag, setAddingTag] = useState(false)
-
-  const currentMeta = STAGE_META[idea.stage]
-  const isCompletion = idea.stage === 'completion'
-  const isDisposition = idea.stage === 'disposition'
-
-  const handleTitleSave = () => {
-    const trimmed = titleDraft.trim()
-    if (trimmed && trimmed !== idea.name) {
-      onUpdate(idea.id, { name: trimmed })
-    }
-    setEditingTitle(false)
-  }
-
-  const handleTagAdd = () => {
-    const t = newTag.trim().toLowerCase()
-    if (t && !idea.tags.includes(t)) {
-      onUpdate(idea.id, { tags: [...idea.tags, t] })
-    }
-    setNewTag('')
-    setAddingTag(false)
-  }
-
-  const handleTagRemove = (tag) => {
-    onUpdate(idea.id, { tags: idea.tags.filter(t => t !== tag) })
-  }
-
-  const handleDispositionToggle = (opt) => {
-    const current = idea.disposition_options || []
-    const next = current.includes(opt)
-      ? current.filter(o => o !== opt)
-      : [...current, opt]
-    onUpdate(idea.id, { disposition_options: next })
-  }
+function IdeaCard({ idea, onAdvance, onDelete, onSelect }) {
+  const tags = (idea.tags || []).slice(0, 3)
+  const isLast = idea.stage === 'completion'
 
   return (
     <div
-      className={`bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition-shadow relative group ${
-        isDragOverlay ? 'rotate-1 shadow-lg' : ''
-      }`}
-      style={{ borderLeft: '3px solid #009DE0' }}
+      style={S.card}
+      onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 3px 8px rgba(0,0,0,0.1)'; e.currentTarget.style.borderColor = 'rgba(0,157,224,0.4)' }}
+      onMouseLeave={e => { e.currentTarget.style.boxShadow = '0 1px 2px rgba(0,0,0,0.04)'; e.currentTarget.style.borderColor = '#E2E8F0' }}
     >
-      <div className="p-3 space-y-2.5">
-        {/* Title row */}
-        <div className="flex items-start gap-2">
-          {editingTitle ? (
-            <input
-              autoFocus
-              value={titleDraft}
-              onChange={e => setTitleDraft(e.target.value)}
-              onBlur={handleTitleSave}
-              onKeyDown={e => { if (e.key === 'Enter') handleTitleSave(); if (e.key === 'Escape') setEditingTitle(false) }}
-              className="flex-1 text-sm font-semibold text-gray-900 border border-gray-200 rounded px-1.5 py-0.5 focus:outline-none focus:ring-1 focus:ring-blue-400"
-            />
-          ) : (
-            <h3
-              className="flex-1 text-sm font-semibold text-gray-900 leading-snug cursor-pointer hover:text-[#002C77] transition-colors"
-              onClick={() => { setEditingTitle(true); setTitleDraft(idea.name) }}
-              title="Click to edit"
-            >
-              {idea.name}
-            </h3>
-          )}
-          <button
-            onClick={() => onDelete(idea.id)}
-            className="text-gray-800 hover:text-red-400 transition-colors flex-shrink-0 opacity-0 group-hover:opacity-100"
-            title="Delete"
-          >
-            <Trash2 size={12} />
-          </button>
-        </div>
-
-        {/* Stage progress bar */}
-        <StageProgressBar stage={idea.stage} />
-
-        {/* Stage label */}
-        <p className="text-sm text-[#002C77] font-mono">
-          {currentMeta.label} — {idea.description || ''}
-        </p>
-
-        {/* Tags */}
-        <div className="flex flex-wrap gap-1 items-center">
-          {idea.tags.map(tag => (
-            <span
-              key={tag}
-              className="idea-tag"
-            >
-              {tag}
-              <button onClick={() => handleTagRemove(tag)} className="hover:text-red-400 transition-colors">
-                <X size={8} />
-              </button>
-            </span>
-          ))}
-          {addingTag ? (
-            <input
-              autoFocus
-              value={newTag}
-              onChange={e => setNewTag(e.target.value)}
-              onBlur={handleTagAdd}
-              onKeyDown={e => { if (e.key === 'Enter') handleTagAdd(); if (e.key === 'Escape') { setAddingTag(false); setNewTag('') } }}
-              placeholder="tag…"
-              className="w-16 text-sm font-mono border border-gray-200 rounded-full px-1.5 py-0.5 focus:outline-none focus:ring-1 focus:ring-blue-400"
-            />
-          ) : (
-            <button
-              onClick={() => setAddingTag(true)}
-              className="flex items-center gap-0.5 px-1.5 py-0.5 text-sm text-gray-800 hover:text-[#002C77] transition-colors border border-dashed border-gray-200 hover:border-gray-200 rounded-full"
-            >
-              <Tag size={8} /> tag
-            </button>
-          )}
-        </div>
-
-        {/* Next action */}
-        <div>
-          <label className="text-sm text-gray-800 uppercase tracking-wider font-mono">Next action</label>
-          <input
-            value={idea.next_action || ''}
-            onChange={e => onUpdate(idea.id, { next_action: e.target.value })}
-            placeholder="What's the one thing to move this forward?"
-            className="w-full mt-0.5 text-sm text-gray-700 border border-gray-100 rounded px-2 py-1 focus:outline-none focus:border-gray-200 bg-gray-50 placeholder:text-gray-800"
-          />
-        </div>
-
-        {/* Context/notes — expandable */}
-        <div>
-          <button
-            onClick={() => setExpanded(e => !e)}
-            className="flex items-center gap-1 text-sm text-gray-800 hover:text-[#002C77] transition-colors uppercase tracking-wider font-mono"
-          >
-            {expanded ? <ChevronUp size={10} /> : <ChevronDown size={10} />}
-            Notes {idea.context ? '·' : '(empty)'}
-          </button>
-          {expanded && (
-            <textarea
-              value={idea.context || ''}
-              onChange={e => onUpdate(idea.id, { context: e.target.value })}
-              placeholder="Add context, notes, or braindump…"
-              rows={3}
-              className="w-full mt-1 text-sm text-gray-700 border border-gray-200 rounded px-2 py-1.5 focus:outline-none focus:border-gray-200 resize-none bg-gray-50 placeholder:text-gray-800"
-            />
-          )}
-        </div>
-
-        {/* Dropbox path */}
-        <div>
-          <label className="text-sm text-gray-800 uppercase tracking-wider font-mono">Dropbox path</label>
-          <input
-            value={idea.dropbox_path || ''}
-            onChange={e => onUpdate(idea.id, { dropbox_path: e.target.value })}
-            placeholder="Optional — where does the material live?"
-            className="w-full mt-0.5 text-sm text-gray-700 border border-gray-100 rounded px-2 py-1 focus:outline-none focus:border-gray-200 bg-gray-50 placeholder:text-gray-800 font-mono"
-          />
-        </div>
-
-        {/* Disposition options — only when at disposition stage */}
-        {isDisposition && (
-          <div>
-            <label className="text-xs text-[#2E5FA3] uppercase tracking-wider font-mono mb-1 block">Disposition</label>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 4, maxWidth: "100%", overflow: "hidden" }}>
-              {DISPOSITION_OPTIONS.map(opt => {
-                const selected = (idea.disposition_options || []).includes(opt)
-                return (
-                  <button
-                    key={opt}
-                    onClick={() => handleDispositionToggle(opt)}
-                    className={`flex items-center gap-1 px-2 py-0.5 text-sm font-mono rounded border transition-colors ${
-                      selected
-                        ? 'bg-gray-100 text-[#002C77] border-gray-200'
-                        : 'bg-gray-50 text-gray-700 border-gray-200 hover:border-gray-200'
-                    }`}
-                  >
-                    {selected && <Check size={8} />}
-                    {opt}
-                  </button>
-                )
-              })}
-            </div>
-          </div>
-        )}
-
-        {/* Stage history — collapsible */}
-        {idea.stage_history && idea.stage_history.length > 1 && (
-          <div>
-            <button
-              onClick={() => setShowHistory(h => !h)}
-              className="flex items-center gap-1 text-sm text-gray-800 hover:text-[#002C77] transition-colors uppercase tracking-wider font-mono"
-            >
-              <Clock size={8} />
-              History {showHistory ? '▲' : '▼'}
-            </button>
-            {showHistory && (
-              <div className="mt-1 space-y-0.5 pl-2 border-l border-gray-100">
-                {idea.stage_history.map((s, i) => (
-                  <p key={i} className="text-sm text-gray-800 font-mono">
-                    → {STAGE_META[s]?.label || s}
-                  </p>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Dates */}
-        <div className="flex gap-3 pt-0.5">
-          <span className="text-[9px] text-gray-800 font-mono">Created {formatDateShort(idea.created_at)}</span>
-          {idea.last_modified !== idea.created_at && (
-            <span className="text-[9px] text-gray-800 font-mono">Modified {formatDateShort(idea.last_modified)}</span>
-          )}
-        </div>
-
-        {/* Action buttons */}
-        <div className="flex gap-2 pt-1">
-          {!isCompletion && (
-            <button
-              onClick={() => onAdvance(idea.id)}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-mono bg-gray-100 text-[#002C77] border border-gray-200 rounded hover:bg-gray-100 transition-colors"
-            >
-              <Zap size={11} />
-              Advance Stage
-            </button>
-          )}
-          {isCompletion && (
-            <button
-              onClick={() => alert('Graduate to Portfolio: coming soon. Wire into your Portfolio workflow.')}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-mono bg-emerald-50 text-emerald-700 border border-emerald-200 rounded hover:bg-emerald-100 transition-colors"
-            >
-              <GraduationCap size={11} />
-              Graduate to Portfolio
-            </button>
-          )}
-        </div>
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
+        <div style={S.cardTitle} onClick={() => onSelect(idea)}>{idea.name || idea.title || 'Untitled'}</div>
+        <button onClick={() => onDelete(idea.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#CBD8E8', padding: '2px 4px', flexShrink: 0, borderRadius: 4, display: 'flex' }}
+          onMouseEnter={e => e.currentTarget.style.color = '#EF4444'}
+          onMouseLeave={e => e.currentTarget.style.color = '#CBD8E8'}>
+          <Trash2 size={12} />
+        </button>
       </div>
-    </div>
-  )
-}
 
-// ─── Sortable Idea Card (drag wrapper) ────────────────────────────────────────
+      {idea.description && (
+        <div style={S.cardDesc}>{idea.description}</div>
+      )}
 
-function SortableIdeaCard({ idea, onAdvance, onUpdate, onDelete }) {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id: idea.id, data: { stage: idea.stage } })
+      {tags.length > 0 && (
+        <div style={S.tagRow}>
+          {tags.map(t => <span key={t} style={S.tag}>#{t}</span>)}
+          {(idea.tags || []).length > 3 && <span style={{ ...S.tag, background: 'transparent', border: 'none', color: '#8096B2' }}>+{(idea.tags || []).length - 3}</span>}
+        </div>
+      )}
 
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.4 : 1,
-  }
-
-  return (
-    <div ref={setNodeRef} style={style}>
-      <div className="relative">
-        {/* Drag handle */}
-        <div
-          {...attributes}
-          {...listeners}
-          className="absolute top-2 right-8 w-5 h-5 flex items-center justify-center text-gray-800 hover:text-[#002C77] cursor-grab active:cursor-grabbing z-10 opacity-0 group-hover:opacity-100 transition-opacity"
-          title="Drag to reorder"
+      {!isLast && (
+        <button
+          style={S.advBtn}
+          onClick={() => onAdvance(idea.id, idea.stage)}
+          onMouseEnter={e => { e.currentTarget.style.background = '#002C77'; e.currentTarget.style.color = 'white'; e.currentTarget.style.borderColor = '#002C77' }}
+          onMouseLeave={e => { e.currentTarget.style.background = 'white'; e.currentTarget.style.color = '#8096B2'; e.currentTarget.style.borderColor = '#CBD8E8' }}
         >
-          ⠿
-        </div>
-        <IdeaCard
-          idea={idea}
-          onAdvance={onAdvance}
-          onUpdate={onUpdate}
-          onDelete={onDelete}
-        />
-      </div>
+          Advance <ChevronRight size={11} />
+        </button>
+      )}
     </div>
   )
 }
 
-// ─── Kanban Column ────────────────────────────────────────────────────────────
+function DetailPanel({ idea, onClose, onUpdate }) {
+  const [title, setTitle] = useState(idea.name || idea.title || '')
+  const [desc, setDesc] = useState(idea.description || '')
+  const [nextAction, setNextAction] = useState(idea.next_action || '')
+  const [saved, setSaved] = useState(false)
 
-function KanbanColumn({ stage, ideas, onAdvance, onUpdate, onDelete, isFiltered }) {
-  const meta = STAGE_META[stage]
-  const stageIdeas = ideas.filter(i => i.stage === stage)
-
-  return (
-    <div className="flex flex-col min-w-0" style={{ minWidth: 260, maxWidth: 320, flex: '1 1 260px' }}>
-      {/* Column header */}
-      <div className="mb-3">
-        <div className="flex items-center justify-between mb-1">
-          <span
-            className="text-sm font-semibold px-2.5 py-1 rounded-full font-mono uppercase tracking-wider"
-            style={{ background: '#E6F5FD', color: '#002C77' }}
-          >
-            {meta.label}
-          </span>
-          <span className="text-sm text-gray-800 font-mono">
-            {stageIdeas.length}
-          </span>
-        </div>
-        <p className="text-sm text-gray-800 font-mono leading-relaxed px-0.5">{meta.description}</p>
-      </div>
-
-      {/* Cards */}
-      <SortableContext items={stageIdeas.map(i => i.id)} strategy={verticalListSortingStrategy}>
-        <div className="flex flex-col gap-2 flex-1">
-          {stageIdeas.length === 0 ? (
-            <div className="border border-dashed border-gray-200 rounded-lg p-4 text-center">
-              <p className="text-[11px] text-gray-800 font-mono italic">{meta.encouragement}</p>
-            </div>
-          ) : (
-            stageIdeas.map(idea => (
-              <SortableIdeaCard
-                key={idea.id}
-                idea={idea}
-                onAdvance={onAdvance}
-                onUpdate={onUpdate}
-                onDelete={onDelete}
-              />
-            ))
-          )}
-        </div>
-      </SortableContext>
-    </div>
-  )
-}
-
-// ─── Add Idea Modal ───────────────────────────────────────────────────────────
-
-function AddIdeaModal({ onAdd, onClose }) {
-  const [title, setTitle] = useState('')
-  const [tagsInput, setTagsInput] = useState('')
-
-  const handleSubmit = (e) => {
-    e.preventDefault()
-    const trimmed = title.trim()
-    if (!trimmed) return
-    const tags = tagsInput.split(',').map(t => t.trim().toLowerCase()).filter(Boolean)
-    onAdd(trimmed, tags)
-    onClose()
+  const save = () => {
+    onUpdate(idea.id, { name: title, title, description: desc, next_action: nextAction })
+    setSaved(true)
+    setTimeout(() => setSaved(false), 1500)
   }
 
   return (
-    <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-5 space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="font-semibold text-gray-900 text-sm" style={{ color: '#002C77' }}>New Idea</h2>
-          <button onClick={onClose} className="text-gray-800 hover:text-gray-800 transition-colors">
-            <X size={18} />
-          </button>
+    <div style={{ position: 'fixed', top: 0, right: 0, bottom: 0, width: 400, background: 'white', borderLeft: '1px solid #E2E8F0', boxShadow: '-4px 0 20px rgba(0,0,0,0.08)', zIndex: 500, display: 'flex', flexDirection: 'column', fontFamily: 'Arial, Helvetica, sans-serif' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: '1px solid #E2E8F0' }}>
+        <span style={{ fontSize: 13, fontWeight: 700, color: '#002C77', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{STAGE_META[idea.stage]?.label}</span>
+        <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#8096B2', display: 'flex', padding: 4, borderRadius: 6 }}>
+          <X size={16} />
+        </button>
+      </div>
+      <div style={{ flex: 1, padding: 20, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <div>
+          <label style={{ fontSize: 11, fontWeight: 600, color: '#8096B2', textTransform: 'uppercase', letterSpacing: '0.08em', display: 'block', marginBottom: 6 }}>Title</label>
+          <input value={title} onChange={e => setTitle(e.target.value)} style={{ width: '100%', border: '1px solid #CBD8E8', borderRadius: 8, padding: '8px 12px', fontSize: 14, fontFamily: 'Arial, Helvetica, sans-serif', color: '#002C77', outline: 'none', boxSizing: 'border-box' }}
+            onFocus={e => e.target.style.borderColor = '#009DE0'} onBlur={e => e.target.style.borderColor = '#CBD8E8'} />
         </div>
-        <form onSubmit={handleSubmit} className="space-y-3">
+        <div>
+          <label style={{ fontSize: 11, fontWeight: 600, color: '#8096B2', textTransform: 'uppercase', letterSpacing: '0.08em', display: 'block', marginBottom: 6 }}>Description</label>
+          <textarea value={desc} onChange={e => setDesc(e.target.value)} rows={4} style={{ width: '100%', border: '1px solid #CBD8E8', borderRadius: 8, padding: '8px 12px', fontSize: 13, fontFamily: 'Arial, Helvetica, sans-serif', color: '#334E85', outline: 'none', resize: 'vertical', boxSizing: 'border-box', lineHeight: 1.6 }}
+            onFocus={e => e.target.style.borderColor = '#009DE0'} onBlur={e => e.target.style.borderColor = '#CBD8E8'} />
+        </div>
+        <div>
+          <label style={{ fontSize: 11, fontWeight: 600, color: '#8096B2', textTransform: 'uppercase', letterSpacing: '0.08em', display: 'block', marginBottom: 6 }}>Next Action</label>
+          <input value={nextAction} onChange={e => setNextAction(e.target.value)} style={{ width: '100%', border: '1px solid #CBD8E8', borderRadius: 8, padding: '8px 12px', fontSize: 13, fontFamily: 'Arial, Helvetica, sans-serif', color: '#334E85', outline: 'none', boxSizing: 'border-box' }}
+            onFocus={e => e.target.style.borderColor = '#009DE0'} onBlur={e => e.target.style.borderColor = '#CBD8E8'} />
+        </div>
+        {idea.tags?.length > 0 && (
           <div>
-            <label className="text-xs text-[#2E5FA3] font-mono uppercase tracking-wider block mb-1">Title</label>
-            <input
-              autoFocus
-              value={title}
-              onChange={e => setTitle(e.target.value)}
-              placeholder="What's the idea?"
-              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent"
-            />
+            <label style={{ fontSize: 11, fontWeight: 600, color: '#8096B2', textTransform: 'uppercase', letterSpacing: '0.08em', display: 'block', marginBottom: 6 }}>Tags</label>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+              {idea.tags.map(t => <span key={t} style={{ fontSize: 12, padding: '3px 10px', borderRadius: 9999, background: '#EEF2F7', color: '#334E85', border: '1px solid #CBD8E8' }}>#{t}</span>)}
+            </div>
           </div>
-          <div>
-            <label className="text-xs text-[#2E5FA3] font-mono uppercase tracking-wider block mb-1">Tags <span className="normal-case text-gray-800">(comma-separated, optional)</span></label>
-            <input
-              value={tagsInput}
-              onChange={e => setTagsInput(e.target.value)}
-              placeholder="e.g. snmi, strategy, writing"
-              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent"
-            />
-          </div>
-          <div className="flex gap-2 pt-1">
-            <button
-              type="submit"
-              disabled={!title.trim()}
-              className="flex-1 py-2 text-sm font-semibold rounded-lg bg-[#002C77] text-white hover:bg-gray-100 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              Add to Pipeline
-            </button>
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 text-sm text-gray-700 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors"
-            >
-              Cancel
-            </button>
-          </div>
-        </form>
+        )}
+      </div>
+      <div style={{ padding: '12px 20px', borderTop: '1px solid #E2E8F0' }}>
+        <button onClick={save} style={{ width: '100%', padding: '9px 0', background: saved ? '#00968F' : '#002C77', color: 'white', border: 'none', borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'Arial, Helvetica, sans-serif', transition: 'background 0.2s' }}>
+          {saved ? 'Saved!' : 'Save Changes'}
+        </button>
       </div>
     </div>
   )
 }
-
-// ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function IdeasPage() {
-  const { ideas, addIdea, advanceStage, updateIdea, deleteIdea } = useIdeas()
-  const [showModal, setShowModal] = useState(false)
-  const [filterTag, setFilterTag] = useState('')
-  const [filterStage, setFilterStage] = useState('')
-  const [activeId, setActiveId] = useState(null)
+  const { ideas, addIdea, updateIdea, deleteIdea, advanceStage, loading } = useIdeas()
+  const [filter, setFilter] = useState('all')
+  const [selected, setSelected] = useState(null)
+  const [addingTitle, setAddingTitle] = useState('')
+  const [addingStage, setAddingStage] = useState('ideation')
+  const [showAdd, setShowAdd] = useState(false)
 
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
-  )
+  const filtered = filter === 'all' ? ideas : ideas.filter(i => i.stage === filter)
 
-  // Collect all tags
-  const allTags = [...new Set(ideas.flatMap(i => i.tags || []))].sort()
+  const handleAdd = async () => {
+    if (!addingTitle.trim()) return
+    await addIdea(addingTitle.trim())
+    setAddingTitle('')
+    setShowAdd(false)
+  }
 
-  // Filtered ideas
-  const filteredIdeas = ideas.filter(idea => {
-    if (filterTag && !idea.tags.includes(filterTag)) return false
-    if (filterStage && idea.stage !== filterStage) return false
-    return true
-  })
-
-  const handleAdd = (name, tags) => {
-    addIdea(name)
-    // Update tags immediately after add
-    setTimeout(() => {
-      // addIdea adds to front, so update the first matching new idea
-    }, 0)
-    // We need to handle tags in addIdea or do a follow-up update
-    // Since addIdea doesn't take tags, we'll add tags via a workaround:
-    // Actually addIdea adds to front with empty tags — let's update after
-    // This will be handled by updating the idea after creation in a callback
-    if (tags.length > 0) {
-      // We need the new idea's id — use a small hack: update first idea with matching name
-      // This is safe since we just added it
-      setShowModal(false)
+  const handleAdvance = (id, currentStage) => {
+    const idx = STAGES.indexOf(currentStage)
+    if (idx < STAGES.length - 1) {
+      updateIdea(id, { stage: STAGES[idx + 1] })
     }
   }
-
-  const handleAddWithTags = (name, tags) => {
-    // We'll call addIdea and then update — but we need the id
-    // Since ideas state updates asynchronously, we compute the id ourselves
-    const id = crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36)
-    // Instead, just use addIdea which handles id internally
-    // The simplest approach: extend addIdea or just do tags separately
-    addIdea(name)
-    if (tags.length > 0) {
-      // After state updates, the new idea is at ideas[0] (prepended)
-      // We'll do a quick timeout to update tags
-      requestAnimationFrame(() => {
-        setIdeasTagPatch({ name, tags })
-      })
-    }
-    setShowModal(false)
-  }
-
-  // Tag patch state for post-add tag assignment
-  const [ideasTagPatch, setIdeasTagPatch] = useState(null)
-
-  // Apply tag patch after render
-  if (ideasTagPatch) {
-    const target = ideas.find(i => i.name === ideasTagPatch.name && (!i.tags || i.tags.length === 0))
-    if (target) {
-      updateIdea(target.id, { tags: ideasTagPatch.tags })
-      setIdeasTagPatch(null)
-    }
-  }
-
-  const handleDragStart = (event) => {
-    setActiveId(event.active.id)
-  }
-
-  const handleDragEnd = (event) => {
-    const { active, over } = event
-    setActiveId(null)
-
-    if (!over || active.id === over.id) return
-
-    // Determine target stage from over element's data or find idea
-    const overIdea = ideas.find(i => i.id === over.id)
-    if (overIdea && overIdea.stage !== active.data?.current?.stage) {
-      updateIdea(active.id, { stage: overIdea.stage })
-    }
-  }
-
-  const handleDragOver = (event) => {
-    const { active, over } = event
-    if (!over) return
-
-    const overIdea = ideas.find(i => i.id === over.id)
-    const activeIdea = ideas.find(i => i.id === active.id)
-
-    if (overIdea && activeIdea && overIdea.stage !== activeIdea.stage) {
-      // Move card to target column stage
-      updateIdea(active.id, { stage: overIdea.stage })
-    }
-  }
-
-  const activeIdea = activeId ? ideas.find(i => i.id === activeId) : null
-
-  const totalIdeas = ideas.length
-  const stageCount = STAGES.reduce((acc, s) => {
-    acc[s] = ideas.filter(i => i.stage === s).length
-    return acc
-  }, {})
 
   return (
-    <div className="min-h-screen px-4 py-6" style={{ background: '#F8F7FF' }}>
+    <div style={S.page}>
       {/* Header */}
-      <div className="max-w-[1400px] mx-auto">
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-lg bg-gray-100 flex items-center justify-center">
-              <Lightbulb size={18} className="text-[#002C77]" />
-            </div>
-            <div>
-              <h1 className="font-mono text-lg font-bold uppercase tracking-widest" style={{ color: '#002C77' }}>
-                Ideas Pipeline
-              </h1>
-              <p className="text-sm text-gray-800 font-mono mt-0.5">
-                {totalIdeas} idea{totalIdeas !== 1 ? 's' : ''} in pipeline
-              </p>
-            </div>
-          </div>
-          <button
-            onClick={() => setShowModal(true)}
-            className="flex items-center gap-2 px-4 py-2 text-sm font-semibold bg-[#002C77] text-white rounded-lg hover:bg-gray-100 transition-colors shadow-sm"
-          >
-            <Plus size={16} />
-            New Idea
-          </button>
+      <div style={S.header}>
+        <div>
+          <h1 style={S.h1}>Ideas Pipeline</h1>
+          <p style={S.sub}>{ideas.length} idea{ideas.length !== 1 ? 's' : ''} in pipeline</p>
         </div>
-
-        {/* Filter bar */}
-        <div className="flex flex-wrap gap-2 mb-6 items-center">
-          <span className="text-sm text-gray-800 font-mono uppercase tracking-wider mr-1">Filter:</span>
-
-          {/* Stage filter */}
-          <div className="flex gap-1">
-            <button
-              onClick={() => setFilterStage('')}
-              className={`px-2.5 py-1 text-sm font-mono rounded border transition-colors ${
-                !filterStage ? 'bg-gray-100 text-[#002C77] border-gray-200' : 'text-gray-800 border-gray-200 hover:border-gray-200'
-              }`}
-            >
-              All stages
-            </button>
-            {STAGES.map(s => (
-              <button
-                key={s}
-                onClick={() => setFilterStage(filterStage === s ? '' : s)}
-                className={`px-2.5 py-1 text-sm font-mono rounded border transition-colors ${
-                  filterStage === s ? 'bg-gray-100 text-[#002C77] border-gray-200' : 'text-gray-800 border-gray-200 hover:border-gray-200'
-                }`}
-              >
-                {STAGE_META[s].label} ({stageCount[s]})
-              </button>
-            ))}
-          </div>
-
-          {/* Tag filter */}
-          {allTags.length > 0 && (
-            <div className="flex gap-1 items-center ml-2 pl-2 border-l border-gray-200">
-              <button
-                onClick={() => setFilterTag('')}
-                className={`px-2.5 py-1 text-sm font-mono rounded border transition-colors ${
-                  !filterTag ? 'bg-gray-100 text-[#002C77] border-gray-200' : 'text-gray-800 border-gray-200 hover:border-gray-200'
-                }`}
-              >
-                All tags
-              </button>
-              {allTags.map(tag => (
-                <button
-                  key={tag}
-                  onClick={() => setFilterTag(filterTag === tag ? '' : tag)}
-                  className={`px-2.5 py-1 text-sm font-mono rounded border transition-colors ${
-                    filterTag === tag ? 'bg-gray-100 text-[#002C77] border-gray-200' : 'text-gray-800 border-gray-200 hover:border-gray-200'
-                  }`}
-                >
-                  #{tag}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Kanban board */}
-        <DndContext
-          sensors={sensors}
-          collisionDetection={closestCorners}
-          onDragStart={handleDragStart}
-          onDragOver={handleDragOver}
-          onDragEnd={handleDragEnd}
-        >
-          <div className="flex gap-4 overflow-x-auto pb-4" style={{ alignItems: 'flex-start' }}>
-            {STAGES.map(stage => (
-              <KanbanColumn
-                key={stage}
-                stage={stage}
-                ideas={filteredIdeas}
-                onAdvance={advanceStage}
-                onUpdate={updateIdea}
-                onDelete={deleteIdea}
-              />
-            ))}
-          </div>
-
-          <DragOverlay>
-            {activeIdea ? (
-              <IdeaCard
-                idea={activeIdea}
-                onAdvance={() => {}}
-                onUpdate={() => {}}
-                onDelete={() => {}}
-                isDragOverlay
-              />
-            ) : null}
-          </DragOverlay>
-        </DndContext>
-
-        {/* Empty state (no ideas at all) */}
-        {ideas.length === 0 && (
-          <div className="text-center py-20 space-y-3">
-            <div className="w-16 h-16 rounded-2xl bg-gray-100 flex items-center justify-center mx-auto">
-              <Lightbulb size={28} className="text-[#002C77]" />
-            </div>
-            <p className="text-gray-700 font-mono text-sm">No ideas in the pipeline yet.</p>
-            <p className="text-gray-800 text-sm">Hit "New Idea" to plant the first seed.</p>
-          </div>
-        )}
+        <button style={S.addBtn} onClick={() => setShowAdd(true)}>
+          <Plus size={14} /> New Idea
+        </button>
       </div>
 
-      {/* Add modal */}
-      {showModal && (
-        <AddIdeaModal
-          onAdd={handleAddWithTags}
-          onClose={() => setShowModal(false)}
-        />
+      {/* Add form */}
+      {showAdd && (
+        <div style={{ background: 'white', border: '1px solid #E2E8F0', borderRadius: 12, padding: 16, marginBottom: 20, boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
+          <input
+            autoFocus
+            value={addingTitle}
+            onChange={e => setAddingTitle(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter') handleAdd(); if (e.key === 'Escape') setShowAdd(false) }}
+            placeholder="Name this idea..."
+            style={{ width: '100%', border: '1px solid #CBD8E8', borderRadius: 8, padding: '8px 12px', fontSize: 14, fontFamily: 'Arial, Helvetica, sans-serif', color: '#002C77', outline: 'none', marginBottom: 10, boxSizing: 'border-box' }}
+          />
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+            <button onClick={() => setShowAdd(false)} style={{ padding: '6px 14px', borderRadius: 8, border: '1px solid #E2E8F0', background: 'white', fontSize: 13, color: '#6B7280', cursor: 'pointer', fontFamily: 'Arial, Helvetica, sans-serif' }}>Cancel</button>
+            <button onClick={handleAdd} style={{ padding: '6px 14px', borderRadius: 8, border: 'none', background: '#002C77', color: 'white', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'Arial, Helvetica, sans-serif' }}>Add</button>
+          </div>
+        </div>
+      )}
+
+      {/* Stage filter */}
+      <div style={S.filterRow}>
+        <button style={S.filterBtn(filter === 'all')} onClick={() => setFilter('all')}>All stages</button>
+        {STAGES.map(s => (
+          <button key={s} style={S.filterBtn(filter === s)} onClick={() => setFilter(filter === s ? 'all' : s)}>
+            {STAGE_META[s].label} ({ideas.filter(i => i.stage === s).length})
+          </button>
+        ))}
+      </div>
+
+      {/* Kanban */}
+      <div style={S.kanban}>
+        {STAGES.map(stage => {
+          const stageIdeas = filtered.filter(i => i.stage === stage)
+          const meta = STAGE_META[stage]
+          return (
+            <div key={stage} style={S.col}>
+              <div style={S.colHeader}>
+                <span style={S.colLabel}>{meta.label}</span>
+                <span style={S.colCount}>{stageIdeas.length}</span>
+              </div>
+              <div style={S.colBody}>
+                {stageIdeas.map(idea => (
+                  <IdeaCard
+                    key={idea.id}
+                    idea={idea}
+                    onAdvance={handleAdvance}
+                    onDelete={deleteIdea}
+                    onSelect={setSelected}
+                  />
+                ))}
+                {stageIdeas.length === 0 && (
+                  <div style={{ textAlign: 'center', padding: '20px 0', color: '#CBD8E8', fontSize: 12, fontFamily: 'Arial, Helvetica, sans-serif' }}>Empty</div>
+                )}
+              </div>
+            </div>
+          )
+        })}
+      </div>
+
+      {/* Detail panel */}
+      {selected && (
+        <>
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.15)', zIndex: 499 }} onClick={() => setSelected(null)} />
+          <DetailPanel idea={selected} onClose={() => setSelected(null)} onUpdate={(id, updates) => { updateIdea(id, updates); setSelected(prev => ({ ...prev, ...updates })) }} />
+        </>
       )}
     </div>
   )
