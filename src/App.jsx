@@ -35,7 +35,7 @@ function App() {
                 onClick={() => setActiveTab(tab.id)}
                 className={`flex items-center gap-2 px-4 py-2.5 text-xs font-mono uppercase tracking-wider transition-colors border-b-2 ${
                   isActive
-                    ? 'text-violet-300 border-violet-400'
+                    ? 'text-white/80 border-violet-400'
                     : 'text-game-text-dim border-transparent hover:text-white hover:border-white/20'
                 }`}
               >
