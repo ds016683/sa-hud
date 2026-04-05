@@ -31,18 +31,18 @@
 
   .game-button {
     @apply relative px-4 py-2 text-white font-bold transition-all cursor-pointer rounded-md;
-    background: #7C3AED;
+    background: #009DE0;
     border: 1px solid #6D28D9;
     box-shadow:
-      0 1px 3px rgba(124, 58, 237, 0.3),
+      0 1px 3px rgba(0, 157, 224, 0.3),
       inset 0 1px 0 rgba(255, 255, 255, 0.1);
   }
 
   .game-button:hover {
-    background: #6D28D9;
+    background: #0088C4;
     transform: translateY(-1px);
     box-shadow:
-      0 4px 12px rgba(124, 58, 237, 0.4),
+      0 4px 12px rgba(0, 157, 224, 0.4),
       inset 0 1px 0 rgba(255, 255, 255, 0.15);
   }
 
@@ -71,8 +71,8 @@
   /* Nav header - dark with high-contrast white text */
   .fantasy-header {
     @apply relative;
-    background: #1E1033;
-    border-bottom: 1px solid rgba(124, 58, 237, 0.3);
+    background: #002C77;
+    border-bottom: 1px solid rgba(0, 157, 224, 0.3);
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
   }
 
@@ -140,7 +140,7 @@
   }
 
   .overflow-x-auto::-webkit-scrollbar-thumb:hover {
-    background: #7C3AED;
+    background: #009DE0;
   }
 
   /* Divider */
@@ -168,15 +168,15 @@
     width: 16px;
     height: 16px;
     margin-top: -6px;
-    background: #7C3AED;
+    background: #009DE0;
     border: 2px solid #6D28D9;
     border-radius: 3px;
     cursor: pointer;
-    box-shadow: 0 1px 3px rgba(124, 58, 237, 0.3);
+    box-shadow: 0 1px 3px rgba(0, 157, 224, 0.3);
   }
 
   input[type="range"]::-webkit-slider-thumb:hover {
-    background: #6D28D9;
+    background: #0088C4;
   }
 
   input[type="range"]::-moz-range-track {
@@ -189,7 +189,7 @@
   input[type="range"]::-moz-range-thumb {
     width: 14px;
     height: 14px;
-    background: #7C3AED;
+    background: #009DE0;
     border: 2px solid #6D28D9;
     border-radius: 3px;
     cursor: pointer;
