@@ -37,11 +37,11 @@ const ROUTING_CATEGORIES = {
 // Mock data for UI demo â€” will be replaced by real Granola data
 const DEMO_ENTRIES = [
   {
-    date: '2026-04-05',
-    dateLabel: 'Sunday, April 5, 2026',
+    date: '2026-04-06',
+    dateLabel: 'Monday, April 6, 2026',
     briefing: `Good evening David,
 
-Here's your daily summary for April 5, 2026.
+Here's your daily summary for Monday, April 6, 2026.
 
 **Productivity:** Exceptional. This was one of the most productive single-day sessions we've had. You moved through a complete system redesign of the SA HUD, sorted through all 29 active work items, built the Notion Command Center foundation, and architected the Granola integration plan.
 
