@@ -1,7 +1,5 @@
 import { useState, useEffect } from 'react'
-import {
-  LayoutGrid, Lightbulb, ScrollText, Network, Shield, LogOut, Menu, X
-} from 'lucide-react'
+import { LayoutGrid, Lightbulb, ScrollText, Network, Shield, LogOut, Menu, X, BookOpen } from 'lucide-react'
 import { getSession, onAuthStateChange, signOut } from './lib/auth'
 import LoginPage from './components/LoginPage'
 import HUD from './components/HUD'
