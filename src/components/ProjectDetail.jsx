@@ -31,6 +31,8 @@ const ProjectDetail = ({ project, onUpdate, onPin, onBack }) => {
   // Tasks stored as JSON in a tasks field on the project
   const tasks = project.tasks || []
   const notes = project.notes || []
+  const startHereNote = notes.find(n => n.text && n.text.startsWith("START HERE"))
+  const otherNotes = notes.filter(n => !(n.text && n.text.startsWith("START HERE")))
   const links = project.links || []
 
   const addTask = () => {
