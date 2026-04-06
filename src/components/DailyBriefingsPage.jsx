@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { ChevronDown, ChevronRight, RefreshCw, Calendar, Clock, Users, CheckSquare, FileText, Mic, ExternalLink } from 'lucide-react'
 
 const DROPBOX_BASE = 'C:\\Users\\david\\THS Dropbox\\David Smith\\Call Library\\2026\\04'
@@ -250,6 +250,21 @@ export default function DailyBriefingsPage() {
   const [lastChecked, setLastChecked] = useState(null)
 
 
+  const [liveBriefing, setLiveBriefing] = useState(null)
+
+  const SUPA_URL = 'https://cmuvomnmaoseccxpeuxq.supabase.co'
+  const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNtdXZvbW5tYW9zZWNjeHBldXhxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU0MDM5NjMsImV4cCI6MjA5MDk3OTk2M30.s_sIdbTqE5NdMhi-ZfiWTpneswGvi2U4bmNgNWF22UY'
+
+  useEffect(() => {
+    const today = new Date().toISOString().slice(0, 10)
+    fetch(${SUPA_URL}/rest/v1/briefings?date=eq.&type=eq.morning_briefing&order=created_at.desc&limit=1, {
+      headers: { 'apikey': SUPA_KEY, 'Authorization': Bearer  }
+    })
+      .then(r => r.json())
+      .then(data => { if (data && data.length > 0) setLiveBriefing(data[0].briefing_text) })
+      .catch(() => {})
+  }, [])
+
   const todayLabel = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })
 
   const checkGranola = async () => {
@@ -299,7 +314,7 @@ export default function DailyBriefingsPage() {
           </div>
 
           <CollapsibleSection title="Daily Briefing" icon={FileText} iconColor="#009DE0" defaultOpen={true}>
-            <div style={{ fontSize: 13, color: '#1A1A1A', lineHeight: 1.8, fontFamily: 'Arial, Helvetica, sans-serif', whiteSpace: 'pre-wrap' }}>{TODAY_BRIEFING}</div>
+            <div style={{ fontSize: 13, color: '#1A1A1A', lineHeight: 1.8, fontFamily: 'Arial, Helvetica, sans-serif', whiteSpace: 'pre-wrap' }}>{liveBriefing || TODAY_BRIEFING}</div>
           </CollapsibleSection>
 
           <CollapsibleSection title="Call Notes" icon={Mic} iconColor="#C8102E" badge={`${TODAY_CALLS.length} calls`} defaultOpen={true}>
