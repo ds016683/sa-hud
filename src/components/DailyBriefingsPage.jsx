@@ -319,7 +319,7 @@ export default function DailyBriefingsPage() {
           </div>
 
           <CollapsibleSection title="Daily Briefing" icon={FileText} iconColor="#009DE0" defaultOpen={true}>
-            <div style={{ fontSize: 13, color: '#1A1A1A', lineHeight: 1.8, fontFamily: 'Arial, Helvetica, sans-serif', whiteSpace: 'pre-wrap' }}>{liveBriefing || FALLBACK_BRIEFING}</div>
+            <div style={{ fontSize: 13, color: '#1A1A1A', lineHeight: 1.8, fontFamily: 'Arial, Helvetica, sans-serif', whiteSpace: 'pre-wrap' }}>{liveBriefing || TODAY_BRIEFING}</div>
           </CollapsibleSection>
 
           <CollapsibleSection title="Call Notes" icon={Mic} iconColor="#C8102E" badge={`${TODAY_CALLS.length} calls`} defaultOpen={true}>
