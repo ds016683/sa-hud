@@ -148,7 +148,7 @@ function DayEntry({ entry }) {
 
 export default function DailyBriefingsPage() {
   const [tab, setTab] = useState('today')
-  const [entries, setEntries] = useState(DEMO_ENTRIES)
+  const [entries, setEntries] = useState([...TODAY_ENTRIES, ...DEMO_ENTRIES])
   const [loading, setLoading] = useState(false)
   const [lastChecked, setLastChecked] = useState(null)
 
