@@ -169,7 +169,7 @@ export default function DailyBriefingsPage() {
         <div>
           <h1 style={S.h1}>Daily Briefings</h1>
           <p style={S.sub}>
-            Briefings + call summaries Â· {lastChecked ? `Last checked ${lastChecked.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}` : 'Granola agent checks every 15 min (8AMâ€“6PM)'}
+            Briefings and call summaries — Granola agent checks every 15 min (8AMâ€“6PM)'}
           </p>
         </div>
         <button style={S.refreshBtn} onClick={checkGranola} disabled={loading}>
