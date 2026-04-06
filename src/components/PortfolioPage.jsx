@@ -11,6 +11,7 @@ const SECTIONS = [
   { id: 'personal',      label: 'Personal Projects' },
   { id: 'learning',      label: 'Learning Projects' },
   { id: 'commercial-infra', label: 'Commercial Infrastructure' },
+  { id: 'biz-dev',         label: 'Business Development' },
 ]
 
 // Compact inactive row â€” MMA roster style
