@@ -1,5 +1,4 @@
-import { useState, useEffect } from 'react'
-import { supabase } from '../lib/supabase'
+import { useState } from 'react'
 import { ChevronDown, ChevronRight, RefreshCw, Calendar, Clock, Users, CheckSquare, FileText, Mic, ExternalLink } from 'lucide-react'
 
 const DROPBOX_BASE = 'C:\\Users\\david\\THS Dropbox\\David Smith\\Call Library\\2026\\04'
@@ -249,26 +248,7 @@ export default function DailyBriefingsPage() {
   const [tab, setTab] = useState('today')
   const [loading, setLoading] = useState(false)
   const [lastChecked, setLastChecked] = useState(null)
-  const [liveBriefing, setLiveBriefing] = useState(null)
-  const [liveBriefingLabel, setLiveBriefingLabel] = useState(null)
 
-  useEffect(() => {
-    // Load today's briefing from Supabase
-    const today = new Date().toISOString().slice(0, 10)
-    supabase
-      .from('briefings')
-      .select('*')
-      .eq('date', today)
-      .eq('type', 'morning_briefing')
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .then(({ data }) => {
-        if (data && data.length > 0) {
-          setLiveBriefing(data[0].briefing_text)
-          setLiveBriefingLabel(data[0].date_label)
-        }
-      })
-  }, [])
 
   const todayLabel = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })
 
@@ -319,7 +299,7 @@ export default function DailyBriefingsPage() {
           </div>
 
           <CollapsibleSection title="Daily Briefing" icon={FileText} iconColor="#009DE0" defaultOpen={true}>
-            <div style={{ fontSize: 13, color: '#1A1A1A', lineHeight: 1.8, fontFamily: 'Arial, Helvetica, sans-serif', whiteSpace: 'pre-wrap' }}>{liveBriefing || TODAY_BRIEFING}</div>
+            <div style={{ fontSize: 13, color: '#1A1A1A', lineHeight: 1.8, fontFamily: 'Arial, Helvetica, sans-serif', whiteSpace: 'pre-wrap' }}>{TODAY_BRIEFING}</div>
           </CollapsibleSection>
 
           <CollapsibleSection title="Call Notes" icon={Mic} iconColor="#C8102E" badge={`${TODAY_CALLS.length} calls`} defaultOpen={true}>
