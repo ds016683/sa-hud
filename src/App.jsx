@@ -9,13 +9,15 @@ import PortfolioPage from './components/PortfolioPage'
 import TodoPage from './components/TodoPage'
 import IdeasPage from './components/IdeasPage'
 import EcosystemPage from './components/EcosystemPage'
+import DailyBriefingsPage from './components/DailyBriefingsPage'
 
 const NAV_ITEMS = [
-  { id: 'portfolio', label: 'Portfolio',       icon: LayoutGrid },
-  { id: 'ideas',     label: 'Ideas Pipeline',  icon: Lightbulb  },
-  { id: 'todos',     label: 'Quests',          icon: ScrollText },
-  { id: 'hud',       label: 'HUD',             icon: Shield     },
-  { id: 'ecosystem', label: 'Ecosystem',        icon: Network    },
+  { id: 'portfolio', label: 'Portfolio',        icon: LayoutGrid },
+  { id: 'ideas',     label: 'Ideas Pipeline',   icon: Lightbulb  },
+  { id: 'todos',     label: 'Quests',           icon: ScrollText },
+  { id: 'briefings', label: 'Daily Briefings',  icon: BookOpen   },
+  { id: 'hud',       label: 'HUD',              icon: Shield     },
+  { id: 'ecosystem', label: 'Ecosystem',         icon: Network    },
 ]
 
 function Sidebar({ active, onChange, onSignOut }) {
@@ -144,6 +146,7 @@ export default function App() {
         {active === 'todos'      && <TodoPage />}
         {active === 'hud'        && <HUD />}
         {active === 'ecosystem'  && <EcosystemPage />}
+        {active === 'briefings'  && <DailyBriefingsPage />}
       </main>
     </div>
   )
