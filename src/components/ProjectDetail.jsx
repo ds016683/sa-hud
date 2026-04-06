@@ -78,6 +78,12 @@ const ProjectDetail = ({ project, onUpdate, onPin, onBack }) => {
 
   return (
     <div className="space-y-6">
+      {startHereNote && (
+        <div style={{ background: "#FFFBEB", border: "2px solid #F59E0B", borderRadius: 10, padding: "14px 18px" }}>
+          <div style={{ fontSize: 10, fontWeight: 800, color: "#B45309", letterSpacing: "0.12em", marginBottom: 5, fontFamily: "Arial, sans-serif", textTransform: "uppercase" }}>Where to Start</div>
+          <div style={{ fontSize: 13, color: "#002C77", fontFamily: "Arial, sans-serif", lineHeight: 1.7 }}>{startHereNote.text.replace("START HERE >> ", "")}</div>
+        </div>
+      )}
       {/* Back button */}
       <button
         onClick={onBack}
@@ -239,7 +245,7 @@ const ProjectDetail = ({ project, onUpdate, onPin, onBack }) => {
         <h2 className="font-game text-sm text-[#002C77] uppercase tracking-wider mb-3">Notes</h2>
 
         <div className="space-y-2 mb-3">
-          {notes.length === 0 && (
+          {otherNotes.length === 0 && (
             <p className="text-[#334E85] text-xs  py-2">No notes yet.</p>
           )}
           {notes.map(note => (
