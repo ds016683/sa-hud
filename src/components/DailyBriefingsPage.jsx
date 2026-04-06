@@ -295,7 +295,7 @@ export default function DailyBriefingsPage() {
       </div>
 
       <div style={{ display: 'flex', gap: 4, background: '#F7F9FC', borderRadius: 10, padding: 4, border: '1px solid #E2E8F0', width: 'fit-content', marginBottom: 20 }}>
-        {[['today', 'Today'], ['archive', 'Archive']].map(([id, label]) => (
+        {[['today', 'Today'], ['tomorrow', 'Tomorrow'], ['archive', 'Archive']].map(([id, label]) => (
           <button key={id} onClick={() => setTab(id)} style={{
             padding: '7px 18px', borderRadius: 8, border: 'none', cursor: 'pointer',
             fontSize: 13, fontFamily: 'Arial, Helvetica, sans-serif', fontWeight: tab === id ? 700 : 500,
@@ -324,6 +324,35 @@ export default function DailyBriefingsPage() {
           <CollapsibleSection title="Daily Summary" icon={CheckSquare} iconColor="#00968F" defaultOpen={false}>
             <div style={{ fontSize: 13, color: '#1A1A1A', lineHeight: 1.8, fontFamily: 'Arial, Helvetica, sans-serif', whiteSpace: 'pre-wrap' }}>{TODAY_SUMMARY}</div>
           </CollapsibleSection>
+        </div>
+      )}
+
+      {tab === 'tomorrow' && (
+        <div>
+          {tomorrowBriefing ? (
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
+                <Calendar size={16} color="#6B7280" />
+                <span style={{ fontSize: 16, fontWeight: 700, color: '#002C77' }}>{tomorrowLabel}</span>
+                <span style={{ fontSize: 12, padding: '2px 8px', borderRadius: 9999, background: '#FFF7ED', color: '#C2410C', border: '1px solid #FED7AA', fontWeight: 600 }}>Tomorrow</span>
+              </div>
+              <div style={{ border: '1px solid #E5E7EB', borderRadius: 10, overflow: 'hidden' }}>
+                <div style={{ padding: '14px 18px', background: '#F9FAFB', borderBottom: '1px solid #E5E7EB', display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <FileText size={16} color="#6B7280" />
+                  <span style={{ fontSize: 14, fontWeight: 700, color: '#002C77' }}>Daily Briefing</span>
+                </div>
+                <div style={{ padding: '16px 18px', background: 'white' }}>
+                  <div style={{ fontSize: 13, color: '#1A1A1A', lineHeight: 1.8, whiteSpace: 'pre-wrap' }}>{tomorrowBriefing}</div>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div style={{ textAlign: 'center', padding: '48px 0', color: '#8096B2' }}>
+              <FileText size={32} style={{ margin: '0 auto 12px', display: 'block', color: '#CBD8E8' }} />
+              <div style={{ fontSize: 14, marginBottom: 4 }}>Tomorrow's briefing not yet available</div>
+              <div style={{ fontSize: 12 }}>Lumen prepares it tonight at 8:30 PM CT</div>
+            </div>
+          )}
         </div>
       )}
 
