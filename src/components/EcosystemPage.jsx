@@ -56,6 +56,7 @@ const AGENTS = [
   { id: 'hourly-email', label: 'Hourly Email Check', role: 'Inbox Monitor', type: 'cron', status: 'active', parent: 'lumen', schedule: 'Every 60 min', description: 'Checks Lumen@thirdhorizon.com inbox hourly. Prioritizes Tanner/MMA emails. Reports back without acting unilaterally.' },
   { id: 'daily-briefing', label: 'Daily Briefing', role: 'Briefing Agent', type: 'cron', status: 'active', parent: 'lumen', schedule: 'Nightly 8:30 PM CT', description: 'Generates and sends a daily briefing email from Lumen. Reads HARDLINES.md before acting.' },
   { id: 'vapi-voice', label: 'Vapi Voice', role: 'Voice Interface', type: 'integration', status: 'pending', parent: 'lumen', description: 'Phone-based voice access to Lumen. Number: +16308691113. Pending Render deploy.' },
+  { id: 'granola-agent', label: 'Granola Monitor', role: 'Meeting Capture Agent', type: 'cron', status: 'active', parent: 'lumen', schedule: 'Every 15 min (8AM-6PM weekdays)', description: 'Checks Granola API for new meeting recordings. Matches each note to Outlook calendar event to get official title and scheduled start time. Generates prose summary, bullets, and action items. Saves to Supabase briefings table for Command Center display. Sends Signal alert on high-confidence captures. Builds Dropbox transcript path per meeting.' },
 ]
 
 const DEPLOYED_SITES = [
