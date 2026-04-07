@@ -107,14 +107,17 @@ function CallCard({ call }) {
 function DayView({ dateStr, dateLabel }) {
   const [briefing, setBriefing] = useState(null)
   const [calls, setCalls] = useState([])
+  const [summary, setSummary] = useState(null)
   const [loaded, setLoaded] = useState(false)
 
   useEffect(function() {
     var path1 = 'briefings?date=eq.' + dateStr + '&type=eq.morning_briefing&order=created_at.desc&limit=1'
     var path2 = 'briefings?date=eq.' + dateStr + '&type=eq.call_note&order=created_at.asc'
-    Promise.all([supaFetch(path1), supaFetch(path2)]).then(function(results) {
+    var path3 = 'briefings?date=eq.' + dateStr + '&type=eq.daily_summary&order=created_at.desc&limit=1'
+    Promise.all([supaFetch(path1), supaFetch(path2), supaFetch(path3)]).then(function(results) {
       var briefRows = results[0]
       var callRows = results[1]
+      var summaryRows = results[2]
       if (briefRows && briefRows.length > 0) setBriefing(briefRows[0].briefing_text)
       if (callRows && callRows.length > 0) {
         var parsed = callRows.map(function(row) {
@@ -122,6 +125,7 @@ function DayView({ dateStr, dateLabel }) {
         })
         setCalls(parsed)
       }
+      if (summaryRows && summaryRows.length > 0) setSummary(summaryRows[0].briefing_text)
       setLoaded(true)
     })
   }, [dateStr])
