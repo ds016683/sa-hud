@@ -162,7 +162,7 @@ function DayView({ dateStr, dateLabel }) {
   )
 }
 
-function ArchiveDay({ yesterday }) {
+) {
   var [data, setData] = useState(null)
   useEffect(function() {
     var hdrs = { apikey: SUPA_KEY, Authorization: 'Bearer ' + SUPA_KEY }
@@ -244,9 +244,8 @@ function ArchiveDay({ yesterday }) {
       {tab === 'tomorrow' && <DayView dateStr={tomorrow} dateLabel={tomorrowLabel} />}
 
       {tab === 'archive' && (
-        <div>
-          <h3 style={{ fontSize: 14, fontWeight: 700, color: '#002C77', marginBottom: 16 }}>Recent Days</h3>
-          <ArchiveDay yesterday={yesterday} />
+        <div style={{ padding: '20px', textAlign: 'center', color: '#8096B2' }}>
+          <p>Archive view coming soon.</p>
         </div>
       )}
 
