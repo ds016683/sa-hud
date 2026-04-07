@@ -162,61 +162,41 @@ function DayView({ dateStr, dateLabel }) {
   )
 }
 
-function ArchiveView({ yesterday }) {
-  var [archiveData, setArchiveData] = React.useState(null)
-  var [archiveLoaded, setArchiveLoaded] = React.useState(false)
-
-  React.useEffect(function() {
-    var hdrs = { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY }
-    var p1 = fetch(SUPA_URL + '/rest/v1/briefings?date=eq.' + yesterday + '&type=eq.morning_briefing&order=created_at.desc&limit=1', { headers: hdrs }).then(function(r) { return r.json() }).catch(function() { return [] })
-    var p2 = fetch(SUPA_URL + '/rest/v1/briefings?date=eq.' + yesterday + '&type=eq.call_note&order=created_at.asc', { headers: hdrs }).then(function(r) { return r.json() }).catch(function() { return [] })
-    var p3 = fetch(SUPA_URL + '/rest/v1/briefings?date=eq.' + yesterday + '&type=eq.daily_summary&order=created_at.desc&limit=1', { headers: hdrs }).then(function(r) { return r.json() }).catch(function() { return [] })
-    Promise.all([p1, p2, p3]).then(function(results) {
-      var briefing = (results[0] && results[0].length > 0) ? results[0][0].briefing_text : null
-      var calls = (results[1] && results[1].length > 0) ? results[1].map(function(row) { try { return JSON.parse(row.briefing_text) } catch(e) { return { title: 'Call', routing: 'general' } } }) : []
-      var summary = (results[2] && results[2].length > 0) ? results[2][0].briefing_text : null
-      setArchiveData({ briefing, calls, summary })
-      setArchiveLoaded(true)
+function ArchiveDay({ yesterday }) {
+  var [data, setData] = useState(null)
+  useEffect(function() {
+    var hdrs = { apikey: SUPA_KEY, Authorization: 'Bearer ' + SUPA_KEY }
+    Promise.all([
+      fetch(SUPA_URL + '/rest/v1/briefings?date=eq.' + yesterday + '&type=eq.morning_briefing&order=created_at.desc&limit=1', { headers: hdrs }).then(r => r.json()),
+      fetch(SUPA_URL + '/rest/v1/briefings?date=eq.' + yesterday + '&type=eq.call_note&order=created_at.asc', { headers: hdrs }).then(r => r.json()),
+      fetch(SUPA_URL + '/rest/v1/briefings?date=eq.' + yesterday + '&type=eq.daily_summary&order=created_at.desc&limit=1', { headers: hdrs }).then(r => r.json()),
+    ]).then(([b, c, s]) => {
+      setData({
+        briefing: b && b.length ? b[0].briefing_text : null,
+        calls: c && c.length ? c.map(x => { try { return JSON.parse(x.briefing_text) } catch(e) { return { title: 'Call' } } }) : [],
+        summary: s && s.length ? s[0].briefing_text : null,
+      })
     })
   }, [yesterday])
-
-  var label = new Date(yesterday + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })
-
-  return (
-    <div>
-      <h3 style={{ fontSize: 14, fontWeight: 700, color: '#002C77', marginBottom: 16 }}>Recent Days</h3>
-      <div style={{ border: '1px solid #E5E7EB', borderRadius: 10, overflow: 'hidden', marginBottom: 12 }}>
-        <div style={{ padding: '14px 18px', background: '#F9FAFB', borderBottom: '1px solid #E5E7EB', display: 'flex', alignItems: 'center', gap: 10 }}>
-          <Calendar size={14} color="#009DE0" />
-          <span style={{ fontSize: 14, fontWeight: 700, color: '#002C77' }}>{label}</span>
-          {archiveData && archiveData.calls.length > 0 && <span style={{ fontSize: 12, color: '#8096B2' }}>{archiveData.calls.length} calls</span>}
-        </div>
-        <div style={{ padding: '16px 18px' }}>
-          {!archiveLoaded && <div style={{ color: '#8096B2', fontSize: 13, padding: '16px 0', textAlign: 'center' }}>Loading...</div>}
-          {archiveLoaded && !archiveData.briefing && !archiveData.calls.length && !archiveData.summary && (
-            <div style={{ color: '#8096B2', fontSize: 13, padding: '8px 0' }}>No data for this day.</div>
-          )}
-          {archiveLoaded && archiveData.briefing && (
-            <CollapsibleSection title="Daily Briefing" icon={FileText} iconColor="#009DE0" defaultOpen={false}>
-              <div style={{ fontSize: 13, color: '#1A1A1A', lineHeight: 1.8, whiteSpace: 'pre-wrap' }}>{archiveData.briefing}</div>
-            </CollapsibleSection>
-          )}
-          {archiveLoaded && archiveData.calls.length > 0 && (
-            <CollapsibleSection title="Call Notes" icon={Mic} iconColor="#C8102E" badge={archiveData.calls.length + ' calls'} defaultOpen={false}>
-              {archiveData.calls.map(function(call, i) { return <CallCard key={i} call={call} /> })}
-            </CollapsibleSection>
-          )}
-          {archiveLoaded && archiveData.summary && (
-            <CollapsibleSection title="Daily Summary" icon={CheckSquare} iconColor="#00968F" defaultOpen={true}>
-              <div style={{ fontSize: 13, color: '#1A1A1A', lineHeight: 1.8, whiteSpace: 'pre-wrap' }}>{archiveData.summary}</div>
-            </CollapsibleSection>
-          )}
-        </div>
-      </div>
+  
+  if (!data) return <div style={{ color: '#8096B2', padding: '20px', textAlign: 'center' }}>Loading...</div>
+  if (!data.briefing && !data.calls.length && !data.summary) return <div style={{ color: '#8096B2', padding: '12px' }}>No data</div>
+  
+  var label = new Date(yesterday + 'T12:00Z').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })
+  
+  return <div style={{ border: '1px solid #E5E7EB', borderRadius: 10, overflow: 'hidden' }}>
+    <div style={{ padding: '14px 18px', background: '#F9FAFB', borderBottom: '1px solid #E5E7EB' }}>
+      <span style={{ fontSize: 14, fontWeight: 700, color: '#002C77' }}>{label}</span>
+      {data.calls.length > 0 && <span style={{ marginLeft: 12, fontSize: 12, color: '#8096B2' }}>{data.calls.length} calls</span>}
     </div>
-  )
+    <div style={{ padding: '16px 18px' }}>
+      {data.briefing && <CollapsibleSection title="Briefing" icon={FileText} iconColor="#009DE0" defaultOpen={false}><div style={{ whiteSpace: 'pre-wrap', fontSize: 13, lineHeight: 1.8 }}>{data.briefing}</div></CollapsibleSection>}
+      {data.calls.length > 0 && <CollapsibleSection title="Calls" icon={Mic} iconColor="#C8102E" badge={data.calls.length} defaultOpen={true}>{data.calls.map((call, i) => <CallCard key={i} call={call} />)}</CollapsibleSection>}
+      {data.summary && <CollapsibleSection title="Summary" icon={CheckSquare} iconColor="#00968F" defaultOpen={true}><div style={{ whiteSpace: 'pre-wrap', fontSize: 13, lineHeight: 1.8 }}>{data.summary}</div></CollapsibleSection>}
+    </div>
+  </div>
 }
-export default function DailyBriefingsPage() {
+\nexport default function DailyBriefingsPage() {
   const [tab, setTab] = useState('today')
   const [loading, setLoading] = useState(false)
   const [lastChecked, setLastChecked] = useState(null)
@@ -264,7 +244,10 @@ export default function DailyBriefingsPage() {
       {tab === 'tomorrow' && <DayView dateStr={tomorrow} dateLabel={tomorrowLabel} />}
 
       {tab === 'archive' && (
-        <ArchiveView yesterday={yesterday} />
+        <div>
+          <h3 style={{ fontSize: 14, fontWeight: 700, color: '#002C77', marginBottom: 16 }}>Recent Days</h3>
+          <ArchiveDay yesterday={yesterday} />
+        </div>
       )}
 
       <style>{'@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }'}</style>
