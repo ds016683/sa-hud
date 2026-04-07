@@ -66,6 +66,7 @@ const DEPLOYED_SITES = [
   { id: 'bh-rate',     name: 'BH Rate Intelligence',          url: 'https://bh-rate-intelligence.vercel.app',             stack: 'React + Vercel',          status: 'archived',category: 'TH',        updated: '2026-03-20' },
   { id: 'apex',        name: 'Apex Media Chicago',            url: 'https://ds016683.github.io/apex-media-chicago/',      stack: 'React + GitHub Pages',    status: 'live',    category: 'Personal',  updated: '2026-04-04' },
   { id: 'values',      name: 'Values Deck (Sabina)',          url: 'https://ds016683.github.io/values-deck/',             stack: 'HTML + GitHub Pages',     status: 'live',    category: 'Personal',  updated: '2026-04-03' },
+  { id: 'diablo',      name: 'Project Diablo -- Sovereign Architect Platform', url: 'https://project-diablo.vercel.app/', stack: 'React + Vite + Vercel + Haiku', status: 'live', category: 'Personal', updated: '2026-04-06' },
   { id: 'nacdd',       name: 'NACDD Knowledge Platform',        url: 'https://nacdd-knowledge-platform.vercel.app/', stack: 'React + Vite + Vercel',    status: 'live',    category: 'Client',    updated: '2026-04-05' },
   { id: 'dante',       name: 'Project Dante Workspace',       url: 'https://ds016683.github.io/project-dante/',          stack: 'HTML + GitHub Pages',     status: 'live',    category: 'Personal',  updated: '2026-04-03' },
 ]
