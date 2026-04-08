@@ -65,22 +65,34 @@ const CollapsibleSection = ({ title, icon: Icon, badge, children, defaultOpen = 
 const CallCard = ({ call }) => {
   const [open, setOpen] = useState(false)
   
+  const getRoutingBadgeStyle = () => {
+    if (!call.routing) return { background: '#f0f0f0', color: '#666' }
+    if (call.routing.toLowerCase() === 'internal') return { background: '#e8f5e9', color: '#2e7d32' }
+    if (call.routing.toLowerCase() === 'snmi') return { background: '#fff3e0', color: '#e65100' }
+    return { background: '#e3f2fd', color: '#0d47a1' }
+  }
+  
   return (
     <div style={{ marginBottom: 12, border: `1px solid #ddd`, borderRadius: 6, overflow: 'hidden' }}>
       <button
         onClick={() => setOpen(!open)}
         style={{
           width: '100%', padding: '12px 14px', background: '#f9fafb', border: 'none',
-          cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, fontSize: 13
+          cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 12, fontSize: 13
         }}
       >
-        <span style={{ fontWeight: 600, color: THS_COLORS.darkBlue }}>
+        <span style={{ fontWeight: 600, color: THS_COLORS.darkBlue, flex: 1, textAlign: 'left' }}>
           {call.title || 'Call'} {call.time && `@ ${call.time}`}
         </span>
-        {call.routing && <span style={{ marginLeft: 'auto', fontSize: 11, color: '#666' }}>
-          [{call.routing}]
-        </span>}
-        <ChevronDown size={14} style={{ marginLeft: 'auto', transform: open ? 'rotate(0deg)' : 'rotate(-90deg)' }} />
+        {call.routing && (
+          <span style={{
+            fontSize: 11, fontWeight: 600, padding: '4px 8px', borderRadius: 4,
+            ...getRoutingBadgeStyle()
+          }}>
+            [{call.routing}]
+          </span>
+        )}
+        <ChevronDown size={14} style={{ transform: open ? 'rotate(0deg)' : 'rotate(-90deg)' }} />
       </button>
       {open && (
         <div style={{ padding: 14, fontSize: 12, lineHeight: 1.8, color: '#333' }}>
@@ -170,15 +182,18 @@ export default function DailyBriefingsPage() {
   const today = new Date().toISOString().split('T')[0]
   const tomorrow = new Date(Date.now() + 86400000).toISOString().split('T')[0]
   
-  // Generate last 7 days for archive
+  // Generate dates from Monday (April 6) onwards
+  const mondayApril6 = new Date('2026-04-06T12:00:00Z')
   const archiveDates = []
-  for (let i = 1; i <= 7; i++) {
-    const d = new Date(Date.now() - (i * 86400000))
+  let currentDate = new Date(mondayApril6)
+  while (currentDate <= new Date(today + 'T12:00:00Z')) {
     archiveDates.push({
-      dateStr: d.toISOString().split('T')[0],
-      label: d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })
+      dateStr: currentDate.toISOString().split('T')[0],
+      label: currentDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })
     })
+    currentDate = new Date(currentDate.getTime() + 86400000)
   }
+  archiveDates.reverse()
 
   const todayLabel = new Date(today + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })
   const tomorrowLabel = new Date(tomorrow + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })
@@ -232,7 +247,7 @@ export default function DailyBriefingsPage() {
           <div>
             <h2 style={{ fontSize: 18, fontWeight: 700, color: THS_COLORS.darkBlue, marginBottom: 20 }}>Archive - Last 7 Days</h2>
             {archiveDates.map(day => (
-              <CollapsibleDay key={day.dateStr} date={day.dateStr} dateLabel={day.label} defaultOpen={day.dateStr === archiveDates[0].dateStr}>
+              <CollapsibleDay key={day.dateStr} date={day.dateStr} dateLabel={day.label} defaultOpen={false}>
                 <DayView dateStr={day.dateStr} />
               </CollapsibleDay>
             ))}
