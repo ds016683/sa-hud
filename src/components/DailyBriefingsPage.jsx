@@ -1,52 +1,120 @@
 import React, { useState, useEffect } from 'react'
-import { ChevronDown, Calendar, Mic, FileText, CheckSquare } from 'lucide-react'
+import { ChevronDown, Calendar, Mic, FileText, CheckSquare, AlertCircle } from 'lucide-react'
 
 const SUPA_URL = 'https://cmuvomnmaoseccxpeuxq.supabase.co'
 const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNtdXZvbW5tYW9zZWNjeHBldXhxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU0MDM5NjMsImV4cCI6MjA5MDk3OTk2M30.s_sIdbTqE5NdMhi-ZfiWTpneswGvi2U4bmNgNWF22UY'
 
-const CollapsibleSection = ({ title, icon: Icon, badge, children, defaultOpen = true }) => {
+const THS_COLORS = {
+  darkBlue: '#1A3A5C',
+  mediumBlue: '#234D8B',
+  gold: '#F8C762',
+  lightBlueBg: '#E8F0F8',
+  lightGoldBg: '#FDF5E6',
+  gray: '#6F7072',
+  text: '#000',
+  lightText: '#fff',
+}
+
+const CollapsibleDay = ({ date, dateLabel, children, defaultOpen = false }) => {
   const [open, setOpen] = useState(defaultOpen)
+  
   return (
-    <div style={{ marginBottom: 16, border: '1px solid #E5E7EB', borderRadius: 8, overflow: 'hidden' }}>
+    <div style={{ marginBottom: 20, border: `1px solid ${THS_COLORS.gold}`, borderRadius: 8, overflow: 'hidden' }}>
       <button
         onClick={() => setOpen(!open)}
         style={{
-          width: '100%', padding: '12px 16px', background: '#F9FAFB', border: 'none',
-          cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, fontWeight: 700
+          width: '100%', padding: '16px 20px', background: THS_COLORS.darkBlue, 
+          border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', 
+          gap: 12, color: THS_COLORS.lightText, fontWeight: 700, fontSize: 15
         }}
       >
-        <Icon size={14} color="#0066CC" />
+        <Calendar size={18} color={THS_COLORS.gold} />
+        <span>{dateLabel}</span>
+        <ChevronDown size={16} style={{ marginLeft: 'auto', transform: open ? 'rotate(0deg)' : 'rotate(-90deg)' }} />
+      </button>
+      {open && <div style={{ padding: 20, background: '#fff' }}>{children}</div>}
+    </div>
+  )
+}
+
+const CollapsibleSection = ({ title, icon: Icon, badge, children, defaultOpen = true }) => {
+  const [open, setOpen] = useState(defaultOpen)
+  
+  return (
+    <div style={{ marginBottom: 16, border: `1px solid ${THS_COLORS.gold}`, borderRadius: 6, overflow: 'hidden' }}>
+      <button
+        onClick={() => setOpen(!open)}
+        style={{
+          width: '100%', padding: '12px 16px', background: THS_COLORS.lightBlueBg,
+          border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center',
+          gap: 10, fontSize: 13, fontWeight: 700, color: THS_COLORS.darkBlue
+        }}
+      >
+        <Icon size={14} color={THS_COLORS.mediumBlue} />
         <span>{title}</span>
         {badge && <span style={{ marginLeft: 'auto', fontSize: 11, color: '#666' }}>{badge}</span>}
         <ChevronDown size={14} style={{ marginLeft: 'auto', transform: open ? 'rotate(0deg)' : 'rotate(-90deg)' }} />
       </button>
-      {open && <div style={{ padding: 16, fontSize: 13, lineHeight: 1.8, color: '#1A1A1A', whiteSpace: 'pre-wrap' }}>
+      {open && <div style={{ padding: 14, fontSize: 13, lineHeight: 1.8, color: '#333', whiteSpace: 'pre-wrap' }}>
         {children}
       </div>}
     </div>
   )
 }
 
-const CallCard = ({ call }) => (
-  <div style={{ padding: 12, background: '#f9fafb', borderRadius: 6, marginBottom: 12, borderLeft: '3px solid #0066CC' }}>
-    <div style={{ fontSize: 13, fontWeight: 600, color: '#002C77', marginBottom: 6 }}>
-      {call.title || 'Untitled Call'} {call.time && `@ ${call.time}`}
+const CallCard = ({ call }) => {
+  const [open, setOpen] = useState(false)
+  
+  return (
+    <div style={{ marginBottom: 12, border: `1px solid #ddd`, borderRadius: 6, overflow: 'hidden' }}>
+      <button
+        onClick={() => setOpen(!open)}
+        style={{
+          width: '100%', padding: '12px 14px', background: '#f9fafb', border: 'none',
+          cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, fontSize: 13
+        }}
+      >
+        <span style={{ fontWeight: 600, color: THS_COLORS.darkBlue }}>
+          {call.title || 'Call'} {call.time && `@ ${call.time}`}
+        </span>
+        {call.routing && <span style={{ marginLeft: 'auto', fontSize: 11, color: '#666' }}>
+          [{call.routing}]
+        </span>}
+        <ChevronDown size={14} style={{ marginLeft: 'auto', transform: open ? 'rotate(0deg)' : 'rotate(-90deg)' }} />
+      </button>
+      {open && (
+        <div style={{ padding: 14, fontSize: 12, lineHeight: 1.8, color: '#333' }}>
+          {call.prose && <div style={{ marginBottom: 12 }}>{call.prose}</div>}
+          {call.bullets && call.bullets.length > 0 && (
+            <ul style={{ margin: '0 0 0 20px', paddingLeft: 0 }}>
+              {call.bullets.map((b, i) => <li key={i} style={{ marginBottom: 6 }}>{b}</li>)}
+            </ul>
+          )}
+          {call.actions && call.actions.length > 0 && (
+            <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid #ddd', fontWeight: 600, color: THS_COLORS.gold }}>
+              Actions:
+              <ul style={{ margin: '6px 0 0 20px', paddingLeft: 0, fontWeight: 'normal', color: '#333' }}>
+                {call.actions.map((a, i) => <li key={i} style={{ marginBottom: 4 }}>{a}</li>)}
+              </ul>
+            </div>
+          )}
+        </div>
+      )}
     </div>
-    {call.routing && <div style={{ fontSize: 11, color: '#666', marginBottom: 8 }}>
-      [{call.routing}]
-    </div>}
-    {call.prose && <div style={{ fontSize: 12, color: '#333', marginBottom: 8 }}>
-      {call.prose}
-    </div>}
-    {call.bullets && call.bullets.length > 0 && (
-      <ul style={{ margin: '8px 0', paddingLeft: 20, fontSize: 11 }}>
-        {call.bullets.map((b, i) => <li key={i} style={{ marginBottom: 4 }}>{b}</li>)}
-      </ul>
-    )}
-  </div>
-)
+  )
+}
 
-const DayView = ({ dateStr, label }) => {
+const BriefingSection = ({ briefingText }) => {
+  if (!briefingText) return null
+  
+  return (
+    <div style={{ marginBottom: 16, padding: 14, background: THS_COLORS.lightBlueBg, borderRadius: 6, fontSize: 13, lineHeight: 1.8, color: '#333', whiteSpace: 'pre-wrap' }}>
+      {briefingText}
+    </div>
+  )
+}
+
+const DayView = ({ dateStr, dateLabel }) => {
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
 
@@ -93,7 +161,9 @@ const DayView = ({ dateStr, label }) => {
       )}
       {data.calls.length > 0 && (
         <CollapsibleSection title="Call Notes" icon={Mic} badge={`${data.calls.length} calls`} defaultOpen={true}>
-          {data.calls.map((call, i) => <CallCard key={i} call={call} />)}
+          <div>
+            {data.calls.map((call, i) => <CallCard key={i} call={call} />)}
+          </div>
         </CollapsibleSection>
       )}
       {data.summary && (
@@ -108,50 +178,71 @@ const DayView = ({ dateStr, label }) => {
 export default function DailyBriefingsPage() {
   const [tab, setTab] = useState('today')
   const today = new Date().toISOString().split('T')[0]
+  const tomorrow = new Date(Date.now() + 86400000).toISOString().split('T')[0]
   const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0]
 
   const todayLabel = new Date(today + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })
+  const tomorrowLabel = new Date(tomorrow + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })
   const yesterdayLabel = new Date(yesterday + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })
 
   return (
-    <div style={{ minHeight: '100vh', background: '#f9fafb', padding: 20 }}>
-      <div style={{ maxWidth: 800, margin: '0 auto' }}>
-        <div style={{ display: 'flex', gap: 12, marginBottom: 24, borderBottom: '1px solid #E5E7EB' }}>
-          <button
-            onClick={() => setTab('today')}
-            style={{
-              padding: '12px 20px', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600,
-              color: tab === 'today' ? '#0066CC' : '#666',
-              borderBottom: tab === 'today' ? '2px solid #0066CC' : 'none'
-            }}
-          >
-            Today
-          </button>
-          <button
-            onClick={() => setTab('archive')}
-            style={{
-              padding: '12px 20px', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600,
-              color: tab === 'archive' ? '#0066CC' : '#666',
-              borderBottom: tab === 'archive' ? '2px solid #0066CC' : 'none'
-            }}
-          >
-            Yesterday
-          </button>
+    <div style={{ minHeight: '100vh', background: '#f5f5f5' }}>
+      {/* Header */}
+      <div style={{ background: THS_COLORS.darkBlue, color: THS_COLORS.lightText, padding: '32px 36px 24px', textAlign: 'center' }}>
+        <div style={{ fontSize: 11, letterSpacing: '2px', textTransform: 'uppercase', marginBottom: 10, color: '#8fb0d0' }}>
+          Prepared by Lumen | Confidential
         </div>
+        <div style={{ fontSize: 26, fontWeight: 700, marginBottom: 6 }}>Daily Briefing</div>
+        <div style={{ fontSize: 16, color: '#a8c0e0' }}>Third Horizon Strategies</div>
+      </div>
 
+      {/* Tabs */}
+      <div style={{ background: '#fff', borderBottom: `2px solid ${THS_COLORS.gold}`, padding: '0 36px', display: 'flex', gap: 0 }}>
+        {['tomorrow', 'today', 'archive'].map(t => (
+          <button
+            key={t}
+            onClick={() => setTab(t)}
+            style={{
+              padding: '14px 20px', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 700,
+              color: tab === t ? THS_COLORS.darkBlue : '#999',
+              borderBottom: tab === t ? `3px solid ${THS_COLORS.gold}` : 'none',
+              background: 'transparent'
+            }}
+          >
+            {t === 'tomorrow' ? 'Tomorrow' : t === 'today' ? 'Today' : 'Archive'}
+          </button>
+        ))}
+      </div>
+
+      {/* Content */}
+      <div style={{ maxWidth: 900, margin: '0 auto', padding: '24px 20px' }}>
         {tab === 'today' && (
           <div>
-            <h2 style={{ fontSize: 16, fontWeight: 700, color: '#002C77', marginBottom: 16 }}>{todayLabel}</h2>
+            <h2 style={{ fontSize: 18, fontWeight: 700, color: THS_COLORS.darkBlue, marginBottom: 20 }}>{todayLabel}</h2>
             <DayView dateStr={today} label={todayLabel} />
+          </div>
+        )}
+
+        {tab === 'tomorrow' && (
+          <div>
+            <h2 style={{ fontSize: 18, fontWeight: 700, color: THS_COLORS.darkBlue, marginBottom: 20 }}>{tomorrowLabel}</h2>
+            <DayView dateStr={tomorrow} label={tomorrowLabel} />
           </div>
         )}
 
         {tab === 'archive' && (
           <div>
-            <h2 style={{ fontSize: 16, fontWeight: 700, color: '#002C77', marginBottom: 16 }}>{yesterdayLabel}</h2>
-            <DayView dateStr={yesterday} label={yesterdayLabel} />
+            <h2 style={{ fontSize: 18, fontWeight: 700, color: THS_COLORS.darkBlue, marginBottom: 20 }}>Archive</h2>
+            <CollapsibleDay date={yesterday} dateLabel={yesterdayLabel} defaultOpen={true}>
+              <DayView dateStr={yesterday} label={yesterdayLabel} />
+            </CollapsibleDay>
           </div>
         )}
+      </div>
+
+      {/* Footer */}
+      <div style={{ background: THS_COLORS.darkBlue, color: '#888', padding: '20px 36px', textAlign: 'center', fontSize: 11, marginTop: 40 }}>
+        Generated by Lumen - David Smith's AI Chief of Staff | Third Horizon Strategies
       </div>
     </div>
   )
