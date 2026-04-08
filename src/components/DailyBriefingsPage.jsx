@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { ChevronDown, Calendar, Mic, FileText, CheckSquare, AlertCircle } from 'lucide-react'
+import { ChevronDown, Calendar, Mic, FileText, CheckSquare } from 'lucide-react'
 
 const SUPA_URL = 'https://cmuvomnmaoseccxpeuxq.supabase.co'
 const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNtdXZvbW5tYW9zZWNjeHBldXhxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU0MDM5NjMsImV4cCI6MjA5MDk3OTk2M30.s_sIdbTqE5NdMhi-ZfiWTpneswGvi2U4bmNgNWF22UY'
@@ -104,17 +104,7 @@ const CallCard = ({ call }) => {
   )
 }
 
-const BriefingSection = ({ briefingText }) => {
-  if (!briefingText) return null
-  
-  return (
-    <div style={{ marginBottom: 16, padding: 14, background: THS_COLORS.lightBlueBg, borderRadius: 6, fontSize: 13, lineHeight: 1.8, color: '#333', whiteSpace: 'pre-wrap' }}>
-      {briefingText}
-    </div>
-  )
-}
-
-const DayView = ({ dateStr, dateLabel }) => {
+const DayView = ({ dateStr }) => {
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
 
@@ -179,11 +169,19 @@ export default function DailyBriefingsPage() {
   const [tab, setTab] = useState('today')
   const today = new Date().toISOString().split('T')[0]
   const tomorrow = new Date(Date.now() + 86400000).toISOString().split('T')[0]
-  const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0]
+  
+  // Generate last 7 days for archive
+  const archiveDates = []
+  for (let i = 1; i <= 7; i++) {
+    const d = new Date(Date.now() - (i * 86400000))
+    archiveDates.push({
+      dateStr: d.toISOString().split('T')[0],
+      label: d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })
+    })
+  }
 
   const todayLabel = new Date(today + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })
   const tomorrowLabel = new Date(tomorrow + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })
-  const yesterdayLabel = new Date(yesterday + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })
 
   return (
     <div style={{ minHeight: '100vh', background: '#f5f5f5' }}>
@@ -219,23 +217,25 @@ export default function DailyBriefingsPage() {
         {tab === 'today' && (
           <div>
             <h2 style={{ fontSize: 18, fontWeight: 700, color: THS_COLORS.darkBlue, marginBottom: 20 }}>{todayLabel}</h2>
-            <DayView dateStr={today} label={todayLabel} />
+            <DayView dateStr={today} />
           </div>
         )}
 
         {tab === 'tomorrow' && (
           <div>
             <h2 style={{ fontSize: 18, fontWeight: 700, color: THS_COLORS.darkBlue, marginBottom: 20 }}>{tomorrowLabel}</h2>
-            <DayView dateStr={tomorrow} label={tomorrowLabel} />
+            <DayView dateStr={tomorrow} />
           </div>
         )}
 
         {tab === 'archive' && (
           <div>
-            <h2 style={{ fontSize: 18, fontWeight: 700, color: THS_COLORS.darkBlue, marginBottom: 20 }}>Archive</h2>
-            <CollapsibleDay date={yesterday} dateLabel={yesterdayLabel} defaultOpen={true}>
-              <DayView dateStr={yesterday} label={yesterdayLabel} />
-            </CollapsibleDay>
+            <h2 style={{ fontSize: 18, fontWeight: 700, color: THS_COLORS.darkBlue, marginBottom: 20 }}>Archive â€” Last 7 Days</h2>
+            {archiveDates.map(day => (
+              <CollapsibleDay key={day.dateStr} date={day.dateStr} dateLabel={day.label} defaultOpen={day.dateStr === archiveDates[0].dateStr}>
+                <DayView dateStr={day.dateStr} />
+              </CollapsibleDay>
+            ))}
           </div>
         )}
       </div>
