@@ -230,7 +230,7 @@ export default function DailyBriefingsPage() {
 
         {tab === 'archive' && (
           <div>
-            <h2 style={{ fontSize: 18, fontWeight: 700, color: THS_COLORS.darkBlue, marginBottom: 20 }}>Archive â€” Last 7 Days</h2>
+            <h2 style={{ fontSize: 18, fontWeight: 700, color: THS_COLORS.darkBlue, marginBottom: 20 }}>Archive - Last 7 Days</h2>
             {archiveDates.map(day => (
               <CollapsibleDay key={day.dateStr} date={day.dateStr} dateLabel={day.label} defaultOpen={day.dateStr === archiveDates[0].dateStr}>
                 <DayView dateStr={day.dateStr} />
