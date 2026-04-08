@@ -274,9 +274,7 @@ export default function DailyBriefingsPage() {
   const tabs = [
     { id: 'tomorrow', label: 'Tomorrow' },
     { id: 'today', label: 'Today' },
-    { id: 'archive', label: 'Archive' },
-    { id: 'cost', label: 'Cost Dashboard' },
-    { id: 'executive', label: 'Executive Briefings' }
+    { id: 'archive', label: 'Archive' }
   ]
 
   return (
@@ -322,19 +320,7 @@ export default function DailyBriefingsPage() {
           </div>
         )}
 
-        {tab === 'cost' && (
-          <div>
-            <h2 style={{ fontSize: 18, fontWeight: 700, color: THS_COLORS.darkBlue, marginBottom: 20 }}>Cost Dashboard</h2>
-            <CostDashboard />
-          </div>
-        )}
 
-        {tab === 'executive' && (
-          <div>
-            <h2 style={{ fontSize: 18, fontWeight: 700, color: THS_COLORS.darkBlue, marginBottom: 20 }}>Executive Briefings</h2>
-            <ExecutiveBriefings />
-          </div>
-        )}
       </div>
 
       {/* Footer */}
