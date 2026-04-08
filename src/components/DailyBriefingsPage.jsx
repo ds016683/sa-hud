@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { ChevronDown, Calendar, Mic, FileText, CheckSquare } from 'lucide-react'
+import { ChevronDown, Calendar, Mic, FileText, CheckSquare, TrendingUp, AlertCircle, Activity } from 'lucide-react'
 
 const SUPA_URL = 'https://cmuvomnmaoseccxpeuxq.supabase.co'
 const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNtdXZvbW5tYW9zZWNjeHBldXhxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU0MDM5NjMsImV4cCI6MjA5MDk3OTk2M30.s_sIdbTqE5NdMhi-ZfiWTpneswGvi2U4bmNgNWF22UY'
@@ -14,6 +14,30 @@ const THS_COLORS = {
   text: '#000',
   lightText: '#fff',
 }
+
+const TabButtons = ({ activeTab, setActiveTab, tabs }) => (
+  <div style={{ display: 'flex', gap: 12, padding: '20px 0', borderBottom: `2px solid ${THS_COLORS.gold}` }}>
+    {tabs.map(tab => (
+      <button
+        key={tab.id}
+        onClick={() => setActiveTab(tab.id)}
+        style={{
+          padding: '12px 24px',
+          border: 'none',
+          borderRadius: 24,
+          cursor: 'pointer',
+          fontSize: 14,
+          fontWeight: 600,
+          background: activeTab === tab.id ? THS_COLORS.darkBlue : '#f0f0f0',
+          color: activeTab === tab.id ? THS_COLORS.lightText : '#999',
+          transition: 'all 0.2s ease'
+        }}
+      >
+        {tab.label}
+      </button>
+    ))}
+  </div>
+)
 
 const CollapsibleDay = ({ date, dateLabel, children, defaultOpen = false }) => {
   const [open, setOpen] = useState(defaultOpen)
@@ -177,6 +201,55 @@ const DayView = ({ dateStr }) => {
   )
 }
 
+const CostDashboard = () => (
+  <div>
+    <div style={{
+      padding: 16,
+      background: THS_COLORS.lightBlueBg,
+      borderRadius: 8,
+      marginBottom: 24,
+      border: `1px solid ${THS_COLORS.gold}`
+    }}>
+      <div style={{ display: 'flex', gap: 24 }}>
+        <div>
+          <div style={{ fontSize: 12, color: '#666', marginBottom: 4 }}>Today's Spend</div>
+          <div style={{ fontSize: 24, fontWeight: 700, color: THS_COLORS.mediumBlue }}>$4.23</div>
+        </div>
+        <div>
+          <div style={{ fontSize: 12, color: '#666', marginBottom: 4 }}>30-Day Total</div>
+          <div style={{ fontSize: 24, fontWeight: 700, color: THS_COLORS.mediumBlue }}>$87.45</div>
+        </div>
+        <div>
+          <div style={{ fontSize: 12, color: '#666', marginBottom: 4 }}>Daily Average</div>
+          <div style={{ fontSize: 24, fontWeight: 700, color: THS_COLORS.mediumBlue }}>$2.92</div>
+        </div>
+      </div>
+    </div>
+
+    <div style={{ padding: 20, background: THS_COLORS.lightBlueBg, borderRadius: 8, textAlign: 'center', border: `1px solid ${THS_COLORS.gold}` }}>
+      <TrendingUp size={24} color={THS_COLORS.gold} style={{ margin: '0 auto 12px' }} />
+      <div style={{ fontSize: 14, fontWeight: 600, color: THS_COLORS.darkBlue, marginBottom: 6 }}>
+        Cost Dashboard
+      </div>
+      <div style={{ fontSize: 12, color: '#666' }}>
+        Agent activity and provider breakdown coming soon
+      </div>
+    </div>
+  </div>
+)
+
+const ExecutiveBriefings = () => (
+  <div style={{ padding: 20, background: THS_COLORS.lightBlueBg, borderRadius: 8, textAlign: 'center', border: `1px solid ${THS_COLORS.gold}` }}>
+    <AlertCircle size={24} color={THS_COLORS.gold} style={{ margin: '0 auto 12px' }} />
+    <div style={{ fontSize: 14, fontWeight: 600, color: THS_COLORS.darkBlue, marginBottom: 6 }}>
+      Executive Briefings
+    </div>
+    <div style={{ fontSize: 12, color: '#666' }}>
+      High-level summaries and executive updates coming soon
+    </div>
+  </div>
+)
+
 export default function DailyBriefingsPage() {
   const [tab, setTab] = useState('today')
   const today = new Date().toISOString().split('T')[0]
@@ -198,6 +271,14 @@ export default function DailyBriefingsPage() {
   const todayLabel = new Date(today + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })
   const tomorrowLabel = new Date(tomorrow + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })
 
+  const tabs = [
+    { id: 'tomorrow', label: 'Tomorrow' },
+    { id: 'today', label: 'Today' },
+    { id: 'archive', label: 'Archive' },
+    { id: 'cost', label: 'Cost Dashboard' },
+    { id: 'executive', label: 'Executive Briefings' }
+  ]
+
   return (
     <div style={{ minHeight: '100vh', background: '#f5f5f5' }}>
       {/* Header */}
@@ -210,21 +291,8 @@ export default function DailyBriefingsPage() {
       </div>
 
       {/* Tabs */}
-      <div style={{ background: '#fff', borderBottom: `2px solid ${THS_COLORS.gold}`, padding: '0 36px', display: 'flex', gap: 0 }}>
-        {['tomorrow', 'today', 'archive'].map(t => (
-          <button
-            key={t}
-            onClick={() => setTab(t)}
-            style={{
-              padding: '14px 20px', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 700,
-              color: tab === t ? THS_COLORS.darkBlue : '#999',
-              borderBottom: tab === t ? `3px solid ${THS_COLORS.gold}` : 'none',
-              background: 'transparent'
-            }}
-          >
-            {t === 'tomorrow' ? 'Tomorrow' : t === 'today' ? 'Today' : 'Archive'}
-          </button>
-        ))}
+      <div style={{ background: '#fff', padding: '0 36px' }}>
+        <TabButtons activeTab={tab} setActiveTab={setTab} tabs={tabs} />
       </div>
 
       {/* Content */}
@@ -251,6 +319,20 @@ export default function DailyBriefingsPage() {
                 <DayView dateStr={day.dateStr} />
               </CollapsibleDay>
             ))}
+          </div>
+        )}
+
+        {tab === 'cost' && (
+          <div>
+            <h2 style={{ fontSize: 18, fontWeight: 700, color: THS_COLORS.darkBlue, marginBottom: 20 }}>Cost Dashboard</h2>
+            <CostDashboard />
+          </div>
+        )}
+
+        {tab === 'executive' && (
+          <div>
+            <h2 style={{ fontSize: 18, fontWeight: 700, color: THS_COLORS.darkBlue, marginBottom: 20 }}>Executive Briefings</h2>
+            <ExecutiveBriefings />
           </div>
         )}
       </div>
