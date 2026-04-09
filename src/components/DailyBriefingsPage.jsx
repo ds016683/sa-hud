@@ -53,12 +53,20 @@ const TabButtons = ({ activeTab, setActiveTab, tabs }) => (
   </div>
 )
 
+// CollapsibleDay: lazy-mounts children on first open, animates with max-height transition
 const CollapsibleDay = ({ dateLabel, children }) => {
   const [open, setOpen] = useState(false)
+  const [everOpened, setEverOpened] = useState(false)
+
+  const toggle = () => {
+    if (!everOpened) setEverOpened(true)
+    setOpen(o => !o)
+  }
+
   return (
     <div style={{ marginBottom: 20, border: `1px solid ${TH.gold}`, borderRadius: 8, overflow: 'hidden' }}>
       <button
-        onClick={() => setOpen(!open)}
+        onClick={toggle}
         style={{
           width: '100%', padding: '16px 20px', background: TH.darkBlue,
           border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center',
@@ -67,9 +75,29 @@ const CollapsibleDay = ({ dateLabel, children }) => {
       >
         <Calendar size={18} color={TH.gold} />
         <span>{dateLabel}</span>
-        <ChevronDown size={16} style={{ marginLeft: 'auto', transform: open ? 'rotate(0deg)' : 'rotate(-90deg)', color: TH.gold }} />
+        <ChevronDown
+          size={16}
+          style={{
+            marginLeft: 'auto',
+            color: TH.gold,
+            transform: open ? 'rotate(0deg)' : 'rotate(-90deg)',
+            transition: 'transform 0.3s ease',
+          }}
+        />
       </button>
-      {open && <div style={{ padding: 20, background: TH.white }}>{children}</div>}
+      <div
+        style={{
+          maxHeight: open ? 4000 : 0,
+          overflow: 'hidden',
+          transition: 'max-height 0.35s ease',
+        }}
+      >
+        {everOpened && (
+          <div style={{ padding: 20, background: TH.white }}>
+            {children}
+          </div>
+        )}
+      </div>
     </div>
   )
 }
@@ -95,13 +123,27 @@ const CollapsibleSection = ({ title, icon: Icon, badge, children, defaultOpen = 
             padding: '2px 8px', borderRadius: 10,
           }}>{badge}</span>
         )}
-        <ChevronDown size={14} style={{ marginLeft: 'auto', transform: open ? 'rotate(0deg)' : 'rotate(-90deg)', color: TH.mediumBlue }} />
+        <ChevronDown
+          size={14}
+          style={{
+            marginLeft: 'auto',
+            color: TH.mediumBlue,
+            transform: open ? 'rotate(0deg)' : 'rotate(-90deg)',
+            transition: 'transform 0.25s ease',
+          }}
+        />
       </button>
-      {open && (
+      <div
+        style={{
+          maxHeight: open ? 3000 : 0,
+          overflow: 'hidden',
+          transition: 'max-height 0.3s ease',
+        }}
+      >
         <div style={{ padding: 14, fontSize: 13, lineHeight: 1.8, color: '#333', whiteSpace: 'pre-wrap', background: TH.white }}>
           {children}
         </div>
-      )}
+      </div>
     </div>
   )
 }
@@ -150,16 +192,29 @@ const CallCard = ({ call }) => {
       >
         <Mic size={13} color={TH.mediumBlue} />
         <span style={{ fontWeight: 600, color: TH.darkBlue, flex: 1, textAlign: 'left' }}>
-          {call.title || 'Call'}{call.time ? ` — ${call.time}` : ''}
+          {call.title || 'Call'}{call.time ? ` - ${call.time}` : ''}
         </span>
         {call.routing && (
           <span style={{ fontSize: 11, fontWeight: 600, padding: '3px 8px', borderRadius: 4, ...routingStyle() }}>
             {call.routing}
           </span>
         )}
-        <ChevronDown size={14} style={{ transform: open ? 'rotate(0deg)' : 'rotate(-90deg)', color: TH.gray }} />
+        <ChevronDown
+          size={14}
+          style={{
+            color: TH.gray,
+            transform: open ? 'rotate(0deg)' : 'rotate(-90deg)',
+            transition: 'transform 0.25s ease',
+          }}
+        />
       </button>
-      {open && (
+      <div
+        style={{
+          maxHeight: open ? 2000 : 0,
+          overflow: 'hidden',
+          transition: 'max-height 0.3s ease',
+        }}
+      >
         <div style={{ padding: 14, fontSize: 12, lineHeight: 1.8, color: '#333', background: TH.white }}>
           {call.dropboxPath && (
             <div style={{
@@ -189,7 +244,7 @@ const CallCard = ({ call }) => {
             </div>
           )}
         </div>
-      )}
+      </div>
     </div>
   )
 }
