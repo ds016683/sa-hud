@@ -227,7 +227,18 @@ const CallCard = ({ call }) => {
               <CopyButton text={call.dropboxPath} />
             </div>
           )}
-          {call.prose && <div style={{ marginBottom: 12 }}>{call.prose}</div>}
+          {call.attendees?.length > 0 && (
+            <div style={{ marginBottom: 10, fontSize: 11, color: TH.gray }}>
+              <span style={{ fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Attendees:</span>{' '}
+              {call.attendees.join(', ')}
+            </div>
+          )}
+          {call.prose && (
+            <div style={{ marginBottom: 12, whiteSpace: 'pre-wrap' }}>{call.prose}</div>
+          )}
+          {call.summary_markdown && (
+            <pre style={{ marginBottom: 12, whiteSpace: 'pre-wrap', fontFamily: 'inherit', fontSize: 12, lineHeight: 1.8, margin: '0 0 12px', background: 'none', padding: 0 }}>{call.summary_markdown}</pre>
+          )}
           {call.bullets?.length > 0 && (
             <ul style={{ margin: '0 0 0 16px', paddingLeft: 0 }}>
               {call.bullets.map((b, i) => <li key={i} style={{ marginBottom: 5 }}>{b}</li>)}
@@ -338,23 +349,20 @@ export default function DailyBriefingsPage() {
   ]
 
   return (
-    <div style={{ minHeight: '100vh', background: '#f5f5f5' }}>
+    <div style={{ maxWidth: 900, margin: '0 auto', padding: '24px 16px', fontFamily: 'Arial, Helvetica, sans-serif' }}>
       {/* Header */}
-      <div style={{ background: TH.darkBlue, color: TH.white, padding: '32px 36px 24px', textAlign: 'center' }}>
-        <div style={{ fontSize: 11, letterSpacing: '2px', textTransform: 'uppercase', marginBottom: 10, color: '#8fb0d0' }}>
-          Prepared by Lumen | Confidential
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+        <div>
+          <h1 style={{ fontSize: 20, fontWeight: 700, color: TH.darkBlue, margin: 0 }}>Daily Briefings</h1>
+          <p style={{ fontSize: 13, color: '#8096B2', margin: '2px 0 0' }}>Prepared by Lumen · Third Horizon</p>
         </div>
-        <div style={{ fontSize: 26, fontWeight: 700, marginBottom: 6 }}>Daily Briefing</div>
-        <div style={{ fontSize: 16, color: '#a8c0e0' }}>Third Horizon</div>
       </div>
 
       {/* Tabs */}
-      <div style={{ background: TH.white, padding: '0 36px' }}>
-        <TabButtons activeTab={tab} setActiveTab={setTab} tabs={tabs} />
-      </div>
+      <TabButtons activeTab={tab} setActiveTab={setTab} tabs={tabs} />
 
       {/* Content */}
-      <div style={{ maxWidth: 900, margin: '0 auto', padding: '24px 20px' }}>
+      <div style={{ paddingTop: 24 }}>
         {tab === 'today' && (
           <div>
             <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: 1, color: TH.gray, marginBottom: 4 }}>Today</div>
@@ -389,11 +397,6 @@ export default function DailyBriefingsPage() {
             ))}
           </div>
         )}
-      </div>
-
-      {/* Footer */}
-      <div style={{ background: TH.darkBlue, color: '#6888aa', padding: '20px 36px', textAlign: 'center', fontSize: 11, marginTop: 40 }}>
-        Lumen -- David Smith's AI Assistant | Third Horizon
       </div>
     </div>
   )
