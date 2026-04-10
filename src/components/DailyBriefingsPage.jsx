@@ -237,11 +237,15 @@ const CallCard = ({ call }) => {
               </div>
             ) : null
           })()}
-          {call.prose && (
-            <div style={{ marginBottom: 12, whiteSpace: 'pre-wrap' }}>{call.prose}</div>
-          )}
+          {/* Render verbatim Granola content -- priority: summary_markdown > summary_text > prose */}
           {call.summary_markdown && (
             <pre style={{ marginBottom: 12, whiteSpace: 'pre-wrap', fontFamily: 'inherit', fontSize: 12, lineHeight: 1.8, margin: '0 0 12px', background: 'none', padding: 0 }}>{call.summary_markdown}</pre>
+          )}
+          {!call.summary_markdown && call.summary_text && (
+            <div style={{ marginBottom: 12, whiteSpace: 'pre-wrap', fontSize: 12, lineHeight: 1.8 }}>{call.summary_text}</div>
+          )}
+          {!call.summary_markdown && !call.summary_text && call.prose && (
+            <div style={{ marginBottom: 12, whiteSpace: 'pre-wrap' }}>{call.prose}</div>
           )}
           {call.bullets?.length > 0 && (
             <ul style={{ margin: '0 0 0 16px', paddingLeft: 0 }}>
@@ -358,7 +362,7 @@ export default function DailyBriefingsPage() {
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
         <div>
           <h1 style={{ fontSize: 20, fontWeight: 700, color: TH.darkBlue, margin: 0 }}>Daily Briefings</h1>
-          <p style={{ fontSize: 13, color: '#8096B2', margin: '2px 0 0' }}>Prepared by Lumen � Third Horizon</p>
+          <p style={{ fontSize: 13, color: '#8096B2', margin: '2px 0 0' }}>Prepared by Lumen &mdash; Third Horizon</p>
         </div>
       </div>
 
