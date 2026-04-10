@@ -227,12 +227,16 @@ const CallCard = ({ call }) => {
               <CopyButton text={call.dropboxPath} />
             </div>
           )}
-          {call.attendees?.length > 0 && (
-            <div style={{ marginBottom: 10, fontSize: 11, color: TH.gray }}>
-              <span style={{ fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Attendees:</span>{' '}
-              {call.attendees.join(', ')}
-            </div>
-          )}
+          {call.attendees && (() => {
+            const arr = Array.isArray(call.attendees) ? call.attendees : [call.attendees]
+            const flat = arr.flatMap(a => typeof a === 'string' ? a.split(',').map(s => s.trim()) : [a]).filter(Boolean)
+            return flat.length > 0 ? (
+              <div style={{ marginBottom: 10, fontSize: 11, color: TH.gray }}>
+                <span style={{ fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Attendees:</span>{' '}
+                {flat.join(', ')}
+              </div>
+            ) : null
+          })()}
           {call.prose && (
             <div style={{ marginBottom: 12, whiteSpace: 'pre-wrap' }}>{call.prose}</div>
           )}
@@ -354,7 +358,7 @@ export default function DailyBriefingsPage() {
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
         <div>
           <h1 style={{ fontSize: 20, fontWeight: 700, color: TH.darkBlue, margin: 0 }}>Daily Briefings</h1>
-          <p style={{ fontSize: 13, color: '#8096B2', margin: '2px 0 0' }}>Prepared by Lumen · Third Horizon</p>
+          <p style={{ fontSize: 13, color: '#8096B2', margin: '2px 0 0' }}>Prepared by Lumen � Third Horizon</p>
         </div>
       </div>
 
@@ -401,3 +405,4 @@ export default function DailyBriefingsPage() {
     </div>
   )
 }
+
