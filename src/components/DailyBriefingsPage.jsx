@@ -1,6 +1,45 @@
 import React, { useState, useEffect } from 'react'
 import { ChevronDown, Calendar, Mic, FileText, CheckSquare, Copy, Check } from 'lucide-react'
 
+// Lightweight markdown renderer: ### -> bold heading, ** -> bold, - bullet lines
+const MarkdownBlock = ({ text }) => {
+  if (!text) return null
+  const lines = text.split('\n')
+  const elements = []
+  let i = 0
+  while (i < lines.length) {
+    const line = lines[i]
+    if (/^#{1,3}\s/.test(line)) {
+      const content = line.replace(/^#{1,3}\s+/, '')
+      elements.push(
+        <div key={i} style={{ fontWeight: 700, color: '#1A3A5C', fontSize: 12, marginTop: 14, marginBottom: 4 }}>
+          {content}
+        </div>
+      )
+    } else if (/^[-*]\s/.test(line)) {
+      elements.push(
+        <div key={i} style={{ paddingLeft: 16, marginBottom: 2, fontSize: 12, lineHeight: 1.7 }}>
+          {line.replace(/^[-*]\s/, '')}
+        </div>
+      )
+    } else if (/^\s+[-*]\s/.test(line)) {
+      elements.push(
+        <div key={i} style={{ paddingLeft: 32, marginBottom: 2, fontSize: 12, lineHeight: 1.7, color: '#555' }}>
+          {line.replace(/^\s+[-*]\s/, '')}
+        </div>
+      )
+    } else if (line.trim() === '' || line.trim() === '---') {
+      elements.push(<div key={i} style={{ height: 6 }} />)
+    } else {
+      elements.push(
+        <div key={i} style={{ fontSize: 12, lineHeight: 1.7, marginBottom: 2 }}>{line}</div>
+      )
+    }
+    i++
+  }
+  return <div style={{ marginBottom: 12 }}>{elements}</div>
+}
+
 const SUPA_URL = 'https://cmuvomnmaoseccxpeuxq.supabase.co'
 const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNtdXZvbW5tYW9zZWNjeHBldXhxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU0MDM5NjMsImV4cCI6MjA5MDk3OTk2M30.s_sIdbTqE5NdMhi-ZfiWTpneswGvi2U4bmNgNWF22UY'
 
@@ -238,15 +277,14 @@ const CallCard = ({ call }) => {
             ) : null
           })()}
           {/* Render verbatim Granola content -- priority: summary_markdown > summary_text > prose */}
-          {call.summary_markdown && (
-            <pre style={{ marginBottom: 12, whiteSpace: 'pre-wrap', fontFamily: 'inherit', fontSize: 12, lineHeight: 1.8, margin: '0 0 12px', background: 'none', padding: 0 }}>{call.summary_markdown}</pre>
-          )}
-          {!call.summary_markdown && call.summary_text && (
-            <div style={{ marginBottom: 12, whiteSpace: 'pre-wrap', fontSize: 12, lineHeight: 1.8 }}>{call.summary_text}</div>
-          )}
-          {!call.summary_markdown && !call.summary_text && call.prose && (
-            <div style={{ marginBottom: 12, whiteSpace: 'pre-wrap' }}>{call.prose}</div>
-          )}
+          {call.summary_markdown
+            ? <MarkdownBlock text={call.summary_markdown} />
+            : call.summary_text
+              ? <MarkdownBlock text={call.summary_text} />
+              : call.prose
+                ? <div style={{ marginBottom: 12, whiteSpace: 'pre-wrap', fontSize: 12, lineHeight: 1.8 }}>{call.prose}</div>
+                : null
+          }
           {call.bullets?.length > 0 && (
             <ul style={{ margin: '0 0 0 16px', paddingLeft: 0 }}>
               {call.bullets.map((b, i) => <li key={i} style={{ marginBottom: 5 }}>{b}</li>)}
