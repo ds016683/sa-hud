@@ -937,31 +937,6 @@ function CostDashboardTab() {
     </div>
   )
 
-  if (!loading && rows.length === 0) {
-    return (
-      <div>
-        <div style={{ display: 'flex', gap: 12, marginBottom: 24, flexWrap: 'wrap' }}>
-          {statCard("Today's Cost", '$0.00')}
-          {statCard('This Week', '$0.00')}
-          {statCard('Top Model Today', '—')}
-        </div>
-        <div style={{ padding: 24, border: `2px dashed ${THS_COLORS.gold}`, borderRadius: 10, background: THS_COLORS.lightBlueBg, textAlign: 'center', marginBottom: 24 }}>
-          <div style={{ fontSize: 14, fontWeight: 700, color: THS_COLORS.darkBlue, marginBottom: 8 }}>No data yet — cost_tracking table needs to be created</div>
-          <p style={{ fontSize: 12, color: '#666', marginBottom: 16 }}>Run this SQL in the Supabase SQL editor, then agents can write cost data on each LLM call.</p>
-          <div style={{ position: 'relative', textAlign: 'left' }}>
-            <pre style={{ background: '#1e1e2e', color: '#cdd6f4', borderRadius: 8, padding: 16, fontSize: 12, fontFamily: "'Courier New', monospace", overflowX: 'auto', margin: 0 }}>{MIGRATION_SQL}</pre>
-            <button
-              onClick={() => { navigator.clipboard?.writeText(MIGRATION_SQL); setCopied(true); setTimeout(() => setCopied(false), 2000) }}
-              style={{ position: 'absolute', top: 8, right: 8, padding: '4px 10px', background: copied ? '#22c55e' : THS_COLORS.mediumBlue, color: '#fff', border: 'none', borderRadius: 4, fontSize: 11, cursor: 'pointer', fontWeight: 600 }}
-            >
-              {copied ? 'Copied!' : 'Copy SQL'}
-            </button>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
   return (
     <div>
       <div style={{ display: 'flex', gap: 12, marginBottom: 24, flexWrap: 'wrap' }}>
@@ -999,7 +974,7 @@ function CostDashboardTab() {
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11, minWidth: 600 }}>
           <thead>
             <tr style={{ background: THS_COLORS.darkBlue, color: '#fff' }}>
-              {['Time', 'Agent', 'Model', 'Task Type', 'Tokens In', 'Tokens Out', 'Cost'].map(h => (
+              {['Time', 'Provider', 'Agent', 'Model', 'Task', 'Cost'].map(h => (
                 <th key={h} style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 600, fontSize: 10, whiteSpace: 'nowrap' }}>{h}</th>
               ))}
             </tr>
@@ -1010,11 +985,10 @@ function CostDashboardTab() {
                 <td style={{ padding: '6px 12px', fontFamily: "'Courier New', monospace", color: '#666', whiteSpace: 'nowrap' }}>
                   {new Date(r.created_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
                 </td>
+                <td style={{ padding: '6px 12px', color: '#555' }}>{r.provider || '—'}</td>
                 <td style={{ padding: '6px 12px', color: '#333' }}>{r.agent || '—'}</td>
-                <td style={{ padding: '6px 12px', fontFamily: "'Courier New', monospace", color: THS_COLORS.mediumBlue }}>{r.model}</td>
-                <td style={{ padding: '6px 12px', color: '#555' }}>{r.task_type || '—'}</td>
-                <td style={{ padding: '6px 12px', textAlign: 'right', color: '#666' }}>{r.input_tokens?.toLocaleString() || '—'}</td>
-                <td style={{ padding: '6px 12px', textAlign: 'right', color: '#666' }}>{r.output_tokens?.toLocaleString() || '—'}</td>
+                <td style={{ padding: '6px 12px', fontFamily: "'Courier New', monospace", color: THS_COLORS.mediumBlue }}>{r.model || '—'}</td>
+                <td style={{ padding: '6px 12px', color: '#555' }}>{r.task_description ? r.task_description.slice(0, 60) : '—'}</td>
                 <td style={{ padding: '6px 12px', textAlign: 'right', fontWeight: 600, color: THS_COLORS.mediumBlue }}>${(r.cost_usd || 0).toFixed(4)}</td>
               </tr>
             ))}
