@@ -48,7 +48,7 @@ function InactiveRow({ project, onPin, onNavigate, onUpdate }) {
 }
 
 export default function PortfolioPage() {
-  const { spotlight, roster, archive, createProject, updateProject, deleteProject, pinProject, exportToMarkdown, loading } = usePortfolio()
+  const { spotlight, roster, archive, createProject, updateProject, deleteProject, archiveProject, pinProject, exportToMarkdown, loading } = usePortfolio()
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [detailProjectId, setDetailProjectId] = useState(null)
   const [archiveOpen, setArchiveOpen] = useState(false)
@@ -129,7 +129,7 @@ export default function PortfolioPage() {
           <div className="px-5 pb-4">
             {q2Active.length > 0 && (
               <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 mb-4">
-                {q2Active.map(p => <ProjectCard key={p.id} project={p} onUpdate={updateProject} onPin={pinProject} onNavigate={setDetailProjectId} />)}
+                {q2Active.map(p => <ProjectCard key={p.id} project={p} onUpdate={updateProject} onPin={pinProject} onNavigate={setDetailProjectId} archiveProject={archiveProject} deleteProject={deleteProject} />)}
               </div>
             )}
             {q2Inactive.length > 0 && (
@@ -172,7 +172,7 @@ export default function PortfolioPage() {
               <div className="px-5 pb-4">
                 {active.length > 0 && (
                   <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 mb-4">
-                    {active.map(p => <ProjectCard key={p.id} project={p} onUpdate={updateProject} onPin={pinProject} onNavigate={setDetailProjectId} />)}
+                    {active.map(p => <ProjectCard key={p.id} project={p} onUpdate={updateProject} onPin={pinProject} onNavigate={setDetailProjectId} archiveProject={archiveProject} deleteProject={deleteProject} />)}
                   </div>
                 )}
                 {inactive.length > 0 && (

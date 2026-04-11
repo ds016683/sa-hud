@@ -155,6 +155,13 @@ export default function usePortfolio() {
     safeSetProjects(prev => prev.filter(p => p.id !== id))
   }, [])
 
+  const archiveProject = useCallback(async (id) => {
+    const now = new Date().toISOString()
+    const { error } = await supabase.from('projects').update({ archived_at: now, status: 'archived' }).eq('id', id)
+    if (error) { console.error('archiveProject error:', error); return }
+    safeSetProjects(prev => prev.map(p => p.id === id ? { ...p, archived_at: now, status: 'archived' } : p))
+  }, [])
+
   const pinProject = useCallback(async (id) => {
     const project = projects.find(p => p.id === id)
     if (!project) return
@@ -223,5 +230,5 @@ export default function usePortfolio() {
 
   const { spotlight, roster, archive } = partitionProjects(projects)
 
-  return { projects, spotlight, roster, archive, loading, createProject, updateProject, deleteProject, pinProject, reorderSpotlight, exportToMarkdown }
+  return { projects, spotlight, roster, archive, loading, createProject, updateProject, deleteProject, archiveProject, pinProject, reorderSpotlight, exportToMarkdown }
 }

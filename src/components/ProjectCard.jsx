@@ -1,4 +1,5 @@
-import { Pin, ArrowUpRight, Archive, GripVertical, ChevronDown } from 'lucide-react'
+import { useState } from 'react'
+import { Pin, ArrowUpRight, Archive, GripVertical, ChevronDown, MoreHorizontal, Trash2 } from 'lucide-react'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import InlineName from './InlineName'
@@ -24,8 +25,10 @@ const STATUS_STYLES = {
   active:         'bg-blue-50 text-blue-700 border-blue-200',
 }
 
-export default function ProjectCard({ project, onUpdate, onPin, onNavigate }) {
+export default function ProjectCard({ project, onUpdate, onPin, onNavigate, archiveProject, deleteProject }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: project.id })
+  const [expanded, setExpanded] = useState(false)
+  const [menuOpen, setMenuOpen] = useState(false)
 
   const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : 1 }
 
@@ -59,16 +62,16 @@ export default function ProjectCard({ project, onUpdate, onPin, onNavigate }) {
             <div className="flex items-center gap-1.5 min-w-0">
               <span className={`w-2 h-2 rounded-full flex-shrink-0 ${FRESHNESS_COLORS[freshness]}`} />
               {project.pinned && (
-                <span className="text-amber-500 text-xs flex-shrink-0" title="Active focus project">â˜…</span>
+                <span className="text-amber-500 text-xs flex-shrink-0" title="Active focus project">&#9733;</span>
               )}
               <h3 className="text-sm font-semibold leading-tight text-[#002C77] truncate">
                 <InlineName name={project.name} onRename={(name) => onUpdate(project.id, { name })} />
               </h3>
             </div>
-            {/* Actions â€” show on hover */}
+            {/* Actions — show on hover */}
             <div className="flex items-center gap-1 flex-shrink-0">
               <button
-                onClick={() => onPin(project.id)}
+                onClick={(e) => { e.stopPropagation(); onPin(project.id) }}
                 className="p-1.5 rounded-md hover:bg-gray-100 transition-colors"
                 style={{ color: project.pinned ? "#F59E0B" : "#CBD8E8" }}
                 title={project.pinned ? "Deactivate (move to inactive)" : "Activate (pin to top)"}
@@ -76,19 +79,48 @@ export default function ProjectCard({ project, onUpdate, onPin, onNavigate }) {
                 <Pin size={12} className={project.pinned ? 'fill-current text-amber-500' : ''} />
               </button>
               <button
-                onClick={() => onNavigate(project.id)}
+                onClick={(e) => { e.stopPropagation(); onNavigate(project.id) }}
                 className="p-1 rounded hover:bg-gray-100 text-gray-400 hover:text-[#009DE0] transition-colors"
                 title="View details"
               >
                 <ArrowUpRight size={12} />
               </button>
               <button
-                onClick={() => { if (window.confirm(`Archive "${project.name}"?`)) onUpdate(project.id, { status: 'archived' }) }}
-                className="p-1 rounded hover:bg-gray-100 text-gray-400 hover:text-red-500 transition-colors"
-                title="Archive"
+                onClick={(e) => { e.stopPropagation(); setExpanded(x => !x) }}
+                className="p-1 rounded hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors"
+                title={expanded ? 'Collapse' : 'Expand'}
               >
-                <Archive size={12} />
+                <ChevronDown size={12} className={`transition-transform duration-150 ${expanded ? 'rotate-180' : ''}`} />
               </button>
+              {/* Three-dot menu */}
+              <div className="relative">
+                <button
+                  onClick={(e) => { e.stopPropagation(); setMenuOpen(x => !x) }}
+                  className="p-1 rounded hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors"
+                  title="More options"
+                >
+                  <MoreHorizontal size={12} />
+                </button>
+                {menuOpen && (
+                  <>
+                    <div className="fixed inset-0 z-40" onClick={() => setMenuOpen(false)} />
+                    <div className="absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 min-w-[120px] py-1">
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setMenuOpen(false); archiveProject(project.id) }}
+                        className="w-full px-3 py-1.5 text-left text-sm text-gray-600 hover:bg-gray-50 flex items-center gap-2"
+                      >
+                        <Archive size={12} /> Archive
+                      </button>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setMenuOpen(false); if (window.confirm(`Permanently delete "${project.name}"?`)) deleteProject(project.id) }}
+                        className="w-full px-3 py-1.5 text-left text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
+                      >
+                        <Trash2 size={12} /> Delete
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
             </div>
           </div>
 
@@ -111,19 +143,33 @@ export default function ProjectCard({ project, onUpdate, onPin, onNavigate }) {
             ))}
           </div>
 
-          {/* Description preview */}
+          {/* Description — full when expanded, clipped when collapsed */}
           {project.description && (
-            <p className="text-xs text-gray-500 leading-relaxed line-clamp-2 mb-3">
+            <p className={`text-xs text-gray-500 leading-relaxed mb-3 ${expanded ? '' : 'line-clamp-2'}`}>
               {project.description}
             </p>
           )}
 
-          {/* Footer â€” tasks progress + deadline */}
+          {/* Expanded: task checklist */}
+          {expanded && totalTasks > 0 && (
+            <ul className="mb-3 space-y-1">
+              {(project.tasks || []).map(t => (
+                <li key={t.id || t.text} className="flex items-center gap-2 text-xs text-gray-500">
+                  <span className={`w-3.5 h-3.5 rounded border flex-shrink-0 flex items-center justify-center text-[10px] ${t.done ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-gray-300'}`}>
+                    {t.done ? '✓' : ''}
+                  </span>
+                  <span className={t.done ? 'line-through text-gray-400' : ''}>{t.text}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+
+          {/* Footer — tasks progress + deadline */}
           <div className="flex items-center justify-between text-[11px] text-gray-400 pt-2 border-t border-gray-100">
             <span>
               {totalTasks > 0
                 ? `${completedTasks}/${totalTasks} tasks`
-                : project.mma_accountable || 'â€”'
+                : project.mma_accountable || '\u2014'
               }
             </span>
             {daysUntil !== null && (
