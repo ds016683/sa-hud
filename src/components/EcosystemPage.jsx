@@ -619,14 +619,14 @@ function DeployedSitesTab() {
 // ── Connections Map (hub-and-spoke) ───────────────────────────────────────────
 
 const CONN_VW = 1000, CONN_VH = 680, CONN_CX = 500, CONN_CY = 370
-const HUB_R = 185, LEAF_R = 130
+const HUB_R = 210, LEAF_R = 130
 
 const CONN_HUBS = [
   { id: 'hub-comms',  label: 'Communication',      shortLabel: 'COMMS',  color: '#7C3AED', angle: 0,   fanWidth: 50, summary: 'Signal, WhatsApp, WhatsApp Business, Discord, Slack, Gmail, Outlook/Calendar, Vapi voice, ElevenLabs TTS' },
   { id: 'hub-data',   label: 'Data & Analytics',    shortLabel: 'DATA',   color: '#059669', angle: 72,  fanWidth: 45, summary: 'BigQuery (67B+ rows), Supabase (×2), Granola, Harvest, Notion, OpenRouter, Dropbox, GitHub Gist' },
   { id: 'hub-apps',   label: 'Deployed Apps',       shortLabel: 'APPS',   color: '#2563EB', angle: 144, fanWidth: 45, summary: 'SA HUD, Project Diablo, MMA Tracker, Clarity, NACDD, AHA Index, BH Rate apps, Lumen API' },
   { id: 'hub-infra',  label: 'Infrastructure',      shortLabel: 'INFRA',  color: '#DC2626', angle: 216, fanWidth: 50, summary: 'DavidPC, Hermes VPS, Mac M5, Tailscale mesh, GitHub, Claude Code, PM2, Vercel, Fly.io, GitHub Actions' },
-  { id: 'hub-ai',     label: 'AI & Voice',          shortLabel: 'AI',     color: '#F59E0B', angle: 288, fanWidth: 40, summary: 'OpenClaw/Lumen gateway, 16 Discord agents, Hermes CDRO, Vapi voice bridge, ElevenLabs, OpenRouter model routing' },
+  { id: 'hub-ai',     label: 'AI & Voice',          shortLabel: 'AI',     color: '#F59E0B', angle: 288, fanWidth: 40, summary: 'OpenClaw gateway, OpenRouter LLM routing, Tello eSIM for WhatsApp Business' },
 ]
 
 const CONN_LEAVES = [
@@ -673,9 +673,8 @@ const CONN_LEAVES = [
   { id: 'l-pm2',         hub: 'hub-infra', label: 'PM2',                status: 'active', description: 'Process manager on DavidPC. Keeps lumen-api and localtunnel running 24/7 with auto-restart.', connectedTo: ['Lumen API', 'Localtunnel', 'DavidPC'] },
   { id: 'l-localtunnel', hub: 'hub-infra', label: 'Localtunnel',        status: 'active', description: 'Creates public URL (lumen-api-ds.loca.lt) so Vapi can reach lumen-api from the internet. Managed by PM2.', notes: 'lumen-api-ds.loca.lt', connectedTo: ['Lumen API', 'Vapi Voice', 'PM2'] },
   // AI & VOICE
-  { id: 'l-openclaw',    hub: 'hub-ai', label: 'OpenClaw',              status: 'active', description: 'AI gateway running on DavidPC. Handles all agent routing, messaging, tool execution, and multi-platform integration.', notes: 'v2026.4.8 · port 18789', connectedTo: ['DavidPC', 'Discord', 'All Agents'] },
-  { id: 'l-agent-mesh',  hub: 'hub-ai', label: '16 Agent Channels',     status: 'active', description: '16 specialist Discord agents organized by function: Production, Research, Client, Infrastructure, Background, Social, Analytics. See Org Chart.', connectedTo: ['OpenClaw', 'Discord', 'OpenRouter'] },
-  { id: 'l-hermes-cdro', hub: 'hub-ai', label: 'Hermes (CDRO)',         status: 'active', description: 'Meta-agent on Hermes VPS. Owns ecosystem docs, config auditing, cron monitoring, cross-session memory. Reports to David via DMs.', notes: '#infra-ops · DMs', connectedTo: ['Hermes VPS', 'DavidPC', 'GitHub'] },
+  { id: 'l-openclaw',    hub: 'hub-ai', label: 'OpenClaw',              status: 'active', description: 'AI gateway running on DavidPC. Handles all agent routing, messaging, tool execution, and multi-platform integration.', notes: 'v2026.4.8 · port 18789', connectedTo: ['DavidPC', 'Discord', 'OpenRouter'] },
+  { id: 'l-openrouter2', hub: 'hub-ai', label: 'OpenRouter (LLM)',      status: 'active', description: 'Model routing layer. Agents access Anthropic, OpenAI, Google models through a single API. Cost tracking via /api/v1/generation.', notes: 'Unified LLM gateway', connectedTo: ['OpenClaw', 'All Agents'] },
   { id: 'l-tello',       hub: 'hub-ai', label: 'Tello eSIM',            status: 'active', description: "Secondary phone number (630-781-2048) on David's iPhone as eSIM. Powers Lumen's WhatsApp Business presence.", notes: '630-781-2048', connectedTo: ['WhatsApp Business'] },
 ]
 
@@ -724,7 +723,7 @@ function ConnLeafPanel({ leaf, onClose }) {
   )
 }
 
-function ConnHubPanel({ hub, onClose }) {
+function ConnHubPanel({ hub, onClose, onLeafSelect }) {
   const leaves = CONN_LEAVES.filter(l => l.hub === hub.id)
   const active = leaves.filter(l => l.status === 'active').length
   return (
@@ -739,11 +738,14 @@ function ConnHubPanel({ hub, onClose }) {
       <p style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#aaa', marginBottom: 8 }}>
         {leaves.length} nodes · {active} active
       </p>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 5, overflowY: 'auto' }}>
         {leaves.map(leaf => (
-          <div key={leaf.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 10px', borderRadius: 6, background: THS_COLORS.lightBlueBg, border: `1px solid rgba(35,77,139,0.12)`, fontSize: 12 }}>
-            <span style={{ width: 6, height: 6, borderRadius: '50%', background: leaf.status === 'active' ? '#22c55e' : '#f59e0b', flexShrink: 0 }} />
-            <span style={{ color: THS_COLORS.darkBlue, fontWeight: 600, fontFamily: "'Courier New', monospace" }}>{leaf.label}</span>
+          <div key={leaf.id} onClick={() => onLeafSelect && onLeafSelect(leaf.id)} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', borderRadius: 6, background: THS_COLORS.lightBlueBg, border: `1px solid rgba(35,77,139,0.12)`, fontSize: 12, cursor: 'pointer', transition: 'all 0.15s ease' }}
+            onMouseEnter={e => { e.currentTarget.style.background = '#dbe8f8'; e.currentTarget.style.borderColor = 'rgba(35,77,139,0.3)' }}
+            onMouseLeave={e => { e.currentTarget.style.background = THS_COLORS.lightBlueBg; e.currentTarget.style.borderColor = 'rgba(35,77,139,0.12)' }}>
+            <span style={{ width: 7, height: 7, borderRadius: '50%', background: leaf.status === 'active' ? '#22c55e' : '#f59e0b', flexShrink: 0 }} />
+            <span style={{ color: THS_COLORS.darkBlue, fontWeight: 600, fontFamily: "'Courier New', monospace", flex: 1 }}>{leaf.label}</span>
+            <span style={{ color: '#bbb', fontSize: 10 }}>→</span>
           </div>
         ))}
       </div>
@@ -768,11 +770,11 @@ function ConnectionsMap() {
 
   const expandedHubData = expandedHub ? CONN_HUBS.find(h => h.id === expandedHub) : null
   const expandedLeaves = expandedHub ? CONN_LEAVES.filter(l => l.hub === expandedHub) : []
-  const EXP_HUB_X = 380, EXP_HUB_Y = CONN_CY, LEAF_ORBIT = 170
+  const EXP_HUB_X = 360, EXP_HUB_Y = CONN_CY, LEAF_ORBIT = 210
 
   const leafPositions = expandedLeaves.map((leaf, i) => {
     const N = expandedLeaves.length
-    const startAngle = -90, endAngle = 90 + (N > 8 ? 50 : 0)
+    const startAngle = -80, endAngle = 80 + (N > 8 ? 60 : N > 6 ? 30 : 0)
     const t = N === 1 ? 0.5 : i / (N - 1)
     const angle = startAngle + t * (endAngle - startAngle)
     const rad = angle * (Math.PI / 180)
@@ -793,7 +795,7 @@ function ConnectionsMap() {
             </radialGradient>
           </defs>
 
-          {!expandedHub && <ellipse cx={CONN_CX} cy={CONN_CY} rx={80} ry={65} fill="url(#connCenterGlow)" />}
+          {!expandedHub && <ellipse cx={CONN_CX} cy={CONN_CY} rx={95} ry={80} fill="url(#connCenterGlow)" />}
 
           {/* Hub-to-center lines (overview only) */}
           {!expandedHub && CONN_HUBS.map(hub => {
@@ -817,13 +819,13 @@ function ConnectionsMap() {
             return (
               <g key={leaf.id} transform={`translate(${leaf.x},${leaf.y})`}
                 onClick={(e) => handleLeafClick(e, leaf.id)} style={{ cursor: 'pointer' }}>
-                {isSel && <circle cx={0} cy={0} r={20} fill="none" stroke={expandedHubData.color} strokeWidth={1.5} opacity={0.7} />}
-                <circle cx={0} cy={0} r={13}
+                {isSel && <circle cx={0} cy={0} r={26} fill="none" stroke={expandedHubData.color} strokeWidth={2} opacity={0.6} />}
+                <circle cx={0} cy={0} r={18}
                   fill={isSel ? `${expandedHubData.color}22` : '#f8f8fc'}
-                  stroke={expandedHubData.color} strokeWidth={isSel ? 2 : 1}
+                  stroke={expandedHubData.color} strokeWidth={isSel ? 2.5 : 1.5}
                   opacity={dimmed ? 0.25 : 1} />
-                <text y={24} textAnchor="middle" fill={dimmed ? '#ccc' : '#444'}
-                  fontSize={8} fontFamily="'Courier New', monospace" fontWeight={isSel ? '700' : '400'}
+                <text y={30} textAnchor="middle" fill={dimmed ? '#ccc' : '#333'}
+                  fontSize={9.5} fontFamily="'Courier New', monospace" fontWeight={isSel ? '700' : '500'}
                   style={{ pointerEvents: 'none', userSelect: 'none' }}>
                   {leaf.label.length > 18 ? leaf.label.slice(0, 17) + '\u2026' : leaf.label}
                 </text>
@@ -838,22 +840,22 @@ function ConnectionsMap() {
             const hx = isExp ? EXP_HUB_X : CONN_CX + HUB_R * Math.cos(rad)
             const hy = isExp ? EXP_HUB_Y : CONN_CY + HUB_R * Math.sin(rad)
             const dimmed = expandedHub && !isExp
-            const r = isExp ? 32 : 28
+            const r = isExp ? 40 : 36
             return (
               <g key={hub.id} transform={`translate(${hx},${hy})`}
                 onClick={(e) => handleHubClick(e, hub.id)} style={{ cursor: 'pointer' }}
                 opacity={dimmed ? 0.12 : 1}>
-                {isExp && <circle cx={0} cy={0} r={r + 8} fill="none" stroke={hub.color} strokeWidth={2} opacity={0.4} />}
+                {isExp && <circle cx={0} cy={0} r={r + 10} fill="none" stroke={hub.color} strokeWidth={2} opacity={0.4} />}
                 <circle cx={0} cy={0} r={r}
                   fill={isExp ? `${hub.color}18` : `${hub.color}0c`}
-                  stroke={hub.color} strokeWidth={isExp ? 2.5 : 1.5} />
-                <text y={-2} textAnchor="middle" fill={hub.color}
-                  fontSize={isExp ? 11 : 10} fontFamily="Cinzel, serif" fontWeight="700"
+                  stroke={hub.color} strokeWidth={isExp ? 2.5 : 2} />
+                <text y={-3} textAnchor="middle" fill={hub.color}
+                  fontSize={isExp ? 14 : 13} fontFamily="Cinzel, serif" fontWeight="700"
                   style={{ pointerEvents: 'none', userSelect: 'none' }}>
                   {hub.shortLabel}
                 </text>
-                <text y={12} textAnchor="middle" fill={hub.color}
-                  fontSize={7} fontFamily="'Courier New', monospace" opacity={0.7}
+                <text y={13} textAnchor="middle" fill={hub.color}
+                  fontSize={9} fontFamily="'Courier New', monospace" opacity={0.7}
                   style={{ pointerEvents: 'none', userSelect: 'none' }}>
                   {CONN_LEAVES.filter(l => l.hub === hub.id).length} nodes
                 </text>
@@ -864,10 +866,10 @@ function ConnectionsMap() {
           {/* Center Lumen node (overview only) */}
           {!expandedHub && (
             <g transform={`translate(${CONN_CX},${CONN_CY})`}>
-              <circle cx={0} cy={0} r={38} fill="none" stroke="#F59E0B" strokeWidth={1} opacity={0.18} />
-              <circle cx={0} cy={0} r={26} fill="rgba(245,158,11,0.08)" stroke="#F59E0B" strokeWidth={2.5} />
-              <text y={-3} textAnchor="middle" fill="#F59E0B" fontSize={13} fontFamily="Cinzel, serif" fontWeight="700" style={{ pointerEvents: 'none', userSelect: 'none' }}>Lumen</text>
-              <text y={10} textAnchor="middle" fill="#F59E0B" fontSize={7} fontFamily="'Courier New', monospace" style={{ pointerEvents: 'none', userSelect: 'none' }}>AI Gateway</text>
+              <circle cx={0} cy={0} r={46} fill="none" stroke="#F59E0B" strokeWidth={1} opacity={0.18} />
+              <circle cx={0} cy={0} r={34} fill="rgba(245,158,11,0.08)" stroke="#F59E0B" strokeWidth={2.5} />
+              <text y={-3} textAnchor="middle" fill="#F59E0B" fontSize={16} fontFamily="Cinzel, serif" fontWeight="700" style={{ pointerEvents: 'none', userSelect: 'none' }}>Lumen</text>
+              <text y={13} textAnchor="middle" fill="#F59E0B" fontSize={9} fontFamily="'Courier New', monospace" style={{ pointerEvents: 'none', userSelect: 'none' }}>AI Gateway</text>
             </g>
           )}
 
@@ -884,7 +886,7 @@ function ConnectionsMap() {
           {selectedLeafData ? (
             <ConnLeafPanel leaf={selectedLeafData} onClose={() => setSelectedLeaf(null)} />
           ) : expandedHubData ? (
-            <ConnHubPanel hub={expandedHubData} onClose={() => { setExpandedHub(null); setSelectedLeaf(null) }} />
+            <ConnHubPanel hub={expandedHubData} onClose={() => { setExpandedHub(null); setSelectedLeaf(null) }} onLeafSelect={(leafId) => setSelectedLeaf(leafId)} />
           ) : (
             <div className="flex flex-col items-center justify-center h-full text-center py-12">
               <Network size={32} className="text-game-text-dim mb-3" />
