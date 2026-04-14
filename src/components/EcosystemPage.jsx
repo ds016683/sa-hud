@@ -777,34 +777,30 @@ function ConnectionsMap() {
 
   return (
     <div className="flex gap-4 flex-col lg:flex-row">
-      <div className="flex-1 border border-game-border rounded-lg overflow-hidden shadow-sm" style={{ minHeight: 480 }}>
-        <svg viewBox={`0 0 ${CONN_VW} ${CONN_VH}`} width="100%" style={{ display: 'block', background: '#0A1628' }} onClick={handleBgClick}>
+      <div className="flex-1 bg-white border border-game-border rounded-lg overflow-hidden shadow-sm" style={{ minHeight: 480 }}>
+        <svg viewBox={`0 0 ${CONN_VW} ${CONN_VH}`} width="100%" style={{ display: 'block', background: '#FAFAFE' }} onClick={handleBgClick}>
           <defs>
             <radialGradient id="connCenterGlow" cx="50%" cy="50%" r="50%">
-              <stop offset="0%" stopColor="rgba(0,157,224,0.12)" />
-              <stop offset="100%" stopColor="rgba(0,157,224,0)" />
+              <stop offset="0%" stopColor="rgba(245,158,11,0.15)" />
+              <stop offset="100%" stopColor="rgba(245,158,11,0)" />
             </radialGradient>
-            <filter id="glow">
-              <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
-              <feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge>
-            </filter>
           </defs>
 
-          {!expandedHub && <ellipse cx={CONN_CX} cy={CONN_CY} rx={100} ry={85} fill="url(#connCenterGlow)" />}
+          {!expandedHub && <ellipse cx={CONN_CX} cy={CONN_CY} rx={95} ry={80} fill="url(#connCenterGlow)" />}
 
           {/* Hub-to-center lines (overview only) */}
           {!expandedHub && CONN_HUBS.map(hub => {
             const rad = (hub.angle - 90) * (Math.PI / 180)
             const hx = CONN_CX + HUB_R * Math.cos(rad)
             const hy = CONN_CY + HUB_R * Math.sin(rad)
-            return <line key={`cl-${hub.id}`} x1={CONN_CX} y1={CONN_CY} x2={hx} y2={hy} stroke={hub.color} strokeWidth={2} strokeOpacity={0.4} />
+            return <line key={`cl-${hub.id}`} x1={CONN_CX} y1={CONN_CY} x2={hx} y2={hy} stroke={hub.color} strokeWidth={2.5} strokeOpacity={0.3} />
           })}
 
           {/* Expanded: hub-to-leaf lines */}
           {expandedHub && leafPositions.map(leaf => (
             <line key={`el-${leaf.id}`} x1={EXP_HUB_X} y1={EXP_HUB_Y} x2={leaf.x} y2={leaf.y}
               stroke={expandedHubData.color} strokeWidth={selectedLeaf === leaf.id ? 2.5 : 1.5}
-              strokeOpacity={selectedLeaf && selectedLeaf !== leaf.id ? 0.1 : 0.35} />
+              strokeOpacity={selectedLeaf && selectedLeaf !== leaf.id ? 0.12 : 0.35} />
           ))}
 
           {/* Expanded: leaf nodes */}
@@ -813,14 +809,13 @@ function ConnectionsMap() {
             const dimmed = selectedLeaf && !isSel
             return (
               <g key={leaf.id} transform={`translate(${leaf.x},${leaf.y})`}
-                onClick={(e) => handleLeafClick(e, leaf.id)} style={{ cursor: 'pointer' }}
-                filter={isSel ? 'url(#glow)' : undefined}>
-                {isSel && <circle cx={0} cy={0} r={28} fill="none" stroke={expandedHubData.color} strokeWidth={1.5} opacity={0.5} />}
-                <circle cx={0} cy={0} r={20}
-                  fill={isSel ? `${expandedHubData.color}35` : 'rgba(255,255,255,0.06)'}
-                  stroke={expandedHubData.color} strokeWidth={isSel ? 2 : 1.5}
-                  opacity={dimmed ? 0.2 : 1} />
-                <text y={33} textAnchor="middle" fill={dimmed ? '#445' : '#cbd5e1'}
+                onClick={(e) => handleLeafClick(e, leaf.id)} style={{ cursor: 'pointer' }}>
+                {isSel && <circle cx={0} cy={0} r={26} fill="none" stroke={expandedHubData.color} strokeWidth={2} opacity={0.6} />}
+                <circle cx={0} cy={0} r={18}
+                  fill={isSel ? `${expandedHubData.color}22` : '#f8f8fc'}
+                  stroke={expandedHubData.color} strokeWidth={isSel ? 2.5 : 1.5}
+                  opacity={dimmed ? 0.25 : 1} />
+                <text y={30} textAnchor="middle" fill={dimmed ? '#ccc' : '#333'}
                   fontSize={9.5} fontFamily="'Courier New', monospace" fontWeight={isSel ? '700' : '500'}
                   style={{ pointerEvents: 'none', userSelect: 'none' }}>
                   {leaf.label.length > 18 ? leaf.label.slice(0, 17) + '\u2026' : leaf.label}
@@ -836,23 +831,22 @@ function ConnectionsMap() {
             const hx = isExp ? EXP_HUB_X : CONN_CX + HUB_R * Math.cos(rad)
             const hy = isExp ? EXP_HUB_Y : CONN_CY + HUB_R * Math.sin(rad)
             const dimmed = expandedHub && !isExp
-            const r = isExp ? 42 : 38
+            const r = isExp ? 40 : 36
             return (
               <g key={hub.id} transform={`translate(${hx},${hy})`}
                 onClick={(e) => handleHubClick(e, hub.id)} style={{ cursor: 'pointer' }}
-                opacity={dimmed ? 0.1 : 1}
-                filter={!dimmed ? 'url(#glow)' : undefined}>
-                {isExp && <circle cx={0} cy={0} r={r + 10} fill="none" stroke={hub.color} strokeWidth={1.5} opacity={0.35} />}
+                opacity={dimmed ? 0.12 : 1}>
+                {isExp && <circle cx={0} cy={0} r={r + 10} fill="none" stroke={hub.color} strokeWidth={2} opacity={0.4} />}
                 <circle cx={0} cy={0} r={r}
-                  fill={`${hub.color}25`}
+                  fill={isExp ? `${hub.color}18` : `${hub.color}0c`}
                   stroke={hub.color} strokeWidth={isExp ? 2.5 : 2} />
-                <text y={-4} textAnchor="middle" fill={hub.color}
-                  fontSize={isExp ? 15 : 14} fontFamily="Cinzel, serif" fontWeight="700"
+                <text y={-3} textAnchor="middle" fill={hub.color}
+                  fontSize={isExp ? 14 : 13} fontFamily="Cinzel, serif" fontWeight="700"
                   style={{ pointerEvents: 'none', userSelect: 'none' }}>
                   {hub.shortLabel}
                 </text>
-                <text y={13} textAnchor="middle" fill="rgba(255,255,255,0.5)"
-                  fontSize={9} fontFamily="'Courier New', monospace"
+                <text y={13} textAnchor="middle" fill={hub.color}
+                  fontSize={9} fontFamily="'Courier New', monospace" opacity={0.7}
                   style={{ pointerEvents: 'none', userSelect: 'none' }}>
                   {CONN_LEAVES.filter(l => l.hub === hub.id).length} nodes
                 </text>
@@ -862,16 +856,16 @@ function ConnectionsMap() {
 
           {/* Center Lumen node (overview only) */}
           {!expandedHub && (
-            <g transform={`translate(${CONN_CX},${CONN_CY})`} filter="url(#glow)">
-              <circle cx={0} cy={0} r={50} fill="none" stroke="#009DE0" strokeWidth={1} opacity={0.15} />
-              <circle cx={0} cy={0} r={38} fill="rgba(0,157,224,0.12)" stroke="#009DE0" strokeWidth={2.5} />
-              <text y={-4} textAnchor="middle" fill="#009DE0" fontSize={18} fontFamily="Cinzel, serif" fontWeight="700" style={{ pointerEvents: 'none', userSelect: 'none' }}>Lumen</text>
-              <text y={14} textAnchor="middle" fill="rgba(255,255,255,0.45)" fontSize={9} fontFamily="'Courier New', monospace" style={{ pointerEvents: 'none', userSelect: 'none' }}>AI Gateway</text>
+            <g transform={`translate(${CONN_CX},${CONN_CY})`}>
+              <circle cx={0} cy={0} r={46} fill="none" stroke="#F59E0B" strokeWidth={1} opacity={0.18} />
+              <circle cx={0} cy={0} r={34} fill="rgba(245,158,11,0.08)" stroke="#F59E0B" strokeWidth={2.5} />
+              <text y={-3} textAnchor="middle" fill="#F59E0B" fontSize={16} fontFamily="Cinzel, serif" fontWeight="700" style={{ pointerEvents: 'none', userSelect: 'none' }}>Lumen</text>
+              <text y={13} textAnchor="middle" fill="#F59E0B" fontSize={9} fontFamily="'Courier New', monospace" style={{ pointerEvents: 'none', userSelect: 'none' }}>AI Gateway</text>
             </g>
           )}
 
           {expandedHub && (
-            <text x={20} y={28} fill="rgba(255,255,255,0.4)" fontSize={11} fontFamily="'Courier New', monospace"
+            <text x={20} y={25} fill="#999" fontSize={10} fontFamily="'Courier New', monospace"
               style={{ cursor: 'pointer', userSelect: 'none' }} onClick={handleBgClick}>
               {'← Back to overview'}
             </text>
