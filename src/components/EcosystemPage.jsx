@@ -222,7 +222,7 @@ const THS_COLORS = { darkBlue: '#1A3A5C', mediumBlue: '#234D8B', gold: '#F8C762'
 const AGENTS = [
   { id: 'lumen',     emoji: '🧭', name: 'Lumen',     role: 'Orchestrator & primary interface',  model: 'anthropic/claude-sonnet-4-6', channel: '#lumen',     channelId: '1491935770280333362', status: 'active',  color: '#F59E0B', description: 'Hub agent. Routes tasks, makes judgment calls, maintains full context. Warm, direct, witty.', capabilities: ['routing', 'orchestration', 'full-context reasoning', 'memory access', 'specialist delegation'], rules: "Hub agent. Warm, direct, witty. Knows David's full context. Makes judgment calls. Routes when the task is clearly a specialist job. Never loses the conversational thread. Loads: HARDLINES.md, SOUL.md, USER.md, northstar skill, daily memory files.", lumenNotes: 'Routes to specialists. Maintains memory. Loads northstar skill each session.' },
   { id: 'mr-brief',  emoji: '📋', name: 'Mr. Brief',  role: 'Meeting prep & pre-call research',   model: 'anthropic/claude-sonnet-4-6', channel: '#mr-brief',  channelId: '1491935829331939429', status: 'active',  color: '#2D9CDB', description: 'David never walks into a meeting cold. Reads Slack DMs, emails, and Granola notes to synthesize context.', capabilities: ['pre-call research', 'attendee background', 'briefing generation', 'email thread context'], rules: 'Methodical and thorough. Pre-call research specialist. Reads Slack DMs, emails, Granola notes. Never sends David into a meeting cold.' },
-  { id: 'mr-scout',  emoji: '🔍', name: 'Mr. Scout',  role: 'Deep research & intelligence',        model: 'kimi-k2 (1T param model)',    channel: '#mr-scout',  channelId: '1491935858595598466', status: 'active',  color: '#6FCF97', description: "Curious and relentless. Investigates people, orgs, policy, markets. Runs on Kimi K2.", capabilities: ['people research', 'org background', 'policy analysis', 'competitive intelligence', 'web research'], rules: "Curious and relentless. Research engine. Finds the connection chain, the background, the context David doesn't have time to dig for himself. Runs on Kimi K2 (1T param model)." },
+  { id: 'mr-scout',  emoji: '🔍', name: 'Mr. Scout',  role: 'Deep research & intelligence',        model: 'anthropic/claude-sonnet-4-6', channel: '#mr-scout',  channelId: '1491935858595598466', status: 'active',  color: '#6FCF97', description: "Curious and relentless. Investigates people, orgs, policy, markets. Runs on Kimi K2.", capabilities: ['people research', 'org background', 'policy analysis', 'competitive intelligence', 'web research'], rules: "Curious and relentless. Research engine. Finds the connection chain, the background, the context David doesn't have time to dig for himself. Runs on Kimi K2 (1T param model)." },
   { id: 'mr-draft',  emoji: '✍️', name: 'Mr. Draft',  role: 'Writing & content creation',          model: 'anthropic/claude-sonnet-4-6', channel: '#mr-draft',  channelId: '1491935895496949912', status: 'active',  color: '#BB6BD9', description: "Writes in David's voice. Email drafts, documents, proposals, Tea Leaves content. Never sounds corporate.", capabilities: ['email drafting', 'document writing', 'Tea Leaves content', 'proposals', 'editing'], rules: "Clean and efficient. Output-focused. Speaks in David's voice when drafting (but never signs as David). Tea Leaves content understands the publication's tone." },
   { id: 'mr-watch',  emoji: '👁️', name: 'Mr. Watch',  role: 'Email triage & monitoring',           model: 'openai/gpt-4o-mini',          channel: '#mr-watch',  channelId: '1491935946416062525', status: 'active',  color: '#EB5757', description: 'Quiet and vigilant. Monitors inbox, calendar, Granola. Escalates only what matters. Runs hourly.', capabilities: ['email triage', 'calendar monitoring', 'Granola routing', 'heartbeat execution'], rules: 'Quiet and vigilant. Works in the background. Escalates only when something actually needs attention. Does not cry wolf. Runs hourly heartbeat.' },
   { id: 'mr-build',  emoji: '🔧', name: 'Mr. Build',  role: 'Code, scripts & automation',          model: 'anthropic/claude-sonnet-4-6', channel: '#mr-build',  channelId: '1491936071880019968', status: 'active',  color: '#F2994A', description: 'Technical and precise. Handles workspace engineering. Spawns Claude Code for complex dev work.', capabilities: ['scripting', 'automation', 'Node.js', 'API integration', 'Claude Code subprocess spawning'], rules: 'Technical and precise. Handles workspace engineering and code. Quick scripts and automation run directly. Complex multi-file work handed to Claude Code via SSH to Mac M5.' },
@@ -622,85 +622,66 @@ const CONN_VW = 1000, CONN_VH = 680, CONN_CX = 500, CONN_CY = 370
 const HUB_R = 185, LEAF_R = 130
 
 const CONN_HUBS = [
-  { id: 'hub-agents', label: 'AI Agents',          shortLabel: 'AI Agents',  color: '#F59E0B', angle: 0,   fanWidth: 70, summary: '16 specialist agents + Hermes CDRO orchestrated via Discord channels' },
-  { id: 'hub-comms',  label: 'Communication Tools', shortLabel: 'Comms',      color: '#7C3AED', angle: 72,  fanWidth: 40, summary: 'Signal, WhatsApp, Discord, Slack, Gmail, Outlook, Vapi' },
-  { id: 'hub-data',   label: 'Data & Analytics',    shortLabel: 'Data',       color: '#059669', angle: 144, fanWidth: 35, summary: 'Supabase, Granola, Harvest, Notion, OpenRouter' },
-  { id: 'hub-apps',   label: 'Deployed Apps',       shortLabel: 'Apps',       color: '#2563EB', angle: 216, fanWidth: 35, summary: '6+ projects across GitHub Pages, Vercel, and DavidPC' },
-  { id: 'hub-infra',  label: 'Dev Infrastructure',  shortLabel: 'Infra',      color: '#DC2626', angle: 288, fanWidth: 30, summary: 'GitHub, DavidPC, Mac M5, Tailscale, Claude Code' },
+  { id: 'hub-comms',  label: 'Communication',      shortLabel: 'COMMS',  color: '#7C3AED', angle: 0,   fanWidth: 50, summary: 'Signal, WhatsApp, WhatsApp Business, Discord, Slack, Gmail, Outlook/Calendar, Vapi voice, ElevenLabs TTS' },
+  { id: 'hub-data',   label: 'Data & Analytics',    shortLabel: 'DATA',   color: '#059669', angle: 72,  fanWidth: 45, summary: 'BigQuery (67B+ rows), Supabase (×2), Granola, Harvest, Notion, OpenRouter, Dropbox, GitHub Gist' },
+  { id: 'hub-apps',   label: 'Deployed Apps',       shortLabel: 'APPS',   color: '#2563EB', angle: 144, fanWidth: 45, summary: 'SA HUD, Project Diablo, MMA Tracker, Clarity, NACDD, AHA Index, BH Rate apps, Lumen API' },
+  { id: 'hub-infra',  label: 'Infrastructure',      shortLabel: 'INFRA',  color: '#DC2626', angle: 216, fanWidth: 50, summary: 'DavidPC, Hermes VPS, Mac M5, Tailscale mesh, GitHub, Claude Code, PM2, Vercel, Fly.io, GitHub Actions' },
+  { id: 'hub-ai',     label: 'AI & Voice',          shortLabel: 'AI',     color: '#F59E0B', angle: 288, fanWidth: 40, summary: 'OpenClaw/Lumen gateway, 16 Discord agents, Hermes CDRO, Vapi voice bridge, ElevenLabs, OpenRouter model routing' },
 ]
 
 const CONN_LEAVES = [
-  // AI Agents
-  { id: 'l-mr-brief',  hub: 'hub-agents', label: 'Mr. Brief',   status: 'active',  description: 'Pre-call research specialist. Reads Slack DMs, emails, Granola notes. Never sends David into a meeting cold.', connectedTo: ['Gmail', 'Outlook/Calendar', 'Slack', 'Granola'] },
-  { id: 'l-mr-scout',  hub: 'hub-agents', label: 'Mr. Scout',   status: 'active',  description: "Curious and relentless. Research engine. Finds the connection chain David doesn't have time to dig for. Runs on Kimi K2 (1T param model).", notes: 'Model: kimi-k2', connectedTo: ['Lumen', 'OpenRouter'] },
-  { id: 'l-mr-draft',  hub: 'hub-agents', label: 'Mr. Draft',   status: 'active',  description: "Clean and efficient. Speaks in David's voice when drafting. Tea Leaves content understands the publication's tone.", connectedTo: ['Gmail', 'Outlook/Calendar'] },
-  { id: 'l-mr-watch',  hub: 'hub-agents', label: 'Mr. Watch',   status: 'active',  description: 'Quiet and vigilant. Escalates only when something actually needs attention. Does not cry wolf. Runs hourly heartbeat.', connectedTo: ['Gmail', 'Outlook/Calendar', 'Granola', 'Slack'] },
-  { id: 'l-mr-build',  hub: 'hub-agents', label: 'Mr. Build',   status: 'active',  description: 'Technical and precise. Quick scripts run directly. Complex multi-file work handed to Claude Code via SSH to Mac M5.', connectedTo: ['Claude Code', 'Mac M5 (node)', 'GitHub (ds016683)'] },
-  { id: 'l-mr-pulse',  hub: 'hub-agents', label: 'Mr. Pulse',   status: 'active',  description: 'Analytical and concise. Starset data, portfolio metrics, Supabase queries. Returns structured answers.', connectedTo: ['Supabase (SA HUD)', 'Supabase (main)', 'Harvest'] },
-  { id: 'l-mr-diablo', hub: 'hub-agents', label: 'Mr. Diablo',  status: 'active',  description: 'Dedicated engineering agent for Project Diablo. Stages build briefs at workspace/tmp/ for Claude Code handoff.', connectedTo: ['Claude Code', 'project-diablo'] },
-  { id: 'l-mr-deck',   hub: 'hub-agents', label: 'Mr. Deck',    status: 'planned', description: 'Visual and executive-polish minded. PowerPoint decks, TH-branded slides. Brand palette: darkBlue #1A3A5C, gold #F8C762.', connectedTo: ['Lumen'] },
-  { id: 'l-mr-strategy', hub: 'hub-agents', label: 'Mr. Strategy', status: 'active', description: "David's thinking partner for complex strategic problems. Receives VAPI voice call transcripts.", connectedTo: ['Lumen', 'Vapi (voice)'] },
-  { id: 'l-mr-clarity', hub: 'hub-agents', label: 'Mr. Clarity', status: 'active', description: 'Dedicated engineering agent for Project Clarity (ValueLens) episode-based cost intelligence.', connectedTo: ['Claude Code', 'bh-rate-intelligence'] },
-  { id: 'l-mr-video', hub: 'hub-agents', label: 'Mr. Video', status: 'active', description: 'Video production: Remotion, RunwayML, ElevenLabs, DALL-E 3.', connectedTo: ['Claude Code', 'Remotion'] },
-  { id: 'l-mr-link', hub: 'hub-agents', label: 'Mr. Link', status: 'active', description: 'LinkedIn monitoring, social content routing, YouTube tracking.', connectedTo: ['Lumen'] },
-  { id: 'l-mr-snmi', hub: 'hub-agents', label: 'Mr. SNMI', status: 'active', description: 'SNMI strategy — $0.5-2B Chicago healthcare safety net partnership.', connectedTo: ['Lumen', 'Dropbox (THS)'] },
-  { id: 'l-mr-bigquery', hub: 'hub-agents', label: 'Mr. BigQuery', status: 'active', description: 'Starset Analytics BigQuery exploration — 67B+ rows across national datasets.', connectedTo: ['Starset MMA National', 'Lumen'] },
-  { id: 'l-mr-mma', hub: 'hub-agents', label: 'Mr. MMA', status: 'active', description: 'MMA client engagement management — data delivery, SOW, stakeholder comms.', connectedTo: ['Starset MMA National', 'Mr. BigQuery'] },
-  { id: 'l-mr-achp', hub: 'hub-agents', label: 'Mr. ACHP', status: 'active', description: 'ACHP engagement — Federal Affairs AI Tool + Org Redesign workstreams.', connectedTo: ['Lumen'] },
-  { id: 'l-hermes', hub: 'hub-agents', label: 'Hermes', status: 'active', description: 'CDRO — owns operational health, config audits, ecosystem docs, cron monitoring. Persistent memory.', notes: 'Meta-agent · DMs', connectedTo: ['DavidPC (gateway)', 'GitHub (ds016683)', 'sa-hud'] },
-  // Communication Tools
-  { id: 'l-signal',   hub: 'hub-comms', label: 'Signal',          status: 'active', description: "Lumen's primary messaging channel. Dedicated number +16302967614.", notes: '+16302967614', connectedTo: ['Lumen'] },
-  { id: 'l-whatsapp', hub: 'hub-comms', label: 'WhatsApp',         status: 'active', description: 'WhatsApp messaging integration.', connectedTo: ['Lumen'] },
-  { id: 'l-discord',  hub: 'hub-comms', label: 'Discord',          status: 'active', description: 'Agent channels hub. Each agent has a dedicated Discord channel for direct tasking.', connectedTo: ['Lumen', 'AI Agents'] },
-  { id: 'l-slack',    hub: 'hub-comms', label: 'Slack',            status: 'active', description: 'Third Horizon workspace. Read, search, limited write access.', connectedTo: ['Lumen', 'Mr. Brief', 'Mr. Watch'] },
-  { id: 'l-gmail',    hub: 'hub-comms', label: 'Gmail',            status: 'active', description: 'Personal Gmail (david.e.smith8@gmail.com). Read-only monitoring.', connectedTo: ['Lumen', 'Mr. Brief', 'Mr. Watch'] },
-  { id: 'l-outlook',  hub: 'hub-comms', label: 'Outlook/Calendar', status: 'active', description: 'Microsoft Graph — THS email and calendar. Full read/write. Lumen@thirdhorizon.com.', connectedTo: ['Lumen', 'Mr. Brief', 'Mr. Watch'] },
-  { id: 'l-vapi',     hub: 'hub-comms', label: 'Vapi (voice)',     status: 'active', description: 'Voice call interface. Assistant ID: 62dd6701. Phone: +16308691113. Routes to Lumen API on DavidPC.', notes: '+16308691113', connectedTo: ['Lumen API'] },
-  // Data & Analytics
-  { id: 'l-supa-hud',  hub: 'hub-data', label: 'Supabase (SA HUD)', status: 'active', description: 'PostgreSQL backend for SA HUD. Stores briefings, projects, ideas, todos.', notes: 'cmuvomnmaoseccxpeuxq', connectedTo: ['sa-hud', 'Lumen'] },
-  { id: 'l-supa-main', hub: 'hub-data', label: 'Supabase (main)',   status: 'active', description: 'Main PostgreSQL backend for MMA Tracker and other tools.', connectedTo: ['Lumen', 'Mr. Pulse'] },
-  { id: 'l-granola',   hub: 'hub-data', label: 'Granola',           status: 'active', description: 'AI note-taker for meetings. Call notes routed to SA HUD via Mr. Watch.', connectedTo: ['Mr. Brief', 'Mr. Watch', 'Supabase (SA HUD)'] },
-  { id: 'l-harvest',   hub: 'hub-data', label: 'Harvest',           status: 'active', description: 'Time tracking and expense management. Full read/write — Lumen can log time and view reports.', connectedTo: ['Lumen', 'Mr. Pulse'] },
-  { id: 'l-notion',    hub: 'hub-data', label: 'Notion',            status: 'active', description: 'Docs and knowledge base.', connectedTo: ['Lumen'] },
-  { id: 'l-openrouter',hub: 'hub-data', label: 'OpenRouter',        status: 'active', description: 'Unified API gateway for LLM routing. Routes to Anthropic, Google, Kimi, OpenAI. Activity logs at /api/v1/generation.', connectedTo: ['Lumen', 'Mr. Scout'] },
-  // Deployed Apps
-  { id: 'l-sa-hud',    hub: 'hub-apps', label: 'sa-hud',                   status: 'active', description: 'Sovereign Architect HUD. Daily intelligence dashboard, morning briefings, portfolio, ecosystem map.', notes: 'GitHub Pages', connectedTo: ['Supabase (SA HUD)'], link: 'https://ds016683.github.io/sa-hud/' },
-  { id: 'l-diablo',    hub: 'hub-apps', label: 'project-diablo',           status: 'active', description: 'Commercializing the SA framework. Assessment + personality profiling. Private beta May-June 2026.', notes: 'Vercel auto-deploy', connectedTo: ['Mr. Diablo'] },
-  { id: 'l-nacdd',     hub: 'hub-apps', label: 'nacdd-platform',           status: 'active', description: 'AI-powered knowledge platform demo/sandbox for NACDD client.', notes: 'Vercel auto-deploy', connectedTo: [] },
-  { id: 'l-lumen-api', hub: 'hub-apps', label: 'lumen-api',                status: 'active', description: "Vapi webhook backend. Stateless — gives Lumen voice calls access to David's context. PM2 on DavidPC.", notes: 'PM2 on DavidPC', connectedTo: ['Vapi (voice)', 'Lumen'] },
-  { id: 'l-aha',       hub: 'hub-apps', label: 'aha-cardiovascular',       status: 'active', description: 'AHA Cardiovascular Prevention Index — evidence-based guideline implementation tracker.', notes: 'GitHub Pages', connectedTo: [], link: 'https://ds016683.github.io/aha-cardiovascular-index/' },
-  { id: 'l-bh-rate',   hub: 'hub-apps', label: 'bh-rate-intelligence',     status: 'active', description: 'Behavioral health rate analytics platform for THS internal use.', notes: 'Vercel auto-deploy', connectedTo: [] },
-  // Dev Infrastructure
-  { id: 'l-github',      hub: 'hub-infra', label: 'GitHub (ds016683)', status: 'active', description: 'Primary GitHub account. Source of truth for all repos. SSH + token access.', connectedTo: ['Mr. Build', 'Claude Code'], link: 'https://github.com/ds016683' },
-  { id: 'l-davidpc',     hub: 'hub-infra', label: 'DavidPC (gateway)', status: 'active', description: 'Primary host. Windows 10, always on. Runs OpenClaw/Lumen gateway and lumen-api.', notes: '100.69.104.93', connectedTo: ['Tailscale', 'lumen-api'] },
-  { id: 'l-mac-m5',      hub: 'hub-infra', label: 'Mac M5 (node)',     status: 'active', description: 'Secondary machine. Apple Silicon M5, macOS 26. Claude Code runs here.', notes: '100.73.172.56', connectedTo: ['Tailscale', 'Claude Code'] },
-  { id: 'l-tailscale',   hub: 'hub-infra', label: 'Tailscale',         status: 'active', description: 'Private VPN mesh connecting DavidPC and Mac M5. Secure remote access via WireGuard.', connectedTo: ['DavidPC (gateway)', 'Mac M5 (node)'] },
-  { id: 'l-claude-code', hub: 'hub-infra', label: 'Claude Code',       status: 'active', description: 'AI coding agent. Runs on Mac M5 via SSH from DavidPC. Used for complex multi-file dev work.', connectedTo: ['Mac M5 (node)', 'Mr. Build', 'Mr. Diablo'] },
+  // COMMS
+  { id: 'l-signal',      hub: 'hub-comms', label: 'Signal',             status: 'active', description: "Lumen's primary messaging channel. Dedicated number +163****7614. Inbound/outbound.", notes: '+163****7614', connectedTo: ['Lumen'] },
+  { id: 'l-whatsapp',    hub: 'hub-comms', label: 'WhatsApp (David)',   status: 'active', description: 'Personal WhatsApp on 630-200-8060. Paired with Lumen for direct messaging.', notes: '630-200-8060', connectedTo: ['Lumen'] },
+  { id: 'l-whatsapp-biz',hub: 'hub-comms', label: 'WhatsApp Business', status: 'active', description: "Lumen's WhatsApp Business account on 630-781-2048. Tello eSIM on David's iPhone. For group chats with Lumen (in progress).", notes: '630-781-2048 · Tello eSIM', connectedTo: ['Lumen', 'Tello eSIM'] },
+  { id: 'l-discord',     hub: 'hub-comms', label: 'Discord',            status: 'active', description: 'Lumen HQ server. 18 channels: Lumen hub + 16 specialist agents + Hermes (#infra-ops). Primary workspace.', connectedTo: ['Lumen', 'Hermes', 'OpenClaw'] },
+  { id: 'l-slack',       hub: 'hub-comms', label: 'Slack',              status: 'active', description: 'Third Horizon workspace. Read, search, and limited write. Used by Mr. Brief and Mr. Watch for context.', connectedTo: ['Lumen', 'Mr. Brief', 'Mr. Watch'] },
+  { id: 'l-gmail',       hub: 'hub-comms', label: 'Gmail',              status: 'active', description: 'Personal Gmail (david.e.smith8@gmail.com). Read-only monitoring. Write access TBD (key refresh needed).', notes: 'david.e.smith8@gmail.com · Read-only', connectedTo: ['Lumen', 'Mr. Watch'] },
+  { id: 'l-outlook',     hub: 'hub-comms', label: 'Outlook / Graph',    status: 'active', description: 'Microsoft Graph API. Full read/write access to THS email + calendar. Lumen@thirdhorizon.com.', notes: 'Microsoft Graph API · OAuth2', connectedTo: ['Lumen', 'Mr. Brief', 'Mr. Watch'] },
+  { id: 'l-vapi',        hub: 'hub-comms', label: 'Vapi Voice',         status: 'active', description: 'Voice call interface. Call 630-869-1113 (Google Phone) to talk to Lumen. Routes through lumen-api on DavidPC via localtunnel.', notes: '630-869-1113 · Google Phone', connectedTo: ['Lumen API', 'Localtunnel', 'ElevenLabs'] },
+  { id: 'l-elevenlabs',  hub: 'hub-comms', label: 'ElevenLabs',         status: 'active', description: 'Text-to-speech for Lumen voice responses. Turbo v2.5 model with custom voice settings. Also used by Mr. Video for narration.', notes: 'eleven_turbo_v2_5', connectedTo: ['Vapi Voice', 'Mr. Video'] },
+  // DATA
+  { id: 'l-bigquery',    hub: 'hub-data', label: 'BigQuery',            status: 'active', description: 'Starset Analytics national dataset — 67B+ rows of price transparency data. Project: starset-lumen-bq. Mr. BigQuery agent operates here.', notes: 'starset-lumen-bq · 67B+ rows', connectedTo: ['Mr. BigQuery', 'Mr. MMA'] },
+  { id: 'l-supa-hud',    hub: 'hub-data', label: 'Supabase (SA HUD)',   status: 'active', description: 'PostgreSQL backend for SA HUD. Stores briefings, projects, ideas, todos, call notes.', notes: 'cmuvomnmaoseccxpeuxq', connectedTo: ['SA HUD', 'Lumen'] },
+  { id: 'l-supa-main',   hub: 'hub-data', label: 'Supabase (MMA)',      status: 'active', description: 'PostgreSQL backend for MMA Tracker. Projects, tasks, notes, people. Row Level Security enabled.', connectedTo: ['MMA Tracker', 'Mr. Pulse'] },
+  { id: 'l-granola',     hub: 'hub-data', label: 'Granola',             status: 'active', description: 'AI meeting note-taker. Call transcripts automatically routed to SA HUD briefings via Mr. Watch.', connectedTo: ['Mr. Watch', 'Mr. Brief', 'Supabase (SA HUD)'] },
+  { id: 'l-harvest',     hub: 'hub-data', label: 'Harvest',             status: 'active', description: 'Time tracking and expense management. Full read/write — Lumen can log time and view reports.', connectedTo: ['Lumen', 'Mr. Pulse'] },
+  { id: 'l-notion',      hub: 'hub-data', label: 'Notion',              status: 'active', description: 'Docs and knowledge base. API key active but integration depth TBD.', connectedTo: ['Lumen'] },
+  { id: 'l-openrouter',  hub: 'hub-data', label: 'OpenRouter',          status: 'active', description: 'Unified LLM API gateway. Routes to Anthropic, OpenAI, Google, and others. Activity logs at /api/v1/generation.', connectedTo: ['Lumen', 'All Agents'] },
+  { id: 'l-dropbox',     hub: 'hub-data', label: 'Dropbox (THS)',       status: 'active', description: 'Primary file system for THS work — SNMI documents, client files, CIM, personal data. Local mount on DavidPC.', connectedTo: ['DavidPC', 'Mr. SNMI'] },
+  { id: 'l-gist',        hub: 'hub-data', label: 'GitHub Gist',         status: 'active', description: 'Cross-device sync storage for SA HUD. Persists game-state, activity-log, and portfolio data as JSON.', connectedTo: ['SA HUD', 'GitHub'] },
+  // APPS
+  { id: 'l-sa-hud',      hub: 'hub-apps', label: 'SA HUD',              status: 'active', description: 'Sovereign Architect HUD. Daily intelligence dashboard: morning briefings, call notes, portfolio, agent ecosystem map.', notes: 'GitHub Pages · React/Vite', connectedTo: ['Supabase (SA HUD)', 'GitHub Gist'], link: 'https://ds016683.github.io/sa-hud/' },
+  { id: 'l-diablo',      hub: 'hub-apps', label: 'Project Diablo',      status: 'active', description: 'Commercializing the Sovereign Architect framework. Assessment + personality profiling app. Private beta May-June 2026.', notes: 'Vercel auto-deploy', connectedTo: ['Mr. Diablo', 'Vercel'] },
+  { id: 'l-mma-tracker', hub: 'hub-apps', label: 'MMA Tracker',         status: 'active', description: 'Project/task/notes/people tracker for Third Horizon client engagements. Full CRUD.', notes: 'GitHub Pages · React/TS', connectedTo: ['Supabase (MMA)', 'GitHub'], link: 'https://ds016683.github.io/mma-tracker/' },
+  { id: 'l-clarity',     hub: 'hub-apps', label: 'Clarity Preview',     status: 'active', description: 'Starset Analytics demo. Episode-based cost intelligence for health plan network optimization. AI query layer: Odin.', notes: 'Fly.io · Flask', connectedTo: ['Mr. Clarity', 'Fly.io'] },
+  { id: 'l-nacdd',       hub: 'hub-apps', label: 'NACDD Platform',      status: 'active', description: 'AI-powered knowledge platform demo for NACDD client.', notes: 'Vercel auto-deploy', connectedTo: ['Vercel'] },
+  { id: 'l-aha',         hub: 'hub-apps', label: 'AHA CV Index',        status: 'active', description: 'AHA Cardiovascular Prevention Index — evidence-based guideline implementation tracker.', notes: 'GitHub Pages', connectedTo: ['GitHub'], link: 'https://ds016683.github.io/aha-cardiovascular-index/' },
+  { id: 'l-bh-rate',     hub: 'hub-apps', label: 'BH Rate Intelligence',status: 'active', description: 'Behavioral health rate analytics platform.', notes: 'Vercel', connectedTo: ['Vercel'] },
+  { id: 'l-lumen-api',   hub: 'hub-apps', label: 'Lumen API',           status: 'active', description: "Vapi webhook backend. Gives Lumen voice calls access to David's context. Runs on DavidPC via PM2.", notes: 'PM2 on DavidPC · port 3000', connectedTo: ['Vapi Voice', 'PM2', 'Localtunnel'] },
+  { id: 'l-dante',       hub: 'hub-apps', label: 'Project Dante',       status: 'active', description: 'Sovereign Architect book + product collaboration (David Smith + Sabina Beachdell).', notes: 'GitHub Pages', connectedTo: ['GitHub'], link: 'https://ds016683.github.io/project-dante/' },
+  // INFRASTRUCTURE
+  { id: 'l-davidpc',     hub: 'hub-infra', label: 'DavidPC',            status: 'active', description: 'Primary host machine. Windows 10, always on at downtown office. Runs OpenClaw gateway, lumen-api, PM2.', notes: '100.69.104.93 · Tailscale', connectedTo: ['Tailscale', 'OpenClaw', 'PM2'] },
+  { id: 'l-hermes-vps',  hub: 'hub-infra', label: 'Hermes VPS',         status: 'active', description: 'Hostinger VPS running Hermes agent (CDRO). Ubuntu 24.04. SSH as root. Connected via Tailscale.', notes: '2.24.193.160 · ssh root@ · TS: 100.117.125.34', connectedTo: ['Tailscale', 'DavidPC', 'GitHub'] },
+  { id: 'l-mac-m5',      hub: 'hub-infra', label: 'Mac M5 Pro',         status: 'active', description: "David's portable machine. Apple Silicon M5, macOS 26. Claude Code runs here for complex dev work.", notes: '100.73.172.56 · Tailscale', connectedTo: ['Tailscale', 'Claude Code'] },
+  { id: 'l-tailscale',   hub: 'hub-infra', label: 'Tailscale',          status: 'active', description: 'Private VPN mesh connecting DavidPC, Mac M5, and Hermes VPS. Secure remote access via WireGuard.', connectedTo: ['DavidPC', 'Mac M5 Pro', 'Hermes VPS'] },
+  { id: 'l-github',      hub: 'hub-infra', label: 'GitHub',             status: 'active', description: 'Primary source of truth for all repos. Two accounts: ds016683 (main) and thtopher (upstream). SSH + token.', notes: 'ds016683 + thtopher', connectedTo: ['GitHub Actions', 'Mr. Build', 'Hermes VPS'], link: 'https://github.com/ds016683' },
+  { id: 'l-gh-actions',  hub: 'hub-infra', label: 'GitHub Actions',     status: 'active', description: 'CI/CD pipelines. Auto-builds and deploys SA HUD and MMA Tracker to GitHub Pages on push to main.', connectedTo: ['GitHub', 'SA HUD', 'MMA Tracker'] },
+  { id: 'l-claude-code', hub: 'hub-infra', label: 'Claude Code',        status: 'active', description: 'AI coding agent on Mac M5. Complex multi-file dev: Project Diablo, SA HUD, Clarity. Mr. Build stages briefs.', connectedTo: ['Mac M5 Pro', 'Mr. Build', 'Mr. Diablo'] },
+  { id: 'l-vercel',      hub: 'hub-infra', label: 'Vercel',             status: 'active', description: 'Hosts Project Diablo, NACDD Platform, and BH Rate Intelligence. Auto-deploys on git push.', connectedTo: ['Project Diablo', 'NACDD Platform'] },
+  { id: 'l-flyio',       hub: 'hub-infra', label: 'Fly.io',             status: 'active', description: 'Legacy hosting for Clarity preview and BH Rate Book. Docker containers. Being phased down.', notes: 'Legacy · phasing down', connectedTo: ['Clarity Preview'] },
+  { id: 'l-pm2',         hub: 'hub-infra', label: 'PM2',                status: 'active', description: 'Process manager on DavidPC. Keeps lumen-api and localtunnel running 24/7 with auto-restart.', connectedTo: ['Lumen API', 'Localtunnel', 'DavidPC'] },
+  { id: 'l-localtunnel', hub: 'hub-infra', label: 'Localtunnel',        status: 'active', description: 'Creates public URL (lumen-api-ds.loca.lt) so Vapi can reach lumen-api from the internet. Managed by PM2.', notes: 'lumen-api-ds.loca.lt', connectedTo: ['Lumen API', 'Vapi Voice', 'PM2'] },
+  // AI & VOICE
+  { id: 'l-openclaw',    hub: 'hub-ai', label: 'OpenClaw',              status: 'active', description: 'AI gateway running on DavidPC. Handles all agent routing, messaging, tool execution, and multi-platform integration.', notes: 'v2026.4.8 · port 18789', connectedTo: ['DavidPC', 'Discord', 'All Agents'] },
+  { id: 'l-agent-mesh',  hub: 'hub-ai', label: '16 Agent Channels',     status: 'active', description: '16 specialist Discord agents organized by function: Production, Research, Client, Infrastructure, Background, Social, Analytics. See Org Chart.', connectedTo: ['OpenClaw', 'Discord', 'OpenRouter'] },
+  { id: 'l-hermes-cdro', hub: 'hub-ai', label: 'Hermes (CDRO)',         status: 'active', description: 'Meta-agent on Hermes VPS. Owns ecosystem docs, config auditing, cron monitoring, cross-session memory. Reports to David via DMs.', notes: '#infra-ops · DMs', connectedTo: ['Hermes VPS', 'DavidPC', 'GitHub'] },
+  { id: 'l-tello',       hub: 'hub-ai', label: 'Tello eSIM',            status: 'active', description: "Secondary phone number (630-781-2048) on David's iPhone as eSIM. Powers Lumen's WhatsApp Business presence.", notes: '630-781-2048', connectedTo: ['WhatsApp Business'] },
 ]
-
-function buildConnLayout() {
-  const hubs = CONN_HUBS.map(hub => {
-    const rad = (hub.angle - 90) * (Math.PI / 180)
-    return { ...hub, x: CONN_CX + HUB_R * Math.cos(rad), y: CONN_CY + HUB_R * Math.sin(rad) }
-  })
-  const leaves = []
-  hubs.forEach(hub => {
-    const hubLeaves = CONN_LEAVES.filter(l => l.hub === hub.id)
-    const N = hubLeaves.length
-    hubLeaves.forEach((leaf, i) => {
-      const t = N === 1 ? 0.5 : i / (N - 1)
-      const angle = hub.angle + (t - 0.5) * 2 * hub.fanWidth
-      const rad = (angle - 90) * (Math.PI / 180)
-      leaves.push({ ...leaf, x: hub.x + LEAF_R * Math.cos(rad), y: hub.y + LEAF_R * Math.sin(rad), hubColor: hub.color })
-    })
-  })
-  return { hubs, leaves }
-}
-const CONN_LAYOUT = buildConnLayout()
 
 function ConnLeafPanel({ leaf, onClose }) {
   const hub = CONN_HUBS.find(h => h.id === leaf.hub)
-  const hubColor = leaf.hubColor
+  const hubColor = hub?.color || '#666'
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 14 }}>
@@ -771,122 +752,144 @@ function ConnHubPanel({ hub, onClose }) {
 }
 
 function ConnectionsMap() {
-  const [selectedHub, setSelectedHub] = useState(null)
+  const [expandedHub, setExpandedHub] = useState(null)
   const [selectedLeaf, setSelectedLeaf] = useState(null)
 
-  const selectedHubData = selectedHub ? CONN_HUBS.find(h => h.id === selectedHub) : null
-  const selectedLeafData = selectedLeaf ? CONN_LAYOUT.leaves.find(l => l.id === selectedLeaf) : null
-  const panelOpen = !!(selectedHubData || selectedLeafData)
-  const hubLeafSet = selectedHub ? new Set(CONN_LEAVES.filter(l => l.hub === selectedHub).map(l => l.id)) : null
+  const handleBgClick = () => { setExpandedHub(null); setSelectedLeaf(null) }
+  const handleHubClick = (e, hubId) => {
+    e.stopPropagation()
+    if (expandedHub === hubId) { setExpandedHub(null); setSelectedLeaf(null) }
+    else { setExpandedHub(hubId); setSelectedLeaf(null) }
+  }
+  const handleLeafClick = (e, leafId) => {
+    e.stopPropagation()
+    setSelectedLeaf(leafId === selectedLeaf ? null : leafId)
+  }
 
-  const handleBgClick = () => { setSelectedHub(null); setSelectedLeaf(null) }
-  const handleHubClick = (e, hubId) => { e.stopPropagation(); setSelectedHub(hubId === selectedHub ? null : hubId); setSelectedLeaf(null) }
-  const handleLeafClick = (e, leafId) => { e.stopPropagation(); setSelectedLeaf(leafId === selectedLeaf ? null : leafId); setSelectedHub(null) }
+  const expandedHubData = expandedHub ? CONN_HUBS.find(h => h.id === expandedHub) : null
+  const expandedLeaves = expandedHub ? CONN_LEAVES.filter(l => l.hub === expandedHub) : []
+  const EXP_HUB_X = 380, EXP_HUB_Y = CONN_CY, LEAF_ORBIT = 170
+
+  const leafPositions = expandedLeaves.map((leaf, i) => {
+    const N = expandedLeaves.length
+    const startAngle = -90, endAngle = 90 + (N > 8 ? 50 : 0)
+    const t = N === 1 ? 0.5 : i / (N - 1)
+    const angle = startAngle + t * (endAngle - startAngle)
+    const rad = angle * (Math.PI / 180)
+    return { ...leaf, x: EXP_HUB_X + LEAF_ORBIT * Math.cos(rad), y: EXP_HUB_Y + LEAF_ORBIT * Math.sin(rad) }
+  })
+
+  const selectedLeafData = selectedLeaf ? (leafPositions.find(l => l.id === selectedLeaf) || CONN_LEAVES.find(l => l.id === selectedLeaf)) : null
+  const panelOpen = !!(expandedHubData || selectedLeafData)
 
   return (
     <div className="flex gap-4 flex-col lg:flex-row">
-      <div className="flex-1 bg-white border border-game-border rounded-lg overflow-hidden shadow-sm" style={{ minHeight: 420 }}>
-        <svg viewBox={`0 0 ${CONN_VW} ${CONN_VH}`} width="100%" style={{ display: 'block', background: '#F8F7FF' }} onClick={handleBgClick}>
+      <div className="flex-1 bg-white border border-game-border rounded-lg overflow-hidden shadow-sm" style={{ minHeight: 480 }}>
+        <svg viewBox={`0 0 ${CONN_VW} ${CONN_VH}`} width="100%" style={{ display: 'block', background: '#FAFAFE' }} onClick={handleBgClick}>
           <defs>
             <radialGradient id="connCenterGlow" cx="50%" cy="50%" r="50%">
-              <stop offset="0%" stopColor="rgba(245,158,11,0.18)" />
+              <stop offset="0%" stopColor="rgba(245,158,11,0.15)" />
               <stop offset="100%" stopColor="rgba(245,158,11,0)" />
             </radialGradient>
           </defs>
-          <ellipse cx={CONN_CX} cy={CONN_CY} rx={90} ry={72} fill="url(#connCenterGlow)" />
 
-          {/* Center-to-hub lines */}
-          {CONN_LAYOUT.hubs.map(hub => (
-            <line key={`ch-${hub.id}`} x1={CONN_CX} y1={CONN_CY} x2={hub.x} y2={hub.y}
-              stroke={hub.color} strokeWidth={selectedHub === hub.id ? 2 : 1}
-              strokeOpacity={selectedHub && selectedHub !== hub.id ? 0.12 : 0.5} />
-          ))}
+          {!expandedHub && <ellipse cx={CONN_CX} cy={CONN_CY} rx={80} ry={65} fill="url(#connCenterGlow)" />}
 
-          {/* Hub-to-leaf lines */}
-          {CONN_LAYOUT.leaves.map(leaf => {
-            const hub = CONN_LAYOUT.hubs.find(h => h.id === leaf.hub)
-            const isHighlighted = hubLeafSet?.has(leaf.id) || selectedLeaf === leaf.id
-            const dimmed = (selectedHub || selectedLeaf) && !isHighlighted
-            return (
-              <line key={`hl-${leaf.id}`} x1={hub.x} y1={hub.y} x2={leaf.x} y2={leaf.y}
-                stroke={leaf.hubColor} strokeWidth={isHighlighted ? 1.5 : 0.75}
-                strokeOpacity={dimmed ? 0.06 : isHighlighted ? 0.7 : 0.28}
-                strokeDasharray={leaf.status === 'planned' ? '4 3' : undefined} />
-            )
+          {/* Hub-to-center lines (overview only) */}
+          {!expandedHub && CONN_HUBS.map(hub => {
+            const rad = (hub.angle - 90) * (Math.PI / 180)
+            const hx = CONN_CX + HUB_R * Math.cos(rad)
+            const hy = CONN_CY + HUB_R * Math.sin(rad)
+            return <line key={`cl-${hub.id}`} x1={CONN_CX} y1={CONN_CY} x2={hx} y2={hy} stroke={hub.color} strokeWidth={1.5} strokeOpacity={0.35} />
           })}
 
-          {/* Leaf nodes */}
-          {CONN_LAYOUT.leaves.map(leaf => {
-            const isHighlighted = hubLeafSet?.has(leaf.id) || selectedLeaf === leaf.id
-            const dimmed = (selectedHub || selectedLeaf) && !isHighlighted
+          {/* Expanded: hub-to-leaf lines */}
+          {expandedHub && leafPositions.map(leaf => (
+            <line key={`el-${leaf.id}`} x1={EXP_HUB_X} y1={EXP_HUB_Y} x2={leaf.x} y2={leaf.y}
+              stroke={expandedHubData.color} strokeWidth={selectedLeaf === leaf.id ? 2 : 1}
+              strokeOpacity={selectedLeaf && selectedLeaf !== leaf.id ? 0.15 : 0.4} />
+          ))}
+
+          {/* Expanded: leaf nodes */}
+          {expandedHub && leafPositions.map(leaf => {
+            const isSel = selectedLeaf === leaf.id
+            const dimmed = selectedLeaf && !isSel
             return (
               <g key={leaf.id} transform={`translate(${leaf.x},${leaf.y})`}
                 onClick={(e) => handleLeafClick(e, leaf.id)} style={{ cursor: 'pointer' }}>
-                {selectedLeaf === leaf.id && (
-                  <circle cx={0} cy={0} r={18} fill="none" stroke={leaf.hubColor} strokeWidth={1.5} opacity={0.7} />
-                )}
-                <circle cx={0} cy={0} r={11}
-                  fill={isHighlighted ? `${leaf.hubColor}22` : '#f4f4f8'}
-                  stroke={leaf.hubColor} strokeWidth={isHighlighted ? 1.5 : 1}
-                  opacity={dimmed ? 0.2 : 1}
-                  strokeDasharray={leaf.status === 'planned' ? '3 2' : undefined} />
-                <text y={21} textAnchor="middle" fill={dimmed ? '#ccc' : '#444'}
-                  fontSize={7.5} fontFamily="'Courier New', monospace"
+                {isSel && <circle cx={0} cy={0} r={20} fill="none" stroke={expandedHubData.color} strokeWidth={1.5} opacity={0.7} />}
+                <circle cx={0} cy={0} r={13}
+                  fill={isSel ? `${expandedHubData.color}22` : '#f8f8fc'}
+                  stroke={expandedHubData.color} strokeWidth={isSel ? 2 : 1}
+                  opacity={dimmed ? 0.25 : 1} />
+                <text y={24} textAnchor="middle" fill={dimmed ? '#ccc' : '#444'}
+                  fontSize={8} fontFamily="'Courier New', monospace" fontWeight={isSel ? '700' : '400'}
                   style={{ pointerEvents: 'none', userSelect: 'none' }}>
-                  {leaf.label.length > 16 ? leaf.label.slice(0, 15) + '…' : leaf.label}
+                  {leaf.label.length > 18 ? leaf.label.slice(0, 17) + '\u2026' : leaf.label}
                 </text>
               </g>
             )
           })}
 
           {/* Hub nodes */}
-          {CONN_LAYOUT.hubs.map(hub => {
-            const isSel = selectedHub === hub.id
-            const dimmed = selectedHub && !isSel
+          {CONN_HUBS.map(hub => {
+            const rad = (hub.angle - 90) * (Math.PI / 180)
+            const isExp = expandedHub === hub.id
+            const hx = isExp ? EXP_HUB_X : CONN_CX + HUB_R * Math.cos(rad)
+            const hy = isExp ? EXP_HUB_Y : CONN_CY + HUB_R * Math.sin(rad)
+            const dimmed = expandedHub && !isExp
+            const r = isExp ? 32 : 28
             return (
-              <g key={hub.id} transform={`translate(${hub.x},${hub.y})`}
-                onClick={(e) => handleHubClick(e, hub.id)} style={{ cursor: 'pointer' }}>
-                {isSel && <circle cx={0} cy={0} r={34} fill="none" stroke={hub.color} strokeWidth={2} opacity={0.55} />}
-                <circle cx={0} cy={0} r={25}
-                  fill={isSel ? `${hub.color}22` : `${hub.color}0e`}
-                  stroke={hub.color} strokeWidth={isSel ? 2 : 1.5}
-                  opacity={dimmed ? 0.3 : 1} />
-                <text y={4} textAnchor="middle" fill={hub.color}
-                  fontSize={10} fontFamily="Cinzel, serif" fontWeight="700"
-                  opacity={dimmed ? 0.3 : 1}
+              <g key={hub.id} transform={`translate(${hx},${hy})`}
+                onClick={(e) => handleHubClick(e, hub.id)} style={{ cursor: 'pointer' }}
+                opacity={dimmed ? 0.12 : 1}>
+                {isExp && <circle cx={0} cy={0} r={r + 8} fill="none" stroke={hub.color} strokeWidth={2} opacity={0.4} />}
+                <circle cx={0} cy={0} r={r}
+                  fill={isExp ? `${hub.color}18` : `${hub.color}0c`}
+                  stroke={hub.color} strokeWidth={isExp ? 2.5 : 1.5} />
+                <text y={-2} textAnchor="middle" fill={hub.color}
+                  fontSize={isExp ? 11 : 10} fontFamily="Cinzel, serif" fontWeight="700"
                   style={{ pointerEvents: 'none', userSelect: 'none' }}>
                   {hub.shortLabel}
                 </text>
-                <text y={37} textAnchor="middle" fill={hub.color}
-                  fontSize={8.5} fontFamily="'Courier New', monospace" fontWeight="600"
-                  opacity={dimmed ? 0.3 : 0.85}
+                <text y={12} textAnchor="middle" fill={hub.color}
+                  fontSize={7} fontFamily="'Courier New', monospace" opacity={0.7}
                   style={{ pointerEvents: 'none', userSelect: 'none' }}>
-                  {hub.label}
+                  {CONN_LEAVES.filter(l => l.hub === hub.id).length} nodes
                 </text>
               </g>
             )
           })}
 
-          {/* Center node */}
-          <g transform={`translate(${CONN_CX},${CONN_CY})`}>
-            <circle cx={0} cy={0} r={40} fill="none" stroke="#F59E0B" strokeWidth={1} opacity={0.18} />
-            <circle cx={0} cy={0} r={28} fill="rgba(245,158,11,0.1)" stroke="#F59E0B" strokeWidth={2.5} />
-            <text y={-3} textAnchor="middle" fill="#F59E0B" fontSize={13} fontFamily="Cinzel, serif" fontWeight="700" style={{ pointerEvents: 'none', userSelect: 'none' }}>Lumen</text>
-            <text y={11} textAnchor="middle" fill="#F59E0B" fontSize={7.5} fontFamily="'Courier New', monospace" style={{ pointerEvents: 'none', userSelect: 'none' }}>AI Assistant</text>
-          </g>
+          {/* Center Lumen node (overview only) */}
+          {!expandedHub && (
+            <g transform={`translate(${CONN_CX},${CONN_CY})`}>
+              <circle cx={0} cy={0} r={38} fill="none" stroke="#F59E0B" strokeWidth={1} opacity={0.18} />
+              <circle cx={0} cy={0} r={26} fill="rgba(245,158,11,0.08)" stroke="#F59E0B" strokeWidth={2.5} />
+              <text y={-3} textAnchor="middle" fill="#F59E0B" fontSize={13} fontFamily="Cinzel, serif" fontWeight="700" style={{ pointerEvents: 'none', userSelect: 'none' }}>Lumen</text>
+              <text y={10} textAnchor="middle" fill="#F59E0B" fontSize={7} fontFamily="'Courier New', monospace" style={{ pointerEvents: 'none', userSelect: 'none' }}>AI Gateway</text>
+            </g>
+          )}
+
+          {expandedHub && (
+            <text x={20} y={25} fill="#999" fontSize={10} fontFamily="'Courier New', monospace"
+              style={{ cursor: 'pointer', userSelect: 'none' }} onClick={handleBgClick}>
+              {'← Back to overview'}
+            </text>
+          )}
         </svg>
       </div>
       <div className={`lg:w-72 xl:w-80 transition-all duration-200 ${panelOpen ? 'opacity-100' : 'opacity-0 pointer-events-none lg:opacity-100 lg:pointer-events-auto'}`}>
         <div className="bg-white border border-game-border rounded-lg p-4 shadow-sm" style={{ minHeight: 320 }}>
           {selectedLeafData ? (
             <ConnLeafPanel leaf={selectedLeafData} onClose={() => setSelectedLeaf(null)} />
-          ) : selectedHubData ? (
-            <ConnHubPanel hub={selectedHubData} onClose={() => setSelectedHub(null)} />
+          ) : expandedHubData ? (
+            <ConnHubPanel hub={expandedHubData} onClose={() => { setExpandedHub(null); setSelectedLeaf(null) }} />
           ) : (
             <div className="flex flex-col items-center justify-center h-full text-center py-12">
               <Network size={32} className="text-game-text-dim mb-3" />
-              <p className="text-game-text-dim text-xs font-mono uppercase tracking-wider">Select a node</p>
-              <p className="text-game-text-subtle text-[10px] mt-1">Hub = category · Leaf = tool/service</p>
+              <p className="text-game-text-dim text-xs font-mono uppercase tracking-wider">Select a hub</p>
+              <p className="text-game-text-subtle text-[10px] mt-1">Click any hub to explore its connections</p>
             </div>
           )}
         </div>
@@ -1066,7 +1069,7 @@ export default function EcosystemPage() {
         <div>
           <h1 className="font-game text-xl text-[#2D1B69]">ECOSYSTEM</h1>
           <p className="text-game-text-dim text-xs mt-0.5">
-            {activeTab === 'network' ? `${CONN_LAYOUT.hubs.length} hubs · ${CONN_LEAVES.length} nodes` : ''}
+            {activeTab === 'network' ? `${CONN_HUBS.length} hubs · ${CONN_LEAVES.length} integrations` : ''}
           </p>
         </div>
       </div>
