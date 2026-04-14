@@ -303,108 +303,99 @@ function AgentPanel({ agent, onClose }) {
 
 function AgentOrgChart() {
   const [selectedAgent, setSelectedAgent] = useState(null)
-  const containerRef = useRef(null)
-  const lumenRef = useRef(null)
   const agentRefs = useRef({})
-  const [lines, setLines] = useState([])
 
-  const lumen = AGENTS[0]
+  const lumen = AGENTS.find(a => a.id === 'lumen')
   const hermes = AGENTS.find(a => a.id === 'hermes')
-  const specialists = AGENTS.filter(a => a.id !== 'lumen' && a.id !== 'hermes')
-  const rows = []
-  for (let i = 0; i < specialists.length; i += 4) {
-    rows.push(specialists.slice(i, i + 4))
-  }
 
-  const recalcLines = useCallback(() => {
-    if (!lumenRef.current || !containerRef.current) return
-    const container = containerRef.current.getBoundingClientRect()
-    const lr = lumenRef.current.getBoundingClientRect()
-    const lx = lr.left - container.left + lr.width / 2
-    const ly = lr.bottom - container.top
-    const newLines = AGENTS.filter(a => a.id !== 'lumen').map(agent => {
-      const el = agentRefs.current[agent.id]
-      if (!el) return null
-      const rect = el.getBoundingClientRect()
-      return { id: agent.id, x1: lx, y1: ly, x2: rect.left - container.left + rect.width / 2, y2: rect.top - container.top, color: agent.color }
-    }).filter(Boolean)
-    setLines(newLines)
-  }, [])
-
-  useEffect(() => {
-    recalcLines()
-    window.addEventListener('resize', recalcLines)
-    return () => window.removeEventListener('resize', recalcLines)
-  }, [recalcLines])
+  const AGENT_CATEGORIES = [
+    { label: 'Production Tools', color: '#234D8B', ids: ['mr-video', 'mr-strategy', 'mr-deck', 'mr-pulse', 'mr-build', 'mr-brief', 'mr-draft'] },
+    { label: 'Research Tools', color: '#6FCF97', ids: ['mr-scout'] },
+    { label: 'Client Platforms', color: '#7C3AED', ids: ['mr-snmi', 'mr-mma', 'mr-achp'] },
+    { label: 'Infrastructure Builds', color: '#F2994A', ids: ['mr-diablo', 'mr-clarity'] },
+    { label: 'Background Agents', color: '#EB5757', ids: ['mr-watch'] },
+    { label: 'Social Bot', color: '#0A66C2', ids: ['mr-link'] },
+    { label: 'Analytic Tools', color: '#4285F4', ids: ['mr-bigquery'] },
+  ]
 
   const selectedAgentData = selectedAgent ? AGENTS.find(a => a.id === selectedAgent) : null
 
+  const renderAgentCard = (agent) => {
+    const isPlanned = agent.status === 'planned'
+    const isSel = selectedAgent === agent.id
+    return (
+      <div key={agent.id}
+        ref={el => { agentRefs.current[agent.id] = el }}
+        onClick={() => setSelectedAgent(isSel ? null : agent.id)}
+        style={{ width: 165, padding: '10px 12px', border: `1.5px ${isPlanned ? 'dashed' : 'solid'} ${agent.color}`, borderRadius: 8, background: isSel ? `${agent.color}1A` : '#fff', cursor: 'pointer', opacity: isPlanned ? 0.6 : 1, boxShadow: isSel ? `0 0 12px ${agent.color}40` : '0 1px 3px rgba(0,0,0,0.06)', transition: 'all 0.2s ease', flexShrink: 0 }}
+      >
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+          <span style={{ fontSize: 12, fontWeight: 700, color: THS_COLORS.darkBlue, fontFamily: 'Cinzel, serif' }}>{agent.name}</span>
+          <span style={{ fontSize: 8, fontWeight: 600, padding: '2px 5px', borderRadius: 3, background: isPlanned ? '#f5f5f5' : '#e8f5e9', color: isPlanned ? '#aaa' : '#2e7d32', textTransform: 'uppercase', flexShrink: 0 }}>{agent.status}</span>
+        </div>
+        <div style={{ fontSize: 10, color: '#666', marginBottom: 3, fontFamily: "'Courier New', monospace", lineHeight: 1.3 }}>{agent.role}</div>
+        <div style={{ fontSize: 9, color: '#aaa', fontFamily: "'Courier New', monospace" }}>{agent.model}</div>
+        <div style={{ fontSize: 9, color: agent.color, fontFamily: "'Courier New', monospace", marginTop: 2 }}>{agent.channel}</div>
+      </div>
+    )
+  }
+
   return (
     <div className="flex gap-4 flex-col lg:flex-row">
-      <div className="flex-1 bg-white border border-game-border rounded-lg p-6 shadow-sm overflow-x-auto">
-        <div ref={containerRef} style={{ position: 'relative', minHeight: 660, minWidth: 720 }}>
-          <svg style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none', zIndex: 0 }}>
-            {lines.map(ln => (
-              <line key={ln.id} x1={ln.x1} y1={ln.y1} x2={ln.x2} y2={ln.y2} stroke={ln.color} strokeWidth={1.5} strokeOpacity={0.45} />
-            ))}
-          </svg>
-          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 20, position: 'relative', zIndex: 1 }}>
+      <div className="flex-1 bg-white border border-game-border rounded-lg p-5 shadow-sm overflow-x-auto">
+        {/* Lumen hub */}
+        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 20 }}>
+          <div
+            onClick={() => setSelectedAgent(selectedAgent === lumen.id ? null : lumen.id)}
+            style={{ width: 280, padding: '16px 20px', border: `2px solid ${lumen.color}`, borderRadius: 10, background: selectedAgent === lumen.id ? 'rgba(245,158,11,0.14)' : 'rgba(245,158,11,0.04)', cursor: 'pointer', boxShadow: selectedAgent === lumen.id ? '0 0 20px rgba(245,158,11,0.3)' : '0 2px 8px rgba(0,0,0,0.06)', transition: 'all 0.2s ease' }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+              <span style={{ fontSize: 18, fontWeight: 700, color: lumen.color, fontFamily: 'Cinzel, serif' }}>🧭 Lumen</span>
+              <span style={{ fontSize: 9, fontWeight: 600, padding: '3px 8px', borderRadius: 4, background: '#e8f5e9', color: '#2e7d32', textTransform: 'uppercase', letterSpacing: '0.06em' }}>active</span>
+            </div>
+            <div style={{ fontSize: 11, color: '#555', marginBottom: 4, fontFamily: "'Courier New', monospace" }}>{lumen.role}</div>
+            <div style={{ fontSize: 10, color: '#999', fontFamily: "'Courier New', monospace" }}>{lumen.model}</div>
+          </div>
+        </div>
+
+        {/* Hermes CDRO */}
+        {hermes && (
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 24 }}>
             <div
-              ref={lumenRef}
-              onClick={() => setSelectedAgent(selectedAgent === lumen.id ? null : lumen.id)}
-              style={{ width: 250, padding: '16px 20px', border: `2px solid ${lumen.color}`, borderRadius: 10, background: selectedAgent === lumen.id ? 'rgba(245,158,11,0.14)' : 'rgba(245,158,11,0.06)', cursor: 'pointer', boxShadow: selectedAgent === lumen.id ? '0 0 20px rgba(245,158,11,0.3)' : 'none', transition: 'all 0.2s ease' }}
+              ref={el => { agentRefs.current[hermes.id] = el }}
+              onClick={() => setSelectedAgent(selectedAgent === hermes.id ? null : hermes.id)}
+              style={{ width: 220, padding: '10px 14px', border: `2px double ${hermes.color}`, borderRadius: 8, background: selectedAgent === hermes.id ? `${hermes.color}1A` : '#f0fdfa', cursor: 'pointer', boxShadow: selectedAgent === hermes.id ? `0 0 14px ${hermes.color}40` : '0 1px 4px rgba(0,0,0,0.05)', transition: 'all 0.2s ease' }}
             >
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                <span style={{ fontSize: 16, fontWeight: 700, color: lumen.color, fontFamily: 'Cinzel, serif' }}>Lumen</span>
-                <span style={{ fontSize: 9, fontWeight: 600, padding: '2px 7px', borderRadius: 4, background: '#e8f5e9', color: '#2e7d32', textTransform: 'uppercase', letterSpacing: '0.06em' }}>active</span>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                <span style={{ fontSize: 14, fontWeight: 700, color: hermes.color, fontFamily: 'Cinzel, serif' }}>⚡ Hermes</span>
+                <span style={{ fontSize: 8, fontWeight: 600, padding: '2px 6px', borderRadius: 3, background: '#e8f5e9', color: '#2e7d32', textTransform: 'uppercase' }}>CDRO</span>
               </div>
-              <div style={{ fontSize: 11, color: '#555', marginBottom: 5, fontFamily: "'Courier New', monospace" }}>{lumen.role}</div>
-              <div style={{ fontSize: 10, color: '#999', fontFamily: "'Courier New', monospace" }}>{lumen.model}</div>
-              <div style={{ fontSize: 10, color: lumen.color, fontFamily: "'Courier New', monospace", marginTop: 2 }}>{lumen.channel}</div>
+              <div style={{ fontSize: 10, color: '#666', fontFamily: "'Courier New', monospace", lineHeight: 1.3 }}>{hermes.role}</div>
+              <div style={{ fontSize: 9, color: hermes.color, fontFamily: "'Courier New', monospace", marginTop: 2 }}>{hermes.channel}</div>
             </div>
           </div>
-          {hermes && (
-            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 20, position: 'relative', zIndex: 1 }}>
-              <div
-                ref={el => { agentRefs.current[hermes.id] = el }}
-                onClick={() => setSelectedAgent(selectedAgent === hermes.id ? null : hermes.id)}
-                style={{ width: 200, padding: '10px 14px', border: `2px double ${hermes.color}`, borderRadius: 8, background: selectedAgent === hermes.id ? `${hermes.color}1A` : '#f0fdfa', cursor: 'pointer', boxShadow: selectedAgent === hermes.id ? `0 0 14px ${hermes.color}40` : 'none', transition: 'all 0.2s ease' }}
-              >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-                  <span style={{ fontSize: 13, fontWeight: 700, color: hermes.color, fontFamily: 'Cinzel, serif' }}>{hermes.emoji} Hermes</span>
-                  <span style={{ fontSize: 8, fontWeight: 600, padding: '2px 5px', borderRadius: 3, background: '#e8f5e9', color: '#2e7d32', textTransform: 'uppercase', flexShrink: 0 }}>CDRO</span>
-                </div>
-                <div style={{ fontSize: 10, color: '#666', fontFamily: "'Courier New', monospace", lineHeight: 1.3 }}>{hermes.role}</div>
-                <div style={{ fontSize: 9, color: hermes.color, fontFamily: "'Courier New', monospace", marginTop: 2 }}>{hermes.channel}</div>
+        )}
+
+        {/* Category sections */}
+        {AGENT_CATEGORIES.map(cat => {
+          const agents = cat.ids.map(id => AGENTS.find(a => a.id === id)).filter(Boolean)
+          if (agents.length === 0) return null
+          return (
+            <div key={cat.label} style={{ marginBottom: 18 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10, paddingLeft: 2 }}>
+                <span style={{ width: 3, height: 16, borderRadius: 2, background: cat.color, flexShrink: 0 }} />
+                <span style={{ fontSize: 11, fontWeight: 700, color: cat.color, textTransform: 'uppercase', letterSpacing: '0.08em', fontFamily: "'Courier New', monospace" }}>{cat.label}</span>
+                <span style={{ fontSize: 10, color: '#bbb', fontFamily: "'Courier New', monospace" }}>({agents.length})</span>
+              </div>
+              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', paddingLeft: 13 }}>
+                {agents.map(renderAgentCard)}
               </div>
             </div>
-          )}
-          {rows.map((row, rowIdx) => (
-            <div key={rowIdx} style={{ display: 'flex', justifyContent: 'center', gap: 10, marginBottom: rowIdx < rows.length - 1 ? 10 : 0, position: 'relative', zIndex: 1, flexWrap: 'wrap' }}>
-              {row.map(agent => {
-                const isPlanned = agent.status === 'planned'
-                const isSel = selectedAgent === agent.id
-                return (
-                  <div
-                    key={agent.id}
-                    ref={el => { agentRefs.current[agent.id] = el }}
-                    onClick={() => setSelectedAgent(isSel ? null : agent.id)}
-                    style={{ width: 158, padding: '10px 12px', border: `1.5px ${isPlanned ? 'dashed' : 'solid'} ${agent.color}`, borderRadius: 8, background: isSel ? `${agent.color}1A` : '#fff', cursor: 'pointer', opacity: isPlanned ? 0.6 : 1, boxShadow: isSel ? `0 0 10px ${agent.color}40` : 'none', transition: 'all 0.2s ease', flexShrink: 0 }}
-                  >
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-                      <span style={{ fontSize: 12, fontWeight: 700, color: THS_COLORS.darkBlue, fontFamily: 'Cinzel, serif' }}>{agent.name}</span>
-                      <span style={{ fontSize: 8, fontWeight: 600, padding: '2px 5px', borderRadius: 3, background: isPlanned ? '#f5f5f5' : '#e8f5e9', color: isPlanned ? '#aaa' : '#2e7d32', textTransform: 'uppercase', flexShrink: 0 }}>{agent.status}</span>
-                    </div>
-                    <div style={{ fontSize: 10, color: '#666', marginBottom: 3, fontFamily: "'Courier New', monospace", lineHeight: 1.3 }}>{agent.role}</div>
-                    <div style={{ fontSize: 9, color: '#aaa', fontFamily: "'Courier New', monospace" }}>{agent.model}</div>
-                    <div style={{ fontSize: 9, color: agent.color, fontFamily: "'Courier New', monospace", marginTop: 2 }}>{agent.channel}</div>
-                  </div>
-                )
-              })}
-            </div>
-          ))}
-        </div>
+          )
+        })}
       </div>
+
+      {/* Side panel */}
       <div className={`lg:w-72 xl:w-80 transition-all duration-200 ${selectedAgentData ? 'opacity-100' : 'opacity-0 pointer-events-none lg:opacity-100 lg:pointer-events-auto'}`}>
         <div className="bg-white border border-game-border rounded-lg p-4 h-full shadow-sm" style={{ minHeight: 320 }}>
           {selectedAgentData ? (
@@ -802,14 +793,14 @@ function ConnectionsMap() {
             const rad = (hub.angle - 90) * (Math.PI / 180)
             const hx = CONN_CX + HUB_R * Math.cos(rad)
             const hy = CONN_CY + HUB_R * Math.sin(rad)
-            return <line key={`cl-${hub.id}`} x1={CONN_CX} y1={CONN_CY} x2={hx} y2={hy} stroke={hub.color} strokeWidth={1.5} strokeOpacity={0.35} />
+            return <line key={`cl-${hub.id}`} x1={CONN_CX} y1={CONN_CY} x2={hx} y2={hy} stroke={hub.color} strokeWidth={2.5} strokeOpacity={0.3} />
           })}
 
           {/* Expanded: hub-to-leaf lines */}
           {expandedHub && leafPositions.map(leaf => (
             <line key={`el-${leaf.id}`} x1={EXP_HUB_X} y1={EXP_HUB_Y} x2={leaf.x} y2={leaf.y}
-              stroke={expandedHubData.color} strokeWidth={selectedLeaf === leaf.id ? 2 : 1}
-              strokeOpacity={selectedLeaf && selectedLeaf !== leaf.id ? 0.15 : 0.4} />
+              stroke={expandedHubData.color} strokeWidth={selectedLeaf === leaf.id ? 2.5 : 1.5}
+              strokeOpacity={selectedLeaf && selectedLeaf !== leaf.id ? 0.12 : 0.35} />
           ))}
 
           {/* Expanded: leaf nodes */}
