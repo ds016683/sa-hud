@@ -229,6 +229,15 @@ const AGENTS = [
   { id: 'mr-pulse',  emoji: '📊', name: 'Mr. Pulse',  role: 'Data queries & analytics',            model: 'anthropic/claude-sonnet-4-6', channel: '#mr-pulse',  channelId: '1491936114905317499', status: 'active',  color: '#56CCF2', description: 'Analytical and concise. Starset data, portfolio metrics, Supabase queries. Returns structured answers.', capabilities: ['Supabase queries', 'portfolio metrics', 'Starset analytics', 'cost tracking', 'reporting'], rules: 'Analytical and concise. Starset data, portfolio metrics, Supabase queries. Returns structured answers.' },
   { id: 'mr-diablo', emoji: '⚔️', name: 'Mr. Diablo', role: 'Project Diablo engineering',          model: 'anthropic/claude-sonnet-4-6', channel: '#mr-diablo', channelId: '1491977511536431104', status: 'active',  color: '#FF4444', description: 'Dedicated engineering agent for Project Diablo (React/Vite/Vercel). Discusses architecture, stages build briefs for Claude Code.', capabilities: ['React/Vite development', 'architecture decisions', 'build brief staging', 'Claude Code handoff'], rules: 'Dedicated engineering agent for Project Diablo. Discusses architecture, stages build briefs at workspace/tmp/ for Claude Code handoff.' },
   { id: 'mr-deck',   emoji: '🎨', name: 'Mr. Deck',   role: 'Decks & presentations',               model: 'anthropic/claude-sonnet-4-6', channel: '#mr-deck',   channelId: '1491936969108885615', status: 'planned', color: '#1A3A5C', description: 'Visual and executive-polish minded. PowerPoint decks, TH-branded slides. Knows the brand palette.', capabilities: ['PPTX creation', 'TH brand application', 'executive decks', 'narrative arc design'], rules: 'Visual and executive-polish minded. PowerPoint decks, TH-branded slides. Knows the brand palette: darkBlue #1A3A5C, mediumBlue #234D8B, gold #F8C762.' },
+  { id: 'mr-strategy', emoji: '♟️', name: 'Mr. Strategy', role: 'Strategic thinking partner', model: 'anthropic/claude-sonnet-4-6', channel: '#mr-strategy', channelId: '1492169088007405579', status: 'active', color: '#4A90D9', description: "David's thinking partner for complex problems: org design, market positioning, SNMI, Era 4. Also receives and archives VAPI voice call transcripts.", capabilities: ['strategic analysis', 'org design', 'market positioning', 'voice transcript archiving', 'scenario planning'], rules: 'Direct, curious, pushes back when something doesn\'t hold up. Not a note-taker — a thinking partner.' },
+  { id: 'mr-clarity', emoji: '🔬', name: 'Mr. Clarity', role: 'Project Clarity engineering', model: 'anthropic/claude-sonnet-4-6', channel: '#mr-clarity', channelId: '1492347176905605325', status: 'active', color: '#0EA5E9', description: 'Dedicated engineering agent for Project Clarity (ValueLens), episode-based cost intelligence platform. AI query layer: Odin. Live preview on Fly.dev.', capabilities: ['health plan analytics', 'episode intelligence', 'PACES grouper', 'Odin AI queries', 'synthetic data generation'], rules: 'Focused and product-driven. Owns the Clarity codebase. Builds with the health plan executive buyer in mind.' },
+  { id: 'mr-video', emoji: '🎬', name: 'Mr. Video', role: 'Video production & content', model: 'anthropic/claude-sonnet-4-6', channel: '#mr-video', channelId: '1492686614894477403', status: 'active', color: '#E11D48', description: 'Dedicated video production agent. Plans, scripts, and produces high-quality videos using Remotion (React), RunwayML, ElevenLabs, and DALL-E 3.', capabilities: ['Remotion programmatic video', 'RunwayML AI footage', 'ElevenLabs voiceover', 'storyboarding', 'whiteboard animation'], rules: 'Production stack: Remotion for programmatic, Runway for AI footage, ElevenLabs for narration, DALL-E for stills.' },
+  { id: 'mr-link', emoji: '🔗', name: 'Mr. Link', role: 'LinkedIn & social monitoring', model: 'anthropic/claude-haiku-4.5', channel: '#mr-link', channelId: '1491936139790254115', status: 'active', color: '#0A66C2', description: 'LinkedIn monitoring, social content routing, and Third Horizon YouTube channel tracking. Knows signal from noise.', capabilities: ['LinkedIn monitoring', 'social content routing', 'YouTube tracking', 'engagement suggestions'], rules: 'Social and strategic. Know the difference between noise and signal.' },
+  { id: 'mr-snmi', emoji: '🏥', name: 'Mr. SNMI', role: 'SNMI strategy & coalition', model: 'anthropic/claude-sonnet-4-6', channel: '#mr-snmi', channelId: '1492549838175211694', status: 'active', color: '#059669', description: 'Dedicated strategic agent for the Safety Net Moonshot Initiative — $0.5-2B public-private partnership to redesign Chicago healthcare safety net.', capabilities: ['political navigation', 'coalition strategy', 'stakeholder briefings', 'policy analysis', 'stealth positioning'], rules: 'Strategic and careful. Lives at intersection of politics, public health, and money. NEVER contacts external parties without explicit instruction.' },
+  { id: 'mr-bigquery', emoji: '🗄️', name: 'Mr. BigQuery', role: 'BigQuery data exploration', model: 'anthropic/claude-sonnet-4-6', channel: '#mr-big-query', channelId: '1493039506641780766', status: 'active', color: '#4285F4', description: 'Dedicated SQL agent for Starset Analytics BigQuery. Explores price transparency datasets across 67B+ rows. Project: starset-lumen-bq.', capabilities: ['BigQuery SQL', 'data exploration', 'cost estimation', 'schema inspection', 'business question translation'], rules: 'NEVER run full table scans on large tables. Always LIMIT. Estimate cost before querying >1M rows. Explain in plain English.' },
+  { id: 'mr-mma', emoji: '📈', name: 'Mr. MMA', role: 'MMA client management', model: 'anthropic/claude-sonnet-4-6', channel: '#mr-mma', channelId: '1493597699293974539', status: 'active', color: '#7C3AED', description: 'Dedicated agent for the Marsh McLennan Agency engagement. Manages data delivery, SOW tracking, invoicing, and stakeholder communications.', capabilities: ['SOW tracking', 'data delivery status', 'invoicing', 'stakeholder comms', 'v8 data pipeline'], rules: 'Never contact MMA stakeholders without explicit instruction. Know the product: Starset price transparency powering MMA Network Navigator.' },
+  { id: 'mr-achp', emoji: '🏛️', name: 'Mr. ACHP', role: 'ACHP engagement management', model: 'anthropic/claude-sonnet-4-6', channel: '#mr-achp', channelId: '1493628745943089232', status: 'active', color: '#DC2626', description: 'Dedicated agent for the ACHP (Alliance of Community Health Plans) engagement. Two workstreams: Federal Affairs AI Tool MVP and Organizational Redesign.', capabilities: ['federal affairs AI tool', 'org redesign support', 'retainer management', 'Monday.com boards', 'contract tracking'], rules: 'Two workstreams: Federal Affairs AI MVP ($85K) + Org Redesign ($7,500/mo retainer, Ceci only). NEVER contact externally without David.' },
+  { id: 'hermes', emoji: '⚡', name: 'Hermes', role: 'Chief Digital Resource Officer', model: 'anthropic/claude-sonnet-4-6', channel: '#infra-ops', channelId: '1493626358603972851', status: 'active', color: '#14B8A6', description: 'Meta-agent and CDRO. Owns operational health of the entire agent network: config audits, STATE.md hygiene, cron monitoring, memory gaps, and Ecosystem documentation.', capabilities: ['config auditing', 'ecosystem documentation', 'cron management', 'SSH to DavidPC', 'git push to GitHub Pages', 'cross-session memory'], rules: 'Not a task executor — the system that keeps all task executors sharp. Has persistent memory across sessions. Reports directly to David.' },
 ]
 
 function AgentPanel({ agent, onClose }) {
@@ -300,8 +309,12 @@ function AgentOrgChart() {
   const [lines, setLines] = useState([])
 
   const lumen = AGENTS[0]
-  const row1 = AGENTS.filter(a => ['mr-brief', 'mr-scout', 'mr-draft', 'mr-watch'].includes(a.id))
-  const row2 = AGENTS.filter(a => ['mr-build', 'mr-pulse', 'mr-diablo', 'mr-deck'].includes(a.id))
+  const hermes = AGENTS.find(a => a.id === 'hermes')
+  const specialists = AGENTS.filter(a => a.id !== 'lumen' && a.id !== 'hermes')
+  const rows = []
+  for (let i = 0; i < specialists.length; i += 4) {
+    rows.push(specialists.slice(i, i + 4))
+  }
 
   const recalcLines = useCallback(() => {
     if (!lumenRef.current || !containerRef.current) return
@@ -329,13 +342,13 @@ function AgentOrgChart() {
   return (
     <div className="flex gap-4 flex-col lg:flex-row">
       <div className="flex-1 bg-white border border-game-border rounded-lg p-6 shadow-sm overflow-x-auto">
-        <div ref={containerRef} style={{ position: 'relative', minHeight: 360, minWidth: 680 }}>
+        <div ref={containerRef} style={{ position: 'relative', minHeight: 660, minWidth: 720 }}>
           <svg style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none', zIndex: 0 }}>
             {lines.map(ln => (
               <line key={ln.id} x1={ln.x1} y1={ln.y1} x2={ln.x2} y2={ln.y2} stroke={ln.color} strokeWidth={1.5} strokeOpacity={0.45} />
             ))}
           </svg>
-          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 32, position: 'relative', zIndex: 1 }}>
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 20, position: 'relative', zIndex: 1 }}>
             <div
               ref={lumenRef}
               onClick={() => setSelectedAgent(selectedAgent === lumen.id ? null : lumen.id)}
@@ -350,8 +363,24 @@ function AgentOrgChart() {
               <div style={{ fontSize: 10, color: lumen.color, fontFamily: "'Courier New', monospace", marginTop: 2 }}>{lumen.channel}</div>
             </div>
           </div>
-          {[row1, row2].map((row, rowIdx) => (
-            <div key={row[0].id} style={{ display: 'flex', justifyContent: 'center', gap: 12, marginBottom: rowIdx === 0 ? 12 : 0, position: 'relative', zIndex: 1 }}>
+          {hermes && (
+            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 20, position: 'relative', zIndex: 1 }}>
+              <div
+                ref={el => { agentRefs.current[hermes.id] = el }}
+                onClick={() => setSelectedAgent(selectedAgent === hermes.id ? null : hermes.id)}
+                style={{ width: 200, padding: '10px 14px', border: `2px double ${hermes.color}`, borderRadius: 8, background: selectedAgent === hermes.id ? `${hermes.color}1A` : '#f0fdfa', cursor: 'pointer', boxShadow: selectedAgent === hermes.id ? `0 0 14px ${hermes.color}40` : 'none', transition: 'all 0.2s ease' }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: hermes.color, fontFamily: 'Cinzel, serif' }}>{hermes.emoji} Hermes</span>
+                  <span style={{ fontSize: 8, fontWeight: 600, padding: '2px 5px', borderRadius: 3, background: '#e8f5e9', color: '#2e7d32', textTransform: 'uppercase', flexShrink: 0 }}>CDRO</span>
+                </div>
+                <div style={{ fontSize: 10, color: '#666', fontFamily: "'Courier New', monospace", lineHeight: 1.3 }}>{hermes.role}</div>
+                <div style={{ fontSize: 9, color: hermes.color, fontFamily: "'Courier New', monospace", marginTop: 2 }}>{hermes.channel}</div>
+              </div>
+            </div>
+          )}
+          {rows.map((row, rowIdx) => (
+            <div key={rowIdx} style={{ display: 'flex', justifyContent: 'center', gap: 10, marginBottom: rowIdx < rows.length - 1 ? 10 : 0, position: 'relative', zIndex: 1, flexWrap: 'wrap' }}>
               {row.map(agent => {
                 const isPlanned = agent.status === 'planned'
                 const isSel = selectedAgent === agent.id
@@ -404,6 +433,15 @@ function UseInstructionsTab() {
     { need: 'Starset / data', agent: '#mr-pulse', example: '"Query the last 30 days of..."' },
     { need: 'Project Diablo', agent: '#mr-diablo', example: '"I want to add a feature that..."' },
     { need: 'Deck / slides', agent: '#mr-deck', example: '"Build a deck for [meeting]"' },
+    { need: 'SNMI strategy', agent: '#mr-snmi', example: '"Update me on the coalition status"' },
+    { need: 'Clarity / ValueLens', agent: '#mr-clarity', example: '"What\'s the status of the episode grouper?"' },
+    { need: 'Video production', agent: '#mr-video', example: '"Script a 2-min explainer on [topic]"' },
+    { need: 'BigQuery / SQL', agent: '#mr-bigquery', example: '"How many rows in the MMA transfer dataset?"' },
+    { need: 'MMA engagement', agent: '#mr-mma', example: '"What\'s the latest SOW status?"' },
+    { need: 'ACHP engagement', agent: '#mr-achp', example: '"Where are we on the federal affairs MVP?"' },
+    { need: 'LinkedIn / social', agent: '#mr-link', example: '"Any interesting LinkedIn activity this week?"' },
+    { need: 'Strategic thinking', agent: '#mr-strategy', example: '"Help me think through the Era 4 positioning"' },
+    { need: 'System health / ops', agent: '#infra-ops (Hermes)', example: '"Run an agent audit" or DM Hermes directly' },
   ]
   const powerMoves = [
     { title: 'Pre-meeting brief', detail: '"Brief me on [name] for my [time] call" → Mr. Brief reads email history, Slack DMs, Granola notes, returns context doc' },
@@ -584,7 +622,7 @@ const CONN_VW = 1000, CONN_VH = 680, CONN_CX = 500, CONN_CY = 370
 const HUB_R = 185, LEAF_R = 130
 
 const CONN_HUBS = [
-  { id: 'hub-agents', label: 'AI Agents',          shortLabel: 'AI Agents',  color: '#F59E0B', angle: 0,   fanWidth: 50, summary: '8 specialist agents orchestrated via Discord channels' },
+  { id: 'hub-agents', label: 'AI Agents',          shortLabel: 'AI Agents',  color: '#F59E0B', angle: 0,   fanWidth: 70, summary: '16 specialist agents + Hermes CDRO orchestrated via Discord channels' },
   { id: 'hub-comms',  label: 'Communication Tools', shortLabel: 'Comms',      color: '#7C3AED', angle: 72,  fanWidth: 40, summary: 'Signal, WhatsApp, Discord, Slack, Gmail, Outlook, Vapi' },
   { id: 'hub-data',   label: 'Data & Analytics',    shortLabel: 'Data',       color: '#059669', angle: 144, fanWidth: 35, summary: 'Supabase, Granola, Harvest, Notion, OpenRouter' },
   { id: 'hub-apps',   label: 'Deployed Apps',       shortLabel: 'Apps',       color: '#2563EB', angle: 216, fanWidth: 35, summary: '6+ projects across GitHub Pages, Vercel, and DavidPC' },
@@ -601,6 +639,15 @@ const CONN_LEAVES = [
   { id: 'l-mr-pulse',  hub: 'hub-agents', label: 'Mr. Pulse',   status: 'active',  description: 'Analytical and concise. Starset data, portfolio metrics, Supabase queries. Returns structured answers.', connectedTo: ['Supabase (SA HUD)', 'Supabase (main)', 'Harvest'] },
   { id: 'l-mr-diablo', hub: 'hub-agents', label: 'Mr. Diablo',  status: 'active',  description: 'Dedicated engineering agent for Project Diablo. Stages build briefs at workspace/tmp/ for Claude Code handoff.', connectedTo: ['Claude Code', 'project-diablo'] },
   { id: 'l-mr-deck',   hub: 'hub-agents', label: 'Mr. Deck',    status: 'planned', description: 'Visual and executive-polish minded. PowerPoint decks, TH-branded slides. Brand palette: darkBlue #1A3A5C, gold #F8C762.', connectedTo: ['Lumen'] },
+  { id: 'l-mr-strategy', hub: 'hub-agents', label: 'Mr. Strategy', status: 'active', description: "David's thinking partner for complex strategic problems. Receives VAPI voice call transcripts.", connectedTo: ['Lumen', 'Vapi (voice)'] },
+  { id: 'l-mr-clarity', hub: 'hub-agents', label: 'Mr. Clarity', status: 'active', description: 'Dedicated engineering agent for Project Clarity (ValueLens) episode-based cost intelligence.', connectedTo: ['Claude Code', 'bh-rate-intelligence'] },
+  { id: 'l-mr-video', hub: 'hub-agents', label: 'Mr. Video', status: 'active', description: 'Video production: Remotion, RunwayML, ElevenLabs, DALL-E 3.', connectedTo: ['Claude Code', 'Remotion'] },
+  { id: 'l-mr-link', hub: 'hub-agents', label: 'Mr. Link', status: 'active', description: 'LinkedIn monitoring, social content routing, YouTube tracking.', connectedTo: ['Lumen'] },
+  { id: 'l-mr-snmi', hub: 'hub-agents', label: 'Mr. SNMI', status: 'active', description: 'SNMI strategy — $0.5-2B Chicago healthcare safety net partnership.', connectedTo: ['Lumen', 'Dropbox (THS)'] },
+  { id: 'l-mr-bigquery', hub: 'hub-agents', label: 'Mr. BigQuery', status: 'active', description: 'Starset Analytics BigQuery exploration — 67B+ rows across national datasets.', connectedTo: ['Starset MMA National', 'Lumen'] },
+  { id: 'l-mr-mma', hub: 'hub-agents', label: 'Mr. MMA', status: 'active', description: 'MMA client engagement management — data delivery, SOW, stakeholder comms.', connectedTo: ['Starset MMA National', 'Mr. BigQuery'] },
+  { id: 'l-mr-achp', hub: 'hub-agents', label: 'Mr. ACHP', status: 'active', description: 'ACHP engagement — Federal Affairs AI Tool + Org Redesign workstreams.', connectedTo: ['Lumen'] },
+  { id: 'l-hermes', hub: 'hub-agents', label: 'Hermes', status: 'active', description: 'CDRO — owns operational health, config audits, ecosystem docs, cron monitoring. Persistent memory.', notes: 'Meta-agent · DMs', connectedTo: ['DavidPC (gateway)', 'GitHub (ds016683)', 'sa-hud'] },
   // Communication Tools
   { id: 'l-signal',   hub: 'hub-comms', label: 'Signal',          status: 'active', description: "Lumen's primary messaging channel. Dedicated number +16302967614.", notes: '+16302967614', connectedTo: ['Lumen'] },
   { id: 'l-whatsapp', hub: 'hub-comms', label: 'WhatsApp',         status: 'active', description: 'WhatsApp messaging integration.', connectedTo: ['Lumen'] },
