@@ -30,6 +30,19 @@ const MarkdownBlock = ({ text }) => {
       )
     } else if (line.trim() === '' || line.trim() === '---') {
       elements.push(<div key={i} style={{ height: 6 }} />)
+    } else if (/https?:\/\/\S+/.test(line.trim())) {
+      const urlMatch = line.trim().match(/https?:\/\/\S+/)
+      const url = urlMatch ? urlMatch[0] : line.trim()
+      const label = line.trim().replace(url, '').replace('Chat with meeting transcript:', '').trim()
+      elements.push(
+        <div key={i} style={{ marginTop: 8, marginBottom: 4 }}>
+          {label && <span style={{ fontSize: 11, color: '#666', marginRight: 6 }}>{label}</span>}
+          <a href={url} target="_blank" rel="noopener noreferrer" style={{
+            fontSize: 11, color: '#1A3A5C', fontWeight: 600,
+            textDecoration: 'underline', wordBreak: 'break-all'
+          }}>{url}</a>
+        </div>
+      )
     } else {
       elements.push(
         <div key={i} style={{ fontSize: 12, lineHeight: 1.7, marginBottom: 2 }}>{line}</div>
