@@ -4,9 +4,9 @@
 
 Sovereign Architect HUD — a personal operating system disguised as a game. Browser-based dashboard for tracking personal sovereignty (energy), managing activity through an 8-phase Identity Loop, and monitoring psychological shadow patterns. Dark fantasy RPG aesthetic.
 
-**Live site:** https://thtopher.github.io/sovereign-architect-hud/
-**Repo:** https://github.com/thtopher/sovereign-architect-hud.git
-**GitHub account:** thtopher (`topher@thirdhorizon.com`)
+**Live site:** https://ds016683.github.io/sa-hud/
+**Repo:** https://github.com/ds016683/sa-hud.git
+**GitHub account:** ds016683 (`david@thirdhorizon.com`)
 
 ## Tech Stack
 
@@ -20,7 +20,7 @@ Sovereign Architect HUD — a personal operating system disguised as a game. Bro
 ## Commands
 
 ```bash
-npm run dev       # Dev server at localhost:5173 (base path: /sovereign-architect-hud/)
+npm run dev       # Dev server at localhost:5173 (base path: /sa-hud/)
 npm run build     # Production build
 npm run preview   # Preview production build
 npm run lint      # ESLint
@@ -30,7 +30,7 @@ npm run deploy    # Build + deploy to GitHub Pages via gh-pages
 ## Deployment
 
 - GitHub Pages via GitHub Actions (`.github/workflows/deploy.yml`)
-- Base path: `/sovereign-architect-hud/` (set in `vite.config.js`)
+- Base path: `/sa-hud/` (set in `vite.config.js`)
 - Push to `main` triggers auto-deploy
 
 ## Architecture

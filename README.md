@@ -4,7 +4,7 @@ A personal operating system disguised as a game. Browser-based HUD for tracking 
 
 ## Live Demo
 
-https://thtopher.github.io/sovereign-architect-hud/
+https://ds016683.github.io/sa-hud/
 
 ## Core Systems
 
@@ -69,7 +69,7 @@ npm install
 npm run dev
 ```
 
-Open http://localhost:5173/sovereign-architect-hud/
+Open http://localhost:5173/sa-hud/
 
 ## Design Philosophy
 
