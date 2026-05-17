@@ -1,5 +1,5 @@
 import { useState, useMemo, useRef, useEffect } from 'react'
-import { Plus, Play, Pause, Star, Flame, ChevronDown, ChevronUp, X, Trash2, ArrowUpRight, Check, Send, Anchor } from 'lucide-react'
+import { Plus, Play, Pause, Star, Flame, ChevronDown, ChevronUp, X, Trash2, ArrowUpRight, Check, Send, Anchor, Calendar, Edit3, Table as TableIcon, List as ListIcon, AlertTriangle, AlertCircle } from 'lucide-react'
 import useObjectives from '../hooks/useObjectives'
 
 // =============================================================================
@@ -18,6 +18,33 @@ const sovZone = (s) => SOV_ZONES.find(z => s >= z.min && s <= z.max) || SOV_ZONE
 
 const sizeFor = (w) => w >= 9 ? 'Boulder' : w >= 4 ? 'Stone' : 'Pebble'
 const sizeColor = (w) => w >= 9 ? '#7C2D12' : w >= 4 ? '#1E3A8A' : '#155E75'
+
+// --- due date helpers ---
+const todayISO = () => new Date().toISOString().slice(0,10)
+const daysFromToday = (iso) => {
+  if (!iso) return null
+  const a = new Date(todayISO()); const b = new Date(iso)
+  return Math.round((b - a) / 86400000)
+}
+const fmtDue = (iso) => {
+  if (!iso) return ''
+  const d = daysFromToday(iso)
+  const dt = new Date(iso + 'T00:00:00')
+  const mo = dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+  if (d === 0) return `Today · ${mo}`
+  if (d === 1) return `Tomorrow · ${mo}`
+  if (d > 0 && d <= 6) return `${dt.toLocaleDateString('en-US', { weekday: 'short' })} · ${mo}`
+  return mo
+}
+const dueColor = (iso, hard) => {
+  const d = daysFromToday(iso)
+  if (d === null) return { bg: '#F1F5F9', fg: '#565656' }
+  if (d < 0) return { bg: '#FEE2E2', fg: '#991B1B' }     // overdue
+  if (d === 0) return { bg: hard ? '#FEE2E2' : '#FEF3C7', fg: hard ? '#991B1B' : '#92400E' }
+  if (d <= 2) return { bg: '#FEF3C7', fg: '#92400E' }
+  if (d <= 7) return { bg: '#DBEAFE', fg: '#1E40AF' }
+  return { bg: '#F1F5F9', fg: '#475569' }
+}
 
 const VARIANT_LABEL = {
   'sonia-stream': 'Sonia · British · Stream',
@@ -321,19 +348,21 @@ function RAMMeter({ used, capacity, zone }) {
 // ObjectiveCard
 // =============================================================================
 
-function ObjectiveCard({ o, onRelease, onForeman, onPark, onToggleAnchor, onDelete }) {
+function ObjectiveCard({ o, onRelease, onForeman, onPark, onToggleAnchor, onDelete, onEdit }) {
   const [menuOpen, setMenuOpen] = useState(false)
   const size = sizeFor(o.weight)
   const sColor = sizeColor(o.weight)
+  const dueC = dueColor(o.due_date, o.hard_deadline)
   return (
     <div style={{
-      background: o.is_anchor ? 'linear-gradient(135deg, #FFFBEB 0%, #FEFCE8 100%)' : 'white',
-      border: o.is_anchor ? `2px solid ${GOLD}` : `1px solid ${PANEL_BORDER}`,
+      background: o.is_anchor ? 'linear-gradient(135deg, #FFFBEB 0%, #FEFCE8 100%)' : (o.needs_sizing ? '#FFFBF5' : 'white'),
+      border: o.is_anchor ? `2px solid ${GOLD}` : (o.needs_sizing ? `1px dashed #F59E0B` : `1px solid ${PANEL_BORDER}`),
       borderRadius: 10, padding: 12, marginBottom: 8, position: 'relative'
     }}>
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginBottom: 6 }}>
         {o.is_anchor && <Star size={14} fill={GOLD} color={GOLD} style={{ marginTop: 2, flexShrink: 0 }} />}
         <div style={{ flex: 1, fontSize: 14, fontWeight: 600, color: NAVY, lineHeight: 1.4 }}>{o.title}</div>
+        <button onClick={() => onEdit(o)} title="Edit" style={{ background: 'none', border: 'none', color: GRAY, cursor: 'pointer', padding: 2 }}><Edit3 size={13} /></button>
         <button onClick={() => setMenuOpen(m => !m)} style={{ background: 'none', border: 'none', color: GRAY, cursor: 'pointer', padding: 2, fontSize: 18, lineHeight: 1 }}>⋯</button>
       </div>
 
@@ -342,6 +371,12 @@ function ObjectiveCard({ o, onRelease, onForeman, onPark, onToggleAnchor, onDele
         <span style={S.chip('#F1F5F9', NAVY)}>E{o.effort}</span>
         <span style={S.chip('#F1F5F9', NAVY)}>I{o.importance}</span>
         <span style={S.chip(o.kind === 'design' ? '#FEF3C7' : '#E0F2FE', o.kind === 'design' ? '#B45309' : '#0369A1')}>{o.kind}</span>
+        {o.due_date && (
+          <span style={S.chip(dueC.bg, dueC.fg)}>
+            {o.hard_deadline ? '🔒 ' : ''}📅 {fmtDue(o.due_date)}
+          </span>
+        )}
+        {o.needs_sizing && <span style={S.chip('#FEF3C7', '#92400E')}>⚠ size me</span>}
         {o.who && <span style={S.chip('#F1F5F9', TEXT_DIM)}>w/ {o.who}</span>}
       </div>
 
@@ -368,22 +403,221 @@ function ObjectiveCard({ o, onRelease, onForeman, onPark, onToggleAnchor, onDele
 }
 
 // =============================================================================
+// EditObjectiveModal — inline edit for any field
+// =============================================================================
+
+function EditObjectiveModal({ o, onClose, onSave, onDelete }) {
+  const [title, setTitle] = useState(o.title || '')
+  const [effort, setEffort] = useState(o.effort ?? 2)
+  const [importance, setImportance] = useState(o.importance ?? 2)
+  const [kind, setKind] = useState(o.kind || 'execution')
+  const [who, setWho] = useState(o.who || '')
+  const [dueDate, setDueDate] = useState(o.due_date || '')
+  const [hardDeadline, setHardDeadline] = useState(!!o.hard_deadline)
+
+  const save = async () => {
+    if (!title.trim()) return
+    await onSave(o.id, {
+      title: title.trim(),
+      effort, importance, kind,
+      who: who.trim() || null,
+      due_date: dueDate || null,
+      hard_deadline: hardDeadline,
+      needs_sizing: false, // editing implies user has sized it
+    })
+    onClose()
+  }
+
+  return (
+    <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,26,65,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100, padding: 16 }}>
+      <div onClick={e => e.stopPropagation()} style={{ background: 'white', borderRadius: 12, maxWidth: 460, width: '100%', padding: 20, maxHeight: '90vh', overflowY: 'auto' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+          <div style={{ fontSize: 14, fontWeight: 700, color: NAVY }}>Edit objective</div>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: GRAY }}><X size={18} /></button>
+        </div>
+
+        <div style={{ fontSize: 10, color: GRAY, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Title</div>
+        <input autoFocus value={title} onChange={e => setTitle(e.target.value)} style={{ ...S.input, marginBottom: 12 }} />
+
+        <div style={{ fontSize: 10, color: GRAY, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Who (optional)</div>
+        <input value={who} onChange={e => setWho(e.target.value)} placeholder="Greg, Cheryl, Avery..." style={{ ...S.input, marginBottom: 12 }} />
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+          <div>
+            <div style={{ fontSize: 10, color: GRAY, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Effort</div>
+            <div style={{ display: 'flex', gap: 4 }}>
+              {[1,2,3,4,5].map(n => (
+                <button key={n} onClick={() => setEffort(n)} style={{ flex: 1, padding: '8px 0', borderRadius: 6, border: effort === n ? `2px solid ${NAVY}` : `1px solid ${PANEL_BORDER}`, background: effort === n ? '#EEF2F7' : 'white', color: NAVY, fontWeight: effort === n ? 700 : 500, cursor: 'pointer', fontSize: 13, fontFamily: 'inherit' }}>{n}</button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <div style={{ fontSize: 10, color: GRAY, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Importance</div>
+            <div style={{ display: 'flex', gap: 4 }}>
+              {[1,2,3].map(n => (
+                <button key={n} onClick={() => setImportance(n)} style={{ flex: 1, padding: '8px 0', borderRadius: 6, border: importance === n ? `2px solid ${NAVY}` : `1px solid ${PANEL_BORDER}`, background: importance === n ? '#EEF2F7' : 'white', color: NAVY, fontWeight: importance === n ? 700 : 500, cursor: 'pointer', fontSize: 13, fontFamily: 'inherit' }}>{n}</button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div style={{ fontSize: 10, color: GRAY, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Kind</div>
+        <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+          {['execution','design'].map(k => (
+            <button key={k} onClick={() => setKind(k)} style={{ flex: 1, padding: '8px 0', borderRadius: 6, border: kind === k ? `2px solid ${NAVY}` : `1px solid ${PANEL_BORDER}`, background: kind === k ? '#EEF2F7' : 'white', color: NAVY, fontWeight: kind === k ? 700 : 500, cursor: 'pointer', fontSize: 13, fontFamily: 'inherit' }}>{k}</button>
+          ))}
+        </div>
+
+        <div style={{ fontSize: 10, color: GRAY, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Target date</div>
+        <div style={{ display: 'flex', gap: 6, marginBottom: 8, flexWrap: 'wrap' }}>
+          <input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} style={{ ...S.input, flex: '1 1 160px', padding: '8px 10px' }} />
+          <button onClick={() => setDueDate('')} style={{ ...S.btnGhost, fontSize: 11 }}>clear</button>
+          <button onClick={() => { const d = new Date(); setDueDate(d.toISOString().slice(0,10)) }} style={{ ...S.btnGhost, fontSize: 11 }}>today</button>
+          <button onClick={() => { const d = new Date(); d.setDate(d.getDate()+1); setDueDate(d.toISOString().slice(0,10)) }} style={{ ...S.btnGhost, fontSize: 11 }}>tomorrow</button>
+          <button onClick={() => { const d = new Date(); d.setDate(d.getDate()+7); setDueDate(d.toISOString().slice(0,10)) }} style={{ ...S.btnGhost, fontSize: 11 }}>+1wk</button>
+        </div>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: NAVY, cursor: 'pointer', marginBottom: 16 }}>
+          <input type="checkbox" checked={hardDeadline} onChange={e => setHardDeadline(e.target.checked)} disabled={!dueDate} />
+          🔒 Hard deadline (external, non-negotiable)
+        </label>
+
+        <div style={{ fontSize: 11, color: GRAY, marginBottom: 14 }}>
+          Weight: <strong style={{ color: NAVY }}>{effort * importance}</strong> ({sizeFor(effort * importance)})
+        </div>
+
+        <div style={{ display: 'flex', gap: 8, justifyContent: 'space-between' }}>
+          <button onClick={() => { if (confirm('Delete this objective?')) { onDelete(o.id); onClose() } }} style={{ ...S.btnGhost, color: '#DC2626', borderColor: '#FCA5A5' }}><Trash2 size={12} style={{ marginRight: 4, verticalAlign: 'middle' }} />Delete</button>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button onClick={onClose} style={S.btnGhost}>Cancel</button>
+            <button onClick={save} style={S.btnPrimary}>Save</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// =============================================================================
+// TriageQueue — surfaces unsized objectives for quick rating
+// =============================================================================
+
+function TriageQueue({ items, onSize, onEdit }) {
+  if (!items.length) return null
+  return (
+    <div style={{ ...S.panel, background: '#FFFBF5', borderColor: '#FCD34D' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
+        <AlertTriangle size={14} color="#B45309" />
+        <div style={{ ...S.panelTitle, marginBottom: 0, color: '#92400E' }}>Triage · {items.length} need sizing</div>
+      </div>
+      <div style={{ fontSize: 11, color: TEXT_DIM, marginBottom: 10, lineHeight: 1.5 }}>
+        Rate these to clear the queue. Tap E/I or open to edit fully.
+      </div>
+      {items.map(o => (
+        <div key={o.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 0', borderTop: `1px solid #FDE68A` }}>
+          <div style={{ flex: 1, fontSize: 13, color: NAVY, fontWeight: 500, lineHeight: 1.3 }}>{o.title}</div>
+          <div style={{ display: 'flex', gap: 2 }}>
+            {[1,2,3].map(i => (
+              <button key={i} title={`Importance ${i}`} onClick={() => onSize(o.id, { importance: i })}
+                style={{ width: 24, height: 24, borderRadius: 4, border: o.importance === i ? `2px solid ${NAVY}` : `1px solid ${PANEL_BORDER}`, background: o.importance === i ? '#EEF2F7' : 'white', color: NAVY, fontSize: 10, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>I{i}</button>
+            ))}
+          </div>
+          <div style={{ display: 'flex', gap: 2 }}>
+            {[1,2,3,4,5].map(e => (
+              <button key={e} title={`Effort ${e}`} onClick={() => onSize(o.id, { effort: e })}
+                style={{ width: 22, height: 24, borderRadius: 4, border: o.effort === e ? `2px solid ${NAVY}` : `1px solid ${PANEL_BORDER}`, background: o.effort === e ? '#EEF2F7' : 'white', color: NAVY, fontSize: 10, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>{e}</button>
+            ))}
+          </div>
+          <button onClick={() => onSize(o.id, { needs_sizing: false })} title="Looks right" style={{ ...S.btnGhost, fontSize: 10, padding: '4px 8px' }}>✓</button>
+          <button onClick={() => onEdit(o)} title="Open" style={{ ...S.btnGhost, fontSize: 10, padding: '4px 6px' }}><Edit3 size={11} /></button>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+// =============================================================================
+// TableView — flat sortable list grouped by size bucket
+// =============================================================================
+
+function TableView({ items, onRelease, onForeman, onPark, onEdit }) {
+  const buckets = useMemo(() => {
+    const b = { Boulder: [], Stone: [], Pebble: [] }
+    for (const o of items) b[sizeFor(o.weight)].push(o)
+    for (const k of Object.keys(b)) {
+      b[k].sort((a, c) => {
+        if (a.is_anchor !== c.is_anchor) return a.is_anchor ? -1 : 1
+        if (!!a.due_date !== !!c.due_date) return a.due_date ? -1 : 1
+        if (a.due_date && c.due_date && a.due_date !== c.due_date) return a.due_date.localeCompare(c.due_date)
+        return c.weight - a.weight
+      })
+    }
+    return b
+  }, [items])
+
+  const Row = ({ o }) => {
+    const dueC = dueColor(o.due_date, o.hard_deadline)
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 4px', borderTop: `1px solid ${PANEL_BORDER}`, fontSize: 12 }}>
+        {o.is_anchor && <Star size={11} fill={GOLD} color={GOLD} />}
+        <div style={{ flex: 1, color: NAVY, fontWeight: 500, lineHeight: 1.3 }}>{o.title}</div>
+        <span style={{ ...S.chip('#F1F5F9', NAVY), fontSize: 9 }}>E{o.effort}·I{o.importance}</span>
+        {o.kind === 'design' && <span style={{ ...S.chip('#FEF3C7', '#B45309'), fontSize: 9 }}>D</span>}
+        {o.due_date && (
+          <span style={{ ...S.chip(dueC.bg, dueC.fg), fontSize: 9 }}>{o.hard_deadline ? '🔒' : '📅'}{fmtDue(o.due_date)}</span>
+        )}
+        {o.needs_sizing && <span style={{ ...S.chip('#FEF3C7', '#92400E'), fontSize: 9 }}>⚠</span>}
+        {o.who && <span style={{ fontSize: 10, color: GRAY }}>w/ {o.who}</span>}
+        <button onClick={() => onEdit(o)} title="Edit" style={{ background: 'none', border: 'none', color: GRAY, cursor: 'pointer', padding: 2 }}><Edit3 size={11} /></button>
+        <button onClick={() => onRelease(o.id)} title="Done" style={{ background: '#0F766E', color: 'white', border: 'none', borderRadius: 4, padding: '2px 6px', fontSize: 10, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}><Check size={10} /></button>
+        <button onClick={() => onForeman(o.id)} title="Foreman" style={{ background: '#7C3AED', color: 'white', border: 'none', borderRadius: 4, padding: '2px 6px', fontSize: 10, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}><ArrowUpRight size={10} /></button>
+        <button onClick={() => onPark(o.id)} title="Park" style={{ background: 'transparent', color: GRAY, border: `1px solid ${PANEL_BORDER}`, borderRadius: 4, padding: '2px 6px', fontSize: 10, cursor: 'pointer', fontFamily: 'inherit' }}>P</button>
+      </div>
+    )
+  }
+
+  return (
+    <div>
+      {['Boulder','Stone','Pebble'].map(b => buckets[b].length > 0 && (
+        <div key={b} style={{ marginBottom: 14 }}>
+          <div style={{ fontSize: 10, fontWeight: 700, color: sizeColor(b === 'Boulder' ? 12 : b === 'Stone' ? 6 : 2), textTransform: 'uppercase', letterSpacing: '0.1em', padding: '6px 4px', background: '#F8FAFC', borderRadius: 4 }}>
+            ─ {b}s · {buckets[b].length} ─
+          </div>
+          {buckets[b].map(o => <Row key={o.id} o={o} />)}
+        </div>
+      ))}
+    </div>
+  )
+}
+
+// =============================================================================
 // AddObjective
 // =============================================================================
 
 function AddObjective({ onAdd }) {
   const [open, setOpen] = useState(false)
   const [title, setTitle] = useState('')
-  const [effort, setEffort] = useState(2)
-  const [importance, setImportance] = useState(2)
+  const [effort, setEffort] = useState(null)        // null = not sized → triage
+  const [importance, setImportance] = useState(null)
   const [kind, setKind] = useState('execution')
   const [emergency, setEmergency] = useState(false)
   const [who, setWho] = useState('')
+  const [dueDate, setDueDate] = useState('')
+  const [hardDeadline, setHardDeadline] = useState(false)
 
   const submit = async () => {
     if (!title.trim()) return
-    await onAdd({ title: title.trim(), effort, importance, kind, is_emergency: emergency, who: who.trim() || null })
-    setTitle(''); setEffort(2); setImportance(2); setKind('execution'); setEmergency(false); setWho('')
+    const unsized = effort === null || importance === null
+    await onAdd({
+      title: title.trim(),
+      effort: effort ?? 2,
+      importance: importance ?? 2,
+      kind, is_emergency: emergency,
+      who: who.trim() || null,
+      due_date: dueDate || null,
+      hard_deadline: hardDeadline,
+      needs_sizing: unsized,
+    })
+    setTitle(''); setEffort(null); setImportance(null); setKind('execution'); setEmergency(false); setWho(''); setDueDate(''); setHardDeadline(false)
     setOpen(false)
   }
 
@@ -392,6 +626,8 @@ function AddObjective({ onAdd }) {
       <Plus size={16} /> Add objective
     </button>
   )
+
+  const unsized = effort === null || importance === null
 
   return (
     <div style={{ ...S.panel, border: `2px solid ${NAVY}` }}>
@@ -404,22 +640,35 @@ function AddObjective({ onAdd }) {
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
         <div>
-          <div style={{ fontSize: 10, color: GRAY, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Effort (size)</div>
+          <div style={{ fontSize: 10, color: GRAY, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Effort (optional)</div>
           <div style={{ display: 'flex', gap: 4 }}>
             {[1,2,3,4,5].map(n => (
-              <button key={n} onClick={() => setEffort(n)} style={{ flex: 1, padding: '8px 0', borderRadius: 6, border: effort === n ? `2px solid ${NAVY}` : `1px solid ${PANEL_BORDER}`, background: effort === n ? '#EEF2F7' : 'white', color: NAVY, fontWeight: effort === n ? 700 : 500, cursor: 'pointer', fontSize: 13, fontFamily: 'inherit' }}>{n}</button>
+              <button key={n} onClick={() => setEffort(effort === n ? null : n)} style={{ flex: 1, padding: '8px 0', borderRadius: 6, border: effort === n ? `2px solid ${NAVY}` : `1px solid ${PANEL_BORDER}`, background: effort === n ? '#EEF2F7' : 'white', color: NAVY, fontWeight: effort === n ? 700 : 500, cursor: 'pointer', fontSize: 13, fontFamily: 'inherit' }}>{n}</button>
             ))}
           </div>
         </div>
         <div>
-          <div style={{ fontSize: 10, color: GRAY, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Importance</div>
+          <div style={{ fontSize: 10, color: GRAY, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Importance (optional)</div>
           <div style={{ display: 'flex', gap: 4 }}>
             {[1,2,3].map(n => (
-              <button key={n} onClick={() => setImportance(n)} style={{ flex: 1, padding: '8px 0', borderRadius: 6, border: importance === n ? `2px solid ${NAVY}` : `1px solid ${PANEL_BORDER}`, background: importance === n ? '#EEF2F7' : 'white', color: NAVY, fontWeight: importance === n ? 700 : 500, cursor: 'pointer', fontSize: 13, fontFamily: 'inherit' }}>{n}</button>
+              <button key={n} onClick={() => setImportance(importance === n ? null : n)} style={{ flex: 1, padding: '8px 0', borderRadius: 6, border: importance === n ? `2px solid ${NAVY}` : `1px solid ${PANEL_BORDER}`, background: importance === n ? '#EEF2F7' : 'white', color: NAVY, fontWeight: importance === n ? 700 : 500, cursor: 'pointer', fontSize: 13, fontFamily: 'inherit' }}>{n}</button>
             ))}
           </div>
         </div>
       </div>
+
+      <div style={{ fontSize: 10, color: GRAY, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Target date (optional)</div>
+      <div style={{ display: 'flex', gap: 6, marginBottom: 8, flexWrap: 'wrap' }}>
+        <input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} style={{ ...S.input, flex: '1 1 160px', padding: '8px 10px' }} />
+        <button onClick={() => setDueDate('')} style={{ ...S.btnGhost, fontSize: 11 }}>clear</button>
+        <button onClick={() => { const d = new Date(); setDueDate(d.toISOString().slice(0,10)) }} style={{ ...S.btnGhost, fontSize: 11 }}>today</button>
+        <button onClick={() => { const d = new Date(); d.setDate(d.getDate()+1); setDueDate(d.toISOString().slice(0,10)) }} style={{ ...S.btnGhost, fontSize: 11 }}>tomorrow</button>
+        <button onClick={() => { const d = new Date(); d.setDate(d.getDate()+7); setDueDate(d.toISOString().slice(0,10)) }} style={{ ...S.btnGhost, fontSize: 11 }}>+1wk</button>
+      </div>
+      <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: NAVY, cursor: 'pointer', marginBottom: 12 }}>
+        <input type="checkbox" checked={hardDeadline} onChange={e => setHardDeadline(e.target.checked)} disabled={!dueDate} />
+        🔒 Hard deadline
+      </label>
 
       <div style={{ display: 'flex', gap: 12, marginBottom: 12, alignItems: 'center' }}>
         <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: NAVY, cursor: 'pointer' }}>
@@ -433,7 +682,9 @@ function AddObjective({ onAdd }) {
       </div>
 
       <div style={{ fontSize: 11, color: GRAY, marginBottom: 12 }}>
-        Weight: <strong style={{ color: NAVY }}>{effort * importance}</strong> ({sizeFor(effort * importance)})
+        {unsized
+          ? <>Unsized — will land in <strong style={{ color: '#92400E' }}>Triage Queue</strong> for later rating.</>
+          : <>Weight: <strong style={{ color: NAVY }}>{effort * importance}</strong> ({sizeFor(effort * importance)})</>}
       </div>
 
       <button style={{ ...S.btnPrimary, width: '100%' }} onClick={submit}>Capture</button>
@@ -581,12 +832,17 @@ export default function ObjectivesPage() {
   const [coax, setCoax] = useState(false)
   const [coaxIdx, setCoaxIdx] = useState(0)
   const [parkedOpen, setParkedOpen] = useState(false)
+  const [viewMode, setViewMode] = useState(() => localStorage.getItem('objectives-view') || 'cards') // 'cards' | 'table'
+  const [editing, setEditing] = useState(null) // objective being edited
+
+  useEffect(() => { localStorage.setItem('objectives-view', viewMode) }, [viewMode])
 
   const score = sov?.score ?? 5
   const zone = sovZone(score)
 
   // Partition objectives
-  const active = objectives.filter(o => o.state === 'active' && !o.is_emergency)
+  const triage = objectives.filter(o => o.state === 'active' && o.needs_sizing && !o.is_emergency)
+  const active = objectives.filter(o => o.state === 'active' && !o.is_emergency && !o.needs_sizing)
   const emergencies = objectives.filter(o => o.state === 'active' && o.is_emergency)
   const parked = objectives.filter(o => o.state === 'parked')
   const releasedToday = objectives
@@ -647,10 +903,26 @@ export default function ObjectivesPage() {
         onForeman={(id) => releaseObjective(id, 'foreman')}
       />
 
+      <TriageQueue
+        items={triage}
+        onSize={(id, patch) => updateObjective(id, patch)}
+        onEdit={setEditing}
+      />
+
       <div style={{ ...S.panel }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, gap: 8, flexWrap: 'wrap' }}>
           <div style={S.panelTitle}>Active · {sortedActive.length}</div>
-          <button style={{ ...S.btnGhost, fontSize: 11, padding: '4px 10px' }} onClick={() => setCoax(true)}>stuck?</button>
+          <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+            <button onClick={() => setViewMode('cards')} title="Card view"
+              style={{ background: viewMode === 'cards' ? '#EEF2F7' : 'white', border: `1px solid ${PANEL_BORDER}`, borderRadius: 6, padding: '4px 8px', cursor: 'pointer', color: NAVY, display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, fontFamily: 'inherit' }}>
+              <ListIcon size={11} /> cards
+            </button>
+            <button onClick={() => setViewMode('table')} title="Table view"
+              style={{ background: viewMode === 'table' ? '#EEF2F7' : 'white', border: `1px solid ${PANEL_BORDER}`, borderRadius: 6, padding: '4px 8px', cursor: 'pointer', color: NAVY, display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, fontFamily: 'inherit' }}>
+              <TableIcon size={11} /> table
+            </button>
+            <button style={{ ...S.btnGhost, fontSize: 11, padding: '4px 10px', marginLeft: 4 }} onClick={() => setCoax(true)}>stuck?</button>
+          </div>
         </div>
 
         {coaxAutoTrigger && !coax && (
@@ -663,6 +935,14 @@ export default function ObjectivesPage() {
           <div style={{ padding: '20px 0', color: GRAY, fontSize: 13, textAlign: 'center' }}>
             Nothing active. {meditation ? 'The Rock answer became your anchor — start there.' : 'Tap "Add objective" to begin.'}
           </div>
+        ) : viewMode === 'table' ? (
+          <TableView
+            items={sortedActive}
+            onRelease={(id) => releaseObjective(id, 'done')}
+            onForeman={(id) => releaseObjective(id, 'foreman')}
+            onPark={parkObjective}
+            onEdit={setEditing}
+          />
         ) : sortedActive.map(o => (
           <ObjectiveCard key={o.id} o={o}
             onRelease={(id) => releaseObjective(id, 'done')}
@@ -670,6 +950,7 @@ export default function ObjectivesPage() {
             onPark={parkObjective}
             onToggleAnchor={(id, val) => val ? setAnchor(id) : updateObjective(id, { is_anchor: false })}
             onDelete={deleteObjective}
+            onEdit={setEditing}
           />
         ))}
 
@@ -711,6 +992,15 @@ export default function ObjectivesPage() {
       />
 
       <ReleasedToday items={releasedToday} />
+
+      {editing && (
+        <EditObjectiveModal
+          o={editing}
+          onClose={() => setEditing(null)}
+          onSave={updateObjective}
+          onDelete={deleteObjective}
+        />
+      )}
     </div>
   )
 }
