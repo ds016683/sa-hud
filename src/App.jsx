@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { LayoutGrid, Lightbulb, ScrollText, Network, Shield, LogOut, Menu, X, BookOpen, Calendar, Target } from 'lucide-react'
+import { LayoutGrid, Lightbulb, ScrollText, Network, Shield, LogOut, Menu, X, BookOpen, Calendar, Target, Users } from 'lucide-react'
 import { getSession, onAuthStateChange, signOut } from './lib/auth'
 import LoginPage from './components/LoginPage'
 import HUD from './components/HUD'
@@ -10,16 +10,18 @@ import EcosystemPage from './components/EcosystemPage'
 import DailyBriefingsPage from './components/DailyBriefingsPage'
 import MeetingsPage from './components/MeetingsPage'
 import ObjectivesPage from './components/ObjectivesPage'
+import RelationshipsPage from './components/RelationshipsPage'
 
 const NAV_ITEMS = [
-  { id: 'objectives', label: 'Objectives',       icon: Target     },
-  { id: 'portfolio',  label: 'Portfolio',        icon: LayoutGrid },
-  { id: 'ideas',      label: 'Ideas Pipeline',   icon: Lightbulb  },
-  { id: 'todos',      label: 'Quests (legacy)',  icon: ScrollText },
-  { id: 'briefings',  label: 'Daily Briefings',  icon: BookOpen   },
-  { id: 'meetings',   label: 'Meetings',         icon: Calendar   },
-  { id: 'hud',        label: 'HUD',              icon: Shield     },
-  { id: 'ecosystem',  label: 'Ecosystem',        icon: Network    },
+  { id: 'objectives',    label: 'Objectives',       icon: Target     },
+  { id: 'relationships', label: 'Relationships',    icon: Users      },
+  { id: 'portfolio',     label: 'Portfolio',        icon: LayoutGrid },
+  { id: 'ideas',         label: 'Ideas Pipeline',   icon: Lightbulb  },
+  { id: 'todos',         label: 'Quests (legacy)',  icon: ScrollText },
+  { id: 'briefings',     label: 'Daily Briefings',  icon: BookOpen   },
+  { id: 'meetings',      label: 'Meetings',         icon: Calendar   },
+  { id: 'hud',           label: 'HUD',              icon: Shield     },
+  { id: 'ecosystem',     label: 'Ecosystem',        icon: Network    },
 ]
 
 function Sidebar({ active, onChange, onSignOut }) {
@@ -143,7 +145,8 @@ export default function App() {
     <div style={{ display: 'flex', minHeight: '100vh', background: '#F7F9FC', fontFamily: 'Arial, Helvetica, sans-serif' }}>
       <Sidebar active={active} onChange={setActive} onSignOut={handleSignOut} />
       <main style={{ flex: 1, minHeight: '100vh', overflowY: 'auto' }}>
-        {active === 'objectives' && <ObjectivesPage />}
+        {active === 'objectives'    && <ObjectivesPage />}
+        {active === 'relationships' && <RelationshipsPage />}
         {active === 'portfolio'  && <PortfolioPage />}
         {active === 'ideas'      && <IdeasPage />}
         {active === 'todos'      && <TodoPage />}
