@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { LayoutGrid, Lightbulb, ScrollText, Network, Shield, LogOut, Menu, X, BookOpen, Calendar } from 'lucide-react'
+import { LayoutGrid, Lightbulb, ScrollText, Network, Shield, LogOut, Menu, X, BookOpen, Calendar, Target } from 'lucide-react'
 import { getSession, onAuthStateChange, signOut } from './lib/auth'
 import LoginPage from './components/LoginPage'
 import HUD from './components/HUD'
@@ -9,15 +9,17 @@ import IdeasPage from './components/IdeasPage'
 import EcosystemPage from './components/EcosystemPage'
 import DailyBriefingsPage from './components/DailyBriefingsPage'
 import MeetingsPage from './components/MeetingsPage'
+import ObjectivesPage from './components/ObjectivesPage'
 
 const NAV_ITEMS = [
-  { id: 'portfolio', label: 'Portfolio',        icon: LayoutGrid },
-  { id: 'ideas',     label: 'Ideas Pipeline',   icon: Lightbulb  },
-  { id: 'todos',     label: 'Quests',           icon: ScrollText },
-  { id: 'briefings', label: 'Daily Briefings',  icon: BookOpen   },
-  { id: 'meetings',  label: 'Meetings',         icon: Calendar   },
-  { id: 'hud',       label: 'HUD',              icon: Shield     },
-  { id: 'ecosystem', label: 'Ecosystem',         icon: Network    },
+  { id: 'objectives', label: 'Objectives',       icon: Target     },
+  { id: 'portfolio',  label: 'Portfolio',        icon: LayoutGrid },
+  { id: 'ideas',      label: 'Ideas Pipeline',   icon: Lightbulb  },
+  { id: 'todos',      label: 'Quests (legacy)',  icon: ScrollText },
+  { id: 'briefings',  label: 'Daily Briefings',  icon: BookOpen   },
+  { id: 'meetings',   label: 'Meetings',         icon: Calendar   },
+  { id: 'hud',        label: 'HUD',              icon: Shield     },
+  { id: 'ecosystem',  label: 'Ecosystem',        icon: Network    },
 ]
 
 function Sidebar({ active, onChange, onSignOut }) {
@@ -114,7 +116,7 @@ function Sidebar({ active, onChange, onSignOut }) {
 
 export default function App() {
   const [session, setSession] = useState(undefined)
-  const [active, setActive] = useState('portfolio')
+  const [active, setActive] = useState('objectives')
 
   useEffect(() => {
     getSession().then(s => setSession(s))
@@ -141,6 +143,7 @@ export default function App() {
     <div style={{ display: 'flex', minHeight: '100vh', background: '#F7F9FC', fontFamily: 'Arial, Helvetica, sans-serif' }}>
       <Sidebar active={active} onChange={setActive} onSignOut={handleSignOut} />
       <main style={{ flex: 1, minHeight: '100vh', overflowY: 'auto' }}>
+        {active === 'objectives' && <ObjectivesPage />}
         {active === 'portfolio'  && <PortfolioPage />}
         {active === 'ideas'      && <IdeasPage />}
         {active === 'todos'      && <TodoPage />}
