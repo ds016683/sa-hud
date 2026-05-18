@@ -126,7 +126,7 @@ const PAGE_BG = '#F7F9FC'
 const GOLD = '#B45309'
 
 const S = {
-  page: { maxWidth: 760, margin: '0 auto', padding: '20px 16px 80px', fontFamily: 'Arial, Helvetica, sans-serif', color: NAVY },
+  page: { maxWidth: 880, margin: '0 auto', padding: '20px 16px 80px', fontFamily: 'Arial, Helvetica, sans-serif', color: NAVY },
   h1: { fontSize: 22, fontWeight: 700, margin: 0, color: NAVY },
   sub: { fontSize: 12, color: GRAY, margin: '2px 0 0' },
   panel: { background: PANEL_BG, border: `1px solid ${PANEL_BORDER}`, borderRadius: 12, padding: 14, marginBottom: 12, boxShadow: '0 1px 2px rgba(0,0,0,0.04)' },
@@ -625,15 +625,18 @@ function TableView({ items, onRelease, onForeman, onPark, onEdit }) {
         <div style={{ flex: 1, color: NAVY, fontWeight: 500, lineHeight: 1.3 }}>{o.title}</div>
         <span style={{ ...S.chip('#F1F5F9', NAVY), fontSize: 9 }}>E{o.effort}·I{o.importance}</span>
         {o.kind === 'design' && <span style={{ ...S.chip('#FEF3C7', '#B45309'), fontSize: 9 }}>D</span>}
-        {o.due_date && (
-          <span style={{ ...S.chip(dueC.bg, dueC.fg), fontSize: 9 }}>{o.hard_deadline ? '🔒' : '📅'}{fmtDue(o.due_date)}</span>
-        )}
         {o.needs_sizing && <span style={{ ...S.chip('#FEF3C7', '#92400E'), fontSize: 9 }}>⚠</span>}
         {o.who && <span style={{ fontSize: 10, color: GRAY }}>w/ {o.who}</span>}
         <button onClick={() => onEdit(o)} title="Edit" style={{ background: 'none', border: 'none', color: GRAY, cursor: 'pointer', padding: 2 }}><Edit3 size={11} /></button>
         <button onClick={() => onRelease(o.id)} title="Done" style={{ background: '#0F766E', color: 'white', border: 'none', borderRadius: 4, padding: '2px 6px', fontSize: 10, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}><Check size={10} /></button>
         <button onClick={() => onForeman(o.id)} title="Foreman" style={{ background: '#7C3AED', color: 'white', border: 'none', borderRadius: 4, padding: '2px 6px', fontSize: 10, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}><ArrowUpRight size={10} /></button>
         <button onClick={() => onPark(o.id)} title="Park" style={{ background: 'transparent', color: GRAY, border: `1px solid ${PANEL_BORDER}`, borderRadius: 4, padding: '2px 6px', fontSize: 10, cursor: 'pointer', fontFamily: 'inherit' }}>P</button>
+        {(o.start_date || o.due_date) && (
+          <span title={`${o.start_date ? `Start ${o.start_date}` : 'no start'} → ${o.due_date ? `Target ${o.due_date}` : 'no target'}`}
+            style={{ ...S.chip(dueC.bg, dueC.fg), fontSize: 9, marginLeft: 2 }}>
+            {o.hard_deadline ? '🔒' : '📅'} {o.start_date ? fmtShort(o.start_date) : '—'} → {o.due_date ? fmtShort(o.due_date) : '—'}
+          </span>
+        )}
       </div>
     )
   }
@@ -1419,9 +1422,7 @@ export default function ObjectivesPage() {
             onWeed={(n) => upsertHabit({ weed_count: n })}
           />
 
-          <ReleasedToday items={releasedToday} onReopen={reopenObjective} />
-
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 16, marginTop: 16 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 16, marginBottom: 16 }}>
             <EligibleLockedSection
               parked={parked}
               score={score}
@@ -1434,6 +1435,8 @@ export default function ObjectivesPage() {
               onEdit={setEditing}
             />
           </div>
+
+          <ReleasedToday items={releasedToday} onReopen={reopenObjective} />
         </>
       )}
 
