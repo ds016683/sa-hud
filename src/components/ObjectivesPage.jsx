@@ -631,12 +631,10 @@ function TableView({ items, onRelease, onForeman, onPark, onEdit }) {
         <button onClick={() => onRelease(o.id)} title="Done" style={{ background: '#0F766E', color: 'white', border: 'none', borderRadius: 4, padding: '2px 6px', fontSize: 10, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}><Check size={10} /></button>
         <button onClick={() => onForeman(o.id)} title="Foreman" style={{ background: '#7C3AED', color: 'white', border: 'none', borderRadius: 4, padding: '2px 6px', fontSize: 10, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}><ArrowUpRight size={10} /></button>
         <button onClick={() => onPark(o.id)} title="Park" style={{ background: 'transparent', color: GRAY, border: `1px solid ${PANEL_BORDER}`, borderRadius: 4, padding: '2px 6px', fontSize: 10, cursor: 'pointer', fontFamily: 'inherit' }}>P</button>
-        {(o.start_date || o.due_date) && (
-          <span title={`${o.start_date ? `Start ${o.start_date}` : 'no start'} → ${o.due_date ? `Target ${o.due_date}` : 'no target'}`}
-            style={{ ...S.chip(dueC.bg, dueC.fg), fontSize: 9, marginLeft: 2 }}>
-            {o.hard_deadline ? '🔒' : '📅'} {o.start_date ? fmtShort(o.start_date) : '—'} → {o.due_date ? fmtShort(o.due_date) : '—'}
-          </span>
-        )}
+        <span title={`${o.start_date ? `Start ${o.start_date}` : 'no start'} → ${o.due_date ? `Target ${o.due_date}` : 'no target'}`}
+          style={{ ...S.chip(dueC.bg, dueC.fg), fontSize: 9, marginLeft: 2, whiteSpace: 'nowrap' }}>
+          {o.hard_deadline ? '🔒' : '📅'} {o.start_date ? fmtShort(o.start_date) : '—'} → {o.due_date ? fmtShort(o.due_date) : '—'}
+        </span>
       </div>
     )
   }
