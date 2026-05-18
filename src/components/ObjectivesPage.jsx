@@ -913,24 +913,32 @@ function DelegatedContainer({ items, onReopen, onEdit }) {
       ) : items.map(o => {
         const isToday = o.released_at && new Date(o.released_at).toDateString() === todayStr
         const when = o.released_at ? new Date(o.released_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '—'
+        const eff = o.effort || 2
+        const imp = o.importance || 2
         return (
-          <div key={o.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 0', borderTop: `1px solid ${PANEL_BORDER}`, fontSize: 13 }}>
+          <div key={o.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 0', borderBottom: `1px solid ${PANEL_BORDER}`, fontSize: 13 }}>
             <ArrowUpRight size={14} color="#7C3AED" />
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ color: NAVY, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{o.title}</div>
-              <div style={{ fontSize: 10, color: GRAY, marginTop: 2 }}>
-                {o.who ? `→ ${o.who} · ` : ''}{when}
-              </div>
-            </div>
+            <span style={{ flex: 1, color: NAVY, cursor: 'pointer', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} onClick={() => onEdit(o)}>
+              {o.title}
+              {o.who && <span style={{ fontSize: 11, color: GRAY, marginLeft: 6 }}>→ {o.who}</span>}
+            </span>
+            <span style={S.chip('#F1F5F9', GRAY)}>E{eff}·I{imp}</span>
+            <span style={S.chip('#FEF3C7', '#92400E')} title={`Weight ${o.weight} — ${sizeFor(o.weight)}`}>{sizeFor(o.weight)[0]}</span>
             <button onClick={() => onEdit(o)} title="Edit" style={{ background: 'none', border: 'none', color: GRAY, cursor: 'pointer', padding: 2 }}><Edit3 size={12} /></button>
-            {isToday && (
+            {isToday ? (
               <button
                 onClick={() => onReopen(o.id)}
                 title="Pull back to the board"
                 style={{ ...S.btnGhost, fontSize: 11, padding: '4px 10px', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
                 <RotateCcw size={11} /> reopen
               </button>
+            ) : (
+              <span style={{ fontSize: 11, color: GRAY }}>released {when}</span>
             )}
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, padding: '2px 6px', borderRadius: 4, background: dueColor(o.due_date, o.hard_deadline).bg, color: dueColor(o.due_date, o.hard_deadline).fg }}>
+              <Calendar size={10} />
+              {o.start_date ? fmtShort(o.start_date) : '—'} → {o.due_date ? fmtShort(o.due_date) : '—'}
+            </span>
           </div>
         )
       })}
@@ -946,6 +954,7 @@ function PillTabs({ tab, setTab, binCount }) {
   const tabs = [
     { id: 'list', label: 'List', icon: ListIcon },
     { id: 'dashboard', label: 'Dashboard', icon: BarChart3 },
+    { id: 'habits', label: 'Habits', icon: Calendar },
     { id: 'bin', label: `Bin${binCount ? ` · ${binCount}` : ''}`, icon: Archive },
   ]
   return (
@@ -975,7 +984,7 @@ function EligibleLockedSection({ parked, score, onActivate, onEdit }) {
   if (!parked.length) {
     return (
       <div style={S.panel}>
-        <div style={{ ...S.panelTitle, marginBottom: 0 }}>Parked · 0</div>
+        <div style={{ ...S.panelTitle, marginBottom: 0 }}>Objectives in Queue · 0</div>
         <div style={{ padding: '14px 0 4px', color: GRAY, fontSize: 12, textAlign: 'center' }}>
           Nothing parked. Park = not now, not giving up.
         </div>
@@ -997,7 +1006,7 @@ function EligibleLockedSection({ parked, score, onActivate, onEdit }) {
   return (
     <div style={S.panel}>
       <button onClick={() => setOpen(o => !o)} style={{ display: 'flex', width: '100%', justifyContent: 'space-between', alignItems: 'center', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
-        <div style={{ ...S.panelTitle, marginBottom: 0 }}>Parked · {parked.length}</div>
+        <div style={{ ...S.panelTitle, marginBottom: 0 }}>Objectives in Queue · {parked.length}</div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: GRAY, fontSize: 11 }}>
           {eligible.length > 0 && <span style={{ color: '#0F766E', fontWeight: 600 }}>⚡ {eligible.length} eligible</span>}
           {locked.length > 0 && <span><Lock size={10} style={{ verticalAlign: 'middle' }} /> {locked.length} locked</span>}
@@ -1012,14 +1021,7 @@ function EligibleLockedSection({ parked, score, onActivate, onEdit }) {
                 ⚡ Eligible at your current Sovereignty ({score})
               </div>
               {eligible.map(o => (
-                <div key={o.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0', borderBottom: `1px solid ${PANEL_BORDER}` }}>
-                  <span style={{ flex: 1, fontSize: 13, color: NAVY, cursor: 'pointer' }} onClick={() => onEdit(o)}>{o.title}</span>
-                  <span style={S.chip('#F1F5F9', GRAY)}>{sizeFor(o.weight)}</span>
-                  <span style={S.chip('#ECFDF5', '#065F46')}>unlocks @ {o._minSov}</span>
-                  <button style={{ ...S.btnGhost, fontSize: 11, padding: '4px 10px', display: 'inline-flex', alignItems: 'center', gap: 4, color: '#0F766E', borderColor: '#0F766E' }} onClick={() => onActivate(o.id)}>
-                    <Zap size={11} /> activate
-                  </button>
-                </div>
+                <ParkedRibbonRow key={o.id} o={o} variant="eligible" onActivate={onActivate} onEdit={onEdit} />
               ))}
             </div>
           )}
@@ -1029,16 +1031,41 @@ function EligibleLockedSection({ parked, score, onActivate, onEdit }) {
                 <Lock size={10} /> Unlocks at Sovereignty {t}
               </div>
               {lockedByThreshold[t].map(o => (
-                <div key={o.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0', borderBottom: `1px solid ${PANEL_BORDER}`, opacity: 0.7 }}>
-                  <span style={{ flex: 1, fontSize: 13, color: TEXT_DIM, cursor: 'pointer' }} onClick={() => onEdit(o)}>{o.title}</span>
-                  <span style={S.chip('#F1F5F9', GRAY)}>{sizeFor(o.weight)}</span>
-                  <span style={{ fontSize: 11, color: GRAY }}>need +{t - score}</span>
-                </div>
+                <ParkedRibbonRow key={o.id} o={o} variant="locked" score={score} onEdit={onEdit} />
               ))}
             </div>
           ))}
         </div>
       )}
+    </div>
+  )
+}
+
+// Ribbon-style row for parked queue — matches the table row visual language
+function ParkedRibbonRow({ o, variant, score, onActivate, onEdit }) {
+  const eff = o.effort || 2
+  const imp = o.importance || 2
+  const need = variant === 'locked' && score != null ? Math.max(0, o._minSov - score) : 0
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 0', borderBottom: `1px solid ${PANEL_BORDER}`, fontSize: 13, opacity: variant === 'locked' ? 0.7 : 1 }}>
+      <span style={{ flex: 1, color: variant === 'locked' ? TEXT_DIM : NAVY, cursor: 'pointer', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} onClick={() => onEdit(o)}>{o.title}</span>
+      <span style={S.chip('#F1F5F9', GRAY)}>E{eff}·I{imp}</span>
+      <span style={S.chip('#FEF3C7', '#92400E')} title={`Weight ${o.weight} — ${sizeFor(o.weight)}`}>{sizeFor(o.weight)[0]}</span>
+      <button onClick={() => onEdit(o)} title="Edit" style={{ background: 'none', border: 'none', color: GRAY, cursor: 'pointer', padding: 2 }}><Edit3 size={12} /></button>
+      {variant === 'eligible' ? (
+        <button onClick={() => onActivate(o.id)} title="Activate"
+          style={{ ...S.btnGhost, fontSize: 11, padding: '4px 10px', display: 'inline-flex', alignItems: 'center', gap: 4, color: '#0F766E', borderColor: '#0F766E' }}>
+          <Zap size={11} /> activate
+        </button>
+      ) : (
+        <span style={{ fontSize: 11, color: GRAY, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+          <Lock size={10} /> need +{need}
+        </span>
+      )}
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, padding: '2px 6px', borderRadius: 4, background: dueColor(o.due_date, o.hard_deadline).bg, color: dueColor(o.due_date, o.hard_deadline).fg }}>
+        <Calendar size={10} />
+        {o.start_date ? fmtShort(o.start_date) : '—'} → {o.due_date ? fmtShort(o.due_date) : '—'}
+      </span>
     </div>
   )
 }
@@ -1413,29 +1440,30 @@ export default function ObjectivesPage() {
             <AddObjective onAdd={addObjective} />
           </div>
 
-          <HabitGrid
-            habit={habit}
-            grid={habitGrid}
-            onToggle={(k, v) => upsertHabit({ [k]: v })}
-            onWeed={(n) => upsertHabit({ weed_count: n })}
+          <EligibleLockedSection
+            parked={parked}
+            score={score}
+            onActivate={activateObjective}
+            onEdit={setEditing}
           />
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 16, marginBottom: 16 }}>
-            <EligibleLockedSection
-              parked={parked}
-              score={score}
-              onActivate={activateObjective}
-              onEdit={setEditing}
-            />
-            <DelegatedContainer
-              items={delegatedAll}
-              onReopen={reopenObjective}
-              onEdit={setEditing}
-            />
-          </div>
+          <DelegatedContainer
+            items={delegatedAll}
+            onReopen={reopenObjective}
+            onEdit={setEditing}
+          />
 
           <ReleasedToday items={releasedToday} onReopen={reopenObjective} />
         </>
+      )}
+
+      {tab === 'habits' && (
+        <HabitGrid
+          habit={habit}
+          grid={habitGrid}
+          onToggle={(k, v) => upsertHabit({ [k]: v })}
+          onWeed={(n) => upsertHabit({ weed_count: n })}
+        />
       )}
 
       {tab === 'dashboard' && (
