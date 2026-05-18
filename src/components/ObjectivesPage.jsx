@@ -89,6 +89,11 @@ const fmtDue = (iso) => {
   if (d > 0 && d <= 6) return `${dt.toLocaleDateString('en-US', { weekday: 'short' })} · ${mo}`
   return mo
 }
+const fmtShort = (iso) => {
+  if (!iso) return ''
+  const dt = new Date(iso + 'T00:00:00')
+  return dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+}
 const dueColor = (iso, hard) => {
   const d = daysFromToday(iso)
   if (d === null) return { bg: '#F1F5F9', fg: '#565656' }
@@ -415,14 +420,14 @@ function ObjectiveCard({ o, onRelease, onForeman, onPark, onToggleAnchor, onDele
         <button onClick={() => setMenuOpen(m => !m)} style={{ background: 'none', border: 'none', color: GRAY, cursor: 'pointer', padding: 2, fontSize: 18, lineHeight: 1 }}>⋯</button>
       </div>
 
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 10 }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 10, alignItems: 'center' }}>
         <span style={S.chip(sColor + '20', sColor)}>{size}</span>
         <span style={S.chip('#F1F5F9', NAVY)}>E{o.effort}</span>
         <span style={S.chip('#F1F5F9', NAVY)}>I{o.importance}</span>
         <span style={S.chip(o.kind === 'design' ? '#FEF3C7' : '#E0F2FE', o.kind === 'design' ? '#B45309' : '#0369A1')}>{o.kind}</span>
-        {o.due_date && (
+        {(o.start_date || o.due_date) && (
           <span style={S.chip(dueC.bg, dueC.fg)}>
-            {o.hard_deadline ? '🔒 ' : ''}📅 {fmtDue(o.due_date)}
+            {o.hard_deadline ? '🔒 ' : ''}📅 {o.start_date ? fmtShort(o.start_date) : '—'} → {o.due_date ? fmtDue(o.due_date) : 'no target'}
           </span>
         )}
         {o.needs_sizing && <span style={S.chip('#FEF3C7', '#92400E')}>⚠ size me</span>}
@@ -462,6 +467,7 @@ function EditObjectiveModal({ o, onClose, onSave, onDelete }) {
   const [kind, setKind] = useState(o.kind || 'execution')
   const [who, setWho] = useState(o.who || '')
   const [dueDate, setDueDate] = useState(o.due_date || '')
+  const [startDate, setStartDate] = useState(o.start_date || '')
   const [hardDeadline, setHardDeadline] = useState(!!o.hard_deadline)
 
   const save = async () => {
@@ -470,6 +476,7 @@ function EditObjectiveModal({ o, onClose, onSave, onDelete }) {
       title: title.trim(),
       effort, importance, kind,
       who: who.trim() || null,
+      start_date: startDate || null,
       due_date: dueDate || null,
       hard_deadline: hardDeadline,
       needs_sizing: false, // editing implies user has sized it
@@ -515,6 +522,13 @@ function EditObjectiveModal({ o, onClose, onSave, onDelete }) {
           {['execution','design'].map(k => (
             <button key={k} onClick={() => setKind(k)} style={{ flex: 1, padding: '8px 0', borderRadius: 6, border: kind === k ? `2px solid ${NAVY}` : `1px solid ${PANEL_BORDER}`, background: kind === k ? '#EEF2F7' : 'white', color: NAVY, fontWeight: kind === k ? 700 : 500, cursor: 'pointer', fontSize: 13, fontFamily: 'inherit' }}>{k}</button>
           ))}
+        </div>
+
+        <div style={{ fontSize: 10, color: GRAY, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Start date</div>
+        <div style={{ display: 'flex', gap: 6, marginBottom: 10, flexWrap: 'wrap' }}>
+          <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} style={{ ...S.input, flex: '1 1 160px', padding: '8px 10px' }} />
+          <button onClick={() => setStartDate('')} style={{ ...S.btnGhost, fontSize: 11 }}>clear</button>
+          <button onClick={() => { const d = new Date(); setStartDate(d.toISOString().slice(0,10)) }} style={{ ...S.btnGhost, fontSize: 11 }}>today</button>
         </div>
 
         <div style={{ fontSize: 10, color: GRAY, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Target date</div>
@@ -651,6 +665,7 @@ function AddObjective({ onAdd }) {
   const [emergency, setEmergency] = useState(false)
   const [who, setWho] = useState('')
   const [dueDate, setDueDate] = useState('')
+  const [startDate, setStartDate] = useState(() => new Date().toISOString().slice(0,10))
   const [hardDeadline, setHardDeadline] = useState(false)
 
   const submit = async () => {
@@ -662,11 +677,12 @@ function AddObjective({ onAdd }) {
       importance: importance ?? 2,
       kind, is_emergency: emergency,
       who: who.trim() || null,
+      start_date: startDate || null,
       due_date: dueDate || null,
       hard_deadline: hardDeadline,
       needs_sizing: unsized,
     })
-    setTitle(''); setEffort(null); setImportance(null); setKind('execution'); setEmergency(false); setWho(''); setDueDate(''); setHardDeadline(false)
+    setTitle(''); setEffort(null); setImportance(null); setKind('execution'); setEmergency(false); setWho(''); setDueDate(''); setStartDate(new Date().toISOString().slice(0,10)); setHardDeadline(false)
     setOpen(false)
   }
 
@@ -704,6 +720,13 @@ function AddObjective({ onAdd }) {
             ))}
           </div>
         </div>
+      </div>
+
+      <div style={{ fontSize: 10, color: GRAY, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Start date</div>
+      <div style={{ display: 'flex', gap: 6, marginBottom: 10, flexWrap: 'wrap' }}>
+        <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} style={{ ...S.input, flex: '1 1 160px', padding: '8px 10px' }} />
+        <button onClick={() => setStartDate('')} style={{ ...S.btnGhost, fontSize: 11 }}>clear</button>
+        <button onClick={() => { const d = new Date(); setStartDate(d.toISOString().slice(0,10)) }} style={{ ...S.btnGhost, fontSize: 11 }}>today</button>
       </div>
 
       <div style={{ fontSize: 10, color: GRAY, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Target date (optional)</div>
@@ -873,6 +896,47 @@ function ReleasedToday({ items, onReopen }) {
   )
 }
 
+// Delegated ledger — all foreman-released items, with reopen for today's only
+function DelegatedContainer({ items, onReopen, onEdit }) {
+  const todayStr = new Date().toDateString()
+  return (
+    <div style={S.panel}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 0 }}>
+        <div style={{ ...S.panelTitle, marginBottom: 0 }}>Delegated · {items.length}</div>
+        <div style={{ fontSize: 10, color: GRAY }}>foreman ledger</div>
+      </div>
+      {items.length === 0 ? (
+        <div style={{ padding: '14px 0', color: GRAY, fontSize: 12, textAlign: 'center' }}>
+          Nothing delegated yet. Foreman-released items live here.
+        </div>
+      ) : items.map(o => {
+        const isToday = o.released_at && new Date(o.released_at).toDateString() === todayStr
+        const when = o.released_at ? new Date(o.released_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '—'
+        return (
+          <div key={o.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 0', borderTop: `1px solid ${PANEL_BORDER}`, fontSize: 13 }}>
+            <ArrowUpRight size={14} color="#7C3AED" />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ color: NAVY, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{o.title}</div>
+              <div style={{ fontSize: 10, color: GRAY, marginTop: 2 }}>
+                {o.who ? `→ ${o.who} · ` : ''}{when}
+              </div>
+            </div>
+            <button onClick={() => onEdit(o)} title="Edit" style={{ background: 'none', border: 'none', color: GRAY, cursor: 'pointer', padding: 2 }}><Edit3 size={12} /></button>
+            {isToday && (
+              <button
+                onClick={() => onReopen(o.id)}
+                title="Pull back to the board"
+                style={{ ...S.btnGhost, fontSize: 11, padding: '4px 10px', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                <RotateCcw size={11} /> reopen
+              </button>
+            )}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
 // =============================================================================
 // V1.2 — pill tabs, eligible/locked, dashboard, bin
 // =============================================================================
@@ -907,7 +971,16 @@ function PillTabs({ tab, setTab, binCount }) {
 
 function EligibleLockedSection({ parked, score, onActivate, onEdit }) {
   const [open, setOpen] = useState(true)
-  if (!parked.length) return null
+  if (!parked.length) {
+    return (
+      <div style={S.panel}>
+        <div style={{ ...S.panelTitle, marginBottom: 0 }}>Parked · 0</div>
+        <div style={{ padding: '14px 0 4px', color: GRAY, fontSize: 12, textAlign: 'center' }}>
+          Nothing parked. Park = not now, not giving up.
+        </div>
+      </div>
+    )
+  }
 
   const annotated = parked.map(o => ({ ...o, _minSov: getMinSov(o) }))
   const eligible = annotated.filter(o => score >= o._minSov).sort((a,b) => b._minSov - a._minSov)
@@ -1165,6 +1238,9 @@ export default function ObjectivesPage() {
   const emergencies = live.filter(o => o.state === 'active' && o.is_emergency)
   const anchorActive = live.find(o => o.state === 'active' && o.is_anchor) || null
   const parked = live.filter(o => o.state === 'parked')
+  const delegatedAll = live
+    .filter(o => o.state === 'foreman')
+    .sort((a,b) => new Date(b.released_at || 0) - new Date(a.released_at || 0))
   const releasedToday = live
     .filter(o => (o.state === 'released' || o.state === 'foreman') && o.released_at && new Date(o.released_at).toDateString() === new Date().toDateString())
     .sort((a,b) => new Date(b.released_at) - new Date(a.released_at))
@@ -1206,10 +1282,14 @@ export default function ObjectivesPage() {
     }
   }, [loading, score, rateSovereignty])
 
-  // Sort active: anchor first, then by weight desc
+  // Sort active: anchor first, then by due_date asc (nulls last), importance desc, weight desc
   const sortedActive = [...active].sort((a,b) => {
     if (a.is_anchor !== b.is_anchor) return a.is_anchor ? -1 : 1
-    return b.weight - a.weight
+    const ad = a.due_date ? new Date(a.due_date).getTime() : Infinity
+    const bd = b.due_date ? new Date(b.due_date).getTime() : Infinity
+    if (ad !== bd) return ad - bd
+    if ((b.importance || 0) !== (a.importance || 0)) return (b.importance || 0) - (a.importance || 0)
+    return (b.weight || 0) - (a.weight || 0)
   })
 
   // Coax mode auto-trigger conditions
@@ -1332,13 +1412,6 @@ export default function ObjectivesPage() {
             <AddObjective onAdd={addObjective} />
           </div>
 
-          <EligibleLockedSection
-            parked={parked}
-            score={score}
-            onActivate={activateObjective}
-            onEdit={setEditing}
-          />
-
           <HabitGrid
             habit={habit}
             grid={habitGrid}
@@ -1347,6 +1420,20 @@ export default function ObjectivesPage() {
           />
 
           <ReleasedToday items={releasedToday} onReopen={reopenObjective} />
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 16, marginTop: 16 }}>
+            <EligibleLockedSection
+              parked={parked}
+              score={score}
+              onActivate={activateObjective}
+              onEdit={setEditing}
+            />
+            <DelegatedContainer
+              items={delegatedAll}
+              onReopen={reopenObjective}
+              onEdit={setEditing}
+            />
+          </div>
         </>
       )}
 
