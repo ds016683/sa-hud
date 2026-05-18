@@ -819,7 +819,7 @@ function HabitGrid({ habit, grid, onToggle, onWeed }) {
 // ReleasedToday
 // =============================================================================
 
-function ReleasedToday({ items }) {
+function ReleasedToday({ items, onReopen }) {
   if (!items.length) return null
   return (
     <div style={S.panel}>
@@ -829,6 +829,12 @@ function ReleasedToday({ items }) {
           {o.released_kind === 'foreman' ? <ArrowUpRight size={14} color="#7C3AED" /> : <Check size={14} color="#0F766E" />}
           <span style={{ flex: 1, color: NAVY }}>{o.title}</span>
           <span style={{ fontSize: 11, color: GRAY }}>{new Date(o.released_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+          <button
+            onClick={() => onReopen(o.id)}
+            title="Pull back to the board"
+            style={{ ...S.btnGhost, fontSize: 11, padding: '4px 10px', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+            <RotateCcw size={11} /> reopen
+          </button>
         </div>
       ))}
     </div>
@@ -1104,7 +1110,7 @@ function BinView({ items, onRestore, onPurge }) {
 export default function ObjectivesPage() {
   const {
     loading, objectives, sov, sovHistory, habit, habitGrid, meditation,
-    addObjective, releaseObjective, parkObjective, reactivateObjective, activateObjective,
+    addObjective, releaseObjective, reopenObjective, parkObjective, reactivateObjective, activateObjective,
     deleteObjective, restoreObjective, purgeObjective,
     setAnchor, updateObjective, rateSovereignty, upsertHabit, saveMeditationAnswer
   } = useObjectives()
@@ -1259,7 +1265,7 @@ export default function ObjectivesPage() {
             onWeed={(n) => upsertHabit({ weed_count: n })}
           />
 
-          <ReleasedToday items={releasedToday} />
+          <ReleasedToday items={releasedToday} onReopen={reopenObjective} />
         </>
       )}
 

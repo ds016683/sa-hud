@@ -69,6 +69,8 @@ export default function useObjectives() {
     return updateObjective(id, { state: kind === 'foreman' ? 'foreman' : 'released', released_kind: kind, released_at: new Date().toISOString() })
   }, [updateObjective])
 
+  const reopenObjective = useCallback((id) => updateObjective(id, { state: 'active', released_kind: null, released_at: null }), [updateObjective])
+
   const parkObjective = useCallback((id) => updateObjective(id, { state: 'parked' }), [updateObjective])
   const reactivateObjective = useCallback((id) => updateObjective(id, { state: 'active' }), [updateObjective])
   const activateObjective = reactivateObjective // alias — eligible→active
@@ -134,7 +136,7 @@ export default function useObjectives() {
 
   return {
     loading, objectives, sov, sovHistory, habit, habitGrid, meditation,
-    addObjective, updateObjective, releaseObjective, parkObjective, reactivateObjective, activateObjective, deleteObjective, restoreObjective, purgeObjective,
+    addObjective, updateObjective, releaseObjective, reopenObjective, parkObjective, reactivateObjective, activateObjective, deleteObjective, restoreObjective, purgeObjective,
     setAnchor, rateSovereignty, upsertHabit, saveMeditationAnswer, refresh: fetchAll
   }
 }
