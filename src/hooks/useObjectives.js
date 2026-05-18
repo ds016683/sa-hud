@@ -61,7 +61,10 @@ export default function useObjectives() {
 
   const updateObjective = useCallback(async (id, patch) => {
     const { data, error } = await supabase.from('objectives').update(patch).eq('id', id).select().single()
-    if (error) console.error('[useObjectives] updateObjective failed:', error, { id, patch })
+    if (error) {
+      console.error('[useObjectives] updateObjective failed:', error, { id, patch })
+      alert(`Save failed: ${error.message}\n\nIf this mentions 'start_date', the v1.4 migration hasn't been run in Supabase yet.`)
+    }
     if (!error && data) setObjectives(prev => prev.map(o => o.id === id ? data : o))
     return data
   }, [])
