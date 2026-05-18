@@ -460,43 +460,80 @@ function ObjectiveCard({ o, onRelease, onForeman, onPark, onToggleAnchor, onDele
 // EditObjectiveModal — inline edit for any field
 // =============================================================================
 
-function EditObjectiveModal({ o, onClose, onSave, onDelete }) {
+function EditObjectiveModal({ o, onClose, onSave, onDelete, onForeman, onPark }) {
   const [title, setTitle] = useState(o.title || '')
+  const [description, setDescription] = useState(o.description || '')
+  const [notes, setNotes] = useState(o.notes || '')
+  const [stakeholder, setStakeholder] = useState(o.stakeholder || '')
   const [effort, setEffort] = useState(o.effort ?? 2)
   const [importance, setImportance] = useState(o.importance ?? 2)
   const [kind, setKind] = useState(o.kind || 'execution')
   const [who, setWho] = useState(o.who || '')
+  const [followUpDate, setFollowUpDate] = useState(o.follow_up_date || '')
   const [dueDate, setDueDate] = useState(o.due_date || '')
   const [startDate, setStartDate] = useState(o.start_date || '')
   const [hardDeadline, setHardDeadline] = useState(!!o.hard_deadline)
+  const [delegating, setDelegating] = useState(false)
 
   const save = async () => {
     if (!title.trim()) return
     await onSave(o.id, {
       title: title.trim(),
+      description: description.trim() || null,
+      notes: notes.trim() || null,
+      stakeholder: stakeholder.trim() || null,
       effort, importance, kind,
       who: who.trim() || null,
+      follow_up_date: followUpDate || null,
       start_date: startDate || null,
       due_date: dueDate || null,
       hard_deadline: hardDeadline,
-      needs_sizing: false, // editing implies user has sized it
+      needs_sizing: false,
     })
+    onClose()
+  }
+
+  const confirmDelegate = async () => {
+    if (!who.trim()) { alert('Who are you delegating to?'); return }
+    // save fields first, then route to foreman
+    await onSave(o.id, {
+      title: title.trim(),
+      description: description.trim() || null,
+      notes: notes.trim() || null,
+      stakeholder: stakeholder.trim() || null,
+      effort, importance, kind,
+      who: who.trim(),
+      follow_up_date: followUpDate || null,
+      start_date: startDate || null,
+      due_date: dueDate || null,
+      hard_deadline: hardDeadline,
+      needs_sizing: false,
+    })
+    if (onForeman) onForeman(o.id)
     onClose()
   }
 
   return (
     <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,26,65,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100, padding: 16 }}>
-      <div onClick={e => e.stopPropagation()} style={{ background: 'white', borderRadius: 12, maxWidth: 460, width: '100%', padding: 20, maxHeight: '90vh', overflowY: 'auto' }}>
+      <div onClick={e => e.stopPropagation()} style={{ background: 'white', borderRadius: 12, maxWidth: 480, width: '100%', padding: 20, maxHeight: '90vh', overflowY: 'auto' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-          <div style={{ fontSize: 14, fontWeight: 700, color: NAVY }}>Edit objective</div>
+          <div style={{ fontSize: 14, fontWeight: 700, color: NAVY }}>Objective Card</div>
           <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: GRAY }}><X size={18} /></button>
         </div>
 
         <div style={{ fontSize: 10, color: GRAY, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Title</div>
-        <input autoFocus value={title} onChange={e => setTitle(e.target.value)} style={{ ...S.input, marginBottom: 12 }} />
+        <input autoFocus value={title} onChange={e => setTitle(e.target.value)} style={{ ...S.input, marginBottom: 10 }} />
 
-        <div style={{ fontSize: 10, color: GRAY, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Who (optional)</div>
-        <input value={who} onChange={e => setWho(e.target.value)} placeholder="Greg, Cheryl, Avery..." style={{ ...S.input, marginBottom: 12 }} />
+        <div style={{ fontSize: 10, color: GRAY, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Waiting on me (optional)</div>
+        <input value={stakeholder} onChange={e => setStakeholder(e.target.value)} placeholder="ACHP, Jordana, MHPI board..." style={{ ...S.input, marginBottom: 10 }} />
+
+        <div style={{ fontSize: 10, color: GRAY, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Description (optional)</div>
+        <textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="A line or two — only if title isn't enough" rows={2}
+          style={{ ...S.input, marginBottom: 10, resize: 'vertical', fontFamily: 'inherit' }} />
+
+        <div style={{ fontSize: 10, color: GRAY, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Notes — links, prompts, attachments (optional)</div>
+        <textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="Drop links here, anything you'll want at hand when you start" rows={3}
+          style={{ ...S.input, marginBottom: 12, resize: 'vertical', fontFamily: 'inherit' }} />
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
           <div>
@@ -547,6 +584,43 @@ function EditObjectiveModal({ o, onClose, onSave, onDelete }) {
         <div style={{ fontSize: 11, color: GRAY, marginBottom: 14 }}>
           Weight: <strong style={{ color: NAVY }}>{effort * importance}</strong> ({sizeFor(effort * importance)})
         </div>
+
+        {/* Delegate sub-panel */}
+        {delegating ? (
+          <div style={{ background: '#FAF5FF', border: `2px solid #C4B5FD`, borderRadius: 8, padding: 12, marginBottom: 14 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: '#6D28D9', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+              <ArrowUpRight size={12} /> Delegate to foreman
+            </div>
+            <div style={{ fontSize: 10, color: GRAY, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Delegated to *</div>
+            <input value={who} onChange={e => setWho(e.target.value)} placeholder="Name of person taking it on" style={{ ...S.input, marginBottom: 10 }} />
+            <div style={{ fontSize: 10, color: GRAY, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Follow up when?</div>
+            <div style={{ display: 'flex', gap: 6, marginBottom: 10, flexWrap: 'wrap' }}>
+              <input type="date" value={followUpDate} onChange={e => setFollowUpDate(e.target.value)} style={{ ...S.input, flex: '1 1 160px', padding: '8px 10px' }} />
+              <button onClick={() => { const d = new Date(); d.setDate(d.getDate()+3); setFollowUpDate(d.toISOString().slice(0,10)) }} style={{ ...S.btnGhost, fontSize: 11 }}>+3d</button>
+              <button onClick={() => { const d = new Date(); d.setDate(d.getDate()+7); setFollowUpDate(d.toISOString().slice(0,10)) }} style={{ ...S.btnGhost, fontSize: 11 }}>+1wk</button>
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button onClick={() => setDelegating(false)} style={{ ...S.btnGhost, flex: 1 }}>Cancel</button>
+              <button onClick={confirmDelegate} style={{ ...S.btnPrimary, flex: 1, background: '#7C3AED' }}>Release to foreman</button>
+            </div>
+          </div>
+        ) : (
+          <div style={{ marginBottom: 14 }}>
+            <div style={{ fontSize: 10, color: GRAY, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>Route</div>
+            <div style={{ display: 'flex', gap: 6 }}>
+              {onForeman && (
+                <button onClick={() => setDelegating(true)} style={{ flex: 1, padding: '8px', borderRadius: 6, border: `1px solid #C4B5FD`, background: '#FAF5FF', color: '#6D28D9', cursor: 'pointer', fontSize: 12, fontWeight: 600, fontFamily: 'inherit', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+                  <ArrowUpRight size={12} /> Delegate
+                </button>
+              )}
+              {onPark && (
+                <button onClick={() => { onPark(o.id); onClose() }} style={{ flex: 1, padding: '8px', borderRadius: 6, border: `1px solid ${PANEL_BORDER}`, background: 'white', color: GRAY, cursor: 'pointer', fontSize: 12, fontWeight: 600, fontFamily: 'inherit' }}>
+                  Park
+                </button>
+              )}
+            </div>
+          </div>
+        )}
 
         <div style={{ display: 'flex', gap: 8, justifyContent: 'space-between' }}>
           <button onClick={() => { if (confirm('Delete this objective?')) { onDelete(o.id); onClose() } }} style={{ ...S.btnGhost, color: '#DC2626', borderColor: '#FCA5A5' }}><Trash2 size={12} style={{ marginRight: 4, verticalAlign: 'middle' }} />Delete</button>
@@ -626,6 +700,8 @@ function TableView({ items, onRelease, onForeman, onPark, onEdit }) {
         <span style={{ ...S.chip('#F1F5F9', NAVY), fontSize: 9 }}>E{o.effort}·I{o.importance}</span>
         {o.kind === 'design' && <span style={{ ...S.chip('#FEF3C7', '#B45309'), fontSize: 9 }}>D</span>}
         {o.needs_sizing && <span style={{ ...S.chip('#FEF3C7', '#92400E'), fontSize: 9 }}>⚠</span>}
+        {o.stakeholder && <span style={{ ...S.chip('#E0F2FE', '#075985'), fontSize: 9 }} title={`Waiting on me: ${o.stakeholder}`}>← {o.stakeholder}</span>}
+        {o.notes && <span title="Has notes/links" style={{ fontSize: 11 }}>📝</span>}
         {o.who && <span style={{ fontSize: 10, color: GRAY }}>w/ {o.who}</span>}
         <button onClick={() => onEdit(o)} title="Edit" style={{ background: 'none', border: 'none', color: GRAY, cursor: 'pointer', padding: 2 }}><Edit3 size={11} /></button>
         <button onClick={() => onRelease(o.id)} title="Done" style={{ background: '#0F766E', color: 'white', border: 'none', borderRadius: 4, padding: '2px 6px', fontSize: 10, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}><Check size={10} /></button>
@@ -657,33 +733,58 @@ function TableView({ items, onRelease, onForeman, onPark, onEdit }) {
 // AddObjective
 // =============================================================================
 
-function AddObjective({ onAdd }) {
+function AddObjective({ onAdd, onPark, onForeman }) {
   const [open, setOpen] = useState(false)
   const [title, setTitle] = useState('')
-  const [effort, setEffort] = useState(null)        // null = not sized → triage
+  const [stakeholder, setStakeholder] = useState('')
+  const [description, setDescription] = useState('')
+  const [notes, setNotes] = useState('')
+  const [effort, setEffort] = useState(null)
   const [importance, setImportance] = useState(null)
   const [kind, setKind] = useState('execution')
   const [emergency, setEmergency] = useState(false)
   const [who, setWho] = useState('')
+  const [followUpDate, setFollowUpDate] = useState('')
   const [dueDate, setDueDate] = useState('')
   const [startDate, setStartDate] = useState(() => new Date().toISOString().slice(0,10))
   const [hardDeadline, setHardDeadline] = useState(false)
+  const [route, setRoute] = useState('active') // active | park | delegate
+
+  const reset = () => {
+    setTitle(''); setStakeholder(''); setDescription(''); setNotes('')
+    setEffort(null); setImportance(null); setKind('execution'); setEmergency(false)
+    setWho(''); setFollowUpDate(''); setDueDate('')
+    setStartDate(new Date().toISOString().slice(0,10)); setHardDeadline(false)
+    setRoute('active')
+  }
 
   const submit = async () => {
     if (!title.trim()) return
+    if (route === 'delegate' && !who.trim()) { alert('Who are you delegating to?'); return }
     const unsized = effort === null || importance === null
-    await onAdd({
+    const payload = {
       title: title.trim(),
+      stakeholder: stakeholder.trim() || null,
+      description: description.trim() || null,
+      notes: notes.trim() || null,
       effort: effort ?? 2,
       importance: importance ?? 2,
       kind, is_emergency: emergency,
       who: who.trim() || null,
+      follow_up_date: followUpDate || null,
       start_date: startDate || null,
       due_date: dueDate || null,
       hard_deadline: hardDeadline,
       needs_sizing: unsized,
-    })
-    setTitle(''); setEffort(null); setImportance(null); setKind('execution'); setEmergency(false); setWho(''); setDueDate(''); setStartDate(new Date().toISOString().slice(0,10)); setHardDeadline(false)
+    }
+    const created = await onAdd(payload)
+    // Route to park or delegate if requested. onAdd should return the new id.
+    const newId = created?.id || created
+    if (newId) {
+      if (route === 'park' && onPark) await onPark(newId)
+      else if (route === 'delegate' && onForeman) await onForeman(newId)
+    }
+    reset()
     setOpen(false)
   }
 
@@ -701,8 +802,19 @@ function AddObjective({ onAdd }) {
         <div style={S.panelTitle}>New objective</div>
         <button onClick={() => setOpen(false)} style={{ background: 'none', border: 'none', color: GRAY, cursor: 'pointer' }}><X size={16} /></button>
       </div>
+
       <input autoFocus placeholder="What's the objective?" value={title} onChange={e => setTitle(e.target.value)} style={{ ...S.input, marginBottom: 10 }} />
-      <input placeholder="Who? (optional — Greg, Cheryl, Avery...)" value={who} onChange={e => setWho(e.target.value)} style={{ ...S.input, marginBottom: 12 }} />
+
+      <div style={{ fontSize: 10, color: GRAY, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Waiting on me (optional)</div>
+      <input value={stakeholder} onChange={e => setStakeholder(e.target.value)} placeholder="ACHP, Jordana, MHPI board..." style={{ ...S.input, marginBottom: 10 }} />
+
+      <div style={{ fontSize: 10, color: GRAY, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Description (optional)</div>
+      <textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="A line or two — only if title isn't enough" rows={2}
+        style={{ ...S.input, marginBottom: 10, resize: 'vertical', fontFamily: 'inherit' }} />
+
+      <div style={{ fontSize: 10, color: GRAY, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Notes — links, prompts (optional)</div>
+      <textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="Drop links here for when you start" rows={2}
+        style={{ ...S.input, marginBottom: 12, resize: 'vertical', fontFamily: 'inherit' }} />
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
         <div>
@@ -754,13 +866,45 @@ function AddObjective({ onAdd }) {
         </label>
       </div>
 
-      <div style={{ fontSize: 11, color: GRAY, marginBottom: 12 }}>
+      <div style={{ fontSize: 11, color: GRAY, marginBottom: 10 }}>
         {unsized
           ? <>Unsized — will land in <strong style={{ color: '#92400E' }}>Triage Queue</strong> for later rating.</>
           : <>Weight: <strong style={{ color: NAVY }}>{effort * importance}</strong> ({sizeFor(effort * importance)})</>}
       </div>
 
-      <button style={{ ...S.btnPrimary, width: '100%' }} onClick={submit}>Capture</button>
+      {/* Routing */}
+      <div style={{ fontSize: 10, color: GRAY, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>Initial home</div>
+      <div style={{ display: 'flex', gap: 6, marginBottom: route === 'delegate' ? 10 : 14 }}>
+        {[
+          { id: 'active', label: 'Active', color: '#15803D', bg: '#F0FDF4', border: '#86EFAC' },
+          { id: 'park', label: 'Park', color: GRAY, bg: '#F8FAFC', border: PANEL_BORDER },
+          { id: 'delegate', label: 'Delegate', color: '#6D28D9', bg: '#FAF5FF', border: '#C4B5FD' },
+        ].map(r => (
+          <button key={r.id} onClick={() => setRoute(r.id)}
+            style={{ flex: 1, padding: '8px', borderRadius: 6,
+              border: route === r.id ? `2px solid ${r.color}` : `1px solid ${r.border}`,
+              background: route === r.id ? r.bg : 'white',
+              color: r.color, fontSize: 12, fontWeight: route === r.id ? 700 : 500,
+              cursor: 'pointer', fontFamily: 'inherit' }}>{r.label}</button>
+        ))}
+      </div>
+
+      {route === 'delegate' && (
+        <div style={{ background: '#FAF5FF', border: `1px solid #C4B5FD`, borderRadius: 8, padding: 12, marginBottom: 14 }}>
+          <div style={{ fontSize: 10, color: GRAY, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Delegated to *</div>
+          <input value={who} onChange={e => setWho(e.target.value)} placeholder="Name of person taking it on" style={{ ...S.input, marginBottom: 10 }} />
+          <div style={{ fontSize: 10, color: GRAY, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Follow up when?</div>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+            <input type="date" value={followUpDate} onChange={e => setFollowUpDate(e.target.value)} style={{ ...S.input, flex: '1 1 160px', padding: '8px 10px' }} />
+            <button onClick={() => { const d = new Date(); d.setDate(d.getDate()+3); setFollowUpDate(d.toISOString().slice(0,10)) }} style={{ ...S.btnGhost, fontSize: 11 }}>+3d</button>
+            <button onClick={() => { const d = new Date(); d.setDate(d.getDate()+7); setFollowUpDate(d.toISOString().slice(0,10)) }} style={{ ...S.btnGhost, fontSize: 11 }}>+1wk</button>
+          </div>
+        </div>
+      )}
+
+      <button style={{ ...S.btnPrimary, width: '100%' }} onClick={submit}>
+        {route === 'active' ? 'Capture' : route === 'park' ? 'Capture → Park' : 'Capture → Delegate'}
+      </button>
     </div>
   )
 }
@@ -1355,7 +1499,11 @@ export default function ObjectivesPage() {
 
       {tab === 'list' && (
         <>
-          <AddObjective onAdd={addObjective} />
+          <AddObjective
+            onAdd={addObjective}
+            onPark={parkObjective}
+            onForeman={(id) => releaseObjective(id, 'foreman')}
+          />
 
           <MorningArrival meditation={meditation} onSubmit={saveMeditationAnswer} />
 
@@ -1484,6 +1632,8 @@ export default function ObjectivesPage() {
           onClose={() => setEditing(null)}
           onSave={updateObjective}
           onDelete={deleteObjective}
+          onForeman={(id) => releaseObjective(id, 'foreman')}
+          onPark={parkObjective}
         />
       )}
     </div>
