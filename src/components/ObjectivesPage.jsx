@@ -1355,6 +1355,8 @@ export default function ObjectivesPage() {
 
       {tab === 'list' && (
         <>
+          <AddObjective onAdd={addObjective} />
+
           <MorningArrival meditation={meditation} onSubmit={saveMeditationAnswer} />
 
           <SovereigntyReading score={score} pressure={pressure} breakdown={pressureBreakdown} history={sovHistory} />
@@ -1392,9 +1394,13 @@ export default function ObjectivesPage() {
             onEdit={setEditing}
           />
 
-          <div style={{ ...S.panel }}>
+          <div style={{ ...S.panel, background: '#F0FDF4', border: `2px solid #86EFAC`, boxShadow: '0 2px 12px rgba(34, 197, 94, 0.08)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, gap: 8, flexWrap: 'wrap' }}>
-              <div style={S.panelTitle}>Active · {sortedActive.length}</div>
+              <div style={{ ...S.panelTitle, fontSize: 16, color: '#065F46', marginBottom: 0, display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ width: 8, height: 8, borderRadius: 4, background: '#22C55E', display: 'inline-block' }} />
+                Active · {sortedActive.length}
+                <span style={{ fontSize: 10, fontWeight: 500, color: '#15803D', textTransform: 'none', letterSpacing: 0, marginLeft: 4 }}>← work this. nothing else.</span>
+              </div>
               <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
                 <button onClick={() => setViewMode('cards')} title="Card view"
                   style={{ background: viewMode === 'cards' ? '#EEF2F7' : 'white', border: `1px solid ${PANEL_BORDER}`, borderRadius: 6, padding: '4px 8px', cursor: 'pointer', color: NAVY, display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, fontFamily: 'inherit' }}>
@@ -1436,8 +1442,6 @@ export default function ObjectivesPage() {
                 onEdit={setEditing}
               />
             ))}
-
-            <AddObjective onAdd={addObjective} />
           </div>
 
           <EligibleLockedSection
