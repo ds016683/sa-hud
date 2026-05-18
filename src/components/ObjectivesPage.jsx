@@ -36,6 +36,42 @@ const getMinSov = (o) => {
 const EFFORT_HOURS = { 1: 0.5, 2: 2, 3: 4, 4: 8, 5: 20 }
 const hoursFor = (o) => EFFORT_HOURS[o.effort] ?? 2
 
+// =============================================================================
+// SOVEREIGNTY MATH — computed, not felt
+// =============================================================================
+// Capacity meter = sum(weight) of active items, capped at 10
+// Sovereignty   = 10 − Pressure, clamped 1..10
+// Pressure      = sum(weight × stakes × urgency) of active items
+//
+// stakes:   emergency 2.0 · hard_deadline 1.5 · anchor 1.3 · normal 1.0
+// urgency:  overdue 2.0 · ≤3d 1.5 · ≤7d 1.2 · dated 1.0 · undated 0.9
+
+const CAPACITY_CAP = 10
+
+const stakesMult = (o) => {
+  if (o.is_emergency) return 2.0
+  if (o.hard_deadline) return 1.5
+  if (o.is_anchor) return 1.3
+  return 1.0
+}
+
+const urgencyMult = (o) => {
+  if (!o.due_date) return 0.9
+  const d = daysFromToday(o.due_date)
+  if (d < 0) return 2.0
+  if (d <= 3) return 1.5
+  if (d <= 7) return 1.2
+  return 1.0
+}
+
+const itemPressure = (o) => (o.weight || 0) * stakesMult(o) * urgencyMult(o)
+
+const computeSovereignty = (activeItems) => {
+  const pressure = activeItems.reduce((a, o) => a + itemPressure(o), 0)
+  const score = Math.round(Math.max(1, Math.min(10, CAPACITY_CAP - pressure)))
+  return { score, pressure: Math.round(pressure * 10) / 10 }
+}
+
 // --- due date helpers ---
 const todayISO = () => new Date().toISOString().slice(0,10)
 const daysFromToday = (iso) => {
@@ -242,69 +278,64 @@ function EmergencyBanner({ items, onDone, onForeman }) {
 // SovereigntyGate
 // =============================================================================
 
-function SovereigntyGate({ sov, history, onRate }) {
-  const score = sov?.score ?? null
-  const zone = score ? sovZone(score) : null
-  const [open, setOpen] = useState(score == null)
-  const [pick, setPick] = useState(score || 5)
-
+function SovereigntyReading({ score, pressure, breakdown, history }) {
+  const zone = sovZone(score)
+  const [open, setOpen] = useState(false)
   return (
     <div style={S.panel}>
-      <div style={S.panelTitle}>Sovereignty</div>
+      <div style={{ ...S.panelTitle, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <span>Sovereignty</span>
+        <span style={{ fontSize: 10, color: GRAY, fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>
+          computed from active load
+        </span>
+      </div>
 
-      {score == null && !open && (
-        <button style={{ ...S.btnPrimary, width: '100%' }} onClick={() => setOpen(true)}>Rate now</button>
-      )}
-
-      {score != null && (
-        <>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <div style={{ flex: 1, height: 10, background: '#E2E8F0', borderRadius: 9999, position: 'relative', overflow: 'hidden' }}>
-              <div style={{
-                position: 'absolute', top: 0, left: 0, bottom: 0,
-                width: `${score * 10}%`,
-                background: `linear-gradient(90deg, #DC2626 0%, #D97706 30%, #0F766E 60%, #B45309 100%)`,
-                transition: 'width 0.4s'
-              }} />
-              <div style={{ position: 'absolute', top: -2, left: `calc(${score * 10}% - 7px)`, width: 14, height: 14, borderRadius: '50%', background: 'white', border: `2px solid ${zone.color}`, boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
-            </div>
-            <div style={{ fontSize: 22, fontWeight: 700, color: zone.color, minWidth: 30, textAlign: 'right' }}>{score}</div>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 8 }}>
-            <span style={S.chip(zone.bg, zone.color)}>{zone.label}</span>
-            <button style={{ ...S.btnGhost, fontSize: 11, padding: '4px 8px' }} onClick={() => setOpen(o => !o)}>{open ? 'close' : 'update'}</button>
-          </div>
-          <div style={{ fontSize: 12, color: TEXT_DIM, marginTop: 6, fontStyle: 'italic' }}>{zone.desc}</div>
-        </>
-      )}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        <div style={{ flex: 1, height: 10, background: '#E2E8F0', borderRadius: 9999, position: 'relative', overflow: 'hidden' }}>
+          <div style={{
+            position: 'absolute', top: 0, left: 0, bottom: 0,
+            width: `${score * 10}%`,
+            background: `linear-gradient(90deg, #DC2626 0%, #D97706 30%, #0F766E 60%, #B45309 100%)`,
+            transition: 'width 0.4s'
+          }} />
+          <div style={{ position: 'absolute', top: -2, left: `calc(${score * 10}% - 7px)`, width: 14, height: 14, borderRadius: '50%', background: 'white', border: `2px solid ${zone.color}`, boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
+        </div>
+        <div style={{ fontSize: 22, fontWeight: 700, color: zone.color, minWidth: 30, textAlign: 'right' }}>{score}</div>
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 8, gap: 8, flexWrap: 'wrap' }}>
+        <span style={S.chip(zone.bg, zone.color)}>{zone.label}</span>
+        <span style={{ fontSize: 11, color: GRAY }}>pressure {pressure} · 10 − pressure = sov</span>
+        <button style={{ ...S.btnGhost, fontSize: 11, padding: '4px 8px' }} onClick={() => setOpen(o => !o)}>
+          {open ? 'hide' : `what's eating it (${breakdown.length})`}
+        </button>
+      </div>
+      <div style={{ fontSize: 12, color: TEXT_DIM, marginTop: 6, fontStyle: 'italic' }}>{zone.desc}</div>
 
       {open && (
         <div style={{ marginTop: 12, paddingTop: 12, borderTop: `1px solid ${PANEL_BORDER}` }}>
-          <div style={{ fontSize: 11, color: GRAY, marginBottom: 6 }}>How sovereign do I feel right now? (1–10)</div>
-          <div style={{ display: 'flex', gap: 4, marginBottom: 10 }}>
-            {Array.from({ length: 10 }).map((_, i) => {
-              const v = i + 1
-              const z = sovZone(v)
-              return (
-                <button key={v} onClick={() => setPick(v)}
-                  style={{
-                    flex: 1, padding: '10px 0', borderRadius: 6, border: pick === v ? `2px solid ${z.color}` : `1px solid ${PANEL_BORDER}`,
-                    background: pick === v ? z.bg : 'white', color: pick === v ? z.color : NAVY,
-                    fontWeight: pick === v ? 700 : 500, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit'
-                  }}>{v}</button>
-              )
-            })}
-          </div>
-          <button style={{ ...S.btnPrimary, width: '100%' }} onClick={async () => { await onRate(pick); setOpen(false) }}>
-            {score == null ? 'Save rating' : 'Update rating'}
-          </button>
+          {breakdown.length === 0 ? (
+            <div style={{ fontSize: 12, color: GRAY, fontStyle: 'italic' }}>Board is empty. Sovereignty is at ceiling.</div>
+          ) : breakdown.slice(0, 8).map(b => (
+            <div key={b.id} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 0', fontSize: 12, borderBottom: `1px solid ${PANEL_BORDER}` }}>
+              <span style={{ flex: 1, color: NAVY }}>{b.title}</span>
+              <span style={{ fontSize: 10, color: GRAY }}>w{b.weight}</span>
+              {b.stakes > 1 && <span style={S.chip('#FEF2F2', '#B91C1C')}>×{b.stakes}</span>}
+              {b.urgency > 1 && <span style={S.chip('#FEF3C7', '#92400E')}>×{b.urgency}</span>}
+              {b.urgency < 1 && <span style={S.chip('#F1F5F9', GRAY)}>×{b.urgency}</span>}
+              <span style={{ fontSize: 12, fontWeight: 700, color: NAVY, minWidth: 28, textAlign: 'right' }}>−{b.pressure}</span>
+            </div>
+          ))}
+          {breakdown.length > 8 && (
+            <div style={{ fontSize: 11, color: GRAY, padding: '4px 0', textAlign: 'center' }}>
+              + {breakdown.length - 8} more
+            </div>
+          )}
         </div>
       )}
 
-      {/* Mini trend */}
       {history.length > 1 && (
         <div style={{ marginTop: 12, paddingTop: 10, borderTop: `1px solid ${PANEL_BORDER}` }}>
-          <div style={{ fontSize: 10, color: GRAY, marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>30-day trend (Future David)</div>
+          <div style={{ fontSize: 10, color: GRAY, marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>30-day trend</div>
           <SparkLine data={history.map(h => h.score)} />
         </div>
       )}
@@ -330,30 +361,31 @@ function SparkLine({ data }) {
 }
 
 // =============================================================================
-// RAMMeter
+// CapacityMeter (RAM)
 // =============================================================================
 
-function RAMMeter({ used, capacity, zone }) {
+function CapacityMeter({ used, capacity }) {
   const pct = Math.min(100, (used / capacity) * 100)
   const over = used > capacity
-  const remaining = capacity - used
+  const remaining = Math.max(0, capacity - used)
+  const fillColor = over ? '#DC2626' : pct >= 80 ? '#D97706' : pct >= 50 ? NAVY : '#0F766E'
   return (
     <div style={S.panel}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 6 }}>
-        <div style={S.panelTitle}>RAM</div>
+        <div style={S.panelTitle}>Capacity</div>
         <div style={{ fontSize: 13, fontWeight: 700, color: over ? '#DC2626' : NAVY }}>{used} / {capacity}</div>
       </div>
       <div style={{ height: 12, background: '#E2E8F0', borderRadius: 9999, overflow: 'hidden' }}>
         <div style={{
           height: '100%', width: `${pct}%`,
-          background: over ? '#DC2626' : zone?.color || NAVY,
+          background: fillColor,
           transition: 'width 0.3s'
         }} />
       </div>
       <div style={{ fontSize: 12, color: TEXT_DIM, marginTop: 8 }}>
         {over ? `⚠ Over capacity by ${used - capacity}. Park or release something.`
           : remaining >= 9 ? 'Capacity for a Boulder.'
-          : remaining >= 4 ? `Capacity for ${remaining >= 9 ? 'a Boulder' : 'a Stone'}.`
+          : remaining >= 4 ? 'Capacity for a Stone.'
           : remaining > 0 ? 'Pebbles only — keep it light.'
           : 'Full. Finish before adding.'}
       </div>
@@ -947,7 +979,7 @@ function StatCard({ title, value, sub, accent = NAVY }) {
   )
 }
 
-function DashboardView({ objectives, sov, sovHistory }) {
+function DashboardView({ objectives, sov, sovHistory, liveScore, livePressure }) {
   const live = objectives.filter(o => !o.deleted_at)
   const active = live.filter(o => o.state === 'active' && !o.needs_sizing && !o.is_emergency)
   const triage = live.filter(o => o.state === 'active' && o.needs_sizing)
@@ -1038,8 +1070,8 @@ function DashboardView({ objectives, sov, sovHistory }) {
         />
         <StatCard
           title="Sovereignty"
-          value={sov?.score ?? '—'}
-          sub={`14-day avg ${avgSov} · ${sovHistory.length} readings`}
+          value={liveScore ?? '—'}
+          sub={`pressure ${livePressure ?? 0} · 14-day avg ${avgSov}`}
           accent={BLUE}
         />
       </div>
@@ -1124,9 +1156,6 @@ export default function ObjectivesPage() {
   useEffect(() => { localStorage.setItem('objectives-view', viewMode) }, [viewMode])
   useEffect(() => { localStorage.setItem('objectives-tab', tab) }, [tab])
 
-  const score = sov?.score ?? 5
-  const zone = sovZone(score)
-
   // Partition objectives — exclude soft-deleted from all live views
   const live = objectives.filter(o => !o.deleted_at)
   const binItems = objectives.filter(o => o.deleted_at).sort((a,b) => new Date(b.deleted_at) - new Date(a.deleted_at))
@@ -1139,10 +1168,42 @@ export default function ObjectivesPage() {
     .filter(o => (o.state === 'released' || o.state === 'foreman') && o.released_at && new Date(o.released_at).toDateString() === new Date().toDateString())
     .sort((a,b) => new Date(b.released_at) - new Date(a.released_at))
 
-  const ramUsed = active.reduce((a, o) => a + (o.weight || 0), 0)
+  // --- v1.3 computed sovereignty ---
+  // All active items count toward capacity + pressure (emergencies too — they DEFINITELY eat your day)
+  const loadItems = [...active, ...emergencies]
+  const ramUsed = loadItems.reduce((a, o) => a + (o.weight || 0), 0)
+  const ramCap = CAPACITY_CAP
 
-  // RAM cap by zone: triage forces 3, operating 7, caught up 10, open water 12
-  const ramCap = score <= 3 ? 3 : score <= 6 ? 7 : score <= 8 ? 10 : 12
+  const { score: computedScore, pressure } = useMemo(
+    () => computeSovereignty(loadItems),
+    [loadItems]
+  )
+  const score = computedScore
+  const zone = sovZone(score)
+
+  // Breakdown for the "what's eating it" disclosure
+  const pressureBreakdown = useMemo(() => loadItems.map(o => ({
+    id: o.id,
+    title: o.title,
+    weight: o.weight || 0,
+    stakes: stakesMult(o),
+    urgency: urgencyMult(o),
+    pressure: Math.round(itemPressure(o) * 10) / 10
+  })).sort((a, b) => b.pressure - a.pressure), [loadItems])
+
+  // Daily snapshot — writes the computed score to sov_ratings once per day
+  // so the 30-day trend remains a meaningful diagnostic record.
+  useEffect(() => {
+    if (loading) return
+    const todayKey = todayISO()
+    const lastSnap = localStorage.getItem('sov-snapshot-date')
+    if (lastSnap === todayKey) return
+    if (rateSovereignty) {
+      rateSovereignty(score).then(() => {
+        localStorage.setItem('sov-snapshot-date', todayKey)
+      }).catch(() => {})
+    }
+  }, [loading, score, rateSovereignty])
 
   // Sort active: anchor first, then by weight desc
   const sortedActive = [...active].sort((a,b) => {
@@ -1178,7 +1239,7 @@ export default function ObjectivesPage() {
     <div style={{ ...S.page, background: PAGE_BG }}>
       <div style={{ marginBottom: 16 }}>
         <h1 style={S.h1}>Objectives</h1>
-        <div style={S.sub}>The infinite game · weighted by RAM · gated by Sovereignty</div>
+        <div style={S.sub}>The infinite game · capacity 10 · sovereignty is what's left after pressure</div>
       </div>
 
       <PillTabs tab={tab} setTab={setTab} binCount={binItems.length} />
@@ -1187,9 +1248,9 @@ export default function ObjectivesPage() {
         <>
           <MorningArrival meditation={meditation} onSubmit={saveMeditationAnswer} />
 
-          <SovereigntyGate sov={sov} history={sovHistory} onRate={rateSovereignty} />
+          <SovereigntyReading score={score} pressure={pressure} breakdown={pressureBreakdown} history={sovHistory} />
 
-          <RAMMeter used={ramUsed} capacity={ramCap} zone={zone} />
+          <CapacityMeter used={ramUsed} capacity={ramCap} />
 
           <EmergencyBanner
             items={emergencies}
@@ -1270,7 +1331,7 @@ export default function ObjectivesPage() {
       )}
 
       {tab === 'dashboard' && (
-        <DashboardView objectives={objectives} sov={sov} sovHistory={sovHistory} />
+        <DashboardView objectives={objectives} sov={sov} sovHistory={sovHistory} liveScore={score} livePressure={pressure} />
       )}
 
       {tab === 'bin' && (
