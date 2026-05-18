@@ -1160,17 +1160,18 @@ export default function ObjectivesPage() {
   const live = objectives.filter(o => !o.deleted_at)
   const binItems = objectives.filter(o => o.deleted_at).sort((a,b) => new Date(b.deleted_at) - new Date(a.deleted_at))
 
-  const triage = live.filter(o => o.state === 'active' && o.needs_sizing && !o.is_emergency)
-  const active = live.filter(o => o.state === 'active' && !o.is_emergency && !o.needs_sizing)
+  const triage = live.filter(o => o.state === 'active' && o.needs_sizing && !o.is_emergency && !o.is_anchor)
+  const active = live.filter(o => o.state === 'active' && !o.is_emergency && !o.needs_sizing && !o.is_anchor)
   const emergencies = live.filter(o => o.state === 'active' && o.is_emergency)
+  const anchorActive = live.find(o => o.state === 'active' && o.is_anchor) || null
   const parked = live.filter(o => o.state === 'parked')
   const releasedToday = live
     .filter(o => (o.state === 'released' || o.state === 'foreman') && o.released_at && new Date(o.released_at).toDateString() === new Date().toDateString())
     .sort((a,b) => new Date(b.released_at) - new Date(a.released_at))
 
   // --- v1.3 computed sovereignty ---
-  // All active items count toward capacity + pressure (emergencies too — they DEFINITELY eat your day)
-  const loadItems = [...active, ...emergencies]
+  // All active items count toward capacity + pressure (emergencies + anchor too — they DO eat your day)
+  const loadItems = [...active, ...emergencies, ...(anchorActive ? [anchorActive] : [])]
   const ramUsed = loadItems.reduce((a, o) => a + (o.weight || 0), 0)
   const ramCap = CAPACITY_CAP
 
@@ -1251,6 +1252,25 @@ export default function ObjectivesPage() {
           <SovereigntyReading score={score} pressure={pressure} breakdown={pressureBreakdown} history={sovHistory} />
 
           <CapacityMeter used={ramUsed} capacity={ramCap} />
+
+          {anchorActive && (
+            <div style={S.panel}>
+              <div style={{ ...S.panelTitle, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span>Anchor</span>
+                <span style={{ fontSize: 10, color: GRAY, fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>
+                  today's keystone · counts toward pressure, not the active list
+                </span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 0' }}>
+                <Anchor size={16} color={GOLD} />
+                <span style={{ flex: 1, fontSize: 14, color: NAVY, fontWeight: 600 }}>{anchorActive.title}</span>
+                <span style={S.chip('#FEF3C7', GOLD)}>{sizeFor(anchorActive.weight)}</span>
+                <button style={S.btnDone} onClick={() => releaseObjective(anchorActive.id, 'done')}>
+                  <Check size={12} /> done
+                </button>
+              </div>
+            </div>
+          )}
 
           <EmergencyBanner
             items={emergencies}

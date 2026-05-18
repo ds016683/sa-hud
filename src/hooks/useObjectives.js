@@ -61,6 +61,7 @@ export default function useObjectives() {
 
   const updateObjective = useCallback(async (id, patch) => {
     const { data, error } = await supabase.from('objectives').update(patch).eq('id', id).select().single()
+    if (error) console.error('[useObjectives] updateObjective failed:', error, { id, patch })
     if (!error && data) setObjectives(prev => prev.map(o => o.id === id ? data : o))
     return data
   }, [])
