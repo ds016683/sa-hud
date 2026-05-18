@@ -71,7 +71,10 @@ export default function useObjectives() {
 
   const parkObjective = useCallback((id) => updateObjective(id, { state: 'parked' }), [updateObjective])
   const reactivateObjective = useCallback((id) => updateObjective(id, { state: 'active' }), [updateObjective])
-  const deleteObjective = useCallback(async (id) => {
+  const activateObjective = reactivateObjective // alias — eligible→active
+  const deleteObjective = useCallback((id) => updateObjective(id, { deleted_at: new Date().toISOString() }), [updateObjective])
+  const restoreObjective = useCallback((id) => updateObjective(id, { deleted_at: null }), [updateObjective])
+  const purgeObjective = useCallback(async (id) => {
     await supabase.from('objectives').delete().eq('id', id)
     setObjectives(prev => prev.filter(o => o.id !== id))
   }, [])
@@ -131,7 +134,7 @@ export default function useObjectives() {
 
   return {
     loading, objectives, sov, sovHistory, habit, habitGrid, meditation,
-    addObjective, updateObjective, releaseObjective, parkObjective, reactivateObjective, deleteObjective,
+    addObjective, updateObjective, releaseObjective, parkObjective, reactivateObjective, activateObjective, deleteObjective, restoreObjective, purgeObjective,
     setAnchor, rateSovereignty, upsertHabit, saveMeditationAnswer, refresh: fetchAll
   }
 }

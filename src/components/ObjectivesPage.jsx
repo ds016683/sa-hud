@@ -1,5 +1,5 @@
 import { useState, useMemo, useRef, useEffect } from 'react'
-import { Plus, Play, Pause, Star, Flame, ChevronDown, ChevronUp, X, Trash2, ArrowUpRight, Check, Send, Anchor, Calendar, Edit3, Table as TableIcon, List as ListIcon, AlertTriangle, AlertCircle } from 'lucide-react'
+import { Plus, Play, Pause, Star, Flame, ChevronDown, ChevronUp, X, Trash2, ArrowUpRight, Check, Send, Anchor, Calendar, Edit3, Table as TableIcon, List as ListIcon, AlertTriangle, AlertCircle, BarChart3, Lock, Zap, RotateCcw, Archive } from 'lucide-react'
 import useObjectives from '../hooks/useObjectives'
 
 // =============================================================================
@@ -18,6 +18,23 @@ const sovZone = (s) => SOV_ZONES.find(z => s >= z.min && s <= z.max) || SOV_ZONE
 
 const sizeFor = (w) => w >= 9 ? 'Boulder' : w >= 4 ? 'Stone' : 'Pebble'
 const sizeColor = (w) => w >= 9 ? '#7C2D12' : w >= 4 ? '#1E3A8A' : '#155E75'
+
+// Default min_sov by kind × size (David's pick — "as is" lean)
+// Anchor + emergency always unlock at 1.
+const DEFAULT_MIN_SOV = {
+  execution: { Pebble: 1, Stone: 3, Boulder: 5 },
+  design:    { Pebble: 4, Stone: 6, Boulder: 7 },
+}
+const getMinSov = (o) => {
+  if (o.min_sov != null) return o.min_sov
+  if (o.is_anchor || o.is_emergency) return 1
+  const kind = (o.kind === 'design') ? 'design' : 'execution'
+  return DEFAULT_MIN_SOV[kind][sizeFor(o.weight)] || 1
+}
+
+// Effort→hours estimate for dashboard budget
+const EFFORT_HOURS = { 1: 0.5, 2: 2, 3: 4, 4: 8, 5: 20 }
+const hoursFor = (o) => EFFORT_HOURS[o.effort] ?? 2
 
 // --- due date helpers ---
 const todayISO = () => new Date().toISOString().slice(0,10)
@@ -819,33 +836,300 @@ function ReleasedToday({ items }) {
 }
 
 // =============================================================================
+// V1.2 — pill tabs, eligible/locked, dashboard, bin
+// =============================================================================
+
+function PillTabs({ tab, setTab, binCount }) {
+  const tabs = [
+    { id: 'list', label: 'List', icon: ListIcon },
+    { id: 'dashboard', label: 'Dashboard', icon: BarChart3 },
+    { id: 'bin', label: `Bin${binCount ? ` · ${binCount}` : ''}`, icon: Archive },
+  ]
+  return (
+    <div style={{ display: 'inline-flex', background: 'white', border: `1px solid ${PANEL_BORDER}`, borderRadius: 999, padding: 3, marginBottom: 16, gap: 2 }}>
+      {tabs.map(t => {
+        const active = tab === t.id
+        const Icon = t.icon
+        return (
+          <button key={t.id} onClick={() => setTab(t.id)}
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: 6,
+              padding: '6px 14px', borderRadius: 999, border: 'none',
+              background: active ? NAVY : 'transparent',
+              color: active ? 'white' : NAVY,
+              fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
+            }}>
+            <Icon size={13} /> {t.label}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+function EligibleLockedSection({ parked, score, onActivate, onEdit }) {
+  const [open, setOpen] = useState(true)
+  if (!parked.length) return null
+
+  const annotated = parked.map(o => ({ ...o, _minSov: getMinSov(o) }))
+  const eligible = annotated.filter(o => score >= o._minSov).sort((a,b) => b._minSov - a._minSov)
+  const locked = annotated.filter(o => score < o._minSov).sort((a,b) => a._minSov - b._minSov)
+
+  // Group locked by threshold
+  const lockedByThreshold = locked.reduce((acc, o) => {
+    (acc[o._minSov] = acc[o._minSov] || []).push(o)
+    return acc
+  }, {})
+  const thresholds = Object.keys(lockedByThreshold).map(Number).sort((a,b) => a - b)
+
+  return (
+    <div style={S.panel}>
+      <button onClick={() => setOpen(o => !o)} style={{ display: 'flex', width: '100%', justifyContent: 'space-between', alignItems: 'center', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
+        <div style={{ ...S.panelTitle, marginBottom: 0 }}>Parked · {parked.length}</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: GRAY, fontSize: 11 }}>
+          {eligible.length > 0 && <span style={{ color: '#0F766E', fontWeight: 600 }}>⚡ {eligible.length} eligible</span>}
+          {locked.length > 0 && <span><Lock size={10} style={{ verticalAlign: 'middle' }} /> {locked.length} locked</span>}
+          {open ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+        </div>
+      </button>
+      {open && (
+        <div style={{ marginTop: 12, paddingTop: 12, borderTop: `1px solid ${PANEL_BORDER}` }}>
+          {eligible.length > 0 && (
+            <div style={{ marginBottom: locked.length ? 16 : 0 }}>
+              <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5, color: '#0F766E', fontWeight: 700, marginBottom: 6 }}>
+                ⚡ Eligible at your current Sovereignty ({score})
+              </div>
+              {eligible.map(o => (
+                <div key={o.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0', borderBottom: `1px solid ${PANEL_BORDER}` }}>
+                  <span style={{ flex: 1, fontSize: 13, color: NAVY, cursor: 'pointer' }} onClick={() => onEdit(o)}>{o.title}</span>
+                  <span style={S.chip('#F1F5F9', GRAY)}>{sizeFor(o.weight)}</span>
+                  <span style={S.chip('#ECFDF5', '#065F46')}>unlocks @ {o._minSov}</span>
+                  <button style={{ ...S.btnGhost, fontSize: 11, padding: '4px 10px', display: 'inline-flex', alignItems: 'center', gap: 4, color: '#0F766E', borderColor: '#0F766E' }} onClick={() => onActivate(o.id)}>
+                    <Zap size={11} /> activate
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+          {thresholds.map(t => (
+            <div key={t} style={{ marginBottom: 12 }}>
+              <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5, color: GRAY, fontWeight: 700, marginBottom: 6, display: 'flex', alignItems: 'center', gap: 4 }}>
+                <Lock size={10} /> Unlocks at Sovereignty {t}
+              </div>
+              {lockedByThreshold[t].map(o => (
+                <div key={o.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0', borderBottom: `1px solid ${PANEL_BORDER}`, opacity: 0.7 }}>
+                  <span style={{ flex: 1, fontSize: 13, color: TEXT_DIM, cursor: 'pointer' }} onClick={() => onEdit(o)}>{o.title}</span>
+                  <span style={S.chip('#F1F5F9', GRAY)}>{sizeFor(o.weight)}</span>
+                  <span style={{ fontSize: 11, color: GRAY }}>need +{t - score}</span>
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function StatCard({ title, value, sub, accent = NAVY }) {
+  return (
+    <div style={{ background: 'white', border: `1px solid ${PANEL_BORDER}`, borderRadius: 10, padding: 14, minWidth: 0 }}>
+      <div style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: 0.6, color: GRAY, fontWeight: 700, marginBottom: 6 }}>{title}</div>
+      <div style={{ fontSize: 24, color: accent, fontWeight: 700, lineHeight: 1.1 }}>{value}</div>
+      {sub && <div style={{ fontSize: 11, color: TEXT_DIM, marginTop: 4 }}>{sub}</div>}
+    </div>
+  )
+}
+
+function DashboardView({ objectives, sov, sovHistory }) {
+  const live = objectives.filter(o => !o.deleted_at)
+  const active = live.filter(o => o.state === 'active' && !o.needs_sizing && !o.is_emergency)
+  const triage = live.filter(o => o.state === 'active' && o.needs_sizing)
+  const parked = live.filter(o => o.state === 'parked')
+  const emergency = live.filter(o => o.state === 'active' && o.is_emergency)
+  const releasedAll = live.filter(o => o.state === 'released' || o.state === 'foreman')
+
+  // Hours budget across active
+  const totalHours = active.reduce((a, o) => a + hoursFor(o), 0)
+
+  // Size mix
+  const byBySize = active.reduce((acc, o) => {
+    const s = sizeFor(o.weight)
+    acc[s] = (acc[s] || 0) + 1
+    return acc
+  }, { Pebble: 0, Stone: 0, Boulder: 0 })
+
+  // Date pressure
+  const now = new Date()
+  const overdue = active.filter(o => o.due_date && new Date(o.due_date) < new Date(now.toDateString())).length
+  const dueWeek = active.filter(o => {
+    if (!o.due_date) return false
+    const d = daysFromToday(o.due_date)
+    return d >= 0 && d <= 7
+  }).length
+  const dated = active.filter(o => o.due_date).length
+  const hardDeadlines = active.filter(o => o.hard_deadline).length
+
+  // Release pace: this week vs prior week
+  const startOfThisWeek = (() => {
+    const d = new Date(); d.setHours(0,0,0,0)
+    d.setDate(d.getDate() - d.getDay()) // Sunday
+    return d
+  })()
+  const startOfLastWeek = new Date(startOfThisWeek); startOfLastWeek.setDate(startOfLastWeek.getDate() - 7)
+  const thisWeekReleased = releasedAll.filter(o => o.released_at && new Date(o.released_at) >= startOfThisWeek).length
+  const lastWeekReleased = releasedAll.filter(o => {
+    if (!o.released_at) return false
+    const t = new Date(o.released_at)
+    return t >= startOfLastWeek && t < startOfThisWeek
+  }).length
+  const paceDelta = thisWeekReleased - lastWeekReleased
+
+  // Released kind breakdown
+  const doneCount = releasedAll.filter(o => o.released_kind === 'done').length
+  const foremanCount = releasedAll.filter(o => o.released_kind === 'foreman').length
+  const foremanPct = releasedAll.length ? Math.round((foremanCount / releasedAll.length) * 100) : 0
+
+  // Avg sov last 14 days
+  const last14 = sovHistory.slice(-14)
+  const avgSov = last14.length ? (last14.reduce((a, s) => a + s.score, 0) / last14.length).toFixed(1) : '—'
+
+  // Anchor presence
+  const anchor = active.find(o => o.is_anchor)
+
+  return (
+    <div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12, marginBottom: 16 }}>
+        <StatCard
+          title="State counts"
+          value={active.length}
+          sub={`active · ${triage.length} triage · ${parked.length} parked${emergency.length ? ` · ${emergency.length} 🚨` : ''}`}
+        />
+        <StatCard
+          title="Hours on the table"
+          value={`${totalHours}h`}
+          sub={`${byBySize.Pebble}P · ${byBySize.Stone}S · ${byBySize.Boulder}B (est)`}
+          accent={BLUE}
+        />
+        <StatCard
+          title="Date pressure"
+          value={overdue || dueWeek}
+          sub={overdue
+            ? `${overdue} overdue · ${dueWeek} due this week`
+            : `${dueWeek} due this week · ${dated}/${active.length} dated · ${hardDeadlines} hard 🔒`}
+          accent={overdue ? '#B91C1C' : NAVY}
+        />
+        <StatCard
+          title="Release pace"
+          value={thisWeekReleased}
+          sub={`this week · ${lastWeekReleased} prior · ${paceDelta >= 0 ? '+' : ''}${paceDelta}`}
+          accent={paceDelta >= 0 ? '#0F766E' : '#B45309'}
+        />
+        <StatCard
+          title="Released all-time"
+          value={releasedAll.length}
+          sub={`${doneCount} done · ${foremanCount} foreman (${foremanPct}%)`}
+        />
+        <StatCard
+          title="Sovereignty"
+          value={sov?.score ?? '—'}
+          sub={`14-day avg ${avgSov} · ${sovHistory.length} readings`}
+          accent={BLUE}
+        />
+      </div>
+      <div style={S.panel}>
+        <div style={S.panelTitle}>Sovereignty · last 14 days</div>
+        <SparkLine data={last14.map(s => s.score)} />
+      </div>
+      {anchor && (
+        <div style={S.panel}>
+          <div style={S.panelTitle}>Anchor</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, color: NAVY }}>
+            <Anchor size={16} color={GOLD} />
+            <span style={{ flex: 1 }}>{anchor.title}</span>
+            <span style={S.chip('#FEF3C7', GOLD)}>{sizeFor(anchor.weight)}</span>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function BinView({ items, onRestore, onPurge }) {
+  if (!items.length) {
+    return (
+      <div style={{ ...S.panel, textAlign: 'center', padding: 40, color: GRAY, fontSize: 13 }}>
+        <Archive size={24} style={{ opacity: 0.4 }} />
+        <div style={{ marginTop: 8 }}>Bin is empty.</div>
+        <div style={{ fontSize: 11, marginTop: 4 }}>Deleted objectives stay here for 30 days before auto-purge.</div>
+      </div>
+    )
+  }
+  return (
+    <div style={S.panel}>
+      <div style={{ ...S.panelTitle, display: 'flex', justifyContent: 'space-between' }}>
+        <span>Bin · {items.length}</span>
+        <span style={{ fontSize: 10, color: GRAY, fontWeight: 400 }}>Auto-purge after 30 days</span>
+      </div>
+      {items.map(o => {
+        const deletedDate = new Date(o.deleted_at)
+        const daysSince = Math.floor((Date.now() - deletedDate) / 86400000)
+        const daysLeft = Math.max(0, 30 - daysSince)
+        return (
+          <div key={o.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 0', borderBottom: `1px solid ${PANEL_BORDER}` }}>
+            <span style={{ flex: 1, fontSize: 13, color: TEXT_DIM, textDecoration: 'line-through' }}>{o.title}</span>
+            <span style={S.chip('#F1F5F9', GRAY)}>{sizeFor(o.weight)}</span>
+            <span style={{ fontSize: 11, color: daysLeft <= 7 ? '#B91C1C' : GRAY }}>
+              {daysLeft === 0 ? 'purges today' : `${daysLeft}d left`}
+            </span>
+            <button style={{ ...S.btnGhost, fontSize: 11, padding: '4px 10px', display: 'inline-flex', alignItems: 'center', gap: 4 }} onClick={() => onRestore(o.id)}>
+              <RotateCcw size={11} /> restore
+            </button>
+            <button
+              style={{ background: 'white', border: `1px solid #FCA5A5`, color: '#B91C1C', borderRadius: 6, padding: '4px 8px', cursor: 'pointer', fontSize: 11, fontFamily: 'inherit', display: 'inline-flex', alignItems: 'center', gap: 4 }}
+              onClick={() => { if (confirm('Permanently delete? This cannot be undone.')) onPurge(o.id) }}>
+              <Trash2 size={11} /> purge
+            </button>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+// =============================================================================
 // MAIN PAGE
 // =============================================================================
 
 export default function ObjectivesPage() {
   const {
     loading, objectives, sov, sovHistory, habit, habitGrid, meditation,
-    addObjective, releaseObjective, parkObjective, reactivateObjective, deleteObjective,
+    addObjective, releaseObjective, parkObjective, reactivateObjective, activateObjective,
+    deleteObjective, restoreObjective, purgeObjective,
     setAnchor, updateObjective, rateSovereignty, upsertHabit, saveMeditationAnswer
   } = useObjectives()
 
   const [coax, setCoax] = useState(false)
   const [coaxIdx, setCoaxIdx] = useState(0)
-  const [parkedOpen, setParkedOpen] = useState(false)
   const [viewMode, setViewMode] = useState(() => localStorage.getItem('objectives-view') || 'cards') // 'cards' | 'table'
+  const [tab, setTab] = useState(() => localStorage.getItem('objectives-tab') || 'list') // 'list' | 'dashboard' | 'bin'
   const [editing, setEditing] = useState(null) // objective being edited
 
   useEffect(() => { localStorage.setItem('objectives-view', viewMode) }, [viewMode])
+  useEffect(() => { localStorage.setItem('objectives-tab', tab) }, [tab])
 
   const score = sov?.score ?? 5
   const zone = sovZone(score)
 
-  // Partition objectives
-  const triage = objectives.filter(o => o.state === 'active' && o.needs_sizing && !o.is_emergency)
-  const active = objectives.filter(o => o.state === 'active' && !o.is_emergency && !o.needs_sizing)
-  const emergencies = objectives.filter(o => o.state === 'active' && o.is_emergency)
-  const parked = objectives.filter(o => o.state === 'parked')
-  const releasedToday = objectives
+  // Partition objectives — exclude soft-deleted from all live views
+  const live = objectives.filter(o => !o.deleted_at)
+  const binItems = objectives.filter(o => o.deleted_at).sort((a,b) => new Date(b.deleted_at) - new Date(a.deleted_at))
+
+  const triage = live.filter(o => o.state === 'active' && o.needs_sizing && !o.is_emergency)
+  const active = live.filter(o => o.state === 'active' && !o.is_emergency && !o.needs_sizing)
+  const emergencies = live.filter(o => o.state === 'active' && o.is_emergency)
+  const parked = live.filter(o => o.state === 'parked')
+  const releasedToday = live
     .filter(o => (o.state === 'released' || o.state === 'foreman') && o.released_at && new Date(o.released_at).toDateString() === new Date().toDateString())
     .sort((a,b) => new Date(b.released_at) - new Date(a.released_at))
 
@@ -891,107 +1175,101 @@ export default function ObjectivesPage() {
         <div style={S.sub}>The infinite game · weighted by RAM · gated by Sovereignty</div>
       </div>
 
-      <MorningArrival meditation={meditation} onSubmit={saveMeditationAnswer} />
+      <PillTabs tab={tab} setTab={setTab} binCount={binItems.length} />
 
-      <SovereigntyGate sov={sov} history={sovHistory} onRate={rateSovereignty} />
+      {tab === 'list' && (
+        <>
+          <MorningArrival meditation={meditation} onSubmit={saveMeditationAnswer} />
 
-      <RAMMeter used={ramUsed} capacity={ramCap} zone={zone} />
+          <SovereigntyGate sov={sov} history={sovHistory} onRate={rateSovereignty} />
 
-      <EmergencyBanner
-        items={emergencies}
-        onDone={(id) => releaseObjective(id, 'done')}
-        onForeman={(id) => releaseObjective(id, 'foreman')}
-      />
+          <RAMMeter used={ramUsed} capacity={ramCap} zone={zone} />
 
-      <TriageQueue
-        items={triage}
-        onSize={(id, patch) => updateObjective(id, patch)}
-        onEdit={setEditing}
-      />
-
-      <div style={{ ...S.panel }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, gap: 8, flexWrap: 'wrap' }}>
-          <div style={S.panelTitle}>Active · {sortedActive.length}</div>
-          <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
-            <button onClick={() => setViewMode('cards')} title="Card view"
-              style={{ background: viewMode === 'cards' ? '#EEF2F7' : 'white', border: `1px solid ${PANEL_BORDER}`, borderRadius: 6, padding: '4px 8px', cursor: 'pointer', color: NAVY, display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, fontFamily: 'inherit' }}>
-              <ListIcon size={11} /> cards
-            </button>
-            <button onClick={() => setViewMode('table')} title="Table view"
-              style={{ background: viewMode === 'table' ? '#EEF2F7' : 'white', border: `1px solid ${PANEL_BORDER}`, borderRadius: 6, padding: '4px 8px', cursor: 'pointer', color: NAVY, display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, fontFamily: 'inherit' }}>
-              <TableIcon size={11} /> table
-            </button>
-            <button style={{ ...S.btnGhost, fontSize: 11, padding: '4px 10px', marginLeft: 4 }} onClick={() => setCoax(true)}>stuck?</button>
-          </div>
-        </div>
-
-        {coaxAutoTrigger && !coax && (
-          <div style={{ background: '#FEF3C7', border: `1px solid #FCD34D`, borderRadius: 8, padding: 10, marginBottom: 10, fontSize: 12, color: '#92400E' }}>
-            Queue is heavy and Sovereignty is low. Try <button style={{ ...S.btnGhost, fontSize: 11, padding: '2px 8px', marginLeft: 4 }} onClick={() => setCoax(true)}>Coax Mode →</button>
-          </div>
-        )}
-
-        {sortedActive.length === 0 ? (
-          <div style={{ padding: '20px 0', color: GRAY, fontSize: 13, textAlign: 'center' }}>
-            Nothing active. {meditation ? 'The Rock answer became your anchor — start there.' : 'Tap "Add objective" to begin.'}
-          </div>
-        ) : viewMode === 'table' ? (
-          <TableView
-            items={sortedActive}
-            onRelease={(id) => releaseObjective(id, 'done')}
+          <EmergencyBanner
+            items={emergencies}
+            onDone={(id) => releaseObjective(id, 'done')}
             onForeman={(id) => releaseObjective(id, 'foreman')}
-            onPark={parkObjective}
+          />
+
+          <TriageQueue
+            items={triage}
+            onSize={(id, patch) => updateObjective(id, patch)}
             onEdit={setEditing}
           />
-        ) : sortedActive.map(o => (
-          <ObjectiveCard key={o.id} o={o}
-            onRelease={(id) => releaseObjective(id, 'done')}
-            onForeman={(id) => releaseObjective(id, 'foreman')}
-            onPark={parkObjective}
-            onToggleAnchor={(id, val) => val ? setAnchor(id) : updateObjective(id, { is_anchor: false })}
-            onDelete={deleteObjective}
+
+          <div style={{ ...S.panel }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, gap: 8, flexWrap: 'wrap' }}>
+              <div style={S.panelTitle}>Active · {sortedActive.length}</div>
+              <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+                <button onClick={() => setViewMode('cards')} title="Card view"
+                  style={{ background: viewMode === 'cards' ? '#EEF2F7' : 'white', border: `1px solid ${PANEL_BORDER}`, borderRadius: 6, padding: '4px 8px', cursor: 'pointer', color: NAVY, display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, fontFamily: 'inherit' }}>
+                  <ListIcon size={11} /> cards
+                </button>
+                <button onClick={() => setViewMode('table')} title="Table view"
+                  style={{ background: viewMode === 'table' ? '#EEF2F7' : 'white', border: `1px solid ${PANEL_BORDER}`, borderRadius: 6, padding: '4px 8px', cursor: 'pointer', color: NAVY, display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, fontFamily: 'inherit' }}>
+                  <TableIcon size={11} /> table
+                </button>
+                <button style={{ ...S.btnGhost, fontSize: 11, padding: '4px 10px', marginLeft: 4 }} onClick={() => setCoax(true)}>stuck?</button>
+              </div>
+            </div>
+
+            {coaxAutoTrigger && !coax && (
+              <div style={{ background: '#FEF3C7', border: `1px solid #FCD34D`, borderRadius: 8, padding: 10, marginBottom: 10, fontSize: 12, color: '#92400E' }}>
+                Queue is heavy and Sovereignty is low. Try <button style={{ ...S.btnGhost, fontSize: 11, padding: '2px 8px', marginLeft: 4 }} onClick={() => setCoax(true)}>Coax Mode →</button>
+              </div>
+            )}
+
+            {sortedActive.length === 0 ? (
+              <div style={{ padding: '20px 0', color: GRAY, fontSize: 13, textAlign: 'center' }}>
+                Nothing active. {meditation ? 'The Rock answer became your anchor — start there.' : 'Tap "Add objective" to begin.'}
+              </div>
+            ) : viewMode === 'table' ? (
+              <TableView
+                items={sortedActive}
+                onRelease={(id) => releaseObjective(id, 'done')}
+                onForeman={(id) => releaseObjective(id, 'foreman')}
+                onPark={parkObjective}
+                onEdit={setEditing}
+              />
+            ) : sortedActive.map(o => (
+              <ObjectiveCard key={o.id} o={o}
+                onRelease={(id) => releaseObjective(id, 'done')}
+                onForeman={(id) => releaseObjective(id, 'foreman')}
+                onPark={parkObjective}
+                onToggleAnchor={(id, val) => val ? setAnchor(id) : updateObjective(id, { is_anchor: false })}
+                onDelete={deleteObjective}
+                onEdit={setEditing}
+              />
+            ))}
+
+            <AddObjective onAdd={addObjective} />
+          </div>
+
+          <EligibleLockedSection
+            parked={parked}
+            score={score}
+            onActivate={activateObjective}
             onEdit={setEditing}
           />
-        ))}
 
-        <AddObjective onAdd={addObjective} />
-      </div>
+          <HabitGrid
+            habit={habit}
+            grid={habitGrid}
+            onToggle={(k, v) => upsertHabit({ [k]: v })}
+            onWeed={(n) => upsertHabit({ weed_count: n })}
+          />
 
-      {parked.length > 0 && (
-        <div style={S.panel}>
-          <button onClick={() => setParkedOpen(o => !o)} style={{ display: 'flex', width: '100%', justifyContent: 'space-between', alignItems: 'center', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
-            <div style={{ ...S.panelTitle, marginBottom: 0 }}>Parked · {parked.length}</div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: GRAY, fontSize: 11 }}>
-              {score < 7 && '🔒 unlocks at Sov 7'}
-              {parkedOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-            </div>
-          </button>
-          {parkedOpen && (
-            <div style={{ marginTop: 12, paddingTop: 12, borderTop: `1px solid ${PANEL_BORDER}` }}>
-              {parked.map(o => (
-                <div key={o.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0', borderBottom: `1px solid ${PANEL_BORDER}` }}>
-                  <span style={{ flex: 1, fontSize: 13, color: TEXT_DIM }}>{o.title}</span>
-                  <span style={S.chip('#F1F5F9', GRAY)}>{sizeFor(o.weight)}</span>
-                  {score >= 7 ? (
-                    <button style={{ ...S.btnGhost, fontSize: 11, padding: '4px 10px' }} onClick={() => reactivateObjective(o.id)}>activate</button>
-                  ) : (
-                    <button disabled style={{ ...S.btnGhost, fontSize: 11, padding: '4px 10px', opacity: 0.5 }}>locked</button>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+          <ReleasedToday items={releasedToday} />
+        </>
       )}
 
-      <HabitGrid
-        habit={habit}
-        grid={habitGrid}
-        onToggle={(k, v) => upsertHabit({ [k]: v })}
-        onWeed={(n) => upsertHabit({ weed_count: n })}
-      />
+      {tab === 'dashboard' && (
+        <DashboardView objectives={objectives} sov={sov} sovHistory={sovHistory} />
+      )}
 
-      <ReleasedToday items={releasedToday} />
+      {tab === 'bin' && (
+        <BinView items={binItems} onRestore={restoreObjective} onPurge={purgeObjective} />
+      )}
 
       {editing && (
         <EditObjectiveModal
