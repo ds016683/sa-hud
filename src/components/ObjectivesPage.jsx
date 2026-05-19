@@ -125,6 +125,92 @@ const PANEL_BG = '#FFFFFF'
 const PAGE_BG = '#F7F9FC'
 const GOLD = '#B45309'
 
+// =============================================================================
+// Tag system (v1.10 — May 19, 2026)
+// Two groups, both multi-select. Stored flat in objectives.tags text[].
+// =============================================================================
+const TAG_GROUPS = [
+  {
+    id: 'scope',
+    label: 'Scope',
+    tags: [
+      { id: 'personal',       label: 'Personal',       bg: '#F1F5F9', fg: '#334155', border: '#CBD5E1' },
+      { id: 'third-horizon',  label: 'Third Horizon',  bg: '#E0E7FF', fg: '#3730A3', border: '#A5B4FC' },
+    ],
+  },
+  {
+    id: 'domain',
+    label: 'Domain',
+    tags: [
+      { id: 'client',         label: 'Client',         bg: '#F0FDF4', fg: '#15803D', border: '#86EFAC' },
+      { id: 'biz-dev',        label: 'Business Dev',   bg: '#FFFBEB', fg: '#B45309', border: '#FCD34D' },
+      { id: 'finance',        label: 'Finance',        bg: '#ECFDF5', fg: '#047857', border: '#6EE7B7' },
+      { id: 'administrative', label: 'Administrative', bg: '#F1F5F9', fg: '#475569', border: '#CBD5E1' },
+      { id: 'content',        label: 'Content',        bg: '#FAF5FF', fg: '#6D28D9', border: '#C4B5FD' },
+      { id: 'tooling',        label: 'Tooling',        bg: '#E0F2FE', fg: '#075985', border: '#7DD3FC' },
+    ],
+  },
+]
+const TAG_BY_ID = Object.fromEntries(TAG_GROUPS.flatMap(g => g.tags.map(t => [t.id, t])))
+const tagStyle = (id) => {
+  const t = TAG_BY_ID[id]
+  if (!t) return null
+  return {
+    display: 'inline-flex', alignItems: 'center', padding: '2px 8px', borderRadius: 999,
+    fontSize: 10, fontWeight: 600, background: t.bg, color: t.fg,
+    border: `1px solid ${t.border}`, whiteSpace: 'nowrap', lineHeight: 1.4,
+  }
+}
+function TagPills({ tags, max = 4 }) {
+  if (!tags || !tags.length) return null
+  const shown = tags.slice(0, max)
+  const overflow = tags.length - shown.length
+  return (
+    <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+      {shown.map(id => {
+        const t = TAG_BY_ID[id]; if (!t) return null
+        return <span key={id} style={tagStyle(id)}>{t.label}</span>
+      })}
+      {overflow > 0 && <span style={{ display:'inline-flex', alignItems:'center', padding:'2px 8px', borderRadius:999, fontSize:10, fontWeight:600, background:'#F1F5F9', color: GRAY, border: `1px solid ${PANEL_BORDER}` }}>+{overflow}</span>}
+    </div>
+  )
+}
+function TagPicker({ value, onChange }) {
+  const selected = new Set(value || [])
+  const toggle = (id) => {
+    const next = new Set(selected)
+    if (next.has(id)) next.delete(id); else next.add(id)
+    onChange(Array.from(next))
+  }
+  return (
+    <div style={{ marginBottom: 12 }}>
+      {TAG_GROUPS.map(group => (
+        <div key={group.id} style={{ marginBottom: 8 }}>
+          <div style={{ fontSize: 10, color: GRAY, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>{group.label} (optional)</div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+            {group.tags.map(t => {
+              const on = selected.has(t.id)
+              return (
+                <button key={t.id} type="button" onClick={() => toggle(t.id)}
+                  style={{
+                    padding: '4px 10px', borderRadius: 999, cursor: 'pointer',
+                    fontSize: 11, fontWeight: on ? 700 : 500, fontFamily: 'inherit',
+                    background: on ? t.bg : 'white',
+                    color: on ? t.fg : GRAY,
+                    border: on ? `1.5px solid ${t.border}` : `1px solid ${PANEL_BORDER}`,
+                  }}>
+                  {t.label}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+
 const S = {
   page: { maxWidth: 880, margin: '0 auto', padding: '20px 16px 80px', fontFamily: 'Arial, Helvetica, sans-serif', color: NAVY },
   h1: { fontSize: 22, fontWeight: 700, margin: 0, color: NAVY },
@@ -416,8 +502,13 @@ function ObjectiveCard({ o, onRelease, onForeman, onPark, onToggleAnchor, onDele
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginBottom: 6 }}>
         {o.is_anchor && <Star size={14} fill={GOLD} color={GOLD} style={{ marginTop: 2, flexShrink: 0 }} />}
         <div style={{ flex: 1, fontSize: 14, fontWeight: 600, color: NAVY, lineHeight: 1.4 }}>{o.title}</div>
-        <button onClick={() => onEdit(o)} title="Edit" style={{ background: 'none', border: 'none', color: GRAY, cursor: 'pointer', padding: 2 }}><Edit3 size={13} /></button>
-        <button onClick={() => setMenuOpen(m => !m)} style={{ background: 'none', border: 'none', color: GRAY, cursor: 'pointer', padding: 2, fontSize: 18, lineHeight: 1 }}>⋯</button>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4, flexShrink: 0 }}>
+          {o.tags && o.tags.length > 0 && <TagPills tags={o.tags} />}
+          <div style={{ display: 'flex', gap: 2 }}>
+            <button onClick={() => onEdit(o)} title="Edit" style={{ background: 'none', border: 'none', color: GRAY, cursor: 'pointer', padding: 2 }}><Edit3 size={13} /></button>
+            <button onClick={() => setMenuOpen(m => !m)} style={{ background: 'none', border: 'none', color: GRAY, cursor: 'pointer', padding: 2, fontSize: 18, lineHeight: 1 }}>⋯</button>
+          </div>
+        </div>
       </div>
 
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 10, alignItems: 'center' }}>
@@ -473,6 +564,7 @@ function EditObjectiveModal({ o, onClose, onSave, onDelete, onForeman, onPark })
   const [dueDate, setDueDate] = useState(o.due_date || '')
   const [startDate, setStartDate] = useState(o.start_date || '')
   const [hardDeadline, setHardDeadline] = useState(!!o.hard_deadline)
+  const [tags, setTags] = useState(o.tags || [])
   const [delegating, setDelegating] = useState(false)
 
   const save = async () => {
@@ -488,6 +580,7 @@ function EditObjectiveModal({ o, onClose, onSave, onDelete, onForeman, onPark })
       start_date: startDate || null,
       due_date: dueDate || null,
       hard_deadline: hardDeadline,
+      tags,
       needs_sizing: false,
     })
     onClose()
@@ -507,6 +600,7 @@ function EditObjectiveModal({ o, onClose, onSave, onDelete, onForeman, onPark })
       start_date: startDate || null,
       due_date: dueDate || null,
       hard_deadline: hardDeadline,
+      tags,
       needs_sizing: false,
     })
     if (onForeman) onForeman(o.id)
@@ -580,6 +674,8 @@ function EditObjectiveModal({ o, onClose, onSave, onDelete, onForeman, onPark })
           <input type="checkbox" checked={hardDeadline} onChange={e => setHardDeadline(e.target.checked)} disabled={!dueDate} />
           🔒 Hard deadline (external, non-negotiable)
         </label>
+
+        <TagPicker value={tags} onChange={setTags} />
 
         <div style={{ fontSize: 11, color: GRAY, marginBottom: 14 }}>
           Weight: <strong style={{ color: NAVY }}>{effort * importance}</strong> ({sizeFor(effort * importance)})
@@ -703,6 +799,7 @@ function TableView({ items, onRelease, onForeman, onPark, onEdit }) {
         {o.stakeholder && <span style={{ ...S.chip('#E0F2FE', '#075985'), fontSize: 9 }} title={`Waiting on me: ${o.stakeholder}`}>← {o.stakeholder}</span>}
         {o.notes && <span title="Has notes/links" style={{ fontSize: 11 }}>📝</span>}
         {o.who && <span style={{ fontSize: 10, color: GRAY }}>w/ {o.who}</span>}
+        {o.tags && o.tags.length > 0 && <TagPills tags={o.tags} max={2} />}
         <button onClick={() => onEdit(o)} title="Edit" style={{ background: 'none', border: 'none', color: GRAY, cursor: 'pointer', padding: 2 }}><Edit3 size={11} /></button>
         <button onClick={() => onRelease(o.id)} title="Done" style={{ background: '#0F766E', color: 'white', border: 'none', borderRadius: 4, padding: '2px 6px', fontSize: 10, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}><Check size={10} /></button>
         <button onClick={() => onForeman(o.id)} title="Foreman" style={{ background: '#7C3AED', color: 'white', border: 'none', borderRadius: 4, padding: '2px 6px', fontSize: 10, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}><ArrowUpRight size={10} /></button>
@@ -748,6 +845,7 @@ function AddObjective({ onAdd, onPark, onForeman }) {
   const [dueDate, setDueDate] = useState('')
   const [startDate, setStartDate] = useState(() => new Date().toISOString().slice(0,10))
   const [hardDeadline, setHardDeadline] = useState(false)
+  const [tags, setTags] = useState([])
   const [route, setRoute] = useState('active') // active | park | delegate
 
   const reset = () => {
@@ -755,6 +853,7 @@ function AddObjective({ onAdd, onPark, onForeman }) {
     setEffort(null); setImportance(null); setKind('execution'); setEmergency(false)
     setWho(''); setFollowUpDate(''); setDueDate('')
     setStartDate(new Date().toISOString().slice(0,10)); setHardDeadline(false)
+    setTags([])
     setRoute('active')
   }
 
@@ -775,6 +874,7 @@ function AddObjective({ onAdd, onPark, onForeman }) {
       start_date: startDate || null,
       due_date: dueDate || null,
       hard_deadline: hardDeadline,
+      tags,
       needs_sizing: unsized,
     }
     const created = await onAdd(payload)
@@ -871,6 +971,8 @@ function AddObjective({ onAdd, onPark, onForeman }) {
           ? <>Unsized — will land in <strong style={{ color: '#92400E' }}>Triage Queue</strong> for later rating.</>
           : <>Weight: <strong style={{ color: NAVY }}>{effort * importance}</strong> ({sizeFor(effort * importance)})</>}
       </div>
+
+      <TagPicker value={tags} onChange={setTags} />
 
       {/* Routing */}
       <div style={{ fontSize: 10, color: GRAY, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>Initial home</div>
@@ -1068,6 +1170,7 @@ function DelegatedContainer({ items, onReopen, onEdit }) {
             </span>
             <span style={S.chip('#F1F5F9', GRAY)}>E{eff}·I{imp}</span>
             <span style={S.chip('#FEF3C7', '#92400E')} title={`Weight ${o.weight} — ${sizeFor(o.weight)}`}>{sizeFor(o.weight)[0]}</span>
+            {o.tags && o.tags.length > 0 && <TagPills tags={o.tags} max={2} />}
             <button onClick={() => onEdit(o)} title="Edit" style={{ background: 'none', border: 'none', color: GRAY, cursor: 'pointer', padding: 2 }}><Edit3 size={12} /></button>
             {isToday ? (
               <button
@@ -1195,6 +1298,7 @@ function ParkedRibbonRow({ o, variant, score, onActivate, onEdit }) {
       <span style={{ flex: 1, color: variant === 'locked' ? TEXT_DIM : NAVY, cursor: 'pointer', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} onClick={() => onEdit(o)}>{o.title}</span>
       <span style={S.chip('#F1F5F9', GRAY)}>E{eff}·I{imp}</span>
       <span style={S.chip('#FEF3C7', '#92400E')} title={`Weight ${o.weight} — ${sizeFor(o.weight)}`}>{sizeFor(o.weight)[0]}</span>
+      {o.tags && o.tags.length > 0 && <TagPills tags={o.tags} max={2} />}
       <button onClick={() => onEdit(o)} title="Edit" style={{ background: 'none', border: 'none', color: GRAY, cursor: 'pointer', padding: 2 }}><Edit3 size={12} /></button>
       {variant === 'eligible' ? (
         <button onClick={() => onActivate(o.id)} title="Activate"
