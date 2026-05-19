@@ -39,8 +39,17 @@ const S = {
   }),
 }
 
-const todayStr = () => new Date().toISOString().slice(0,10)
-const isToday = (iso) => iso && iso.slice(0,10) === todayStr()
+// CT-local "today" — matches DB rows which are keyed on David's CT day, not UTC.
+const todayStr = () => {
+  const fmt = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Chicago', year:'numeric', month:'2-digit', day:'2-digit' })
+  return fmt.format(new Date())
+}
+const ctDayOf = (iso) => {
+  if (!iso) return null
+  const fmt = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Chicago', year:'numeric', month:'2-digit', day:'2-digit' })
+  return fmt.format(new Date(iso))
+}
+const isToday = (iso) => iso && ctDayOf(iso) === todayStr()
 
 function HabitRow({ ok, label, icon }) {
   return (
@@ -92,7 +101,7 @@ export default function AccomplishmentsPage() {
   const { released, newToday, delegatedToday, totalScore } = useMemo(() => {
     const released = objectives.filter(o => o.released_kind === 'done' && isToday(o.released_at))
     const delegatedToday = objectives.filter(o => o.released_kind === 'foreman' && isToday(o.released_at))
-    const newToday = objectives.filter(o => isToday(o.created_at))
+    const newToday = objectives.filter(o => isToday(o.captured_at))
     const totalScore = released.reduce((sum, o) => sum + (o.effort || 0) * (o.importance || 0), 0)
     return { released, newToday, delegatedToday, totalScore }
   }, [objectives])

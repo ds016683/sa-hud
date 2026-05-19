@@ -1,8 +1,17 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 
-const today = () => new Date().toISOString().slice(0, 10)
-const daysAgoISO = (n) => { const d = new Date(); d.setDate(d.getDate() - n); return d.toISOString().slice(0,10) }
+// Use Chicago/Central time for "today" — David is in CT.
+// Browser-local would also work but breaks if he's traveling east; CT is the canonical SA-HUD day.
+const today = () => {
+  const fmt = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Chicago', year:'numeric', month:'2-digit', day:'2-digit' })
+  return fmt.format(new Date()) // YYYY-MM-DD
+}
+const daysAgoISO = (n) => {
+  const d = new Date(); d.setDate(d.getDate() - n)
+  const fmt = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Chicago', year:'numeric', month:'2-digit', day:'2-digit' })
+  return fmt.format(d)
+}
 
 export default function useObjectives() {
   const [ready, setReady] = useState(false)
