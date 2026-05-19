@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { LayoutGrid, Lightbulb, ScrollText, Network, Shield, LogOut, Menu, X, BookOpen, Calendar, Target, Users, Sparkles } from 'lucide-react'
+import { LayoutGrid, Lightbulb, ScrollText, Network, Shield, LogOut, Menu, X, BookOpen, Calendar, Target, Users, Sparkles, FileText } from 'lucide-react'
 import { getSession, onAuthStateChange, signOut } from './lib/auth'
 import LoginPage from './components/LoginPage'
 import HUD from './components/HUD'
@@ -9,6 +9,7 @@ import IdeasPage from './components/IdeasPage'
 import EcosystemPage from './components/EcosystemPage'
 import DailyBriefingsPage from './components/DailyBriefingsPage'
 import MeetingsPage from './components/MeetingsPage'
+import MeetingNotesPage from './components/MeetingNotesPage'
 import ObjectivesPage from './components/ObjectivesPage'
 import AccomplishmentsPage from './components/AccomplishmentsPage'
 import RelationshipsPage from './components/RelationshipsPage'
@@ -16,6 +17,7 @@ import RelationshipsPage from './components/RelationshipsPage'
 const NAV_ITEMS = [
   { id: 'objectives',      label: 'Objectives',         icon: Target     },
   { id: 'accomplishments', label: "Today's Wins",       icon: Sparkles   },
+  { id: 'meeting-notes',   label: 'Meeting Notes',      icon: FileText   },
   { id: 'relationships',   label: 'Relationships',      icon: Users      },
   { id: 'portfolio',     label: 'Portfolio',        icon: LayoutGrid },
   { id: 'ideas',         label: 'Ideas Pipeline',   icon: Lightbulb  },
@@ -149,6 +151,7 @@ export default function App() {
       <main style={{ flex: 1, minHeight: '100vh', overflowY: 'auto' }}>
         {active === 'objectives'      && <ObjectivesPage />}
         {active === 'accomplishments' && <AccomplishmentsPage />}
+        {active === 'meeting-notes'   && <MeetingNotesPage />}
         {active === 'relationships'   && <RelationshipsPage />}
         {active === 'portfolio'  && <PortfolioPage />}
         {active === 'ideas'      && <IdeasPage />}
