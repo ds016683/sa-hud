@@ -78,7 +78,7 @@ function THMarkdown({ text }) {
     }
     // Nested bullet "  - foo" or "  * foo"
     else if (/^\s{2,}[-*]\s/.test(line)) {
-      out.push(<div key={i} style={{ paddingLeft: 36, marginBottom: 3, fontSize: 13, lineHeight: 1.65, color: '#475569' }}>
+      out.push(<div key={i} style={{ paddingLeft: 52, marginBottom: 3, fontSize: 12, lineHeight: 1.6, color: '#475569' }}>
         <span style={{ color: GOLD, marginRight: 8 }}>◦</span>{inlineFormat(line.replace(/^\s+[-*]\s/, ''))}
       </div>)
     }
@@ -146,6 +146,29 @@ function MeetingCard({ meeting }) {
           transform: open ? 'rotate(90deg)' : 'rotate(0deg)',
           transition: 'transform 0.2s',
         }} />
+        {(() => {
+          const ts = meeting.granola_created_at || meeting.meeting_date
+          if (!ts) return null
+          const d = new Date(ts)
+          if (isNaN(d)) return null
+          const opts = { timeZone: 'America/Chicago', month: 'numeric', day: 'numeric' }
+          const tOpts = { timeZone: 'America/Chicago', hour: 'numeric', minute: '2-digit', hour12: true }
+          const dateStr = d.toLocaleDateString('en-US', opts)
+          // Only show time if we actually have time info (granola_created_at is a full timestamp)
+          const hasTime = typeof ts === 'string' && ts.includes('T')
+          const timeStr = hasTime
+            ? d.toLocaleTimeString('en-US', tOpts).toLowerCase().replace(' ', '').replace(':00','')
+            : null
+          return (
+            <span style={{
+              fontSize: 11, fontWeight: 600, color: GRAY, flexShrink: 0,
+              fontVariantNumeric: 'tabular-nums', minWidth: hasTime ? 80 : 44,
+              letterSpacing: '0.01em',
+            }}>
+              {dateStr}{timeStr ? ` · ${timeStr}` : ''}
+            </span>
+          )
+        })()}
         <span style={{ fontWeight: 600, color: NAVY, flex: 1, fontSize: 13, lineHeight: 1.4 }}>
           {meeting.title || '(untitled)'}
         </span>
