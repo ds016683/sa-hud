@@ -16,7 +16,7 @@ import RelationshipsPage from './components/RelationshipsPage'
 
 const NAV_ITEMS = [
   { id: 'objectives',      label: 'Objectives',         icon: Target     },
-  { id: 'accomplishments', label: "Today's Wins",       icon: Sparkles   },
+  { id: 'accomplishments', label: "Daily Summary",      icon: Sparkles   },
   { id: 'meeting-notes',   label: 'Meeting Notes',      icon: FileText   },
   { id: 'relationships',   label: 'Relationships',      icon: Users      },
   { id: 'portfolio',     label: 'Portfolio',        icon: LayoutGrid },
