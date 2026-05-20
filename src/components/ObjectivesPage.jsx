@@ -148,6 +148,8 @@ const TAG_GROUPS = [
       { id: 'biz-dev',        label: 'Business Dev',   bg: '#FFFBEB', fg: '#B45309', border: '#FCD34D' },
       { id: 'finance',        label: 'Finance',        bg: '#ECFDF5', fg: '#047857', border: '#6EE7B7' },
       { id: 'administrative', label: 'Administrative', bg: '#F1F5F9', fg: '#475569', border: '#CBD5E1' },
+      { id: 'management',     label: 'Management',     bg: '#FDF2F8', fg: '#9D174D', border: '#F9A8D4' },
+      { id: 'communications', label: 'Communications', bg: '#EFF6FF', fg: '#1E40AF', border: '#93C5FD' },
       { id: 'content',        label: 'Content',        bg: '#FAF5FF', fg: '#6D28D9', border: '#C4B5FD' },
       { id: 'tooling',        label: 'Tooling',        bg: '#E0F2FE', fg: '#075985', border: '#7DD3FC' },
     ],
@@ -1278,27 +1280,34 @@ function EligibleLockedSection({ parked, score, onActivate, onEdit }) {
       </button>
       {open && (
         <div style={{ marginTop: 12, paddingTop: 12, borderTop: `1px solid ${PANEL_BORDER}` }}>
-          {/* Tag filter */}
+          {/* Tag filter — Scope (meta) | Domain (descriptive) */}
           <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 6, marginBottom: 12 }}>
             <span style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: 0.6, color: GRAY, fontWeight: 700, marginRight: 4 }}>Filter:</span>
-            {TAG_GROUPS.flatMap(g => g.tags).map(t => {
-              const on = tagFilter.includes(t.id)
-              return (
-                <button
-                  key={t.id}
-                  onClick={() => setTagFilter(prev => on ? prev.filter(x => x !== t.id) : [...prev, t.id])}
-                  style={{
-                    display: 'inline-flex', alignItems: 'center', padding: '3px 9px', borderRadius: 999,
-                    fontSize: 10, fontWeight: 600, cursor: 'pointer',
-                    background: on ? t.bg : 'transparent',
-                    color: on ? t.fg : GRAY,
-                    border: `1px solid ${on ? t.border : PANEL_BORDER}`,
-                    fontFamily: 'inherit', whiteSpace: 'nowrap',
-                  }}>
-                  {t.label}
-                </button>
-              )
-            })}
+            {TAG_GROUPS.map((group, gIdx) => (
+              <span key={group.id} style={{ display: 'inline-flex', flexWrap: 'wrap', alignItems: 'center', gap: 6 }}>
+                {gIdx > 0 && (
+                  <span style={{ width: 1, height: 18, background: PANEL_BORDER, margin: '0 4px' }} aria-hidden="true" />
+                )}
+                {group.tags.map(t => {
+                  const on = tagFilter.includes(t.id)
+                  return (
+                    <button
+                      key={t.id}
+                      onClick={() => setTagFilter(prev => on ? prev.filter(x => x !== t.id) : [...prev, t.id])}
+                      style={{
+                        display: 'inline-flex', alignItems: 'center', padding: '3px 9px', borderRadius: 999,
+                        fontSize: 10, fontWeight: 600, cursor: 'pointer',
+                        background: on ? t.bg : 'transparent',
+                        color: on ? t.fg : GRAY,
+                        border: `1px solid ${on ? t.border : PANEL_BORDER}`,
+                        fontFamily: 'inherit', whiteSpace: 'nowrap',
+                      }}>
+                      {t.label}
+                    </button>
+                  )
+                })}
+              </span>
+            ))}
             {tagFilter.length > 0 && (
               <button onClick={() => setTagFilter([])} style={{ background: 'none', border: 'none', color: GRAY, fontSize: 10, textDecoration: 'underline', cursor: 'pointer', fontFamily: 'inherit', marginLeft: 4 }}>
                 clear
@@ -1432,14 +1441,16 @@ function DashboardView({ objectives, sov, sovHistory, liveScore, livePressure })
   // Anchor presence
   const anchor = active.find(o => o.is_anchor)
 
-  // TH vs Personal mix across active items (count + hours)
+  // TH vs Personal mix across ALL open items (active + parked + triage + emergency + delegated/foreman)
+  // Excludes released-done and bin/deleted
+  const openItems = live.filter(o => o.state !== 'released')
   const scopeOf = (o) => {
     const tags = o.tags || []
     if (tags.includes('third-horizon')) return 'th'
     if (tags.includes('personal')) return 'personal'
     return 'untagged'
   }
-  const scopeMix = active.reduce((acc, o) => {
+  const scopeMix = openItems.reduce((acc, o) => {
     const k = scopeOf(o)
     acc[k].count += 1
     acc[k].hours += hoursFor(o)
@@ -1496,7 +1507,7 @@ function DashboardView({ objectives, sov, sovHistory, liveScore, livePressure })
       </div>
       {scopeTotal > 0 && (
         <div style={S.panel}>
-          <div style={S.panelTitle}>Scope mix · active</div>
+          <div style={S.panelTitle}>Scope mix · all open</div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
             <div style={{
               width: 110, height: 110, borderRadius: '50%',
@@ -1513,7 +1524,7 @@ function DashboardView({ objectives, sov, sovHistory, liveScore, livePressure })
                 fontSize: 11, color: GRAY,
               }}>
                 <div style={{ fontSize: 20, fontWeight: 700, color: NAVY, lineHeight: 1 }}>{scopeTotal}</div>
-                <div>active</div>
+                <div>open</div>
               </div>
             </div>
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 8, fontSize: 13 }}>
