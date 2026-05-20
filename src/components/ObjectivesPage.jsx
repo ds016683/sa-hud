@@ -46,7 +46,8 @@ const hoursFor = (o) => EFFORT_HOURS[o.effort] ?? 2
 // stakes:   emergency 2.0 · hard_deadline 1.5 · anchor 1.3 · normal 1.0
 // urgency:  overdue 2.0 · ≤3d 1.5 · ≤7d 1.2 · dated 1.0 · undated 0.9
 
-const CAPACITY_CAP = 10
+const CAPACITY_CAP = 15
+const SOVEREIGNTY_CAP = 10 // sovereignty score stays on 1-10 scale even as capacity grows
 
 const stakesMult = (o) => {
   if (o.is_emergency) return 2.0
@@ -68,7 +69,8 @@ const itemPressure = (o) => (o.weight || 0) * stakesMult(o) * urgencyMult(o)
 
 const computeSovereignty = (activeItems) => {
   const pressure = activeItems.reduce((a, o) => a + itemPressure(o), 0)
-  const score = Math.round(Math.max(1, Math.min(10, CAPACITY_CAP - pressure)))
+  // Sovereignty stays on a 1-10 scale regardless of CAPACITY_CAP
+  const score = Math.round(Math.max(1, Math.min(SOVEREIGNTY_CAP, SOVEREIGNTY_CAP - pressure)))
   return { score, pressure: Math.round(pressure * 10) / 10 }
 }
 
@@ -1144,7 +1146,7 @@ function ReleasedToday({ items, onReopen }) {
 }
 
 // Delegated ledger — all foreman-released items, with reopen for today's only
-function DelegatedContainer({ items, onReopen, onEdit }) {
+function DelegatedContainer({ items, onReopen, onPark, onEdit }) {
   const todayStr = new Date().toDateString()
   return (
     <div style={S.panel}>
@@ -1181,6 +1183,14 @@ function DelegatedContainer({ items, onReopen, onEdit }) {
               </button>
             ) : (
               <span style={{ fontSize: 11, color: GRAY }}>released {when}</span>
+            )}
+            {onPark && (
+              <button
+                onClick={() => onPark(o.id)}
+                title="Send back to Queue (Park)"
+                style={{ ...S.btnGhost, fontSize: 11, padding: '4px 10px', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                → Park
+              </button>
             )}
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, padding: '2px 6px', borderRadius: 4, background: dueColor(o.due_date, o.hard_deadline).bg, color: dueColor(o.due_date, o.hard_deadline).fg }}>
               <Calendar size={10} />
@@ -1228,6 +1238,7 @@ function PillTabs({ tab, setTab, binCount }) {
 
 function EligibleLockedSection({ parked, score, onActivate, onEdit }) {
   const [open, setOpen] = useState(true)
+  const [tagFilter, setTagFilter] = useState([]) // array of tag ids; empty = show all
   if (!parked.length) {
     return (
       <div style={S.panel}>
@@ -1239,7 +1250,12 @@ function EligibleLockedSection({ parked, score, onActivate, onEdit }) {
     )
   }
 
-  const annotated = parked.map(o => ({ ...o, _minSov: getMinSov(o) }))
+  // Tag filter — AND across selected (item must have all selected tags)
+  const filtered = tagFilter.length === 0
+    ? parked
+    : parked.filter(o => tagFilter.every(t => (o.tags || []).includes(t)))
+
+  const annotated = filtered.map(o => ({ ...o, _minSov: getMinSov(o) }))
   const eligible = annotated.filter(o => score >= o._minSov).sort((a,b) => b._minSov - a._minSov)
   const locked = annotated.filter(o => score < o._minSov).sort((a,b) => a._minSov - b._minSov)
 
@@ -1262,6 +1278,38 @@ function EligibleLockedSection({ parked, score, onActivate, onEdit }) {
       </button>
       {open && (
         <div style={{ marginTop: 12, paddingTop: 12, borderTop: `1px solid ${PANEL_BORDER}` }}>
+          {/* Tag filter */}
+          <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 6, marginBottom: 12 }}>
+            <span style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: 0.6, color: GRAY, fontWeight: 700, marginRight: 4 }}>Filter:</span>
+            {TAG_GROUPS.flatMap(g => g.tags).map(t => {
+              const on = tagFilter.includes(t.id)
+              return (
+                <button
+                  key={t.id}
+                  onClick={() => setTagFilter(prev => on ? prev.filter(x => x !== t.id) : [...prev, t.id])}
+                  style={{
+                    display: 'inline-flex', alignItems: 'center', padding: '3px 9px', borderRadius: 999,
+                    fontSize: 10, fontWeight: 600, cursor: 'pointer',
+                    background: on ? t.bg : 'transparent',
+                    color: on ? t.fg : GRAY,
+                    border: `1px solid ${on ? t.border : PANEL_BORDER}`,
+                    fontFamily: 'inherit', whiteSpace: 'nowrap',
+                  }}>
+                  {t.label}
+                </button>
+              )
+            })}
+            {tagFilter.length > 0 && (
+              <button onClick={() => setTagFilter([])} style={{ background: 'none', border: 'none', color: GRAY, fontSize: 10, textDecoration: 'underline', cursor: 'pointer', fontFamily: 'inherit', marginLeft: 4 }}>
+                clear
+              </button>
+            )}
+            {tagFilter.length > 0 && (
+              <span style={{ fontSize: 10, color: GRAY, marginLeft: 'auto' }}>
+                showing {filtered.length} of {parked.length}
+              </span>
+            )}
+          </div>
           {eligible.length > 0 && (
             <div style={{ marginBottom: locked.length ? 16 : 0 }}>
               <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5, color: '#0F766E', fontWeight: 700, marginBottom: 6 }}>
@@ -1384,6 +1432,24 @@ function DashboardView({ objectives, sov, sovHistory, liveScore, livePressure })
   // Anchor presence
   const anchor = active.find(o => o.is_anchor)
 
+  // TH vs Personal mix across active items (count + hours)
+  const scopeOf = (o) => {
+    const tags = o.tags || []
+    if (tags.includes('third-horizon')) return 'th'
+    if (tags.includes('personal')) return 'personal'
+    return 'untagged'
+  }
+  const scopeMix = active.reduce((acc, o) => {
+    const k = scopeOf(o)
+    acc[k].count += 1
+    acc[k].hours += hoursFor(o)
+    return acc
+  }, { th: { count: 0, hours: 0 }, personal: { count: 0, hours: 0 }, untagged: { count: 0, hours: 0 } })
+  const scopeTotal = scopeMix.th.count + scopeMix.personal.count + scopeMix.untagged.count
+  const thPct = scopeTotal ? (scopeMix.th.count / scopeTotal) * 100 : 0
+  const personalPct = scopeTotal ? (scopeMix.personal.count / scopeTotal) * 100 : 0
+  const untaggedPct = scopeTotal ? (scopeMix.untagged.count / scopeTotal) * 100 : 0
+
   return (
     <div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12, marginBottom: 16 }}>
@@ -1428,6 +1494,56 @@ function DashboardView({ objectives, sov, sovHistory, liveScore, livePressure })
         <div style={S.panelTitle}>Sovereignty · last 14 days</div>
         <SparkLine data={last14.map(s => s.score)} />
       </div>
+      {scopeTotal > 0 && (
+        <div style={S.panel}>
+          <div style={S.panelTitle}>Scope mix · active</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
+            <div style={{
+              width: 110, height: 110, borderRadius: '50%',
+              background: `conic-gradient(
+                #3730A3 0% ${thPct}%,
+                #475569 ${thPct}% ${thPct + personalPct}%,
+                #E2E8F0 ${thPct + personalPct}% 100%
+              )`,
+              position: 'relative', flexShrink: 0,
+            }}>
+              <div style={{
+                position: 'absolute', inset: 22, borderRadius: '50%', background: 'white',
+                display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                fontSize: 11, color: GRAY,
+              }}>
+                <div style={{ fontSize: 20, fontWeight: 700, color: NAVY, lineHeight: 1 }}>{scopeTotal}</div>
+                <div>active</div>
+              </div>
+            </div>
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 8, fontSize: 13 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ width: 12, height: 12, background: '#3730A3', borderRadius: 3 }} />
+                <span style={{ flex: 1, color: NAVY }}>Third Horizon</span>
+                <span style={{ color: GRAY, fontVariantNumeric: 'tabular-nums' }}>
+                  {scopeMix.th.count} · {scopeMix.th.hours}h · {Math.round(thPct)}%
+                </span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ width: 12, height: 12, background: '#475569', borderRadius: 3 }} />
+                <span style={{ flex: 1, color: NAVY }}>Personal</span>
+                <span style={{ color: GRAY, fontVariantNumeric: 'tabular-nums' }}>
+                  {scopeMix.personal.count} · {scopeMix.personal.hours}h · {Math.round(personalPct)}%
+                </span>
+              </div>
+              {scopeMix.untagged.count > 0 && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ width: 12, height: 12, background: '#E2E8F0', borderRadius: 3, border: `1px solid ${PANEL_BORDER}` }} />
+                  <span style={{ flex: 1, color: GRAY }}>Untagged</span>
+                  <span style={{ color: GRAY, fontVariantNumeric: 'tabular-nums' }}>
+                    {scopeMix.untagged.count} · {scopeMix.untagged.hours}h · {Math.round(untaggedPct)}%
+                  </span>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
       {anchor && (
         <div style={S.panel}>
           <div style={S.panelTitle}>Anchor</div>
@@ -1596,7 +1712,7 @@ export default function ObjectivesPage() {
     <div style={{ ...S.page, background: PAGE_BG }}>
       <div style={{ marginBottom: 16 }}>
         <h1 style={S.h1}>Objectives</h1>
-        <div style={S.sub}>The infinite game · capacity 10 · sovereignty is what's left after pressure</div>
+        <div style={S.sub}>The infinite game · capacity 15 · sovereignty is what's left after pressure</div>
       </div>
 
       <PillTabs tab={tab} setTab={setTab} binCount={binItems.length} />
@@ -1706,6 +1822,7 @@ export default function ObjectivesPage() {
           <DelegatedContainer
             items={delegatedAll}
             onReopen={reopenObjective}
+            onPark={parkObjective}
             onEdit={setEditing}
           />
 

@@ -84,7 +84,7 @@ export default function useObjectives() {
 
   const reopenObjective = useCallback((id) => updateObjective(id, { state: 'active', released_kind: null, released_at: null }), [updateObjective])
 
-  const parkObjective = useCallback((id) => updateObjective(id, { state: 'parked' }), [updateObjective])
+  const parkObjective = useCallback((id) => updateObjective(id, { state: 'parked', released_kind: null, released_at: null }), [updateObjective])
   const reactivateObjective = useCallback((id) => updateObjective(id, { state: 'active' }), [updateObjective])
   const activateObjective = reactivateObjective // alias — eligible→active
   const deleteObjective = useCallback((id) => updateObjective(id, { deleted_at: new Date().toISOString() }), [updateObjective])
