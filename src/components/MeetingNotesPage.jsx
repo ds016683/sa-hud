@@ -147,7 +147,9 @@ function MeetingCard({ meeting }) {
           transition: 'transform 0.2s',
         }} />
         {(() => {
-          const ts = meeting.granola_created_at || meeting.meeting_date
+          // Prefer Outlook anchor when matched — Granola titles/timestamps are pre-recording placeholders.
+          const isMatched = meeting.reconciliation_status === 'recorded'
+          const ts = (isMatched && meeting.outlook_start) || meeting.granola_created_at || meeting.meeting_date
           if (!ts) return null
           const d = new Date(ts)
           if (isNaN(d)) return null
@@ -170,7 +172,7 @@ function MeetingCard({ meeting }) {
           )
         })()}
         <span style={{ fontWeight: 600, color: NAVY, flex: 1, fontSize: 13, lineHeight: 1.4 }}>
-          {meeting.title || '(untitled)'}
+          {(meeting.reconciliation_status === 'recorded' && meeting.outlook_subject) || meeting.title || '(untitled)'}
         </span>
         {meeting.meeting_type && meeting.meeting_type !== 'unknown' && (
           <span style={{
@@ -296,6 +298,7 @@ export default function MeetingNotesPage() {
         .from('granola_meetings')
         .select('*')
         .order('meeting_date', { ascending: false })
+        .order('granola_created_at', { ascending: false })
         .limit(1000)
       if (error) {
         console.error('granola_meetings fetch failed', error)
@@ -310,6 +313,7 @@ export default function MeetingNotesPage() {
     const q = query.toLowerCase()
     return meetings.filter(m =>
       (m.title || '').toLowerCase().includes(q) ||
+      (m.outlook_subject || '').toLowerCase().includes(q) ||
       (m.summary || '').toLowerCase().includes(q) ||
       (Array.isArray(m.attendees) ? m.attendees.join(' ') : '').toLowerCase().includes(q) ||
       (Array.isArray(m.accounts)  ? m.accounts.join(' ')  : '').toLowerCase().includes(q) ||
