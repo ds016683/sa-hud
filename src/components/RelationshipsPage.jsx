@@ -1,7 +1,8 @@
 import { useMemo, useState, useEffect } from 'react'
 import {
   Search, Pin, PinOff, EyeOff, Plus, X, Mail, Star, Tag,
-  ChevronRight, Users, ListPlus, Filter, Calendar, Building2
+  ChevronRight, Users, ListPlus, Filter, Calendar, Building2,
+  Phone, Smartphone, MapPin, Globe, Linkedin, Briefcase
 } from 'lucide-react'
 import useRelationships from '../hooks/useRelationships'
 
@@ -113,7 +114,10 @@ export default function RelationshipsPage() {
       out = out.filter(p =>
         (p.full_name || '').toLowerCase().includes(ql) ||
         (p.primary_email || '').toLowerCase().includes(ql) ||
-        (p.company || '').toLowerCase().includes(ql)
+        (p.company || '').toLowerCase().includes(ql) ||
+        (p.title || '').toLowerCase().includes(ql) ||
+        (p.notes || '').toLowerCase().includes(ql) ||
+        (p.address || '').toLowerCase().includes(ql)
       )
     }
     return out
@@ -327,7 +331,8 @@ export default function RelationshipsPage() {
                         </div>
                       </div>
                       <div style={{ fontSize: 12, color: TEXT_DIM, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        {p.company || '—'}
+                        <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.company || '—'}</div>
+                        {p.title && <div style={{ fontSize: 10, color: GRAY, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.title}</div>}
                       </div>
                       <div style={{ fontSize: 12, color: TEXT_DIM }}>{relativeDate(p.last_contact_at)}</div>
                       <div style={{ fontSize: 12, color: TEXT_DIM, display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -439,6 +444,54 @@ function DrillPanel({ person, onClose, onTogglePin, onHide, onAddTag, onRemoveTa
         </div>
       </div>
 
+      {/* Contact info — from signature parsing */}
+      {(person.title || person.phone || person.mobile_phone || person.address || person.website || person.linkedin_url) && (
+        <div style={{ ...S.panel, marginBottom: 14, padding: 12 }}>
+          <div style={{ fontSize: 10, fontWeight: 700, color: GRAY, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>
+            Contact info
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 12, color: TEXT_DIM }}>
+            {person.title && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <Briefcase size={12} color={GRAY} />
+                <span>{person.title}</span>
+              </div>
+            )}
+            {person.phone && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <Phone size={12} color={GRAY} />
+                <a href={`tel:${person.phone.replace(/[^\d+]/g, '')}`} style={{ color: TEXT_DIM, textDecoration: 'none' }}>{person.phone}</a>
+              </div>
+            )}
+            {person.mobile_phone && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <Smartphone size={12} color={GRAY} />
+                <a href={`tel:${person.mobile_phone.replace(/[^\d+]/g, '')}`} style={{ color: TEXT_DIM, textDecoration: 'none' }}>{person.mobile_phone}</a>
+                <span style={{ fontSize: 10, color: GRAY }}>(mobile)</span>
+              </div>
+            )}
+            {person.address && (
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6 }}>
+                <MapPin size={12} color={GRAY} style={{ marginTop: 2, flexShrink: 0 }} />
+                <span>{person.address}</span>
+              </div>
+            )}
+            {person.website && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <Globe size={12} color={GRAY} />
+                <a href={person.website} target="_blank" rel="noreferrer" style={{ color: BLUE, textDecoration: 'none' }}>{person.website.replace(/^https?:\/\//, '').replace(/\/$/, '')}</a>
+              </div>
+            )}
+            {person.linkedin_url && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <Linkedin size={12} color={GRAY} />
+                <a href={person.linkedin_url.startsWith('http') ? person.linkedin_url : `https://${person.linkedin_url}`} target="_blank" rel="noreferrer" style={{ color: BLUE, textDecoration: 'none' }}>LinkedIn</a>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Target lists */}
       <div style={{ marginBottom: 14 }}>
         <div style={{ fontSize: 10, fontWeight: 700, color: GRAY, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6 }}>
@@ -519,16 +572,23 @@ function DrillPanel({ person, onClose, onTogglePin, onHide, onAddTag, onRemoveTa
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxHeight: 400, overflowY: 'auto' }}>
             {interactions.map(i => (
-              <div key={i.id} style={{ padding: '8px 10px', borderRadius: 6, background: '#F7F9FC', display: 'flex', gap: 8, alignItems: 'flex-start' }}>
-                <span style={{ fontSize: 10, color: GRAY, fontWeight: 600, minWidth: 50, marginTop: 1 }}>
-                  {new Date(i.occurred_at).toLocaleDateString([], { month: 'short', day: 'numeric' })}
-                </span>
-                <span style={{ ...S.chip(i.direction === 'in' ? '#DBEAFE' : '#FEF3C7', i.direction === 'in' ? '#1D4ED8' : '#92400E'), padding: '1px 6px', fontSize: 9 }}>
-                  {i.direction === 'in' ? 'in' : 'out'}
-                </span>
-                <span style={{ fontSize: 12, color: TEXT_DIM, flex: 1, lineHeight: 1.3 }}>
-                  {i.subject || <em style={{ color: GRAY }}>(no subject)</em>}
-                </span>
+              <div key={i.id} style={{ padding: '8px 10px', borderRadius: 6, background: '#F7F9FC' }}>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+                  <span style={{ fontSize: 10, color: GRAY, fontWeight: 600, minWidth: 50, marginTop: 1 }}>
+                    {new Date(i.occurred_at).toLocaleDateString([], { month: 'short', day: 'numeric' })}
+                  </span>
+                  <span style={{ ...S.chip(i.direction === 'in' ? '#DBEAFE' : '#FEF3C7', i.direction === 'in' ? '#1D4ED8' : '#92400E'), padding: '1px 6px', fontSize: 9 }}>
+                    {i.direction === 'in' ? 'in' : 'out'}
+                  </span>
+                  <span style={{ fontSize: 12, color: NAVY, flex: 1, lineHeight: 1.3, fontWeight: 600 }}>
+                    {i.subject || <em style={{ color: GRAY, fontWeight: 400 }}>(no subject)</em>}
+                  </span>
+                </div>
+                {i.body_preview && (
+                  <div style={{ fontSize: 11, color: TEXT_DIM, marginTop: 4, marginLeft: 66, lineHeight: 1.4, fontStyle: 'italic', maxHeight: 48, overflow: 'hidden' }}>
+                    {i.body_preview.slice(0, 200)}{i.body_preview.length > 200 ? '…' : ''}
+                  </div>
+                )}
               </div>
             ))}
           </div>
