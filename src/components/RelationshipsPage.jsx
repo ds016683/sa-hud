@@ -2,7 +2,8 @@ import { useMemo, useState, useEffect } from 'react'
 import {
   Search, Pin, PinOff, EyeOff, Plus, X, Mail, Star, Tag,
   ChevronRight, Users, ListPlus, Filter, Calendar, Building2,
-  Phone, Smartphone, MapPin, Globe, Linkedin, Briefcase, Map, Plane
+  Phone, Smartphone, MapPin, Globe, Linkedin, Briefcase, Map, Plane,
+  Edit2, Save, Check
 } from 'lucide-react'
 import useRelationships from '../hooks/useRelationships'
 import MapView from './relationships/MapView'
@@ -30,6 +31,7 @@ const TAG_CATEGORIES = {
       { key: 'interest:general-contact', label: 'General Contact' },
       { key: 'interest:client', label: 'Client' },
       { key: 'interest:former-client', label: 'Former Client' },
+      { key: 'interest:new', label: 'New' },
     ],
   },
 }
@@ -116,6 +118,7 @@ export default function RelationshipsPage() {
     people, loading, allLists, allTags,
     togglePin, hidePerson, addToList, removeFromList,
     addTag, removeTag, saveNotes, fetchInteractions,
+    updatePerson, createPerson,
   } = useRelationships()
 
   // Filters
@@ -129,7 +132,7 @@ export default function RelationshipsPage() {
 
   // Selection (for bulk add to list)
   const [selectedIds, setSelectedIds] = useState(new Set())
-  const [drillId, setDrillId] = useState(null)
+  const [drillId, setDrillId] = useState(null)        // person.id | 'new' (add mode) | null
   const [newListPrompt, setNewListPrompt] = useState(false)
   const [newListName, setNewListName] = useState('')
 
@@ -200,8 +203,21 @@ export default function RelationshipsPage() {
             {activeTag && <> · tag <strong style={{ color: NAVY }}>{activeTag}</strong></>}
           </div>
         </div>
-        {/* View switcher */}
-        <div style={{ display: 'flex', gap: 4, background: 'white', border: `1px solid ${PANEL_BORDER}`, borderRadius: 10, padding: 3 }}>
+        {/* View switcher + Add button */}
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <button
+            onClick={() => setDrillId('new')}
+            style={{
+              background: GOLD, color: 'white', border: 'none', borderRadius: 8,
+              padding: '8px 14px', fontSize: 12, fontWeight: 700, cursor: 'pointer',
+              fontFamily: 'inherit', display: 'inline-flex', alignItems: 'center', gap: 5,
+              boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+            }}
+            title="Add a new contact manually"
+          >
+            <Plus size={14} /> Add Contact
+          </button>
+          <div style={{ display: 'flex', gap: 4, background: 'white', border: `1px solid ${PANEL_BORDER}`, borderRadius: 10, padding: 3 }}>
           {[
             { id: 'directory', label: 'Directory', icon: Users },
             { id: 'map', label: 'Map', icon: Map },
@@ -220,6 +236,7 @@ export default function RelationshipsPage() {
               <v.icon size={13} /> {v.label}
             </button>
           ))}
+        </div>
         </div>
       </div>
 
@@ -476,7 +493,8 @@ export default function RelationshipsPage() {
       {/* Drill-down panel */}
       {drillId && (
         <DrillPanel
-          person={people.find(p => p.id === drillId)}
+          person={drillId === 'new' ? null : people.find(p => p.id === drillId)}
+          isNew={drillId === 'new'}
           onClose={() => setDrillId(null)}
           onTogglePin={() => togglePin(drillId)}
           onHide={() => { hidePerson(drillId); setDrillId(null) }}
@@ -485,6 +503,12 @@ export default function RelationshipsPage() {
           onAddToList={(l) => addToList([drillId], l)}
           onRemoveFromList={(l) => removeFromList(drillId, l)}
           onSaveNotes={(n) => saveNotes(drillId, n)}
+          onUpdate={(patch) => updatePerson(drillId, patch)}
+          onCreate={async (payload) => {
+            const result = await createPerson(payload)
+            if (result?.data?.id) setDrillId(result.data.id)
+            return result
+          }}
           fetchInteractions={fetchInteractions}
           allLists={allLists}
         />
@@ -494,7 +518,7 @@ export default function RelationshipsPage() {
 }
 
 // ---------- Drill-down panel ----------
-function DrillPanel({ person, onClose, onTogglePin, onHide, onAddTag, onRemoveTag, onAddToList, onRemoveFromList, onSaveNotes, fetchInteractions, allLists }) {
+function DrillPanel({ person, isNew, onClose, onTogglePin, onHide, onAddTag, onRemoveTag, onAddToList, onRemoveFromList, onSaveNotes, onUpdate, onCreate, fetchInteractions, allLists }) {
   const [interactions, setInteractions] = useState([])
   const [loadingI, setLoadingI] = useState(true)
   const [newTag, setNewTag] = useState('')
@@ -502,23 +526,111 @@ function DrillPanel({ person, onClose, onTogglePin, onHide, onAddTag, onRemoveTa
   const [notes, setNotes] = useState(person?.notes || '')
   const [notesDirty, setNotesDirty] = useState(false)
 
+  // ----- Edit / Add mode state -----
+  const blankForm = {
+    full_name: '', primary_email: '', company: '', title: '',
+    phone: '', mobile_phone: '', address: '', city: '', state_code: '',
+    website: '', linkedin_url: '', notes: '',
+  }
+  const [editing, setEditing] = useState(!!isNew)
+  const [form, setForm] = useState(() => isNew ? blankForm : extractForm(person))
+  const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState(null)
+
+  function extractForm(p) {
+    if (!p) return blankForm
+    return {
+      full_name: p.full_name || '',
+      primary_email: p.primary_email || '',
+      company: p.company || '',
+      title: p.title || '',
+      phone: p.phone || '',
+      mobile_phone: p.mobile_phone || '',
+      address: p.address || '',
+      city: p.city || '',
+      state_code: p.state_code || '',
+      website: p.website || '',
+      linkedin_url: p.linkedin_url || '',
+      notes: p.notes || '',
+    }
+  }
+
   useEffect(() => {
+    if (isNew) {
+      setEditing(true)
+      setForm(blankForm)
+      setLoadingI(false)
+      setInteractions([])
+      return
+    }
     if (!person) return
     setLoadingI(true)
     setNotes(person.notes || '')
     setNotesDirty(false)
+    setForm(extractForm(person))
+    setEditing(false)
     fetchInteractions(person.id, 200).then(data => {
       setInteractions(data)
       setLoadingI(false)
     })
-  }, [person?.id, fetchInteractions])
+  }, [person?.id, isNew, fetchInteractions])
 
-  if (!person) return null
+  if (!person && !isNew) return null
 
   const handleSaveNotes = () => {
     onSaveNotes(notes)
     setNotesDirty(false)
   }
+
+  const updateField = (k, v) => setForm(f => ({ ...f, [k]: v }))
+
+  const handleSaveProfile = async () => {
+    setSaving(true)
+    setSaveError(null)
+    // Strip empties so we don't overwrite with blanks
+    const payload = {}
+    Object.keys(form).forEach(k => {
+      const v = (form[k] ?? '').toString().trim()
+      if (v) payload[k] = v
+    })
+    // full_name + primary_email required for new
+    if (isNew) {
+      if (!payload.full_name || !payload.primary_email) {
+        setSaveError('Name and email are required')
+        setSaving(false)
+        return
+      }
+      const res = await onCreate(payload)
+      if (res?.error) {
+        setSaveError(res.error.message || 'Create failed')
+      } else {
+        setEditing(false)
+      }
+    } else {
+      const res = await onUpdate(payload)
+      if (res?.error) {
+        setSaveError(res.error.message || 'Update failed')
+      } else {
+        setEditing(false)
+      }
+    }
+    setSaving(false)
+  }
+
+  const handleCancelEdit = () => {
+    if (isNew) {
+      onClose()
+    } else {
+      setForm(extractForm(person))
+      setEditing(false)
+      setSaveError(null)
+    }
+  }
+
+  const inputStyle = {
+    ...S.input, fontSize: 12, padding: '5px 8px', width: '100%',
+  }
+  const labelStyle = { fontSize: 10, color: GRAY, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 2, display: 'block' }
 
   return (
     <div
@@ -531,90 +643,188 @@ function DrillPanel({ person, onClose, onTogglePin, onHide, onAddTag, onRemoveTa
     >
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: 16 }}>
-        <div style={{ width: 48, height: 48, borderRadius: '50%', background: avatarColor(person.full_name), color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, fontWeight: 700, flexShrink: 0 }}>
-          {initials(person.full_name)}
+        <div style={{ width: 48, height: 48, borderRadius: '50%', background: avatarColor(form.full_name || 'New Contact'), color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, fontWeight: 700, flexShrink: 0 }}>
+          {isNew && !form.full_name ? <Plus size={20} /> : initials(form.full_name || person?.full_name)}
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 18, fontWeight: 700, color: NAVY, display: 'flex', alignItems: 'center', gap: 6 }}>
-            {person.full_name}
-            <button onClick={onTogglePin} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2 }} title={person.pinned ? 'Unpin' : 'Pin'}>
-              {person.pinned ? <Pin size={16} fill={GOLD} color={GOLD} /> : <PinOff size={16} color={GRAY} />}
-            </button>
-          </div>
-          <div style={{ fontSize: 12, color: GRAY }}>
-            <Mail size={11} style={{ verticalAlign: -1, marginRight: 4 }} />
-            {person.primary_email}
-          </div>
-          {person.company && <div style={{ fontSize: 12, color: TEXT_DIM, marginTop: 2 }}><Building2 size={11} style={{ verticalAlign: -1, marginRight: 4 }} />{person.company}</div>}
+          {editing ? (
+            <>
+              <input
+                value={form.full_name}
+                onChange={e => updateField('full_name', e.target.value)}
+                placeholder="Full name *"
+                style={{ ...inputStyle, fontSize: 16, fontWeight: 700, color: NAVY, padding: '4px 8px', marginBottom: 4 }}
+                autoFocus={isNew}
+              />
+              <input
+                value={form.primary_email}
+                onChange={e => updateField('primary_email', e.target.value)}
+                placeholder="Primary email *"
+                style={{ ...inputStyle, fontSize: 12 }}
+              />
+            </>
+          ) : (
+            <>
+              <div style={{ fontSize: 18, fontWeight: 700, color: NAVY, display: 'flex', alignItems: 'center', gap: 6 }}>
+                {person.full_name}
+                <button onClick={onTogglePin} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2 }} title={person.pinned ? 'Unpin' : 'Pin'}>
+                  {person.pinned ? <Pin size={16} fill={GOLD} color={GOLD} /> : <PinOff size={16} color={GRAY} />}
+                </button>
+                <button onClick={() => setEditing(true)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2, color: BLUE }} title="Edit profile">
+                  <Edit2 size={14} />
+                </button>
+              </div>
+              <div style={{ fontSize: 12, color: GRAY }}>
+                <Mail size={11} style={{ verticalAlign: -1, marginRight: 4 }} />
+                {person.primary_email}
+              </div>
+              {person.company && <div style={{ fontSize: 12, color: TEXT_DIM, marginTop: 2 }}><Building2 size={11} style={{ verticalAlign: -1, marginRight: 4 }} />{person.company}</div>}
+            </>
+          )}
         </div>
         <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: GRAY }}><X size={18} /></button>
       </div>
 
-      {/* Stats */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginBottom: 16 }}>
-        <div style={{ ...S.panel, padding: 10, textAlign: 'center' }}>
-          <div style={{ fontSize: 20, fontWeight: 700, color: NAVY }}>{person.contact_count || 0}</div>
-          <div style={{ fontSize: 10, color: GRAY, textTransform: 'uppercase', letterSpacing: '0.08em' }}>contacts</div>
+      {/* Save/Cancel bar in edit mode */}
+      {editing && (
+        <div style={{ display: 'flex', gap: 8, marginBottom: 14, alignItems: 'center' }}>
+          <button
+            onClick={handleSaveProfile}
+            disabled={saving}
+            style={{ background: NAVY, color: 'white', border: 'none', borderRadius: 8, padding: '8px 14px', fontSize: 12, fontWeight: 700, cursor: saving ? 'wait' : 'pointer', fontFamily: 'inherit', display: 'inline-flex', alignItems: 'center', gap: 5 }}
+          >
+            <Check size={14} /> {saving ? 'Saving…' : (isNew ? 'Create contact' : 'Save changes')}
+          </button>
+          <button
+            onClick={handleCancelEdit}
+            style={{ background: 'white', color: NAVY, border: `1px solid ${PANEL_BORDER}`, borderRadius: 8, padding: '8px 14px', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}
+          >
+            Cancel
+          </button>
+          {saveError && <span style={{ color: '#DC2626', fontSize: 11 }}>{saveError}</span>}
         </div>
-        <div style={{ ...S.panel, padding: 10, textAlign: 'center' }}>
-          <div style={{ fontSize: 14, fontWeight: 700, color: NAVY }}>{relativeDate(person.last_contact_at)}</div>
-          <div style={{ fontSize: 10, color: GRAY, textTransform: 'uppercase', letterSpacing: '0.08em' }}>last contact</div>
-        </div>
-        <div style={{ ...S.panel, padding: 10, textAlign: 'center' }}>
-          <div style={{ fontSize: 14, fontWeight: 700, color: NAVY }}>{strengthOf(person.contact_count)}</div>
-          <div style={{ fontSize: 10, color: GRAY, textTransform: 'uppercase', letterSpacing: '0.08em' }}>strength</div>
-        </div>
-      </div>
+      )}
 
-      {/* Contact info — from signature parsing */}
-      {(person.title || person.phone || person.mobile_phone || person.address || person.website || person.linkedin_url) && (
-        <div style={{ ...S.panel, marginBottom: 14, padding: 12 }}>
-          <div style={{ fontSize: 10, fontWeight: 700, color: GRAY, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>
-            Contact info
+      {/* Stats — only when viewing existing */}
+      {!isNew && !editing && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginBottom: 16 }}>
+          <div style={{ ...S.panel, padding: 10, textAlign: 'center' }}>
+            <div style={{ fontSize: 20, fontWeight: 700, color: NAVY }}>{person.contact_count || 0}</div>
+            <div style={{ fontSize: 10, color: GRAY, textTransform: 'uppercase', letterSpacing: '0.08em' }}>contacts</div>
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 12, color: TEXT_DIM }}>
-            {person.title && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <Briefcase size={12} color={GRAY} />
-                <span>{person.title}</span>
-              </div>
-            )}
-            {person.phone && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <Phone size={12} color={GRAY} />
-                <a href={`tel:${person.phone.replace(/[^\d+]/g, '')}`} style={{ color: TEXT_DIM, textDecoration: 'none' }}>{person.phone}</a>
-              </div>
-            )}
-            {person.mobile_phone && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <Smartphone size={12} color={GRAY} />
-                <a href={`tel:${person.mobile_phone.replace(/[^\d+]/g, '')}`} style={{ color: TEXT_DIM, textDecoration: 'none' }}>{person.mobile_phone}</a>
-                <span style={{ fontSize: 10, color: GRAY }}>(mobile)</span>
-              </div>
-            )}
-            {person.address && (
-              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6 }}>
-                <MapPin size={12} color={GRAY} style={{ marginTop: 2, flexShrink: 0 }} />
-                <span>{person.address}</span>
-              </div>
-            )}
-            {person.website && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <Globe size={12} color={GRAY} />
-                <a href={person.website} target="_blank" rel="noreferrer" style={{ color: BLUE, textDecoration: 'none' }}>{person.website.replace(/^https?:\/\//, '').replace(/\/$/, '')}</a>
-              </div>
-            )}
-            {person.linkedin_url && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <Linkedin size={12} color={GRAY} />
-                <a href={person.linkedin_url.startsWith('http') ? person.linkedin_url : `https://${person.linkedin_url}`} target="_blank" rel="noreferrer" style={{ color: BLUE, textDecoration: 'none' }}>LinkedIn</a>
-              </div>
-            )}
+          <div style={{ ...S.panel, padding: 10, textAlign: 'center' }}>
+            <div style={{ fontSize: 14, fontWeight: 700, color: NAVY }}>{relativeDate(person.last_contact_at)}</div>
+            <div style={{ fontSize: 10, color: GRAY, textTransform: 'uppercase', letterSpacing: '0.08em' }}>last contact</div>
+          </div>
+          <div style={{ ...S.panel, padding: 10, textAlign: 'center' }}>
+            <div style={{ fontSize: 14, fontWeight: 700, color: NAVY }}>{strengthOf(person.contact_count)}</div>
+            <div style={{ fontSize: 10, color: GRAY, textTransform: 'uppercase', letterSpacing: '0.08em' }}>strength</div>
           </div>
         </div>
       )}
 
+      {/* Contact info — edit form OR static display */}
+      {editing ? (
+        <div style={{ ...S.panel, marginBottom: 14, padding: 12 }}>
+          <div style={{ fontSize: 10, fontWeight: 700, color: GRAY, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>
+            Contact info
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            <div style={{ gridColumn: '1 / -1' }}>
+              <label style={labelStyle}>Company</label>
+              <input value={form.company} onChange={e => updateField('company', e.target.value)} style={inputStyle} />
+            </div>
+            <div style={{ gridColumn: '1 / -1' }}>
+              <label style={labelStyle}>Title</label>
+              <input value={form.title} onChange={e => updateField('title', e.target.value)} style={inputStyle} />
+            </div>
+            <div>
+              <label style={labelStyle}>Phone</label>
+              <input value={form.phone} onChange={e => updateField('phone', e.target.value)} style={inputStyle} />
+            </div>
+            <div>
+              <label style={labelStyle}>Mobile</label>
+              <input value={form.mobile_phone} onChange={e => updateField('mobile_phone', e.target.value)} style={inputStyle} />
+            </div>
+            <div style={{ gridColumn: '1 / -1' }}>
+              <label style={labelStyle}>Address</label>
+              <input value={form.address} onChange={e => updateField('address', e.target.value)} style={inputStyle} />
+            </div>
+            <div>
+              <label style={labelStyle}>City</label>
+              <input value={form.city} onChange={e => updateField('city', e.target.value)} style={inputStyle} />
+            </div>
+            <div>
+              <label style={labelStyle}>State (2-letter)</label>
+              <input value={form.state_code} onChange={e => updateField('state_code', e.target.value.toUpperCase().slice(0,2))} style={inputStyle} maxLength={2} />
+            </div>
+            <div style={{ gridColumn: '1 / -1' }}>
+              <label style={labelStyle}>Website</label>
+              <input value={form.website} onChange={e => updateField('website', e.target.value)} placeholder="https://…" style={inputStyle} />
+            </div>
+            <div style={{ gridColumn: '1 / -1' }}>
+              <label style={labelStyle}>LinkedIn URL</label>
+              <input value={form.linkedin_url} onChange={e => updateField('linkedin_url', e.target.value)} placeholder="https://linkedin.com/in/…" style={inputStyle} />
+            </div>
+            {isNew && (
+              <div style={{ gridColumn: '1 / -1' }}>
+                <label style={labelStyle}>Notes</label>
+                <textarea value={form.notes} onChange={e => updateField('notes', e.target.value)} rows={3} style={{ ...inputStyle, resize: 'vertical', fontFamily: 'inherit' }} />
+              </div>
+            )}
+          </div>
+        </div>
+      ) : (
+        (person.title || person.phone || person.mobile_phone || person.address || person.website || person.linkedin_url) && (
+          <div style={{ ...S.panel, marginBottom: 14, padding: 12 }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: GRAY, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>
+              Contact info
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 12, color: TEXT_DIM }}>
+              {person.title && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <Briefcase size={12} color={GRAY} />
+                  <span>{person.title}</span>
+                </div>
+              )}
+              {person.phone && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <Phone size={12} color={GRAY} />
+                  <a href={`tel:${person.phone.replace(/[^\d+]/g, '')}`} style={{ color: TEXT_DIM, textDecoration: 'none' }}>{person.phone}</a>
+                </div>
+              )}
+              {person.mobile_phone && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <Smartphone size={12} color={GRAY} />
+                  <a href={`tel:${person.mobile_phone.replace(/[^\d+]/g, '')}`} style={{ color: TEXT_DIM, textDecoration: 'none' }}>{person.mobile_phone}</a>
+                  <span style={{ fontSize: 10, color: GRAY }}>(mobile)</span>
+                </div>
+              )}
+              {person.address && (
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6 }}>
+                  <MapPin size={12} color={GRAY} style={{ marginTop: 2, flexShrink: 0 }} />
+                  <span>{person.address}</span>
+                </div>
+              )}
+              {person.website && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <Globe size={12} color={GRAY} />
+                  <a href={person.website} target="_blank" rel="noreferrer" style={{ color: BLUE, textDecoration: 'none' }}>{person.website.replace(/^https?:\/\//, '').replace(/\/$/, '')}</a>
+                </div>
+              )}
+              {person.linkedin_url && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <Linkedin size={12} color={GRAY} />
+                  <a href={person.linkedin_url.startsWith('http') ? person.linkedin_url : `https://${person.linkedin_url}`} target="_blank" rel="noreferrer" style={{ color: BLUE, textDecoration: 'none' }}>LinkedIn</a>
+                </div>
+              )}
+            </div>
+          </div>
+        )
+      )}
+
       {/* Target lists */}
+      {!isNew && <>
       <div style={{ marginBottom: 14 }}>
         <div style={{ fontSize: 10, fontWeight: 700, color: GRAY, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6 }}>
           On target lists
@@ -762,6 +972,7 @@ function DrillPanel({ person, onClose, onTogglePin, onHide, onAddTag, onRemoveTa
           <EyeOff size={12} /> Hide from list
         </button>
       </div>
+      </>}
     </div>
   )
 }

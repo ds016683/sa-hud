@@ -93,6 +93,36 @@ export default function useRelationships() {
 
   const saveNotes = useCallback((id, notes) => updatePerson(id, { notes }), [updatePerson])
 
+  // ----- Create a new person (manual add) -----
+  const createPerson = useCallback(async (payload) => {
+    // payload: { full_name, primary_email, company, title, ... tags?, target_lists? }
+    const now = new Date().toISOString()
+    const row = {
+      ...payload,
+      primary_email: (payload.primary_email || '').trim().toLowerCase() || null,
+      source: payload.source || ['manual'],
+      tags: payload.tags || ['interest:new', 'type:personal'],
+      contact_count: 0,
+      created_at: now,
+      updated_at: now,
+    }
+    // Drop nulls/empties for cleanliness
+    for (const k of Object.keys(row)) {
+      if (row[k] === '' || row[k] === undefined) delete row[k]
+    }
+    const { data, error: err } = await supabase
+      .from('relationships')
+      .insert(row)
+      .select()
+      .single()
+    if (err) {
+      console.error('createPerson:', err)
+      return { error: err }
+    }
+    setPeople(prev => [...prev, data])
+    return { data }
+  }, [])
+
   // ----- Fetch interactions for one person -----
   const fetchInteractions = useCallback(async (relationshipId, limit = 100) => {
     const { data, error: err } = await supabase
@@ -126,6 +156,7 @@ export default function useRelationships() {
     addToList, removeFromList,
     addTag, removeTag,
     saveNotes,
+    createPerson,
     fetchInteractions,
     allLists, allTags,
   }
