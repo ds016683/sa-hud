@@ -2,9 +2,45 @@ import { useMemo, useState, useEffect } from 'react'
 import {
   Search, Pin, PinOff, EyeOff, Plus, X, Mail, Star, Tag,
   ChevronRight, Users, ListPlus, Filter, Calendar, Building2,
-  Phone, Smartphone, MapPin, Globe, Linkedin, Briefcase
+  Phone, Smartphone, MapPin, Globe, Linkedin, Briefcase, Map, Plane
 } from 'lucide-react'
 import useRelationships from '../hooks/useRelationships'
+import MapView from './relationships/MapView'
+import TripPlannerView from './relationships/TripPlannerView'
+
+// Tag taxonomy
+const TAG_CATEGORIES = {
+  type: {
+    label: 'Type',
+    color: '#7C3AED',
+    bg: '#F3E8FF',
+    options: [
+      { key: 'type:personal', label: 'Personal' },
+      { key: 'type:thirdhorizon', label: 'Third Horizon' },
+    ],
+  },
+  interest: {
+    label: 'Interest',
+    color: '#0369A1',
+    bg: '#DBEAFE',
+    options: [
+      { key: 'interest:intelligence', label: 'Intelligence' },
+      { key: 'interest:potential-business', label: 'Potential Business' },
+      { key: 'interest:potential-partner', label: 'Potential Partner' },
+      { key: 'interest:general-contact', label: 'General Contact' },
+      { key: 'interest:client', label: 'Client' },
+      { key: 'interest:former-client', label: 'Former Client' },
+    ],
+  },
+}
+
+function tagMeta(tag) {
+  for (const [cat, info] of Object.entries(TAG_CATEGORIES)) {
+    const opt = info.options.find(o => o.key === tag)
+    if (opt) return { category: cat, label: opt.label, color: info.color, bg: info.bg }
+  }
+  return { category: 'custom', label: tag, color: '#565656', bg: '#F1F5F9' }
+}
 
 const NAVY = '#002C77'
 const BLUE = '#009DE0'
@@ -83,6 +119,7 @@ export default function RelationshipsPage() {
   } = useRelationships()
 
   // Filters
+  const [view, setView] = useState('directory')  // 'directory' | 'map' | 'trips'
   const [q, setQ] = useState('')
   const [strengthFilter, setStrengthFilter] = useState(null)   // 'strong' | 'known' | 'casual' | null
   const [staleFilter, setStaleFilter] = useState(null)          // 30 | 90 | 365 | null
@@ -154,16 +191,51 @@ export default function RelationshipsPage() {
   return (
     <div style={{ ...S.page, background: PAGE_BG }}>
       {/* Header */}
-      <div style={{ marginBottom: 16 }}>
-        <h1 style={S.h1}>Relationships</h1>
-        <div style={S.sub}>
-          {people.length} people · {filtered.length} shown
-          {activeList && <> · list <strong style={{ color: NAVY }}>{activeList}</strong></>}
-          {activeTag && <> · tag <strong style={{ color: NAVY }}>{activeTag}</strong></>}
+      <div style={{ marginBottom: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
+        <div>
+          <h1 style={S.h1}>Relationships</h1>
+          <div style={S.sub}>
+            {people.length} people · {filtered.length} shown
+            {activeList && <> · list <strong style={{ color: NAVY }}>{activeList}</strong></>}
+            {activeTag && <> · tag <strong style={{ color: NAVY }}>{activeTag}</strong></>}
+          </div>
+        </div>
+        {/* View switcher */}
+        <div style={{ display: 'flex', gap: 4, background: 'white', border: `1px solid ${PANEL_BORDER}`, borderRadius: 10, padding: 3 }}>
+          {[
+            { id: 'directory', label: 'Directory', icon: Users },
+            { id: 'map', label: 'Map', icon: Map },
+            { id: 'trips', label: 'Trips', icon: Plane },
+          ].map(v => (
+            <button key={v.id}
+              onClick={() => setView(v.id)}
+              style={{
+                background: view === v.id ? NAVY : 'transparent',
+                color: view === v.id ? 'white' : NAVY,
+                border: 'none', borderRadius: 8, padding: '6px 12px',
+                fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
+                display: 'inline-flex', alignItems: 'center', gap: 5,
+              }}
+            >
+              <v.icon size={13} /> {v.label}
+            </button>
+          ))}
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '220px 1fr', gap: 14 }}>
+      {/* Map view */}
+      {view === 'map' && (
+        <MapView people={people} onSelectPerson={setDrillId} />
+      )}
+
+      {/* Trip planner view */}
+      {view === 'trips' && (
+        <TripPlannerView people={people} onSelectPerson={setDrillId} />
+      )}
+
+      {/* Directory view */}
+      {view === 'directory' && (
+        <div style={{ display: 'grid', gridTemplateColumns: '220px 1fr', gap: 14 }}>
         {/* LEFT: Lists + Tags sidebar */}
         <aside>
           <div style={{ ...S.panel, marginBottom: 10 }}>
@@ -185,20 +257,69 @@ export default function RelationshipsPage() {
             </div>
           </div>
 
-          {allTags.length > 0 && (
-            <div style={{ ...S.panel, marginBottom: 10 }}>
-              <div style={{ fontSize: 10, fontWeight: 700, color: GRAY, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>
-                Tags
+          {/* Categorized tags */}
+          {Object.entries(TAG_CATEGORIES).map(([cat, info]) => {
+            // Count people per tag for this category
+            const counts = {}
+            for (const p of people) {
+              for (const t of (p.tags || [])) {
+                if (t.startsWith(cat + ':')) counts[t] = (counts[t] || 0) + 1
+              }
+            }
+            const visibleOptions = info.options.filter(o => counts[o.key] > 0 || allTags.includes(o.key))
+            if (visibleOptions.length === 0) return null
+            return (
+              <div key={cat} style={{ ...S.panel, marginBottom: 10 }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: info.color, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>
+                  {info.label}
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  {visibleOptions.map(opt => {
+                    const active = activeTag === opt.key
+                    const count = counts[opt.key] || 0
+                    return (
+                      <button key={opt.key}
+                        onClick={() => setActiveTag(active ? null : opt.key)}
+                        style={{
+                          background: active ? info.color : info.bg,
+                          color: active ? 'white' : info.color,
+                          border: `1px solid ${active ? info.color : info.color + '44'}`,
+                          borderRadius: 8, padding: '5px 10px',
+                          fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
+                          textAlign: 'left',
+                          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                        }}
+                      >
+                        <span>{opt.label}</span>
+                        <span style={{ fontSize: 10, opacity: 0.8, marginLeft: 6 }}>{count}</span>
+                      </button>
+                    )
+                  })}
+                </div>
               </div>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-                {allTags.map(t => (
-                  <button key={t} style={S.pillBtn(activeTag === t)} onClick={() => setActiveTag(activeTag === t ? null : t)}>
-                    #{t}
-                  </button>
-                ))}
+            )
+          })}
+
+          {/* Custom tags (anything not in TAG_CATEGORIES) */}
+          {(() => {
+            const known = new Set(Object.values(TAG_CATEGORIES).flatMap(c => c.options.map(o => o.key)))
+            const custom = allTags.filter(t => !known.has(t))
+            if (custom.length === 0) return null
+            return (
+              <div style={{ ...S.panel, marginBottom: 10 }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: GRAY, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>
+                  Custom tags
+                </div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                  {custom.map(t => (
+                    <button key={t} style={S.pillBtn(activeTag === t)} onClick={() => setActiveTag(activeTag === t ? null : t)}>
+                      #{t}
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>
-          )}
+            )
+          })()}
 
           <div style={S.panel}>
             <div style={{ fontSize: 10, fontWeight: 700, color: GRAY, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>
@@ -349,7 +470,8 @@ export default function RelationshipsPage() {
             )}
           </div>
         </main>
-      </div>
+        </div>
+      )}
 
       {/* Drill-down panel */}
       {drillId && (
@@ -523,20 +645,59 @@ function DrillPanel({ person, onClose, onTogglePin, onHide, onAddTag, onRemoveTa
         <div style={{ fontSize: 10, fontWeight: 700, color: GRAY, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6 }}>
           Tags
         </div>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, alignItems: 'center' }}>
-          {(person.tags || []).map(t => (
-            <span key={t} style={{ ...S.chip('#F1F5F9', TEXT_DIM), padding: '4px 10px' }}>
-              #{t}
-              <button onClick={() => onRemoveTag(t)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: TEXT_DIM, marginLeft: 4 }}><X size={10} /></button>
-            </span>
-          ))}
-          <input
-            placeholder="+ tag"
-            value={newTag}
-            onChange={e => setNewTag(e.target.value)}
-            onKeyDown={e => { if (e.key === 'Enter' && newTag.trim()) { onAddTag(newTag.trim()); setNewTag('') } }}
-            style={{ ...S.input, fontSize: 11, padding: '3px 8px', width: 110 }}
-          />
+
+        {/* Category quick-set */}
+        {Object.entries(TAG_CATEGORIES).map(([cat, info]) => {
+          const currentInCat = (person.tags || []).find(t => t.startsWith(cat + ':'))
+          return (
+            <div key={cat} style={{ marginBottom: 8 }}>
+              <div style={{ fontSize: 9, color: info.color, fontWeight: 700, marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{info.label}</div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                {info.options.map(opt => {
+                  const active = currentInCat === opt.key
+                  return (
+                    <button key={opt.key}
+                      onClick={() => {
+                        // Replace any tag in this category with this one
+                        if (currentInCat && currentInCat !== opt.key) onRemoveTag(currentInCat)
+                        if (active) onRemoveTag(opt.key)
+                        else onAddTag(opt.key)
+                      }}
+                      style={{
+                        background: active ? info.color : 'white',
+                        color: active ? 'white' : info.color,
+                        border: `1px solid ${info.color}66`,
+                        borderRadius: 8, padding: '4px 10px',
+                        fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
+                      }}
+                    >
+                      {opt.label}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          )
+        })}
+
+        {/* Custom tags */}
+        <div style={{ marginTop: 8 }}>
+          <div style={{ fontSize: 9, color: GRAY, fontWeight: 700, marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Custom</div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, alignItems: 'center' }}>
+            {(person.tags || []).filter(t => !t.includes(':')).map(t => (
+              <span key={t} style={{ ...S.chip('#F1F5F9', TEXT_DIM), padding: '4px 10px' }}>
+                #{t}
+                <button onClick={() => onRemoveTag(t)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: TEXT_DIM, marginLeft: 4 }}><X size={10} /></button>
+              </span>
+            ))}
+            <input
+              placeholder="+ tag"
+              value={newTag}
+              onChange={e => setNewTag(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter' && newTag.trim()) { onAddTag(newTag.trim()); setNewTag('') } }}
+              style={{ ...S.input, fontSize: 11, padding: '3px 8px', width: 110 }}
+            />
+          </div>
         </div>
       </div>
 
