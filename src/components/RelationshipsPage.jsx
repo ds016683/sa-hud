@@ -1,233 +1,546 @@
-import { useMemo, useState } from 'react'
-import { Plus, Check, ArrowUpRight, Star, Users, Send, X } from 'lucide-react'
-import useObjectives from '../hooks/useObjectives'
+import { useMemo, useState, useEffect } from 'react'
+import {
+  Search, Pin, PinOff, EyeOff, Plus, X, Mail, Star, Tag,
+  ChevronRight, Users, ListPlus, Filter, Calendar, Building2
+} from 'lucide-react'
+import useRelationships from '../hooks/useRelationships'
 
 const NAVY = '#002C77'
 const BLUE = '#009DE0'
+const GOLD = '#D4A106'
 const GRAY = '#8096B2'
 const TEXT_DIM = '#565656'
 const PANEL_BORDER = '#E2E8F0'
 const PAGE_BG = '#F7F9FC'
-const GOLD = '#B45309'
-
-const sizeFor = (w) => w >= 9 ? 'Boulder' : w >= 4 ? 'Stone' : 'Pebble'
+const MINT = '#F0FDF4'
+const MINT_BORDER = '#86EFAC'
 
 const S = {
-  page: { maxWidth: 960, margin: '0 auto', padding: '20px 16px 80px', fontFamily: 'Arial, Helvetica, sans-serif', color: NAVY },
+  page: { maxWidth: 1200, margin: '0 auto', padding: '20px 16px 80px', fontFamily: 'Arial, Helvetica, sans-serif', color: NAVY },
   h1: { fontSize: 22, fontWeight: 700, margin: 0, color: NAVY },
   sub: { fontSize: 12, color: GRAY, margin: '2px 0 0' },
-  panel: { background: 'white', border: `1px solid ${PANEL_BORDER}`, borderRadius: 12, padding: 14, marginBottom: 12, boxShadow: '0 1px 2px rgba(0,0,0,0.04)' },
-  card: { background: 'white', border: `1px solid ${PANEL_BORDER}`, borderRadius: 10, padding: 14, transition: 'all 0.15s', cursor: 'pointer' },
-  chip: (bg, fg) => ({ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 9999, background: bg, color: fg, textTransform: 'uppercase', letterSpacing: '0.05em' }),
-  input: { width: '100%', padding: '10px 12px', borderRadius: 8, border: `1px solid ${PANEL_BORDER}`, fontSize: 14, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' },
-  btnGhost: { background: 'white', color: NAVY, border: `1px solid ${PANEL_BORDER}`, borderRadius: 8, padding: '6px 12px', fontSize: 12, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit' },
+  panel: { background: 'white', border: `1px solid ${PANEL_BORDER}`, borderRadius: 12, padding: 14, boxShadow: '0 1px 2px rgba(0,0,0,0.04)' },
+  input: { padding: '8px 12px', borderRadius: 8, border: `1px solid ${PANEL_BORDER}`, fontSize: 13, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' },
+  btnGhost: { background: 'white', color: NAVY, border: `1px solid ${PANEL_BORDER}`, borderRadius: 8, padding: '6px 10px', fontSize: 12, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit', display: 'inline-flex', alignItems: 'center', gap: 4 },
   btnPrimary: { background: NAVY, color: 'white', border: 'none', borderRadius: 8, padding: '8px 14px', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' },
-  btnDone: { background: '#0F766E', color: 'white', border: 'none', borderRadius: 6, padding: '6px 10px', fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', display: 'inline-flex', alignItems: 'center', gap: 4 },
-  btnForeman: { background: '#7C3AED', color: 'white', border: 'none', borderRadius: 6, padding: '6px 10px', fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', display: 'inline-flex', alignItems: 'center', gap: 4 },
+  chip: (bg, fg, border) => ({ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 9999, background: bg, color: fg, border: border ? `1px solid ${border}` : 'none', textTransform: 'uppercase', letterSpacing: '0.05em' }),
+  pillBtn: (active) => ({
+    background: active ? NAVY : 'white',
+    color: active ? 'white' : NAVY,
+    border: `1px solid ${active ? NAVY : PANEL_BORDER}`,
+    borderRadius: 9999,
+    padding: '4px 10px',
+    fontSize: 11,
+    fontWeight: 600,
+    cursor: 'pointer',
+    fontFamily: 'inherit',
+  }),
 }
 
+// ---------- helpers ----------
 function avatarColor(name) {
   const colors = ['#0EA5E9', '#7C3AED', '#DC2626', '#0F766E', '#D97706', '#0369A1', '#BE185D', '#15803D']
   let h = 0
-  for (const c of name) h = (h * 31 + c.charCodeAt(0)) >>> 0
+  for (const c of (name || '')) h = (h * 31 + c.charCodeAt(0)) >>> 0
   return colors[h % colors.length]
 }
 
 function initials(name) {
-  const parts = name.trim().split(/\s+/)
+  const parts = (name || '?').trim().split(/\s+/)
   return (parts[0]?.[0] || '?').toUpperCase() + (parts[1]?.[0] || '').toUpperCase()
 }
 
+function daysAgo(iso) {
+  if (!iso) return null
+  const ms = Date.now() - new Date(iso).getTime()
+  return Math.floor(ms / 86400000)
+}
+
+function strengthOf(contactCount) {
+  if (!contactCount || contactCount < 3) return 'casual'
+  if (contactCount < 15) return 'known'
+  return 'strong'
+}
+
+function relativeDate(iso) {
+  if (!iso) return '—'
+  const d = daysAgo(iso)
+  if (d === 0) return 'today'
+  if (d === 1) return 'yesterday'
+  if (d < 7) return `${d}d ago`
+  if (d < 30) return `${Math.floor(d / 7)}w ago`
+  if (d < 365) return `${Math.floor(d / 30)}mo ago`
+  return `${Math.floor(d / 365)}y ago`
+}
+
+// ---------- main ----------
 export default function RelationshipsPage() {
-  const { loading, objectives, addObjective, releaseObjective, parkObjective, updateObjective } = useObjectives()
-  const [selected, setSelected] = useState(null)
-  const [addOpen, setAddOpen] = useState(false)
-  const [newTitle, setNewTitle] = useState('')
+  const {
+    people, loading, allLists, allTags,
+    togglePin, hidePerson, addToList, removeFromList,
+    addTag, removeTag, saveNotes, fetchInteractions,
+  } = useRelationships()
 
-  // Group objectives by `who` (only active + emergency for the summary, all for the drill-down)
-  const groups = useMemo(() => {
-    const map = new Map()
-    for (const o of objectives) {
-      if (!o.who) continue
-      if (!map.has(o.who)) map.set(o.who, { name: o.who, active: [], parked: [], released: [], boulders: 0 })
-      const bucket = map.get(o.who)
-      if (o.state === 'active') {
-        bucket.active.push(o)
-        if (o.weight >= 9) bucket.boulders++
-      } else if (o.state === 'parked') bucket.parked.push(o)
-      else if (o.state === 'released' || o.state === 'foreman') bucket.released.push(o)
+  // Filters
+  const [q, setQ] = useState('')
+  const [strengthFilter, setStrengthFilter] = useState(null)   // 'strong' | 'known' | 'casual' | null
+  const [staleFilter, setStaleFilter] = useState(null)          // 30 | 90 | 365 | null
+  const [activeList, setActiveList] = useState(null)            // string | null
+  const [activeTag, setActiveTag] = useState(null)              // string | null
+  const [pinnedOnly, setPinnedOnly] = useState(false)
+
+  // Selection (for bulk add to list)
+  const [selectedIds, setSelectedIds] = useState(new Set())
+  const [drillId, setDrillId] = useState(null)
+  const [newListPrompt, setNewListPrompt] = useState(false)
+  const [newListName, setNewListName] = useState('')
+
+  // Filter pipeline
+  const filtered = useMemo(() => {
+    let out = people
+    if (pinnedOnly) out = out.filter(p => p.pinned)
+    if (activeList) out = out.filter(p => (p.target_lists || []).includes(activeList))
+    if (activeTag) out = out.filter(p => (p.tags || []).includes(activeTag))
+    if (strengthFilter) out = out.filter(p => strengthOf(p.contact_count) === strengthFilter)
+    if (staleFilter) {
+      out = out.filter(p => {
+        const d = daysAgo(p.last_contact_at)
+        return d !== null && d >= staleFilter
+      })
     }
-    return [...map.values()].sort((a, b) => {
-      // anchor-attached first, then active count desc, then alpha
-      const aAnchor = a.active.some(o => o.is_anchor)
-      const bAnchor = b.active.some(o => o.is_anchor)
-      if (aAnchor !== bAnchor) return aAnchor ? -1 : 1
-      if (b.active.length !== a.active.length) return b.active.length - a.active.length
-      return a.name.localeCompare(b.name)
-    })
-  }, [objectives])
+    if (q.trim()) {
+      const ql = q.trim().toLowerCase()
+      out = out.filter(p =>
+        (p.full_name || '').toLowerCase().includes(ql) ||
+        (p.primary_email || '').toLowerCase().includes(ql) ||
+        (p.company || '').toLowerCase().includes(ql)
+      )
+    }
+    return out
+  }, [people, q, strengthFilter, staleFilter, activeList, activeTag, pinnedOnly])
 
-  const unassigned = useMemo(() => objectives.filter(o => o.state === 'active' && !o.who), [objectives])
+  // Pinned always sort first within filtered set
+  const ordered = useMemo(() => {
+    return [...filtered].sort((a, b) => {
+      if (!!b.pinned !== !!a.pinned) return b.pinned ? 1 : -1
+      return (b.contact_count || 0) - (a.contact_count || 0)
+    })
+  }, [filtered])
+
+  const toggleSelect = (id) => {
+    setSelectedIds(prev => {
+      const n = new Set(prev)
+      if (n.has(id)) n.delete(id); else n.add(id)
+      return n
+    })
+  }
+
+  const clearSelection = () => setSelectedIds(new Set())
+
+  const submitNewList = async () => {
+    if (!newListName.trim() || selectedIds.size === 0) return
+    await addToList([...selectedIds], newListName)
+    setNewListName('')
+    setNewListPrompt(false)
+    clearSelection()
+  }
 
   if (loading) return <div style={{ ...S.page, color: GRAY, fontSize: 13 }}>Loading...</div>
 
-  const submitNew = async () => {
-    if (!newTitle.trim() || !selected) return
-    await addObjective({ title: newTitle.trim(), who: selected.name, effort: 2, importance: 2 })
-    setNewTitle('')
-    setAddOpen(false)
+  return (
+    <div style={{ ...S.page, background: PAGE_BG }}>
+      {/* Header */}
+      <div style={{ marginBottom: 16 }}>
+        <h1 style={S.h1}>Relationships</h1>
+        <div style={S.sub}>
+          {people.length} people · {filtered.length} shown
+          {activeList && <> · list <strong style={{ color: NAVY }}>{activeList}</strong></>}
+          {activeTag && <> · tag <strong style={{ color: NAVY }}>{activeTag}</strong></>}
+        </div>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: '220px 1fr', gap: 14 }}>
+        {/* LEFT: Lists + Tags sidebar */}
+        <aside>
+          <div style={{ ...S.panel, marginBottom: 10 }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: GRAY, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>
+              Target lists
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <button style={S.pillBtn(activeList === null)} onClick={() => setActiveList(null)}>
+                <Users size={11} style={{ marginRight: 4, marginBottom: -1 }} /> All people
+              </button>
+              {allLists.length === 0 && (
+                <div style={{ fontSize: 11, color: GRAY, padding: '6px 0' }}>No lists yet. Select people and create one.</div>
+              )}
+              {allLists.map(l => (
+                <button key={l} style={S.pillBtn(activeList === l)} onClick={() => setActiveList(activeList === l ? null : l)}>
+                  📋 {l}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {allTags.length > 0 && (
+            <div style={{ ...S.panel, marginBottom: 10 }}>
+              <div style={{ fontSize: 10, fontWeight: 700, color: GRAY, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>
+                Tags
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                {allTags.map(t => (
+                  <button key={t} style={S.pillBtn(activeTag === t)} onClick={() => setActiveTag(activeTag === t ? null : t)}>
+                    #{t}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div style={S.panel}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: GRAY, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>
+              Quick filters
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <button style={S.pillBtn(pinnedOnly)} onClick={() => setPinnedOnly(!pinnedOnly)}>📌 Pinned only</button>
+              <div style={{ fontSize: 10, color: GRAY, marginTop: 4, marginBottom: 2 }}>Strength</div>
+              <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                {['strong', 'known', 'casual'].map(s => (
+                  <button key={s} style={S.pillBtn(strengthFilter === s)} onClick={() => setStrengthFilter(strengthFilter === s ? null : s)}>{s}</button>
+                ))}
+              </div>
+              <div style={{ fontSize: 10, color: GRAY, marginTop: 6, marginBottom: 2 }}>Last contact</div>
+              <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                {[
+                  { label: '30d+', v: 30 },
+                  { label: '90d+', v: 90 },
+                  { label: '1y+', v: 365 },
+                ].map(o => (
+                  <button key={o.v} style={S.pillBtn(staleFilter === o.v)} onClick={() => setStaleFilter(staleFilter === o.v ? null : o.v)}>{o.label}</button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </aside>
+
+        {/* RIGHT: Search + table */}
+        <main>
+          <div style={{ ...S.panel, marginBottom: 10, display: 'flex', gap: 8, alignItems: 'center' }}>
+            <Search size={16} color={GRAY} />
+            <input
+              autoFocus
+              placeholder="Search name, email, company…"
+              value={q}
+              onChange={e => setQ(e.target.value)}
+              style={{ ...S.input, flex: 1, border: 'none', padding: '6px 0' }}
+            />
+            {q && <button onClick={() => setQ('')} style={{ background: 'none', border: 'none', color: GRAY, cursor: 'pointer' }}><X size={14} /></button>}
+          </div>
+
+          {/* Bulk action bar */}
+          {selectedIds.size > 0 && (
+            <div style={{ ...S.panel, marginBottom: 10, background: '#FEF9E7', borderColor: GOLD, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+              <div style={{ fontSize: 12, fontWeight: 600, color: NAVY }}>
+                {selectedIds.size} selected
+              </div>
+              {!newListPrompt && (
+                <>
+                  <button style={S.btnGhost} onClick={() => setNewListPrompt(true)}>
+                    <ListPlus size={12} /> Add to list…
+                  </button>
+                  <button style={S.btnGhost} onClick={clearSelection}>
+                    <X size={12} /> Clear
+                  </button>
+                </>
+              )}
+              {newListPrompt && (
+                <div style={{ display: 'flex', gap: 6, alignItems: 'center', flex: 1 }}>
+                  <input
+                    autoFocus
+                    placeholder="List name (e.g. nyc-may or pe-outreach)"
+                    value={newListName}
+                    onChange={e => setNewListName(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && submitNewList()}
+                    list="existing-lists"
+                    style={{ ...S.input, flex: 1 }}
+                  />
+                  <datalist id="existing-lists">
+                    {allLists.map(l => <option key={l} value={l} />)}
+                  </datalist>
+                  <button style={S.btnPrimary} onClick={submitNewList}>Add</button>
+                  <button style={S.btnGhost} onClick={() => { setNewListPrompt(false); setNewListName('') }}>Cancel</button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Table */}
+          <div style={{ ...S.panel, padding: 0, overflow: 'hidden' }}>
+            {ordered.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '40px 20px', color: GRAY, fontSize: 13 }}>
+                <Users size={28} style={{ marginBottom: 8, opacity: 0.5 }} />
+                <div>No matches.</div>
+              </div>
+            ) : (
+              <div>
+                {/* Header row */}
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: '32px 1fr 180px 100px 100px 32px',
+                  gap: 8, padding: '10px 14px', borderBottom: `1px solid ${PANEL_BORDER}`,
+                  fontSize: 10, fontWeight: 700, color: GRAY, textTransform: 'uppercase', letterSpacing: '0.08em'
+                }}>
+                  <div></div>
+                  <div>Name</div>
+                  <div>Company</div>
+                  <div>Last contact</div>
+                  <div>Contacts</div>
+                  <div></div>
+                </div>
+                {ordered.map(p => {
+                  const isSel = selectedIds.has(p.id)
+                  const s = strengthOf(p.contact_count)
+                  return (
+                    <div key={p.id}
+                      style={{
+                        display: 'grid',
+                        gridTemplateColumns: '32px 1fr 180px 100px 100px 32px',
+                        gap: 8, padding: '10px 14px', borderBottom: `1px solid ${PANEL_BORDER}`,
+                        background: isSel ? MINT : 'white',
+                        cursor: 'pointer',
+                        alignItems: 'center',
+                      }}
+                      onClick={() => setDrillId(p.id)}
+                    >
+                      <div onClick={e => { e.stopPropagation(); toggleSelect(p.id) }}>
+                        <input type="checkbox" checked={isSel} readOnly style={{ cursor: 'pointer' }} />
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                        <div style={{ width: 28, height: 28, borderRadius: '50%', background: avatarColor(p.full_name), color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, flexShrink: 0 }}>
+                          {initials(p.full_name)}
+                        </div>
+                        <div style={{ minWidth: 0, flex: 1 }}>
+                          <div style={{ fontSize: 13, fontWeight: 600, color: NAVY, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {p.pinned && <Pin size={11} fill={GOLD} color={GOLD} style={{ marginRight: 4, verticalAlign: -1 }} />}
+                            {p.full_name}
+                          </div>
+                          <div style={{ fontSize: 11, color: GRAY, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.primary_email}</div>
+                        </div>
+                      </div>
+                      <div style={{ fontSize: 12, color: TEXT_DIM, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {p.company || '—'}
+                      </div>
+                      <div style={{ fontSize: 12, color: TEXT_DIM }}>{relativeDate(p.last_contact_at)}</div>
+                      <div style={{ fontSize: 12, color: TEXT_DIM, display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <span style={S.chip(
+                          s === 'strong' ? '#DCFCE7' : s === 'known' ? '#DBEAFE' : '#F1F5F9',
+                          s === 'strong' ? '#15803D' : s === 'known' ? '#1D4ED8' : GRAY,
+                        )}>{p.contact_count || 0}</span>
+                      </div>
+                      <div><ChevronRight size={14} color={GRAY} /></div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        </main>
+      </div>
+
+      {/* Drill-down panel */}
+      {drillId && (
+        <DrillPanel
+          person={people.find(p => p.id === drillId)}
+          onClose={() => setDrillId(null)}
+          onTogglePin={() => togglePin(drillId)}
+          onHide={() => { hidePerson(drillId); setDrillId(null) }}
+          onAddTag={(t) => addTag(drillId, t)}
+          onRemoveTag={(t) => removeTag(drillId, t)}
+          onAddToList={(l) => addToList([drillId], l)}
+          onRemoveFromList={(l) => removeFromList(drillId, l)}
+          onSaveNotes={(n) => saveNotes(drillId, n)}
+          fetchInteractions={fetchInteractions}
+          allLists={allLists}
+        />
+      )}
+    </div>
+  )
+}
+
+// ---------- Drill-down panel ----------
+function DrillPanel({ person, onClose, onTogglePin, onHide, onAddTag, onRemoveTag, onAddToList, onRemoveFromList, onSaveNotes, fetchInteractions, allLists }) {
+  const [interactions, setInteractions] = useState([])
+  const [loadingI, setLoadingI] = useState(true)
+  const [newTag, setNewTag] = useState('')
+  const [newList, setNewList] = useState('')
+  const [notes, setNotes] = useState(person?.notes || '')
+  const [notesDirty, setNotesDirty] = useState(false)
+
+  useEffect(() => {
+    if (!person) return
+    setLoadingI(true)
+    setNotes(person.notes || '')
+    setNotesDirty(false)
+    fetchInteractions(person.id, 200).then(data => {
+      setInteractions(data)
+      setLoadingI(false)
+    })
+  }, [person?.id, fetchInteractions])
+
+  if (!person) return null
+
+  const handleSaveNotes = () => {
+    onSaveNotes(notes)
+    setNotesDirty(false)
   }
 
   return (
-    <div style={{ ...S.page, background: PAGE_BG }}>
-      <div style={{ marginBottom: 16 }}>
-        <h1 style={S.h1}>Relationships</h1>
-        <div style={S.sub}>Objectives by the people they're with · {groups.length} {groups.length === 1 ? 'person' : 'people'}</div>
+    <div
+      style={{
+        position: 'fixed', top: 0, right: 0, bottom: 0, width: 'min(540px, 95vw)',
+        background: 'white', borderLeft: `1px solid ${PANEL_BORDER}`, boxShadow: '-8px 0 24px rgba(0,0,0,0.08)',
+        padding: 20, overflowY: 'auto', zIndex: 100, fontFamily: 'Arial, Helvetica, sans-serif',
+      }}
+      onClick={e => e.stopPropagation()}
+    >
+      {/* Header */}
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: 16 }}>
+        <div style={{ width: 48, height: 48, borderRadius: '50%', background: avatarColor(person.full_name), color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, fontWeight: 700, flexShrink: 0 }}>
+          {initials(person.full_name)}
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 18, fontWeight: 700, color: NAVY, display: 'flex', alignItems: 'center', gap: 6 }}>
+            {person.full_name}
+            <button onClick={onTogglePin} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2 }} title={person.pinned ? 'Unpin' : 'Pin'}>
+              {person.pinned ? <Pin size={16} fill={GOLD} color={GOLD} /> : <PinOff size={16} color={GRAY} />}
+            </button>
+          </div>
+          <div style={{ fontSize: 12, color: GRAY }}>
+            <Mail size={11} style={{ verticalAlign: -1, marginRight: 4 }} />
+            {person.primary_email}
+          </div>
+          {person.company && <div style={{ fontSize: 12, color: TEXT_DIM, marginTop: 2 }}><Building2 size={11} style={{ verticalAlign: -1, marginRight: 4 }} />{person.company}</div>}
+        </div>
+        <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: GRAY }}><X size={18} /></button>
       </div>
 
-      {/* Person grid */}
-      {!selected && (
-        <>
-          {groups.length === 0 ? (
-            <div style={S.panel}>
-              <div style={{ textAlign: 'center', padding: '40px 20px' }}>
-                <Users size={32} color={GRAY} style={{ marginBottom: 12 }} />
-                <div style={{ fontSize: 14, color: TEXT_DIM, marginBottom: 4 }}>No relationship-tagged objectives yet.</div>
-                <div style={{ fontSize: 12, color: GRAY }}>Add an objective with a "Who?" value to start tracking.</div>
-              </div>
-            </div>
-          ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 10 }}>
-              {groups.map(g => {
-                const ac = avatarColor(g.name)
-                const hasAnchor = g.active.some(o => o.is_anchor)
-                return (
-                  <div key={g.name} style={S.card} onClick={() => setSelected(g)}
-                    onMouseEnter={e => { e.currentTarget.style.borderColor = BLUE; e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,157,224,0.15)' }}
-                    onMouseLeave={e => { e.currentTarget.style.borderColor = PANEL_BORDER; e.currentTarget.style.boxShadow = '0 1px 2px rgba(0,0,0,0.04)' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
-                      <div style={{ width: 36, height: 36, borderRadius: '50%', background: ac, color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 700, flexShrink: 0 }}>
-                        {initials(g.name)}
-                      </div>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: 14, fontWeight: 600, color: NAVY, display: 'flex', alignItems: 'center', gap: 4 }}>
-                          {hasAnchor && <Star size={12} fill={GOLD} color={GOLD} />}
-                          {g.name}
-                        </div>
-                        <div style={{ fontSize: 11, color: GRAY }}>{g.active.length} active · {g.released.length} done</div>
-                      </div>
-                    </div>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-                      {g.boulders > 0 && <span style={S.chip('#FEE2E2', '#7C2D12')}>{g.boulders} Boulder{g.boulders > 1 ? 's' : ''}</span>}
-                      {g.active.length > 0 && <span style={S.chip('#EEF2F7', NAVY)}>{g.active.length} on deck</span>}
-                      {g.parked.length > 0 && <span style={S.chip('#F1F5F9', GRAY)}>{g.parked.length} parked</span>}
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          )}
+      {/* Stats */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginBottom: 16 }}>
+        <div style={{ ...S.panel, padding: 10, textAlign: 'center' }}>
+          <div style={{ fontSize: 20, fontWeight: 700, color: NAVY }}>{person.contact_count || 0}</div>
+          <div style={{ fontSize: 10, color: GRAY, textTransform: 'uppercase', letterSpacing: '0.08em' }}>contacts</div>
+        </div>
+        <div style={{ ...S.panel, padding: 10, textAlign: 'center' }}>
+          <div style={{ fontSize: 14, fontWeight: 700, color: NAVY }}>{relativeDate(person.last_contact_at)}</div>
+          <div style={{ fontSize: 10, color: GRAY, textTransform: 'uppercase', letterSpacing: '0.08em' }}>last contact</div>
+        </div>
+        <div style={{ ...S.panel, padding: 10, textAlign: 'center' }}>
+          <div style={{ fontSize: 14, fontWeight: 700, color: NAVY }}>{strengthOf(person.contact_count)}</div>
+          <div style={{ fontSize: 10, color: GRAY, textTransform: 'uppercase', letterSpacing: '0.08em' }}>strength</div>
+        </div>
+      </div>
 
-          {unassigned.length > 0 && (
-            <div style={{ ...S.panel, marginTop: 16 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: GRAY, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 8 }}>
-                Unassigned · {unassigned.length}
-              </div>
-              <div style={{ fontSize: 12, color: TEXT_DIM, marginBottom: 8 }}>Objectives without a person tag. Tap to assign.</div>
-              {unassigned.map(o => (
-                <div key={o.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0', borderTop: `1px solid ${PANEL_BORDER}` }}>
-                  <span style={{ flex: 1, fontSize: 13, color: NAVY }}>{o.title}</span>
-                  <button style={{ ...S.btnGhost, fontSize: 11, padding: '4px 8px' }} onClick={() => {
-                    const who = prompt(`Assign "${o.title}" to whom?`)
-                    if (who?.trim()) updateObjective(o.id, { who: who.trim() })
-                  }}>+ tag</button>
-                </div>
-              ))}
-            </div>
-          )}
-        </>
-      )}
+      {/* Target lists */}
+      <div style={{ marginBottom: 14 }}>
+        <div style={{ fontSize: 10, fontWeight: 700, color: GRAY, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6 }}>
+          On target lists
+        </div>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, alignItems: 'center' }}>
+          {(person.target_lists || []).map(l => (
+            <span key={l} style={{ ...S.chip('#EEF2F7', NAVY), padding: '4px 10px' }}>
+              📋 {l}
+              <button onClick={() => onRemoveFromList(l)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: NAVY, marginLeft: 4 }}><X size={10} /></button>
+            </span>
+          ))}
+          <input
+            placeholder="+ list"
+            value={newList}
+            onChange={e => setNewList(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter' && newList.trim()) { onAddToList(newList.trim()); setNewList('') } }}
+            list="drill-lists"
+            style={{ ...S.input, fontSize: 11, padding: '3px 8px', width: 110 }}
+          />
+          <datalist id="drill-lists">
+            {allLists.map(l => <option key={l} value={l} />)}
+          </datalist>
+        </div>
+      </div>
 
-      {/* Drill-down view */}
-      {selected && (() => {
-        const ac = avatarColor(selected.name)
-        const g = groups.find(x => x.name === selected.name) || selected
-        return (
-          <>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
-              <button style={S.btnGhost} onClick={() => setSelected(null)}>← back</button>
-              <div style={{ width: 40, height: 40, borderRadius: '50%', background: ac, color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700 }}>
-                {initials(g.name)}
-              </div>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 18, fontWeight: 700, color: NAVY }}>{g.name}</div>
-                <div style={{ fontSize: 11, color: GRAY }}>{g.active.length} active · {g.parked.length} parked · {g.released.length} released</div>
-              </div>
-              <button style={S.btnPrimary} onClick={() => setAddOpen(true)}><Plus size={14} style={{ marginBottom: -2 }} /> new</button>
-            </div>
+      {/* Tags */}
+      <div style={{ marginBottom: 14 }}>
+        <div style={{ fontSize: 10, fontWeight: 700, color: GRAY, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6 }}>
+          Tags
+        </div>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, alignItems: 'center' }}>
+          {(person.tags || []).map(t => (
+            <span key={t} style={{ ...S.chip('#F1F5F9', TEXT_DIM), padding: '4px 10px' }}>
+              #{t}
+              <button onClick={() => onRemoveTag(t)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: TEXT_DIM, marginLeft: 4 }}><X size={10} /></button>
+            </span>
+          ))}
+          <input
+            placeholder="+ tag"
+            value={newTag}
+            onChange={e => setNewTag(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter' && newTag.trim()) { onAddTag(newTag.trim()); setNewTag('') } }}
+            style={{ ...S.input, fontSize: 11, padding: '3px 8px', width: 110 }}
+          />
+        </div>
+      </div>
 
-            {addOpen && (
-              <div style={{ ...S.panel, border: `2px solid ${NAVY}` }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: NAVY, textTransform: 'uppercase', letterSpacing: '0.1em' }}>New objective with {g.name}</div>
-                  <button onClick={() => setAddOpen(false)} style={{ background: 'none', border: 'none', color: GRAY, cursor: 'pointer' }}><X size={16} /></button>
-                </div>
-                <div style={{ display: 'flex', gap: 6 }}>
-                  <input autoFocus placeholder={`What's the objective with ${g.name}?`} value={newTitle} onChange={e => setNewTitle(e.target.value)}
-                    onKeyDown={e => e.key === 'Enter' && submitNew()} style={S.input} />
-                  <button onClick={submitNew} style={{ ...S.btnPrimary, padding: '0 14px' }}><Send size={14} /></button>
-                </div>
-              </div>
-            )}
+      {/* Notes */}
+      <div style={{ marginBottom: 14 }}>
+        <div style={{ fontSize: 10, fontWeight: 700, color: GRAY, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6 }}>
+          Notes
+        </div>
+        <textarea
+          value={notes}
+          onChange={e => { setNotes(e.target.value); setNotesDirty(true) }}
+          placeholder="Personal notes about this relationship…"
+          rows={4}
+          style={{ ...S.input, width: '100%', resize: 'vertical', fontSize: 12, lineHeight: 1.4 }}
+        />
+        {notesDirty && (
+          <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
+            <button style={S.btnPrimary} onClick={handleSaveNotes}>Save</button>
+            <button style={S.btnGhost} onClick={() => { setNotes(person.notes || ''); setNotesDirty(false) }}>Cancel</button>
+          </div>
+        )}
+      </div>
 
-            {/* Active */}
-            <div style={S.panel}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: NAVY, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 10 }}>Active · {g.active.length}</div>
-              {g.active.length === 0 ? (
-                <div style={{ fontSize: 12, color: GRAY, padding: '8px 0' }}>Nothing active with {g.name} right now.</div>
-              ) : g.active.map(o => (
-                <div key={o.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 0', borderTop: `1px solid ${PANEL_BORDER}` }}>
-                  {o.is_anchor && <Star size={14} fill={GOLD} color={GOLD} />}
-                  <span style={{ flex: 1, fontSize: 13, color: NAVY, fontWeight: o.is_anchor ? 600 : 500 }}>{o.title}</span>
-                  <span style={S.chip('#F1F5F9', NAVY)}>{sizeFor(o.weight)}</span>
-                  <button style={S.btnDone} onClick={() => releaseObjective(o.id, 'done')}><Check size={11} /></button>
-                  <button style={S.btnForeman} onClick={() => releaseObjective(o.id, 'foreman')}><ArrowUpRight size={11} /></button>
-                </div>
-              ))}
-            </div>
-
-            {/* Released history */}
-            {g.released.length > 0 && (
-              <div style={S.panel}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: GRAY, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 10 }}>History · {g.released.length}</div>
-                {g.released.slice(0, 10).map(o => (
-                  <div key={o.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0', borderTop: `1px solid ${PANEL_BORDER}`, fontSize: 13 }}>
-                    {o.released_kind === 'foreman' ? <ArrowUpRight size={13} color="#7C3AED" /> : <Check size={13} color="#0F766E" />}
-                    <span style={{ flex: 1, color: TEXT_DIM }}>{o.title}</span>
-                    {o.released_at && <span style={{ fontSize: 11, color: GRAY }}>{new Date(o.released_at).toLocaleDateString([], { month: 'short', day: 'numeric' })}</span>}
-                  </div>
-                ))}
-                {g.released.length > 10 && (
-                  <div style={{ fontSize: 11, color: GRAY, marginTop: 8 }}>+ {g.released.length - 10} more</div>
-                )}
+      {/* Interaction timeline */}
+      <div>
+        <div style={{ fontSize: 10, fontWeight: 700, color: GRAY, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6 }}>
+          Recent activity · {interactions.length}
+        </div>
+        {loadingI ? (
+          <div style={{ fontSize: 12, color: GRAY, padding: '10px 0' }}>Loading...</div>
+        ) : interactions.length === 0 ? (
+          <div style={{ fontSize: 12, color: GRAY, padding: '10px 0' }}>No activity recorded.</div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxHeight: 400, overflowY: 'auto' }}>
+            {interactions.map(i => (
+              <div key={i.id} style={{ padding: '8px 10px', borderRadius: 6, background: '#F7F9FC', display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+                <span style={{ fontSize: 10, color: GRAY, fontWeight: 600, minWidth: 50, marginTop: 1 }}>
+                  {new Date(i.occurred_at).toLocaleDateString([], { month: 'short', day: 'numeric' })}
+                </span>
+                <span style={{ ...S.chip(i.direction === 'in' ? '#DBEAFE' : '#FEF3C7', i.direction === 'in' ? '#1D4ED8' : '#92400E'), padding: '1px 6px', fontSize: 9 }}>
+                  {i.direction === 'in' ? 'in' : 'out'}
+                </span>
+                <span style={{ fontSize: 12, color: TEXT_DIM, flex: 1, lineHeight: 1.3 }}>
+                  {i.subject || <em style={{ color: GRAY }}>(no subject)</em>}
+                </span>
               </div>
-            )}
+            ))}
+          </div>
+        )}
+      </div>
 
-            {/* Parked */}
-            {g.parked.length > 0 && (
-              <div style={S.panel}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: GRAY, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 10 }}>Parked · {g.parked.length}</div>
-                {g.parked.map(o => (
-                  <div key={o.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0', borderTop: `1px solid ${PANEL_BORDER}`, fontSize: 13 }}>
-                    <span style={{ flex: 1, color: TEXT_DIM }}>{o.title}</span>
-                    <button style={{ ...S.btnGhost, fontSize: 11, padding: '4px 8px' }} onClick={() => updateObjective(o.id, { state: 'active' })}>activate</button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </>
-        )
-      })()}
+      {/* Footer: Hide */}
+      <div style={{ marginTop: 20, paddingTop: 14, borderTop: `1px solid ${PANEL_BORDER}` }}>
+        <button style={{ ...S.btnGhost, color: '#DC2626', borderColor: '#FECACA' }} onClick={onHide}>
+          <EyeOff size={12} /> Hide from list
+        </button>
+      </div>
     </div>
   )
 }
