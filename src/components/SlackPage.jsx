@@ -63,13 +63,18 @@ const FILTERS = [
 ]
 
 function relTime(ts) {
+  // Absolute CT timestamp. Today: "3:42 PM CT". Older: "May 22, 3:42 PM CT".
+  // Last year+: "May 22, 2025, 3:42 PM CT".
   const d = new Date(ts)
-  const diff = Date.now() - d.getTime()
-  if (diff < 60_000) return 'just now'
-  if (diff < 3600_000) return `${Math.floor(diff / 60_000)}m`
-  if (diff < 86400_000) return `${Math.floor(diff / 3600_000)}h`
-  if (diff < 7 * 86400_000) return `${Math.floor(diff / 86400_000)}d`
-  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+  const now = new Date()
+  const sameYear = d.getFullYear() === now.getFullYear()
+  const sameDay = d.toDateString() === now.toDateString()
+  const opts = sameDay
+    ? { hour: 'numeric', minute: '2-digit', timeZone: 'America/Chicago' }
+    : sameYear
+      ? { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZone: 'America/Chicago' }
+      : { year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZone: 'America/Chicago' }
+  return d.toLocaleString('en-US', opts) + ' CT'
 }
 
 function channelIcon(type) {
@@ -262,7 +267,7 @@ export default function SlackPage() {
                   <span style={{ fontSize: 13, fontWeight: 700, color: '#002C77' }}>{selected.channel_name}</span>
                 </div>
                 <h2 style={S.detailTitle}>{selected.user_name}</h2>
-                <div style={S.detailMeta}>{new Date(selected.ts).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' })}</div>
+                <div style={S.detailMeta}>{new Date(selected.ts).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'America/Chicago' })} CT</div>
               </div>
               <button onClick={() => setSelected(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#8096B2', padding: 4 }}>
                 <X size={18} />
