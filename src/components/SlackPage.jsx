@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { Hash, Lock, MessageCircle, Users, Send, Check, Archive, ExternalLink, AtSign, Inbox, Paperclip, RefreshCw, X } from 'lucide-react'
+import { Hash, Lock, MessageCircle, Users, Send, Check, Archive, ExternalLink, AtSign, Inbox, Paperclip, RefreshCw, X, BookOpen, Eraser } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 
 const S = {
@@ -42,6 +42,7 @@ const S = {
   detailText: { fontSize: 14, color: '#202E47', lineHeight: 1.55, whiteSpace: 'pre-wrap', wordBreak: 'break-word', padding: '12px 0', borderTop: '1px solid #EEF2F7', borderBottom: '1px solid #EEF2F7', margin: '12px 0' },
   actionRow: { display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16 },
   actionBtn: { display: 'inline-flex', alignItems: 'center', gap: 5, padding: '6px 12px', background: 'white', color: '#334E85', border: '1px solid #CBD8E8', borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'Arial, Helvetica, sans-serif' },
+  primaryBtn: { display: 'inline-flex', alignItems: 'center', gap: 5, padding: '6px 14px', background: '#002C77', color: 'white', border: '1px solid #002C77', borderRadius: 6, fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'Arial, Helvetica, sans-serif' },
   actionBtnPrimary: { display: 'inline-flex', alignItems: 'center', gap: 5, padding: '6px 12px', background: '#002C77', color: 'white', border: '1px solid #002C77', borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'Arial, Helvetica, sans-serif' },
   replyArea: { marginTop: 8 },
   replyLabel: { fontSize: 11, color: '#8096B2', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 },
@@ -182,6 +183,43 @@ export default function SlackPage() {
     load()
   }
 
+  // "Clear" = mark read AND archive in one click. Single-action triage verb.
+  const clear = async (row) => {
+    const now = new Date().toISOString()
+    const { error } = await supabase
+      .from('slack_messages')
+      .update({ read_at: row.read_at || now, archived_at: now })
+      .eq('id', row.id)
+    if (error) { showToast(`Clear failed: ${error.message}`, 'err'); return }
+    setRows(rs => rs.filter(r => r.id !== row.id))
+    if (selected?.id === row.id) setSelected(null)
+    showToast('Cleared')
+  }
+
+  // Save current message into daily_notes with a Slack permalink back-ref.
+  const saveToNotes = async (row) => {
+    if (!row) return
+    const title = `${row.channel_name} — ${row.user_name}`
+    const body = row.body_full || row.body_preview || ''
+    const payload = {
+      title,
+      body,
+      source_type: 'slack',
+      source_url: row.permalink || null,
+      source_ref: row.id,
+      channel_name: row.channel_name,
+      author_name: row.user_real_name || row.user_name,
+      author_ts: row.ts,
+      tags: ['slack', row.channel_name].filter(Boolean),
+    }
+    const { error } = await supabase.from('daily_notes').insert([payload])
+    if (error) {
+      if (error.code === '23505') { showToast('Already saved to Daily Notes', 'ok'); return }
+      showToast(`Save failed: ${error.message}`, 'err'); return
+    }
+    showToast('Saved to Daily Notes')
+  }
+
   const send = async () => {
     if (!selected || !reply.trim() || sending) return
     setSending(true)
@@ -277,6 +315,14 @@ export default function SlackPage() {
             <div style={S.detailText}>{selected.text}</div>
 
             <div style={S.actionRow}>
+              {!selected.archived_at && (
+                <button style={S.primaryBtn} onClick={() => clear(selected)} title="Mark read and archive in one step">
+                  <Eraser size={12} /> Clear
+                </button>
+              )}
+              <button style={S.actionBtn} onClick={() => saveToNotes(selected)} title="Save to Daily Notes for reference">
+                <BookOpen size={12} /> Save to Daily Notes
+              </button>
               {selected.read_at
                 ? <button style={S.actionBtn} onClick={() => markUnread(selected)}><Check size={12} /> Mark unread</button>
                 : <button style={S.actionBtn} onClick={() => markRead(selected)}><Check size={12} /> Mark read</button>}
