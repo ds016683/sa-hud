@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { LayoutGrid, Lightbulb, ScrollText, Network, Shield, LogOut, Menu, X, BookOpen, Calendar, Target, Users, Sparkles, FileText } from 'lucide-react'
+import { LayoutGrid, Lightbulb, ScrollText, Network, Shield, LogOut, Menu, X, BookOpen, Calendar, Target, Users, Sparkles, FileText, MessageSquare } from 'lucide-react'
 import { getSession, onAuthStateChange, signOut } from './lib/auth'
 import LoginPage from './components/LoginPage'
 import HUD from './components/HUD'
@@ -13,19 +13,21 @@ import MeetingNotesPage from './components/MeetingNotesPage'
 import ObjectivesPage from './components/ObjectivesPage'
 import AccomplishmentsPage from './components/AccomplishmentsPage'
 import RelationshipsPage from './components/RelationshipsPage'
+import SlackPage from './components/SlackPage'
 
 const NAV_ITEMS = [
   { id: 'objectives',      label: 'Objectives',         icon: Target     },
   { id: 'accomplishments', label: "Daily Summary",      icon: Sparkles   },
   { id: 'meeting-notes',   label: 'Meeting Notes',      icon: FileText   },
   { id: 'relationships',   label: 'Relationships',      icon: Users      },
-  { id: 'portfolio',     label: 'Portfolio',        icon: LayoutGrid },
-  { id: 'ideas',         label: 'Ideas Pipeline',   icon: Lightbulb  },
-  { id: 'todos',         label: 'Quests (legacy)',  icon: ScrollText },
-  { id: 'briefings',     label: 'Daily Briefings',  icon: BookOpen   },
-  { id: 'meetings',      label: 'Meetings',         icon: Calendar   },
-  { id: 'hud',           label: 'HUD',              icon: Shield     },
-  { id: 'ecosystem',     label: 'Ecosystem',        icon: Network    },
+  { id: 'slack',           label: 'Slack',              icon: MessageSquare },
+  { id: 'portfolio',       label: 'Portfolio',          icon: LayoutGrid },
+  { id: 'ideas',           label: 'Ideas Pipeline',     icon: Lightbulb  },
+  { id: 'todos',           label: 'Quests (legacy)',    icon: ScrollText },
+  { id: 'briefings',       label: 'Daily Briefings',    icon: BookOpen   },
+  { id: 'meetings',        label: 'Meetings',           icon: Calendar   },
+  { id: 'hud',             label: 'HUD',                icon: Shield     },
+  { id: 'ecosystem',       label: 'Ecosystem',          icon: Network    },
 ]
 
 function Sidebar({ active, onChange, onSignOut }) {
@@ -80,7 +82,7 @@ function Sidebar({ active, onChange, onSignOut }) {
         </div>
 
         {/* Nav */}
-        <nav className="flex flex-1 flex-col gap-0.5 py-4">
+        <nav className="flex flex-1 flex-col gap-0.5 py-4 overflow-y-auto">
           {NAV_ITEMS.map(({ id, label, icon: Icon }) => {
             const isActive = active === id
             return (
@@ -153,13 +155,14 @@ export default function App() {
         {active === 'accomplishments' && <AccomplishmentsPage />}
         {active === 'meeting-notes'   && <MeetingNotesPage />}
         {active === 'relationships'   && <RelationshipsPage />}
-        {active === 'portfolio'  && <PortfolioPage />}
-        {active === 'ideas'      && <IdeasPage />}
-        {active === 'todos'      && <TodoPage />}
-        {active === 'hud'        && <HUD />}
-        {active === 'ecosystem'  && <EcosystemPage />}
-        {active === 'briefings'  && <DailyBriefingsPage />}
-        {active === 'meetings'  && <MeetingsPage />}
+        {active === 'slack'           && <SlackPage />}
+        {active === 'portfolio'       && <PortfolioPage />}
+        {active === 'ideas'           && <IdeasPage />}
+        {active === 'todos'           && <TodoPage />}
+        {active === 'hud'             && <HUD />}
+        {active === 'ecosystem'       && <EcosystemPage />}
+        {active === 'briefings'       && <DailyBriefingsPage />}
+        {active === 'meetings'        && <MeetingsPage />}
       </main>
     </div>
   )
