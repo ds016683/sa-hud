@@ -1,5 +1,5 @@
 import { useState, useMemo, useRef, useEffect } from 'react'
-import { Plus, Play, Pause, Star, Flame, ChevronDown, ChevronUp, X, Trash2, ArrowUpRight, Check, Send, Anchor, Calendar, Edit3, Table as TableIcon, List as ListIcon, AlertTriangle, AlertCircle, BarChart3, Lock, Zap, RotateCcw, Archive } from 'lucide-react'
+import { Plus, Play, Pause, Star, Flame, ChevronDown, ChevronUp, X, Trash2, ArrowUpRight, Check, Send, Anchor, Calendar, Edit3, Table as TableIcon, List as ListIcon, AlertTriangle, AlertCircle, BarChart3, Lock, Zap, RotateCcw, Archive, Inbox as InboxIcon, Hand, MoveRight } from 'lucide-react'
 import useObjectives from '../hooks/useObjectives'
 
 // =============================================================================
@@ -492,7 +492,7 @@ function CapacityMeter({ used, capacity }) {
 // ObjectiveCard
 // =============================================================================
 
-function ObjectiveCard({ o, onRelease, onForeman, onPark, onToggleAnchor, onDelete, onEdit }) {
+function ObjectiveCard({ o, onRelease, onForeman, onPark, onWait, onToggleAnchor, onDelete, onEdit }) {
   const [menuOpen, setMenuOpen] = useState(false)
   const size = sizeFor(o.weight)
   const sColor = sizeColor(o.weight)
@@ -533,6 +533,7 @@ function ObjectiveCard({ o, onRelease, onForeman, onPark, onToggleAnchor, onDele
         <button style={S.btnDone} onClick={() => onRelease(o.id)}><Check size={12} /> done</button>
         <button style={S.btnForeman} onClick={() => onForeman(o.id)}><ArrowUpRight size={12} /> foreman</button>
         <button style={S.btnPark} onClick={() => onPark(o.id)}>park</button>
+        {onWait && <button style={{ ...S.btnPark, color: '#0369A1', borderColor: '#7DD3FC' }} onClick={() => onWait(o.id)}><Hand size={11} style={{ marginRight: 3, verticalAlign: 'middle' }} />wait</button>}
       </div>
 
       {menuOpen && (
@@ -555,7 +556,7 @@ function ObjectiveCard({ o, onRelease, onForeman, onPark, onToggleAnchor, onDele
 // EditObjectiveModal — inline edit for any field
 // =============================================================================
 
-function EditObjectiveModal({ o, onClose, onSave, onDelete, onForeman, onPark }) {
+function EditObjectiveModal({ o, onClose, onSave, onDelete, onForeman, onPark, onMove }) {
   const [title, setTitle] = useState(o.title || '')
   const [description, setDescription] = useState(o.description || '')
   const [notes, setNotes] = useState(o.notes || '')
@@ -729,6 +730,45 @@ function EditObjectiveModal({ o, onClose, onSave, onDelete, onForeman, onPark })
             <button onClick={save} style={S.btnPrimary}>Save</button>
           </div>
         </div>
+
+        {/* v1.11 Move-to — single mutation surface, current state grayed out */}
+        {onMove && (
+          <div style={{ marginTop: 16, paddingTop: 12, borderTop: `1px solid ${PANEL_BORDER}` }}>
+            <div style={{ fontSize: 10, color: GRAY, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+              <MoveRight size={10} /> Move to
+            </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+              {[
+                { id: 'active',   label: 'Active',    color: '#15803D', bg: '#F0FDF4', border: '#86EFAC' },
+                { id: 'parked',   label: 'In Queue',  color: NAVY,      bg: '#EEF2F7', border: PANEL_BORDER },
+                { id: 'waiting',  label: 'Waiting',   color: '#0369A1', bg: '#F0F9FF', border: '#7DD3FC' },
+                { id: 'foreman',  label: 'Delegated', color: '#6D28D9', bg: '#FAF5FF', border: '#C4B5FD' },
+                { id: 'released', label: 'Released',  color: '#0F766E', bg: '#F0FDFA', border: '#5EEAD4' },
+                { id: 'inbox',    label: 'Inbox',     color: '#92400E', bg: '#FFFBEB', border: '#FCD34D' },
+              ].map(t => {
+                const isCurrent = o.state === t.id
+                return (
+                  <button
+                    key={t.id}
+                    disabled={isCurrent}
+                    onClick={async () => { await onMove(o.id, t.id); onClose() }}
+                    style={{
+                      padding: '6px 12px', borderRadius: 6,
+                      border: `1px solid ${isCurrent ? PANEL_BORDER : t.border}`,
+                      background: isCurrent ? '#F8FAFC' : t.bg,
+                      color: isCurrent ? GRAY : t.color,
+                      fontSize: 11, fontWeight: 600, fontFamily: 'inherit',
+                      cursor: isCurrent ? 'default' : 'pointer',
+                      opacity: isCurrent ? 0.5 : 1,
+                    }}
+                  >
+                    {isCurrent ? '✓ ' : ''}{t.label}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )
@@ -1238,6 +1278,113 @@ function PillTabs({ tab, setTab, binCount }) {
   )
 }
 
+// v1.11 — Container pill switcher. Sits BELOW Active block, replaces stacked containers.
+function ContainerPills({ container, setContainer, counts }) {
+  const pills = [
+    { id: 'queue',     label: 'In Queue',  icon: Pause,         color: NAVY },
+    { id: 'waiting',   label: 'Waiting',   icon: Hand,          color: '#0369A1' },
+    { id: 'delegated', label: 'Delegated', icon: ArrowUpRight,  color: '#6D28D9' },
+    { id: 'released',  label: 'Released',  icon: Check,         color: '#0F766E' },
+    { id: 'inbox',     label: 'Inbox',     icon: InboxIcon,     color: '#92400E' },
+  ]
+  return (
+    <div style={{ display: 'inline-flex', background: 'white', border: `1px solid ${PANEL_BORDER}`, borderRadius: 999, padding: 3, marginTop: 4, marginBottom: 12, gap: 2, flexWrap: 'wrap' }}>
+      {pills.map(p => {
+        const active = container === p.id
+        const Icon = p.icon
+        const n = counts[p.id] ?? 0
+        return (
+          <button key={p.id} onClick={() => setContainer(p.id)}
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: 6,
+              padding: '6px 12px', borderRadius: 999, border: 'none',
+              background: active ? p.color : 'transparent',
+              color: active ? 'white' : NAVY,
+              fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
+            }}>
+            <Icon size={12} /> {p.label}{n ? ` · ${n}` : ''}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+// v1.11 — Waiting container view: yours, blocked on someone else's action.
+function WaitingContainer({ items, onActivate, onDone, onForeman, onPark, onDelete, onEdit }) {
+  if (!items.length) {
+    return (
+      <div style={S.panel}>
+        <div style={{ ...S.panelTitle, marginBottom: 0, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+          <Hand size={12} /> Waiting · 0
+        </div>
+        <div style={{ padding: '14px 0 4px', color: GRAY, fontSize: 12, textAlign: 'center' }}>
+          Nothing waiting. Use this when the ball is in someone else's court.
+        </div>
+      </div>
+    )
+  }
+  return (
+    <div style={S.panel}>
+      <div style={{ ...S.panelTitle, marginBottom: 8, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+        <Hand size={12} color="#0369A1" /> Waiting · {items.length}
+        <span style={{ fontSize: 10, fontWeight: 500, color: GRAY, textTransform: 'none', letterSpacing: 0, marginLeft: 4 }}>← yours, blocked on someone else</span>
+      </div>
+      {items.map(o => (
+        <div key={o.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 0', borderTop: `1px solid ${PANEL_BORDER}`, fontSize: 13, flexWrap: 'wrap' }}>
+          <Hand size={14} color="#0369A1" />
+          <span style={{ flex: 1, minWidth: 200, color: NAVY, cursor: 'pointer', overflow: 'hidden', textOverflow: 'ellipsis' }} onClick={() => onEdit(o)}>
+            {o.title}
+            {o.stakeholder && <span style={{ fontSize: 11, color: GRAY, marginLeft: 6 }}>↳ {o.stakeholder}</span>}
+          </span>
+          <span style={S.chip('#F1F5F9', GRAY)}>E{o.effort || 2}·I{o.importance || 2}</span>
+          {o.tags && o.tags.length > 0 && <TagPills tags={o.tags} max={2} />}
+          <button onClick={() => onEdit(o)} title="Edit" style={{ background: 'none', border: 'none', color: GRAY, cursor: 'pointer', padding: 2 }}><Edit3 size={12} /></button>
+          <button onClick={() => onActivate(o.id)} title="Activate (unblock)" style={{ ...S.btnGhost, fontSize: 11, padding: '4px 10px', display: 'inline-flex', alignItems: 'center', gap: 4, color: '#15803D', borderColor: '#86EFAC' }}><Zap size={11} /> activate</button>
+          <button onClick={() => onDone(o.id)} title="Done" style={{ ...S.btnGhost, fontSize: 11, padding: '4px 10px', display: 'inline-flex', alignItems: 'center', gap: 4, color: '#0F766E', borderColor: '#5EEAD4' }}><Check size={11} /> done</button>
+          <button onClick={() => onForeman(o.id)} title="Foreman" style={{ ...S.btnGhost, fontSize: 11, padding: '4px 10px', display: 'inline-flex', alignItems: 'center', gap: 4, color: '#6D28D9', borderColor: '#C4B5FD' }}><ArrowUpRight size={11} /> foreman</button>
+          <button onClick={() => onPark(o.id)} title="Park" style={{ ...S.btnGhost, fontSize: 11, padding: '4px 10px' }}>park</button>
+          <button onClick={() => { if (confirm('Delete this objective?')) onDelete(o.id) }} title="Bin" style={{ ...S.btnGhost, fontSize: 11, padding: '4px 8px', color: '#DC2626', borderColor: '#FCA5A5' }}><Trash2 size={11} /></button>
+          {o.due_date && (
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, padding: '2px 6px', borderRadius: 4, background: dueColor(o.due_date, o.hard_deadline).bg, color: dueColor(o.due_date, o.hard_deadline).fg }}>
+              <Calendar size={10} /> {fmtShort(o.due_date)}
+            </span>
+          )}
+        </div>
+      ))}
+    </div>
+  )
+}
+
+// v1.11 — Inbox container: raw captures awaiting routing (mr-pulse + future intake).
+function InboxContainer({ items, onActivate, onPark, onWait, onForeman, onDelete, onEdit }) {
+  return (
+    <div style={S.panel}>
+      <div style={{ ...S.panelTitle, marginBottom: 8, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+        <InboxIcon size={12} color="#92400E" /> Inbox · {items.length}
+        <span style={{ fontSize: 10, fontWeight: 500, color: GRAY, textTransform: 'none', letterSpacing: 0, marginLeft: 4 }}>← raw captures · route them out</span>
+      </div>
+      {items.length === 0 ? (
+        <div style={{ padding: '14px 0 4px', color: GRAY, fontSize: 12, textAlign: 'center' }}>
+          Inbox is empty. Pulse captures land here for sorting.
+        </div>
+      ) : items.map(o => (
+        <div key={o.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 0', borderTop: `1px solid ${PANEL_BORDER}`, fontSize: 13, flexWrap: 'wrap' }}>
+          <InboxIcon size={14} color="#92400E" />
+          <span style={{ flex: 1, minWidth: 200, color: NAVY, cursor: 'pointer', overflow: 'hidden', textOverflow: 'ellipsis' }} onClick={() => onEdit(o)}>{o.title}</span>
+          {o.tags && o.tags.length > 0 && <TagPills tags={o.tags} max={2} />}
+          <button onClick={() => onEdit(o)} title="Edit" style={{ background: 'none', border: 'none', color: GRAY, cursor: 'pointer', padding: 2 }}><Edit3 size={12} /></button>
+          <button onClick={() => onActivate(o.id)} title="Activate" style={{ ...S.btnGhost, fontSize: 11, padding: '4px 10px', display: 'inline-flex', alignItems: 'center', gap: 4, color: '#15803D', borderColor: '#86EFAC' }}><Zap size={11} /> activate</button>
+          <button onClick={() => onPark(o.id)} title="Queue" style={{ ...S.btnGhost, fontSize: 11, padding: '4px 10px' }}>→ queue</button>
+          <button onClick={() => onWait(o.id)} title="Wait" style={{ ...S.btnGhost, fontSize: 11, padding: '4px 10px', color: '#0369A1', borderColor: '#7DD3FC' }}><Hand size={11} /> wait</button>
+          <button onClick={() => onForeman(o.id)} title="Foreman" style={{ ...S.btnGhost, fontSize: 11, padding: '4px 10px', color: '#6D28D9', borderColor: '#C4B5FD' }}><ArrowUpRight size={11} /></button>
+          <button onClick={() => { if (confirm('Delete this objective?')) onDelete(o.id) }} title="Bin" style={{ ...S.btnGhost, fontSize: 11, padding: '4px 8px', color: '#DC2626', borderColor: '#FCA5A5' }}><Trash2 size={11} /></button>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 function EligibleLockedSection({ parked, score, onActivate, onEdit }) {
   const [open, setOpen] = useState(true)
   const [tagFilter, setTagFilter] = useState([]) // array of tag ids; empty = show all
@@ -1618,7 +1765,7 @@ function BinView({ items, onRestore, onPurge }) {
 export default function ObjectivesPage() {
   const {
     loading, objectives, sov, sovHistory, habit, habitGrid, meditation,
-    addObjective, releaseObjective, reopenObjective, parkObjective, reactivateObjective, activateObjective,
+    addObjective, releaseObjective, reopenObjective, parkObjective, reactivateObjective, activateObjective, waitObjective, inboxObjective, moveObjective,
     deleteObjective, restoreObjective, purgeObjective,
     setAnchor, updateObjective, rateSovereignty, upsertHabit, saveMeditationAnswer
   } = useObjectives()
@@ -1627,10 +1774,12 @@ export default function ObjectivesPage() {
   const [coaxIdx, setCoaxIdx] = useState(0)
   const [viewMode, setViewMode] = useState(() => localStorage.getItem('objectives-view') || 'cards') // 'cards' | 'table'
   const [tab, setTab] = useState(() => localStorage.getItem('objectives-tab') || 'list') // 'list' | 'dashboard' | 'bin'
+  const [container, setContainer] = useState(() => localStorage.getItem('objectives-container') || 'queue') // 'queue' | 'waiting' | 'delegated' | 'released' | 'inbox'
   const [editing, setEditing] = useState(null) // objective being edited
 
   useEffect(() => { localStorage.setItem('objectives-view', viewMode) }, [viewMode])
   useEffect(() => { localStorage.setItem('objectives-tab', tab) }, [tab])
+  useEffect(() => { localStorage.setItem('objectives-container', container) }, [container])
 
   // Partition objectives — exclude soft-deleted from all live views
   const live = objectives.filter(o => !o.deleted_at)
@@ -1641,9 +1790,18 @@ export default function ObjectivesPage() {
   const emergencies = live.filter(o => o.state === 'active' && o.is_emergency)
   const anchorActive = live.find(o => o.state === 'active' && o.is_anchor) || null
   const parked = live.filter(o => o.state === 'parked')
+  const waiting = live.filter(o => o.state === 'waiting').sort((a,b) => {
+    const ad = a.due_date ? new Date(a.due_date).getTime() : Infinity
+    const bd = b.due_date ? new Date(b.due_date).getTime() : Infinity
+    if (ad !== bd) return ad - bd
+    if ((b.importance || 0) !== (a.importance || 0)) return (b.importance || 0) - (a.importance || 0)
+    return (b.weight || 0) - (a.weight || 0)
+  })
+  const inboxItems = live.filter(o => o.state === 'inbox').sort((a,b) => new Date(b.captured_at || 0) - new Date(a.captured_at || 0))
   const delegatedAll = live
     .filter(o => o.state === 'foreman')
     .sort((a,b) => new Date(b.released_at || 0) - new Date(a.released_at || 0))
+  // Released = TODAY ONLY (David: "behavior for just today")
   const releasedToday = live
     .filter(o => (o.state === 'released' || o.state === 'foreman') && o.released_at && new Date(o.released_at).toDateString() === new Date().toDateString())
     .sort((a,b) => new Date(b.released_at) - new Date(a.released_at))
@@ -1816,6 +1974,7 @@ export default function ObjectivesPage() {
                 onRelease={(id) => releaseObjective(id, 'done')}
                 onForeman={(id) => releaseObjective(id, 'foreman')}
                 onPark={parkObjective}
+                onWait={waitObjective}
                 onToggleAnchor={(id, val) => val ? setAnchor(id) : updateObjective(id, { is_anchor: false })}
                 onDelete={deleteObjective}
                 onEdit={setEditing}
@@ -1823,21 +1982,64 @@ export default function ObjectivesPage() {
             ))}
           </div>
 
-          <EligibleLockedSection
-            parked={parked}
-            score={score}
-            onActivate={activateObjective}
-            onEdit={setEditing}
+          {/* v1.11 — Container pill switcher. Replaces stacked Queue/Delegated/Released. */}
+          <ContainerPills
+            container={container}
+            setContainer={setContainer}
+            counts={{
+              queue: parked.length,
+              waiting: waiting.length,
+              delegated: delegatedAll.length,
+              released: releasedToday.length,
+              inbox: inboxItems.length,
+            }}
           />
 
-          <DelegatedContainer
-            items={delegatedAll}
-            onReopen={reopenObjective}
-            onPark={parkObjective}
-            onEdit={setEditing}
-          />
+          {container === 'queue' && (
+            <EligibleLockedSection
+              parked={parked}
+              score={score}
+              onActivate={activateObjective}
+              onEdit={setEditing}
+            />
+          )}
 
-          <ReleasedToday items={releasedToday} onReopen={reopenObjective} />
+          {container === 'waiting' && (
+            <WaitingContainer
+              items={waiting}
+              onActivate={activateObjective}
+              onDone={(id) => releaseObjective(id, 'done')}
+              onForeman={(id) => releaseObjective(id, 'foreman')}
+              onPark={parkObjective}
+              onDelete={deleteObjective}
+              onEdit={setEditing}
+            />
+          )}
+
+          {container === 'delegated' && (
+            <DelegatedContainer
+              items={delegatedAll}
+              onReopen={reopenObjective}
+              onPark={parkObjective}
+              onEdit={setEditing}
+            />
+          )}
+
+          {container === 'released' && (
+            <ReleasedToday items={releasedToday} onReopen={reopenObjective} />
+          )}
+
+          {container === 'inbox' && (
+            <InboxContainer
+              items={inboxItems}
+              onActivate={activateObjective}
+              onPark={parkObjective}
+              onWait={waitObjective}
+              onForeman={(id) => releaseObjective(id, 'foreman')}
+              onDelete={deleteObjective}
+              onEdit={setEditing}
+            />
+          )}
         </>
       )}
 
@@ -1866,6 +2068,7 @@ export default function ObjectivesPage() {
           onDelete={deleteObjective}
           onForeman={(id) => releaseObjective(id, 'foreman')}
           onPark={parkObjective}
+          onMove={moveObjective}
         />
       )}
     </div>

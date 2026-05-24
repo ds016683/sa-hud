@@ -85,8 +85,21 @@ export default function useObjectives() {
   const reopenObjective = useCallback((id) => updateObjective(id, { state: 'active', released_kind: null, released_at: null }), [updateObjective])
 
   const parkObjective = useCallback((id) => updateObjective(id, { state: 'parked', released_kind: null, released_at: null }), [updateObjective])
-  const reactivateObjective = useCallback((id) => updateObjective(id, { state: 'active' }), [updateObjective])
+  const reactivateObjective = useCallback((id) => updateObjective(id, { state: 'active', released_kind: null, released_at: null }), [updateObjective])
   const activateObjective = reactivateObjective // alias — eligible→active
+  // v1.11 — Waiting / Inbox containers. Same single mutation surface.
+  const waitObjective = useCallback((id) => updateObjective(id, { state: 'waiting', released_kind: null, released_at: null }), [updateObjective])
+  const inboxObjective = useCallback((id) => updateObjective(id, { state: 'inbox', released_kind: null, released_at: null }), [updateObjective])
+  // Generic "move to container" — every cross-container action flows through this.
+  const moveObjective = useCallback((id, targetState) => {
+    const patch = { state: targetState }
+    // Reset release fields on any move out of released/foreman to prevent stale ledger artifacts.
+    if (targetState !== 'released' && targetState !== 'foreman') {
+      patch.released_kind = null
+      patch.released_at = null
+    }
+    return updateObjective(id, patch)
+  }, [updateObjective])
   const deleteObjective = useCallback((id) => updateObjective(id, { deleted_at: new Date().toISOString() }), [updateObjective])
   const restoreObjective = useCallback((id) => updateObjective(id, { deleted_at: null }), [updateObjective])
   const purgeObjective = useCallback(async (id) => {
@@ -149,7 +162,7 @@ export default function useObjectives() {
 
   return {
     loading, objectives, sov, sovHistory, habit, habitGrid, meditation,
-    addObjective, updateObjective, releaseObjective, reopenObjective, parkObjective, reactivateObjective, activateObjective, deleteObjective, restoreObjective, purgeObjective,
+    addObjective, updateObjective, releaseObjective, reopenObjective, parkObjective, reactivateObjective, activateObjective, waitObjective, inboxObjective, moveObjective, deleteObjective, restoreObjective, purgeObjective,
     setAnchor, rateSovereignty, upsertHabit, saveMeditationAnswer, refresh: fetchAll
   }
 }
