@@ -37,6 +37,29 @@ function CheckeredFlag({ size = 14 }) {
   )
 }
 
+// Size visualizer — pebble/stone/boulder rendered as a literal dot that grows with weight.
+// Pebble (1-3) = small light tan, Stone (4-8) = mid amber, Boulder (9-10) = large slate.
+function SizeDot({ weight }) {
+  const w = Number(weight) || 1
+  const tier = w <= 3 ? 'pebble' : w <= 8 ? 'stone' : 'boulder'
+  const cfg = {
+    pebble:  { px: 6,  bg: '#D6BFA4', label: 'Pebble' },
+    stone:   { px: 9,  bg: '#A8896B', label: 'Stone' },
+    boulder: { px: 12, bg: '#475569', label: 'Boulder' },
+  }[tier]
+  return (
+    <span title={`Weight ${w} — ${cfg.label}`}
+      style={{ display: 'inline-block', width: 14, textAlign: 'center', lineHeight: 0 }}>
+      <span style={{
+        display: 'inline-block', width: cfg.px, height: cfg.px,
+        borderRadius: '50%', background: cfg.bg,
+        boxShadow: 'inset 0 -1px 1px rgba(0,0,0,0.15), 0 1px 1px rgba(0,0,0,0.08)',
+        verticalAlign: 'middle',
+      }} />
+    </span>
+  )
+}
+
 // 6-state route icon strip. Current state shows grayed; others are clickable.
 // states: active · parked (queue) · waiting · foreman (delegated) · released · inbox
 const ROUTE_STATES = [
@@ -1251,7 +1274,7 @@ function DelegatedContainer({ items, onRoute, onReopen, onEdit }) {
               {o.who && <span style={{ fontSize: 11, color: GRAY, marginLeft: 6 }}>→ {o.who}</span>}
             </span>
             <span style={S.chip('#F1F5F9', GRAY)}>E{eff}·I{imp}</span>
-            <span style={S.chip('#FEF3C7', '#92400E')} title={`Weight ${o.weight} — ${sizeFor(o.weight)}`}>{sizeFor(o.weight)[0]}</span>
+            <SizeDot weight={o.weight} />
             {o.tags && o.tags.length > 0 && <TagPills tags={o.tags} max={2} />}
             <button onClick={() => onEdit(o)} title="Edit" style={{ background: 'none', border: 'none', color: GRAY, cursor: 'pointer', padding: 2 }}><Edit3 size={12} /></button>
             <RouteIcons o={o} onRoute={onRoute} size={12} gap={2} />
@@ -1526,7 +1549,7 @@ function ParkedRibbonRow({ o, variant, score, onActivate, onRoute, onEdit }) {
     <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 0', borderBottom: `1px solid ${PANEL_BORDER}`, fontSize: 13, opacity: variant === 'locked' ? 0.7 : 1 }}>
       <span style={{ flex: 1, color: variant === 'locked' ? TEXT_DIM : NAVY, cursor: 'pointer', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} onClick={() => onEdit(o)}>{o.title}</span>
       <span style={S.chip('#F1F5F9', GRAY)}>E{eff}·I{imp}</span>
-      <span style={S.chip('#FEF3C7', '#92400E')} title={`Weight ${o.weight} — ${sizeFor(o.weight)}`}>{sizeFor(o.weight)[0]}</span>
+      <SizeDot weight={o.weight} />
       {o.tags && o.tags.length > 0 && <TagPills tags={o.tags} max={2} />}
       <button onClick={() => onEdit(o)} title="Edit" style={{ background: 'none', border: 'none', color: GRAY, cursor: 'pointer', padding: 2 }}><Edit3 size={12} /></button>
       {variant === 'locked' && (
