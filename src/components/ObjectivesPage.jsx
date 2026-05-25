@@ -301,7 +301,7 @@ function TagPicker({ value, onChange }) {
 
 
 const S = {
-  page: { maxWidth: 880, margin: '0 auto', padding: '20px 16px 80px', fontFamily: 'Arial, Helvetica, sans-serif', color: NAVY },
+  page: { maxWidth: 1040, margin: '0 auto', padding: '20px 24px 80px', fontFamily: 'Arial, Helvetica, sans-serif', color: NAVY },
   h1: { fontSize: 22, fontWeight: 700, margin: 0, color: NAVY },
   sub: { fontSize: 12, color: GRAY, margin: '2px 0 0' },
   panel: { background: PANEL_BG, border: `1px solid ${PANEL_BORDER}`, borderRadius: 12, padding: 14, marginBottom: 12, boxShadow: '0 1px 2px rgba(0,0,0,0.04)' },
@@ -1529,12 +1529,7 @@ function ParkedRibbonRow({ o, variant, score, onActivate, onRoute, onEdit }) {
       <span style={S.chip('#FEF3C7', '#92400E')} title={`Weight ${o.weight} — ${sizeFor(o.weight)}`}>{sizeFor(o.weight)[0]}</span>
       {o.tags && o.tags.length > 0 && <TagPills tags={o.tags} max={2} />}
       <button onClick={() => onEdit(o)} title="Edit" style={{ background: 'none', border: 'none', color: GRAY, cursor: 'pointer', padding: 2 }}><Edit3 size={12} /></button>
-      {variant === 'eligible' ? (
-        <button onClick={() => onActivate(o.id)} title="Activate"
-          style={{ ...S.btnGhost, fontSize: 11, padding: '4px 10px', display: 'inline-flex', alignItems: 'center', gap: 4, color: '#0F766E', borderColor: '#0F766E' }}>
-          <Zap size={11} /> activate
-        </button>
-      ) : (
+      {variant === 'locked' && (
         <span style={{ fontSize: 11, color: GRAY, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
           <Lock size={10} /> need +{need}
         </span>
