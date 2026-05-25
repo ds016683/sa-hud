@@ -556,7 +556,7 @@ function ObjectiveCard({ o, onRelease, onForeman, onPark, onWait, onToggleAnchor
 // EditObjectiveModal — inline edit for any field
 // =============================================================================
 
-function EditObjectiveModal({ o, onClose, onSave, onDelete, onForeman, onPark, onMove }) {
+function EditObjectiveModal({ o, onClose, onSave, onDelete, onMove }) {
   const [title, setTitle] = useState(o.title || '')
   const [description, setDescription] = useState(o.description || '')
   const [notes, setNotes] = useState(o.notes || '')
@@ -570,7 +570,6 @@ function EditObjectiveModal({ o, onClose, onSave, onDelete, onForeman, onPark, o
   const [startDate, setStartDate] = useState(o.start_date || '')
   const [hardDeadline, setHardDeadline] = useState(!!o.hard_deadline)
   const [tags, setTags] = useState(o.tags || [])
-  const [delegating, setDelegating] = useState(false)
 
   const save = async () => {
     if (!title.trim()) return
@@ -588,27 +587,6 @@ function EditObjectiveModal({ o, onClose, onSave, onDelete, onForeman, onPark, o
       tags,
       needs_sizing: false,
     })
-    onClose()
-  }
-
-  const confirmDelegate = async () => {
-    if (!who.trim()) { alert('Who are you delegating to?'); return }
-    // save fields first, then route to foreman
-    await onSave(o.id, {
-      title: title.trim(),
-      description: description.trim() || null,
-      notes: notes.trim() || null,
-      stakeholder: stakeholder.trim() || null,
-      effort, importance, kind,
-      who: who.trim(),
-      follow_up_date: followUpDate || null,
-      start_date: startDate || null,
-      due_date: dueDate || null,
-      hard_deadline: hardDeadline,
-      tags,
-      needs_sizing: false,
-    })
-    if (onForeman) onForeman(o.id)
     onClose()
   }
 
@@ -686,39 +664,19 @@ function EditObjectiveModal({ o, onClose, onSave, onDelete, onForeman, onPark, o
           Weight: <strong style={{ color: NAVY }}>{effort * importance}</strong> ({sizeFor(effort * importance)})
         </div>
 
-        {/* Delegate sub-panel */}
-        {delegating ? (
-          <div style={{ background: '#FAF5FF', border: `2px solid #C4B5FD`, borderRadius: 8, padding: 12, marginBottom: 14 }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: '#6D28D9', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
-              <ArrowUpRight size={12} /> Delegate to foreman
+        {/* Delegation metadata — editable inline (no sub-panel). Routing happens via Route to below. */}
+        {(o.state === 'foreman' || o.who || o.follow_up_date) && (
+          <div style={{ marginBottom: 14, padding: 10, background: '#FAF5FF', border: `1px solid #E9D5FF`, borderRadius: 8 }}>
+            <div style={{ fontSize: 10, color: '#6D28D9', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 4 }}>
+              <ArrowUpRight size={11} /> Delegation
             </div>
-            <div style={{ fontSize: 10, color: GRAY, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Delegated to *</div>
-            <input value={who} onChange={e => setWho(e.target.value)} placeholder="Name of person taking it on" style={{ ...S.input, marginBottom: 10 }} />
-            <div style={{ fontSize: 10, color: GRAY, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Follow up when?</div>
-            <div style={{ display: 'flex', gap: 6, marginBottom: 10, flexWrap: 'wrap' }}>
+            <div style={{ fontSize: 10, color: GRAY, marginBottom: 4 }}>Delegated to</div>
+            <input value={who} onChange={e => setWho(e.target.value)} placeholder="Name of person taking it on" style={{ ...S.input, marginBottom: 8 }} />
+            <div style={{ fontSize: 10, color: GRAY, marginBottom: 4 }}>Follow up when?</div>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
               <input type="date" value={followUpDate} onChange={e => setFollowUpDate(e.target.value)} style={{ ...S.input, flex: '1 1 160px', padding: '8px 10px' }} />
-              <button onClick={() => { const d = new Date(); d.setDate(d.getDate()+3); setFollowUpDate(d.toISOString().slice(0,10)) }} style={{ ...S.btnGhost, fontSize: 11 }}>+3d</button>
-              <button onClick={() => { const d = new Date(); d.setDate(d.getDate()+7); setFollowUpDate(d.toISOString().slice(0,10)) }} style={{ ...S.btnGhost, fontSize: 11 }}>+1wk</button>
-            </div>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button onClick={() => setDelegating(false)} style={{ ...S.btnGhost, flex: 1 }}>Cancel</button>
-              <button onClick={confirmDelegate} style={{ ...S.btnPrimary, flex: 1, background: '#7C3AED' }}>Release to foreman</button>
-            </div>
-          </div>
-        ) : (
-          <div style={{ marginBottom: 14 }}>
-            <div style={{ fontSize: 10, color: GRAY, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>Route</div>
-            <div style={{ display: 'flex', gap: 6 }}>
-              {onForeman && (
-                <button onClick={() => setDelegating(true)} style={{ flex: 1, padding: '8px', borderRadius: 6, border: `1px solid #C4B5FD`, background: '#FAF5FF', color: '#6D28D9', cursor: 'pointer', fontSize: 12, fontWeight: 600, fontFamily: 'inherit', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
-                  <ArrowUpRight size={12} /> Delegate
-                </button>
-              )}
-              {onPark && (
-                <button onClick={() => { onPark(o.id); onClose() }} style={{ flex: 1, padding: '8px', borderRadius: 6, border: `1px solid ${PANEL_BORDER}`, background: 'white', color: GRAY, cursor: 'pointer', fontSize: 12, fontWeight: 600, fontFamily: 'inherit' }}>
-                  Park
-                </button>
-              )}
+              <button type="button" onClick={() => { const d = new Date(); d.setDate(d.getDate()+3); setFollowUpDate(d.toISOString().slice(0,10)) }} style={{ ...S.btnGhost, fontSize: 11 }}>+3d</button>
+              <button type="button" onClick={() => { const d = new Date(); d.setDate(d.getDate()+7); setFollowUpDate(d.toISOString().slice(0,10)) }} style={{ ...S.btnGhost, fontSize: 11 }}>+1wk</button>
             </div>
           </div>
         )}
@@ -731,11 +689,11 @@ function EditObjectiveModal({ o, onClose, onSave, onDelete, onForeman, onPark, o
           </div>
         </div>
 
-        {/* v1.11 Move-to — single mutation surface, current state grayed out */}
+        {/* v1.11 Route to — single mutation surface, current state grayed out */}
         {onMove && (
           <div style={{ marginTop: 16, paddingTop: 12, borderTop: `1px solid ${PANEL_BORDER}` }}>
             <div style={{ fontSize: 10, color: GRAY, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-              <MoveRight size={10} /> Move to
+              <MoveRight size={10} /> Route to
             </div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
               {[
@@ -2066,8 +2024,6 @@ export default function ObjectivesPage() {
           onClose={() => setEditing(null)}
           onSave={updateObjective}
           onDelete={deleteObjective}
-          onForeman={(id) => releaseObjective(id, 'foreman')}
-          onPark={parkObjective}
           onMove={moveObjective}
         />
       )}
