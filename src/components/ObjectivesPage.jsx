@@ -1,6 +1,91 @@
 import { useState, useMemo, useRef, useEffect } from 'react'
-import { Plus, Play, Pause, Star, Flame, ChevronDown, ChevronUp, X, Trash2, ArrowUpRight, Check, Send, Anchor, Calendar, Edit3, Table as TableIcon, List as ListIcon, AlertTriangle, AlertCircle, BarChart3, Lock, Zap, RotateCcw, Archive, Inbox as InboxIcon, Hand, MoveRight } from 'lucide-react'
+import { Plus, Play, Pause, Star, Flame, ChevronDown, ChevronUp, X, Trash2, ArrowUpRight, Check, Send, Anchor, Calendar, Edit3, Table as TableIcon, List as ListIcon, AlertTriangle, AlertCircle, BarChart3, Lock, Zap, RotateCcw, Archive, Inbox as InboxIcon, Hand, MoveRight, Hourglass } from 'lucide-react'
 import useObjectives from '../hooks/useObjectives'
+
+// =============================================================================
+// CUSTOM ROUTE ICONS — lucide-style inline SVGs (24×24 viewBox, strokeWidth 2)
+// =============================================================================
+
+// Aerial racetrack — oval with center pit line. Used for "In Queue".
+function RaceTrack({ size = 14 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
+      stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      {/* outer oval */}
+      <rect x="2" y="6"  width="20" height="12" rx="6" />
+      {/* inner oval (track interior) */}
+      <rect x="6" y="10" width="12" height="4"  rx="2" />
+    </svg>
+  )
+}
+
+// Checkered flag — flagpole + 2×2 checker pattern. Used for "Released".
+function CheckeredFlag({ size = 14 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
+      stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      {/* pole */}
+      <line x1="4" y1="22" x2="4" y2="3" />
+      {/* flag outline */}
+      <path d="M4 4 L20 4 L20 14 L4 14" />
+      {/* checker fills (alternating squares as filled rects) */}
+      <rect x="4"  y="4" width="4" height="5" fill="currentColor" stroke="none" />
+      <rect x="12" y="4" width="4" height="5" fill="currentColor" stroke="none" />
+      <rect x="8"  y="9" width="4" height="5" fill="currentColor" stroke="none" />
+      <rect x="16" y="9" width="4" height="5" fill="currentColor" stroke="none" />
+    </svg>
+  )
+}
+
+// 6-state route icon strip. Current state shows grayed; others are clickable.
+// states: active · parked (queue) · waiting · foreman (delegated) · released · inbox
+const ROUTE_STATES = [
+  { key: 'active',   label: 'Active',    color: '#15803D', Icon: Play },
+  { key: 'parked',   label: 'In Queue',  color: '#475569', Icon: RaceTrack },
+  { key: 'waiting',  label: 'Waiting',   color: '#0369A1', Icon: Hourglass },
+  { key: 'foreman',  label: 'Delegated', color: '#6D28D9', Icon: ArrowUpRight },
+  { key: 'released', label: 'Released',  color: '#0F766E', Icon: CheckeredFlag },
+  { key: 'inbox',    label: 'Inbox',     color: '#B45309', Icon: InboxIcon },
+]
+
+function RouteIcons({ o, onRoute, size = 14, gap = 3 }) {
+  // Active is the implicit current-state when o.state is null/undefined or 'active'
+  const current = o.state || 'active'
+  return (
+    <div style={{ display: 'inline-flex', gap, alignItems: 'center' }}>
+      {ROUTE_STATES.map(({ key, label, color, Icon }) => {
+        const isCurrent = key === current
+        return (
+          <button
+            key={key}
+            onClick={(e) => { e.stopPropagation(); if (!isCurrent) onRoute(o.id, key) }}
+            disabled={isCurrent}
+            title={isCurrent ? `${label} (current)` : `Route to ${label}`}
+            style={{
+              width: size + 10,
+              height: size + 10,
+              padding: 0,
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              border: `1px solid ${isCurrent ? '#E2E8F0' : color + '55'}`,
+              borderRadius: 5,
+              background: isCurrent ? '#F1F5F9' : 'white',
+              color: isCurrent ? '#94A3B8' : color,
+              cursor: isCurrent ? 'default' : 'pointer',
+              transition: 'background 100ms',
+              fontFamily: 'inherit',
+            }}
+            onMouseEnter={(e) => { if (!isCurrent) e.currentTarget.style.background = color + '15' }}
+            onMouseLeave={(e) => { if (!isCurrent) e.currentTarget.style.background = 'white' }}
+          >
+            <Icon size={size} />
+          </button>
+        )
+      })}
+    </div>
+  )
+}
 
 // =============================================================================
 // CONSTANTS
@@ -492,7 +577,7 @@ function CapacityMeter({ used, capacity }) {
 // ObjectiveCard
 // =============================================================================
 
-function ObjectiveCard({ o, onRelease, onForeman, onPark, onWait, onToggleAnchor, onDelete, onEdit }) {
+function ObjectiveCard({ o, onRoute, onToggleAnchor, onDelete, onEdit }) {
   const [menuOpen, setMenuOpen] = useState(false)
   const size = sizeFor(o.weight)
   const sColor = sizeColor(o.weight)
@@ -529,11 +614,8 @@ function ObjectiveCard({ o, onRelease, onForeman, onPark, onWait, onToggleAnchor
         {o.who && <span style={S.chip('#F1F5F9', TEXT_DIM)}>w/ {o.who}</span>}
       </div>
 
-      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-        <button style={S.btnDone} onClick={() => onRelease(o.id)}><Check size={12} /> done</button>
-        <button style={S.btnForeman} onClick={() => onForeman(o.id)}><ArrowUpRight size={12} /> foreman</button>
-        <button style={S.btnPark} onClick={() => onPark(o.id)}>park</button>
-        {onWait && <button style={{ ...S.btnPark, color: '#0369A1', borderColor: '#7DD3FC' }} onClick={() => onWait(o.id)}><Hand size={11} style={{ marginRight: 3, verticalAlign: 'middle' }} />wait</button>}
+      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+        <RouteIcons o={o} onRoute={onRoute} size={14} />
       </div>
 
       {menuOpen && (
@@ -774,7 +856,7 @@ function TriageQueue({ items, onSize, onEdit }) {
 // TableView — flat sortable list grouped by size bucket
 // =============================================================================
 
-function TableView({ items, onRelease, onForeman, onPark, onEdit }) {
+function TableView({ items, onRoute, onEdit }) {
   const buckets = useMemo(() => {
     const b = { Boulder: [], Stone: [], Pebble: [] }
     for (const o of items) b[sizeFor(o.weight)].push(o)
@@ -803,9 +885,7 @@ function TableView({ items, onRelease, onForeman, onPark, onEdit }) {
         {o.who && <span style={{ fontSize: 10, color: GRAY }}>w/ {o.who}</span>}
         {o.tags && o.tags.length > 0 && <TagPills tags={o.tags} max={2} />}
         <button onClick={() => onEdit(o)} title="Edit" style={{ background: 'none', border: 'none', color: GRAY, cursor: 'pointer', padding: 2 }}><Edit3 size={11} /></button>
-        <button onClick={() => onRelease(o.id)} title="Done" style={{ background: '#0F766E', color: 'white', border: 'none', borderRadius: 4, padding: '2px 6px', fontSize: 10, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}><Check size={10} /></button>
-        <button onClick={() => onForeman(o.id)} title="Foreman" style={{ background: '#7C3AED', color: 'white', border: 'none', borderRadius: 4, padding: '2px 6px', fontSize: 10, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}><ArrowUpRight size={10} /></button>
-        <button onClick={() => onPark(o.id)} title="Park" style={{ background: 'transparent', color: GRAY, border: `1px solid ${PANEL_BORDER}`, borderRadius: 4, padding: '2px 6px', fontSize: 10, cursor: 'pointer', fontFamily: 'inherit' }}>P</button>
+        <RouteIcons o={o} onRoute={onRoute} size={12} gap={2} />
         <span title={`${o.start_date ? `Start ${o.start_date}` : 'no start'} → ${o.due_date ? `Target ${o.due_date}` : 'no target'}`}
           style={{ ...S.chip(dueC.bg, dueC.fg), fontSize: 9, marginLeft: 2, whiteSpace: 'nowrap' }}>
           {o.hard_deadline ? '🔒' : '📅'} {o.start_date ? fmtShort(o.start_date) : '—'} → {o.due_date ? fmtShort(o.due_date) : '—'}
@@ -1146,7 +1226,7 @@ function ReleasedToday({ items, onReopen }) {
 }
 
 // Delegated ledger — all foreman-released items, with reopen for today's only
-function DelegatedContainer({ items, onReopen, onPark, onEdit }) {
+function DelegatedContainer({ items, onRoute, onReopen, onEdit }) {
   const todayStr = new Date().toDateString()
   return (
     <div style={S.panel}>
@@ -1174,6 +1254,7 @@ function DelegatedContainer({ items, onReopen, onPark, onEdit }) {
             <span style={S.chip('#FEF3C7', '#92400E')} title={`Weight ${o.weight} — ${sizeFor(o.weight)}`}>{sizeFor(o.weight)[0]}</span>
             {o.tags && o.tags.length > 0 && <TagPills tags={o.tags} max={2} />}
             <button onClick={() => onEdit(o)} title="Edit" style={{ background: 'none', border: 'none', color: GRAY, cursor: 'pointer', padding: 2 }}><Edit3 size={12} /></button>
+            <RouteIcons o={o} onRoute={onRoute} size={12} gap={2} />
             {isToday ? (
               <button
                 onClick={() => onReopen(o.id)}
@@ -1183,14 +1264,6 @@ function DelegatedContainer({ items, onReopen, onPark, onEdit }) {
               </button>
             ) : (
               <span style={{ fontSize: 11, color: GRAY }}>released {when}</span>
-            )}
-            {onPark && (
-              <button
-                onClick={() => onPark(o.id)}
-                title="Send back to Queue (Park)"
-                style={{ ...S.btnGhost, fontSize: 11, padding: '4px 10px', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                → Park
-              </button>
             )}
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, padding: '2px 6px', borderRadius: 4, background: dueColor(o.due_date, o.hard_deadline).bg, color: dueColor(o.due_date, o.hard_deadline).fg }}>
               <Calendar size={10} />
@@ -1239,10 +1312,10 @@ function PillTabs({ tab, setTab, binCount }) {
 // v1.11 — Container pill switcher. Sits BELOW Active block, replaces stacked containers.
 function ContainerPills({ container, setContainer, counts }) {
   const pills = [
-    { id: 'queue',     label: 'In Queue',  icon: Pause,         color: NAVY },
-    { id: 'waiting',   label: 'Waiting',   icon: Hand,          color: '#0369A1' },
+    { id: 'queue',     label: 'In Queue',  icon: RaceTrack,     color: NAVY },
+    { id: 'waiting',   label: 'Waiting',   icon: Hourglass,     color: '#0369A1' },
     { id: 'delegated', label: 'Delegated', icon: ArrowUpRight,  color: '#6D28D9' },
-    { id: 'released',  label: 'Released',  icon: Check,         color: '#0F766E' },
+    { id: 'released',  label: 'Released',  icon: CheckeredFlag, color: '#0F766E' },
     { id: 'inbox',     label: 'Inbox',     icon: InboxIcon,     color: '#92400E' },
   ]
   return (
@@ -1269,7 +1342,7 @@ function ContainerPills({ container, setContainer, counts }) {
 }
 
 // v1.11 — Waiting container view: yours, blocked on someone else's action.
-function WaitingContainer({ items, onActivate, onDone, onForeman, onPark, onDelete, onEdit }) {
+function WaitingContainer({ items, onRoute, onDelete, onEdit }) {
   if (!items.length) {
     return (
       <div style={S.panel}>
@@ -1298,10 +1371,7 @@ function WaitingContainer({ items, onActivate, onDone, onForeman, onPark, onDele
           <span style={S.chip('#F1F5F9', GRAY)}>E{o.effort || 2}·I{o.importance || 2}</span>
           {o.tags && o.tags.length > 0 && <TagPills tags={o.tags} max={2} />}
           <button onClick={() => onEdit(o)} title="Edit" style={{ background: 'none', border: 'none', color: GRAY, cursor: 'pointer', padding: 2 }}><Edit3 size={12} /></button>
-          <button onClick={() => onActivate(o.id)} title="Activate (unblock)" style={{ ...S.btnGhost, fontSize: 11, padding: '4px 10px', display: 'inline-flex', alignItems: 'center', gap: 4, color: '#15803D', borderColor: '#86EFAC' }}><Zap size={11} /> activate</button>
-          <button onClick={() => onDone(o.id)} title="Done" style={{ ...S.btnGhost, fontSize: 11, padding: '4px 10px', display: 'inline-flex', alignItems: 'center', gap: 4, color: '#0F766E', borderColor: '#5EEAD4' }}><Check size={11} /> done</button>
-          <button onClick={() => onForeman(o.id)} title="Foreman" style={{ ...S.btnGhost, fontSize: 11, padding: '4px 10px', display: 'inline-flex', alignItems: 'center', gap: 4, color: '#6D28D9', borderColor: '#C4B5FD' }}><ArrowUpRight size={11} /> foreman</button>
-          <button onClick={() => onPark(o.id)} title="Park" style={{ ...S.btnGhost, fontSize: 11, padding: '4px 10px' }}>park</button>
+          <RouteIcons o={o} onRoute={onRoute} size={12} gap={2} />
           <button onClick={() => { if (confirm('Delete this objective?')) onDelete(o.id) }} title="Bin" style={{ ...S.btnGhost, fontSize: 11, padding: '4px 8px', color: '#DC2626', borderColor: '#FCA5A5' }}><Trash2 size={11} /></button>
           {o.due_date && (
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, padding: '2px 6px', borderRadius: 4, background: dueColor(o.due_date, o.hard_deadline).bg, color: dueColor(o.due_date, o.hard_deadline).fg }}>
@@ -1315,7 +1385,7 @@ function WaitingContainer({ items, onActivate, onDone, onForeman, onPark, onDele
 }
 
 // v1.11 — Inbox container: raw captures awaiting routing (mr-pulse + future intake).
-function InboxContainer({ items, onActivate, onPark, onWait, onForeman, onDelete, onEdit }) {
+function InboxContainer({ items, onRoute, onDelete, onEdit }) {
   return (
     <div style={S.panel}>
       <div style={{ ...S.panelTitle, marginBottom: 8, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
@@ -1332,10 +1402,7 @@ function InboxContainer({ items, onActivate, onPark, onWait, onForeman, onDelete
           <span style={{ flex: 1, minWidth: 200, color: NAVY, cursor: 'pointer', overflow: 'hidden', textOverflow: 'ellipsis' }} onClick={() => onEdit(o)}>{o.title}</span>
           {o.tags && o.tags.length > 0 && <TagPills tags={o.tags} max={2} />}
           <button onClick={() => onEdit(o)} title="Edit" style={{ background: 'none', border: 'none', color: GRAY, cursor: 'pointer', padding: 2 }}><Edit3 size={12} /></button>
-          <button onClick={() => onActivate(o.id)} title="Activate" style={{ ...S.btnGhost, fontSize: 11, padding: '4px 10px', display: 'inline-flex', alignItems: 'center', gap: 4, color: '#15803D', borderColor: '#86EFAC' }}><Zap size={11} /> activate</button>
-          <button onClick={() => onPark(o.id)} title="Queue" style={{ ...S.btnGhost, fontSize: 11, padding: '4px 10px' }}>→ queue</button>
-          <button onClick={() => onWait(o.id)} title="Wait" style={{ ...S.btnGhost, fontSize: 11, padding: '4px 10px', color: '#0369A1', borderColor: '#7DD3FC' }}><Hand size={11} /> wait</button>
-          <button onClick={() => onForeman(o.id)} title="Foreman" style={{ ...S.btnGhost, fontSize: 11, padding: '4px 10px', color: '#6D28D9', borderColor: '#C4B5FD' }}><ArrowUpRight size={11} /></button>
+          <RouteIcons o={o} onRoute={onRoute} size={12} gap={2} />
           <button onClick={() => { if (confirm('Delete this objective?')) onDelete(o.id) }} title="Bin" style={{ ...S.btnGhost, fontSize: 11, padding: '4px 8px', color: '#DC2626', borderColor: '#FCA5A5' }}><Trash2 size={11} /></button>
         </div>
       ))}
@@ -1343,7 +1410,7 @@ function InboxContainer({ items, onActivate, onPark, onWait, onForeman, onDelete
   )
 }
 
-function EligibleLockedSection({ parked, score, onActivate, onEdit }) {
+function EligibleLockedSection({ parked, score, onActivate, onRoute, onEdit }) {
   const [open, setOpen] = useState(true)
   const [tagFilter, setTagFilter] = useState([]) // array of tag ids; empty = show all
   if (!parked.length) {
@@ -1430,7 +1497,7 @@ function EligibleLockedSection({ parked, score, onActivate, onEdit }) {
                 ⚡ Eligible at your current Sovereignty ({score})
               </div>
               {eligible.map(o => (
-                <ParkedRibbonRow key={o.id} o={o} variant="eligible" onActivate={onActivate} onEdit={onEdit} />
+                <ParkedRibbonRow key={o.id} o={o} variant="eligible" onActivate={onActivate} onRoute={onRoute} onEdit={onEdit} />
               ))}
             </div>
           )}
@@ -1440,7 +1507,7 @@ function EligibleLockedSection({ parked, score, onActivate, onEdit }) {
                 <Lock size={10} /> Unlocks at Sovereignty {t}
               </div>
               {lockedByThreshold[t].map(o => (
-                <ParkedRibbonRow key={o.id} o={o} variant="locked" score={score} onEdit={onEdit} />
+                <ParkedRibbonRow key={o.id} o={o} variant="locked" score={score} onRoute={onRoute} onEdit={onEdit} />
               ))}
             </div>
           ))}
@@ -1451,7 +1518,7 @@ function EligibleLockedSection({ parked, score, onActivate, onEdit }) {
 }
 
 // Ribbon-style row for parked queue — matches the table row visual language
-function ParkedRibbonRow({ o, variant, score, onActivate, onEdit }) {
+function ParkedRibbonRow({ o, variant, score, onActivate, onRoute, onEdit }) {
   const eff = o.effort || 2
   const imp = o.importance || 2
   const need = variant === 'locked' && score != null ? Math.max(0, o._minSov - score) : 0
@@ -1472,6 +1539,7 @@ function ParkedRibbonRow({ o, variant, score, onActivate, onEdit }) {
           <Lock size={10} /> need +{need}
         </span>
       )}
+      {onRoute && <RouteIcons o={o} onRoute={onRoute} size={12} gap={2} />}
       <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, padding: '2px 6px', borderRadius: 4, background: dueColor(o.due_date, o.hard_deadline).bg, color: dueColor(o.due_date, o.hard_deadline).fg }}>
         <Calendar size={10} />
         {o.start_date ? fmtShort(o.start_date) : '—'} → {o.due_date ? fmtShort(o.due_date) : '—'}
@@ -1922,17 +1990,12 @@ export default function ObjectivesPage() {
             ) : viewMode === 'table' ? (
               <TableView
                 items={sortedActive}
-                onRelease={(id) => releaseObjective(id, 'done')}
-                onForeman={(id) => releaseObjective(id, 'foreman')}
-                onPark={parkObjective}
+                onRoute={moveObjective}
                 onEdit={setEditing}
               />
             ) : sortedActive.map(o => (
               <ObjectiveCard key={o.id} o={o}
-                onRelease={(id) => releaseObjective(id, 'done')}
-                onForeman={(id) => releaseObjective(id, 'foreman')}
-                onPark={parkObjective}
-                onWait={waitObjective}
+                onRoute={moveObjective}
                 onToggleAnchor={(id, val) => val ? setAnchor(id) : updateObjective(id, { is_anchor: false })}
                 onDelete={deleteObjective}
                 onEdit={setEditing}
@@ -1958,6 +2021,7 @@ export default function ObjectivesPage() {
               parked={parked}
               score={score}
               onActivate={activateObjective}
+              onRoute={moveObjective}
               onEdit={setEditing}
             />
           )}
@@ -1965,10 +2029,7 @@ export default function ObjectivesPage() {
           {container === 'waiting' && (
             <WaitingContainer
               items={waiting}
-              onActivate={activateObjective}
-              onDone={(id) => releaseObjective(id, 'done')}
-              onForeman={(id) => releaseObjective(id, 'foreman')}
-              onPark={parkObjective}
+              onRoute={moveObjective}
               onDelete={deleteObjective}
               onEdit={setEditing}
             />
@@ -1977,8 +2038,8 @@ export default function ObjectivesPage() {
           {container === 'delegated' && (
             <DelegatedContainer
               items={delegatedAll}
+              onRoute={moveObjective}
               onReopen={reopenObjective}
-              onPark={parkObjective}
               onEdit={setEditing}
             />
           )}
@@ -1990,10 +2051,7 @@ export default function ObjectivesPage() {
           {container === 'inbox' && (
             <InboxContainer
               items={inboxItems}
-              onActivate={activateObjective}
-              onPark={parkObjective}
-              onWait={waitObjective}
-              onForeman={(id) => releaseObjective(id, 'foreman')}
+              onRoute={moveObjective}
               onDelete={deleteObjective}
               onEdit={setEditing}
             />
