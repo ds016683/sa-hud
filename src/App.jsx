@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { LayoutGrid, Lightbulb, ScrollText, Network, Shield, LogOut, Menu, X, BookOpen, Calendar, Target, Users, Sparkles, FileText, MessageSquare } from 'lucide-react'
+import { LayoutGrid, Lightbulb, ScrollText, Network, Shield, LogOut, Menu, X, BookOpen, Calendar, Target, Users, Sparkles, FileText, MessageSquare, Wallet } from 'lucide-react'
 import { getSession, onAuthStateChange, signOut } from './lib/auth'
 import LoginPage from './components/LoginPage'
 import HUD from './components/HUD'
@@ -14,11 +14,13 @@ import ObjectivesPage from './components/ObjectivesPage'
 import AccomplishmentsPage from './components/AccomplishmentsPage'
 import RelationshipsPage from './components/RelationshipsPage'
 import SlackPage from './components/SlackPage'
+import CompanyFinancePage from './components/CompanyFinancePage'
 
 const NAV_ITEMS = [
   { id: 'objectives',      label: 'Objectives',         icon: Target     },
   { id: 'accomplishments', label: "Daily Summary",      icon: Sparkles   },
   { id: 'meeting-notes',   label: 'Meeting Notes',      icon: FileText   },
+  { id: 'company-finance', label: 'Company Finance',    icon: Wallet     },
   { id: 'relationships',   label: 'Relationships',      icon: Users      },
   { id: 'slack',           label: 'Slack',              icon: MessageSquare },
   { id: 'portfolio',       label: 'Portfolio',          icon: LayoutGrid },
@@ -154,6 +156,7 @@ export default function App() {
         {active === 'objectives'      && <ObjectivesPage />}
         {active === 'accomplishments' && <AccomplishmentsPage />}
         {active === 'meeting-notes'   && <MeetingNotesPage />}
+        {active === 'company-finance' && <CompanyFinancePage />}
         {active === 'relationships'   && <RelationshipsPage />}
         {active === 'slack'           && <SlackPage />}
         {active === 'portfolio'       && <PortfolioPage />}
