@@ -1,191 +1,412 @@
-import { useState } from 'react'
-import { Wallet, TrendingUp, Layers, Building2, Info } from 'lucide-react'
+import { useState, useEffect, useMemo } from 'react'
+import { Wallet, TrendingUp, Layers, Building2, Info, RefreshCw, AlertCircle } from 'lucide-react'
+import { supabase } from '../lib/supabase'
 
 const S = {
   page: { maxWidth: 1200, margin: '0 auto', padding: '24px 16px', fontFamily: 'Arial, Helvetica, sans-serif' },
-
-  // Header
   header: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, flexWrap: 'wrap', gap: 12 },
   headerLeft: { display: 'flex', flexDirection: 'column' },
   h1: { fontSize: 20, fontWeight: 700, color: '#002C77', margin: 0, display: 'flex', alignItems: 'center', gap: 10 },
   sub: { fontSize: 13, color: '#8096B2', margin: '2px 0 0' },
-
-  // Container scope label (Third Horizon for now — placeholder for future swap)
   scopeBadge: { display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 10px', borderRadius: 9999, background: '#EEF2F7', color: '#334E85', fontSize: 11, fontWeight: 600, border: '1px solid #CBD8E8', letterSpacing: '0.04em' },
-
-  // Pill menu row (Cash Projection / Pro Forma Projections)
+  syncPill: (status) => ({
+    display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 10px', borderRadius: 9999,
+    background: status === 'ok' ? '#E6F4EA' : status === 'pending' ? '#FFF4E0' : '#FCE8E8',
+    color: status === 'ok' ? '#1E7C3A' : status === 'pending' ? '#9A6400' : '#A02323',
+    fontSize: 11, fontWeight: 600, border: `1px solid ${status === 'ok' ? '#B7E1C2' : status === 'pending' ? '#F2D592' : '#F2B5B5'}`,
+  }),
   pillRow: { display: 'flex', gap: 6, marginBottom: 16, flexWrap: 'wrap' },
   pill: (active) => ({
     display: 'inline-flex', alignItems: 'center', gap: 6,
-    padding: '8px 14px', borderRadius: 9999,
-    border: '1px solid',
-    fontSize: 13, cursor: 'pointer',
-    fontFamily: 'Arial, Helvetica, sans-serif',
+    padding: '8px 14px', borderRadius: 9999, border: '1px solid',
+    fontSize: 13, cursor: 'pointer', fontFamily: 'Arial, Helvetica, sans-serif',
     fontWeight: active ? 600 : 500,
     background: active ? '#002C77' : 'white',
     color: active ? 'white' : '#334E85',
     borderColor: active ? '#002C77' : '#CBD8E8',
     transition: 'all 0.15s',
   }),
-
-  // Overlay toggle row
   overlayRow: { display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20, padding: '10px 14px', background: 'white', border: '1px solid #E2E8F0', borderRadius: 10, boxShadow: '0 1px 2px rgba(0,0,0,0.04)' },
   overlayLabel: { fontSize: 12, color: '#565656', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' },
   overlayHelp: { fontSize: 11, color: '#8096B2', display: 'inline-flex', alignItems: 'center', gap: 4 },
-
-  // Toggle switch
   toggleWrap: { display: 'inline-flex', alignItems: 'center', gap: 8, cursor: 'pointer', userSelect: 'none' },
-  toggleTrack: (on) => ({
-    width: 36, height: 20, borderRadius: 9999,
-    background: on ? '#009DE0' : '#CBD8E8',
-    position: 'relative', transition: 'background 0.2s',
-    flexShrink: 0,
-  }),
-  toggleThumb: (on) => ({
-    position: 'absolute', top: 2, left: on ? 18 : 2,
-    width: 16, height: 16, borderRadius: '50%',
-    background: 'white',
-    transition: 'left 0.2s',
-    boxShadow: '0 1px 2px rgba(0,0,0,0.2)',
-  }),
-  toggleText: { fontSize: 13, color: '#002C77', fontWeight: 600 },
+  toggleTrack: (on) => ({ width: 36, height: 20, borderRadius: 9999, background: on ? '#009DE0' : '#CBD8E8', position: 'relative', transition: 'background 0.2s', flexShrink: 0 }),
+  toggleThumb: (on) => ({ position: 'absolute', top: 2, left: on ? 18 : 2, width: 16, height: 16, borderRadius: '50%', background: 'white', transition: 'left 0.2s', boxShadow: '0 1px 2px rgba(0,0,0,0.2)' }),
 
-  // Main content panel (chart placeholder)
-  panel: { background: 'white', border: '1px solid #E2E8F0', borderRadius: 12, padding: 14, boxShadow: '0 1px 2px rgba(0,0,0,0.04)' },
-  panelHeader: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, paddingBottom: 10, borderBottom: '1px solid #E2E8F0' },
-  panelTitle: { fontSize: 14, fontWeight: 700, color: '#002C77', textTransform: 'uppercase', letterSpacing: '0.06em' },
-  panelMeta: { fontSize: 11, color: '#8096B2' },
+  card: { background: 'white', border: '1px solid #E2E8F0', borderRadius: 12, boxShadow: '0 1px 2px rgba(0,0,0,0.04)', overflow: 'hidden', marginBottom: 20 },
+  cardHeader: { padding: '14px 16px', borderBottom: '1px solid #E2E8F0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 },
+  cardTitle: { fontSize: 13, fontWeight: 700, color: '#002C77', textTransform: 'uppercase', letterSpacing: '0.08em', display: 'flex', alignItems: 'center', gap: 8 },
+  cardSub: { fontSize: 11, color: '#8096B2' },
 
-  // Placeholder body (until data is wired)
-  placeholder: {
-    minHeight: 320,
-    display: 'flex', flexDirection: 'column',
-    alignItems: 'center', justifyContent: 'center',
-    gap: 10,
-    background: 'linear-gradient(180deg, #F7F9FC 0%, white 100%)',
-    border: '1px dashed #CBD8E8',
-    borderRadius: 10,
-    padding: 24,
-    textAlign: 'center',
-  },
-  placeholderTitle: { fontSize: 14, fontWeight: 700, color: '#334E85' },
-  placeholderBody: { fontSize: 12, color: '#8096B2', maxWidth: 480, lineHeight: 1.5 },
-  placeholderTag: { fontSize: 10, padding: '3px 8px', borderRadius: 4, background: '#EEF2F7', color: '#334E85', border: '1px solid #CBD8E8', fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase' },
+  metricGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12, padding: 16 },
+  metricCard: { background: '#F7FAFD', border: '1px solid #E2E8F0', borderRadius: 10, padding: 14 },
+  metricLabel: { fontSize: 11, color: '#8096B2', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 },
+  metricValue: { fontSize: 22, fontWeight: 700, color: '#002C77', fontFamily: 'Arial, Helvetica, sans-serif' },
+  metricSub: { fontSize: 11, color: '#565656', marginTop: 4 },
 
-  // Source-of-truth footer note
-  footer: { marginTop: 14, fontSize: 11, color: '#8096B2', lineHeight: 1.6, padding: '10px 14px', background: '#F7F9FC', border: '1px solid #E2E8F0', borderRadius: 8 },
-  footerStrong: { color: '#334E85', fontWeight: 600 },
+  tableWrap: { overflowX: 'auto' },
+  table: { width: '100%', borderCollapse: 'collapse', fontSize: 12 },
+  th: { textAlign: 'left', padding: '10px 12px', background: '#F7FAFD', borderBottom: '2px solid #E2E8F0', color: '#334E85', fontWeight: 700, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.04em', position: 'sticky', top: 0, whiteSpace: 'nowrap' },
+  thNum: { textAlign: 'right', padding: '10px 12px', background: '#F7FAFD', borderBottom: '2px solid #E2E8F0', color: '#334E85', fontWeight: 700, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.04em', whiteSpace: 'nowrap' },
+  td: { padding: '8px 12px', borderBottom: '1px solid #F0F4F9', color: '#1A2B47', whiteSpace: 'nowrap' },
+  tdNum: { padding: '8px 12px', borderBottom: '1px solid #F0F4F9', color: '#1A2B47', textAlign: 'right', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' },
+  tdLabel: { padding: '8px 12px', borderBottom: '1px solid #F0F4F9', color: '#002C77', fontWeight: 600, whiteSpace: 'nowrap' },
+  rowHeadline: { background: '#EFF6FC' },
+  rowMuted: { color: '#8096B2' },
+
+  empty: { padding: 40, textAlign: 'center', color: '#8096B2', fontSize: 13 },
+  errorBox: { padding: 16, background: '#FCE8E8', border: '1px solid #F2B5B5', borderRadius: 10, color: '#A02323', fontSize: 13, display: 'flex', alignItems: 'flex-start', gap: 10 },
 }
 
-const VIEWS = [
-  { id: 'cash',     label: 'Cash Projection',        icon: Wallet,     sheet: 'Cash Tracker 2026' },
-  { id: 'proforma', label: 'Pro Forma Projections',  icon: TrendingUp, sheet: 'PRO FORMA 2026'    },
+const MONTHS_2025 = [
+  { col: 'D', label: 'Jan 25' }, { col: 'E', label: 'Feb 25' }, { col: 'F', label: 'Mar 25' },
+  { col: 'G', label: 'Apr 25' }, { col: 'H', label: 'May 25' }, { col: 'I', label: 'Jun 25' },
+  { col: 'J', label: 'Jul 25' }, { col: 'K', label: 'Aug 25' }, { col: 'L', label: 'Sep 25' },
+  { col: 'M', label: 'Oct 25' }, { col: 'N', label: 'Nov 25' }, { col: 'O', label: 'Dec 25' },
+  { col: 'P', label: '2025 Total' },
 ]
+const MONTHS_2026 = [
+  { col: 'T', label: 'Jan 26' }, { col: 'U', label: 'Feb 26' }, { col: 'V', label: 'Mar 26' },
+  { col: 'W', label: 'Apr 26' }, { col: 'X', label: 'May 26' }, { col: 'Y', label: 'Jun 26' },
+  { col: 'Z', label: 'Jul 26' }, { col: 'AA', label: 'Aug 26' }, { col: 'AB', label: 'Sep 26' },
+  { col: 'AC', label: 'Oct 26' }, { col: 'AD', label: 'Nov 26' }, { col: 'AE', label: 'Dec 26' },
+  { col: 'AF', label: '2026 Total' },
+]
+const HEADLINE_LABELS = new Set(['Base Revenue', 'Pipeline Revenue', 'Forecasted Revenue'])
 
-function PillNav({ value, onChange }) {
-  return (
-    <div style={S.pillRow}>
-      {VIEWS.map(v => {
-        const Icon = v.icon
-        const active = value === v.id
-        return (
-          <button
-            key={v.id}
-            style={S.pill(active)}
-            onClick={() => onChange(v.id)}
-            onMouseEnter={e => { if (!active) { e.currentTarget.style.borderColor = '#009DE0'; e.currentTarget.style.color = '#002C77' } }}
-            onMouseLeave={e => { if (!active) { e.currentTarget.style.borderColor = '#CBD8E8'; e.currentTarget.style.color = '#334E85' } }}
-          >
-            <Icon size={14} />
-            {v.label}
-          </button>
-        )
-      })}
-    </div>
-  )
+function fmtMoney(n) {
+  if (n === null || n === undefined || n === '') return '—'
+  const num = typeof n === 'number' ? n : parseFloat(n)
+  if (Number.isNaN(num)) return typeof n === 'string' ? n : '—'
+  return '$' + Math.round(num).toLocaleString('en-US')
 }
 
-function OverlayToggle({ on, onChange }) {
-  return (
-    <div style={S.overlayRow}>
-      <label style={S.toggleWrap} onClick={() => onChange(!on)}>
-        <div style={S.toggleTrack(on)}>
-          <div style={S.toggleThumb(on)} />
-        </div>
-        <span style={S.toggleText}>Overlay Pipeline</span>
-      </label>
-      <span style={S.overlayHelp}>
-        <Info size={11} />
-        Layers weighted pipeline forecast on top of the active view
-      </span>
-    </div>
-  )
-}
-
-function ViewPanel({ view, overlay }) {
-  const meta = VIEWS.find(v => v.id === view)
-  const Icon = meta.icon
-
-  return (
-    <div style={S.panel}>
-      <div style={S.panelHeader}>
-        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, color: '#002C77' }}>
-          <Icon size={16} />
-          <span style={S.panelTitle}>{meta.label}</span>
-        </div>
-        <span style={S.panelMeta}>
-          Source: 2025 Pro Forma.xlsx <span style={{ color: '#CBD8E8', margin: '0 6px' }}>·</span> sheet: <strong style={{ color: '#334E85' }}>{meta.sheet}</strong>
-        </span>
-      </div>
-
-      <div style={S.placeholder}>
-        <Layers size={28} color="#009DE0" />
-        <div style={S.placeholderTitle}>Chart scaffold</div>
-        <div style={S.placeholderBody}>
-          Data wiring is in progress. The {meta.label.toLowerCase()} view will read{' '}
-          <strong style={{ color: '#334E85' }}>{meta.sheet}</strong> from the THSFinanceBinder SharePoint Pro Forma workbook, refreshed daily by <strong style={{ color: '#334E85' }}>mr-ledger</strong>.
-        </div>
-        {overlay && (
-          <div style={{ ...S.placeholderTag, background: '#FFF7E5', borderColor: '#E5C66B', color: '#7A5A00' }}>
-            + Pipeline overlay ACTIVE — Notion-sourced, weighted by probability
-          </div>
-        )}
-      </div>
-
-      <div style={S.footer}>
-        <strong style={S.footerStrong}>What lands here next:</strong> chart component (recharts or chart.js),
-        SharePoint Graph fetch via mr-ledger, period selector (month/quarter/YTD),
-        and click-through to row-level detail. Pipeline overlay reads the BD pipeline Notion database
-        and projects probability-weighted revenue against the same time axis as the active view.
-      </div>
-    </div>
-  )
+function fmtTime(ts) {
+  if (!ts) return 'never'
+  const d = new Date(ts)
+  const now = new Date()
+  const ms = now - d
+  const mins = Math.floor(ms / 60000)
+  if (mins < 1) return 'just now'
+  if (mins < 60) return `${mins}m ago`
+  const hrs = Math.floor(mins / 60)
+  if (hrs < 24) return `${hrs}h ago`
+  const days = Math.floor(hrs / 24)
+  return `${days}d ago`
 }
 
 export default function CompanyFinancePage() {
-  const [view, setView] = useState('cash')
-  const [overlay, setOverlay] = useState(false)
+  const [view, setView] = useState('proforma')  // 'proforma' | 'cash' | 'pipeline'
+  const [year, setYear] = useState(2026)
+  const [showPipelineOverlay, setShowPipelineOverlay] = useState(true)
+
+  const [loading, setLoading] = useState(true)
+  const [err, setErr] = useState(null)
+  const [proForma, setProForma] = useState([])
+  const [cashTracker, setCashTracker] = useState([])
+  const [pipelineForecast, setPipelineForecast] = useState([])
+  const [syncMeta, setSyncMeta] = useState([])
+
+  useEffect(() => {
+    let cancelled = false
+    async function load() {
+      setLoading(true)
+      setErr(null)
+      try {
+        const [pf, ct, pi, sm] = await Promise.all([
+          supabase.schema('finance').from('pro_forma').select('*').order('row_index'),
+          supabase.schema('finance').from('cash_tracker').select('*').order('row_index'),
+          supabase.schema('finance').from('pipeline_forecast').select('*').order('row_index'),
+          supabase.schema('finance').from('sync_metadata').select('*'),
+        ])
+        if (cancelled) return
+        if (pf.error) throw pf.error
+        if (ct.error) throw ct.error
+        if (pi.error) throw pi.error
+        if (sm.error) throw sm.error
+        setProForma(pf.data || [])
+        setCashTracker(ct.data || [])
+        setPipelineForecast(pi.data || [])
+        setSyncMeta(sm.data || [])
+      } catch (e) {
+        if (!cancelled) setErr(e.message || String(e))
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    }
+    load()
+    return () => { cancelled = true }
+  }, [])
+
+  const months = year === 2026 ? MONTHS_2026 : MONTHS_2025
+  const pfSync = syncMeta.find(s => s.source === 'pro_forma')
+  const ctSync = syncMeta.find(s => s.source === 'cash_tracker')
+  const piSync = syncMeta.find(s => s.source === 'pipeline_forecast')
+
+  const headlines = useMemo(() => {
+    const find = (label) => proForma.find(r => r.label === label)
+    const base = find('Base Revenue')
+    const pipe = find('Pipeline Revenue')
+    const fc = find('Forecasted Revenue')
+    const totalCol = year === 2026 ? 'AF' : 'P'
+    return {
+      base: base?.payload?.[totalCol],
+      pipeline: pipe?.payload?.[totalCol],
+      forecast: fc?.payload?.[totalCol],
+    }
+  }, [proForma, year])
+
+  // Visible Pro Forma rows: non-null labels, skip pure "FF" repeats and Projected header row
+  const visibleRows = useMemo(() => {
+    return proForma.filter(r => {
+      if (!r.label) return false
+      if (r.label === 'Projected' || r.label === 'Profit & Loss Pro Forma') return false
+      return true
+    })
+  }, [proForma])
+
+  const valueFor = (row, col) => {
+    const v = row.payload?.[col]
+    if (typeof v === 'number') return v
+    if (typeof v === 'string') {
+      // try parse numeric strings, but pass through label/header strings
+      const cleaned = v.replace(/[$,]/g, '')
+      const n = parseFloat(cleaned)
+      if (!Number.isNaN(n) && cleaned.trim() !== '') return n
+      return v
+    }
+    return null
+  }
 
   return (
     <div style={S.page}>
+      {/* Header */}
       <div style={S.header}>
         <div style={S.headerLeft}>
-          <h1 style={S.h1}>
-            <Building2 size={20} color="#002C77" />
-            Company Finance
-          </h1>
-          <div style={S.sub}>Cash projections, pro forma, and pipeline overlay — sourced from the TH Finance Binder.</div>
+          <h1 style={S.h1}><Wallet size={22} color="#009DE0" /> Company Finance</h1>
+          <p style={S.sub}>Live Pro Forma — synced from THSFinanceBinder</p>
         </div>
-        <span style={S.scopeBadge}>
-          THIRD HORIZON
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+          <span style={S.scopeBadge}><Building2 size={11} /> THIRD HORIZON</span>
+          {pfSync && (
+            <span style={S.syncPill(pfSync.last_status)}>
+              <RefreshCw size={11} /> {pfSync.last_status === 'ok' ? 'synced' : pfSync.last_status} {fmtTime(pfSync.last_synced_at)}
+            </span>
+          )}
+        </div>
+      </div>
+
+      {/* View pills */}
+      <div style={S.pillRow}>
+        <span style={S.pill(view === 'proforma')} onClick={() => setView('proforma')}>
+          <TrendingUp size={13} /> Pro Forma (P&L)
+        </span>
+        <span style={S.pill(view === 'cash')} onClick={() => setView('cash')}>
+          <Layers size={13} /> Cash Tracker
+        </span>
+        <span style={S.pill(view === 'pipeline')} onClick={() => setView('pipeline')}>
+          <TrendingUp size={13} /> Pipeline Forecast
         </span>
       </div>
 
-      <PillNav value={view} onChange={setView} />
+      {/* Year pills */}
+      {view === 'proforma' && (
+        <div style={S.pillRow}>
+          <span style={S.pill(year === 2025)} onClick={() => setYear(2025)}>2025</span>
+          <span style={S.pill(year === 2026)} onClick={() => setYear(2026)}>2026</span>
+        </div>
+      )}
 
-      <OverlayToggle on={overlay} onChange={setOverlay} />
+      {/* Overlay toggle (visible on proforma) */}
+      {view === 'proforma' && (
+        <div style={S.overlayRow}>
+          <span style={S.overlayLabel}>Pipeline overlay</span>
+          <span style={S.toggleWrap} onClick={() => setShowPipelineOverlay(v => !v)}>
+            <span style={S.toggleTrack(showPipelineOverlay)}>
+              <span style={S.toggleThumb(showPipelineOverlay)} />
+            </span>
+            <span style={{ fontSize: 12, color: '#334E85', fontWeight: 600 }}>{showPipelineOverlay ? 'ON' : 'OFF'}</span>
+          </span>
+          <span style={S.overlayHelp}><Info size={11} /> Highlights Base + Pipeline + Forecasted Revenue rows</span>
+        </div>
+      )}
 
-      <ViewPanel view={view} overlay={overlay} />
+      {/* Errors */}
+      {err && (
+        <div style={S.errorBox}>
+          <AlertCircle size={16} />
+          <div>
+            <div style={{ fontWeight: 700, marginBottom: 4 }}>Couldn't load finance data</div>
+            <div style={{ fontFamily: 'monospace', fontSize: 11 }}>{err}</div>
+          </div>
+        </div>
+      )}
+
+      {/* Loading */}
+      {loading && !err && <div style={S.empty}>Loading…</div>}
+
+      {/* Pro Forma view */}
+      {!loading && !err && view === 'proforma' && (
+        <>
+          {/* Headline metrics */}
+          <div style={S.card}>
+            <div style={S.cardHeader}>
+              <div style={S.cardTitle}><TrendingUp size={14} /> {year} Headline</div>
+              <div style={S.cardSub}>
+                {pfSync?.row_count != null ? `${pfSync.row_count} rows` : ''}
+                {pfSync?.source_modified ? ` · source ${new Date(pfSync.source_modified).toLocaleDateString()}` : ''}
+              </div>
+            </div>
+            <div style={S.metricGrid}>
+              <div style={S.metricCard}>
+                <div style={S.metricLabel}>Base Revenue</div>
+                <div style={S.metricValue}>{fmtMoney(headlines.base)}</div>
+                <div style={S.metricSub}>{year} total</div>
+              </div>
+              <div style={S.metricCard}>
+                <div style={S.metricLabel}>Pipeline Revenue</div>
+                <div style={S.metricValue}>{fmtMoney(headlines.pipeline)}</div>
+                <div style={S.metricSub}>{year} total</div>
+              </div>
+              <div style={S.metricCard}>
+                <div style={S.metricLabel}>Forecasted Revenue</div>
+                <div style={S.metricValue}>{fmtMoney(headlines.forecast)}</div>
+                <div style={S.metricSub}>{year} total (base + pipeline)</div>
+              </div>
+            </div>
+          </div>
+
+          {/* Full table */}
+          <div style={S.card}>
+            <div style={S.cardHeader}>
+              <div style={S.cardTitle}><Layers size={14} /> {year} Pro Forma rows</div>
+              <div style={S.cardSub}>{visibleRows.length} rows</div>
+            </div>
+            <div style={S.tableWrap}>
+              <table style={S.table}>
+                <thead>
+                  <tr>
+                    <th style={S.th}>Line</th>
+                    {months.map(m => <th key={m.col} style={S.thNum}>{m.label}</th>)}
+                  </tr>
+                </thead>
+                <tbody>
+                  {visibleRows.map(row => {
+                    const isHeadline = HEADLINE_LABELS.has(row.label)
+                    const isFF = row.label === 'FF'
+                    return (
+                      <tr key={row.row_index} style={isHeadline && showPipelineOverlay ? S.rowHeadline : null}>
+                        <td style={{ ...S.tdLabel, ...(isFF ? S.rowMuted : {}) }}>
+                          {isFF ? <span style={{ color: '#A8B7CC' }}>(unlabeled)</span> : row.label}
+                        </td>
+                        {months.map(m => {
+                          const v = valueFor(row, m.col)
+                          const isNumber = typeof v === 'number'
+                          return (
+                            <td key={m.col} style={S.tdNum}>
+                              {isNumber ? fmtMoney(v) : (v === null ? '' : <span style={{ color: '#A8B7CC' }}>{String(v)}</span>)}
+                            </td>
+                          )
+                        })}
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Cash Tracker view — raw rows */}
+      {!loading && !err && view === 'cash' && (
+        <div style={S.card}>
+          <div style={S.cardHeader}>
+            <div style={S.cardTitle}><Layers size={14} /> Cash Tracker</div>
+            <div style={S.cardSub}>
+              {ctSync?.row_count ?? cashTracker.length} rows
+              {ctSync?.last_synced_at ? ` · synced ${fmtTime(ctSync.last_synced_at)}` : ''}
+            </div>
+          </div>
+          <div style={{ padding: 16, fontSize: 12, color: '#8096B2' }}>
+            Raw cell dump (v1). Smart parsing planned for v2 — current data shape is column-letter ↔ value.
+          </div>
+          <div style={S.tableWrap}>
+            <table style={S.table}>
+              <thead>
+                <tr>
+                  <th style={S.th}>Row</th>
+                  <th style={S.th}>Label</th>
+                  <th style={S.th}>Sample values</th>
+                </tr>
+              </thead>
+              <tbody>
+                {cashTracker.slice(0, 50).map(r => (
+                  <tr key={r.row_index}>
+                    <td style={S.td}>{r.row_index}</td>
+                    <td style={S.tdLabel}>{r.label || <span style={{ color: '#A8B7CC' }}>—</span>}</td>
+                    <td style={S.td}>
+                      {Object.entries(r.payload || {}).slice(0, 4).map(([k, v]) => (
+                        <span key={k} style={{ marginRight: 12, color: '#565656' }}>
+                          <code style={{ fontSize: 10, color: '#8096B2' }}>{k}</code>:{' '}
+                          {typeof v === 'number' ? fmtMoney(v) : String(v).slice(0, 24)}
+                        </span>
+                      ))}
+                      {Object.keys(r.payload || {}).length > 4 && (
+                        <span style={{ color: '#A8B7CC', fontSize: 11 }}>+{Object.keys(r.payload).length - 4} more</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {cashTracker.length > 50 && (
+            <div style={{ padding: 12, fontSize: 11, color: '#8096B2', textAlign: 'center', borderTop: '1px solid #F0F4F9' }}>
+              Showing 50 of {cashTracker.length} rows
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Pipeline Forecast view */}
+      {!loading && !err && view === 'pipeline' && (
+        <div style={S.card}>
+          <div style={S.cardHeader}>
+            <div style={S.cardTitle}><TrendingUp size={14} /> Pipeline Forecast (raw)</div>
+            <div style={S.cardSub}>
+              {piSync?.row_count ?? pipelineForecast.length} rows
+              {piSync?.last_synced_at ? ` · synced ${fmtTime(piSync.last_synced_at)}` : ''}
+            </div>
+          </div>
+          <div style={{ padding: 16, fontSize: 12, color: '#8096B2' }}>
+            This sheet uses cross-sheet refs (many `#REF!` until smart parser lands). v1 = read-only preview.
+            Better source: Notion Pipeline DB (coming next — `finance.notion_pipeline` is wired but empty).
+          </div>
+          <div style={S.tableWrap}>
+            <table style={S.table}>
+              <thead>
+                <tr>
+                  <th style={S.th}>Row</th>
+                  <th style={S.th}>Deal</th>
+                  <th style={S.th}>Stage</th>
+                  <th style={S.thNum}>Weighted</th>
+                </tr>
+              </thead>
+              <tbody>
+                {pipelineForecast.slice(0, 50).map(r => (
+                  <tr key={r.row_index}>
+                    <td style={S.td}>{r.row_index}</td>
+                    <td style={S.tdLabel}>{r.deal_name || r.payload?.B || r.payload?.F || <span style={{ color: '#A8B7CC' }}>—</span>}</td>
+                    <td style={S.td}>{r.stage || <span style={{ color: '#A8B7CC' }}>—</span>}</td>
+                    <td style={S.tdNum}>{r.weighted != null ? fmtMoney(r.weighted) : <span style={{ color: '#A8B7CC' }}>—</span>}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
