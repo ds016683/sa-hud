@@ -74,7 +74,7 @@ serve(async (req) => {
               as_of: new Date().toISOString(),
               plaid_account_id: acct.account_id,
               plaid_item_id: item.id,
-            }, { onConflict: "account_name,institution" });
+            }, { onConflict: "plaid_account_id" });
             if (bErr) throw new Error("upsert balance: " + bErr.message);
             balRowsWritten++;
           }
@@ -124,8 +124,9 @@ serve(async (req) => {
         const txTable = scope === "personal" ? "transactions" : "transactions";
         for (const tx of [...added, ...modified]) {
           const row: any = {
-            transaction_date: tx.date,
-            description: tx.name ?? tx.merchant_name ?? "(unknown)",
+            occurred_on: tx.date,
+            merchant: tx.merchant_name ?? null,
+            memo: tx.name ?? tx.merchant_name ?? "(unknown)",
             // Plaid: positive amount = money OUT. SA-HUD personal convention:
             // negative = out, positive = in. So flip the sign.
             amount: -1 * (tx.amount ?? 0),
