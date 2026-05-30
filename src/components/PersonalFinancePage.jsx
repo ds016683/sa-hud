@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { Wallet, Calendar, ListChecks, RefreshCw, AlertCircle, ArrowUpRight, ArrowDownRight } from 'lucide-react'
 import { supabase } from '../lib/supabase'
+import PlaidActionsBar from './PlaidActionsBar'
 
 const S = {
   page: { maxWidth: 1200, margin: '0 auto', padding: '24px 16px', fontFamily: 'Arial, Helvetica, sans-serif' },
@@ -201,6 +202,7 @@ export default function PersonalFinancePage() {
             <RefreshCw size={12} style={{ animation: loading ? 'spin 1s linear infinite' : 'none' }} />
             Refresh
           </button>
+          <PlaidActionsBar scope="personal" onSyncComplete={fetchAll} />
         </div>
       </div>
 

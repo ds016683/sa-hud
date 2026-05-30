@@ -23,6 +23,7 @@
     "prop-types": "^15.8.1",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
+    "react-plaid-link": "^4.1.1",
     "react-simple-maps": "^3.0.0",
     "three": "^0.182.0"
   },

@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { Wallet, TrendingUp, Layers, Building2, Info, RefreshCw, AlertCircle } from 'lucide-react'
 import { supabase } from '../lib/supabase'
+import PlaidActionsBar from './PlaidActionsBar'
 
 const S = {
   page: { maxWidth: 1200, margin: '0 auto', padding: '24px 16px', fontFamily: 'Arial, Helvetica, sans-serif' },
@@ -193,6 +194,7 @@ export default function CompanyFinancePage() {
               <RefreshCw size={11} /> {pfSync.last_status === 'ok' ? 'synced' : pfSync.last_status} {fmtTime(pfSync.last_synced_at)}
             </span>
           )}
+          <PlaidActionsBar scope="th" />
         </div>
       </div>
 
