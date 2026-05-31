@@ -42,10 +42,21 @@ serve(async (req) => {
 
     const results: any[] = [];
 
+    // Load account-level scope overrides (last4 -> personal|th) from finance.account_scope
+    const { data: scopeRows } = await sb_th.from("account_scope").select("account_last4, scope");
+    const scopeByLast4: Record<string, "personal" | "th"> = {};
+    for (const r of scopeRows ?? []) scopeByLast4[r.account_last4] = r.scope;
+
+    // Helper: decide which schema target an individual Plaid account goes to.
+    function resolveScope(acct: any, fallback: "personal" | "th"): "personal" | "th" {
+      const last4 = (acct.mask ?? "").toString().slice(-4);
+      if (last4 && scopeByLast4[last4]) return scopeByLast4[last4];
+      return fallback;
+    }
+
     for (const item of items ?? []) {
       try {
-        const scope = item.scope as "personal" | "th";
-        const sb = scope === "personal" ? sb_personal : sb_th;
+        const itemScope = item.scope as "personal" | "th";
 
         // 1. Balances
         const balR = await fetch(`${PLAID_BASE}/accounts/balance/get`, {
@@ -59,38 +70,38 @@ serve(async (req) => {
         const balData = await balR.json();
         if (!balR.ok) throw new Error("balance_get: " + JSON.stringify(balData));
 
-        // Upsert balances — one row per account
-        // Personal: finance_personal.balances (account_name unique key per institution)
-        // TH: finance.cash_tracker (one row per as_of date per account)
+        // Build per-account scope map for this item's accounts (used by both balances + txs)
+        const acctScopes: Record<string, "personal" | "th"> = {};
+        const acctLast4: Record<string, string> = {};
+        for (const acct of balData.accounts ?? []) {
+          acctScopes[acct.account_id] = resolveScope(acct, itemScope);
+          acctLast4[acct.account_id] = (acct.mask ?? "").toString().slice(-4);
+        }
+
+        // Upsert balances per account into the right schema
         let balRowsWritten = 0;
-        if (scope === "personal") {
-          for (const acct of balData.accounts ?? []) {
-            const { error: bErr } = await sb.from("balances").upsert({
-              account_name: acct.name,
-              account_type: acct.subtype ?? acct.type ?? "checking",
-              institution: item.institution_name,
-              current_balance: acct.balances.current ?? 0,
-              currency: acct.balances.iso_currency_code ?? "USD",
-              as_of: new Date().toISOString(),
-              plaid_account_id: acct.account_id,
-              plaid_item_id: item.id,
-            }, { onConflict: "plaid_account_id" });
-            if (bErr) throw new Error("upsert balance: " + bErr.message);
-            balRowsWritten++;
-          }
-        } else {
-          // TH: cash_tracker rows
-          for (const acct of balData.accounts ?? []) {
-            const { error: bErr } = await sb.from("cash_tracker").upsert({
-              as_of: new Date().toISOString().split("T")[0],
-              account_name: acct.name,
-              balance: acct.balances.current ?? 0,
-              plaid_account_id: acct.account_id,
-              plaid_item_id: item.id,
-            }, { onConflict: "as_of,account_name" });
-            if (bErr) throw new Error("upsert cash_tracker: " + bErr.message);
-            balRowsWritten++;
-          }
+        for (const acct of balData.accounts ?? []) {
+          const acctScope = acctScopes[acct.account_id];
+          const last4 = acctLast4[acct.account_id];
+          const sb = acctScope === "personal" ? sb_personal : sb_th;
+          const tableName = acctScope === "personal" ? "balances" : "balances_plaid";
+          const row: any = {
+            account_name: acct.name,
+            account_type: acct.subtype ?? acct.type ?? "checking",
+            institution: item.institution_name,
+            current_balance: acct.balances.current ?? 0,
+            available_balance: acct.balances.available ?? acct.balances.current ?? 0,
+            currency: acct.balances.iso_currency_code ?? "USD",
+            as_of: new Date().toISOString(),
+            plaid_account_id: acct.account_id,
+            plaid_item_id: item.id,
+          };
+          if (acctScope === "th") row.account_last4 = last4;
+          const { error: bErr } = await sb.from(tableName).upsert(row, {
+            onConflict: "plaid_account_id",
+          });
+          if (bErr) throw new Error(`upsert ${tableName} (${acct.name}): ${bErr.message}`);
+          balRowsWritten++;
         }
 
         // 2. Transactions via /transactions/sync (incremental cursor)
@@ -119,16 +130,19 @@ serve(async (req) => {
           hasMore = txData.has_more;
         }
 
-        // Upsert added + modified
+        // Upsert added + modified — route each tx to the right schema by its account
         let txWritten = 0;
-        const txTable = scope === "personal" ? "transactions" : "transactions";
         for (const tx of [...added, ...modified]) {
+          const acctScope = acctScopes[tx.account_id] ?? itemScope;
+          const last4 = acctLast4[tx.account_id] ?? null;
+          const sb = acctScope === "personal" ? sb_personal : sb_th;
+          const tableName = acctScope === "personal" ? "transactions" : "transactions_plaid";
           const row: any = {
             occurred_on: tx.date,
             merchant: tx.merchant_name ?? null,
             memo: tx.name ?? tx.merchant_name ?? "(unknown)",
-            // Plaid: positive amount = money OUT. SA-HUD personal convention:
-            // negative = out, positive = in. So flip the sign.
+            // Plaid: positive amount = money OUT. SA-HUD convention:
+            // negative = out, positive = in. Flip the sign.
             amount: -1 * (tx.amount ?? 0),
             category: (tx.personal_finance_category?.primary ?? tx.category?.[0]) ?? null,
             account_name: balData.accounts?.find((a: any) => a.account_id === tx.account_id)?.name ?? null,
@@ -136,10 +150,11 @@ serve(async (req) => {
             plaid_account_id: tx.account_id,
             plaid_item_id: item.id,
           };
-          const { error: tErr } = await sb.from(txTable).upsert(row, {
+          if (acctScope === "th") row.account_last4 = last4;
+          const { error: tErr } = await sb.from(tableName).upsert(row, {
             onConflict: "plaid_transaction_id",
           });
-          if (tErr) throw new Error("upsert tx: " + tErr.message);
+          if (tErr) throw new Error(`upsert ${tableName}: ${tErr.message}`);
           txWritten++;
         }
 
@@ -152,7 +167,7 @@ serve(async (req) => {
 
         results.push({
           institution: item.institution_name,
-          scope, balances_written: balRowsWritten,
+          scope: itemScope, balances_written: balRowsWritten,
           txs_added: added.length, txs_modified: modified.length, txs_removed: removed.length,
           txs_written: txWritten,
         });

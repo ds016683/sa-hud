@@ -1,7 +1,8 @@
 import { useState, useEffect, useMemo } from 'react'
-import { Wallet, TrendingUp, Layers, Building2, Info, RefreshCw, AlertCircle } from 'lucide-react'
+import { Wallet, TrendingUp, Layers, Building2, Info, RefreshCw, AlertCircle, Landmark } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import PlaidActionsBar from './PlaidActionsBar'
+import BankingActivity from './BankingActivity'
 
 const S = {
   page: { maxWidth: 1200, margin: '0 auto', padding: '24px 16px', fontFamily: 'Arial, Helvetica, sans-serif' },
@@ -97,7 +98,7 @@ function fmtTime(ts) {
 }
 
 export default function CompanyFinancePage() {
-  const [view, setView] = useState('proforma')  // 'proforma' | 'cash' | 'pipeline'
+  const [view, setView] = useState('banking')  // 'banking' | 'proforma' | 'cash' | 'pipeline'
   const [year, setYear] = useState(2026)
   const [showPipelineOverlay, setShowPipelineOverlay] = useState(true)
 
@@ -200,6 +201,9 @@ export default function CompanyFinancePage() {
 
       {/* View pills */}
       <div style={S.pillRow}>
+        <span style={S.pill(view === 'banking')} onClick={() => setView('banking')}>
+          <Landmark size={13} /> Banking Activity
+        </span>
         <span style={S.pill(view === 'proforma')} onClick={() => setView('proforma')}>
           <TrendingUp size={13} /> Pro Forma (P&L)
         </span>
@@ -246,6 +250,11 @@ export default function CompanyFinancePage() {
 
       {/* Loading */}
       {loading && !err && <div style={S.empty}>Loading…</div>}
+
+      {/* Banking Activity view */}
+      {view === 'banking' && (
+        <BankingActivity scope="th" />
+      )}
 
       {/* Pro Forma view */}
       {!loading && !err && view === 'proforma' && (
