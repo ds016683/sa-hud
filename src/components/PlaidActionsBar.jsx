@@ -92,17 +92,38 @@ export default function PlaidActionsBar({ scope = 'personal', onSyncComplete }) 
     }
   }
 
-  const onPlaidSuccess = useCallback((public_token, metadata) => {
-    setPendingPublicToken(public_token)
-    setPendingInstitution(metadata.institution)
-    setShowScopeModal(true)
+  const onPlaidSuccess = useCallback(async (public_token, metadata) => {
+    console.log('[Plaid] onSuccess fired', { institution: metadata?.institution?.name, scope })
     setLinking(false)
     setLinkToken(null)
-  }, [])
+    // Auto-use the scope from the page that opened Link — no modal, no extra click.
+    setSyncing(true)
+    setError(null)
+    try {
+      const r = await fetch(`${FN_BASE}/plaid-exchange`, {
+        method: 'POST', headers: await authHeaders(),
+        body: JSON.stringify({
+          public_token,
+          scope,
+          institution: metadata.institution,
+        }),
+      })
+      const data = await r.json()
+      console.log('[Plaid] exchange response', r.status, data)
+      if (!r.ok || !data.ok) throw new Error(data.error || `HTTP ${r.status}`)
+      await runSync()
+    } catch (e) {
+      console.error('[Plaid] exchange failed', e)
+      setError(String(e.message || e))
+      setSyncing(false)
+    }
+  }, [scope])
 
-  const onPlaidExit = useCallback(() => {
+  const onPlaidExit = useCallback((err, metadata) => {
+    console.log('[Plaid] onExit fired', { err, status: metadata?.status })
     setLinking(false)
     setLinkToken(null)
+    if (err) setError(`Link exited: ${err.error_message || err.error_code || 'unknown'}`)
   }, [])
 
   const { open, ready } = usePlaidLink({
