@@ -146,6 +146,52 @@ export default function CompanyFinancePage() {
   }, [])
 
   const months = year === 2026 ? MONTHS_2026 : MONTHS_2025
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // PIPELINE — live computation from finance.pipeline_forecast
+  // SharePoint Pipeline Forecast sheet feeds this table. Each prospect row has:
+  //   payload.B = deal name, C = target $, D = probability, E = offsets,
+  //   F = estimated/weighted amount, H..S = Jan..Dec monthly accruals, T = year total.
+  // We ignore the stale "2024 Total" header label — H..S cells reflect current year.
+  // Pipeline only shows in 2026 view (forward-looking 12-month).
+  // The SharePoint Pro Forma's row-7 "Pipeline Revenue" is IGNORED — we override.
+  // ─────────────────────────────────────────────────────────────────────────
+  const PIPELINE_MONTH_COLS = ['H','I','J','K','L','M','N','O','P','Q','R','S']
+  // Map HUD month index (0..11) → pipeline payload key
+  const pipelineColForMonthIdx = (i) => PIPELINE_MONTH_COLS[i]
+
+  const activePipelineDeals = useMemo(() => {
+    if (year !== 2026) return []
+    return pipelineForecast
+      .filter(r => {
+        const name = (r.payload?.B || '').toString().trim()
+        const target = parseFloat(r.payload?.C)
+        return name.length > 0 && !Number.isNaN(target) && target > 0
+      })
+      .map(r => ({
+        row_index: r.row_index,
+        name: (r.payload?.B || '').toString().trim(),
+        probability: parseFloat(r.payload?.D) || 0,
+        target: parseFloat(r.payload?.C) || 0,
+        estimated: parseFloat(r.payload?.F) || 0,
+        monthly: PIPELINE_MONTH_COLS.map(c => parseFloat(r.payload?.[c]) || 0),
+      }))
+  }, [pipelineForecast, year])
+
+  // Pipeline monthly subtotals (length 12) — sum across all active deals
+  const pipelineMonthlyTotals = useMemo(() => {
+    const out = new Array(12).fill(0)
+    activePipelineDeals.forEach(d => {
+      d.monthly.forEach((v, i) => { out[i] += v })
+    })
+    return out
+  }, [activePipelineDeals])
+
+  const pipelineAnnualTotal = useMemo(
+    () => pipelineMonthlyTotals.reduce((a, b) => a + b, 0),
+    [pipelineMonthlyTotals]
+  )
+
   const pfSync = syncMeta.find(s => s.source === 'pro_forma')
   const ctSync = syncMeta.find(s => s.source === 'cash_tracker')
   const piSync = syncMeta.find(s => s.source === 'pipeline_forecast')
@@ -153,15 +199,18 @@ export default function CompanyFinancePage() {
   const headlines = useMemo(() => {
     const find = (label) => proForma.find(r => r.label === label)
     const base = find('Base Revenue')
-    const pipe = find('Pipeline Revenue')
     const fc = find('Forecasted Revenue')
     const totalCol = year === 2026 ? 'AF' : 'P'
+    const baseTotal = parseFloat(base?.payload?.[totalCol]) || 0
+    const liveForecast = baseTotal + (showPipelineOverlay ? pipelineAnnualTotal : 0)
     return {
-      base: base?.payload?.[totalCol],
-      pipeline: pipe?.payload?.[totalCol],
-      forecast: fc?.payload?.[totalCol],
+      base: baseTotal,
+      pipeline: showPipelineOverlay ? pipelineAnnualTotal : 0,
+      forecast: liveForecast,
+      // We also return what SharePoint "baked in" so Net Income can be recomputed
+      sharepointForecast: parseFloat(fc?.payload?.[totalCol]) || 0,
     }
-  }, [proForma, year])
+  }, [proForma, year, pipelineAnnualTotal, showPipelineOverlay])
 
   // Identify section header rows: payload.A null AND payload.B is a non-empty string AND payload.C null AND
   // monthly cells in this row aggregate the section below (e.g. "BEH - Behavioral Health").
@@ -171,15 +220,16 @@ export default function CompanyFinancePage() {
 
   // Visible Pro Forma rows: pass through everything that has either a label or a payload.B name.
   // Skip the very-top header rows we already render as headline metrics.
+  // Skip SharePoint's baked Pipeline Revenue + Forecasted Revenue rows — HUD recomputes them.
   const visibleRows = useMemo(() => {
     return proForma.filter(r => {
       const b = (r.payload?.B || '').toString().trim()
       const hasName = b.length > 0
       if (!hasName && !r.label) return false
-      // Suppress the duplicate "Profit & Loss Pro Forma" + "Projected" header rows
-      if (SUMMARY_LABELS.has(r.label) && r.label !== 'Base Revenue' && r.label !== 'Pipeline Revenue' && r.label !== 'Forecasted Revenue') {
-        return false
-      }
+      // Suppress duplicate header rows
+      if (r.label === 'Profit & Loss Pro Forma' || r.label === 'Projected') return false
+      // Suppress SharePoint Pipeline + Forecasted — HUD computes these live
+      if (r.label === 'Pipeline Revenue' || r.label === 'Forecasted Revenue') return false
       return true
     })
   }, [proForma])
@@ -240,20 +290,6 @@ export default function CompanyFinancePage() {
         </div>
       )}
 
-      {/* Overlay toggle (visible on proforma) */}
-      {view === 'proforma' && (
-        <div style={S.overlayRow}>
-          <span style={S.overlayLabel}>Pipeline overlay</span>
-          <span style={S.toggleWrap} onClick={() => setShowPipelineOverlay(v => !v)}>
-            <span style={S.toggleTrack(showPipelineOverlay)}>
-              <span style={S.toggleThumb(showPipelineOverlay)} />
-            </span>
-            <span style={{ fontSize: 12, color: '#334E85', fontWeight: 600 }}>{showPipelineOverlay ? 'ON' : 'OFF'}</span>
-          </span>
-          <span style={S.overlayHelp}><Info size={11} /> Highlights Base + Pipeline + Forecasted Revenue rows</span>
-        </div>
-      )}
-
       {/* Errors */}
       {err && (
         <div style={S.errorBox}>
@@ -308,7 +344,18 @@ export default function CompanyFinancePage() {
           <div style={S.card}>
             <div style={S.cardHeader}>
               <div style={S.cardTitle}><Layers size={14} /> {year} Pro Forma rows</div>
-              <div style={S.cardSub}>{visibleRows.length} rows</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                {year === 2026 && (
+                  <span style={S.toggleWrap} onClick={() => setShowPipelineOverlay(v => !v)} title="Toggle probability-weighted pipeline contribution">
+                    <span style={{ fontSize: 11, color: '#64748B', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Pipeline</span>
+                    <span style={S.toggleTrack(showPipelineOverlay)}>
+                      <span style={S.toggleThumb(showPipelineOverlay)} />
+                    </span>
+                    <span style={{ fontSize: 12, color: showPipelineOverlay ? '#009DE0' : '#94A3B8', fontWeight: 700 }}>{showPipelineOverlay ? 'ON' : 'OFF'}</span>
+                  </span>
+                )}
+                <div style={S.cardSub}>{visibleRows.length} rows</div>
+              </div>
             </div>
             <div style={S.tableWrap}>
               <table style={S.table}>
@@ -345,7 +392,7 @@ export default function CompanyFinancePage() {
                     }
 
                     return (
-                      <tr key={row.row_index} style={isHeadline && showPipelineOverlay ? S.rowHeadline : (isSubtotal ? S.rowSubtotal : null)}>
+                      <tr key={row.row_index} style={isSubtotal ? S.rowSubtotal : null}>
                         <td style={{ ...S.tdLabel, ...(isSubtotal ? { fontWeight: 700 } : {}) }}>{rowName}</td>
                         <td style={S.tdContractId}>{contractId}</td>
                         {months.map(m => {
@@ -360,6 +407,64 @@ export default function CompanyFinancePage() {
                       </tr>
                     )
                   })}
+
+                  {/* ─── PIPELINE SECTION (2026 only, when toggle is ON) ─── */}
+                  {year === 2026 && showPipelineOverlay && activePipelineDeals.length > 0 && (
+                    <>
+                      <tr style={S.rowSection}>
+                        <td style={S.tdSection} colSpan={2}>PIPELINE — PROBABILITY-WEIGHTED</td>
+                        {months.map((m, i) => (
+                          <td key={m.col} style={S.tdSectionNum}>
+                            {pipelineMonthlyTotals[i] > 0 ? fmtMoney(pipelineMonthlyTotals[i]) : ''}
+                          </td>
+                        ))}
+                      </tr>
+                      {activePipelineDeals.map(deal => {
+                        const prob = deal.probability
+                        const probLabel = `${Math.round(prob * 100)}%`
+                        const probColor = prob >= 0.85 ? '#16A34A' : prob >= 0.65 ? '#0EA5E9' : prob >= 0.45 ? '#EAB308' : '#94A3B8'
+                        return (
+                          <tr key={`pipe-${deal.row_index}`}>
+                            <td style={S.tdLabel}>{deal.name}</td>
+                            <td style={{ ...S.tdContractId, color: probColor, fontWeight: 700 }}>{probLabel}</td>
+                            {deal.monthly.map((v, i) => (
+                              <td key={i} style={S.tdNum}>{v > 0 ? fmtMoney(v) : ''}</td>
+                            ))}
+                          </tr>
+                        )
+                      })}
+                      <tr style={S.rowSubtotal}>
+                        <td style={{ ...S.tdLabel, fontWeight: 700 }}>Pipeline Subtotal (weighted)</td>
+                        <td style={S.tdContractId}></td>
+                        {pipelineMonthlyTotals.map((v, i) => (
+                          <td key={i} style={{ ...S.tdNum, fontWeight: 700 }}>{v > 0 ? fmtMoney(v) : ''}</td>
+                        ))}
+                      </tr>
+                    </>
+                  )}
+
+                  {/* ─── FORECASTED REVENUE (computed: Base + Pipeline if ON) ─── */}
+                  {year === 2026 && (() => {
+                    const baseRow = proForma.find(r => r.label === 'Base Revenue')
+                    if (!baseRow) return null
+                    return (
+                      <tr style={{ ...S.rowSection, background: '#0A2540' }}>
+                        <td style={{ ...S.tdSection, background: '#0A2540' }} colSpan={2}>
+                          FORECASTED REVENUE {showPipelineOverlay ? '(Base + Pipeline)' : '(Base only)'}
+                        </td>
+                        {months.map((m, i) => {
+                          const baseV = parseFloat(baseRow.payload?.[m.col]) || 0
+                          const pipeV = showPipelineOverlay ? pipelineMonthlyTotals[i] : 0
+                          const total = baseV + pipeV
+                          return (
+                            <td key={m.col} style={{ ...S.tdSectionNum, background: '#0A2540' }}>
+                              {total > 0 ? fmtMoney(total) : ''}
+                            </td>
+                          )
+                        })}
+                      </tr>
+                    )
+                  })()}
                 </tbody>
               </table>
             </div>
