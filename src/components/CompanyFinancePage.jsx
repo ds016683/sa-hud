@@ -304,11 +304,13 @@ export default function CompanyFinancePage() {
                 <tbody>
                   {visibleRows.map(row => {
                     const isHeadline = HEADLINE_LABELS.has(row.label)
-                    const isFF = row.label === 'FF'
+                    const payloadName = row.payload?.B && typeof row.payload.B === 'string' ? row.payload.B.trim() : ''
+                    const displayName = (row.label && row.label !== 'FF') ? row.label : (payloadName || '(unlabeled)')
+                    const isUnlabeled = displayName === '(unlabeled)'
                     return (
                       <tr key={row.row_index} style={isHeadline && showPipelineOverlay ? S.rowHeadline : null}>
-                        <td style={{ ...S.tdLabel, ...(isFF ? S.rowMuted : {}) }}>
-                          {isFF ? <span style={{ color: '#A8B7CC' }}>(unlabeled)</span> : row.label}
+                        <td style={{ ...S.tdLabel, ...(isUnlabeled ? S.rowMuted : {}) }}>
+                          {isUnlabeled ? <span style={{ color: '#A8B7CC' }}>(unlabeled)</span> : displayName}
                         </td>
                         {months.map(m => {
                           const v = valueFor(row, m.col)
