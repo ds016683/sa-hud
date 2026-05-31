@@ -53,7 +53,12 @@ const S = {
   td: { padding: '8px 12px', borderBottom: '1px solid #F0F4F9', color: '#1A2B47', whiteSpace: 'nowrap' },
   tdNum: { padding: '8px 12px', borderBottom: '1px solid #F0F4F9', color: '#1A2B47', textAlign: 'right', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' },
   tdLabel: { padding: '8px 12px', borderBottom: '1px solid #F0F4F9', color: '#002C77', fontWeight: 600, whiteSpace: 'nowrap' },
+  tdContractId: { padding: '8px 12px', borderBottom: '1px solid #F0F4F9', color: '#565656', fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', fontSize: 11, whiteSpace: 'nowrap' },
   rowHeadline: { background: '#EFF6FC' },
+  rowSection: { background: '#002C77' },
+  tdSection: { padding: '10px 12px', borderBottom: '1px solid #001A4D', color: 'white', fontWeight: 700, fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.04em', whiteSpace: 'nowrap' },
+  tdSectionNum: { padding: '10px 12px', borderBottom: '1px solid #001A4D', color: 'white', fontWeight: 700, fontSize: 12, textAlign: 'right', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' },
+  rowSubtotal: { background: '#F0F4F9' },
   rowMuted: { color: '#8096B2' },
 
   empty: { padding: 40, textAlign: 'center', color: '#8096B2', fontSize: 13 },
@@ -158,11 +163,23 @@ export default function CompanyFinancePage() {
     }
   }, [proForma, year])
 
-  // Visible Pro Forma rows: non-null labels, skip pure "FF" repeats and Projected header row
+  // Identify section header rows: payload.A null AND payload.B is a non-empty string AND payload.C null AND
+  // monthly cells in this row aggregate the section below (e.g. "BEH - Behavioral Health").
+  // We treat any row where label !== 'FF' && label !== 'RR' && payload.C is empty AND payload.B looks like a category as a section.
+  const SECTION_PATTERN = /^[A-Z]{2,4}\s*-\s/  // BEH -, PAD -, MAR -, WWB -, CMH - etc.
+  const SUMMARY_LABELS = new Set(['Base Revenue', 'Pipeline Revenue', 'Forecasted Revenue', 'Profit & Loss Pro Forma', 'Projected'])
+
+  // Visible Pro Forma rows: pass through everything that has either a label or a payload.B name.
+  // Skip the very-top header rows we already render as headline metrics.
   const visibleRows = useMemo(() => {
     return proForma.filter(r => {
-      if (!r.label) return false
-      if (r.label === 'Projected' || r.label === 'Profit & Loss Pro Forma') return false
+      const b = (r.payload?.B || '').toString().trim()
+      const hasName = b.length > 0
+      if (!hasName && !r.label) return false
+      // Suppress the duplicate "Profit & Loss Pro Forma" + "Projected" header rows
+      if (SUMMARY_LABELS.has(r.label) && r.label !== 'Base Revenue' && r.label !== 'Pipeline Revenue' && r.label !== 'Forecasted Revenue') {
+        return false
+      }
       return true
     })
   }, [proForma])
@@ -298,20 +315,39 @@ export default function CompanyFinancePage() {
                 <thead>
                   <tr>
                     <th style={S.th}>Line</th>
+                    <th style={S.th}>Contract ID</th>
                     {months.map(m => <th key={m.col} style={S.thNum}>{m.label}</th>)}
                   </tr>
                 </thead>
                 <tbody>
                   {visibleRows.map(row => {
                     const isHeadline = HEADLINE_LABELS.has(row.label)
-                    const payloadName = row.payload?.B && typeof row.payload.B === 'string' ? row.payload.B.trim() : ''
-                    const displayName = (row.label && row.label !== 'FF') ? row.label : (payloadName || '(unlabeled)')
-                    const isUnlabeled = displayName === '(unlabeled)'
+                    const rowName = (row.payload?.B && typeof row.payload.B === 'string' ? row.payload.B.trim() : '') || row.label || ''
+                    const contractId = (row.payload?.C && typeof row.payload.C === 'string' ? row.payload.C.trim() : '') || ''
+                    const aTag = (row.payload?.A || '').toString().trim()
+                    const isSection = !isHeadline && !contractId && SECTION_PATTERN.test(rowName)
+                    const isSubtotal = !isHeadline && !contractId && /total\s*$/i.test(rowName)
+
+                    if (isSection) {
+                      return (
+                        <tr key={row.row_index} style={S.rowSection}>
+                          <td style={S.tdSection} colSpan={2}>{rowName}</td>
+                          {months.map(m => {
+                            const v = valueFor(row, m.col)
+                            return (
+                              <td key={m.col} style={S.tdSectionNum}>
+                                {typeof v === 'number' ? fmtMoney(v) : ''}
+                              </td>
+                            )
+                          })}
+                        </tr>
+                      )
+                    }
+
                     return (
-                      <tr key={row.row_index} style={isHeadline && showPipelineOverlay ? S.rowHeadline : null}>
-                        <td style={{ ...S.tdLabel, ...(isUnlabeled ? S.rowMuted : {}) }}>
-                          {isUnlabeled ? <span style={{ color: '#A8B7CC' }}>(unlabeled)</span> : displayName}
-                        </td>
+                      <tr key={row.row_index} style={isHeadline && showPipelineOverlay ? S.rowHeadline : (isSubtotal ? S.rowSubtotal : null)}>
+                        <td style={{ ...S.tdLabel, ...(isSubtotal ? { fontWeight: 700 } : {}) }}>{rowName}</td>
+                        <td style={S.tdContractId}>{contractId}</td>
                         {months.map(m => {
                           const v = valueFor(row, m.col)
                           const isNumber = typeof v === 'number'
