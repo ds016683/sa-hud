@@ -1,14 +1,10 @@
 import { useState, useEffect } from 'react'
-import { LayoutGrid, Lightbulb, ScrollText, Network, Shield, LogOut, Menu, X, BookOpen, Calendar, Target, Users, Sparkles, FileText, MessageSquare, Wallet, CreditCard } from 'lucide-react'
+import { LayoutGrid, Lightbulb, Network, LogOut, Menu, X, Target, Users, Sparkles, FileText, MessageSquare, Wallet, CreditCard } from 'lucide-react'
 import { getSession, onAuthStateChange, signOut } from './lib/auth'
 import LoginPage from './components/LoginPage'
-import HUD from './components/HUD'
 import PortfolioPage from './components/PortfolioPage'
-import TodoPage from './components/TodoPage'
 import IdeasPage from './components/IdeasPage'
 import EcosystemPage from './components/EcosystemPage'
-import DailyBriefingsPage from './components/DailyBriefingsPage'
-import MeetingsPage from './components/MeetingsPage'
 import MeetingNotesPage from './components/MeetingNotesPage'
 import ObjectivesPage from './components/ObjectivesPage'
 import AccomplishmentsPage from './components/AccomplishmentsPage'
@@ -27,10 +23,6 @@ const NAV_ITEMS = [
   { id: 'slack',           label: 'Slack',              icon: MessageSquare },
   { id: 'portfolio',       label: 'Portfolio',          icon: LayoutGrid },
   { id: 'ideas',           label: 'Ideas Pipeline',     icon: Lightbulb  },
-  { id: 'todos',           label: 'Quests (legacy)',    icon: ScrollText },
-  { id: 'briefings',       label: 'Daily Briefings',    icon: BookOpen   },
-  { id: 'meetings',        label: 'Meetings',           icon: Calendar   },
-  { id: 'hud',             label: 'HUD',                icon: Shield     },
   { id: 'ecosystem',       label: 'Ecosystem',          icon: Network    },
 ]
 
@@ -164,11 +156,7 @@ export default function App() {
         {active === 'slack'           && <SlackPage />}
         {active === 'portfolio'       && <PortfolioPage />}
         {active === 'ideas'           && <IdeasPage />}
-        {active === 'todos'           && <TodoPage />}
-        {active === 'hud'             && <HUD />}
         {active === 'ecosystem'       && <EcosystemPage />}
-        {active === 'briefings'       && <DailyBriefingsPage />}
-        {active === 'meetings'        && <MeetingsPage />}
       </main>
     </div>
   )
