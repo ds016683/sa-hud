@@ -105,6 +105,13 @@ function daysUntil(dateStr) {
   return Math.round((due - today) / 86400000)
 }
 
+// ─── Known account masks (stable — from finance.account_scope) ───
+const ACCOUNT_MASKS = {
+  'Family Bill Pay': '9122',
+  'Avery Checking':  '3265',
+  'Hudson Checking': '2933',
+}
+
 // ─── Monthly budget from family spending spreadsheet (June 2026 baseline) ───
 const MONTHLY_BUDGET = [
   { category: 'Mortgage',                 bucket: 'Housing',     amount: 12000 },
@@ -414,36 +421,54 @@ export default function PersonalFinancePage() {
             {currentBalances.length === 0 ? (
               <div style={S.empty}>No balances yet.</div>
             ) : (
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 12, padding: 16 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 12, padding: 16 }}>
                 {currentBalances
                   .slice()
                   .sort((a, b) => (parseFloat(b.available_balance ?? b.current_balance) || 0) - (parseFloat(a.available_balance ?? a.current_balance) || 0))
                   .map(r => {
+                    const mask = ACCOUNT_MASKS[r.account_name]
+                    const displayName = mask ? `${r.account_name} ••${mask}` : r.account_name
                     const avail = r.available_balance != null ? parseFloat(r.available_balance) : null
                     const posted = parseFloat(r.current_balance) || 0
-                    const showPending = avail !== null && Math.abs(avail - posted) >= 1
+                    // Adjusted = available minus scheduled bills not yet cleared by Plaid
+                    const scheduledOut = bills
+                      .filter(b => b.status === 'scheduled' && b.account_to_pay === r.account_name)
+                      .reduce((sum, b) => sum + (parseFloat(b.amount_due) || 0), 0)
+                    const adjusted = (avail ?? posted) - scheduledOut
+                    const bankPending = avail !== null ? Math.abs(avail - posted) : 0
+                    const isAdjusted = scheduledOut > 0
                     return (
                       <div key={r.id} style={{ ...S.metricCard, borderLeft: '3px solid #002C77' }}>
-                        <div style={{ fontSize: 13, fontWeight: 700, color: '#002C77', marginBottom: 10 }}>{r.account_name}</div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
-                          <div>
-                            <div style={{ fontSize: 11, color: '#8096B2', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 2 }}>Available</div>
-                            <div style={{ fontSize: 26, fontWeight: 700, color: '#1E7C3A', fontVariantNumeric: 'tabular-nums' }}>
-                              {fmtMoney(avail ?? posted, { cents: true })}
-                            </div>
+                        <div style={{ fontSize: 13, fontWeight: 700, color: '#002C77', marginBottom: 12 }}>{displayName}</div>
+
+                        {/* Adjusted — headline number */}
+                        <div style={{ marginBottom: 10 }}>
+                          <div style={{ fontSize: 11, color: '#8096B2', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 2 }}>
+                            Adjusted{isAdjusted ? ` (−${fmtMoney(scheduledOut, { cents: true })} scheduled)` : ''}
                           </div>
-                          <div style={{ textAlign: 'right' }}>
-                            <div style={{ fontSize: 11, color: '#8096B2', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 2 }}>Posted</div>
-                            <div style={{ fontSize: 16, fontWeight: 600, color: '#334E85', fontVariantNumeric: 'tabular-nums' }}>
-                              {fmtMoney(posted, { cents: true })}
-                            </div>
+                          <div style={{ fontSize: 28, fontWeight: 700, color: adjusted < 0 ? '#A02323' : '#1E7C3A', fontVariantNumeric: 'tabular-nums' }}>
+                            {fmtMoney(adjusted, { cents: true })}
                           </div>
                         </div>
-                        {showPending && (
-                          <div style={{ marginTop: 8, fontSize: 11, color: '#9A6400', background: '#FFF4E0', border: '1px solid #F2D592', borderRadius: 6, padding: '3px 7px', display: 'inline-block' }}>
-                            {fmtMoney(Math.abs(avail - posted), { cents: true })} pending
+
+                        {/* Available + Posted side by side */}
+                        <div style={{ display: 'flex', gap: 16, borderTop: '1px solid #E2E8F0', paddingTop: 8 }}>
+                          <div>
+                            <div style={{ fontSize: 10, color: '#8096B2', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 1 }}>Available</div>
+                            <div style={{ fontSize: 14, fontWeight: 600, color: '#334E85', fontVariantNumeric: 'tabular-nums' }}>{fmtMoney(avail ?? posted, { cents: true })}</div>
                           </div>
-                        )}
+                          <div>
+                            <div style={{ fontSize: 10, color: '#8096B2', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 1 }}>Posted</div>
+                            <div style={{ fontSize: 14, fontWeight: 600, color: '#334E85', fontVariantNumeric: 'tabular-nums' }}>{fmtMoney(posted, { cents: true })}</div>
+                          </div>
+                          {bankPending >= 1 && (
+                            <div>
+                              <div style={{ fontSize: 10, color: '#9A6400', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 1 }}>Bank Pending</div>
+                              <div style={{ fontSize: 14, fontWeight: 600, color: '#9A6400', fontVariantNumeric: 'tabular-nums' }}>{fmtMoney(bankPending, { cents: true })}</div>
+                            </div>
+                          )}
+                        </div>
+
                         <div style={{ marginTop: 8, fontSize: 10, color: '#8096B2' }}>{r.institution} · as of {fmtDate(r.as_of)}</div>
                       </div>
                     )
