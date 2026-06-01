@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
-import { Wallet, Calendar, ListChecks, RefreshCw, AlertCircle, ArrowUpRight, ArrowDownRight, BarChart2 } from 'lucide-react'
+import { Wallet, Calendar, ListChecks, RefreshCw, AlertCircle, ArrowUpRight, ArrowDownRight, BarChart2, Check, Clock } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import PlaidActionsBar from './PlaidActionsBar'
 
@@ -283,7 +283,7 @@ function BillsTab({ bills }) {
                   return (
                     <tr key={payee} style={cs.cleared ? { background: '#F4FBF6' } : {}}>
                       <td style={S.tdLabel}>
-                        {cs.cleared && <CheckCircle2 size={13} style={{ color: '#1E7C3A', marginRight: 5, verticalAlign: 'middle' }} />}
+                        {cs.cleared && <Check size={13} style={{ color: '#1E7C3A', marginRight: 5, verticalAlign: 'middle' }} />}
                         {payee}
                       </td>
                       <td style={S.td}>{cs.cadence}</td>
