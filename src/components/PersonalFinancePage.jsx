@@ -853,6 +853,11 @@ export default function PersonalFinancePage() {
                           </tr>
                         )
                       })}
+                    <tr style={{ background: '#F7FAFD', fontWeight: 700, borderTop: '2px solid #E2E8F0' }}>
+                        <td style={{ ...S.tdLabel, fontWeight: 700 }} colSpan={3}>Total Outstanding</td>
+                        <td style={{ ...S.tdNum, fontWeight: 700, color: '#002C77' }}>{fmtMoney(pending.reduce((s,b) => s + (parseFloat(b.amount_due)||0), 0), { cents: true })}</td>
+                        <td style={S.td} />
+                      </tr>
                   </tbody>
                 </table>
               </div>
