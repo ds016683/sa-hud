@@ -112,41 +112,52 @@ const ACCOUNT_INFO = {
   'Hudson Checking': { display: 'Family Spending',      mask: '2933' },
 }
 
-// ─── Known subscriptions derived from Plaid transaction history ───
+// flag values: 'th-reimb' | 'move-acct' | 'cancel' | 'verify' | 'investigate' | 'hold' | null
 const KNOWN_SUBSCRIPTIONS = [
-  // Entertainment
-  { payee: 'Netflix',        category: 'Entertainment', amount: 25.99,  acct: '9122', cadence: 'monthly' },
-  { payee: 'Hulu',           category: 'Entertainment', amount: 89.99,  acct: '9122', cadence: 'monthly' },
-  { payee: 'Sony PlayStation', category: 'Entertainment', amount: 104.19, acct: '9122', cadence: 'monthly' },
-  { payee: 'Discord',        category: 'Entertainment', amount: 8.62,   acct: '9122', cadence: 'monthly' },
-  { payee: 'Blizzard',       category: 'Entertainment', amount: 16.34,  acct: '9122', cadence: 'monthly' },
-  { payee: 'Boosteroid',     category: 'Entertainment', amount: 14.89,  acct: '9122', cadence: 'monthly' },
-  { payee: 'Brain.fm',       category: 'Entertainment', amount: 14.99,  acct: '9122', cadence: 'monthly' },
-  { payee: 'Vocalize.fm',    category: 'Entertainment', amount: 9.99,   acct: '9122', cadence: 'monthly' },
-  // Tech / AI (work-adjacent)
-  { payee: 'OpenRouter',     category: 'Tech / AI',     amount: 105.93, acct: '9122', cadence: 'monthly', note: 'usage-based avg' },
-  { payee: 'Anthropic',      category: 'Tech / AI',     amount: 78.19,  acct: '9122', cadence: 'monthly', note: 'usage-based avg' },
-  { payee: 'Apple',          category: 'Tech / AI',     amount: 45.20,  acct: '9122', cadence: 'monthly', note: 'multiple charges' },
-  { payee: 'Microsoft',      category: 'Tech / AI',     amount: 34.33,  acct: '9122', cadence: 'monthly' },
-  { payee: 'ElevenLabs',     category: 'Tech / AI',     amount: 22.00,  acct: '9122', cadence: 'monthly' },
-  { payee: 'Vercel',         category: 'Tech / AI',     amount: 25.00,  acct: '9122', cadence: 'monthly' },
-  { payee: 'Hostinger',      category: 'Tech / AI',     amount: 55.99,  acct: '9122', cadence: 'monthly' },
-  { payee: 'Supabase',       category: 'Tech / AI',     amount: 50.02,  acct: '9122', cadence: 'monthly' },
-  { payee: 'PhantomBuster',  category: 'Tech / AI',     amount: 69.00,  acct: '9122', cadence: 'monthly' },
-  { payee: 'Granola',        category: 'Tech / AI',     amount: 35.00,  acct: '9122', cadence: 'monthly' },
-  { payee: 'Firecrawl',      category: 'Tech / AI',     amount: 19.00,  acct: '9122', cadence: 'monthly' },
-  { payee: 'Anaconda',       category: 'Tech / AI',     amount: 15.00,  acct: '9122', cadence: 'monthly' },
-  { payee: 'Fly.io',         category: 'Tech / AI',     amount: 5.68,   acct: '9122', cadence: 'monthly' },
-  { payee: 'Canva',          category: 'Tech / AI',     amount: 15.00,  acct: '3265', cadence: 'monthly' },
-  // Utilities (seen in transactions)
-  { payee: 'Verizon',        category: 'Utilities',     amount: 672.00, acct: '9122', cadence: 'monthly', note: 'may be multi-month' },
-  { payee: 'AT&T',           category: 'Utilities',     amount: 200.00, acct: '9122', cadence: 'monthly' },
-  { payee: 'Tello',          category: 'Utilities',     amount: 9.78,   acct: '9122', cadence: 'monthly' },
+  // Family Subscriptions — should live on •3265
+  { payee: 'Netflix',        category: 'Entertainment', amount: 25.99,  acct: '9122', cadence: 'monthly', flag: 'move-acct', note: 'Move billing to •3265' },
+  { payee: 'Hulu',           category: 'Entertainment', amount: 89.99,  acct: '9122', cadence: 'monthly', flag: 'move-acct', note: 'Move billing to •3265' },
+  { payee: 'Sony PlayStation', category: 'Entertainment', amount: 104.19, acct: '9122', cadence: 'monthly', flag: 'verify', note: 'Verify if truly recurring' },
+  { payee: 'Blizzard',       category: 'Entertainment', amount: 16.34,  acct: '9122', cadence: 'monthly', flag: null, note: null },
+  { payee: 'Brain.fm',       category: 'Entertainment', amount: 14.99,  acct: '9122', cadence: 'monthly', flag: null, note: null },
+  // Needs cancellation
+  { payee: 'Boosteroid',     category: 'Entertainment', amount: 14.89,  acct: '9122', cadence: 'monthly', flag: 'cancel', note: 'Cancel' },
+  { payee: 'Vocalize.fm',    category: 'Entertainment', amount: 9.99,   acct: '9122', cadence: 'monthly', flag: 'cancel', note: 'Cancel' },
+  // Apple — move to •2933
+  { payee: 'Apple',          category: 'Tech / AI',     amount: 45.20,  acct: '9122', cadence: 'irregular', flag: 'move-acct', note: 'Not recurring — move charges to •2933' },
+  // TH Reimbursable — moving to new credit card
+  { payee: 'OpenRouter',     category: 'Tech / AI',     amount: 105.93, acct: '9122', cadence: 'irregular', flag: 'th-reimb', note: 'TH reimbursable — usage-based, moving to CC' },
+  { payee: 'Anthropic',      category: 'Tech / AI',     amount: 78.19,  acct: '9122', cadence: 'irregular', flag: 'th-reimb', note: 'TH reimbursable — usage-based, moving to CC' },
+  { payee: 'PhantomBuster',  category: 'Tech / AI',     amount: 69.00,  acct: '9122', cadence: 'monthly',  flag: 'th-reimb', note: 'TH reimbursable — moving to CC; close soon' },
+  { payee: 'Hostinger',      category: 'Tech / AI',     amount: 55.99,  acct: '9122', cadence: 'monthly',  flag: 'th-reimb', note: 'TH reimbursable — moving to CC; consolidate accounts' },
+  { payee: 'Supabase',       category: 'Tech / AI',     amount: 50.02,  acct: '9122', cadence: 'monthly',  flag: 'th-reimb', note: 'TH reimbursable — moving to CC' },
+  { payee: 'Vercel',         category: 'Tech / AI',     amount: 25.00,  acct: '9122', cadence: 'monthly',  flag: 'th-reimb', note: 'TH reimbursable — moving to CC' },
+  { payee: 'Granola',        category: 'Tech / AI',     amount: 35.00,  acct: '9122', cadence: 'monthly',  flag: 'th-reimb', note: 'TH reimbursable — moving to CC' },
+  { payee: 'ElevenLabs',     category: 'Tech / AI',     amount: 22.00,  acct: '9122', cadence: 'monthly',  flag: 'th-reimb', note: 'TH reimbursable — moving to CC' },
+  { payee: 'Firecrawl',      category: 'Tech / AI',     amount: 19.00,  acct: '9122', cadence: 'monthly',  flag: 'th-reimb', note: 'TH reimbursable — moving to CC' },
+  { payee: 'Anaconda',       category: 'Tech / AI',     amount: 15.00,  acct: '9122', cadence: 'monthly',  flag: 'th-reimb', note: 'TH reimbursable — moving to CC' },
+  { payee: 'Discord',        category: 'Tech / AI',     amount: 8.62,   acct: '9122', cadence: 'monthly',  flag: 'th-reimb', note: 'TH reimbursable — moving to CC' },
+  { payee: 'Tello',          category: 'Telecom',       amount: 9.78,   acct: '9122', cadence: 'monthly',  flag: 'th-reimb', note: 'TH reimbursable — moving to CC' },
+  { payee: 'Fly.io',         category: 'Tech / AI',     amount: 5.68,   acct: '9122', cadence: 'monthly',  flag: 'th-reimb', note: 'TH reimbursable — moving to CC' },
+  // Investigate
+  { payee: 'Microsoft',      category: 'Tech / AI',     amount: 34.33,  acct: '9122', cadence: 'monthly',  flag: 'investigate', note: 'Charge unknown — investigate' },
+  // Utilities
+  { payee: 'Verizon',        category: 'Utilities',     amount: 672.00, acct: '9122', cadence: 'monthly',  flag: 'hold', note: 'Hold — pulling billing downstream' },
+  { payee: 'Canva',          category: 'Tech / AI',     amount: 15.00,  acct: '3265', cadence: 'monthly',  flag: null, note: null },
   // Health
-  { payee: 'Gameday Men\'s Health', category: 'Health', amount: 241.50, acct: '9122', cadence: 'monthly' },
+  { payee: 'Gameday Men\'s Health', category: 'Health', amount: 241.50, acct: '9122', cadence: 'monthly',  flag: null, note: '2 charges/month at different dates' },
   // Family
-  { payee: 'Greenlight',     category: 'Family',        amount: null,   acct: '2933', cadence: 'variable', note: 'kids\' allowance — variable' },
+  { payee: 'Greenlight',     category: 'Family',        amount: 150.00, acct: '2933', cadence: 'weekly',   flag: null, note: '$50/kid × 3 kids, due each Sunday' },
 ]
+
+const FLAG_STYLE = {
+  'th-reimb':    { bg: '#E8F4FF', fg: '#1A5C99', label: 'TH REIMB' },
+  'move-acct':   { bg: '#FFF0D6', fg: '#8A5000', label: 'MOVE ACCT' },
+  'cancel':      { bg: '#FCE8E8', fg: '#A02323', label: 'CANCEL' },
+  'verify':      { bg: '#F0E6FF', fg: '#5B2D8E', label: 'VERIFY' },
+  'investigate': { bg: '#FFF4E0', fg: '#9A6400', label: 'INVESTIGATE' },
+  'hold':        { bg: '#F0F4F9', fg: '#334E85', label: 'HOLD' },
+}
 
 // ─── Monthly budget from family spending spreadsheet (June 2026 baseline) ───
 const MONTHLY_BUDGET = [
@@ -412,17 +423,23 @@ function BudgetTab({ transactions, bills, upcoming30, upcomingTotal, overdueCoun
                   )
                 })}
                 {/* Known subscriptions from Plaid analysis */}
-                {KNOWN_SUBSCRIPTIONS.map((s, i) => (
-                  <tr key={`sub-${i}`}>
-                    <td style={S.tdLabel}>{s.payee}</td>
-                    <td style={S.td}><span style={{ fontSize: 10, fontWeight: 700, color: '#5B2D8E', background: '#F0E6FF', padding: '2px 6px', borderRadius: 4 }}>SUB</span></td>
-                    <td style={S.td}>{s.category}</td>
-                    <td style={S.tdNum}>{s.amount == null ? <em style={{ color: '#8096B2' }}>variable</em> : fmtMoney(s.amount, { cents: true })}</td>
-                    <td style={S.td}>••{s.acct}</td>
-                    <td style={S.td}>{s.cadence}</td>
-                    <td style={{ ...S.td, ...S.rowMuted }}>{s.note || '—'}</td>
-                  </tr>
-                ))}
+                {KNOWN_SUBSCRIPTIONS.map((s, i) => {
+                  const fs = s.flag ? FLAG_STYLE[s.flag] : null
+                  return (
+                    <tr key={`sub-${i}`} style={s.flag === 'cancel' ? { background: '#FFF8F8' } : s.flag === 'th-reimb' ? { background: '#F7FBFF' } : {}}>
+                      <td style={S.tdLabel}>{s.payee}</td>
+                      <td style={S.td}><span style={{ fontSize: 10, fontWeight: 700, color: '#5B2D8E', background: '#F0E6FF', padding: '2px 6px', borderRadius: 4 }}>SUB</span></td>
+                      <td style={S.td}>{s.category}</td>
+                      <td style={S.tdNum}>{s.amount == null ? <em style={{ color: '#8096B2' }}>variable</em> : fmtMoney(s.amount, { cents: true })}</td>
+                      <td style={S.td}>••{s.acct}</td>
+                      <td style={S.td}>{s.cadence}</td>
+                      <td style={S.td}>
+                        {fs && <span style={{ fontSize: 10, fontWeight: 700, color: fs.fg, background: fs.bg, padding: '2px 6px', borderRadius: 4, marginRight: 6 }}>{fs.label}</span>}
+                        <span style={{ color: '#565656', fontSize: 11 }}>{s.note || ''}</span>
+                      </td>
+                    </tr>
+                  )
+                })}
               </tbody>
             </table>
           </div>
