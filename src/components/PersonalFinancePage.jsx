@@ -1,7 +1,23 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, Component } from 'react'
 import { Wallet, Calendar, ListChecks, RefreshCw, AlertCircle, ArrowUpRight, ArrowDownRight, BarChart2, Check, Clock } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import PlaidActionsBar from './PlaidActionsBar'
+
+class ErrorBoundary extends Component {
+  constructor(props) { super(props); this.state = { error: null } }
+  static getDerivedStateFromError(e) { return { error: e } }
+  render() {
+    if (this.state.error) {
+      return (
+        <div style={{ padding: 24, background: '#FCE8E8', border: '1px solid #F2B5B5', borderRadius: 12, margin: 16, fontFamily: 'monospace', fontSize: 13, color: '#A02323' }}>
+          <strong>Render error — show this to mr-ledger:</strong>
+          <pre style={{ marginTop: 8, whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>{this.state.error?.message}\n\n{this.state.error?.stack}</pre>
+        </div>
+      )
+    }
+    return this.props.children
+  }
+}
 
 const S = {
   page: { maxWidth: 1200, margin: '0 auto', padding: '24px 16px', fontFamily: 'Arial, Helvetica, sans-serif' },
@@ -674,6 +690,7 @@ export default function PersonalFinancePage() {
   const syncStatus = err ? 'err' : lastLoad ? 'ok' : 'pending'
 
   return (
+    <ErrorBoundary>
     <div style={S.page}>
       <div style={S.header}>
         <div style={S.headerLeft}>
@@ -901,5 +918,6 @@ export default function PersonalFinancePage() {
 
       <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
     </div>
+    </ErrorBoundary>
   )
 }
