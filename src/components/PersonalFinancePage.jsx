@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, Component } from 'react'
-import { Wallet, Calendar, ListChecks, RefreshCw, AlertCircle, ArrowUpRight, ArrowDownRight, BarChart2, Check, Clock } from 'lucide-react'
+import { Wallet, Calendar, ListChecks, RefreshCw, AlertCircle, ArrowUpRight, ArrowDownRight, BarChart2, Check, Clock, ChevronDown, ChevronRight, DollarSign } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import PlaidActionsBar from './PlaidActionsBar'
 
@@ -47,6 +47,7 @@ const S = {
 
   card: { background: 'white', border: '1px solid #E2E8F0', borderRadius: 12, boxShadow: '0 1px 2px rgba(0,0,0,0.04)', overflow: 'hidden', marginBottom: 20 },
   cardHeader: { padding: '14px 16px', borderBottom: '1px solid #E2E8F0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 },
+  cardHeaderClickable: { padding: '14px 16px', borderBottom: '1px solid #E2E8F0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8, cursor: 'pointer', userSelect: 'none' },
   cardTitle: { fontSize: 13, fontWeight: 700, color: '#002C77', textTransform: 'uppercase', letterSpacing: '0.08em', display: 'flex', alignItems: 'center', gap: 8 },
   cardSub: { fontSize: 11, color: '#8096B2' },
 
@@ -75,6 +76,7 @@ const S = {
       scheduled: { bg: '#E6F0FA', fg: '#1F4E8C', border: '#B5CFEC' },
       paid: { bg: '#E6F4EA', fg: '#1E7C3A', border: '#B7E1C2' },
       overdue: { bg: '#FCE8E8', fg: '#A02323', border: '#F2B5B5' },
+      upcoming: { bg: '#F0E6FF', fg: '#5B2D8E', border: '#D4B5F5' },
     }
     const c = map[status] || map.pending
     return { display: 'inline-block', padding: '2px 8px', borderRadius: 9999, background: c.bg, color: c.fg, border: `1px solid ${c.border}`, fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em' }
@@ -121,27 +123,22 @@ function daysUntil(dateStr) {
   return Math.round((due - today) / 86400000)
 }
 
-// ─── Account display config (Plaid name → display label + mask) ───
+// ─── Account display config ───────────────────────────────────────────────────
 const ACCOUNT_INFO = {
   'Family Bill Pay': { display: 'Family Bill Pay',      mask: '9122' },
   'Avery Checking':  { display: 'Family Subscriptions', mask: '3265' },
   'Hudson Checking': { display: 'Family Spending',      mask: '2933' },
 }
 
-// flag values: 'th-reimb' | 'move-acct' | 'cancel' | 'verify' | 'investigate' | 'hold' | null
 const KNOWN_SUBSCRIPTIONS = [
-  // Family Subscriptions — should live on •3265
   { payee: 'Netflix',        category: 'Entertainment', amount: 25.99,  acct: '9122', cadence: 'monthly', flag: 'move-acct', note: 'Move billing to •3265' },
   { payee: 'Hulu',           category: 'Entertainment', amount: 89.99,  acct: '9122', cadence: 'monthly', flag: 'move-acct', note: 'Move billing to •3265' },
   { payee: 'Sony PlayStation', category: 'Entertainment', amount: 104.19, acct: '9122', cadence: 'monthly', flag: 'verify', note: 'Verify if truly recurring' },
   { payee: 'Blizzard',       category: 'Entertainment', amount: 16.34,  acct: '9122', cadence: 'monthly', flag: null, note: null },
   { payee: 'Brain.fm',       category: 'Entertainment', amount: 14.99,  acct: '9122', cadence: 'monthly', flag: null, note: null },
-  // Needs cancellation
   { payee: 'Boosteroid',     category: 'Entertainment', amount: 14.89,  acct: '9122', cadence: 'monthly', flag: 'cancel', note: 'Cancel' },
   { payee: 'Vocalize.fm',    category: 'Entertainment', amount: 9.99,   acct: '9122', cadence: 'monthly', flag: 'cancel', note: 'Cancel' },
-  // Apple — move to •2933
   { payee: 'Apple',          category: 'Tech / AI',     amount: 45.20,  acct: '9122', cadence: 'irregular', flag: 'move-acct', note: 'Not recurring — move charges to •2933' },
-  // TH Reimbursable — moving to new credit card
   { payee: 'OpenRouter',     category: 'Tech / AI',     amount: 105.93, acct: '9122', cadence: 'irregular', flag: 'th-reimb', note: 'TH reimbursable — usage-based, moving to CC' },
   { payee: 'Anthropic',      category: 'Tech / AI',     amount: 78.19,  acct: '9122', cadence: 'irregular', flag: 'th-reimb', note: 'TH reimbursable — usage-based, moving to CC' },
   { payee: 'PhantomBuster',  category: 'Tech / AI',     amount: 69.00,  acct: '9122', cadence: 'monthly',  flag: 'th-reimb', note: 'TH reimbursable — moving to CC; close soon' },
@@ -155,14 +152,10 @@ const KNOWN_SUBSCRIPTIONS = [
   { payee: 'Discord',        category: 'Tech / AI',     amount: 8.62,   acct: '9122', cadence: 'monthly',  flag: 'th-reimb', note: 'TH reimbursable — moving to CC' },
   { payee: 'Tello',          category: 'Telecom',       amount: 9.78,   acct: '9122', cadence: 'monthly',  flag: 'th-reimb', note: 'TH reimbursable — moving to CC' },
   { payee: 'Fly.io',         category: 'Tech / AI',     amount: 5.68,   acct: '9122', cadence: 'monthly',  flag: 'th-reimb', note: 'TH reimbursable — moving to CC' },
-  // Investigate
   { payee: 'Microsoft',      category: 'Tech / AI',     amount: 34.33,  acct: '9122', cadence: 'monthly',  flag: 'investigate', note: 'Charge unknown — investigate' },
-  // Utilities
   { payee: 'Verizon',        category: 'Utilities',     amount: 672.00, acct: '9122', cadence: 'monthly',  flag: 'hold', note: 'Hold — pulling billing downstream' },
   { payee: 'Canva',          category: 'Tech / AI',     amount: 15.00,  acct: '3265', cadence: 'monthly',  flag: null, note: null },
-  // Health
   { payee: 'Gameday Men\'s Health', category: 'Health', amount: 241.50, acct: '9122', cadence: 'monthly',  flag: null, note: '2 charges/month at different dates' },
-  // Family
   { payee: 'Greenlight',     category: 'Family',        amount: 150.00, acct: '2933', cadence: 'weekly',   flag: null, note: '$50/kid × 3 kids, due each Sunday' },
 ]
 
@@ -175,7 +168,6 @@ const FLAG_STYLE = {
   'hold':        { bg: '#F0F4F9', fg: '#334E85', label: 'HOLD' },
 }
 
-// ─── Monthly budget from family spending spreadsheet (June 2026 baseline) ───
 const MONTHLY_BUDGET = [
   { category: 'Mortgage',                 bucket: 'Housing',     amount: 12000 },
   { category: 'DVC',                      bucket: 'Housing',     amount: 1200  },
@@ -216,29 +208,245 @@ const PLAID_TO_BUCKET = {
   TRANSFER_OUT:         'Transfer',
 }
 
-// ── Billing cycle helpers ──
 function cycleKey(cadence, dateStr) {
   const d = new Date(dateStr)
   if (cadence === 'quarterly') return `${d.getFullYear()}-Q${Math.floor(d.getMonth() / 3) + 1}`
   if (cadence === 'annual') return `${d.getFullYear()}`
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}` // monthly default
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
 }
-function currentCycleKey(cadence) {
-  return cycleKey(cadence, new Date())
-}
+function currentCycleKey(cadence) { return cycleKey(cadence, new Date()) }
 function cycleLabel(cadence) {
   const now = new Date()
-  if (cadence === 'quarterly') {
-    const q = Math.floor(now.getMonth() / 3) + 1
-    return `Q${q} ${now.getFullYear()}`
-  }
+  if (cadence === 'quarterly') return `Q${Math.floor(now.getMonth() / 3) + 1} ${now.getFullYear()}`
   if (cadence === 'annual') return `${now.getFullYear()}`
   return now.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
 }
 
+// ─── TH Reimbursement Panel ───────────────────────────────────────────────────
+function THReimbursementPanel() {
+  const [cache, setCache]       = useState(null)
+  const [loading, setLoading]   = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
+  const [expanded, setExpanded] = useState(false)
+  const [lineExp, setLineExp]   = useState(false)
+  const [err, setErr]           = useState(null)
+
+  const fetchCache = async () => {
+    try {
+      const { data, error } = await supabase
+        .schema('finance_personal')
+        .from('harvest_reimbursement_cache')
+        .select('*')
+        .order('fetched_at', { ascending: false })
+        .limit(1)
+        .single()
+      if (error && error.code !== 'PGRST116') throw error
+      setCache(data || null)
+    } catch (e) {
+      setErr(e.message || String(e))
+    } finally {
+      setLoading(false)
+      setRefreshing(false)
+    }
+  }
+
+  useEffect(() => { fetchCache() }, [])
+
+  const handleRefresh = async () => {
+    setRefreshing(true)
+    setErr(null)
+    // Call edge function to pull fresh data from Harvest, then re-read cache
+    try {
+      const res = await fetch(
+        'https://cmuvomnmaoseccxpeuxq.supabase.co/functions/v1/harvest-expense-sync',
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ from: '2026-05-01', to: '2026-05-31', label: 'May 2026' }),
+        }
+      )
+      if (!res.ok) throw new Error(`Edge fn returned ${res.status}`)
+    } catch {
+      // Edge fn may not be deployed yet — fall back to re-reading cache
+    }
+    await fetchCache()
+  }
+
+  // Group line items by client
+  const byClient = useMemo(() => {
+    if (!cache?.line_items) return {}
+    const map = {}
+    for (const item of cache.line_items) {
+      if (!map[item.client]) map[item.client] = { total: 0, items: [] }
+      map[item.client].total += item.amount
+      map[item.client].items.push(item)
+    }
+    return map
+  }, [cache])
+
+  return (
+    <div style={{ ...S.card, border: '1px solid #B5CFEC', background: 'white' }}>
+      {/* Header */}
+      <div style={{ ...S.cardHeader, borderBottom: expanded ? '1px solid #E2E8F0' : 'none' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={S.cardTitle}>
+            <DollarSign size={13} style={{ color: '#1A5C99' }} />
+            TH Reimbursement
+          </div>
+          {cache && (
+            <span style={{ fontSize: 11, color: '#8096B2' }}>{cache.period_label} · {cache.expense_count} expenses</span>
+          )}
+          <span style={{
+            fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 9999,
+            background: '#E8F4FF', color: '#1A5C99', border: '1px solid #B5CFEC'
+          }}>NOT INCLUDED IN BALANCES</span>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          {/* Refresh button */}
+          <button
+            onClick={handleRefresh}
+            disabled={refreshing || loading}
+            title="Pull fresh data from Harvest"
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: 4,
+              padding: '5px 10px', border: '1px solid #B5CFEC', borderRadius: 8,
+              background: '#F0F7FF', color: '#1A5C99', fontSize: 11, cursor: 'pointer',
+              fontWeight: 600,
+            }}
+          >
+            <RefreshCw size={11} style={{ animation: refreshing ? 'spin 1s linear infinite' : 'none' }} />
+            {refreshing ? 'Refreshing…' : 'Refresh'}
+          </button>
+          {/* Expand/collapse */}
+          <button
+            onClick={() => setExpanded(p => !p)}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '5px 10px', border: '1px solid #E2E8F0', borderRadius: 8, background: 'white', color: '#334E85', fontSize: 11, cursor: 'pointer' }}
+          >
+            {expanded ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
+            {expanded ? 'Collapse' : 'Details'}
+          </button>
+          {/* Headline number */}
+          {!loading && cache && (
+            <span style={{ fontSize: 22, fontWeight: 700, color: '#1A5C99', fontVariantNumeric: 'tabular-nums', marginLeft: 8 }}>
+              {fmtMoney(cache.total_billable, { cents: true })}
+            </span>
+          )}
+          {loading && <span style={{ fontSize: 13, color: '#8096B2' }}>loading…</span>}
+        </div>
+      </div>
+
+      {/* Body — only visible when expanded */}
+      {expanded && (
+        <div style={{ padding: 16 }}>
+          {err && (
+            <div style={{ ...S.errorBox, marginBottom: 12 }}>
+              <AlertCircle size={16} />{err}
+            </div>
+          )}
+          {!cache ? (
+            <div style={S.empty}>No Harvest data cached yet. Hit Refresh to pull.</div>
+          ) : (
+            <>
+              {/* Summary strip */}
+              <div style={{ display: 'flex', gap: 16, marginBottom: 16, flexWrap: 'wrap' }}>
+                <div style={{ ...S.metricCard, flex: 1, minWidth: 160 }}>
+                  <div style={S.metricLabel}>Anticipated Reimbursement</div>
+                  <div style={{ fontSize: 26, fontWeight: 700, color: '#1A5C99', fontVariantNumeric: 'tabular-nums' }}>
+                    {fmtMoney(cache.total_billable, { cents: true })}
+                  </div>
+                  <div style={{ fontSize: 11, color: '#8096B2', marginTop: 4 }}>{cache.period_label} · billable expenses only · not in your balances</div>
+                </div>
+                <div style={{ ...S.metricCard, flex: 1, minWidth: 160 }}>
+                  <div style={S.metricLabel}>Expense Count</div>
+                  <div style={{ fontSize: 22, fontWeight: 700, color: '#334E85' }}>{cache.expense_count}</div>
+                  <div style={S.metricSub}>billable line items logged in Harvest</div>
+                </div>
+                <div style={{ ...S.metricCard, flex: 1, minWidth: 160 }}>
+                  <div style={S.metricLabel}>Data As Of</div>
+                  <div style={{ fontSize: 15, fontWeight: 700, color: '#334E85' }}>{fmtTime(cache.fetched_at)}</div>
+                  <div style={S.metricSub}>last Harvest sync · daily at 6 AM CT</div>
+                </div>
+              </div>
+
+              {/* By-client breakdown */}
+              <div style={{ marginBottom: 12 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: '#334E85', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>By Client</div>
+                <div style={S.tableWrap}>
+                  <table style={S.table}>
+                    <thead>
+                      <tr>
+                        <th style={S.th}>Client</th>
+                        <th style={S.thNum}>Amount</th>
+                        <th style={S.thNum}>Items</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {Object.entries(byClient)
+                        .sort((a, b) => b[1].total - a[1].total)
+                        .map(([client, data]) => (
+                          <tr key={client}>
+                            <td style={S.tdLabel}>{client}</td>
+                            <td style={S.tdNum}>{fmtMoney(data.total, { cents: true })}</td>
+                            <td style={{ ...S.tdNum, color: '#8096B2' }}>{data.items.length}</td>
+                          </tr>
+                        ))}
+                      <tr style={{ background: '#F0F7FF', fontWeight: 700, borderTop: '2px solid #B5CFEC' }}>
+                        <td style={{ ...S.tdLabel, color: '#1A5C99' }}>Total</td>
+                        <td style={{ ...S.tdNum, color: '#1A5C99', fontWeight: 700 }}>{fmtMoney(cache.total_billable, { cents: true })}</td>
+                        <td style={{ ...S.tdNum, color: '#8096B2' }}>{cache.expense_count}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Line items toggle */}
+              <button
+                onClick={() => setLineExp(p => !p)}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 12px', border: '1px solid #E2E8F0', borderRadius: 8, background: 'white', color: '#334E85', fontSize: 12, cursor: 'pointer', marginBottom: 8 }}
+              >
+                {lineExp ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+                {lineExp ? 'Hide' : 'Show'} all {cache.expense_count} line items
+              </button>
+
+              {lineExp && (
+                <div style={S.tableWrap}>
+                  <table style={S.table}>
+                    <thead>
+                      <tr>
+                        <th style={S.th}>Date</th>
+                        <th style={S.th}>Client</th>
+                        <th style={S.th}>Category</th>
+                        <th style={S.thNum}>Amount</th>
+                        <th style={S.th}>Notes</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(cache.line_items || []).map((item, i) => (
+                        <tr key={i}>
+                          <td style={S.td}>{fmtDate(item.date)}</td>
+                          <td style={S.tdLabel}>{item.client}</td>
+                          <td style={S.td}>{item.category}</td>
+                          <td style={S.tdNum}>{fmtMoney(item.amount, { cents: true })}</td>
+                          <td style={{ ...S.td, color: '#565656', maxWidth: 260, whiteSpace: 'normal' }}>{item.notes || '—'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
 function BillsTab({ bills }) {
-  // Deduplicate by payee — show one row per recurring bill with cycle cleared status
-  // Non-recurring bills show as individual rows
   const recurringPayees = useMemo(() => {
     const map = new Map()
     for (const b of bills) {
@@ -251,7 +459,6 @@ function BillsTab({ bills }) {
 
   const oneOffBills = useMemo(() => bills.filter(b => !b.recurring), [bills])
 
-  // For each recurring payee: is the current cycle cleared?
   const cycleStatus = useMemo(() => {
     const result = {}
     recurringPayees.forEach((rows, payee) => {
@@ -266,7 +473,6 @@ function BillsTab({ bills }) {
 
   return (
     <>
-      {/* Recurring Bills — one row per payee with cycle status */}
       <div style={S.card}>
         <div style={S.cardHeader}>
           <div style={S.cardTitle}>Recurring Bills</div>
@@ -286,7 +492,7 @@ function BillsTab({ bills }) {
                   <th style={S.thNum}>Amount Due</th>
                   <th style={S.th}>Due Date</th>
                   <th style={S.th}>Status</th>
-                  <th style={S.th}>Check #</th>
+                  <th style={S.th}>Notes</th>
                 </tr>
               </thead>
               <tbody>
@@ -294,8 +500,6 @@ function BillsTab({ bills }) {
                   const b = cs.latest
                   const d = daysUntil(b.due_on)
                   const effectiveStatus = cs.cleared ? 'paid' : (b.status !== 'paid' && d !== null && d < 0) ? 'overdue' : b.status
-                  const payInfo = Object.entries(ACCOUNT_INFO).find(([k]) => k === b.account_to_pay)
-                  const payDisplay = payInfo ? `••${payInfo[1].mask}` : (b.account_to_pay || '—')
                   return (
                     <tr key={payee} style={cs.cleared ? { background: '#F4FBF6' } : {}}>
                       <td style={S.tdLabel}>
@@ -320,7 +524,7 @@ function BillsTab({ bills }) {
                         )}
                       </td>
                       <td style={S.td}><span style={S.statusChip(effectiveStatus)}>{effectiveStatus}</span></td>
-                      <td style={{ ...S.td, fontFamily: 'monospace', fontSize: 12 }}>{b.notes || '—'}</td>
+                      <td style={{ ...S.td, ...S.rowMuted, fontSize: 11 }}>{b.notes || '—'}</td>
                     </tr>
                   )
                 })}
@@ -330,7 +534,6 @@ function BillsTab({ bills }) {
         )}
       </div>
 
-      {/* One-off bills */}
       {oneOffBills.length > 0 && (
         <div style={S.card}>
           <div style={S.cardHeader}>
@@ -340,7 +543,7 @@ function BillsTab({ bills }) {
             <table style={S.table}>
               <thead><tr>
                 <th style={S.th}>Due</th><th style={S.th}>Payee</th>
-                <th style={S.thNum}>Amount</th><th style={S.th}>Status</th>
+                <th style={S.thNum}>Amount</th><th style={S.th}>Status</th><th style={S.th}>Notes</th>
               </tr></thead>
               <tbody>
                 {oneOffBills.map(b => {
@@ -352,6 +555,7 @@ function BillsTab({ bills }) {
                       <td style={S.tdLabel}>{b.payee}</td>
                       <td style={S.tdNum}>{fmtMoney(b.amount_due, { cents: true })}</td>
                       <td style={S.td}><span style={S.statusChip(effectiveStatus)}>{effectiveStatus}</span></td>
+                      <td style={{ ...S.td, fontSize: 11, color: '#8096B2' }}>{b.notes || '—'}</td>
                     </tr>
                   )
                 })}
@@ -368,16 +572,14 @@ function BudgetTab({ transactions, bills, upcoming30, upcomingTotal, overdueCoun
   const [showAllRecurring, setShowAllRecurring] = useState(false)
   const now = new Date()
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
-  const monthLabel = now.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
 
-  // MTD actual spend by Plaid category bucket
   const actualByBucket = useMemo(() => {
     const map = {}
     for (const tx of transactions) {
       const d = new Date(tx.occurred_on)
       if (d < monthStart) continue
       const amt = parseFloat(tx.amount) || 0
-      if (amt >= 0) continue // skip income/credits
+      if (amt >= 0) continue
       const bucket = PLAID_TO_BUCKET[tx.category] || 'Other'
       map[bucket] = (map[bucket] || 0) + Math.abs(amt)
     }
@@ -387,15 +589,13 @@ function BudgetTab({ transactions, bills, upcoming30, upcomingTotal, overdueCoun
   const totalBudget = MONTHLY_BUDGET.reduce((s, r) => s + r.amount, 0)
   const totalIncome = MONTHLY_INCOME.reduce((s, r) => s + r.amount, 0)
   const budgetByBucket = MONTHLY_BUDGET.reduce((m, r) => { m[r.bucket] = (m[r.bucket] || 0) + r.amount; return m }, {})
-
   const allBuckets = [...new Set([...Object.keys(budgetByBucket), ...Object.keys(actualByBucket).filter(k => k !== 'Income' && k !== 'Transfer')])]
 
   return (
     <>
-      {/* Income vs Expense summary */}
       <div style={S.card}>
         <div style={S.cardHeader}>
-          <div style={S.cardTitle}>Monthly Budget · {monthLabel}</div>
+          <div style={S.cardTitle}>Monthly Budget · {now.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</div>
           <div style={S.cardSub}>Derived from family spending spreadsheet + Plaid actuals</div>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12, padding: 16 }}>
@@ -419,7 +619,6 @@ function BudgetTab({ transactions, bills, upcoming30, upcomingTotal, overdueCoun
         </div>
       </div>
 
-      {/* Budget line items */}
       <div style={S.card}>
         <div style={S.cardHeader}>
           <div style={S.cardTitle}>Budget Line Items</div>
@@ -427,20 +626,10 @@ function BudgetTab({ transactions, bills, upcoming30, upcomingTotal, overdueCoun
         </div>
         <div style={S.tableWrap}>
           <table style={S.table}>
-            <thead>
-              <tr>
-                <th style={S.th}>Category</th>
-                <th style={S.th}>Bucket</th>
-                <th style={S.thNum}>Monthly Budget</th>
-              </tr>
-            </thead>
+            <thead><tr><th style={S.th}>Category</th><th style={S.th}>Bucket</th><th style={S.thNum}>Monthly Budget</th></tr></thead>
             <tbody>
               {MONTHLY_BUDGET.map((r, i) => (
-                <tr key={i}>
-                  <td style={S.tdLabel}>{r.category}</td>
-                  <td style={S.td}>{r.bucket}</td>
-                  <td style={S.tdNum}>{fmtMoney(r.amount, { cents: true })}</td>
-                </tr>
+                <tr key={i}><td style={S.tdLabel}>{r.category}</td><td style={S.td}>{r.bucket}</td><td style={S.tdNum}>{fmtMoney(r.amount, { cents: true })}</td></tr>
               ))}
               <tr style={{ background: '#F7FAFD', fontWeight: 700 }}>
                 <td style={{ ...S.tdLabel, fontWeight: 700 }} colSpan={2}>Total</td>
@@ -451,7 +640,6 @@ function BudgetTab({ transactions, bills, upcoming30, upcomingTotal, overdueCoun
         </div>
       </div>
 
-      {/* MTD actuals by bucket */}
       <div style={S.card}>
         <div style={S.cardHeader}>
           <div style={S.cardTitle}>MTD Spend by Bucket</div>
@@ -459,14 +647,7 @@ function BudgetTab({ transactions, bills, upcoming30, upcomingTotal, overdueCoun
         </div>
         <div style={S.tableWrap}>
           <table style={S.table}>
-            <thead>
-              <tr>
-                <th style={S.th}>Bucket</th>
-                <th style={S.thNum}>Budgeted</th>
-                <th style={S.thNum}>MTD Actual</th>
-                <th style={S.thNum}>Remaining</th>
-              </tr>
-            </thead>
+            <thead><tr><th style={S.th}>Bucket</th><th style={S.thNum}>Budgeted</th><th style={S.thNum}>MTD Actual</th><th style={S.thNum}>Remaining</th></tr></thead>
             <tbody>
               {allBuckets.map(bucket => {
                 const budgeted = budgetByBucket[bucket] || 0
@@ -489,7 +670,7 @@ function BudgetTab({ transactions, bills, upcoming30, upcomingTotal, overdueCoun
           </table>
         </div>
       </div>
-      {/* Bills Due Next 30 Days */}
+
       <div style={{ ...S.card, background: overdueCount > 0 ? '#FFF8F8' : 'white' }}>
         <div style={S.cardHeader}>
           <div style={S.cardTitle}>Bills Due Next 30 Days</div>
@@ -503,16 +684,10 @@ function BudgetTab({ transactions, bills, upcoming30, upcomingTotal, overdueCoun
         ) : (
           <div style={S.tableWrap}>
             <table style={S.table}>
-              <thead>
-                <tr>
-                  <th style={S.th}>Due</th>
-                  <th style={S.th}>Payee</th>
-                  <th style={S.th}>Category</th>
-                  <th style={S.thNum}>Amount</th>
-                  <th style={S.th}>Pay From</th>
-                  <th style={S.th}>Status</th>
-                </tr>
-              </thead>
+              <thead><tr>
+                <th style={S.th}>Due</th><th style={S.th}>Payee</th><th style={S.th}>Category</th>
+                <th style={S.thNum}>Amount</th><th style={S.th}>Pay From</th><th style={S.th}>Status</th>
+              </tr></thead>
               <tbody>
                 {upcoming30.map(b => {
                   const d = daysUntil(b.due_on)
@@ -541,52 +716,22 @@ function BudgetTab({ transactions, bills, upcoming30, upcomingTotal, overdueCoun
         )}
       </div>
 
-      {/* All Recurring Bills & Payments — toggle */}
       <div style={S.card}>
-        <div
-          style={{ ...S.cardHeader, cursor: 'pointer', userSelect: 'none' }}
-          onClick={() => setShowAllRecurring(p => !p)}
-        >
+        <div style={{ ...S.cardHeaderClickable, borderBottom: showAllRecurring ? '1px solid #E2E8F0' : 'none' }} onClick={() => setShowAllRecurring(p => !p)}>
           <div style={S.cardTitle}>All Recurring Bills &amp; Payments</div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <div style={S.cardSub}>
-              {bills.filter(b => b.recurring).length} bills · {KNOWN_SUBSCRIPTIONS.length} subscriptions
-            </div>
+            <div style={S.cardSub}>{KNOWN_SUBSCRIPTIONS.length} subscriptions tracked</div>
             <span style={{ fontSize: 16, color: '#334E85' }}>{showAllRecurring ? '▲' : '▼'}</span>
           </div>
         </div>
         {showAllRecurring && (
           <div style={S.tableWrap}>
             <table style={S.table}>
-              <thead>
-                <tr>
-                  <th style={S.th}>Payee</th>
-                  <th style={S.th}>Type</th>
-                  <th style={S.th}>Category</th>
-                  <th style={S.thNum}>Amount</th>
-                  <th style={S.th}>Account</th>
-                  <th style={S.th}>Cadence</th>
-                  <th style={S.th}>Notes</th>
-                </tr>
-              </thead>
+              <thead><tr>
+                <th style={S.th}>Payee</th><th style={S.th}>Type</th><th style={S.th}>Category</th>
+                <th style={S.thNum}>Amount</th><th style={S.th}>Account</th><th style={S.th}>Cadence</th><th style={S.th}>Notes</th>
+              </tr></thead>
               <tbody>
-                {/* Bills from DB */}
-                {bills.filter(b => b.recurring).map(b => {
-                  const payInfo = Object.entries(ACCOUNT_INFO).find(([k]) => k === b.account_to_pay)
-                  const payDisplay = payInfo ? `••${payInfo[1].mask}` : (b.account_to_pay || '—')
-                  return (
-                    <tr key={b.id}>
-                      <td style={S.tdLabel}>{b.payee}</td>
-                      <td style={S.td}><span style={{ fontSize: 10, fontWeight: 700, color: '#1F4E8C', background: '#E6F0FA', padding: '2px 6px', borderRadius: 4 }}>BILL</span></td>
-                      <td style={S.td}>{b.category || '—'}</td>
-                      <td style={S.tdNum}>{b.amount_due == null ? <em style={{ color: '#8096B2' }}>variable</em> : fmtMoney(b.amount_due, { cents: true })}</td>
-                      <td style={S.td}>{payDisplay}</td>
-                      <td style={S.td}>{b.recur_cadence || 'monthly'}</td>
-                      <td style={{ ...S.td, ...S.rowMuted }}>—</td>
-                    </tr>
-                  )
-                })}
-                {/* Known subscriptions from Plaid analysis */}
                 {KNOWN_SUBSCRIPTIONS.map((s, i) => {
                   const fs = s.flag ? FLAG_STYLE[s.flag] : null
                   return (
@@ -594,7 +739,7 @@ function BudgetTab({ transactions, bills, upcoming30, upcomingTotal, overdueCoun
                       <td style={S.tdLabel}>{s.payee}</td>
                       <td style={S.td}><span style={{ fontSize: 10, fontWeight: 700, color: '#5B2D8E', background: '#F0E6FF', padding: '2px 6px', borderRadius: 4 }}>SUB</span></td>
                       <td style={S.td}>{s.category}</td>
-                      <td style={S.tdNum}>{s.amount == null ? <em style={{ color: '#8096B2' }}>variable</em> : fmtMoney(s.amount, { cents: true })}</td>
+                      <td style={S.tdNum}>{fmtMoney(s.amount, { cents: true })}</td>
                       <td style={S.td}>••{s.acct}</td>
                       <td style={S.td}>{s.cadence}</td>
                       <td style={S.td}>
@@ -614,13 +759,14 @@ function BudgetTab({ transactions, bills, upcoming30, upcomingTotal, overdueCoun
 }
 
 export default function PersonalFinancePage() {
-  const [view, setView] = useState('overview')   // 'overview' | 'transactions' | 'bills' | 'budget'
-  const [balances, setBalances] = useState([])
+  const [view, setView]             = useState('overview')
+  const [balances, setBalances]     = useState([])
   const [transactions, setTransactions] = useState([])
-  const [bills, setBills] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [err, setErr] = useState(null)
-  const [lastLoad, setLastLoad] = useState(null)
+  const [bills, setBills]           = useState([])
+  const [loading, setLoading]       = useState(true)
+  const [err, setErr]               = useState(null)
+  const [lastLoad, setLastLoad]     = useState(null)
+  const [checksExpanded, setChecksExpanded] = useState(true)
 
   const fetchAll = async () => {
     setLoading(true)
@@ -647,7 +793,6 @@ export default function PersonalFinancePage() {
 
   useEffect(() => { fetchAll() }, [])
 
-  // Aggregate: only keep latest balance per account_name
   const currentBalances = useMemo(() => {
     const map = new Map()
     for (const row of balances) {
@@ -660,8 +805,7 @@ export default function PersonalFinancePage() {
   }, [balances])
 
   const totals = useMemo(() => {
-    let assets = 0
-    let liabilities = 0
+    let assets = 0, liabilities = 0
     for (const r of currentBalances) {
       const amt = parseFloat(r.current_balance) || 0
       if (r.account_type === 'credit' || r.account_type === 'loan') liabilities += amt
@@ -670,22 +814,13 @@ export default function PersonalFinancePage() {
     return { assets, liabilities, net: assets - liabilities }
   }, [currentBalances])
 
-  const upcoming30 = useMemo(() => {
-    return bills.filter(b => {
-      const d = daysUntil(b.due_on)
-      return b.status !== 'paid' && d !== null && d <= 30 && d >= -30
-    })
-  }, [bills])
+  const upcoming30 = useMemo(() => bills.filter(b => {
+    const d = daysUntil(b.due_on)
+    return b.status !== 'paid' && d !== null && d <= 30 && d >= -30
+  }), [bills])
 
-  const upcomingTotal = useMemo(
-    () => upcoming30.reduce((acc, b) => acc + (parseFloat(b.amount_due) || 0), 0),
-    [upcoming30]
-  )
-
-  const overdueCount = useMemo(
-    () => bills.filter(b => b.status !== 'paid' && daysUntil(b.due_on) < 0).length,
-    [bills]
-  )
+  const upcomingTotal = useMemo(() => upcoming30.reduce((acc, b) => acc + (parseFloat(b.amount_due) || 0), 0), [upcoming30])
+  const overdueCount = useMemo(() => bills.filter(b => b.status !== 'paid' && daysUntil(b.due_on) < 0).length, [bills])
 
   const syncStatus = err ? 'err' : lastLoad ? 'ok' : 'pending'
 
@@ -728,24 +863,16 @@ export default function PersonalFinancePage() {
       )}
 
       <div style={S.pillRow}>
-        <button style={S.pill(view === 'overview')} onClick={() => setView('overview')}>
-          <Wallet size={13} /> Overview
-        </button>
-        <button style={S.pill(view === 'transactions')} onClick={() => setView('transactions')}>
-          <ListChecks size={13} /> Transactions
-        </button>
-        <button style={S.pill(view === 'bills')} onClick={() => setView('bills')}>
-          <Calendar size={13} /> Upcoming Bills
-        </button>
-        <button style={S.pill(view === 'budget')} onClick={() => setView('budget')}>
-          <BarChart2 size={13} /> Budget
-        </button>
+        <button style={S.pill(view === 'overview')} onClick={() => setView('overview')}><Wallet size={13} /> Overview</button>
+        <button style={S.pill(view === 'transactions')} onClick={() => setView('transactions')}><ListChecks size={13} /> Transactions</button>
+        <button style={S.pill(view === 'bills')} onClick={() => setView('bills')}><Calendar size={13} /> Upcoming Bills</button>
+        <button style={S.pill(view === 'budget')} onClick={() => setView('budget')}><BarChart2 size={13} /> Budget</button>
       </div>
 
       {/* OVERVIEW */}
       {view === 'overview' && (
         <>
-          {/* Family Account Balances — one card per account */}
+          {/* Family Account Balances */}
           <div style={S.card}>
             <div style={S.cardHeader}>
               <div style={S.cardTitle}>Family Accounts</div>
@@ -763,7 +890,6 @@ export default function PersonalFinancePage() {
                     const displayName = info.display ? `${info.display} ••${info.mask}` : r.account_name
                     const avail = r.available_balance != null ? parseFloat(r.available_balance) : null
                     const posted = parseFloat(r.current_balance) || 0
-                    // Adjusted = available minus scheduled bills not yet cleared by Plaid
                     const scheduledOut = bills
                       .filter(b => b.status === 'scheduled' && b.account_to_pay === r.account_name)
                       .reduce((sum, b) => sum + (parseFloat(b.amount_due) || 0), 0)
@@ -773,8 +899,6 @@ export default function PersonalFinancePage() {
                     return (
                       <div key={r.id} style={{ ...S.metricCard, borderLeft: '3px solid #002C77' }}>
                         <div style={{ fontSize: 13, fontWeight: 700, color: '#002C77', marginBottom: 12 }}>{displayName}</div>
-
-                        {/* Adjusted — headline number */}
                         <div style={{ marginBottom: 10 }}>
                           <div style={{ fontSize: 11, color: '#8096B2', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 2 }}>
                             Adjusted{isAdjusted ? ` (−${fmtMoney(scheduledOut, { cents: true })} scheduled)` : ''}
@@ -783,8 +907,6 @@ export default function PersonalFinancePage() {
                             {fmtMoney(adjusted, { cents: true })}
                           </div>
                         </div>
-
-                        {/* Available + Posted side by side */}
                         <div style={{ display: 'flex', gap: 16, borderTop: '1px solid #E2E8F0', paddingTop: 8 }}>
                           <div>
                             <div style={{ fontSize: 10, color: '#8096B2', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 1 }}>Available</div>
@@ -801,7 +923,6 @@ export default function PersonalFinancePage() {
                             </div>
                           )}
                         </div>
-
                         <div style={{ marginTop: 8, fontSize: 10, color: '#8096B2' }}>{r.institution} · as of {fmtDate(r.as_of)}</div>
                       </div>
                     )
@@ -810,60 +931,79 @@ export default function PersonalFinancePage() {
             )}
           </div>
 
-        {/* Pending Checks */}
-        {(() => {
-          const pending = bills.filter(b => b.status === 'scheduled')
-          if (pending.length === 0) return null
-          return (
-            <div style={S.card}>
-              <div style={S.cardHeader}>
-                <div style={S.cardTitle}><Clock size={13} style={{ marginRight: 4 }} />Pending Checks</div>
-                <div style={S.cardSub}>{pending.length} outstanding · {fmtMoney(pending.reduce((s,b) => s + (parseFloat(b.amount_due)||0), 0), { cents: true })} total</div>
+          {/* Pending Checks — COLLAPSIBLE */}
+          {(() => {
+            const pending = bills.filter(b => b.status === 'scheduled')
+            if (pending.length === 0) return null
+            const total = pending.reduce((s, b) => s + (parseFloat(b.amount_due) || 0), 0)
+            return (
+              <div style={S.card}>
+                <div
+                  style={{ ...S.cardHeaderClickable, borderBottom: checksExpanded ? '1px solid #E2E8F0' : 'none' }}
+                  onClick={() => setChecksExpanded(p => !p)}
+                >
+                  <div style={S.cardTitle}>
+                    <Clock size={13} style={{ marginRight: 2 }} />
+                    Pending Checks
+                    {checksExpanded ? <ChevronDown size={14} style={{ marginLeft: 4, color: '#8096B2' }} /> : <ChevronRight size={14} style={{ marginLeft: 4, color: '#8096B2' }} />}
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <div style={S.cardSub}>{pending.length} outstanding</div>
+                    <span style={{ fontSize: 18, fontWeight: 700, color: '#002C77', fontVariantNumeric: 'tabular-nums' }}>
+                      {fmtMoney(total, { cents: true })}
+                    </span>
+                  </div>
+                </div>
+                {checksExpanded && (
+                  <div style={S.tableWrap}>
+                    <table style={S.table}>
+                      <thead>
+                        <tr>
+                          <th style={S.th}>Check #</th>
+                          <th style={S.th}>Payee</th>
+                          <th style={S.th}>Due</th>
+                          <th style={S.thNum}>Amount</th>
+                          <th style={S.th}>Pay From</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {pending
+                          .slice().sort((a, b) => new Date(a.due_on) - new Date(b.due_on))
+                          .map(b => {
+                            const d = daysUntil(b.due_on)
+                            const payInfo = Object.entries(ACCOUNT_INFO).find(([k]) => k === b.account_to_pay)
+                            const payDisplay = payInfo ? `${payInfo[1].display} ••${payInfo[1].mask}` : (b.account_to_pay || '—')
+                            const checkNum = (b.notes || '').match(/Check (\d+)/i)?.[0] || b.notes || '—'
+                            return (
+                              <tr key={b.id}>
+                                <td style={{ ...S.tdLabel, fontFamily: 'monospace' }}>{checkNum}</td>
+                                <td style={S.tdLabel}>{b.payee}</td>
+                                <td style={S.td}>
+                                  <div>{fmtDate(b.due_on)}</div>
+                                  <div style={{ fontSize: 10, color: d < 0 ? '#A02323' : d <= 7 ? '#9A6400' : '#8096B2', marginTop: 2 }}>
+                                    {d < 0 ? `${Math.abs(d)}d late` : d === 0 ? 'today' : `in ${d}d`}
+                                  </div>
+                                </td>
+                                <td style={S.tdNum}>{fmtMoney(b.amount_due, { cents: true })}</td>
+                                <td style={S.td}>{payDisplay}</td>
+                              </tr>
+                            )
+                          })}
+                        <tr style={{ background: '#F7FAFD', fontWeight: 700, borderTop: '2px solid #E2E8F0' }}>
+                          <td style={{ ...S.tdLabel, fontWeight: 700 }} colSpan={3}>Total Outstanding</td>
+                          <td style={{ ...S.tdNum, fontWeight: 700, color: '#002C77' }}>{fmtMoney(total, { cents: true })}</td>
+                          <td style={S.td} />
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                )}
               </div>
-              <div style={S.tableWrap}>
-                <table style={S.table}>
-                  <thead>
-                    <tr>
-                      <th style={S.th}>Check #</th>
-                      <th style={S.th}>Payee</th>
-                      <th style={S.th}>Due</th>
-                      <th style={S.thNum}>Amount</th>
-                      <th style={S.th}>Pay From</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {pending
-                      .slice().sort((a,b) => new Date(a.due_on) - new Date(b.due_on))
-                      .map(b => {
-                        const d = daysUntil(b.due_on)
-                        const payInfo = Object.entries(ACCOUNT_INFO).find(([k]) => k === b.account_to_pay)
-                        const payDisplay = payInfo ? `${payInfo[1].display} ••${payInfo[1].mask}` : (b.account_to_pay || '—')
-                        return (
-                          <tr key={b.id}>
-                            <td style={{ ...S.tdLabel, fontFamily: 'monospace' }}>{b.notes || '—'}</td>
-                            <td style={S.tdLabel}>{b.payee}</td>
-                            <td style={S.td}>
-                              <div>{fmtDate(b.due_on)}</div>
-                              <div style={{ fontSize: 10, color: d < 0 ? '#A02323' : d <= 7 ? '#9A6400' : '#8096B2', marginTop: 2 }}>
-                                {d < 0 ? `${Math.abs(d)}d late` : d === 0 ? 'today' : `in ${d}d`}
-                              </div>
-                            </td>
-                            <td style={S.tdNum}>{fmtMoney(b.amount_due, { cents: true })}</td>
-                            <td style={S.td}>{payDisplay}</td>
-                          </tr>
-                        )
-                      })}
-                    <tr style={{ background: '#F7FAFD', fontWeight: 700, borderTop: '2px solid #E2E8F0' }}>
-                        <td style={{ ...S.tdLabel, fontWeight: 700 }} colSpan={3}>Total Outstanding</td>
-                        <td style={{ ...S.tdNum, fontWeight: 700, color: '#002C77' }}>{fmtMoney(pending.reduce((s,b) => s + (parseFloat(b.amount_due)||0), 0), { cents: true })}</td>
-                        <td style={S.td} />
-                      </tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )
-        })()}
+            )
+          })()}
+
+          {/* TH Reimbursement Feed */}
+          <THReimbursementPanel />
         </>
       )}
 
@@ -875,22 +1015,14 @@ export default function PersonalFinancePage() {
             <div style={S.cardSub}>last 200 · most recent first</div>
           </div>
           {transactions.length === 0 ? (
-            <div style={S.empty}>
-              No transactions yet. mr-ledger-personal will log them here as they happen.
-            </div>
+            <div style={S.empty}>No transactions yet.</div>
           ) : (
             <div style={S.tableWrap}>
               <table style={S.table}>
-                <thead>
-                  <tr>
-                    <th style={S.th}>Date</th>
-                    <th style={S.th}>Merchant</th>
-                    <th style={S.th}>Category</th>
-                    <th style={S.th}>Account</th>
-                    <th style={S.thNum}>Amount</th>
-                    <th style={S.th}>Memo</th>
-                  </tr>
-                </thead>
+                <thead><tr>
+                  <th style={S.th}>Date</th><th style={S.th}>Merchant</th><th style={S.th}>Category</th>
+                  <th style={S.th}>Account</th><th style={S.thNum}>Amount</th><th style={S.th}>Memo</th>
+                </tr></thead>
                 <tbody>
                   {transactions.map(r => {
                     const amt = parseFloat(r.amount) || 0
@@ -915,10 +1047,7 @@ export default function PersonalFinancePage() {
         </div>
       )}
 
-      {/* BILLS */}
       {view === 'bills' && <BillsTab bills={bills} />}
-
-      {/* BUDGET */}
       {view === 'budget' && <BudgetTab transactions={transactions} bills={bills} upcoming30={upcoming30} upcomingTotal={upcomingTotal} overdueCount={overdueCount} />}
 
       <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
