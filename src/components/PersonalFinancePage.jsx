@@ -200,6 +200,154 @@ const PLAID_TO_BUCKET = {
   TRANSFER_OUT:         'Transfer',
 }
 
+// ── Billing cycle helpers ──
+function cycleKey(cadence, dateStr) {
+  const d = new Date(dateStr)
+  if (cadence === 'quarterly') return `${d.getFullYear()}-Q${Math.floor(d.getMonth() / 3) + 1}`
+  if (cadence === 'annual') return `${d.getFullYear()}`
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}` // monthly default
+}
+function currentCycleKey(cadence) {
+  return cycleKey(cadence, new Date())
+}
+function cycleLabel(cadence) {
+  const now = new Date()
+  if (cadence === 'quarterly') {
+    const q = Math.floor(now.getMonth() / 3) + 1
+    return `Q${q} ${now.getFullYear()}`
+  }
+  if (cadence === 'annual') return `${now.getFullYear()}`
+  return now.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+}
+
+function BillsTab({ bills }) {
+  // Deduplicate by payee — show one row per recurring bill with cycle cleared status
+  // Non-recurring bills show as individual rows
+  const recurringPayees = useMemo(() => {
+    const map = new Map()
+    for (const b of bills) {
+      if (!b.recurring) continue
+      if (!map.has(b.payee)) map.set(b.payee, [])
+      map.get(b.payee).push(b)
+    }
+    return map
+  }, [bills])
+
+  const oneOffBills = useMemo(() => bills.filter(b => !b.recurring), [bills])
+
+  // For each recurring payee: is the current cycle cleared?
+  const cycleStatus = useMemo(() => {
+    const result = {}
+    recurringPayees.forEach((rows, payee) => {
+      const cadence = rows[0].recur_cadence || 'monthly'
+      const key = currentCycleKey(cadence)
+      const paidThisCycle = rows.some(b => b.status === 'paid' && cycleKey(cadence, b.due_on) === key)
+      const latestRow = rows.slice().sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0]
+      result[payee] = { cadence, key, cleared: paidThisCycle, latest: latestRow }
+    })
+    return result
+  }, [recurringPayees])
+
+  return (
+    <>
+      {/* Recurring Bills — one row per payee with cycle status */}
+      <div style={S.card}>
+        <div style={S.cardHeader}>
+          <div style={S.cardTitle}>Recurring Bills</div>
+          <div style={S.cardSub}>one row per bill · cycle status shown</div>
+        </div>
+        {recurringPayees.size === 0 ? (
+          <div style={S.empty}>No recurring bills logged yet.</div>
+        ) : (
+          <div style={S.tableWrap}>
+            <table style={S.table}>
+              <thead>
+                <tr>
+                  <th style={S.th}>Payee</th>
+                  <th style={S.th}>Cadence</th>
+                  <th style={S.th}>Current Period</th>
+                  <th style={S.th}>This Cycle</th>
+                  <th style={S.thNum}>Amount Due</th>
+                  <th style={S.th}>Due Date</th>
+                  <th style={S.th}>Status</th>
+                  <th style={S.th}>Check #</th>
+                </tr>
+              </thead>
+              <tbody>
+                {Array.from(cycleStatus.entries()).map(([payee, cs]) => {
+                  const b = cs.latest
+                  const d = daysUntil(b.due_on)
+                  const effectiveStatus = cs.cleared ? 'paid' : (b.status !== 'paid' && d !== null && d < 0) ? 'overdue' : b.status
+                  const payInfo = Object.entries(ACCOUNT_INFO).find(([k]) => k === b.account_to_pay)
+                  const payDisplay = payInfo ? `••${payInfo[1].mask}` : (b.account_to_pay || '—')
+                  return (
+                    <tr key={payee} style={cs.cleared ? { background: '#F4FBF6' } : {}}>
+                      <td style={S.tdLabel}>
+                        {cs.cleared && <CheckCircle2 size={13} style={{ color: '#1E7C3A', marginRight: 5, verticalAlign: 'middle' }} />}
+                        {payee}
+                      </td>
+                      <td style={S.td}>{cs.cadence}</td>
+                      <td style={S.td}>{cycleLabel(cs.cadence)}</td>
+                      <td style={S.td}>
+                        {cs.cleared
+                          ? <span style={{ color: '#1E7C3A', fontWeight: 700, fontSize: 12 }}>✓ Cleared</span>
+                          : <span style={{ color: effectiveStatus === 'overdue' ? '#A02323' : '#9A6400', fontWeight: 600, fontSize: 12 }}>Pending</span>
+                        }
+                      </td>
+                      <td style={S.tdNum}>{b.amount_due == null ? <em style={{ color: '#8096B2' }}>variable</em> : fmtMoney(b.amount_due, { cents: true })}</td>
+                      <td style={S.td}>
+                        <div>{fmtDate(b.due_on)}</div>
+                        {!cs.cleared && d !== null && (
+                          <div style={{ fontSize: 10, color: d < 0 ? '#A02323' : d <= 7 ? '#9A6400' : '#8096B2', marginTop: 2 }}>
+                            {d < 0 ? `${Math.abs(d)}d late` : d === 0 ? 'today' : `in ${d}d`}
+                          </div>
+                        )}
+                      </td>
+                      <td style={S.td}><span style={S.statusChip(effectiveStatus)}>{effectiveStatus}</span></td>
+                      <td style={{ ...S.td, fontFamily: 'monospace', fontSize: 12 }}>{b.notes || '—'}</td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* One-off bills */}
+      {oneOffBills.length > 0 && (
+        <div style={S.card}>
+          <div style={S.cardHeader}>
+            <div style={S.cardTitle}>One-Off Bills</div>
+          </div>
+          <div style={S.tableWrap}>
+            <table style={S.table}>
+              <thead><tr>
+                <th style={S.th}>Due</th><th style={S.th}>Payee</th>
+                <th style={S.thNum}>Amount</th><th style={S.th}>Status</th>
+              </tr></thead>
+              <tbody>
+                {oneOffBills.map(b => {
+                  const d = daysUntil(b.due_on)
+                  const effectiveStatus = (b.status !== 'paid' && d !== null && d < 0) ? 'overdue' : b.status
+                  return (
+                    <tr key={b.id}>
+                      <td style={S.td}>{fmtDate(b.due_on)}</td>
+                      <td style={S.tdLabel}>{b.payee}</td>
+                      <td style={S.tdNum}>{fmtMoney(b.amount_due, { cents: true })}</td>
+                      <td style={S.td}><span style={S.statusChip(effectiveStatus)}>{effectiveStatus}</span></td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+    </>
+  )
+}
+
 function BudgetTab({ transactions, bills, upcoming30, upcomingTotal, overdueCount }) {
   const [showAllRecurring, setShowAllRecurring] = useState(false)
   const now = new Date()
@@ -645,6 +793,55 @@ export default function PersonalFinancePage() {
             )}
           </div>
 
+        {/* Pending Checks */}
+        {(() => {
+          const pending = bills.filter(b => b.status === 'scheduled')
+          if (pending.length === 0) return null
+          return (
+            <div style={S.card}>
+              <div style={S.cardHeader}>
+                <div style={S.cardTitle}><Clock size={13} style={{ marginRight: 4 }} />Pending Checks</div>
+                <div style={S.cardSub}>{pending.length} outstanding · {fmtMoney(pending.reduce((s,b) => s + (parseFloat(b.amount_due)||0), 0), { cents: true })} total</div>
+              </div>
+              <div style={S.tableWrap}>
+                <table style={S.table}>
+                  <thead>
+                    <tr>
+                      <th style={S.th}>Check #</th>
+                      <th style={S.th}>Payee</th>
+                      <th style={S.th}>Due</th>
+                      <th style={S.thNum}>Amount</th>
+                      <th style={S.th}>Pay From</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {pending
+                      .slice().sort((a,b) => new Date(a.due_on) - new Date(b.due_on))
+                      .map(b => {
+                        const d = daysUntil(b.due_on)
+                        const payInfo = Object.entries(ACCOUNT_INFO).find(([k]) => k === b.account_to_pay)
+                        const payDisplay = payInfo ? `${payInfo[1].display} ••${payInfo[1].mask}` : (b.account_to_pay || '—')
+                        return (
+                          <tr key={b.id}>
+                            <td style={{ ...S.tdLabel, fontFamily: 'monospace' }}>{b.notes || '—'}</td>
+                            <td style={S.tdLabel}>{b.payee}</td>
+                            <td style={S.td}>
+                              <div>{fmtDate(b.due_on)}</div>
+                              <div style={{ fontSize: 10, color: d < 0 ? '#A02323' : d <= 7 ? '#9A6400' : '#8096B2', marginTop: 2 }}>
+                                {d < 0 ? `${Math.abs(d)}d late` : d === 0 ? 'today' : `in ${d}d`}
+                              </div>
+                            </td>
+                            <td style={S.tdNum}>{fmtMoney(b.amount_due, { cents: true })}</td>
+                            <td style={S.td}>{payDisplay}</td>
+                          </tr>
+                        )
+                      })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )
+        })()}
         </>
       )}
 
@@ -697,57 +894,7 @@ export default function PersonalFinancePage() {
       )}
 
       {/* BILLS */}
-      {view === 'bills' && (
-        <div style={S.card}>
-          <div style={S.cardHeader}>
-            <div style={S.cardTitle}>Upcoming Bills</div>
-            <div style={S.cardSub}>{bills.length} total · sorted by due date</div>
-          </div>
-          {bills.length === 0 ? (
-            <div style={S.empty}>
-              No bills scheduled. Ask mr-ledger in <code>#personal-ledger</code> to add upcoming bills.
-            </div>
-          ) : (
-            <div style={S.tableWrap}>
-              <table style={S.table}>
-                <thead>
-                  <tr>
-                    <th style={S.th}>Due</th>
-                    <th style={S.th}>Payee</th>
-                    <th style={S.th}>Category</th>
-                    <th style={S.thNum}>Amount</th>
-                    <th style={S.th}>Pay From</th>
-                    <th style={S.th}>Status</th>
-                    <th style={S.th}>Recurring</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {bills.map(b => {
-                    const d = daysUntil(b.due_on)
-                    const effectiveStatus = (b.status !== 'paid' && d !== null && d < 0) ? 'overdue' : b.status
-                    return (
-                      <tr key={b.id}>
-                        <td style={S.td}>
-                          <div>{fmtDate(b.due_on)}</div>
-                          <div style={{ fontSize: 10, color: d < 0 ? '#A02323' : d <= 7 ? '#9A6400' : '#8096B2', marginTop: 2 }}>
-                            {d === null ? '' : d < 0 ? `${Math.abs(d)}d late` : d === 0 ? 'today' : `in ${d}d`}
-                          </div>
-                        </td>
-                        <td style={S.tdLabel}>{b.payee}</td>
-                        <td style={S.td}>{b.category || '—'}</td>
-                        <td style={S.tdNum}>{b.amount_due == null ? <em style={{ color: '#8096B2' }}>variable</em> : fmtMoney(b.amount_due, { cents: true })}</td>
-                        <td style={S.td}>{b.account_to_pay || '—'}</td>
-                        <td style={S.td}><span style={S.statusChip(effectiveStatus)}>{effectiveStatus}</span></td>
-                        <td style={S.td}>{b.recurring ? (b.recur_cadence || 'yes') : '—'}</td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-      )}
+      {view === 'bills' && <BillsTab bills={bills} />}
 
       {/* BUDGET */}
       {view === 'budget' && <BudgetTab transactions={transactions} bills={bills} upcoming30={upcoming30} upcomingTotal={upcomingTotal} overdueCount={overdueCount} />}
