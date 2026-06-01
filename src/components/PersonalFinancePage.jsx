@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
-import { Wallet, Calendar, ListChecks, RefreshCw, AlertCircle, ArrowUpRight, ArrowDownRight } from 'lucide-react'
+import { Wallet, Calendar, ListChecks, RefreshCw, AlertCircle, ArrowUpRight, ArrowDownRight, BarChart2 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import PlaidActionsBar from './PlaidActionsBar'
 
@@ -105,8 +105,177 @@ function daysUntil(dateStr) {
   return Math.round((due - today) / 86400000)
 }
 
+// ─── Monthly budget from family spending spreadsheet (June 2026 baseline) ───
+const MONTHLY_BUDGET = [
+  { category: 'Mortgage',                 bucket: 'Housing',     amount: 12000 },
+  { category: 'DVC',                      bucket: 'Housing',     amount: 1200  },
+  { category: 'Comed',                    bucket: 'Utilities',   amount: 400   },
+  { category: 'Nicor',                    bucket: 'Utilities',   amount: 200   },
+  { category: 'Vivint',                   bucket: 'Utilities',   amount: 78.25 },
+  { category: 'Village of Western Springs', bucket: 'Utilities', amount: 400   },
+  { category: 'Family Budget',            bucket: 'Living',      amount: 10000 },
+  { category: 'Agata (housekeeper)',      bucket: 'Living',      amount: 3500  },
+  { category: 'Sara Hawkins',             bucket: 'Living',      amount: 1000  },
+  { category: 'GLP',                      bucket: 'Health',      amount: 1000  },
+  { category: 'Lifetime Fitness',         bucket: 'Health',      amount: 250   },
+  { category: 'Allstate',                 bucket: 'Insurance',   amount: 500   },
+  { category: 'Verizon',                  bucket: 'Telecom',     amount: 200   },
+  { category: 'iPass',                    bucket: 'Transport',   amount: 150   },
+]
+
+const MONTHLY_INCOME = [
+  { source: 'Income (GP)',  amount: 45500  },
+  { source: 'Dacia',        amount: 2083.33 },
+]
+
+const PLAID_TO_BUCKET = {
+  FOOD_AND_DRINK:       'Living',
+  GENERAL_MERCHANDISE:  'Living',
+  GENERAL_SERVICES:     'Living',
+  ENTERTAINMENT:        'Living',
+  MEDICAL:              'Health',
+  TRANSPORTATION:       'Transport',
+  TRAVEL:               'Transport',
+  UTILITIES:            'Utilities',
+  RENT_AND_UTILITIES:   'Utilities',
+  HOME_IMPROVEMENT:     'Housing',
+  INSURANCE:            'Insurance',
+  PERSONAL_CARE:        'Health',
+  INCOME:               'Income',
+  TRANSFER_IN:          'Income',
+  TRANSFER_OUT:         'Transfer',
+}
+
+function BudgetTab({ transactions }) {
+  const now = new Date()
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
+  const monthLabel = now.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+
+  // MTD actual spend by Plaid category bucket
+  const actualByBucket = useMemo(() => {
+    const map = {}
+    for (const tx of transactions) {
+      const d = new Date(tx.occurred_on)
+      if (d < monthStart) continue
+      const amt = parseFloat(tx.amount) || 0
+      if (amt >= 0) continue // skip income/credits
+      const bucket = PLAID_TO_BUCKET[tx.category] || 'Other'
+      map[bucket] = (map[bucket] || 0) + Math.abs(amt)
+    }
+    return map
+  }, [transactions])
+
+  const totalBudget = MONTHLY_BUDGET.reduce((s, r) => s + r.amount, 0)
+  const totalIncome = MONTHLY_INCOME.reduce((s, r) => s + r.amount, 0)
+  const budgetByBucket = MONTHLY_BUDGET.reduce((m, r) => { m[r.bucket] = (m[r.bucket] || 0) + r.amount; return m }, {})
+
+  const allBuckets = [...new Set([...Object.keys(budgetByBucket), ...Object.keys(actualByBucket).filter(k => k !== 'Income' && k !== 'Transfer')])]
+
+  return (
+    <>
+      {/* Income vs Expense summary */}
+      <div style={S.card}>
+        <div style={S.cardHeader}>
+          <div style={S.cardTitle}>Monthly Budget · {monthLabel}</div>
+          <div style={S.cardSub}>Derived from family spending spreadsheet + Plaid actuals</div>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12, padding: 16 }}>
+          <div style={S.metricCard}>
+            <div style={S.metricLabel}>Monthly Income</div>
+            <div style={{ ...S.metricValue, ...S.metricPositive }}>{fmtMoney(totalIncome)}</div>
+            <div style={S.metricSub}>GP + Dacia</div>
+          </div>
+          <div style={S.metricCard}>
+            <div style={S.metricLabel}>Budgeted Expenses</div>
+            <div style={{ ...S.metricValue, ...S.metricNegative }}>{fmtMoney(totalBudget)}</div>
+            <div style={S.metricSub}>{MONTHLY_BUDGET.length} line items</div>
+          </div>
+          <div style={S.metricCard}>
+            <div style={S.metricLabel}>Budgeted Surplus</div>
+            <div style={{ ...S.metricValue, ...(totalIncome - totalBudget >= 0 ? S.metricPositive : S.metricNegative) }}>
+              {fmtMoney(totalIncome - totalBudget)}
+            </div>
+            <div style={S.metricSub}>Income − Expenses</div>
+          </div>
+        </div>
+      </div>
+
+      {/* Budget line items */}
+      <div style={S.card}>
+        <div style={S.cardHeader}>
+          <div style={S.cardTitle}>Budget Line Items</div>
+          <div style={S.cardSub}>From family spending spreadsheet — edit via #personal-ledger</div>
+        </div>
+        <div style={S.tableWrap}>
+          <table style={S.table}>
+            <thead>
+              <tr>
+                <th style={S.th}>Category</th>
+                <th style={S.th}>Bucket</th>
+                <th style={S.thNum}>Monthly Budget</th>
+              </tr>
+            </thead>
+            <tbody>
+              {MONTHLY_BUDGET.map((r, i) => (
+                <tr key={i}>
+                  <td style={S.tdLabel}>{r.category}</td>
+                  <td style={S.td}>{r.bucket}</td>
+                  <td style={S.tdNum}>{fmtMoney(r.amount, { cents: true })}</td>
+                </tr>
+              ))}
+              <tr style={{ background: '#F7FAFD', fontWeight: 700 }}>
+                <td style={{ ...S.tdLabel, fontWeight: 700 }} colSpan={2}>Total</td>
+                <td style={{ ...S.tdNum, fontWeight: 700 }}>{fmtMoney(totalBudget, { cents: true })}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* MTD actuals by bucket */}
+      <div style={S.card}>
+        <div style={S.cardHeader}>
+          <div style={S.cardTitle}>MTD Spend by Bucket</div>
+          <div style={S.cardSub}>Plaid actuals this month — budget column is the envelope total from above</div>
+        </div>
+        <div style={S.tableWrap}>
+          <table style={S.table}>
+            <thead>
+              <tr>
+                <th style={S.th}>Bucket</th>
+                <th style={S.thNum}>Budgeted</th>
+                <th style={S.thNum}>MTD Actual</th>
+                <th style={S.thNum}>Remaining</th>
+              </tr>
+            </thead>
+            <tbody>
+              {allBuckets.map(bucket => {
+                const budgeted = budgetByBucket[bucket] || 0
+                const actual = actualByBucket[bucket] || 0
+                const remaining = budgeted - actual
+                return (
+                  <tr key={bucket}>
+                    <td style={S.tdLabel}>{bucket}</td>
+                    <td style={S.tdNum}>{budgeted ? fmtMoney(budgeted, { cents: true }) : '—'}</td>
+                    <td style={{ ...S.tdNum, color: actual > budgeted && budgeted > 0 ? '#A02323' : '#1A2B47', fontWeight: actual > budgeted && budgeted > 0 ? 700 : 400 }}>
+                      {actual ? fmtMoney(actual, { cents: true }) : '—'}
+                    </td>
+                    <td style={{ ...S.tdNum, color: remaining < 0 ? '#A02323' : remaining < budgeted * 0.2 ? '#9A6400' : '#1E7C3A', fontWeight: 600 }}>
+                      {budgeted ? fmtMoney(remaining, { cents: true }) : '—'}
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </>
+  )
+}
+
 export default function PersonalFinancePage() {
-  const [view, setView] = useState('overview')   // 'overview' | 'transactions' | 'bills'
+  const [view, setView] = useState('overview')   // 'overview' | 'transactions' | 'bills' | 'budget'
   const [balances, setBalances] = useState([])
   const [transactions, setTransactions] = useState([])
   const [bills, setBills] = useState([])
@@ -228,86 +397,104 @@ export default function PersonalFinancePage() {
         <button style={S.pill(view === 'bills')} onClick={() => setView('bills')}>
           <Calendar size={13} /> Upcoming Bills
         </button>
+        <button style={S.pill(view === 'budget')} onClick={() => setView('budget')}>
+          <BarChart2 size={13} /> Budget
+        </button>
       </div>
 
       {/* OVERVIEW */}
       {view === 'overview' && (
         <>
+          {/* Family Account Balances — one card per account */}
           <div style={S.card}>
             <div style={S.cardHeader}>
-              <div style={S.cardTitle}>Net Snapshot</div>
-              <div style={S.cardSub}>{currentBalances.length} account{currentBalances.length === 1 ? '' : 's'} tracked</div>
+              <div style={S.cardTitle}>Family Accounts</div>
+              <div style={S.cardSub}>{currentBalances.length} account{currentBalances.length === 1 ? '' : 's'} · {lastLoad ? `synced ${fmtTime(lastLoad)}` : 'loading'}</div>
             </div>
-            <div style={S.metricGrid}>
-              <div style={S.metricCard}>
-                <div style={S.metricLabel}>Assets</div>
-                <div style={{ ...S.metricValue, ...S.metricPositive }}>{fmtMoney(totals.assets)}</div>
-                <div style={S.metricSub}>Checking, savings, investments</div>
+            {currentBalances.length === 0 ? (
+              <div style={S.empty}>No balances yet.</div>
+            ) : (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 12, padding: 16 }}>
+                {currentBalances
+                  .slice()
+                  .sort((a, b) => (parseFloat(b.available_balance ?? b.current_balance) || 0) - (parseFloat(a.available_balance ?? a.current_balance) || 0))
+                  .map(r => {
+                    const avail = r.available_balance != null ? parseFloat(r.available_balance) : null
+                    const posted = parseFloat(r.current_balance) || 0
+                    const showPending = avail !== null && Math.abs(avail - posted) >= 1
+                    return (
+                      <div key={r.id} style={{ ...S.metricCard, borderLeft: '3px solid #002C77' }}>
+                        <div style={{ fontSize: 13, fontWeight: 700, color: '#002C77', marginBottom: 10 }}>{r.account_name}</div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+                          <div>
+                            <div style={{ fontSize: 11, color: '#8096B2', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 2 }}>Available</div>
+                            <div style={{ fontSize: 26, fontWeight: 700, color: '#1E7C3A', fontVariantNumeric: 'tabular-nums' }}>
+                              {fmtMoney(avail ?? posted, { cents: true })}
+                            </div>
+                          </div>
+                          <div style={{ textAlign: 'right' }}>
+                            <div style={{ fontSize: 11, color: '#8096B2', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 2 }}>Posted</div>
+                            <div style={{ fontSize: 16, fontWeight: 600, color: '#334E85', fontVariantNumeric: 'tabular-nums' }}>
+                              {fmtMoney(posted, { cents: true })}
+                            </div>
+                          </div>
+                        </div>
+                        {showPending && (
+                          <div style={{ marginTop: 8, fontSize: 11, color: '#9A6400', background: '#FFF4E0', border: '1px solid #F2D592', borderRadius: 6, padding: '3px 7px', display: 'inline-block' }}>
+                            {fmtMoney(Math.abs(avail - posted), { cents: true })} pending
+                          </div>
+                        )}
+                        <div style={{ marginTop: 8, fontSize: 10, color: '#8096B2' }}>{r.institution} · as of {fmtDate(r.as_of)}</div>
+                      </div>
+                    )
+                  })}
               </div>
-              <div style={S.metricCard}>
-                <div style={S.metricLabel}>Liabilities</div>
-                <div style={{ ...S.metricValue, ...S.metricNegative }}>{fmtMoney(totals.liabilities)}</div>
-                <div style={S.metricSub}>Credit cards, loans</div>
-              </div>
-              <div style={S.metricCard}>
-                <div style={S.metricLabel}>Net</div>
-                <div style={{ ...S.metricValue, ...(totals.net >= 0 ? S.metricPositive : S.metricNegative) }}>
-                  {fmtMoney(totals.net)}
-                </div>
-                <div style={S.metricSub}>Assets − Liabilities</div>
-              </div>
-              <div style={S.metricCard}>
-                <div style={S.metricLabel}>Upcoming 30 days</div>
-                <div style={S.metricValue}>{fmtMoney(upcomingTotal)}</div>
-                <div style={S.metricSub}>
-                  {upcoming30.length} bill{upcoming30.length === 1 ? '' : 's'}
+            )}
+          </div>
+
+          {/* Upcoming bills summary */}
+          {upcoming30.length > 0 && (
+            <div style={{ ...S.card, background: overdueCount > 0 ? '#FFF8F8' : 'white' }}>
+              <div style={S.cardHeader}>
+                <div style={S.cardTitle}>Bills Due Next 30 Days</div>
+                <div style={S.cardSub}>
+                  {upcoming30.length} bill{upcoming30.length !== 1 ? 's' : ''} · {fmtMoney(upcomingTotal, { cents: true })} total
                   {overdueCount > 0 && <span style={{ color: '#A02323', fontWeight: 700 }}> · {overdueCount} overdue</span>}
                 </div>
               </div>
-            </div>
-          </div>
-
-          <div style={S.card}>
-            <div style={S.cardHeader}>
-              <div style={S.cardTitle}>Account Balances</div>
-              <div style={S.cardSub}>most recent per account</div>
-            </div>
-            {currentBalances.length === 0 ? (
-              <div style={S.empty}>
-                No balances yet. Ask mr-ledger in <code>#personal-ledger</code> to log your first account.
-              </div>
-            ) : (
               <div style={S.tableWrap}>
                 <table style={S.table}>
                   <thead>
                     <tr>
-                      <th style={S.th}>Account</th>
-                      <th style={S.th}>Type</th>
-                      <th style={S.th}>Institution</th>
-                      <th style={S.thNum}>Balance</th>
-                      <th style={S.th}>As of</th>
+                      <th style={S.th}>Due</th>
+                      <th style={S.th}>Payee</th>
+                      <th style={S.thNum}>Amount</th>
+                      <th style={S.th}>Status</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {currentBalances
-                      .slice()
-                      .sort((a, b) => (parseFloat(b.current_balance) || 0) - (parseFloat(a.current_balance) || 0))
-                      .map(r => (
-                        <tr key={r.id}>
-                          <td style={S.tdLabel}>{r.account_name}</td>
-                          <td style={S.td}>{r.account_type}</td>
-                          <td style={S.td}>{r.institution || '—'}</td>
-                          <td style={{ ...S.tdNum, color: (r.account_type === 'credit' || r.account_type === 'loan') ? '#A02323' : '#002C77' }}>
-                            {fmtMoney(r.current_balance, { cents: true })}
+                    {upcoming30.map(b => {
+                      const d = daysUntil(b.due_on)
+                      const effectiveStatus = (b.status !== 'paid' && d !== null && d < 0) ? 'overdue' : b.status
+                      return (
+                        <tr key={b.id}>
+                          <td style={S.td}>
+                            <div>{fmtDate(b.due_on)}</div>
+                            <div style={{ fontSize: 10, color: d < 0 ? '#A02323' : d <= 7 ? '#9A6400' : '#8096B2', marginTop: 2 }}>
+                              {d < 0 ? `${Math.abs(d)}d late` : d === 0 ? 'today' : `in ${d}d`}
+                            </div>
                           </td>
-                          <td style={S.td}>{fmtDate(r.as_of)}</td>
+                          <td style={S.tdLabel}>{b.payee}</td>
+                          <td style={S.tdNum}>{b.amount_due == null ? <em style={{ color: '#8096B2' }}>variable</em> : fmtMoney(b.amount_due, { cents: true })}</td>
+                          <td style={S.td}><span style={S.statusChip(effectiveStatus)}>{effectiveStatus}</span></td>
                         </tr>
-                      ))}
+                      )
+                    })}
                   </tbody>
                 </table>
               </div>
-            )}
-          </div>
+            </div>
+          )}
         </>
       )}
 
@@ -411,6 +598,9 @@ export default function PersonalFinancePage() {
           )}
         </div>
       )}
+
+      {/* BUDGET */}
+      {view === 'budget' && <BudgetTab transactions={transactions} />}
 
       <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
     </div>
