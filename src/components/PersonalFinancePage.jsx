@@ -105,12 +105,48 @@ function daysUntil(dateStr) {
   return Math.round((due - today) / 86400000)
 }
 
-// ─── Known account masks (stable — from finance.account_scope) ───
-const ACCOUNT_MASKS = {
-  'Family Bill Pay': '9122',
-  'Avery Checking':  '3265',
-  'Hudson Checking': '2933',
+// ─── Account display config (Plaid name → display label + mask) ───
+const ACCOUNT_INFO = {
+  'Family Bill Pay': { display: 'Family Bill Pay',      mask: '9122' },
+  'Avery Checking':  { display: 'Family Subscriptions', mask: '3265' },
+  'Hudson Checking': { display: 'Family Spending',      mask: '2933' },
 }
+
+// ─── Known subscriptions derived from Plaid transaction history ───
+const KNOWN_SUBSCRIPTIONS = [
+  // Entertainment
+  { payee: 'Netflix',        category: 'Entertainment', amount: 25.99,  acct: '9122', cadence: 'monthly' },
+  { payee: 'Hulu',           category: 'Entertainment', amount: 89.99,  acct: '9122', cadence: 'monthly' },
+  { payee: 'Sony PlayStation', category: 'Entertainment', amount: 104.19, acct: '9122', cadence: 'monthly' },
+  { payee: 'Discord',        category: 'Entertainment', amount: 8.62,   acct: '9122', cadence: 'monthly' },
+  { payee: 'Blizzard',       category: 'Entertainment', amount: 16.34,  acct: '9122', cadence: 'monthly' },
+  { payee: 'Boosteroid',     category: 'Entertainment', amount: 14.89,  acct: '9122', cadence: 'monthly' },
+  { payee: 'Brain.fm',       category: 'Entertainment', amount: 14.99,  acct: '9122', cadence: 'monthly' },
+  { payee: 'Vocalize.fm',    category: 'Entertainment', amount: 9.99,   acct: '9122', cadence: 'monthly' },
+  // Tech / AI (work-adjacent)
+  { payee: 'OpenRouter',     category: 'Tech / AI',     amount: 105.93, acct: '9122', cadence: 'monthly', note: 'usage-based avg' },
+  { payee: 'Anthropic',      category: 'Tech / AI',     amount: 78.19,  acct: '9122', cadence: 'monthly', note: 'usage-based avg' },
+  { payee: 'Apple',          category: 'Tech / AI',     amount: 45.20,  acct: '9122', cadence: 'monthly', note: 'multiple charges' },
+  { payee: 'Microsoft',      category: 'Tech / AI',     amount: 34.33,  acct: '9122', cadence: 'monthly' },
+  { payee: 'ElevenLabs',     category: 'Tech / AI',     amount: 22.00,  acct: '9122', cadence: 'monthly' },
+  { payee: 'Vercel',         category: 'Tech / AI',     amount: 25.00,  acct: '9122', cadence: 'monthly' },
+  { payee: 'Hostinger',      category: 'Tech / AI',     amount: 55.99,  acct: '9122', cadence: 'monthly' },
+  { payee: 'Supabase',       category: 'Tech / AI',     amount: 50.02,  acct: '9122', cadence: 'monthly' },
+  { payee: 'PhantomBuster',  category: 'Tech / AI',     amount: 69.00,  acct: '9122', cadence: 'monthly' },
+  { payee: 'Granola',        category: 'Tech / AI',     amount: 35.00,  acct: '9122', cadence: 'monthly' },
+  { payee: 'Firecrawl',      category: 'Tech / AI',     amount: 19.00,  acct: '9122', cadence: 'monthly' },
+  { payee: 'Anaconda',       category: 'Tech / AI',     amount: 15.00,  acct: '9122', cadence: 'monthly' },
+  { payee: 'Fly.io',         category: 'Tech / AI',     amount: 5.68,   acct: '9122', cadence: 'monthly' },
+  { payee: 'Canva',          category: 'Tech / AI',     amount: 15.00,  acct: '3265', cadence: 'monthly' },
+  // Utilities (seen in transactions)
+  { payee: 'Verizon',        category: 'Utilities',     amount: 672.00, acct: '9122', cadence: 'monthly', note: 'may be multi-month' },
+  { payee: 'AT&T',           category: 'Utilities',     amount: 200.00, acct: '9122', cadence: 'monthly' },
+  { payee: 'Tello',          category: 'Utilities',     amount: 9.78,   acct: '9122', cadence: 'monthly' },
+  // Health
+  { payee: 'Gameday Men\'s Health', category: 'Health', amount: 241.50, acct: '9122', cadence: 'monthly' },
+  // Family
+  { payee: 'Greenlight',     category: 'Family',        amount: null,   acct: '2933', cadence: 'variable', note: 'kids\' allowance — variable' },
+]
 
 // ─── Monthly budget from family spending spreadsheet (June 2026 baseline) ───
 const MONTHLY_BUDGET = [
@@ -153,7 +189,8 @@ const PLAID_TO_BUCKET = {
   TRANSFER_OUT:         'Transfer',
 }
 
-function BudgetTab({ transactions }) {
+function BudgetTab({ transactions, bills, upcoming30, upcomingTotal, overdueCount }) {
+  const [showAllRecurring, setShowAllRecurring] = useState(false)
   const now = new Date()
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
   const monthLabel = now.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
@@ -276,6 +313,120 @@ function BudgetTab({ transactions }) {
             </tbody>
           </table>
         </div>
+      </div>
+      {/* Bills Due Next 30 Days */}
+      <div style={{ ...S.card, background: overdueCount > 0 ? '#FFF8F8' : 'white' }}>
+        <div style={S.cardHeader}>
+          <div style={S.cardTitle}>Bills Due Next 30 Days</div>
+          <div style={S.cardSub}>
+            {upcoming30.length} bill{upcoming30.length !== 1 ? 's' : ''} · {fmtMoney(upcomingTotal, { cents: true })} total
+            {overdueCount > 0 && <span style={{ color: '#A02323', fontWeight: 700 }}> · {overdueCount} overdue</span>}
+          </div>
+        </div>
+        {upcoming30.length === 0 ? (
+          <div style={S.empty}>No bills due in the next 30 days.</div>
+        ) : (
+          <div style={S.tableWrap}>
+            <table style={S.table}>
+              <thead>
+                <tr>
+                  <th style={S.th}>Due</th>
+                  <th style={S.th}>Payee</th>
+                  <th style={S.th}>Category</th>
+                  <th style={S.thNum}>Amount</th>
+                  <th style={S.th}>Pay From</th>
+                  <th style={S.th}>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {upcoming30.map(b => {
+                  const d = daysUntil(b.due_on)
+                  const effectiveStatus = (b.status !== 'paid' && d !== null && d < 0) ? 'overdue' : b.status
+                  const payInfo = Object.entries(ACCOUNT_INFO).find(([k]) => k === b.account_to_pay)
+                  const payDisplay = payInfo ? `${payInfo[1].display} ••${payInfo[1].mask}` : (b.account_to_pay || '—')
+                  return (
+                    <tr key={b.id}>
+                      <td style={S.td}>
+                        <div>{fmtDate(b.due_on)}</div>
+                        <div style={{ fontSize: 10, color: d < 0 ? '#A02323' : d <= 7 ? '#9A6400' : '#8096B2', marginTop: 2 }}>
+                          {d < 0 ? `${Math.abs(d)}d late` : d === 0 ? 'today' : `in ${d}d`}
+                        </div>
+                      </td>
+                      <td style={S.tdLabel}>{b.payee}</td>
+                      <td style={S.td}>{b.category || '—'}</td>
+                      <td style={S.tdNum}>{b.amount_due == null ? <em style={{ color: '#8096B2' }}>variable</em> : fmtMoney(b.amount_due, { cents: true })}</td>
+                      <td style={S.td}>{payDisplay}</td>
+                      <td style={S.td}><span style={S.statusChip(effectiveStatus)}>{effectiveStatus}</span></td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* All Recurring Bills & Payments — toggle */}
+      <div style={S.card}>
+        <div
+          style={{ ...S.cardHeader, cursor: 'pointer', userSelect: 'none' }}
+          onClick={() => setShowAllRecurring(p => !p)}
+        >
+          <div style={S.cardTitle}>All Recurring Bills &amp; Payments</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={S.cardSub}>
+              {bills.filter(b => b.recurring).length} bills · {KNOWN_SUBSCRIPTIONS.length} subscriptions
+            </div>
+            <span style={{ fontSize: 16, color: '#334E85' }}>{showAllRecurring ? '▲' : '▼'}</span>
+          </div>
+        </div>
+        {showAllRecurring && (
+          <div style={S.tableWrap}>
+            <table style={S.table}>
+              <thead>
+                <tr>
+                  <th style={S.th}>Payee</th>
+                  <th style={S.th}>Type</th>
+                  <th style={S.th}>Category</th>
+                  <th style={S.thNum}>Amount</th>
+                  <th style={S.th}>Account</th>
+                  <th style={S.th}>Cadence</th>
+                  <th style={S.th}>Notes</th>
+                </tr>
+              </thead>
+              <tbody>
+                {/* Bills from DB */}
+                {bills.filter(b => b.recurring).map(b => {
+                  const payInfo = Object.entries(ACCOUNT_INFO).find(([k]) => k === b.account_to_pay)
+                  const payDisplay = payInfo ? `••${payInfo[1].mask}` : (b.account_to_pay || '—')
+                  return (
+                    <tr key={b.id}>
+                      <td style={S.tdLabel}>{b.payee}</td>
+                      <td style={S.td}><span style={{ fontSize: 10, fontWeight: 700, color: '#1F4E8C', background: '#E6F0FA', padding: '2px 6px', borderRadius: 4 }}>BILL</span></td>
+                      <td style={S.td}>{b.category || '—'}</td>
+                      <td style={S.tdNum}>{b.amount_due == null ? <em style={{ color: '#8096B2' }}>variable</em> : fmtMoney(b.amount_due, { cents: true })}</td>
+                      <td style={S.td}>{payDisplay}</td>
+                      <td style={S.td}>{b.recur_cadence || 'monthly'}</td>
+                      <td style={{ ...S.td, ...S.rowMuted }}>—</td>
+                    </tr>
+                  )
+                })}
+                {/* Known subscriptions from Plaid analysis */}
+                {KNOWN_SUBSCRIPTIONS.map((s, i) => (
+                  <tr key={`sub-${i}`}>
+                    <td style={S.tdLabel}>{s.payee}</td>
+                    <td style={S.td}><span style={{ fontSize: 10, fontWeight: 700, color: '#5B2D8E', background: '#F0E6FF', padding: '2px 6px', borderRadius: 4 }}>SUB</span></td>
+                    <td style={S.td}>{s.category}</td>
+                    <td style={S.tdNum}>{s.amount == null ? <em style={{ color: '#8096B2' }}>variable</em> : fmtMoney(s.amount, { cents: true })}</td>
+                    <td style={S.td}>••{s.acct}</td>
+                    <td style={S.td}>{s.cadence}</td>
+                    <td style={{ ...S.td, ...S.rowMuted }}>{s.note || '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </>
   )
@@ -426,8 +577,8 @@ export default function PersonalFinancePage() {
                   .slice()
                   .sort((a, b) => (parseFloat(b.available_balance ?? b.current_balance) || 0) - (parseFloat(a.available_balance ?? a.current_balance) || 0))
                   .map(r => {
-                    const mask = ACCOUNT_MASKS[r.account_name]
-                    const displayName = mask ? `${r.account_name} ••${mask}` : r.account_name
+                    const info = ACCOUNT_INFO[r.account_name] || {}
+                    const displayName = info.display ? `${info.display} ••${info.mask}` : r.account_name
                     const avail = r.available_balance != null ? parseFloat(r.available_balance) : null
                     const posted = parseFloat(r.current_balance) || 0
                     // Adjusted = available minus scheduled bills not yet cleared by Plaid
@@ -477,49 +628,6 @@ export default function PersonalFinancePage() {
             )}
           </div>
 
-          {/* Upcoming bills summary */}
-          {upcoming30.length > 0 && (
-            <div style={{ ...S.card, background: overdueCount > 0 ? '#FFF8F8' : 'white' }}>
-              <div style={S.cardHeader}>
-                <div style={S.cardTitle}>Bills Due Next 30 Days</div>
-                <div style={S.cardSub}>
-                  {upcoming30.length} bill{upcoming30.length !== 1 ? 's' : ''} · {fmtMoney(upcomingTotal, { cents: true })} total
-                  {overdueCount > 0 && <span style={{ color: '#A02323', fontWeight: 700 }}> · {overdueCount} overdue</span>}
-                </div>
-              </div>
-              <div style={S.tableWrap}>
-                <table style={S.table}>
-                  <thead>
-                    <tr>
-                      <th style={S.th}>Due</th>
-                      <th style={S.th}>Payee</th>
-                      <th style={S.thNum}>Amount</th>
-                      <th style={S.th}>Status</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {upcoming30.map(b => {
-                      const d = daysUntil(b.due_on)
-                      const effectiveStatus = (b.status !== 'paid' && d !== null && d < 0) ? 'overdue' : b.status
-                      return (
-                        <tr key={b.id}>
-                          <td style={S.td}>
-                            <div>{fmtDate(b.due_on)}</div>
-                            <div style={{ fontSize: 10, color: d < 0 ? '#A02323' : d <= 7 ? '#9A6400' : '#8096B2', marginTop: 2 }}>
-                              {d < 0 ? `${Math.abs(d)}d late` : d === 0 ? 'today' : `in ${d}d`}
-                            </div>
-                          </td>
-                          <td style={S.tdLabel}>{b.payee}</td>
-                          <td style={S.tdNum}>{b.amount_due == null ? <em style={{ color: '#8096B2' }}>variable</em> : fmtMoney(b.amount_due, { cents: true })}</td>
-                          <td style={S.td}><span style={S.statusChip(effectiveStatus)}>{effectiveStatus}</span></td>
-                        </tr>
-                      )
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
         </>
       )}
 
@@ -625,7 +733,7 @@ export default function PersonalFinancePage() {
       )}
 
       {/* BUDGET */}
-      {view === 'budget' && <BudgetTab transactions={transactions} />}
+      {view === 'budget' && <BudgetTab transactions={transactions} bills={bills} upcoming30={upcoming30} upcomingTotal={upcomingTotal} overdueCount={overdueCount} />}
 
       <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
     </div>
