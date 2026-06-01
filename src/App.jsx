@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
-import { LayoutGrid, Lightbulb, Network, LogOut, Menu, X, Target, Users, Sparkles, FileText, MessageSquare, Wallet, CreditCard } from 'lucide-react'
+import { LayoutGrid, Lightbulb, Network, LogOut, Menu, X, Target, Users, Sparkles, FileText, MessageSquare, Wallet, CreditCard, LayoutDashboard } from 'lucide-react'
 import { getSession, onAuthStateChange, signOut } from './lib/auth'
 import LoginPage from './components/LoginPage'
+import DailyDashboardPage from './components/DailyDashboardPage'
 import PortfolioPage from './components/PortfolioPage'
 import IdeasPage from './components/IdeasPage'
 import EcosystemPage from './components/EcosystemPage'
@@ -14,6 +15,7 @@ import CompanyFinancePage from './components/CompanyFinancePage'
 import PersonalFinancePage from './components/PersonalFinancePage'
 
 const NAV_ITEMS = [
+  { id: 'daily-dashboard', label: 'Daily Dashboard',    icon: LayoutDashboard },
   { id: 'objectives',      label: 'Objectives',         icon: Target     },
   { id: 'accomplishments', label: "Daily Summary",      icon: Sparkles   },
   { id: 'meeting-notes',   label: 'Meeting Notes',      icon: FileText   },
@@ -147,6 +149,7 @@ export default function App() {
     <div style={{ display: 'flex', minHeight: '100vh', background: '#F7F9FC', fontFamily: 'Arial, Helvetica, sans-serif' }}>
       <Sidebar active={active} onChange={setActive} onSignOut={handleSignOut} />
       <main style={{ flex: 1, minHeight: '100vh', overflowY: 'auto' }}>
+        {active === 'daily-dashboard' && <DailyDashboardPage />}
         {active === 'objectives'      && <ObjectivesPage />}
         {active === 'accomplishments' && <AccomplishmentsPage />}
         {active === 'meeting-notes'   && <MeetingNotesPage />}
