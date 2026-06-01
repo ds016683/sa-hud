@@ -1,0 +1,164 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1100" width="100%" preserveAspectRatio="xMidYMid meet">
+<rect width="1600" height="1100" fill="#F7F9FC"/>
+<text x="40" y="50" font-family="Arial,Helvetica,sans-serif" font-size="22" font-weight="700" fill="#002C77">Lumen OS — Domain Map</text>
+<text x="40" y="74" font-family="Arial,Helvetica,sans-serif" font-size="13" fill="#334E85">Bots grouped by function. Hubs are parent bots; satellites are sub-agents.</text>
+<rect x="20.0" y="200.0" width="360.0" height="380" rx="14" fill="#FFFFFF" stroke="#0EA5E9" stroke-width="2" stroke-opacity="0.35"/>
+<text x="200.0" y="230.0" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="16" font-weight="700" fill="#0EA5E9" letter-spacing="2">STRATEGY</text>
+  <g id="bot-lumen" class="clickable" data-slug="lumen" data-kind="parent">
+    <circle cx="140.0" cy="310.0" r="38" fill="#0EA5E9" stroke="#FF8C00" stroke-width="3" />
+    <text x="140.0" y="314.0" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="11" font-weight="700" fill="white">LUMEN</text>
+    <text x="140.0" y="364.0" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="13" font-weight="700" fill="#002C77">Lumen</text>
+  </g>
+  <g id="bot-chief-strategy-bot" class="clickable" data-slug="chief-strategy-bot" data-kind="parent">
+    <circle cx="260.0" cy="310.0" r="38" fill="#0EA5E9" stroke="#002C77" stroke-width="1.5" />
+    <text x="260.0" y="314.0" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="11" font-weight="700" fill="white">STRATE</text>
+    <text x="260.0" y="364.0" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="13" font-weight="700" fill="#002C77">Chief Strategy</text>
+  </g>
+  <g id="bot-mr-framework" class="clickable" data-slug="mr-framework" data-kind="sub">
+    <circle cx="140.0" cy="410.0" r="22" fill="#0EA5E9" stroke="#002C77" stroke-width="1.5" />
+    <text x="140.0" y="414.0" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="9" font-weight="700" fill="white">FRAMEW</text>
+    <text x="140.0" y="444.0" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="11" font-weight="500" fill="#002C77">mr-framework</text>
+  </g>
+  <g id="bot-mr-strategist" class="clickable" data-slug="mr-strategist" data-kind="sub">
+    <circle cx="260.0" cy="410.0" r="22" fill="#0EA5E9" stroke="#002C77" stroke-width="1.5" />
+    <text x="260.0" y="414.0" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="9" font-weight="700" fill="white">STRATE</text>
+    <text x="260.0" y="444.0" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="11" font-weight="500" fill="#002C77">mr-strategist</text>
+  </g>
+<rect x="420.0" y="200.0" width="360.0" height="380" rx="14" fill="#FFFFFF" stroke="#7C3AED" stroke-width="2" stroke-opacity="0.35"/>
+<text x="600.0" y="230.0" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="16" font-weight="700" fill="#7C3AED" letter-spacing="2">CLIENT WORK</text>
+  <g id="bot-mr-cco" class="clickable" data-slug="mr-cco" data-kind="parent">
+    <circle cx="540.0" cy="310.0" r="38" fill="#7C3AED" stroke="#002C77" stroke-width="1.5" />
+    <text x="540.0" y="314.0" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="11" font-weight="700" fill="white">CCO</text>
+    <text x="540.0" y="364.0" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="13" font-weight="700" fill="#002C77">Mr. CCO</text>
+  </g>
+  <g id="bot-chief-creative-bot" class="clickable" data-slug="chief-creative-bot" data-kind="parent">
+    <circle cx="660.0" cy="310.0" r="38" fill="#7C3AED" stroke="#002C77" stroke-width="1.5" />
+    <text x="660.0" y="314.0" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="11" font-weight="700" fill="white">CREATI</text>
+    <text x="660.0" y="364.0" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="13" font-weight="700" fill="#002C77">Chief Creative</text>
+  </g>
+  <g id="bot-mr-mma" class="clickable" data-slug="mr-mma" data-kind="sub">
+    <circle cx="520.0" cy="410.0" r="22" fill="#7C3AED" stroke="#002C77" stroke-width="1.5" />
+    <text x="520.0" y="414.0" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="9" font-weight="700" fill="white">MMA</text>
+    <text x="520.0" y="444.0" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="11" font-weight="500" fill="#002C77">mr-mma</text>
+  </g>
+  <g id="bot-mr-achp" class="clickable" data-slug="mr-achp" data-kind="sub">
+    <circle cx="600.0" cy="410.0" r="22" fill="#7C3AED" stroke="#002C77" stroke-width="1.5" />
+    <text x="600.0" y="414.0" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="9" font-weight="700" fill="white">ACHP</text>
+    <text x="600.0" y="444.0" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="11" font-weight="500" fill="#002C77">mr-achp</text>
+  </g>
+  <g id="bot-mr-pomegranate" class="clickable" data-slug="mr-pomegranate" data-kind="sub">
+    <circle cx="680.0" cy="410.0" r="22" fill="#7C3AED" stroke="#002C77" stroke-width="1.5" />
+    <text x="680.0" y="414.0" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="9" font-weight="700" fill="white">POMEGR</text>
+    <text x="680.0" y="444.0" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="11" font-weight="500" fill="#002C77">mr-pomegranate</text>
+  </g>
+  <g id="bot-mr-purple" class="clickable" data-slug="mr-purple" data-kind="sub">
+    <circle cx="520.0" cy="495.0" r="22" fill="#7C3AED" stroke="#002C77" stroke-width="1.5" />
+    <text x="520.0" y="499.0" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="9" font-weight="700" fill="white">PURPLE</text>
+    <text x="520.0" y="529.0" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="11" font-weight="500" fill="#002C77">mr-purple</text>
+  </g>
+  <g id="bot-mr-hfma" class="clickable" data-slug="mr-hfma" data-kind="sub">
+    <circle cx="600.0" cy="495.0" r="22" fill="#7C3AED" stroke="#002C77" stroke-width="1.5" />
+    <text x="600.0" y="499.0" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="9" font-weight="700" fill="white">HFMA</text>
+    <text x="600.0" y="529.0" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="11" font-weight="500" fill="#002C77">mr-hfma</text>
+  </g>
+  <g id="bot-mr-wellness" class="clickable" data-slug="mr-wellness" data-kind="sub">
+    <circle cx="680.0" cy="495.0" r="22" fill="#7C3AED" stroke="#002C77" stroke-width="1.5" />
+    <text x="680.0" y="499.0" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="9" font-weight="700" fill="white">WELLNE</text>
+    <text x="680.0" y="529.0" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="11" font-weight="500" fill="#002C77">mr-wellness</text>
+  </g>
+  <g id="bot-mr-diablo" class="clickable" data-slug="mr-diablo" data-kind="sub">
+    <circle cx="520.0" cy="580.0" r="22" fill="#7C3AED" stroke="#002C77" stroke-width="1.5" />
+    <text x="520.0" y="584.0" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="9" font-weight="700" fill="white">DIABLO</text>
+    <text x="520.0" y="614.0" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="11" font-weight="500" fill="#002C77">mr-diablo</text>
+  </g>
+  <g id="bot-mr-tcoc" class="clickable" data-slug="mr-tcoc" data-kind="sub">
+    <circle cx="600.0" cy="580.0" r="22" fill="#7C3AED" stroke="#002C77" stroke-width="1.5" />
+    <text x="600.0" y="584.0" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="9" font-weight="700" fill="white">TCOC</text>
+    <text x="600.0" y="614.0" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="11" font-weight="500" fill="#002C77">mr-tcoc</text>
+  </g>
+  <g id="bot-mr-baseball" class="clickable" data-slug="mr-baseball" data-kind="sub">
+    <circle cx="680.0" cy="580.0" r="22" fill="#7C3AED" stroke="#002C77" stroke-width="1.5" />
+    <text x="680.0" y="584.0" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="9" font-weight="700" fill="white">BASEBA</text>
+    <text x="680.0" y="614.0" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="11" font-weight="500" fill="#002C77">mr-baseball</text>
+  </g>
+<rect x="820.0" y="200.0" width="360.0" height="380" rx="14" fill="#FFFFFF" stroke="#2D6CDF" stroke-width="2" stroke-opacity="0.35"/>
+<text x="1000.0" y="230.0" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="16" font-weight="700" fill="#2D6CDF" letter-spacing="2">OPS</text>
+  <g id="bot-mr-coo" class="clickable" data-slug="mr-coo" data-kind="parent">
+    <circle cx="1000.0" cy="310.0" r="38" fill="#2D6CDF" stroke="#002C77" stroke-width="1.5" />
+    <text x="1000.0" y="314.0" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="11" font-weight="700" fill="white">COO</text>
+    <text x="1000.0" y="364.0" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="13" font-weight="700" fill="#002C77">Mr. COO</text>
+  </g>
+  <g id="bot-mr-harvest" class="clickable" data-slug="mr-harvest" data-kind="sub">
+    <circle cx="920.0" cy="410.0" r="22" fill="#2D6CDF" stroke="#002C77" stroke-width="1.5" />
+    <text x="920.0" y="414.0" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="9" font-weight="700" fill="white">HARVES</text>
+    <text x="920.0" y="444.0" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="11" font-weight="500" fill="#002C77">mr-harvest</text>
+  </g>
+  <g id="bot-mr-pulse" class="clickable" data-slug="mr-pulse" data-kind="sub">
+    <circle cx="1000.0" cy="410.0" r="22" fill="#2D6CDF" stroke="#002C77" stroke-width="1.5" />
+    <text x="1000.0" y="414.0" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="9" font-weight="700" fill="white">PULSE</text>
+    <text x="1000.0" y="444.0" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="11" font-weight="500" fill="#002C77">mr-pulse</text>
+  </g>
+  <g id="bot-mr-task" class="clickable" data-slug="mr-task" data-kind="sub">
+    <circle cx="1080.0" cy="410.0" r="22" fill="#2D6CDF" stroke="#002C77" stroke-width="1.5" />
+    <text x="1080.0" y="414.0" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="9" font-weight="700" fill="white">TASK</text>
+    <text x="1080.0" y="444.0" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="11" font-weight="500" fill="#002C77">mr-task</text>
+  </g>
+<rect x="1220.0" y="200.0" width="360.0" height="380" rx="14" fill="#FFFFFF" stroke="#10B981" stroke-width="2" stroke-opacity="0.35"/>
+<text x="1400.0" y="230.0" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="16" font-weight="700" fill="#10B981" letter-spacing="2">GROWTH</text>
+  <g id="bot-chief-growth-bot" class="clickable" data-slug="chief-growth-bot" data-kind="parent">
+    <circle cx="1400.0" cy="310.0" r="38" fill="#10B981" stroke="#002C77" stroke-width="1.5" />
+    <text x="1400.0" y="314.0" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="11" font-weight="700" fill="white">GROWTH</text>
+    <text x="1400.0" y="364.0" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="13" font-weight="700" fill="#002C77">Chief Growth</text>
+  </g>
+  <g id="bot-mr-relationship" class="clickable" data-slug="mr-relationship" data-kind="sub">
+    <circle cx="1400.0" cy="410.0" r="22" fill="#10B981" stroke="#002C77" stroke-width="1.5" />
+    <text x="1400.0" y="414.0" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="9" font-weight="700" fill="white">RELATI</text>
+    <text x="1400.0" y="444.0" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="11" font-weight="500" fill="#002C77">mr-relationship</text>
+  </g>
+<rect x="30.0" y="640.0" width="473.33333333333337" height="380" rx="14" fill="#FFFFFF" stroke="#FF8C00" stroke-width="2" stroke-opacity="0.35"/>
+<text x="266.6666666666667" y="670.0" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="16" font-weight="700" fill="#FF8C00" letter-spacing="2">PERSONAL</text>
+  <g id="bot-vela" class="clickable" data-slug="vela" data-kind="parent">
+    <circle cx="266.7" cy="750.0" r="38" fill="#FF8C00" stroke="#FF8C00" stroke-width="3" />
+    <text x="266.7" y="754.0" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="11" font-weight="700" fill="white">VELA</text>
+    <text x="266.7" y="804.0" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="13" font-weight="700" fill="#002C77">Vela</text>
+  </g>
+  <g id="bot-lumen-th" class="clickable" data-slug="lumen-th" data-kind="sub">
+    <circle cx="266.7" cy="850.0" r="22" fill="#FF8C00" stroke="#002C77" stroke-width="1.5" />
+    <text x="266.7" y="854.0" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="9" font-weight="700" fill="white">LUMEN-</text>
+    <text x="266.7" y="884.0" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="11" font-weight="500" fill="#002C77">lumen-th</text>
+  </g>
+<rect x="563.3333333333333" y="640.0" width="473.33333333333337" height="380" rx="14" fill="#FFFFFF" stroke="#EF4E45" stroke-width="2" stroke-opacity="0.35"/>
+<text x="800.0" y="670.0" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="16" font-weight="700" fill="#EF4E45" letter-spacing="2">SAFETY</text>
+  <g id="bot-safety-net-bot" class="clickable" data-slug="safety-net-bot" data-kind="parent">
+    <circle cx="800.0" cy="750.0" r="38" fill="#EF4E45" stroke="#002C77" stroke-width="1.5" />
+    <text x="800.0" y="754.0" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="11" font-weight="700" fill="white">SAFETY</text>
+    <text x="800.0" y="804.0" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="13" font-weight="700" fill="#002C77">Safety Net</text>
+  </g>
+  <g id="bot-mr-snmi" class="clickable" data-slug="mr-snmi" data-kind="sub">
+    <circle cx="716.7" cy="850.0" r="22" fill="#EF4E45" stroke="#002C77" stroke-width="1.5" />
+    <text x="716.7" y="854.0" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="9" font-weight="700" fill="white">SNMI</text>
+    <text x="716.7" y="884.0" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="11" font-weight="500" fill="#002C77">mr-snmi</text>
+  </g>
+  <g id="bot-mr-snh" class="clickable" data-slug="mr-snh" data-kind="sub">
+    <circle cx="883.3" cy="850.0" r="22" fill="#EF4E45" stroke="#002C77" stroke-width="1.5" />
+    <text x="883.3" y="854.0" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="9" font-weight="700" fill="white">SNH</text>
+    <text x="883.3" y="884.0" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="11" font-weight="500" fill="#002C77">mr-snh</text>
+  </g>
+<rect x="1096.6666666666667" y="640.0" width="473.33333333333337" height="380" rx="14" fill="#FFFFFF" stroke="#92400E" stroke-width="2" stroke-opacity="0.35"/>
+<text x="1333.3333333333335" y="670.0" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="16" font-weight="700" fill="#92400E" letter-spacing="2">FINANCE</text>
+  <g id="bot-mr-ledger" class="clickable" data-slug="mr-ledger" data-kind="parent">
+    <circle cx="1333.3" cy="750.0" r="38" fill="#92400E" stroke="#002C77" stroke-width="1.5" />
+    <text x="1333.3" y="754.0" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="11" font-weight="700" fill="white">LEDGER</text>
+    <text x="1333.3" y="804.0" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="13" font-weight="700" fill="#002C77">Mr. Ledger</text>
+  </g>
+  <g id="bot-mr-ledger-personal" class="clickable" data-slug="mr-ledger-personal" data-kind="sub">
+    <circle cx="1250.0" cy="850.0" r="22" fill="#92400E" stroke="#002C77" stroke-width="1.5" />
+    <text x="1250.0" y="854.0" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="9" font-weight="700" fill="white">LEDGER</text>
+    <text x="1250.0" y="884.0" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="11" font-weight="500" fill="#002C77">mr-ledger-personal</text>
+  </g>
+  <g id="bot-mr-ledger-th" class="clickable" data-slug="mr-ledger-th" data-kind="sub">
+    <circle cx="1416.7" cy="850.0" r="22" fill="#92400E" stroke="#002C77" stroke-width="1.5" />
+    <text x="1416.7" y="854.0" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="9" font-weight="700" fill="white">LEDGER</text>
+    <text x="1416.7" y="884.0" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="11" font-weight="500" fill="#002C77">mr-ledger-th</text>
+  </g>
+</svg>
