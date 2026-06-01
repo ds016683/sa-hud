@@ -274,7 +274,7 @@ function BillsTab({ bills }) {
                 </tr>
               </thead>
               <tbody>
-                {Array.from(cycleStatus.entries()).map(([payee, cs]) => {
+                {Object.entries(cycleStatus).map(([payee, cs]) => {
                   const b = cs.latest
                   const d = daysUntil(b.due_on)
                   const effectiveStatus = cs.cleared ? 'paid' : (b.status !== 'paid' && d !== null && d < 0) ? 'overdue' : b.status
