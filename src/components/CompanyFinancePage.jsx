@@ -292,7 +292,7 @@ function NetIncomeRow({ label, months, values }) {
 // ─── Main component ───────────────────────────────────────────────────────────
 export default function CompanyFinancePage() {
   const [view, setView]   = useState('banking')
-  const [year, setYear]   = useState(2026)
+  const year = 2026
   const [showPipeline, setShowPipeline] = useState(false)
   const [expanded, setExpanded] = useState({})  // { catId: bool, revenue: bool, pipeline: bool }
 
@@ -330,7 +330,7 @@ export default function CompanyFinancePage() {
     return () => { cancelled = true }
   }, [])
 
-  const months = year === 2026 ? MONTHS_2026 : MONTHS_2025
+  const months = MONTHS_2026
   const pfSync = syncMeta.find(s => s.source === 'pro_forma')
   const piSync = syncMeta.find(s => s.source === 'notion_pipeline')
 
@@ -512,16 +512,10 @@ export default function CompanyFinancePage() {
       ════════════════════════════════════════════════════════════════════ */}
       {!loading && !err && view === 'proforma' && (
         <>
-          {/* Year pills */}
-          <div style={S.pillRow}>
-            <span style={S.pill(year === 2026)} onClick={() => setYear(2026)}>2026</span>
-            <span style={S.pill(year === 2025)} onClick={() => setYear(2025)}>2025</span>
-          </div>
-
           {/* ── Headline metrics ────────────────────────────────────────── */}
           <div style={S.card}>
             <div style={S.cardHdr}>
-              <div style={S.cardTitle}><TrendingUp size={14} /> {year} Summary</div>
+              <div style={S.cardTitle}><TrendingUp size={14} /> 2026 Summary</div>
               <div style={{ fontSize: 11, color: '#8096B2' }}>
                 Jan–Apr: NetSuite actuals · May–Dec: Pro forma projections
                 {showPipeline && <span style={{ marginLeft: 8, color: '#009DE0', fontWeight: 700 }}>+ Pipeline overlay ON</span>}
@@ -529,21 +523,26 @@ export default function CompanyFinancePage() {
             </div>
             <div style={S.metricGrid}>
               <div style={S.metric(false)}>
-                <div style={S.mLabel}>
-                  {showPipeline ? 'Forecasted Revenue' : 'Base Revenue'}
-                </div>
-                <div style={S.mValue(false)}>{fmtK(totalRevenue)}</div>
-                <div style={S.mSub}>{year} total {showPipeline ? `(+${fmtK(pipelineMonthTotals[totalCol])} pipeline)` : ''}</div>
+                <div style={S.mLabel}>Base Revenue</div>
+                <div style={S.mValue(false)}>{fmtK(baseRevenueVals[totalCol])}</div>
+                <div style={S.mSub}>2026 contracted</div>
               </div>
+              {showPipeline && (
+                <div style={{ ...S.metric(false), background: '#EFF9FF', border: '1px solid #BAE6FD' }}>
+                  <div style={{ ...S.mLabel, color: '#0369A1' }}>Pipeline Revenue</div>
+                  <div style={{ ...S.mValue(false), color: '#0369A1' }}>{fmtK(pipelineMonthTotals[totalCol])}</div>
+                  <div style={S.mSub}>{pipelineDeals.length} active deals · weighted CM</div>
+                </div>
+              )}
               <div style={S.metric(false)}>
                 <div style={S.mLabel}>Total Expenses</div>
                 <div style={S.mValue(false)}>{fmtK(totalExpenses)}</div>
-                <div style={S.mSub}>{year} total</div>
+                <div style={S.mSub}>2026 total</div>
               </div>
               <div style={S.metric(totalNetIncome < 0)}>
                 <div style={S.mLabel}>Net Income</div>
                 <div style={S.mValue(totalNetIncome < 0)}>{fmtK(totalNetIncome)}</div>
-                <div style={S.mSub}>{totalNetIncome < 0 ? 'Net loss' : 'Net profit'} · {year} total</div>
+                <div style={S.mSub}>{totalNetIncome < 0 ? 'Net loss' : 'Net profit'} · 2026 total</div>
               </div>
             </div>
           </div>
@@ -551,7 +550,7 @@ export default function CompanyFinancePage() {
           {/* ── P&L Table ───────────────────────────────────────────────── */}
           <div style={S.card}>
             <div style={S.cardHdr}>
-              <div style={S.cardTitle}><Layers size={14} /> {year} Profit & Loss</div>
+              <div style={S.cardTitle}><Layers size={14} /> 2026 Profit & Loss</div>
               {year === 2026 && (
                 <span style={S.toggleWrap} onClick={() => setShowPipeline(v => !v)}>
                   <span style={{ fontSize: 11, color: '#64748B', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Pipeline Overlay</span>
