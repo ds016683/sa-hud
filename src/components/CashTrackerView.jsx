@@ -5,19 +5,25 @@ import { ChevronRight, ChevronDown } from 'lucide-react'
 // Cash Tracker is bi-monthly (15th + EOM per month). 2026 cols: AA–AX
 // Jan–Jun have mislabeled year headers in the sheet — doesn't matter, we hardcode.
 export const CT_MONTHS = [
-  { label: 'Jan', col1: 'AA', col2: 'AB', beginCol: 'Z'  },
-  { label: 'Feb', col1: 'AC', col2: 'AD', beginCol: 'AB' },
-  { label: 'Mar', col1: 'AE', col2: 'AF', beginCol: 'AD' },
-  { label: 'Apr', col1: 'AG', col2: 'AH', beginCol: 'AF' },
-  { label: 'May', col1: 'AI', col2: 'AJ', beginCol: 'AH' },
-  { label: 'Jun', col1: 'AK', col2: 'AL', beginCol: 'AJ' },
-  { label: 'Jul', col1: 'AM', col2: 'AN', beginCol: 'AL' },
-  { label: 'Aug', col1: 'AO', col2: 'AP', beginCol: 'AN' },
-  { label: 'Sep', col1: 'AQ', col2: 'AR', beginCol: 'AP' },
-  { label: 'Oct', col1: 'AS', col2: 'AT', beginCol: 'AR' },
-  { label: 'Nov', col1: 'AU', col2: 'AV', beginCol: 'AT' },
-  { label: 'Dec', col1: 'AW', col2: 'AX', beginCol: 'AV' },
+  { label: 'Jan', full: 'January',   col1: 'AA', col2: 'AB', beginCol: 'Z'  },
+  { label: 'Feb', full: 'February',  col1: 'AC', col2: 'AD', beginCol: 'AB' },
+  { label: 'Mar', full: 'March',     col1: 'AE', col2: 'AF', beginCol: 'AD' },
+  { label: 'Apr', full: 'April',     col1: 'AG', col2: 'AH', beginCol: 'AF' },
+  { label: 'May', full: 'May',       col1: 'AI', col2: 'AJ', beginCol: 'AH' },
+  { label: 'Jun', full: 'June',      col1: 'AK', col2: 'AL', beginCol: 'AJ' },
+  { label: 'Jul', full: 'July',      col1: 'AM', col2: 'AN', beginCol: 'AL' },
+  { label: 'Aug', full: 'August',    col1: 'AO', col2: 'AP', beginCol: 'AN' },
+  { label: 'Sep', full: 'September', col1: 'AQ', col2: 'AR', beginCol: 'AP' },
+  { label: 'Oct', full: 'October',   col1: 'AS', col2: 'AT', beginCol: 'AR' },
+  { label: 'Nov', full: 'November',  col1: 'AU', col2: 'AV', beginCol: 'AT' },
+  { label: 'Dec', full: 'December',  col1: 'AW', col2: 'AX', beginCol: 'AV' },
 ]
+
+// Flat 24-entry array — one entry per half-period, matching cash tracker columns
+export const CT_PERIODS = CT_MONTHS.flatMap(m => [
+  { label: m.full + ' 1H', col: m.col1, month: m.label, half: '1H', beginCol: m.beginCol },
+  { label: m.full + ' 2H', col: m.col2, month: m.label, half: '2H', beginCol: m.col1  },
+])
 
 // ─── Row index definitions ────────────────────────────────────────────────────
 const ROW_BALANCE      = 216   // Anticipated 15-Day Balance (running cash position)
@@ -205,13 +211,23 @@ const CASH_OUT_GROUPS = [
   },
 ]
 
-// ─── Pipeline 60-day lag map: accrual month → cash month label ──────────────
+// ─── Pipeline 30-day lag map: accrual month → cash period col ──────────────
+// Pipeline receipts land in the 2H (EOM) period of the lagged month (30-day lag)
 const PIPELINE_LAG = {
-  'June 2026':      'Aug',
-  'July 2026':      'Sep',
-  'August 2026':    'Oct',
-  'September 2026': 'Nov',
-  'October 2026':   'Dec',
+  'June 2026':      'AN', // July 2H
+  'July 2026':      'AP', // August 2H
+  'August 2026':    'AR', // September 2H
+  'September 2026': 'AT', // October 2H
+  'October 2026':   'AV', // November 2H
+  'November 2026':  'AX', // December 2H
+}
+const PIPELINE_LAG_DEST_LABEL = {
+  'June 2026':      'July 2H',
+  'July 2026':      'August 2H',
+  'August 2026':    'September 2H',
+  'September 2026': 'October 2H',
+  'October 2026':   'November 2H',
+  'November 2026':  'December 2H',
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -222,8 +238,9 @@ function rv(row, col) {
   if (typeof v === 'string') { const n = parseFloat(v.replace(/[$,]/g, '')); return isNaN(n) ? 0 : n }
   return 0
 }
+function periodVal(row, p) { return rv(row, p.col) }
 function monthSum(row, m) { return rv(row, m.col1) + rv(row, m.col2) }
-function totalSum(row) { return CT_MONTHS.reduce((s, m) => s + monthSum(row, m), 0) }
+function totalSum(row) { return CT_PERIODS.reduce((s, p) => s + periodVal(row, p), 0) }
 
 function fmt(n, compact = false) {
   if (n === null || n === undefined) return '—'
@@ -296,70 +313,64 @@ export default function CashTrackerView({ cashTracker, pipelineForecast }) {
   // Beginning of year = row 216 col Z (Dec 31 2025)
   const boyBalance = rv(balRow, 'Z')
 
-  // Pipeline 60-day lag: month label → monthly CM
-  const pipelineMonthly = useMemo(() => {
+  // ── Current-period start rule ─────────────────────────────────────────────
+  // Rule: first visible column = the half-period we are currently IN.
+  //   Before the 15th  → show month 1H onward
+  //   15th or after    → show month 2H onward
+  // Columns before that half-period are dropped from the display.
+  const visiblePeriods = useMemo(() => {
+    const now  = new Date()
+    const mo   = now.toLocaleString('en-US', { month: 'long' })  // e.g. "June"
+    const day  = now.getDate()
+    const half = day < 15 ? '1H' : '2H'
+    const startIdx = CT_PERIODS.findIndex(p => p.label === `${mo} ${half}`)
+    return startIdx >= 0 ? CT_PERIODS.slice(startIdx) : CT_PERIODS
+  }, [])
+
+  // Pipeline 30-day lag: destination period col → CM
+  const pipelineByCol = useMemo(() => {
     const out = {}
-    CT_MONTHS.forEach(m => { out[m.label] = 0 })
+    CT_PERIODS.forEach(p => { out[p.col] = 0 })
     const accrualRows = pipelineForecast.filter(r => r.row_index >= 200001)
     accrualRows.forEach(r => {
-      const cashMonth = PIPELINE_LAG[r.payload?.month_label]
-      if (cashMonth && r.payload?.total_contribution_margin) {
-        out[cashMonth] = (out[cashMonth] || 0) + r.payload.total_contribution_margin
+      const destCol = PIPELINE_LAG[r.payload?.month_label]
+      if (destCol && r.payload?.total_contribution_margin) {
+        out[destCol] = (out[destCol] || 0) + r.payload.total_contribution_margin
       }
     })
     return out
   }, [pipelineForecast])
 
-  const pipelineTotal = Object.values(pipelineMonthly).reduce((s, v) => s + v, 0)
+  const pipelineTotal = Object.values(pipelineByCol).reduce((s, v) => s + v, 0)
 
-  // Per-month helpers
-  function balanceAt(col) { return rv(balRow, col) }
+  // Per-period helpers
+  function ciPeriod(p)  { return periodVal(cashInRow, p) + (showPipeline ? (pipelineByCol[p.col] || 0) : 0) }
+  function coPeriod(p)  { return periodVal(cashOutRow, p) }
+  function linePeriod(rowIdx, p) { return periodVal(rowMap[rowIdx], p) }
+  function lineTotal(rowIdx) { return totalSum(rowMap[rowIdx]) }
   function beginBal(m) { return rv(balRow, m.beginCol) }
   function endBal(m)   { return rv(balRow, m.col2) }
-  function ciMonth(m)  { return monthSum(cashInRow, m) + (showPipeline ? (pipelineMonthly[m.label] || 0) : 0) }
-  function coMonth(m)  { return monthSum(cashOutRow, m) }
-  function lineMonth(rowIdx, m) { return monthSum(rowMap[rowIdx], m) }
-  function lineTotal(rowIdx)    { return totalSum(rowMap[rowIdx]) }
 
   // Year totals
-  const totalCashIn  = CT_MONTHS.reduce((s, m) => s + monthSum(cashInRow, m), 0) + (showPipeline ? pipelineTotal : 0)
+  const totalCashIn  = CT_PERIODS.reduce((s, p) => s + periodVal(cashInRow, p), 0) + (showPipeline ? pipelineTotal : 0)
   const totalCashOut = totalSum(cashOutRow)
   const endYearBal   = rv(balRow, 'AX') + (showPipeline ? pipelineTotal : 0)
 
-  // Build cash-in group totals
+  // Group helpers
   function groupTotal(rows) {
     return rows.reduce((s, { row }) => s + (totalSum(rowMap[row]) || 0), 0)
   }
-  function groupMonthVal(rows, m) {
-    return rows.reduce((s, { row }) => s + (monthSum(rowMap[row], m) || 0), 0)
+  function groupPeriodVal(rows, p) {
+    return rows.reduce((s, { row }) => s + (periodVal(rowMap[row], p) || 0), 0)
   }
 
-  const NCOLS = CT_MONTHS.length + 1 // +1 for Total col
+  const NCOLS = visiblePeriods.length + 1 // +1 for Total col
 
   function TotalCell({ val, isLast }) {
     return (
       <td style={{ ...S.tdN(val < 0), ...(isLast ? S.tdNT(val < 0) : {}), ...(isLast ? {} : {}) }}>
         {fmt(val)}
       </td>
-    )
-  }
-
-  function renderSectionHeader(label, totalVal, tone, key, expanded) {
-    return (
-      <tr>
-        <td style={{ ...S.secHdr(tone), paddingLeft: 14 }} onClick={() => toggle(key)}>
-          <span style={{ marginRight: 6, display: 'inline-flex', verticalAlign: 'middle', opacity: 0.8 }}>
-            {expanded ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
-          </span>
-          {label}
-        </td>
-        {CT_MONTHS.map(m => {
-          const v = CT_MONTHS.reduce((s, mm) => mm.label === m.label ? s + groupMonthVal(
-            Object.values(CASH_IN_ROWS).flat(), m) : s, 0)
-          return <td key={m.label} style={S.secHdrN(tone)}></td>
-        })}
-        <td style={S.secHdrN(tone)}>{fmt(totalVal)}</td>
-      </tr>
     )
   }
 
@@ -384,7 +395,7 @@ export default function CashTrackerView({ cashTracker, pipelineForecast }) {
       {/* ── Pipeline toggle ─────────────────────────────────────────────── */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16, padding: '10px 14px', background: 'white', border: '1px solid #E2E8F0', borderRadius: 10 }}>
         <span style={{ fontSize: 11, color: '#64748B', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Pipeline Overlay</span>
-        <span style={{ fontSize: 11, color: '#8096B2' }}>60-day lag · Jun CM → Aug cash, Jul → Sep, Aug → Oct, Sep → Nov, Oct → Dec</span>
+        <span style={{ fontSize: 11, color: '#8096B2' }}>30-day lag · Jun CM → Jul cash, Jul → Aug, Aug → Sep, Sep → Oct, Oct → Nov, Nov → Dec</span>
         <span style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 8, cursor: 'pointer', userSelect: 'none' }} onClick={() => setShowPipeline(v => !v)}>
           <span style={{ width: 36, height: 20, borderRadius: 9999, background: showPipeline ? '#009DE0' : '#CBD8E8', position: 'relative', transition: 'background 0.2s', flexShrink: 0, display: 'inline-block' }}>
             <span style={{ position: 'absolute', top: 2, left: showPipeline ? 18 : 2, width: 16, height: 16, borderRadius: '50%', background: 'white', transition: 'left 0.2s', boxShadow: '0 1px 2px rgba(0,0,0,0.2)' }} />
@@ -398,9 +409,20 @@ export default function CashTrackerView({ cashTracker, pipelineForecast }) {
         <table style={S.tbl}>
           <thead>
             <tr>
-              <th style={S.thL}>Line Item</th>
-              {CT_MONTHS.map(m => <th key={m.label} style={S.thN}>{m.label}</th>)}
-              <th style={{ ...S.thN, borderLeft: '1px solid #CBD8E8', background: '#EFF4FC' }}>Total</th>
+              <th rowSpan={2} style={{ ...S.thL, verticalAlign: 'bottom' }}>Line Item</th>
+              {CT_MONTHS.map(m => (
+                <th key={m.label} colSpan={2} style={{ ...S.thN, borderLeft: '2px solid #CBD8E8', background: '#EFF4FC', fontSize: 11 }}>
+                  {m.full}
+                </th>
+              ))}
+              <th rowSpan={2} style={{ ...S.thN, borderLeft: '2px solid #CBD8E8', background: '#EFF4FC' }}>Total</th>
+            </tr>
+            <tr>
+              {visiblePeriods.map(p => (
+                <th key={p.col} style={{ ...S.thN, borderLeft: p.half === '1H' ? '2px solid #CBD8E8' : undefined, fontSize: 10, color: '#8096B2', background: p.half === '2H' ? '#F7FAFD' : '#EFF4FC' }}>
+                  {p.half}
+                </th>
+              ))}
             </tr>
           </thead>
           <tbody>
@@ -408,9 +430,10 @@ export default function CashTrackerView({ cashTracker, pipelineForecast }) {
             {/* ── BEGINNING BALANCE ─────────────────────────────────── */}
             <tr>
               <td style={S.balRow('begin')}>BEGINNING CASH</td>
-              {CT_MONTHS.map(m => {
-                const v = beginBal(m)
-                return <td key={m.label} style={S.balRowN(v, 'begin')}>{fmt(v)}</td>
+              {visiblePeriods.map(p => {
+                const m = CT_MONTHS.find(m => m.label === p.month)
+                const v = p.half === '1H' ? rv(balRow, m.beginCol) : rv(balRow, m.col1)
+                return <td key={p.col} style={{ ...S.balRowN(v, 'begin'), borderLeft: p.half === '1H' ? '2px solid rgba(255,255,255,0.15)' : undefined }}>{fmt(v)}</td>
               })}
               <td style={S.balRowN(boyBalance, 'begin')}>{fmt(boyBalance)}</td>
             </tr>
@@ -423,14 +446,14 @@ export default function CashTrackerView({ cashTracker, pipelineForecast }) {
               <td style={{ ...S.secHdr('green'), cursor: 'default', paddingLeft: 14 }} colSpan={1}>
                 CASH IN — REVENUE
               </td>
-              {CT_MONTHS.map(m => {
-                const v = ciMonth(m)
-                return <td key={m.label} style={S.secHdrN('green')}>{v ? fmt(v) : ''}</td>
+              {visiblePeriods.map(p => {
+                const v = ciPeriod(p)
+                return <td key={p.col} style={{ ...S.secHdrN('green'), borderLeft: p.half === '1H' ? '2px solid rgba(255,255,255,0.1)' : undefined }}>{v ? fmt(v) : ''}</td>
               })}
               <td style={S.secHdrN('green')}>{fmt(totalCashIn)}</td>
             </tr>
 
-            {/* Pipeline rows (60-day lagged) */}
+            {/* Pipeline rows (30-day lagged) */}
             {showPipeline && (
               <>
                 <tr onClick={() => toggle('pipeline_ct')}>
@@ -438,11 +461,11 @@ export default function CashTrackerView({ cashTracker, pipelineForecast }) {
                     <span style={{ marginRight: 6, display: 'inline-flex', verticalAlign: 'middle' }}>
                       {expanded.pipeline_ct ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
                     </span>
-                    Pipeline (60-day lag)
+                    Pipeline (30-day lag)
                   </td>
-                  {CT_MONTHS.map(m => {
-                    const v = pipelineMonthly[m.label] || 0
-                    return <td key={m.label} style={S.pipeHdrN}>{v ? fmt(v) : ''}</td>
+                  {visiblePeriods.map(p => {
+                    const v = pipelineByCol[p.col] || 0
+                    return <td key={p.col} style={{ ...S.pipeHdrN, borderLeft: p.half === '1H' ? '2px solid rgba(255,255,255,0.1)' : undefined }}>{v ? fmt(v) : ''}</td>
                   })}
                   <td style={S.pipeHdrN}>{fmt(pipelineTotal)}</td>
                 </tr>
@@ -450,18 +473,17 @@ export default function CashTrackerView({ cashTracker, pipelineForecast }) {
                   .filter(r => r.row_index >= 200001)
                   .filter(r => PIPELINE_LAG[r.payload?.month_label])
                   .map(r => {
-                    const cashMonth = PIPELINE_LAG[r.payload?.month_label]
+                    const destCol = PIPELINE_LAG[r.payload?.month_label]
+                    const destLabel = PIPELINE_LAG_DEST_LABEL[r.payload?.month_label]
                     const cm = r.payload?.total_contribution_margin || 0
-                    const vals = {}
-                    CT_MONTHS.forEach(m => { vals[m.label] = m.label === cashMonth ? cm : 0 })
                     return (
                       <tr key={r.row_index} style={{ background: '#F0FDF4' }}>
                         <td style={{ ...S.tdL(2), color: '#166534', fontSize: 11 }}>
-                          {r.payload?.month_label} accrual → {cashMonth} cash
+                          {r.payload?.month_label} accrual → {destLabel}
                         </td>
-                        {CT_MONTHS.map(m => (
-                          <td key={m.label} style={{ ...S.tdN(false), color: '#166534', fontSize: 11 }}>
-                            {vals[m.label] ? fmt(vals[m.label]) : ''}
+                        {visiblePeriods.map(p => (
+                          <td key={p.col} style={{ ...S.tdN(false), color: '#166534', fontSize: 11, borderLeft: p.half === '1H' ? '2px solid #E2E8F0' : undefined }}>
+                            {p.col === destCol ? fmt(cm) : ''}
                           </td>
                         ))}
                         <td style={{ ...S.tdNT(false), color: '#166534', fontSize: 11 }}>{fmt(cm)}</td>
@@ -476,7 +498,6 @@ export default function CashTrackerView({ cashTracker, pipelineForecast }) {
             {Object.entries(CASH_IN_ROWS).map(([area, clients]) => {
               const areaTotal = groupTotal(clients)
               const isOpen = !!expanded[`ci_${area}`]
-              const areaMonthVals = CT_MONTHS.map(m => groupMonthVal(clients, m))
               return (
                 <>
                   <tr key={area} onClick={() => toggle(`ci_${area}`)}>
@@ -486,9 +507,9 @@ export default function CashTrackerView({ cashTracker, pipelineForecast }) {
                       </span>
                       {area}
                     </td>
-                    {CT_MONTHS.map((m, i) => {
-                      const v = areaMonthVals[i]
-                      return <td key={m.label} style={S.catHdrN}>{v ? fmt(v) : ''}</td>
+                    {visiblePeriods.map(p => {
+                      const v = groupPeriodVal(clients, p)
+                      return <td key={p.col} style={{ ...S.catHdrN, borderLeft: p.half === '1H' ? '2px solid #CBD8E8' : undefined }}>{v ? fmt(v) : ''}</td>
                     })}
                     <td style={S.catHdrN}>{areaTotal ? fmt(areaTotal) : '—'}</td>
                   </tr>
@@ -496,13 +517,13 @@ export default function CashTrackerView({ cashTracker, pipelineForecast }) {
                     const lineRow = rowMap[row]
                     if (!lineRow) return null
                     const lt = lineTotal(row)
-                    if (lt === 0 && CT_MONTHS.every(m => !lineMonth(row, m))) return null
+                    if (lt === 0 && visiblePeriods.every(p => !linePeriod(row, p))) return null
                     return (
                       <tr key={row} style={{ background: 'white' }}>
                         <td style={S.tdL(2)}>{label}</td>
-                        {CT_MONTHS.map(m => {
-                          const v = lineMonth(row, m)
-                          return <td key={m.label} style={S.tdN(false)}>{v ? fmt(v) : ''}</td>
+                        {visiblePeriods.map(p => {
+                          const v = linePeriod(row, p)
+                          return <td key={p.col} style={{ ...S.tdN(false), borderLeft: p.half === '1H' ? '2px solid #E2E8F0' : undefined }}>{v ? fmt(v) : ''}</td>
                         })}
                         <td style={S.tdNT(false)}>{lt ? fmt(lt) : '—'}</td>
                       </tr>
@@ -520,9 +541,9 @@ export default function CashTrackerView({ cashTracker, pipelineForecast }) {
               <td style={{ ...S.secHdr('red'), cursor: 'default', paddingLeft: 14 }}>
                 CASH OUT — EXPENSES
               </td>
-              {CT_MONTHS.map(m => {
-                const v = coMonth(m)
-                return <td key={m.label} style={S.secHdrN('red')}>{v ? fmt(v) : ''}</td>
+              {visiblePeriods.map(p => {
+                const v = coPeriod(p)
+                return <td key={p.col} style={{ ...S.secHdrN('red'), borderLeft: p.half === '1H' ? '2px solid rgba(255,255,255,0.1)' : undefined }}>{v ? fmt(v) : ''}</td>
               })}
               <td style={S.secHdrN('red')}>{fmt(totalCashOut)}</td>
             </tr>
@@ -539,21 +560,21 @@ export default function CashTrackerView({ cashTracker, pipelineForecast }) {
                       </span>
                       {cat.label}
                     </td>
-                    {CT_MONTHS.map(m => {
-                      const v = groupMonthVal(cat.lines, m)
-                      return <td key={m.label} style={S.catHdrN}>{v ? fmt(v) : ''}</td>
+                    {visiblePeriods.map(p => {
+                      const v = groupPeriodVal(cat.lines, p)
+                      return <td key={p.col} style={{ ...S.catHdrN, borderLeft: p.half === '1H' ? '2px solid #CBD8E8' : undefined }}>{v ? fmt(v) : ''}</td>
                     })}
                     <td style={S.catHdrN}>{catTotal ? fmt(catTotal) : '—'}</td>
                   </tr>
                   {isOpen && cat.lines.map(({ row, label }) => {
                     const lt = lineTotal(row)
-                    if (lt === 0 && CT_MONTHS.every(m => !lineMonth(row, m))) return null
+                    if (lt === 0 && visiblePeriods.every(p => !linePeriod(row, p))) return null
                     return (
                       <tr key={row} style={{ background: 'white' }}>
                         <td style={S.tdL(2)}>{label}</td>
-                        {CT_MONTHS.map(m => {
-                          const v = lineMonth(row, m)
-                          return <td key={m.label} style={S.tdN(false)}>{v ? fmt(v) : ''}</td>
+                        {visiblePeriods.map(p => {
+                          const v = linePeriod(row, p)
+                          return <td key={p.col} style={{ ...S.tdN(false), borderLeft: p.half === '1H' ? '2px solid #E2E8F0' : undefined }}>{v ? fmt(v) : ''}</td>
                         })}
                         <td style={S.tdNT(false)}>{lt ? fmt(lt) : '—'}</td>
                       </tr>
@@ -569,12 +590,12 @@ export default function CashTrackerView({ cashTracker, pipelineForecast }) {
             {/* ── ENDING BALANCE ────────────────────────────────────── */}
             <tr>
               <td style={S.balRow('end')}>ENDING CASH</td>
-              {CT_MONTHS.map(m => {
-                const base = endBal(m)
+              {visiblePeriods.map((p, i) => {
+                const base = rv(balRow, p.col)
                 const v = showPipeline
-                  ? base + CT_MONTHS.slice(0, CT_MONTHS.indexOf(m) + 1).reduce((s, mm) => s + (pipelineMonthly[mm.label] || 0), 0)
+                  ? base + visiblePeriods.slice(0, i + 1).reduce((s, pp) => s + (pipelineByCol[pp.col] || 0), 0)
                   : base
-                return <td key={m.label} style={S.balRowN(v, 'end')}>{fmt(v)}</td>
+                return <td key={p.col} style={{ ...S.balRowN(v, 'end'), borderLeft: p.half === '1H' ? '2px solid rgba(255,255,255,0.15)' : undefined }}>{fmt(v)}</td>
               })}
               <td style={S.balRowN(endYearBal, 'end')}>{fmt(endYearBal, true)}</td>
             </tr>
@@ -583,7 +604,7 @@ export default function CashTrackerView({ cashTracker, pipelineForecast }) {
         </table>
       </div>
       <div style={{ padding: '8px 12px', fontSize: 10, color: '#94A3B8', borderTop: '1px solid #F0F4F9', marginTop: 0 }}>
-        Beginning/ending cash = Row 216 (Anticipated 15-Day Balance). Individual line items = bi-monthly periods aggregated to monthly. Pipeline lagged 60 days from Notion accrual months.
+        Beginning/ending cash = Row 216 (Anticipated 15-Day Balance). 1H = mid-month (15th), 2H = end-of-month — matches Cash Tracker column schema. Pipeline lagged 30 days from Notion accrual months, lands in 2H of destination month.
       </div>
     </div>
   )
