@@ -3,6 +3,7 @@ import { Wallet, TrendingUp, Layers, Building2, RefreshCw, AlertCircle, Landmark
 import { supabase } from '../lib/supabase'
 import PlaidActionsBar from './PlaidActionsBar'
 import BankingActivity from './BankingActivity'
+import CashTrackerView from './CashTrackerView'
 
 // ─── Month definitions ────────────────────────────────────────────────────────
 const MONTHS_2026 = [
@@ -655,37 +656,14 @@ export default function CompanyFinancePage() {
       {!loading && !err && view === 'cash' && (
         <div style={S.card}>
           <div style={S.cardHdr}>
-            <div style={S.cardTitle}><Layers size={14} /> Cash Tracker</div>
-            <div style={{ fontSize: 11, color: '#8096B2' }}>{cashTracker.length} rows</div>
+            <div style={S.cardTitle}><Layers size={14} /> 2026 Cash Tracker</div>
+            <div style={{ fontSize: 11, color: '#8096B2' }}>
+              Bi-monthly → monthly · {cashTracker.length} rows
+              {pfSync?.last_synced_at ? ` · synced ${fmtTime(pfSync.last_synced_at)}` : ''}
+            </div>
           </div>
-          <div style={{ padding: 14, fontSize: 12, color: '#8096B2' }}>
-            Raw data · smart parser planned for v2
-          </div>
-          <div style={{ overflowX: 'auto' }}>
-            <table style={S.tbl}>
-              <thead>
-                <tr>
-                  <th style={S.thLabel}>Row</th>
-                  <th style={S.thLabel}>Label</th>
-                  <th style={S.thLabel}>Sample</th>
-                </tr>
-              </thead>
-              <tbody>
-                {cashTracker.slice(0, 50).map(r => (
-                  <tr key={r.row_index}>
-                    <td style={{ padding: '7px 12px', borderBottom: '1px solid #F0F4F9', color: '#8096B2', fontSize: 11 }}>{r.row_index}</td>
-                    <td style={{ padding: '7px 12px', borderBottom: '1px solid #F0F4F9', fontWeight: 600, color: '#002C77' }}>{r.label || '—'}</td>
-                    <td style={{ padding: '7px 12px', borderBottom: '1px solid #F0F4F9', fontSize: 11, color: '#565656' }}>
-                      {Object.entries(r.payload || {}).slice(0, 4).map(([k, v]) => (
-                        <span key={k} style={{ marginRight: 10 }}>
-                          <code style={{ fontSize: 10, color: '#8096B2' }}>{k}</code>: {typeof v === 'number' ? fmt(v) : String(v).slice(0, 20)}
-                        </span>
-                      ))}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div style={{ padding: '0 0 0 0' }}>
+            <CashTrackerView cashTracker={cashTracker} pipelineForecast={pipelineForecast} />
           </div>
         </div>
       )}
