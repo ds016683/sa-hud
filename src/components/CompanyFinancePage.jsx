@@ -31,7 +31,7 @@ const MONTHS_2025 = [
 // ─── P&L structure: maps row_indices from finance.pro_forma ──────────────────
 const REVENUE_TOTAL_ROW = 6    // Base Revenue (updated w/ NS actuals Jan-Apr)
 const EXPENSES_TOTAL_ROW = 168 // Total Expenses (updated w/ NS actuals Jan-Apr)
-const NET_INCOME_ROW = 252     // Net Income (updated w/ NS actuals Jan-Apr)
+const NET_INCOME_ROW = 253     // Net Income (updated w/ NS actuals Jan-Apr)
 
 const REVENUE_PRACTICE_AREAS = [
   { rowIndex: 9,   label: 'Behavioral Health',          tag: 'BEH' },
