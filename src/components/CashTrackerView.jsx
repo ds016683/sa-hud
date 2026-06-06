@@ -320,11 +320,12 @@ export default function CashTrackerView({ cashTracker, pipelineForecast }) {
   // Columns before that half-period are dropped from the display.
   const visiblePeriods = useMemo(() => {
     const now  = new Date()
-    const mo   = now.toLocaleString('en-US', { month: 'long' })  // e.g. "June"
-    const day  = now.getDate()
-    const half = day < 15 ? '1H' : '2H'
-    const startIdx = CT_PERIODS.findIndex(p => p.label === `${mo} ${half}`)
-    return startIdx >= 0 ? CT_PERIODS.slice(startIdx) : CT_PERIODS
+    const moIdx = now.getMonth()   // 0=Jan … 5=Jun
+    const day   = now.getDate()
+    const half  = day < 15 ? '1H' : '2H'
+    // Each month has 2 periods; 1H is at even index, 2H at odd
+    const startIdx = moIdx * 2 + (half === '2H' ? 1 : 0)
+    return CT_PERIODS.slice(startIdx)
   }, [])
 
   // Pipeline 30-day lag: destination period col → CM
@@ -410,11 +411,14 @@ export default function CashTrackerView({ cashTracker, pipelineForecast }) {
           <thead>
             <tr>
               <th rowSpan={2} style={{ ...S.thL, verticalAlign: 'bottom' }}>Line Item</th>
-              {CT_MONTHS.map(m => (
-                <th key={m.label} colSpan={2} style={{ ...S.thN, borderLeft: '2px solid #CBD8E8', background: '#EFF4FC', fontSize: 11 }}>
-                  {m.full}
-                </th>
-              ))}
+              {CT_MONTHS.filter(m => visiblePeriods.some(p => p.month === m.label)).map(m => {
+                const periodCount = visiblePeriods.filter(p => p.month === m.label).length
+                return (
+                  <th key={m.label} colSpan={periodCount} style={{ ...S.thN, borderLeft: '2px solid #CBD8E8', background: '#EFF4FC', fontSize: 11 }}>
+                    {m.full}
+                  </th>
+                )
+              })}
               <th rowSpan={2} style={{ ...S.thN, borderLeft: '2px solid #CBD8E8', background: '#EFF4FC' }}>Total</th>
             </tr>
             <tr>
