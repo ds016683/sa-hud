@@ -168,7 +168,7 @@ export default function App() {
   const [session, setSession] = useState(undefined)
   const [active, setActive] = useState('daily-dashboard')
   const [now, setNow] = useState(new Date())
-  const { sovereigntyLevel } = useGameState()
+  const gameState = useGameState()
 
   useEffect(() => {
     getSession().then(s => setSession(s))
@@ -200,9 +200,9 @@ export default function App() {
     <div className="sa-app">
       <Sidebar active={active} onChange={setActive} onSignOut={handleSignOut} />
       <div className="sa-main">
-        <Topbar active={active} now={now} sov={sovereigntyLevel} />
+        <Topbar active={active} now={now} sov={gameState.sovereigntyLevel} />
         <div className="sa-content">
-          {active === 'daily-dashboard' && <DailyDashboardPage />}
+          {active === 'daily-dashboard' && <DailyDashboardPage gameState={gameState} />}
           {active === 'brain'           && <BrainPlaceholder />}
           {active === 'objectives'      && <ObjectivesPage />}
           {active === 'accomplishments' && <AccomplishmentsPage />}

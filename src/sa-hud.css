@@ -991,3 +991,16 @@ table.fin-grid { width: 100%; border-collapse: collapse; font-family: var(--font
   box-shadow: var(--sa-shadow-lift);
 }
 .sa-scrim { position: fixed; inset: 0; z-index: 998; background: rgba(14,35,54,0.45); }
+
+/* Topbar on small screens: clear the burger, shed telemetry gracefully */
+@media (max-width: 1023px) {
+  .sa-topbar { padding-left: 68px; }
+}
+@media (max-width: 760px) {
+  .sa-topbar { flex-wrap: wrap; height: auto; min-height: 60px; padding-top: 9px; padding-bottom: 9px; row-gap: 4px; gap: 12px; }
+  .sa-clock { display: none; }
+}
+@media (max-width: 560px) {
+  .sa-protocol-pill { display: none; }
+  .sa-hero { grid-template-columns: 1fr; padding: 26px 24px; }
+}
