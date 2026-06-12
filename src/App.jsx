@@ -1,6 +1,11 @@
 import { useState, useEffect } from 'react'
-import { LayoutGrid, Lightbulb, Network, LogOut, Menu, X, Target, Users, Sparkles, FileText, MessageSquare, Wallet, CreditCard, LayoutDashboard } from 'lucide-react'
+import {
+  LayoutGrid, Lightbulb, Network, LogOut, Menu, X, Target, Users, Sparkles,
+  FileText, MessageSquare, Wallet, CreditCard, LayoutDashboard, Brain,
+} from 'lucide-react'
 import { getSession, onAuthStateChange, signOut } from './lib/auth'
+import { statusFor, greetingFor, TIER_COLORS } from './constants/saDesign'
+import useGameState from './hooks/useGameState'
 import LoginPage from './components/LoginPage'
 import DailyDashboardPage from './components/DailyDashboardPage'
 import PortfolioPage from './components/PortfolioPage'
@@ -15,17 +20,18 @@ import CompanyFinancePage from './components/CompanyFinancePage'
 import PersonalFinancePage from './components/PersonalFinancePage'
 
 const NAV_ITEMS = [
-  { id: 'daily-dashboard', label: 'Daily Dashboard',    icon: LayoutDashboard },
-  { id: 'objectives',      label: 'Objectives',         icon: Target     },
-  { id: 'accomplishments', label: "Daily Summary",      icon: Sparkles   },
-  { id: 'meeting-notes',   label: 'Meeting Notes',      icon: FileText   },
-  { id: 'company-finance', label: 'Company Finance',    icon: Wallet     },
-  { id: 'personal-finance', label: 'Personal Finance',  icon: CreditCard },
-  { id: 'relationships',   label: 'Relationships',      icon: Users      },
-  { id: 'slack',           label: 'Slack',              icon: MessageSquare },
-  { id: 'portfolio',       label: 'Portfolio',          icon: LayoutGrid },
-  { id: 'ideas',           label: 'Ideas Pipeline',     icon: Lightbulb  },
-  { id: 'ecosystem',       label: 'Ecosystem',          icon: Network    },
+  { id: 'daily-dashboard', label: 'Daily Dashboard',  icon: LayoutDashboard, group: 'COMMAND' },
+  { id: 'brain',           label: 'The Brain',        icon: Brain,           group: 'COMMAND' },
+  { id: 'objectives',      label: 'Objectives',       icon: Target,          group: 'COMMAND' },
+  { id: 'accomplishments', label: 'Daily Summary',    icon: Sparkles,        group: 'COMMAND' },
+  { id: 'meeting-notes',   label: 'Meeting Notes',    icon: FileText,        group: 'COMMAND' },
+  { id: 'company-finance', label: 'Company Finance',  icon: Wallet,          group: 'MONEY STUFF' },
+  { id: 'personal-finance', label: 'Personal Finance', icon: CreditCard,     group: 'MONEY STUFF' },
+  { id: 'relationships',   label: 'Relationships',    icon: Users,           group: 'NETWORK' },
+  { id: 'slack',           label: 'Slack',            icon: MessageSquare,   group: 'NETWORK' },
+  { id: 'portfolio',       label: 'My Projects',      icon: LayoutGrid,      group: 'NETWORK' },
+  { id: 'ideas',           label: 'Ideas Pipeline',   icon: Lightbulb,       group: 'NETWORK' },
+  { id: 'ecosystem',       label: 'Ecosystem',        icon: Network,         group: 'NETWORK' },
 ]
 
 function Sidebar({ active, onChange, onSignOut }) {
@@ -42,87 +48,127 @@ function Sidebar({ active, onChange, onSignOut }) {
     return () => window.removeEventListener('resize', onResize)
   }, [])
 
-  const drawerVisible = open || isDesktop
-
   const handleNav = (id) => {
     onChange(id)
     if (!isDesktop) setOpen(false)
   }
 
+  const groups = []
+  NAV_ITEMS.forEach((it) => {
+    let g = groups.find((x) => x.name === it.group)
+    if (!g) { g = { name: it.group, items: [] }; groups.push(g) }
+    g.items.push(it)
+  })
+
   return (
     <>
-      {/* Mobile hamburger */}
       {!isDesktop && (
-        <button
-          onClick={() => setOpen(!open)}
-          className="fixed top-3.5 left-3.5 z-[1000] flex h-[42px] w-[42px] items-center justify-center rounded-[10px] bg-[#001A41] text-white shadow-lg hover:bg-[#003366] transition-all"
-        >
+        <button className="sa-burger" onClick={() => setOpen(!open)} aria-label="Toggle navigation">
           {open ? <X size={20} /> : <Menu size={20} />}
         </button>
       )}
 
-      {/* Mobile overlay */}
-      {open && !isDesktop && (
-        <div className="fixed inset-0 z-[998] bg-[#001A41]/45" onClick={() => setOpen(false)} />
-      )}
+      {open && !isDesktop && <div className="sa-scrim" onClick={() => setOpen(false)} />}
 
-      {/* Sidebar */}
-      <aside
-        className={`fixed top-0 left-0 z-[999] flex h-screen w-[260px] flex-col shadow-[4px_0_24px_rgba(0,0,0,0.3)] transition-transform duration-300 ${
-          drawerVisible ? 'translate-x-0' : '-translate-x-full'
-        }`}
-        style={{ background: 'linear-gradient(180deg, #001A41 0%, #00111F 100%)', fontFamily: 'Arial, Helvetica, sans-serif' }}
-      >
-        {/* Header */}
-        <div className="border-b border-white/10 px-5 py-5">
-          <div className="text-white font-bold text-lg tracking-wide">COMMAND CENTER</div>
-          <div className="text-white/50 text-xs tracking-widest mt-0.5">FOR DAVID SMITH</div>
+      <aside className={`sa-sidebar${open ? ' sa-open' : ''}`}>
+        <div className="sa-brand">
+          <div className="sa-brand-glyph" aria-hidden="true">
+            <span style={{ height: '11px', opacity: 0.55 }}></span>
+            <span style={{ height: '18px', opacity: 0.78 }}></span>
+            <span style={{ height: '26px' }}></span>
+          </div>
+          <div className="sa-brand-wm">Sovereign<br />Architect</div>
+          <div className="sa-brand-sub">Command Center</div>
+          <div className="sa-brand-op"><span className="sa-op-dot"></span><b>David Smith</b> · Operator</div>
         </div>
 
-        {/* Nav */}
-        <nav className="flex flex-1 flex-col gap-0.5 py-4 overflow-y-auto">
-          {NAV_ITEMS.map(({ id, label, icon: Icon }) => {
-            const isActive = active === id
-            return (
-              <button
-                key={id}
-                onClick={() => handleNav(id)}
-                style={{ fontFamily: 'Arial, Helvetica, sans-serif', fontSize: '0.9rem' }}
-                className={`flex w-full items-center gap-3 border-none bg-transparent px-5 py-3.5 text-left font-medium transition-all ${
-                  isActive
-                    ? 'border-l-[3px] border-l-[#009DE0] bg-[#009DE0]/20 pl-[calc(1.25rem-3px)] text-[#009DE0]'
-                    : 'text-white/70 hover:bg-white/[0.08] hover:text-white'
-                }`}
-              >
-                <Icon size={18} className="flex-shrink-0" />
-                {label}
-              </button>
-            )
-          })}
+        <nav className="sa-nav">
+          {groups.map((g) => (
+            <div key={g.name}>
+              <div className="sa-nav-group">{g.name}</div>
+              {g.items.map(({ id, label, icon: Icon }) => (
+                <button
+                  key={id}
+                  className={`sa-nav-item${active === id ? ' active' : ''}`}
+                  onClick={() => handleNav(id)}
+                >
+                  <Icon size={17} />
+                  {label}
+                </button>
+              ))}
+            </div>
+          ))}
         </nav>
 
-        {/* Footer */}
-        <div className="border-t border-white/10 px-5 py-3">
-          <button
-            onClick={onSignOut}
-            style={{ fontFamily: 'Arial, Helvetica, sans-serif', fontSize: '0.85rem' }}
-            className="flex w-full items-center gap-3 rounded-md border-none bg-transparent px-2 py-2 text-left text-white/50 hover:text-red-400 transition-colors"
-          >
-            <LogOut size={16} />
-            Sign out
-          </button>
+        <div className="sa-class-chip">
+          <div className="sa-tele lbl">CLASS</div>
+          <div className="cls">Sovereign Architect</div>
+          <div className="sa-class-tiers" title="Attribute spread">
+            {TIER_COLORS.map((c, i) => <i key={i} style={{ background: c }}></i>)}
+          </div>
         </div>
+        <button className="sa-signout" onClick={onSignOut}>
+          <LogOut size={15} /> Sign out
+        </button>
       </aside>
-
-      {/* Desktop spacer */}
-      {isDesktop && <div className="w-[260px] flex-shrink-0" />}
     </>
+  )
+}
+
+function Topbar({ active, now, sov }) {
+  const greet = greetingFor(now.getHours())
+  const navItem = NAV_ITEMS.find((n) => n.id === active) || {}
+  const st = statusFor(sov)
+  const ctx = navItem.group ? `${navItem.group} · ${(navItem.label || '').toUpperCase()}` : 'DAILY DASHBOARD'
+  const title = active === 'daily-dashboard' ? 'Command Center' : navItem.label
+
+  return (
+    <header className="sa-topbar">
+      <div className="crumb">
+        <div className="sa-tele ctx">{ctx}</div>
+        <div className="ttl">{title}</div>
+      </div>
+      <div className="spacer"></div>
+      <div className="sa-protocol-pill">
+        <span className="dot"></span>
+        <span className="sa-tele">PROTOCOL</span>
+        <b style={{ fontSize: '12px' }}>{greet.g}</b>
+      </div>
+      <div className="sa-mini-sov" title="Sovereignty">
+        <span className="sa-tele" style={{ color: 'var(--sa-ink-3)' }}>SOV</span>
+        <div className="sa-mini-track"><div className="sa-mini-fill" style={{ width: `${sov}%`, background: st.color }}></div></div>
+        <span className="sa-mini-val">{sov}%</span>
+      </div>
+      <div className="sa-clock">
+        <div className="t">{now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</div>
+        <div className="d sa-tele">{now.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</div>
+      </div>
+    </header>
+  )
+}
+
+function BrainPlaceholder() {
+  return (
+    <div className="sa-grid">
+      <div className="col-12 sa-card" style={{ padding: '64px', textAlign: 'center' }}>
+        <div className="sa-card-icon" style={{ margin: '0 auto 18px', width: '52px', height: '52px' }}>
+          <Brain size={26} />
+        </div>
+        <div className="sa-serif" style={{ fontSize: '30px', color: 'var(--sa-ink)' }}>The Brain</div>
+        <p style={{ maxWidth: '46ch', margin: '12px auto 0', fontSize: '14px', lineHeight: 1.6, color: 'var(--sa-ink-2)' }}>
+          Theo&rsquo;s daily brief lands here — what matters today, pulled from every connected source.
+        </p>
+        <div className="sa-tele" style={{ color: 'var(--sa-ink-3)', marginTop: '22px' }}>NEW SURFACE · COMING ONLINE</div>
+      </div>
+    </div>
   )
 }
 
 export default function App() {
   const [session, setSession] = useState(undefined)
-  const [active, setActive] = useState('objectives')
+  const [active, setActive] = useState('daily-dashboard')
+  const [now, setNow] = useState(new Date())
+  const { sovereigntyLevel } = useGameState()
 
   useEffect(() => {
     getSession().then(s => setSession(s))
@@ -130,10 +176,15 @@ export default function App() {
     return () => subscription.unsubscribe()
   }, [])
 
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 30000)
+    return () => clearInterval(id)
+  }, [])
+
   if (session === undefined) {
     return (
-      <div style={{ minHeight: '100vh', background: '#F7F9FC', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'Arial, Helvetica, sans-serif' }}>
-        <div style={{ color: '#8096B2', fontSize: '14px' }}>Loading...</div>
+      <div style={{ minHeight: '100vh', background: 'var(--sa-canvas)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div className="sa-tele" style={{ color: 'var(--sa-ink-3)' }}>Loading…</div>
       </div>
     )
   }
@@ -146,21 +197,25 @@ export default function App() {
   }
 
   return (
-    <div style={{ display: 'flex', minHeight: '100vh', background: '#F7F9FC', fontFamily: 'Arial, Helvetica, sans-serif' }}>
+    <div className="sa-app">
       <Sidebar active={active} onChange={setActive} onSignOut={handleSignOut} />
-      <main style={{ flex: 1, minHeight: '100vh', overflowY: 'auto' }}>
-        {active === 'daily-dashboard' && <DailyDashboardPage />}
-        {active === 'objectives'      && <ObjectivesPage />}
-        {active === 'accomplishments' && <AccomplishmentsPage />}
-        {active === 'meeting-notes'   && <MeetingNotesPage />}
-        {active === 'company-finance' && <CompanyFinancePage />}
-        {active === 'personal-finance' && <PersonalFinancePage />}
-        {active === 'relationships'   && <RelationshipsPage />}
-        {active === 'slack'           && <SlackPage />}
-        {active === 'portfolio'       && <PortfolioPage />}
-        {active === 'ideas'           && <IdeasPage />}
-        {active === 'ecosystem'       && <EcosystemPage />}
-      </main>
+      <div className="sa-main">
+        <Topbar active={active} now={now} sov={sovereigntyLevel} />
+        <div className="sa-content">
+          {active === 'daily-dashboard' && <DailyDashboardPage />}
+          {active === 'brain'           && <BrainPlaceholder />}
+          {active === 'objectives'      && <ObjectivesPage />}
+          {active === 'accomplishments' && <AccomplishmentsPage />}
+          {active === 'meeting-notes'   && <MeetingNotesPage />}
+          {active === 'company-finance' && <CompanyFinancePage />}
+          {active === 'personal-finance' && <PersonalFinancePage />}
+          {active === 'relationships'   && <RelationshipsPage />}
+          {active === 'slack'           && <SlackPage />}
+          {active === 'portfolio'       && <PortfolioPage />}
+          {active === 'ideas'           && <IdeasPage />}
+          {active === 'ecosystem'       && <EcosystemPage />}
+        </div>
+      </div>
     </div>
   )
 }
