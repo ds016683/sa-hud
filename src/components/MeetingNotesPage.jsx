@@ -1,7 +1,9 @@
 import { useState, useEffect, useMemo } from 'react'
-import { ChevronRight, ExternalLink, Search, FileText, Users } from 'lucide-react'
+import { ChevronRight, ChevronDown, ExternalLink, Search, FileText, Users } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { PageHead, Pill } from './sa/SaUi'
+
+const SECTION_BLUE = '#1F4060' // darker TH navy-blue for in-note section headers
 
 /* -------------------- inline markdown (bold / italic / links) -------------------- */
 const inlineFormat = (text) => {
@@ -33,32 +35,34 @@ function THMarkdown({ text }) {
   const lines = text.split('\n')
   const out = []
   let i = 0
+  // Section header: darker blue, a step larger than body, semibold.
+  const headerBase = { color: SECTION_BLUE, fontWeight: 600, letterSpacing: '0.03em', textTransform: 'uppercase' }
   while (i < lines.length) {
     const line = lines[i]
     if (/^#\s/.test(line)) {
-      out.push(<div key={i} className="sa-serif" style={{ fontSize: 18, color: 'var(--sa-ink)', margin: '20px 0 8px', paddingBottom: 6, borderBottom: '1px solid var(--sa-border)' }}>{inlineFormat(line.replace(/^#\s+/, ''))}</div>)
+      out.push(<div key={i} style={{ ...headerBase, fontSize: 18, margin: '22px 0 9px' }}>{inlineFormat(line.replace(/^#\s+/, ''))}</div>)
     } else if (/^##\s/.test(line) && !/^###/.test(line)) {
-      out.push(<div key={i} className="sa-serif" style={{ fontSize: 16, color: 'var(--sa-ink)', margin: '18px 0 6px' }}>{inlineFormat(line.replace(/^##\s+/, ''))}</div>)
+      out.push(<div key={i} style={{ ...headerBase, fontSize: 17, margin: '20px 0 8px' }}>{inlineFormat(line.replace(/^##\s+/, ''))}</div>)
     } else if (/^###\s/.test(line)) {
-      out.push(<div key={i} className="sa-tele" style={{ color: 'var(--sa-accent-deep)', margin: '16px 0 6px' }}>{inlineFormat(line.replace(/^###\s+/, ''))}</div>)
+      out.push(<div key={i} style={{ ...headerBase, fontSize: 16, margin: '18px 0 8px' }}>{inlineFormat(line.replace(/^###\s+/, ''))}</div>)
     } else if (/^\s{2,}[-*]\s/.test(line)) {
       out.push(
-        <div key={i} style={{ paddingLeft: 50, marginBottom: 3, fontSize: 12.5, lineHeight: 1.6, color: 'var(--sa-ink-2)', display: 'flex', gap: 8 }}>
+        <div key={i} style={{ paddingLeft: 50, marginBottom: 4, fontSize: 14, lineHeight: 1.6, color: 'var(--sa-ink-2)', display: 'flex', gap: 9 }}>
           <span style={{ color: 'var(--sa-accent)' }}>◦</span><span>{inlineFormat(line.replace(/^\s+[-*]\s/, ''))}</span>
         </div>
       )
     } else if (/^[-*]\s/.test(line)) {
       out.push(
-        <div key={i} style={{ paddingLeft: 18, marginBottom: 4, fontSize: 13, lineHeight: 1.65, color: 'var(--sa-ink)', display: 'flex', gap: 8 }}>
+        <div key={i} style={{ paddingLeft: 18, marginBottom: 5, fontSize: 14.5, lineHeight: 1.65, color: 'var(--sa-ink)', display: 'flex', gap: 9 }}>
           <span style={{ color: 'var(--sa-ink)', fontWeight: 700 }}>•</span><span>{inlineFormat(line.replace(/^[-*]\s/, ''))}</span>
         </div>
       )
     } else if (/^---+\s*$/.test(line)) {
       out.push(<div key={i} style={{ height: 1, background: 'var(--sa-border)', margin: '14px 0' }} />)
     } else if (line.trim() === '') {
-      out.push(<div key={i} style={{ height: 6 }} />)
+      out.push(<div key={i} style={{ height: 7 }} />)
     } else {
-      out.push(<p key={i} style={{ fontSize: 13, lineHeight: 1.7, color: 'var(--sa-ink)', margin: '4px 0' }}>{inlineFormat(line)}</p>)
+      out.push(<p key={i} style={{ fontSize: 14.5, lineHeight: 1.7, color: 'var(--sa-ink)', margin: '5px 0' }}>{inlineFormat(line)}</p>)
     }
     i++
   }
@@ -66,24 +70,42 @@ function THMarkdown({ text }) {
 }
 
 /* -------------------- helpers -------------------- */
-// A meeting "has a recording" if it actually carries notes. Calendar holds with
-// no Granola transcript come through with an empty summary — those are dropped.
 function hasRecording(m) {
   return typeof m.summary === 'string' && m.summary.trim().length > 30
+}
+
+const ACRONYMS = new Set(['mma', 'snmi', 'achp', 'cdc', 'hp', 'ipi', 'bh', 'ri', 'pshp', 'va', 'la'])
+function humanizeTag(raw) {
+  return raw.split(/[-_\s]+/).map(w => ACRONYMS.has(w.toLowerCase()) ? w.toUpperCase() : (w.charAt(0).toUpperCase() + w.slice(1))).join(' ')
+}
+
+// Tags = client/engagement accounts + meeting type. Used on cards and for filtering.
+function tagsFor(m) {
+  const tags = []
+  const accounts = Array.isArray(m.accounts) ? m.accounts.filter(Boolean) : []
+  for (const a of accounts) tags.push({ key: `acct:${a}`, label: humanizeTag(a), kind: 'acct' })
+  if (m.meeting_type && m.meeting_type !== 'unknown') tags.push({ key: `type:${m.meeting_type}`, label: humanizeTag(m.meeting_type), kind: 'type' })
+  return tags
 }
 
 function meetingDateTime(meeting) {
   const isMatched = meeting.reconciliation_status === 'recorded'
   const ts = (isMatched && meeting.outlook_start) || meeting.granola_created_at || meeting.meeting_date
-  if (!ts) return { dateStr: '', timeStr: null }
+  if (!ts) return { timeStr: null }
   const d = new Date(ts)
-  if (isNaN(d)) return { dateStr: '', timeStr: null }
-  const dateStr = d.toLocaleDateString('en-US', { timeZone: 'America/Chicago', month: 'short', day: 'numeric' })
+  if (isNaN(d)) return { timeStr: null }
   const hasTime = typeof ts === 'string' && ts.includes('T')
   const timeStr = hasTime
     ? d.toLocaleTimeString('en-US', { timeZone: 'America/Chicago', hour: 'numeric', minute: '2-digit', hour12: true }).toLowerCase().replace(' ', '').replace(':00', '')
     : null
-  return { dateStr, timeStr }
+  return { timeStr }
+}
+
+function formatDayHeading(dateStr) {
+  if (!dateStr || dateStr === 'unknown') return 'Undated'
+  const d = new Date(dateStr + 'T12:00:00')
+  if (isNaN(d)) return dateStr
+  return d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })
 }
 
 function transcriptUrlFor(meeting) {
@@ -98,34 +120,30 @@ function transcriptUrlFor(meeting) {
 /* -------------------- meeting card -------------------- */
 function MeetingCard({ meeting }) {
   const [open, setOpen] = useState(false)
-  const { dateStr, timeStr } = meetingDateTime(meeting)
+  const { timeStr } = meetingDateTime(meeting)
   const attendees = Array.isArray(meeting.attendees) ? meeting.attendees.filter(Boolean) : []
-  const accounts = Array.isArray(meeting.accounts) ? meeting.accounts.filter(Boolean) : []
   const title = (meeting.reconciliation_status === 'recorded' && meeting.outlook_subject) || meeting.title || '(untitled)'
   const transcriptUrl = transcriptUrlFor(meeting)
+  const tags = tagsFor(meeting)
 
   return (
-    <section className="sa-card" style={{ padding: 0, overflow: 'hidden', marginBottom: 'var(--sa-gap)' }}>
+    <section className="sa-card" style={{ padding: 0, overflow: 'hidden', marginBottom: 10 }}>
       <button
         onClick={() => setOpen(!open)}
-        style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 13, padding: '16px 20px', background: 'transparent', border: 0, cursor: 'pointer', textAlign: 'left' }}
+        style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 13, padding: '14px 18px', background: 'transparent', border: 0, cursor: 'pointer', textAlign: 'left' }}
       >
         <ChevronRight size={15} style={{ color: 'var(--sa-ink-3)', flexShrink: 0, transform: open ? 'rotate(90deg)' : 'none', transition: 'transform .2s' }} />
-        <div style={{ minWidth: 78, flexShrink: 0 }}>
-          <div className="sa-tele" style={{ color: 'var(--sa-accent-deep)' }}>{dateStr}</div>
-          {timeStr && <div className="sa-tele" style={{ color: 'var(--sa-ink-3)', marginTop: 2 }}>{timeStr}</div>}
-        </div>
+        {timeStr && <div className="sa-tele" style={{ color: 'var(--sa-ink-3)', minWidth: 54, flexShrink: 0 }}>{timeStr}</div>}
         <div className="sa-serif" style={{ flex: 1, fontSize: 18, color: 'var(--sa-ink)', lineHeight: 1.2 }}>{title}</div>
-        {accounts.length > 0 && <Pill kind="muted">{accounts.join(' · ')}</Pill>}
-        {meeting.meeting_type && meeting.meeting_type !== 'unknown' && (
-          <Pill kind="pending">{meeting.meeting_type.replace(/-/g, ' ')}</Pill>
-        )}
+        <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+          {tags.map(t => <Pill key={t.key} kind={t.kind === 'acct' ? 'pending' : 'muted'}>{t.label}</Pill>)}
+        </div>
       </button>
 
       {open && (
-        <div style={{ padding: '4px 20px 20px 56px', borderTop: '1px solid var(--sa-border)', background: 'var(--sa-canvas)' }}>
+        <div style={{ padding: '4px 20px 20px 52px', borderTop: '1px solid var(--sa-border)', background: 'var(--sa-canvas)' }}>
           {attendees.length > 0 && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '12px 0', fontSize: 12, color: 'var(--sa-ink-2)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '12px 0', fontSize: 12.5, color: 'var(--sa-ink-2)' }}>
               <Users size={13} style={{ color: 'var(--sa-ink-3)' }} />
               <span className="sa-tele" style={{ color: 'var(--sa-ink-3)' }}>ATTENDEES</span>
               <span>{attendees.join(', ')}</span>
@@ -145,17 +163,30 @@ function MeetingCard({ meeting }) {
   )
 }
 
-/* -------------------- page -------------------- */
-const SAMPLE_QUERIES = [
-  'how have we priced landscape analyses?',
-  'what went wrong on multi-workstream handoffs?',
-  'who has worked with Kennedy Forum?',
-]
+/* -------------------- day group (collapsible) -------------------- */
+function DayGroup({ day, meetings, defaultOpen }) {
+  const [open, setOpen] = useState(defaultOpen)
+  return (
+    <div style={{ marginBottom: 18 }}>
+      <button
+        onClick={() => setOpen(!open)}
+        style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 12, padding: '12px 4px', background: 'transparent', border: 0, borderBottom: '1px solid var(--sa-border)', cursor: 'pointer', textAlign: 'left', marginBottom: 12 }}
+      >
+        <ChevronDown size={16} style={{ color: 'var(--sa-ink-3)', flexShrink: 0, transform: open ? 'none' : 'rotate(-90deg)', transition: 'transform .2s' }} />
+        <span className="sa-serif" style={{ flex: 1, fontSize: 19, color: 'var(--sa-ink)' }}>{formatDayHeading(day)}</span>
+        <span className="sa-tele" style={{ color: 'var(--sa-ink-3)' }}>{meetings.length} {meetings.length === 1 ? 'MEETING' : 'MEETINGS'}</span>
+      </button>
+      {open && meetings.map(m => <MeetingCard key={m.id} meeting={m} />)}
+    </div>
+  )
+}
 
+/* -------------------- page -------------------- */
 export default function MeetingNotesPage() {
   const [meetings, setMeetings] = useState([])
   const [loading, setLoading] = useState(true)
   const [query, setQuery] = useState('')
+  const [activeTags, setActiveTags] = useState([])
 
   useEffect(() => {
     (async () => {
@@ -171,21 +202,48 @@ export default function MeetingNotesPage() {
     })()
   }, [])
 
-  // Drop every meeting without a recording (no notes), then apply search.
   const recorded = useMemo(() => meetings.filter(hasRecording), [meetings])
 
+  // Distinct tags across all recorded meetings, for the filter bar.
+  const allTags = useMemo(() => {
+    const map = new Map()
+    for (const m of recorded) for (const t of tagsFor(m)) if (!map.has(t.key)) map.set(t.key, t)
+    return Array.from(map.values()).sort((a, b) => (a.kind === b.kind ? a.label.localeCompare(b.label) : a.kind === 'acct' ? -1 : 1))
+  }, [recorded])
+
+  const toggleTag = (key) => setActiveTags(prev => prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key])
+
   const filtered = useMemo(() => {
-    if (!query.trim()) return recorded
-    const q = query.toLowerCase()
-    return recorded.filter(m =>
-      (m.title || '').toLowerCase().includes(q) ||
-      (m.outlook_subject || '').toLowerCase().includes(q) ||
-      (m.summary || '').toLowerCase().includes(q) ||
-      (Array.isArray(m.attendees) ? m.attendees.join(' ') : '').toLowerCase().includes(q) ||
-      (Array.isArray(m.accounts) ? m.accounts.join(' ') : '').toLowerCase().includes(q) ||
-      (m.meeting_type || '').toLowerCase().includes(q)
-    )
-  }, [recorded, query])
+    let list = recorded
+    if (activeTags.length) {
+      list = list.filter(m => {
+        const keys = tagsFor(m).map(t => t.key)
+        return activeTags.some(k => keys.includes(k))
+      })
+    }
+    if (query.trim()) {
+      const q = query.toLowerCase()
+      list = list.filter(m =>
+        (m.title || '').toLowerCase().includes(q) ||
+        (m.outlook_subject || '').toLowerCase().includes(q) ||
+        (m.summary || '').toLowerCase().includes(q) ||
+        (Array.isArray(m.attendees) ? m.attendees.join(' ') : '').toLowerCase().includes(q) ||
+        (Array.isArray(m.accounts) ? m.accounts.join(' ') : '').toLowerCase().includes(q) ||
+        (m.meeting_type || '').toLowerCase().includes(q)
+      )
+    }
+    return list
+  }, [recorded, query, activeTags])
+
+  const grouped = useMemo(() => {
+    const map = new Map()
+    for (const m of filtered) {
+      const k = m.meeting_date || 'unknown'
+      if (!map.has(k)) map.set(k, [])
+      map.get(k).push(m)
+    }
+    return Array.from(map.entries())
+  }, [filtered])
 
   const lastSynced = useMemo(() => {
     if (!meetings.length) return null
@@ -200,7 +258,7 @@ export default function MeetingNotesPage() {
           eyebrow="THE BRAIN · KNOWLEDGE"
           title="Meeting Notes"
           em="— your memory, searchable"
-          desc="Every recorded meeting, transcribed by Granola and indexed here. Search across everything you've discussed and decided; open any call to read it back in full."
+          desc="Every recorded meeting, transcribed by Granola and indexed by day. Filter by client or type, search across everything said, and open any call to read it back in full."
           right={!loading && (
             <div className="sa-tele" style={{ color: 'var(--sa-ink-3)', textAlign: 'right' }}>
               {recorded.length} RECORDED MEETINGS
@@ -210,31 +268,38 @@ export default function MeetingNotesPage() {
         />
       </div>
 
-      {/* Ask / search bar — TH aesthetic */}
       <div className="col-12">
         <section className="sa-card">
           <div className="sa-theo-bar">
             <Search size={16} style={{ color: 'var(--sa-ink-3)', flexShrink: 0 }} />
-            <input
-              className="q"
-              value={query}
-              onChange={e => setQuery(e.target.value)}
-              placeholder="Search every meeting — title, people, accounts, anything said…"
-            />
-            {query && (
-              <button className="go" onClick={() => setQuery('')} style={{ background: 'var(--sa-border)', color: 'var(--sa-ink)' }}>Clear</button>
-            )}
+            <input className="q" value={query} onChange={e => setQuery(e.target.value)} placeholder="Search every meeting — title, people, accounts, anything said…" />
+            {query && <button className="go" onClick={() => setQuery('')} style={{ background: 'var(--sa-border)', color: 'var(--sa-ink)' }}>Clear</button>}
           </div>
-          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 14 }}>
-            {SAMPLE_QUERIES.map((q, i) => (
-              <button
-                key={i}
-                onClick={() => setQuery(q.replace(/[?]/g, ''))}
-                className="sa-int-btn"
-                style={{ textTransform: 'none', letterSpacing: 0, fontFamily: 'var(--font-sans)', fontSize: 11.5, cursor: 'pointer' }}
-              >“{q}”</button>
-            ))}
-          </div>
+          {allTags.length > 0 && (
+            <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap', marginTop: 14, alignItems: 'center' }}>
+              <span className="sa-tele" style={{ color: 'var(--sa-ink-3)', marginRight: 2 }}>FILTER</span>
+              {allTags.map(t => {
+                const on = activeTags.includes(t.key)
+                return (
+                  <button
+                    key={t.key}
+                    onClick={() => toggleTag(t.key)}
+                    style={{
+                      cursor: 'pointer', fontFamily: 'var(--font-sans)', fontSize: 11.5, fontWeight: 600,
+                      padding: '4px 11px', borderRadius: 999, whiteSpace: 'nowrap',
+                      border: `1px solid ${on ? SECTION_BLUE : 'var(--sa-border)'}`,
+                      background: on ? SECTION_BLUE : 'var(--sa-surface)',
+                      color: on ? '#fff' : 'var(--sa-ink-2)',
+                      transition: 'all .15s',
+                    }}
+                  >{t.label}</button>
+                )
+              })}
+              {activeTags.length > 0 && (
+                <button onClick={() => setActiveTags([])} className="sa-tele" style={{ cursor: 'pointer', border: 0, background: 'transparent', color: 'var(--sa-accent-deep)' }}>CLEAR</button>
+              )}
+            </div>
+          )}
         </section>
       </div>
 
@@ -243,16 +308,18 @@ export default function MeetingNotesPage() {
           <div className="sa-card" style={{ textAlign: 'center', padding: '48px 0', color: 'var(--sa-ink-3)' }}>
             <span className="sa-tele">LOADING MEETING NOTES…</span>
           </div>
-        ) : filtered.length === 0 ? (
+        ) : grouped.length === 0 ? (
           <div className="sa-card" style={{ textAlign: 'center', padding: '48px 24px' }}>
             <FileText size={26} style={{ color: 'var(--sa-ink-3)', margin: '0 auto 12px' }} />
             <div className="sa-serif" style={{ fontSize: 20, color: 'var(--sa-ink)' }}>
-              {query ? 'No meetings match that search.' : 'No recorded meetings yet.'}
+              {query || activeTags.length ? 'No meetings match those filters.' : 'No recorded meetings yet.'}
             </div>
-            {query && <div style={{ fontSize: 13, color: 'var(--sa-ink-2)', marginTop: 6 }}>Try a different term, or clear the search.</div>}
+            {(query || activeTags.length > 0) && <div style={{ fontSize: 13, color: 'var(--sa-ink-2)', marginTop: 6 }}>Try a different term, or clear the filters.</div>}
           </div>
         ) : (
-          filtered.map(m => <MeetingCard key={m.id} meeting={m} />)
+          grouped.map(([day, items], idx) => (
+            <DayGroup key={day} day={day} meetings={items} defaultOpen={idx === 0} />
+          ))
         )}
       </div>
     </div>
