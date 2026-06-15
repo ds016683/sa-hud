@@ -1,55 +1,26 @@
 import { useState, useEffect, useMemo } from 'react'
-import { ChevronDown, ChevronRight, ExternalLink, Search, FileText } from 'lucide-react'
+import { ChevronRight, ExternalLink, Search, FileText, Users } from 'lucide-react'
 import { supabase } from '../lib/supabase'
+import { PageHead, Pill } from './sa/SaUi'
 
-const NAVY      = '#002C77'
-const ACCENT    = '#009DE0'
-const GOLD      = '#D4A106'
-const LIGHT_BG  = '#F7F9FC'
-const PANEL_BG  = '#FFFFFF'
-const BORDER    = '#E1E8F0'
-const GRAY      = '#5E7187'
-const MEETING_TYPE_COLORS = {
-  'one-on-one':       { bg: '#E8F5E9', color: '#2E7D32' },
-  'team-meeting':     { bg: '#E3F2FD', color: '#1565C0' },
-  'client-call':      { bg: '#FFFBF0', color: '#B45309' },
-  'external-intro':   { bg: '#F3E5F5', color: '#6A1B9A' },
-  'coaching':         { bg: '#FFF3E0', color: '#E65100' },
-  'demo-prep':        { bg: '#E8EAF6', color: '#283593' },
-  'strategy-session': { bg: '#FCE4EC', color: '#880E4F' },
-}
-
-function formatDay(dateStr) {
-  if (!dateStr) return ''
-  const d = new Date(dateStr + 'T12:00:00')
-  return d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })
-}
-
-function formatDayShort(dateStr) {
-  if (!dateStr) return ''
-  const d = new Date(dateStr + 'T12:00:00')
-  return d.toLocaleDateString('en-US', { weekday: 'short' })
-}
-
-/* -------------------- Markdown renderer (Third Horizon styled) -------------------- */
+/* -------------------- inline markdown (bold / italic / links) -------------------- */
 const inlineFormat = (text) => {
-  // Bold **text**, italic *text*, inline links
   const parts = []
-  let rest = text
   let key = 0
-  // crude tokenizer: handle **bold** then links then leftover
-  const re = /(\*\*[^*]+\*\*)|(\[[^\]]+\]\([^)]+\))|(https?:\/\/\S+)/g
+  const re = /(\*\*[^*]+\*\*)|(\*[^*]+\*)|(\[[^\]]+\]\([^)]+\))|(https?:\/\/\S+)/g
   let last = 0
   let m
   while ((m = re.exec(text)) !== null) {
     if (m.index > last) parts.push(text.slice(last, m.index))
     if (m[1]) {
-      parts.push(<strong key={key++} style={{ color: NAVY, fontWeight: 700 }}>{m[1].slice(2,-2)}</strong>)
+      parts.push(<strong key={key++} style={{ color: 'var(--sa-ink)', fontWeight: 700 }}>{m[1].slice(2, -2)}</strong>)
     } else if (m[2]) {
-      const md = m[2].match(/\[([^\]]+)\]\(([^)]+)\)/)
-      parts.push(<a key={key++} href={md[2]} target="_blank" rel="noopener noreferrer" style={{ color: ACCENT, textDecoration: 'underline' }}>{md[1]}</a>)
+      parts.push(<em key={key++} style={{ color: 'var(--sa-ink)' }}>{m[2].slice(1, -1)}</em>)
     } else if (m[3]) {
-      parts.push(<a key={key++} href={m[3]} target="_blank" rel="noopener noreferrer" style={{ color: ACCENT, textDecoration: 'underline', wordBreak: 'break-all' }}>{m[3]}</a>)
+      const md = m[3].match(/\[([^\]]+)\]\(([^)]+)\)/)
+      parts.push(<a key={key++} href={md[2]} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--sa-accent-deep)', textDecoration: 'underline' }}>{md[1]}</a>)
+    } else if (m[4]) {
+      parts.push(<a key={key++} href={m[4]} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--sa-accent-deep)', textDecoration: 'underline', wordBreak: 'break-all' }}>{m[4]}</a>)
     }
     last = m.index + m[0].length
   }
@@ -57,56 +28,65 @@ const inlineFormat = (text) => {
   return parts.length ? parts : text
 }
 
+/* -------------------- block markdown renderer (TH tokens) -------------------- */
 function THMarkdown({ text }) {
-  if (!text) return null
   const lines = text.split('\n')
   const out = []
   let i = 0
   while (i < lines.length) {
     const line = lines[i]
-    // H1 #
     if (/^#\s/.test(line)) {
-      out.push(<h2 key={i} style={{ fontSize: 16, fontWeight: 700, color: NAVY, margin: '20px 0 8px', paddingBottom: 6, borderBottom: `2px solid ${GOLD}` }}>{inlineFormat(line.replace(/^#\s+/, ''))}</h2>)
-    }
-    // H2 ##
-    else if (/^##\s/.test(line) && !/^###/.test(line)) {
-      out.push(<h3 key={i} style={{ fontSize: 14, fontWeight: 700, color: NAVY, margin: '18px 0 6px' }}>{inlineFormat(line.replace(/^##\s+/, ''))}</h3>)
-    }
-    // H3 ###
-    else if (/^###\s/.test(line)) {
-      out.push(<h4 key={i} style={{ fontSize: 13, fontWeight: 700, color: ACCENT, textTransform: 'uppercase', letterSpacing: '0.05em', margin: '16px 0 6px' }}>{inlineFormat(line.replace(/^###\s+/, ''))}</h4>)
-    }
-    // Nested bullet "  - foo" or "  * foo"
-    else if (/^\s{2,}[-*]\s/.test(line)) {
-      out.push(<div key={i} style={{ paddingLeft: 52, marginBottom: 3, fontSize: 12, lineHeight: 1.6, color: '#475569' }}>
-        <span style={{ color: GOLD, marginRight: 8 }}>◦</span>{inlineFormat(line.replace(/^\s+[-*]\s/, ''))}
-      </div>)
-    }
-    // Top-level bullet "- foo"
-    else if (/^[-*]\s/.test(line)) {
-      out.push(<div key={i} style={{ paddingLeft: 18, marginBottom: 4, fontSize: 13, lineHeight: 1.65, color: '#1F2937' }}>
-        <span style={{ color: NAVY, marginRight: 8, fontWeight: 700 }}>•</span>{inlineFormat(line.replace(/^[-*]\s/, ''))}
-      </div>)
-    }
-    // Horizontal rule
-    else if (/^---+\s*$/.test(line)) {
-      out.push(<div key={i} style={{ height: 1, background: BORDER, margin: '14px 0' }} />)
-    }
-    // Blank line
-    else if (line.trim() === '') {
+      out.push(<div key={i} className="sa-serif" style={{ fontSize: 18, color: 'var(--sa-ink)', margin: '20px 0 8px', paddingBottom: 6, borderBottom: '1px solid var(--sa-border)' }}>{inlineFormat(line.replace(/^#\s+/, ''))}</div>)
+    } else if (/^##\s/.test(line) && !/^###/.test(line)) {
+      out.push(<div key={i} className="sa-serif" style={{ fontSize: 16, color: 'var(--sa-ink)', margin: '18px 0 6px' }}>{inlineFormat(line.replace(/^##\s+/, ''))}</div>)
+    } else if (/^###\s/.test(line)) {
+      out.push(<div key={i} className="sa-tele" style={{ color: 'var(--sa-accent-deep)', margin: '16px 0 6px' }}>{inlineFormat(line.replace(/^###\s+/, ''))}</div>)
+    } else if (/^\s{2,}[-*]\s/.test(line)) {
+      out.push(
+        <div key={i} style={{ paddingLeft: 50, marginBottom: 3, fontSize: 12.5, lineHeight: 1.6, color: 'var(--sa-ink-2)', display: 'flex', gap: 8 }}>
+          <span style={{ color: 'var(--sa-accent)' }}>◦</span><span>{inlineFormat(line.replace(/^\s+[-*]\s/, ''))}</span>
+        </div>
+      )
+    } else if (/^[-*]\s/.test(line)) {
+      out.push(
+        <div key={i} style={{ paddingLeft: 18, marginBottom: 4, fontSize: 13, lineHeight: 1.65, color: 'var(--sa-ink)', display: 'flex', gap: 8 }}>
+          <span style={{ color: 'var(--sa-ink)', fontWeight: 700 }}>•</span><span>{inlineFormat(line.replace(/^[-*]\s/, ''))}</span>
+        </div>
+      )
+    } else if (/^---+\s*$/.test(line)) {
+      out.push(<div key={i} style={{ height: 1, background: 'var(--sa-border)', margin: '14px 0' }} />)
+    } else if (line.trim() === '') {
       out.push(<div key={i} style={{ height: 6 }} />)
-    }
-    // Paragraph
-    else {
-      out.push(<p key={i} style={{ fontSize: 13, lineHeight: 1.7, color: '#1F2937', margin: '4px 0' }}>{inlineFormat(line)}</p>)
+    } else {
+      out.push(<p key={i} style={{ fontSize: 13, lineHeight: 1.7, color: 'var(--sa-ink)', margin: '4px 0' }}>{inlineFormat(line)}</p>)
     }
     i++
   }
   return <div>{out}</div>
 }
 
-/* -------------------- Meeting card -------------------- */
-function extractTranscriptUrl(meeting) {
+/* -------------------- helpers -------------------- */
+// A meeting "has a recording" if it actually carries notes. Calendar holds with
+// no Granola transcript come through with an empty summary — those are dropped.
+function hasRecording(m) {
+  return typeof m.summary === 'string' && m.summary.trim().length > 30
+}
+
+function meetingDateTime(meeting) {
+  const isMatched = meeting.reconciliation_status === 'recorded'
+  const ts = (isMatched && meeting.outlook_start) || meeting.granola_created_at || meeting.meeting_date
+  if (!ts) return { dateStr: '', timeStr: null }
+  const d = new Date(ts)
+  if (isNaN(d)) return { dateStr: '', timeStr: null }
+  const dateStr = d.toLocaleDateString('en-US', { timeZone: 'America/Chicago', month: 'short', day: 'numeric' })
+  const hasTime = typeof ts === 'string' && ts.includes('T')
+  const timeStr = hasTime
+    ? d.toLocaleTimeString('en-US', { timeZone: 'America/Chicago', hour: 'numeric', minute: '2-digit', hour12: true }).toLowerCase().replace(' ', '').replace(':00', '')
+    : null
+  return { dateStr, timeStr }
+}
+
+function transcriptUrlFor(meeting) {
   if (meeting.transcript_url) return meeting.transcript_url
   if (meeting.summary) {
     const match = meeting.summary.match(/https:\/\/notes\.granola\.ai\/t\/[a-z0-9-]+/)
@@ -115,178 +95,63 @@ function extractTranscriptUrl(meeting) {
   return `https://notes.granola.ai/t/${meeting.id}`
 }
 
+/* -------------------- meeting card -------------------- */
 function MeetingCard({ meeting }) {
   const [open, setOpen] = useState(false)
-  const typeStyle = MEETING_TYPE_COLORS[meeting.meeting_type] || { bg: '#F1F5F9', color: GRAY }
-  const transcriptUrl = extractTranscriptUrl(meeting)
+  const { dateStr, timeStr } = meetingDateTime(meeting)
   const attendees = Array.isArray(meeting.attendees) ? meeting.attendees.filter(Boolean) : []
-  const accounts  = Array.isArray(meeting.accounts)  ? meeting.accounts.filter(Boolean)  : []
+  const accounts = Array.isArray(meeting.accounts) ? meeting.accounts.filter(Boolean) : []
+  const title = (meeting.reconciliation_status === 'recorded' && meeting.outlook_subject) || meeting.title || '(untitled)'
+  const transcriptUrl = transcriptUrlFor(meeting)
 
   return (
-    <div style={{
-      background: PANEL_BG,
-      border: `1px solid ${BORDER}`,
-      borderLeft: `3px solid ${open ? ACCENT : BORDER}`,
-      borderRadius: 8,
-      marginBottom: 8,
-      overflow: 'hidden',
-      transition: 'border-color 0.2s',
-    }}>
+    <section className="sa-card" style={{ padding: 0, overflow: 'hidden', marginBottom: 'var(--sa-gap)' }}>
       <button
         onClick={() => setOpen(!open)}
-        style={{
-          width: '100%', padding: '10px 14px',
-          background: 'transparent', border: 'none', cursor: 'pointer',
-          display: 'flex', alignItems: 'center', gap: 10, textAlign: 'left',
-          fontFamily: 'Arial, Helvetica, sans-serif',
-        }}
+        style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 13, padding: '16px 20px', background: 'transparent', border: 0, cursor: 'pointer', textAlign: 'left' }}
       >
-        <ChevronRight size={14} style={{
-          color: GRAY, flexShrink: 0,
-          transform: open ? 'rotate(90deg)' : 'rotate(0deg)',
-          transition: 'transform 0.2s',
-        }} />
-        {(() => {
-          // Prefer Outlook anchor when matched — Granola titles/timestamps are pre-recording placeholders.
-          const isMatched = meeting.reconciliation_status === 'recorded'
-          const ts = (isMatched && meeting.outlook_start) || meeting.granola_created_at || meeting.meeting_date
-          if (!ts) return null
-          const d = new Date(ts)
-          if (isNaN(d)) return null
-          const opts = { timeZone: 'America/Chicago', month: 'numeric', day: 'numeric' }
-          const tOpts = { timeZone: 'America/Chicago', hour: 'numeric', minute: '2-digit', hour12: true }
-          const dateStr = d.toLocaleDateString('en-US', opts)
-          // Only show time if we actually have time info (granola_created_at is a full timestamp)
-          const hasTime = typeof ts === 'string' && ts.includes('T')
-          const timeStr = hasTime
-            ? d.toLocaleTimeString('en-US', tOpts).toLowerCase().replace(' ', '').replace(':00','')
-            : null
-          return (
-            <span style={{
-              fontSize: 11, fontWeight: 600, color: GRAY, flexShrink: 0,
-              fontVariantNumeric: 'tabular-nums', minWidth: hasTime ? 80 : 44,
-              letterSpacing: '0.01em',
-            }}>
-              {dateStr}{timeStr ? ` · ${timeStr}` : ''}
-            </span>
-          )
-        })()}
-        <span style={{ fontWeight: 600, color: NAVY, flex: 1, fontSize: 13, lineHeight: 1.4 }}>
-          {(meeting.reconciliation_status === 'recorded' && meeting.outlook_subject) || meeting.title || '(untitled)'}
-        </span>
+        <ChevronRight size={15} style={{ color: 'var(--sa-ink-3)', flexShrink: 0, transform: open ? 'rotate(90deg)' : 'none', transition: 'transform .2s' }} />
+        <div style={{ minWidth: 78, flexShrink: 0 }}>
+          <div className="sa-tele" style={{ color: 'var(--sa-accent-deep)' }}>{dateStr}</div>
+          {timeStr && <div className="sa-tele" style={{ color: 'var(--sa-ink-3)', marginTop: 2 }}>{timeStr}</div>}
+        </div>
+        <div className="sa-serif" style={{ flex: 1, fontSize: 18, color: 'var(--sa-ink)', lineHeight: 1.2 }}>{title}</div>
+        {accounts.length > 0 && <Pill kind="muted">{accounts.join(' · ')}</Pill>}
         {meeting.meeting_type && meeting.meeting_type !== 'unknown' && (
-          <span style={{
-            fontSize: 9, fontWeight: 700, padding: '2px 7px', borderRadius: 999,
-            textTransform: 'uppercase', letterSpacing: '0.05em',
-            background: typeStyle.bg, color: typeStyle.color, whiteSpace: 'nowrap',
-          }}>
-            {meeting.meeting_type.replace(/-/g, ' ')}
-          </span>
-        )}
-        {accounts.length > 0 && (
-          <span style={{
-            fontSize: 9, fontWeight: 700, padding: '2px 7px', borderRadius: 999,
-            background: '#EBF4FF', color: NAVY, whiteSpace: 'nowrap',
-            textTransform: 'uppercase', letterSpacing: '0.05em',
-          }}>
-            {accounts.join(' · ')}
-          </span>
+          <Pill kind="pending">{meeting.meeting_type.replace(/-/g, ' ')}</Pill>
         )}
       </button>
 
       {open && (
-        <div style={{
-          padding: '4px 18px 18px 36px',
-          borderTop: `1px solid ${BORDER}`,
-          background: LIGHT_BG,
-        }}>
+        <div style={{ padding: '4px 20px 20px 56px', borderTop: '1px solid var(--sa-border)', background: 'var(--sa-canvas)' }}>
           {attendees.length > 0 && (
-            <div style={{ margin: '10px 0', fontSize: 11, color: GRAY }}>
-              <span style={{ fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: NAVY }}>Attendees: </span>
-              {attendees.join(', ')}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '12px 0', fontSize: 12, color: 'var(--sa-ink-2)' }}>
+              <Users size={13} style={{ color: 'var(--sa-ink-3)' }} />
+              <span className="sa-tele" style={{ color: 'var(--sa-ink-3)' }}>ATTENDEES</span>
+              <span>{attendees.join(', ')}</span>
             </div>
           )}
-
-          {meeting.summary ? (
-            <THMarkdown text={meeting.summary} />
-          ) : (
-            <div style={{ color: GRAY, fontStyle: 'italic', fontSize: 12, padding: '10px 0' }}>No summary available.</div>
-          )}
-
+          <THMarkdown text={meeting.summary} />
           {transcriptUrl && (
-            <div style={{ marginTop: 14, paddingTop: 12, borderTop: `1px solid ${BORDER}` }}>
-              <a
-                href={transcriptUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{
-                  display: 'inline-flex', alignItems: 'center', gap: 6,
-                  fontSize: 12, fontWeight: 600, color: NAVY,
-                  textDecoration: 'none', padding: '6px 12px',
-                  border: `1px solid ${ACCENT}`, borderRadius: 6,
-                  background: 'white',
-                }}
-              >
-                <ExternalLink size={12} />
-                Open in Granola →
+            <div style={{ marginTop: 16, paddingTop: 12, borderTop: '1px solid var(--sa-border)' }}>
+              <a href={transcriptUrl} target="_blank" rel="noopener noreferrer" className="fin-btn" style={{ textDecoration: 'none' }}>
+                <ExternalLink size={13} /> Open in Granola
               </a>
             </div>
           )}
         </div>
       )}
-    </div>
+    </section>
   )
 }
 
-/* -------------------- Day group -------------------- */
-function DayGroup({ day, meetings, defaultOpen }) {
-  const [open, setOpen] = useState(defaultOpen)
-  return (
-    <div style={{ marginBottom: 18 }}>
-      <button
-        onClick={() => setOpen(!open)}
-        style={{
-          width: '100%',
-          display: 'flex', alignItems: 'center', gap: 10,
-          padding: '10px 14px',
-          background: open ? NAVY : 'white',
-          color: open ? 'white' : NAVY,
-          border: `1px solid ${open ? NAVY : BORDER}`,
-          borderRadius: 8,
-          cursor: 'pointer',
-          fontFamily: 'Arial, Helvetica, sans-serif',
-          textAlign: 'left',
-          marginBottom: 8,
-          transition: 'all 0.2s',
-        }}
-      >
-        <ChevronDown size={14} style={{
-          transform: open ? 'rotate(0deg)' : 'rotate(-90deg)',
-          transition: 'transform 0.2s',
-        }} />
-        <span style={{ fontSize: 14, fontWeight: 700, flex: 1 }}>
-          {formatDay(day)}
-        </span>
-        <span style={{
-          fontSize: 10, fontWeight: 700,
-          background: open ? 'rgba(255,255,255,0.18)' : '#EBF4FF',
-          color: open ? 'white' : NAVY,
-          padding: '3px 9px', borderRadius: 999,
-          textTransform: 'uppercase', letterSpacing: '0.08em',
-        }}>
-          {meetings.length} {meetings.length === 1 ? 'call' : 'calls'}
-        </span>
-      </button>
-      {open && (
-        <div style={{ paddingLeft: 6 }}>
-          {meetings.map(m => <MeetingCard key={m.id} meeting={m} />)}
-        </div>
-      )}
-    </div>
-  )
-}
+/* -------------------- page -------------------- */
+const SAMPLE_QUERIES = [
+  'how have we priced landscape analyses?',
+  'what went wrong on multi-workstream handoffs?',
+  'who has worked with Kennedy Forum?',
+]
 
-/* -------------------- Page -------------------- */
 export default function MeetingNotesPage() {
   const [meetings, setMeetings] = useState([])
   const [loading, setLoading] = useState(true)
@@ -300,39 +165,28 @@ export default function MeetingNotesPage() {
         .order('meeting_date', { ascending: false })
         .order('granola_created_at', { ascending: false })
         .limit(1000)
-      if (error) {
-        console.error('granola_meetings fetch failed', error)
-      }
+      if (error) console.error('granola_meetings fetch failed', error)
       setMeetings(Array.isArray(data) ? data : [])
       setLoading(false)
     })()
   }, [])
 
+  // Drop every meeting without a recording (no notes), then apply search.
+  const recorded = useMemo(() => meetings.filter(hasRecording), [meetings])
+
   const filtered = useMemo(() => {
-    if (!query.trim()) return meetings
+    if (!query.trim()) return recorded
     const q = query.toLowerCase()
-    return meetings.filter(m =>
+    return recorded.filter(m =>
       (m.title || '').toLowerCase().includes(q) ||
       (m.outlook_subject || '').toLowerCase().includes(q) ||
       (m.summary || '').toLowerCase().includes(q) ||
       (Array.isArray(m.attendees) ? m.attendees.join(' ') : '').toLowerCase().includes(q) ||
-      (Array.isArray(m.accounts)  ? m.accounts.join(' ')  : '').toLowerCase().includes(q) ||
+      (Array.isArray(m.accounts) ? m.accounts.join(' ') : '').toLowerCase().includes(q) ||
       (m.meeting_type || '').toLowerCase().includes(q)
     )
-  }, [meetings, query])
+  }, [recorded, query])
 
-  // Group by day, preserve descending order
-  const grouped = useMemo(() => {
-    const map = new Map()
-    for (const m of filtered) {
-      const k = m.meeting_date || 'unknown'
-      if (!map.has(k)) map.set(k, [])
-      map.get(k).push(m)
-    }
-    return Array.from(map.entries()) // already date-desc due to query order
-  }, [filtered])
-
-  // Last-synced indicator
   const lastSynced = useMemo(() => {
     if (!meetings.length) return null
     const ts = meetings.map(m => m.last_synced_at || m.tagged_at || m.granola_created_at).filter(Boolean).sort().pop()
@@ -340,86 +194,67 @@ export default function MeetingNotesPage() {
   }, [meetings])
 
   return (
-    <div style={{
-      maxWidth: 920,
-      margin: '0 auto',
-      padding: '24px 24px 60px',
-      fontFamily: 'Arial, Helvetica, sans-serif',
-      color: NAVY,
-    }}>
-      {/* Header */}
-      <div style={{ marginBottom: 22 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
-          <FileText size={22} color={NAVY} />
-          <h1 style={{ margin: 0, fontSize: 24, fontWeight: 700, color: NAVY }}>Meeting Notes</h1>
-          {!loading && (
-            <span style={{
-              fontSize: 11, fontWeight: 700, color: NAVY,
-              background: '#EBF4FF', padding: '3px 10px', borderRadius: 999,
-              textTransform: 'uppercase', letterSpacing: '0.08em',
-            }}>
-              {filtered.length} {filtered.length === 1 ? 'call' : 'calls'} · {grouped.length} {grouped.length === 1 ? 'day' : 'days'}
-            </span>
+    <div className="sa-grid">
+      <div className="col-12">
+        <PageHead
+          eyebrow="THE BRAIN · KNOWLEDGE"
+          title="Meeting Notes"
+          em="— your memory, searchable"
+          desc="Every recorded meeting, transcribed by Granola and indexed here. Search across everything you've discussed and decided; open any call to read it back in full."
+          right={!loading && (
+            <div className="sa-tele" style={{ color: 'var(--sa-ink-3)', textAlign: 'right' }}>
+              {recorded.length} RECORDED MEETINGS
+              {lastSynced && <div style={{ marginTop: 4 }}>SYNCED {lastSynced.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }).toUpperCase()}</div>}
+            </div>
           )}
-        </div>
-        <div style={{ fontSize: 12, color: GRAY }}>
-          Granola verbatim summaries · Third Horizon formatted
-          {lastSynced && (
-            <span style={{ marginLeft: 10, color: GRAY }}>
-              · last sync: {lastSynced.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} {lastSynced.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
-            </span>
-          )}
-        </div>
+        />
       </div>
 
-      {/* Search */}
-      <div style={{
-        display: 'flex', alignItems: 'center', gap: 8,
-        marginBottom: 22, padding: '10px 14px',
-        border: `1px solid ${BORDER}`, borderRadius: 8,
-        background: 'white',
-      }}>
-        <Search size={14} color={GRAY} />
-        <input
-          value={query}
-          onChange={e => setQuery(e.target.value)}
-          placeholder="Search title, summary, attendees, accounts..."
-          style={{
-            flex: 1, border: 'none', outline: 'none',
-            fontSize: 13, color: NAVY, background: 'transparent',
-            fontFamily: 'Arial, Helvetica, sans-serif',
-          }}
-        />
-        {query && (
-          <button
-            onClick={() => setQuery('')}
-            style={{ border: 'none', background: 'none', cursor: 'pointer', color: GRAY, fontSize: 18, lineHeight: 1 }}
-          >×</button>
+      {/* Ask / search bar — TH aesthetic */}
+      <div className="col-12">
+        <section className="sa-card">
+          <div className="sa-theo-bar">
+            <Search size={16} style={{ color: 'var(--sa-ink-3)', flexShrink: 0 }} />
+            <input
+              className="q"
+              value={query}
+              onChange={e => setQuery(e.target.value)}
+              placeholder="Search every meeting — title, people, accounts, anything said…"
+            />
+            {query && (
+              <button className="go" onClick={() => setQuery('')} style={{ background: 'var(--sa-border)', color: 'var(--sa-ink)' }}>Clear</button>
+            )}
+          </div>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 14 }}>
+            {SAMPLE_QUERIES.map((q, i) => (
+              <button
+                key={i}
+                onClick={() => setQuery(q.replace(/[?]/g, ''))}
+                className="sa-int-btn"
+                style={{ textTransform: 'none', letterSpacing: 0, fontFamily: 'var(--font-sans)', fontSize: 11.5, cursor: 'pointer' }}
+              >“{q}”</button>
+            ))}
+          </div>
+        </section>
+      </div>
+
+      <div className="col-12">
+        {loading ? (
+          <div className="sa-card" style={{ textAlign: 'center', padding: '48px 0', color: 'var(--sa-ink-3)' }}>
+            <span className="sa-tele">LOADING MEETING NOTES…</span>
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="sa-card" style={{ textAlign: 'center', padding: '48px 24px' }}>
+            <FileText size={26} style={{ color: 'var(--sa-ink-3)', margin: '0 auto 12px' }} />
+            <div className="sa-serif" style={{ fontSize: 20, color: 'var(--sa-ink)' }}>
+              {query ? 'No meetings match that search.' : 'No recorded meetings yet.'}
+            </div>
+            {query && <div style={{ fontSize: 13, color: 'var(--sa-ink-2)', marginTop: 6 }}>Try a different term, or clear the search.</div>}
+          </div>
+        ) : (
+          filtered.map(m => <MeetingCard key={m.id} meeting={m} />)
         )}
       </div>
-
-      {/* Content */}
-      {loading ? (
-        <div style={{ textAlign: 'center', padding: '48px 0', color: GRAY, fontSize: 13 }}>
-          Loading meeting notes...
-        </div>
-      ) : grouped.length === 0 ? (
-        <div style={{
-          textAlign: 'center', padding: '48px 24px', color: GRAY,
-          background: 'white', borderRadius: 10, border: `1px dashed ${BORDER}`,
-        }}>
-          <div style={{ fontSize: 14, fontWeight: 600, color: NAVY, marginBottom: 4 }}>
-            {query ? 'No meetings match that search.' : 'No meeting notes yet.'}
-          </div>
-          {!query && (
-            <div style={{ fontSize: 12, color: GRAY }}>Mr-Pulse will populate this once the Granola pipe is live.</div>
-          )}
-        </div>
-      ) : (
-        grouped.map(([day, items], idx) => (
-          <DayGroup key={day} day={day} meetings={items} defaultOpen={idx === 0} />
-        ))
-      )}
     </div>
   )
 }
