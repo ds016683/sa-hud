@@ -186,7 +186,6 @@ export default function MeetingNotesPage() {
   const [meetings, setMeetings] = useState([])
   const [loading, setLoading] = useState(true)
   const [query, setQuery] = useState('')
-  const [activeTags, setActiveTags] = useState([])
 
   useEffect(() => {
     (async () => {
@@ -204,36 +203,18 @@ export default function MeetingNotesPage() {
 
   const recorded = useMemo(() => meetings.filter(hasRecording), [meetings])
 
-  // Distinct tags across all recorded meetings, for the filter bar.
-  const allTags = useMemo(() => {
-    const map = new Map()
-    for (const m of recorded) for (const t of tagsFor(m)) if (!map.has(t.key)) map.set(t.key, t)
-    return Array.from(map.values()).sort((a, b) => (a.kind === b.kind ? a.label.localeCompare(b.label) : a.kind === 'acct' ? -1 : 1))
-  }, [recorded])
-
-  const toggleTag = (key) => setActiveTags(prev => prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key])
-
   const filtered = useMemo(() => {
-    let list = recorded
-    if (activeTags.length) {
-      list = list.filter(m => {
-        const keys = tagsFor(m).map(t => t.key)
-        return activeTags.some(k => keys.includes(k))
-      })
-    }
-    if (query.trim()) {
-      const q = query.toLowerCase()
-      list = list.filter(m =>
-        (m.title || '').toLowerCase().includes(q) ||
-        (m.outlook_subject || '').toLowerCase().includes(q) ||
-        (m.summary || '').toLowerCase().includes(q) ||
-        (Array.isArray(m.attendees) ? m.attendees.join(' ') : '').toLowerCase().includes(q) ||
-        (Array.isArray(m.accounts) ? m.accounts.join(' ') : '').toLowerCase().includes(q) ||
-        (m.meeting_type || '').toLowerCase().includes(q)
-      )
-    }
-    return list
-  }, [recorded, query, activeTags])
+    if (!query.trim()) return recorded
+    const q = query.toLowerCase()
+    return recorded.filter(m =>
+      (m.title || '').toLowerCase().includes(q) ||
+      (m.outlook_subject || '').toLowerCase().includes(q) ||
+      (m.summary || '').toLowerCase().includes(q) ||
+      (Array.isArray(m.attendees) ? m.attendees.join(' ') : '').toLowerCase().includes(q) ||
+      (Array.isArray(m.accounts) ? m.accounts.join(' ') : '').toLowerCase().includes(q) ||
+      (m.meeting_type || '').toLowerCase().includes(q)
+    )
+  }, [recorded, query])
 
   const grouped = useMemo(() => {
     const map = new Map()
@@ -258,7 +239,7 @@ export default function MeetingNotesPage() {
           eyebrow="THE BRAIN · KNOWLEDGE"
           title="Meeting Notes"
           em="— your memory, searchable"
-          desc="Every recorded meeting, transcribed by Granola and indexed by day. Filter by client or type, search across everything said, and open any call to read it back in full."
+          desc="Every recorded meeting, transcribed by Granola and indexed by day. Search across everything said, and open any call to read it back in full."
           right={!loading && (
             <div className="sa-tele" style={{ color: 'var(--sa-ink-3)', textAlign: 'right' }}>
               {recorded.length} RECORDED MEETINGS
@@ -275,31 +256,6 @@ export default function MeetingNotesPage() {
             <input className="q" value={query} onChange={e => setQuery(e.target.value)} placeholder="Search every meeting — title, people, accounts, anything said…" />
             {query && <button className="go" onClick={() => setQuery('')} style={{ background: 'var(--sa-border)', color: 'var(--sa-ink)' }}>Clear</button>}
           </div>
-          {allTags.length > 0 && (
-            <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap', marginTop: 14, alignItems: 'center' }}>
-              <span className="sa-tele" style={{ color: 'var(--sa-ink-3)', marginRight: 2 }}>FILTER</span>
-              {allTags.map(t => {
-                const on = activeTags.includes(t.key)
-                return (
-                  <button
-                    key={t.key}
-                    onClick={() => toggleTag(t.key)}
-                    style={{
-                      cursor: 'pointer', fontFamily: 'var(--font-sans)', fontSize: 11.5, fontWeight: 600,
-                      padding: '4px 11px', borderRadius: 999, whiteSpace: 'nowrap',
-                      border: `1px solid ${on ? SECTION_BLUE : 'var(--sa-border)'}`,
-                      background: on ? SECTION_BLUE : 'var(--sa-surface)',
-                      color: on ? '#fff' : 'var(--sa-ink-2)',
-                      transition: 'all .15s',
-                    }}
-                  >{t.label}</button>
-                )
-              })}
-              {activeTags.length > 0 && (
-                <button onClick={() => setActiveTags([])} className="sa-tele" style={{ cursor: 'pointer', border: 0, background: 'transparent', color: 'var(--sa-accent-deep)' }}>CLEAR</button>
-              )}
-            </div>
-          )}
         </section>
       </div>
 
@@ -312,9 +268,9 @@ export default function MeetingNotesPage() {
           <div className="sa-card" style={{ textAlign: 'center', padding: '48px 24px' }}>
             <FileText size={26} style={{ color: 'var(--sa-ink-3)', margin: '0 auto 12px' }} />
             <div className="sa-serif" style={{ fontSize: 20, color: 'var(--sa-ink)' }}>
-              {query || activeTags.length ? 'No meetings match those filters.' : 'No recorded meetings yet.'}
+              {query ? 'No meetings match that search.' : 'No recorded meetings yet.'}
             </div>
-            {(query || activeTags.length > 0) && <div style={{ fontSize: 13, color: 'var(--sa-ink-2)', marginTop: 6 }}>Try a different term, or clear the filters.</div>}
+            {query && <div style={{ fontSize: 13, color: 'var(--sa-ink-2)', marginTop: 6 }}>Try a different term, or clear the search.</div>}
           </div>
         ) : (
           grouped.map(([day, items], idx) => (
