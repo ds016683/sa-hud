@@ -4,7 +4,7 @@ import {
   FileText, MessageSquare, Wallet, CreditCard, LayoutDashboard, Brain,
 } from 'lucide-react'
 import { getSession, onAuthStateChange, signOut } from './lib/auth'
-import { statusFor, greetingFor, TIER_COLORS } from './constants/saDesign'
+import { statusFor, greetingFor } from './constants/saDesign'
 import useGameState from './hooks/useGameState'
 import LoginPage from './components/LoginPage'
 import DailyDashboardPage from './components/DailyDashboardPage'
@@ -72,14 +72,20 @@ function Sidebar({ active, onChange, onSignOut }) {
 
       <aside className={`sa-sidebar${open ? ' sa-open' : ''}`}>
         <div className="sa-brand">
-          <div className="sa-brand-glyph" aria-hidden="true">
-            <span style={{ height: '11px', opacity: 0.55 }}></span>
-            <span style={{ height: '18px', opacity: 0.78 }}></span>
-            <span style={{ height: '26px' }}></span>
-          </div>
+          {/* White bamboo motif: two segmented stalks + leaves, one gold leaf */}
+          <svg className="sa-brand-bamboo" width="34" height="34" viewBox="0 0 34 34" fill="none" aria-hidden="true">
+            <g stroke="rgba(255,255,255,0.92)" strokeWidth="1.6" strokeLinecap="round">
+              <path d="M12 31 V5" />
+              <path d="M10.6 12.5 h2.8 M10.6 21 h2.8" strokeWidth="1.2" opacity="0.75" />
+              <path d="M21 31 V12" opacity="0.8" />
+              <path d="M19.7 20.5 h2.6" strokeWidth="1.2" opacity="0.6" />
+              <path d="M12 9 C 8.5 7.5, 6.5 5.2, 5.5 2.8 C 9 3.2, 10.9 5.4, 12 9 Z" fill="rgba(255,255,255,0.9)" strokeWidth="0.6" />
+              <path d="M21 15 C 24.2 13.8, 26.4 11.8, 27.6 9.4 C 24.2 9.7, 22.2 11.7, 21 15 Z" fill="rgba(255,255,255,0.65)" strokeWidth="0.6" />
+            </g>
+            <path d="M12 17.5 C 15 16.5, 17 14.8, 18.2 12.6 C 15.1 12.9, 13.2 14.6, 12 17.5 Z" fill="#F8C761" stroke="#F8C761" strokeWidth="0.6" opacity="0.95" />
+          </svg>
           <div className="sa-brand-wm">Sovereign<br />Architect</div>
           <div className="sa-brand-sub">Command Center</div>
-          <div className="sa-brand-op"><span className="sa-op-dot"></span><b>David Smith</b> · Operator</div>
         </div>
 
         <nav className="sa-nav">
@@ -100,13 +106,6 @@ function Sidebar({ active, onChange, onSignOut }) {
           ))}
         </nav>
 
-        <div className="sa-class-chip">
-          <div className="sa-tele lbl">CLASS</div>
-          <div className="cls">Sovereign Architect</div>
-          <div className="sa-class-tiers" title="Attribute spread">
-            {TIER_COLORS.map((c, i) => <i key={i} style={{ background: c }}></i>)}
-          </div>
-        </div>
         <button className="sa-signout" onClick={onSignOut}>
           <LogOut size={15} /> Sign out
         </button>

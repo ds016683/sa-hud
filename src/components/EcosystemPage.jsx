@@ -360,9 +360,15 @@ function FallbackList({ sel, onChip }) {
 }
 
 /* ---------------- page ---------------- */
+// Ownership tiers: primary = David owns it; tertiary = involved in some
+// way; global = wider orbit. Everything mapped today is primary — the
+// other tiers await David's distinctions.
+const TIERS = ['primary', 'tertiary', 'global']
+
 export default function EcosystemPage() {
   const [sel, setSel] = useState(null) // platform id
   const [litGroup, setLitGroup] = useState(null) // group id (card click)
+  const [tier, setTier] = useState('primary')
   const platform = PLATFORMS.find((p) => p.id === sel) || null
 
   // Esc steps back one level: viewer first, then the zoom (CIP behavior).
@@ -384,7 +390,27 @@ export default function EcosystemPage() {
         title="Ecosystem"
         em="— the platforms you've built"
         desc="Your digital architecture as a living tree. Select any platform node to open its full operating picture."
+        right={
+          <div className="pill-toggle">
+            {TIERS.map((t) => (
+              <button key={t} className={tier === t ? 'on' : ''} onClick={() => { setTier(t); setSel(null); setLitGroup(null) }}>
+                {t.charAt(0).toUpperCase() + t.slice(1)}
+              </button>
+            ))}
+          </div>
+        }
       />
+      {tier !== 'primary' ? (
+        <div className="eco2-stage eco2-tier-empty">
+          <div className="sa-tele" style={{ color: 'var(--sa-accent)', letterSpacing: '0.22em' }}>{tier.toUpperCase()}</div>
+          <div className="sa-serif" style={{ fontSize: 26, color: '#fff' }}>
+            {tier === 'tertiary' ? 'Platforms you touch, not own.' : 'The wider orbit.'}
+          </div>
+          <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.55)', maxWidth: '44ch', lineHeight: 1.6 }}>
+            Nothing mapped at this tier yet — the distinctions land next.
+          </div>
+        </div>
+      ) : (
       <Stage
         sel={sel}
         litGroup={litGroup}
@@ -393,8 +419,9 @@ export default function EcosystemPage() {
         onClear={() => { setSel(null); setLitGroup(null) }}
         onUp={() => { setSel(null); setLitGroup(null) }}
       />
-      <FallbackList sel={sel} onChip={setSel} />
-      {platform && <Viewer platform={platform} onClose={() => setSel(null)} />}
+      )}
+      {tier === 'primary' && <FallbackList sel={sel} onChip={setSel} />}
+      {tier === 'primary' && platform && <Viewer platform={platform} onClose={() => setSel(null)} />}
     </div>
   )
 }

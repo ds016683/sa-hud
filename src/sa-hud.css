@@ -1179,3 +1179,30 @@ table.fin-grid { width: 100%; border-collapse: collapse; font-family: var(--font
   transition: border-color .2s, color .2s, background .2s;
 }
 .eco2-up:hover { border-color: var(--sa-accent); color: var(--sa-accent); background: rgba(255,255,255,0.09); }
+
+/* Dark-surface canon for topbar telemetry (protocol pill was light-inked) */
+.sa-surface-dark .sa-protocol-pill {
+  border-color: rgba(248,199,97,0.45);
+  background: rgba(248,199,97,0.10);
+  color: #EAF1F8;
+}
+.sa-surface-dark .sa-protocol-pill b { color: #EAF1F8; }
+.sa-surface-dark .sa-protocol-pill .sa-tele { color: var(--sa-accent); }
+
+/* Dark-surface pill toggle (tier selector) */
+.sa-surface-dark .pill-toggle {
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.14);
+}
+.sa-surface-dark .pill-toggle button { color: rgba(255,255,255,0.6); }
+.sa-surface-dark .pill-toggle button:hover { color: rgba(255,255,255,0.85); }
+.sa-surface-dark .pill-toggle button.on { background: var(--sa-accent); color: #1A354A; }
+
+/* Brand bamboo */
+.sa-brand-bamboo { display: block; margin-bottom: 12px; }
+
+/* Empty tier state */
+.eco2-tier-empty {
+  flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  text-align: center; gap: 10px;
+}
