@@ -39,7 +39,6 @@ export const PLATFORMS = [
     name: 'ACHP Strategy Dashboard',
     x: 88,
     y: 8,
-    status: 'Live',
     production: { url: 'https://achp-dashboard.vercel.app', note: 'CEO Sandbox fenced server-side' },
     github: { repo: 'Third-Horizon-Strategies/achp-dashboard', branch: 'main', visibility: 'private' },
     supabase: { project: 'TBD — confirm project ref', tables: null, rls: 'grant-fenced (LTS module)' },
@@ -61,7 +60,6 @@ export const PLATFORMS = [
     name: 'APNC Field Hub',
     x: 64,
     y: 6,
-    status: 'Live',
     production: { url: 'https://apnc-sandbox.vercel.app', note: 'Academy / Bills / Field Data' },
     github: { repo: 'Third-Horizon-Strategies/apnc-sandbox', branch: 'main', visibility: 'private' },
     supabase: { project: 'ivtmmwobyuthxiwbyyhv', tables: null, rls: null },
@@ -82,7 +80,6 @@ export const PLATFORMS = [
     name: 'Vitalic Health × HFMA',
     x: 10,
     y: 88,
-    status: 'Demo',
     production: { url: 'https://sandbox.hfma.thirdhorizon.com', note: 'Gate-code access' },
     github: { repo: 'Third-Horizon-Strategies/sandbox.hfma', branch: 'main', visibility: 'private' },
     supabase: { project: 'Vitalic_Sandbox', tables: null, rls: null },
@@ -100,7 +97,6 @@ export const PLATFORMS = [
     name: 'Frontier Rate Intelligence',
     x: 36,
     y: 92,
-    status: 'Demo',
     production: { url: 'https://sandbox.frontier.thirdhorizon.com', note: 'MMA BD sandbox · gate-code access' },
     github: { repo: 'ds016683/sandbox.frontier', branch: 'main', visibility: 'private' },
     supabase: { project: 'None — static data on MMA TiC foundation', tables: null, rls: null },
@@ -116,8 +112,6 @@ export const PLATFORMS = [
   },
 ]
 
-export const STATUS_DOT = { Live: '#5FBF8A', Demo: '#9B7FE0', Building: '#F8C761' }
-
 // ---- Status semantics (design pass; wiring comes later) --------------------
 // lifecycle — the CONNECTION LINE color (branch -> platform):
 //   live: in production with real users using it for its intended purpose
@@ -125,6 +119,7 @@ export const STATUS_DOT = { Live: '#5FBF8A', Demo: '#9B7FE0', Building: '#F8C761
 //   inactive: suspended / set to be nerfed
 // health — the CHIP DOT (and viewer tag):
 //   ok: working properly · warn: something needs attention · critical: critical error
+export const LIFECYCLE_LABEL = { live: 'LIVE', dev: 'IN DEV', inactive: 'SUSPENDED' }
 export const LIFECYCLE_COLOR = { live: '#5FBF8A', dev: '#F8C761', inactive: '#E06C5F' }
 export const HEALTH_COLOR = { ok: '#5FBF8A', warn: '#F8C761', critical: '#E06C5F' }
 export const HEALTH_LABEL = { ok: 'OPERATIONAL', warn: 'NEEDS ATTENTION', critical: 'CRITICAL' }
@@ -132,6 +127,6 @@ export const HEALTH_LABEL = { ok: 'OPERATIONAL', warn: 'NEEDS ATTENTION', critic
 export const PLATFORM_STATE = {
   achp: { lifecycle: 'live', health: 'ok' },
   apnc: { lifecycle: 'live', health: 'ok' },
-  vitalic: { lifecycle: 'dev', health: 'ok' },
-  frontier: { lifecycle: 'dev', health: 'ok' },
+  vitalic: { lifecycle: 'live', health: 'ok' },
+  frontier: { lifecycle: 'live', health: 'ok' },
 }

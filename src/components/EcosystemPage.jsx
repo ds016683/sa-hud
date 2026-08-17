@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { ExternalLink, GitBranch, Database, Rocket, Users, ScrollText, ChevronDown } from 'lucide-react'
 import { PageHead } from './sa/SaUi'
-import { ROOT, GROUPS, PLATFORMS, LIFECYCLE_COLOR, HEALTH_COLOR, HEALTH_LABEL, PLATFORM_STATE } from '../constants/ecosystemArchitecture'
+import { ROOT, GROUPS, PLATFORMS, LIFECYCLE_LABEL, LIFECYCLE_COLOR, HEALTH_COLOR, HEALTH_LABEL, PLATFORM_STATE } from '../constants/ecosystemArchitecture'
 
 const stateOf = (id) => PLATFORM_STATE[id] || { lifecycle: 'dev', health: 'ok' }
 
@@ -142,7 +142,7 @@ function Stage({ sel, litGroup, shift, onChip, onCard, onClear }) {
                   onClick={(e) => { e.stopPropagation(); onChip(p.id) }}
                 >
                   <div className="nm"><span className="dia">◆</span>{p.label}</div>
-                  <div className="st"><i style={{ background: HEALTH_COLOR[stateOf(p.id).health] }}></i>{p.status} · OPEN VIEWER</div>
+                  <div className="st"><i style={{ background: HEALTH_COLOR[stateOf(p.id).health] }}></i>{LIFECYCLE_LABEL[stateOf(p.id).lifecycle]} · OPEN VIEWER</div>
                 </div>
               ))}
             </div>
@@ -182,7 +182,7 @@ function Viewer({ platform, onClose }) {
       <button className="eco2-viewer-x" onClick={onClose} aria-label="Close viewer">×</button>
       <div style={{ padding: '20px 20px 16px', borderBottom: '1px solid rgba(255,255,255,0.09)' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
-          <div className="sa-tele" style={{ color: NODE_HUE[g.id] }}>{g.label.toUpperCase()} · {p.status.toUpperCase()}</div>
+          <div className="sa-tele" style={{ color: NODE_HUE[g.id] }}>{g.label.toUpperCase()} · {LIFECYCLE_LABEL[stateOf(p.id).lifecycle]}</div>
           <span className="sa-tele" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: HEALTH_COLOR[stateOf(p.id).health] }}>
             <i style={{ width: 7, height: 7, borderRadius: '50%', background: HEALTH_COLOR[stateOf(p.id).health], display: 'inline-block' }}></i>
             {HEALTH_LABEL[stateOf(p.id).health]}
@@ -274,7 +274,7 @@ function FallbackList({ sel, onChip }) {
           {PLATFORMS.filter((p) => p.group === g.id).map((p) => (
             <div key={p.id} className={`eco2-chip${sel === p.id ? ' on' : ''}`} onClick={() => onChip(p.id)}>
               <div className="nm"><span className="dia">◆</span>{p.label}</div>
-              <div className="st"><i style={{ background: HEALTH_COLOR[stateOf(p.id).health] }}></i>{p.status}</div>
+              <div className="st"><i style={{ background: HEALTH_COLOR[stateOf(p.id).health] }}></i>{LIFECYCLE_LABEL[stateOf(p.id).lifecycle]}</div>
             </div>
           ))}
         </div>
