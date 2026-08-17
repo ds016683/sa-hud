@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { ExternalLink, GitBranch, Database, Rocket, Users, ScrollText, ChevronDown } from 'lucide-react'
+import { ExternalLink, GitBranch, Database, Rocket, Users, ScrollText, ChevronDown, ChevronUp } from 'lucide-react'
 import { PageHead } from './sa/SaUi'
 import { ROOT, GROUPS, PLATFORMS, LIFECYCLE_LABEL, LIFECYCLE_COLOR, HEALTH_COLOR, HEALTH_LABEL, effectiveState } from '../constants/ecosystemArchitecture'
 
@@ -81,7 +81,16 @@ const GEO = GROUPS.map((g) => {
       return { p, x, y }
     })
   }
-  return { g, dx, dy, vertical, cardX, cardY, chips }
+  // Branch bounding box (card + chips) for the zoom camera.
+  const xs = [cardX - CARD_HW, cardX + CARD_HW, ...chips.flatMap(({ x }) => [x - CHIP_W / 2, x + CHIP_W / 2])]
+  const ys = [cardY - CARD_HH, cardY + CARD_HH, ...chips.flatMap(({ y }) => [y - CHIP_H / 2, y + CHIP_H / 2])]
+  const bbox = {
+    cx: (Math.min(...xs) + Math.max(...xs)) / 2,
+    cy: (Math.min(...ys) + Math.max(...ys)) / 2,
+    w: Math.max(...xs) - Math.min(...xs) + 120,
+    h: Math.max(...ys) - Math.min(...ys) + 120,
+  }
+  return { g, dx, dy, vertical, cardX, cardY, chips, bbox }
 })
 
 function Hub() {
@@ -95,14 +104,14 @@ function Hub() {
   )
 }
 
-function Stage({ sel, litGroup, shift, onChip, onCard, onClear }) {
+function Stage({ sel, litGroup, onChip, onCard, onClear, onUp }) {
   const wrapRef = useRef(null)
-  const [scale, setScale] = useState(1)
+  const [dims, setDims] = useState({ w: 1, h: 1 })
 
   useEffect(() => {
     const el = wrapRef.current
     if (!el) return
-    const measure = () => setScale(Math.min(1, el.clientWidth / NATURAL_W, el.clientHeight / NATURAL_H))
+    const measure = () => setDims({ w: el.clientWidth, h: el.clientHeight })
     measure()
     const ro = new ResizeObserver(measure)
     ro.observe(el)
@@ -110,10 +119,32 @@ function Stage({ sel, litGroup, shift, onChip, onCard, onClear }) {
   }, [])
 
   const hasSel = sel !== null || litGroup !== null
+  const fitScale = Math.min(1, dims.w / NATURAL_W, dims.h / NATURAL_H)
+
+  // Camera: overview by default; zoom to a branch's bounding box when its
+  // card is selected. With the viewer open, cede its width and bias left.
+  let transform
+  const zoomed = litGroup ? GEO.find((x) => x.g.id === litGroup) : null
+  if (zoomed) {
+    const viewerW = sel ? 400 : 0
+    const k = Math.min(1.2, (dims.w - viewerW - 70) / zoomed.bbox.w, (dims.h - 80) / zoomed.bbox.h)
+    const tx = -zoomed.bbox.cx * k - viewerW / 2
+    const ty = -zoomed.bbox.cy * k
+    transform = `translate(${tx}px, ${ty}px) scale(${k})`
+  } else {
+    const p = sel ? PLATFORMS.find((x) => x.id === sel) : null
+    const shift = p ? (['client', 'firm'].includes(p.group) ? -460 : -60) : 0
+    transform = `translateX(${shift}px) scale(${fitScale})`
+  }
 
   return (
     <div className={`eco2-stage${hasSel ? ' eco2-has-sel' : ''}`} ref={wrapRef} onClick={onClear}>
-      <div className="eco2-scale" style={{ transform: `translateX(${shift}px) scale(${scale})` }}>
+      {litGroup && (
+        <button className="eco2-up" onClick={(e) => { e.stopPropagation(); onUp() }} title="Back to full tree">
+          <ChevronUp size={16} />
+        </button>
+      )}
+      <div className="eco2-scale" style={{ transform }}>
         <div className="eco2-origin">
           <svg className="eco2-edges" aria-hidden="true">
             {GEO.map(({ g, dx, dy, cardX, cardY, chips }) => {
@@ -334,10 +365,14 @@ export default function EcosystemPage() {
   const [litGroup, setLitGroup] = useState(null) // group id (card click)
   const platform = PLATFORMS.find((p) => p.id === sel) || null
 
-  // Esc releases selection (CIP behavior).
+  // Esc steps back one level: viewer first, then the zoom (CIP behavior).
   useEffect(() => {
     if (!sel && !litGroup) return
-    const onKey = (e) => { if (e.key === 'Escape') { setSel(null); setLitGroup(null) } }
+    const onKey = (e) => {
+      if (e.key !== 'Escape') return
+      if (sel) setSel(null)
+      else setLitGroup(null)
+    }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [sel, litGroup])
@@ -353,10 +388,10 @@ export default function EcosystemPage() {
       <Stage
         sel={sel}
         litGroup={litGroup}
-        shift={platform ? (platform.group === 'client' ? -460 : -60) : 0}
-        onChip={(id) => { setSel(id); setLitGroup(null) }}
+        onChip={(id) => setSel(id)}
         onCard={(id) => { setLitGroup(litGroup === id ? null : id); setSel(null) }}
         onClear={() => { setSel(null); setLitGroup(null) }}
+        onUp={() => { setSel(null); setLitGroup(null) }}
       />
       <FallbackList sel={sel} onChip={setSel} />
       {platform && <Viewer platform={platform} onClose={() => setSel(null)} />}

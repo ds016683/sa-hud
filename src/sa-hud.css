@@ -1168,3 +1168,14 @@ table.fin-grid { width: 100%; border-collapse: collapse; font-family: var(--font
 }
 .eco2-chip-out:hover { color: var(--sa-accent); background: rgba(255,255,255,0.08); }
 .eco2-chip .nm { width: 100%; }
+
+/* zoom-level up control */
+.eco2-up {
+  position: absolute; top: 14px; left: 50%; transform: translateX(-50%);
+  width: 34px; height: 34px; border-radius: 50%; z-index: 5;
+  display: flex; align-items: center; justify-content: center;
+  border: 1px solid rgba(255,255,255,0.18); background: rgba(255,255,255,0.06);
+  color: rgba(255,255,255,0.65); cursor: pointer;
+  transition: border-color .2s, color .2s, background .2s;
+}
+.eco2-up:hover { border-color: var(--sa-accent); color: var(--sa-accent); background: rgba(255,255,255,0.09); }
