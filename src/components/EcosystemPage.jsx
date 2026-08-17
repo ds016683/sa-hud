@@ -1,69 +1,155 @@
-import { useState } from 'react'
-import { Network, ExternalLink, GitBranch, Database, Rocket, Users, ScrollText, ChevronDown } from 'lucide-react'
+import { useState, useEffect, useRef } from 'react'
+import { ExternalLink, GitBranch, Database, Rocket, Users, ScrollText, ChevronDown } from 'lucide-react'
 import { PageHead } from './sa/SaUi'
 import { ROOT, GROUPS, PLATFORMS, STATUS_DOT } from '../constants/ecosystemArchitecture'
 
-/* ---------------- node map ---------------- */
-function ArchitectureMap({ selected, onSelect }) {
+// ---- Geometry, ported from the investor deck's hub-and-spoke surface ------
+// Pixel geometry in an absolutely-positioned canvas centered on (0,0).
+const HUB_RADIUS = 110
+const RX_SPOKE = 356 // hub center -> spoke-card center
+const CARD_W = 252
+const CARD_H = 128
+const CARD_HW = CARD_W / 2
+const CARD_HH = CARD_H / 2
+const CHIP_W = 186
+const CHIP_H = 52
+const CHIP_GAP = 40
+const NATURAL_SPAN = 2 * (RX_SPOKE + CARD_HW + CHIP_GAP + CHIP_W) + 80
+
+// Angles: 90 = right, 270 = left (CIP convention: 0 = up).
+const NODE_ANGLE = { client: 90, sandbox: 270 }
+const NODE_HUE = { client: '#4DA3FF', sandbox: '#9B7FE0' }
+
+// Distance from a w×h box's center to its edge along (dx, dy).
+function edgeInset(dx, dy, hw, hh) {
+  const ex = Math.abs(dx) < 1e-6 ? Infinity : hw / Math.abs(dx)
+  const ey = Math.abs(dy) < 1e-6 ? Infinity : hh / Math.abs(dy)
+  return Math.min(ex, ey)
+}
+const calcInset = (dx, dy) => edgeInset(dx, dy, CARD_HW, CARD_HH)
+
+// Horizontal cubic S-curve between two anchor points.
+function curvePath(x1, y1, x2, y2) {
+  const sign = x2 >= x1 ? 1 : -1
+  const k = Math.min(Math.abs(x2 - x1), Math.max(22, Math.abs(x2 - x1) * 0.45))
+  return `M${x1},${y1} C${x1 + sign * k},${y1} ${x2 - sign * k},${y2} ${x2},${y2}`
+}
+
+const SVG_O = 1000 // canvas (0,0) maps to SVG point (1000,1000)
+
+// Precomputed per-group geometry: card center + outward chip column.
+const GEO = GROUPS.map((g) => {
+  const rad = ((NODE_ANGLE[g.id] - 90) * Math.PI) / 180
+  const dx = Math.cos(rad)
+  const dy = Math.sin(rad)
+  const cardX = dx * RX_SPOKE
+  const cardY = 0 // both spokes are horizontal
+  const items = PLATFORMS.filter((p) => p.group === g.id)
+  const n = items.length
+  const chipR = RX_SPOKE + calcInset(dx, dy) + CHIP_GAP + edgeInset(dx, dy, CHIP_W / 2, CHIP_H / 2)
+  const chips = items.map((p, i) => {
+    const off = (i - (n - 1) / 2) * (CHIP_H + 20)
+    return { p, x: dx * chipR - dy * off, y: dy * chipR + dx * off }
+  })
+  return { g, dx, dy, cardX, cardY, chips }
+})
+
+function Hub() {
   return (
-    <section className="sa-card" style={{ padding: 0, overflow: 'hidden' }}>
-      <div className="eco-map" style={{ height: 560 }}>
-        <div className="grid"></div>
-        <div className="eco-brand"><Network size={13} /> DAVID&rsquo;S ARCHITECTURE · PLATFORM TREE</div>
-
-        <svg className="links" viewBox="0 0 100 100" preserveAspectRatio="none">
-          {GROUPS.map((g) => (
-            <path key={g.id} d={`M${ROOT.x} ${ROOT.y} L${g.x} ${g.y}`} stroke={g.color} vectorEffect="non-scaling-stroke" />
-          ))}
-          {PLATFORMS.map((p) => {
-            const g = GROUPS.find((x) => x.id === p.group)
-            return (
-              <path key={p.id} d={`M${g.x} ${g.y} L${p.x} ${p.y}`} stroke={g.color} vectorEffect="non-scaling-stroke"
-                style={{ opacity: selected === p.id ? 0.9 : 0.38 }} />
-            )
-          })}
-        </svg>
-
-        <div className="eco-hub">
-          <div className="eb">OPERATOR</div>
-          <div className="nm">{ROOT.label}</div>
-          <div className="sub">{ROOT.sub}</div>
-        </div>
-
-        {GROUPS.map((g) => (
-          <div key={g.id} className="eco-cat" style={{ left: `${g.x}%`, top: `${g.y}%`, borderTopColor: g.color }}>
-            <div className="dom" style={{ color: g.color }}>{g.id.toUpperCase()}</div>
-            <div className="nm">{g.label}</div>
-            <div className="ds">{g.desc}</div>
-            <div className="ct">{PLATFORMS.filter((p) => p.group === g.id).length} PLATFORMS</div>
-          </div>
-        ))}
-
-        {PLATFORMS.map((p) => (
-          <div
-            key={p.id}
-            className="eco-leaf mine"
-            style={{
-              left: `${p.x}%`, top: `${p.y}%`,
-              outline: selected === p.id ? '2px solid var(--sa-accent)' : 'none',
-              outlineOffset: 2,
-            }}
-            onClick={() => onSelect(selected === p.id ? null : p.id)}
-          >
-            <div className="nm"><span className="dia">◆</span>{p.label}</div>
-            <div className="meta"><span className="sd" style={{ background: STATUS_DOT[p.status] }}></span>{p.status} · OPEN VIEWER</div>
-          </div>
-        ))}
-      </div>
-      <div className="eco-legend">
-        {GROUPS.map((g) => <span className="lg" key={g.id}><i style={{ background: g.color }}></i>{g.label}</span>)}
-        <span className="lg"><span className="dia">◆</span> Click a platform to open its viewer</span>
-      </div>
-    </section>
+    <div className="eco2-hub">
+      <div className="eco2-hub-inner"></div>
+      <div className="eb">OPERATOR</div>
+      <div className="nm">{ROOT.label}</div>
+      <div className="tg">{ROOT.sub}</div>
+    </div>
   )
 }
 
-/* ---------------- viewer panel ---------------- */
+function Stage({ sel, litGroup, shift, onChip, onCard, onClear }) {
+  const wrapRef = useRef(null)
+  const [scale, setScale] = useState(1)
+
+  useEffect(() => {
+    const el = wrapRef.current
+    if (!el) return
+    const measure = () => setScale(Math.min(1, el.clientWidth / NATURAL_SPAN))
+    measure()
+    const ro = new ResizeObserver(measure)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
+
+  const hasSel = sel !== null || litGroup !== null
+
+  return (
+    <div className={`eco2-stage${hasSel ? ' eco2-has-sel' : ''}`} ref={wrapRef} onClick={onClear}>
+      <div className="eco2-scale" style={{ transform: `translateX(${shift}px) scale(${scale})` }}>
+        <div className="eco2-origin">
+          <svg className="eco2-edges" aria-hidden="true">
+            {GEO.map(({ g, dx, dy, cardX, cardY, chips }) => {
+              const lit = litGroup === g.id || chips.some(({ p }) => p.id === sel)
+              const inset = calcInset(dx, dy)
+              return (
+                <g key={g.id}>
+                  <path
+                    className={`${lit ? 'eco2-edge-active' : 'eco2-edge'}${hasSel && !lit ? ' eco2-dim' : ''}`}
+                    d={curvePath(SVG_O + dx * HUB_RADIUS, SVG_O + dy * HUB_RADIUS, SVG_O + (cardX - dx * inset), SVG_O + (cardY - dy * inset))}
+                    fill="none" stroke={NODE_HUE[g.id]}
+                    strokeWidth={lit ? 2.4 : 1.6} strokeLinecap="round" strokeOpacity={lit ? 1 : 0.6}
+                  />
+                  {chips.map(({ p, x, y }) => {
+                    const on = sel === p.id
+                    const sign = x >= cardX ? 1 : -1
+                    return (
+                      <path
+                        key={p.id}
+                        className={`${on || lit ? 'eco2-edge-active' : 'eco2-edge'}${hasSel && !on && !lit ? ' eco2-dim' : ''}`}
+                        d={curvePath(cardX + sign * CARD_HW, cardY, x - sign * (CHIP_W / 2), y)}
+                        fill="none" stroke={NODE_HUE[g.id]}
+                        strokeWidth={on ? 2.2 : 1.3} strokeLinecap="round" strokeOpacity={on || lit ? 0.95 : 0.45}
+                      />
+                    )
+                  })}
+                </g>
+              )
+            })}
+          </svg>
+
+          <Hub />
+
+          {GEO.map(({ g, cardX, cardY, chips }) => (
+            <div key={g.id}>
+              <div
+                className={`eco2-card${litGroup === g.id ? ' lit' : ''}${hasSel && litGroup !== g.id && !chips.some(({ p }) => p.id === sel) ? ' eco2-dim' : ''}`}
+                style={{ left: cardX, top: cardY, width: CARD_W, transform: 'translate(-50%, -50%)', '--node-hue': NODE_HUE[g.id] }}
+                onClick={(e) => { e.stopPropagation(); onCard(g.id) }}
+              >
+                <div className="eb">{g.id}.DAVID</div>
+                <div className="nm">{g.label}</div>
+                <div className="ds">{g.desc}</div>
+                <div className="ct">{chips.length} PLATFORMS</div>
+              </div>
+              {chips.map(({ p, x, y }) => (
+                <div
+                  key={p.id}
+                  className={`eco2-chip${sel === p.id ? ' on' : ''}${hasSel && sel !== p.id && litGroup !== g.id ? ' eco2-dim' : ''}`}
+                  style={{ left: x, top: y, width: CHIP_W, transform: 'translate(-50%, -50%)' }}
+                  onClick={(e) => { e.stopPropagation(); onChip(p.id) }}
+                >
+                  <div className="nm"><span className="dia">◆</span>{p.label}</div>
+                  <div className="st"><i style={{ background: STATUS_DOT[p.status] }}></i>{p.status} · OPEN VIEWER</div>
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
+      </div>
+      <div className="eco2-foot">EVERY PLATFORM HANGS OFF THIS TREE · SELECT A NODE TO OPEN ITS VIEWER · ESC RELEASES</div>
+    </div>
+  )
+}
+
+/* ---------------- viewer ---------------- */
 function KV({ k, children, link }) {
   return (
     <div className="kv">
@@ -75,43 +161,20 @@ function KV({ k, children, link }) {
   )
 }
 
-function Viewer({ platform }) {
+function Viewer({ platform, onClose }) {
   const [logOpen, setLogOpen] = useState(false)
-
-  if (!platform) {
-    return (
-      <section className="sa-card" style={{ textAlign: 'center', padding: '72px 24px', position: 'sticky', top: 84 }}>
-        <div className="sa-card-icon" style={{ margin: '0 auto 16px', width: 48, height: 48 }}><Network size={24} /></div>
-        <div className="sa-serif" style={{ fontSize: 22, color: 'var(--sa-ink)' }}>Select a platform</div>
-        <p style={{ fontSize: 13, color: 'var(--sa-ink-2)', maxWidth: '30ch', margin: '10px auto 0', lineHeight: 1.55 }}>
-          Click any ◆ node on the tree to open its production, repo, database, deploy, and access details.
-        </p>
-      </section>
-    )
-  }
-
   const p = platform
   const g = GROUPS.find((x) => x.id === p.group)
   const commitsUrl = `https://github.com/${p.github.repo}/commits/${p.github.branch}`
 
   return (
-    <section
-      className="sa-card"
-      style={{
-        position: 'sticky', top: 84, padding: 0,
-        maxHeight: 'calc(100vh - 108px)', overflowY: 'auto',
-        background: 'linear-gradient(177deg, #1F4060 0%, #0E2336 92%)',
-        border: '1px solid rgba(255,255,255,0.09)',
-      }}
-    >
-      {/* header */}
+    <div className="eco2-viewer" onClick={(e) => e.stopPropagation()}>
+      <button className="eco2-viewer-x" onClick={onClose} aria-label="Close viewer">×</button>
       <div style={{ padding: '20px 20px 16px', borderBottom: '1px solid rgba(255,255,255,0.09)' }}>
-        <div className="sa-tele" style={{ color: g.color }}>{g.label.toUpperCase()} · {p.status.toUpperCase()}</div>
+        <div className="sa-tele" style={{ color: NODE_HUE[g.id] }}>{g.label.toUpperCase()} · {p.status.toUpperCase()}</div>
         <div className="sa-serif" style={{ fontSize: 24, color: '#fff', marginTop: 5, lineHeight: 1.15 }}>{p.name}</div>
-        <a
-          href={p.production.url} target="_blank" rel="noopener noreferrer"
-          style={{ display: 'inline-flex', alignItems: 'center', gap: 7, marginTop: 10, fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--sa-accent)', textDecoration: 'none' }}
-        >
+        <a href={p.production.url} target="_blank" rel="noopener noreferrer"
+          style={{ display: 'inline-flex', alignItems: 'center', gap: 7, marginTop: 10, fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--sa-accent)', textDecoration: 'none' }}>
           <ExternalLink size={12} /> {p.production.url.replace('https://', '')}
         </a>
         {p.production.note && <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9.5, letterSpacing: 0.8, color: 'rgba(255,255,255,0.45)', marginTop: 6 }}>{p.production.note.toUpperCase()}</div>}
@@ -154,12 +217,9 @@ function Viewer({ platform }) {
           ))}
         </div>
 
-        {/* change log */}
         <div className="dpanel">
-          <button
-            onClick={() => setLogOpen(!logOpen)}
-            style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', background: 'transparent', border: 0, cursor: 'pointer', padding: 0 }}
-          >
+          <button onClick={() => setLogOpen(!logOpen)}
+            style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', background: 'transparent', border: 0, cursor: 'pointer', padding: 0 }}>
             <span className="ph" style={{ marginBottom: 0, flex: 1, display: 'flex', alignItems: 'center', gap: 8 }}>
               <ScrollText size={13} /> Change log · {p.changelog.length}
             </span>
@@ -173,37 +233,72 @@ function Viewer({ platform }) {
                   <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.8)', lineHeight: 1.45 }}>{c.entry}</span>
                 </div>
               ))}
-              <a
-                href={commitsUrl} target="_blank" rel="noopener noreferrer"
-                style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: 10, fontFamily: 'var(--font-mono)', fontSize: 10, letterSpacing: 1, color: 'var(--sa-accent)', textDecoration: 'none' }}
-              >
+              <a href={commitsUrl} target="_blank" rel="noopener noreferrer"
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: 10, fontFamily: 'var(--font-mono)', fontSize: 10, letterSpacing: 1, color: 'var(--sa-accent)', textDecoration: 'none' }}>
                 FULL HISTORY ON GITHUB <ExternalLink size={11} />
               </a>
             </div>
           )}
         </div>
       </div>
-    </section>
+    </div>
+  )
+}
+
+/* ---------------- narrow fallback list ---------------- */
+function FallbackList({ sel, onChip }) {
+  return (
+    <div className="eco2-list">
+      {GROUPS.map((g) => (
+        <div key={g.id} className="eco2-list-node">
+          <div className="eco2-list-head">
+            <span className="eco2-list-title">{g.label}</span>
+            <span className="eco2-list-dom" style={{ color: NODE_HUE[g.id] }}>{g.id}.DAVID</span>
+          </div>
+          {PLATFORMS.filter((p) => p.group === g.id).map((p) => (
+            <div key={p.id} className={`eco2-chip${sel === p.id ? ' on' : ''}`} onClick={() => onChip(p.id)}>
+              <div className="nm"><span className="dia">◆</span>{p.label}</div>
+              <div className="st"><i style={{ background: STATUS_DOT[p.status] }}></i>{p.status}</div>
+            </div>
+          ))}
+        </div>
+      ))}
+    </div>
   )
 }
 
 /* ---------------- page ---------------- */
 export default function EcosystemPage() {
-  const [selected, setSelected] = useState(null)
-  const platform = PLATFORMS.find((p) => p.id === selected) || null
+  const [sel, setSel] = useState(null) // platform id
+  const [litGroup, setLitGroup] = useState(null) // group id (card click)
+  const platform = PLATFORMS.find((p) => p.id === sel) || null
+
+  // Esc releases selection (CIP behavior).
+  useEffect(() => {
+    if (!sel && !litGroup) return
+    const onKey = (e) => { if (e.key === 'Escape') { setSel(null); setLitGroup(null) } }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [sel, litGroup])
 
   return (
-    <div className="sa-grid">
-      <div className="col-12">
-        <PageHead
-          eyebrow="NETWORK · ECOSYSTEM"
-          title="Ecosystem"
-          em="— the platforms you've built"
-          desc="Your digital architecture as a living tree: client platforms and sandbox builds branching from the center. Select any node to open its full operating picture."
-        />
-      </div>
-      <div className="col-8"><ArchitectureMap selected={selected} onSelect={setSelected} /></div>
-      <div className="col-4"><Viewer platform={platform} /></div>
+    <div className="eco2-wrap">
+      <PageHead
+        eyebrow="NETWORK · ECOSYSTEM"
+        title="Ecosystem"
+        em="— the platforms you've built"
+        desc="Your digital architecture as a living tree. Select any platform node to open its full operating picture."
+      />
+      <Stage
+        sel={sel}
+        litGroup={litGroup}
+        shift={platform ? (platform.group === 'client' ? -460 : -60) : 0}
+        onChip={(id) => { setSel(id); setLitGroup(null) }}
+        onCard={(id) => { setLitGroup(litGroup === id ? null : id); setSel(null) }}
+        onClear={() => { setSel(null); setLitGroup(null) }}
+      />
+      <FallbackList sel={sel} onChip={setSel} />
+      {platform && <Viewer platform={platform} onClose={() => setSel(null)} />}
     </div>
   )
 }
