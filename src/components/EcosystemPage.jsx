@@ -1,14 +1,16 @@
 import { useState, useEffect, useRef } from 'react'
 import { ExternalLink, GitBranch, Database, Rocket, Users, ScrollText, ChevronDown } from 'lucide-react'
 import { PageHead } from './sa/SaUi'
-import { ROOT, GROUPS, PLATFORMS, LIFECYCLE_LABEL, LIFECYCLE_COLOR, HEALTH_COLOR, HEALTH_LABEL, PLATFORM_STATE } from '../constants/ecosystemArchitecture'
+import { ROOT, GROUPS, PLATFORMS, LIFECYCLE_LABEL, LIFECYCLE_COLOR, HEALTH_COLOR, HEALTH_LABEL, effectiveState } from '../constants/ecosystemArchitecture'
 
-const stateOf = (id) => PLATFORM_STATE[id] || { lifecycle: 'dev', health: 'ok' }
+const STATE = Object.fromEntries(PLATFORMS.map((p) => [p.id, effectiveState(p)]))
+const stateOf = (id) => STATE[id]
 
 // ---- Geometry, ported from the investor deck's hub-and-spoke surface ------
 // Pixel geometry in an absolutely-positioned canvas centered on (0,0).
 const HUB_RADIUS = 110
-const RX_SPOKE = 356 // hub center -> spoke-card center
+const RX_SPOKE = 330 // hub center -> horizontal spoke-card center
+const RY_SPOKE = 292 // hub center -> vertical spoke-card center
 const CARD_W = 252
 const CARD_H = 128
 const CARD_HW = CARD_W / 2
@@ -16,11 +18,15 @@ const CARD_HH = CARD_H / 2
 const CHIP_W = 186
 const CHIP_H = 52
 const CHIP_GAP = 40
-const NATURAL_SPAN = 2 * (RX_SPOKE + CARD_HW + CHIP_GAP + CHIP_W) + 80
+const CHIP_VSTEP = CHIP_H + 18
+// Width driven by horizontal spokes (up to two outward chip columns);
+// height by vertical spokes (chips flank the card left/right).
+const NATURAL_W = 2 * (RX_SPOKE + CARD_HW + CHIP_GAP + CHIP_W + 16 + CHIP_W) + 170
+const NATURAL_H = 2 * (RY_SPOKE + 160) + 130
 
-// Angles: 90 = right, 270 = left (CIP convention: 0 = up).
-const NODE_ANGLE = { client: 90, sandbox: 270 }
-const NODE_HUE = { client: '#4DA3FF', sandbox: '#9B7FE0' }
+// Angles: 0 = up, 90 = right, 180 = down, 270 = left (CIP convention).
+const NODE_ANGLE = { client: 90, sandbox: 270, firm: 0, personal: 180 }
+const NODE_HUE = Object.fromEntries(GROUPS.map((g) => [g.id, g.color]))
 
 // Distance from a w×h box's center to its edge along (dx, dy).
 function edgeInset(dx, dy, hw, hh) {
@@ -39,21 +45,43 @@ function curvePath(x1, y1, x2, y2) {
 
 const SVG_O = 1000 // canvas (0,0) maps to SVG point (1000,1000)
 
-// Precomputed per-group geometry: card center + outward chip column.
+// Precomputed per-group geometry. Horizontal spokes stack chips in outward
+// columns (two columns past six chips); vertical spokes flank the card
+// left/right (CIP vertical-branch behavior).
 const GEO = GROUPS.map((g) => {
   const rad = ((NODE_ANGLE[g.id] - 90) * Math.PI) / 180
-  const dx = Math.cos(rad)
-  const dy = Math.sin(rad)
+  const dx = Math.round(Math.cos(rad))
+  const dy = Math.round(Math.sin(rad))
+  const vertical = dy !== 0
   const cardX = dx * RX_SPOKE
-  const cardY = 0 // both spokes are horizontal
+  const cardY = dy * RY_SPOKE
   const items = PLATFORMS.filter((p) => p.group === g.id)
   const n = items.length
-  const chipR = RX_SPOKE + calcInset(dx, dy) + CHIP_GAP + edgeInset(dx, dy, CHIP_W / 2, CHIP_H / 2)
-  const chips = items.map((p, i) => {
-    const off = (i - (n - 1) / 2) * (CHIP_H + 20)
-    return { p, x: dx * chipR - dy * off, y: dy * chipR + dx * off }
-  })
-  return { g, dx, dy, cardX, cardY, chips }
+  let chips
+  if (vertical) {
+    const half = Math.ceil(n / 2)
+    chips = items.map((p, i) => {
+      const side = i < half ? -1 : 1
+      const m = side === -1 ? half : n - half
+      const j = side === -1 ? i : i - half
+      const x = cardX + side * (CARD_HW + CHIP_GAP + CHIP_W / 2)
+      const y = cardY + (j - (m - 1) / 2) * CHIP_VSTEP
+      return { p, x, y }
+    })
+  } else {
+    const twoCol = n > 6
+    const rows = twoCol ? Math.ceil(n / 2) : n
+    const chipR = RX_SPOKE + CARD_HW + CHIP_GAP + CHIP_W / 2
+    chips = items.map((p, i) => {
+      const col = twoCol ? Math.floor(i / rows) : 0
+      const j = twoCol ? i % rows : i
+      const m = twoCol ? (col === 0 ? rows : n - rows) : n
+      const x = dx * (chipR + col * (CHIP_W + 16))
+      const y = (j - (m - 1) / 2) * CHIP_VSTEP
+      return { p, x, y }
+    })
+  }
+  return { g, dx, dy, vertical, cardX, cardY, chips }
 })
 
 function Hub() {
@@ -74,7 +102,7 @@ function Stage({ sel, litGroup, shift, onChip, onCard, onClear }) {
   useEffect(() => {
     const el = wrapRef.current
     if (!el) return
-    const measure = () => setScale(Math.min(1, el.clientWidth / NATURAL_SPAN))
+    const measure = () => setScale(Math.min(1, el.clientWidth / NATURAL_W, el.clientHeight / NATURAL_H))
     measure()
     const ro = new ResizeObserver(measure)
     ro.observe(el)
@@ -141,7 +169,16 @@ function Stage({ sel, litGroup, shift, onChip, onCard, onClear }) {
                   style={{ left: x, top: y, width: CHIP_W, transform: 'translate(-50%, -50%)' }}
                   onClick={(e) => { e.stopPropagation(); onChip(p.id) }}
                 >
-                  <div className="nm"><span className="dia">◆</span>{p.label}</div>
+                  <div className="nm"><span className="dia">◆</span>{p.label}
+                    {p.production?.url && (
+                      <a
+                        className="eco2-chip-out"
+                        href={p.production.url} target="_blank" rel="noopener noreferrer"
+                        title={`Open ${p.production.url.replace('https://', '')}`}
+                        onClick={(e) => e.stopPropagation()}
+                      ><ExternalLink size={12} /></a>
+                    )}
+                  </div>
                   <div className="st"><i style={{ background: HEALTH_COLOR[stateOf(p.id).health] }}></i>{LIFECYCLE_LABEL[stateOf(p.id).lifecycle]} · OPEN VIEWER</div>
                 </div>
               ))}
@@ -197,6 +234,14 @@ function Viewer({ platform, onClose }) {
       </div>
 
       <div style={{ padding: '6px 20px 20px' }}>
+        {stateOf(p.id).openItems.length > 0 && (
+          <div className="dpanel" style={{ borderColor: 'rgba(248,199,97,0.35)' }}>
+            <div className="ph" style={{ color: HEALTH_COLOR.warn }}>Needs attention · {stateOf(p.id).openItems.length}</div>
+            {stateOf(p.id).openItems.map((it, i) => (
+              <div key={i} style={{ fontSize: 11.5, color: 'rgba(255,255,255,0.75)', padding: '3px 0', lineHeight: 1.45 }}>· {it}</div>
+            ))}
+          </div>
+        )}
         <div className="dpanel">
           <div className="ph"><GitBranch size={13} /> GitHub</div>
           <KV k="Repo" link={`https://github.com/${p.github.repo}`}>{p.github.repo}</KV>

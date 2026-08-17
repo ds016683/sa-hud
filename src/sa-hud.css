@@ -1161,3 +1161,10 @@ table.fin-grid { width: 100%; border-collapse: collapse; font-family: var(--font
 
 .eco2-leg { display: inline-flex; align-items: center; gap: 6px; margin-right: 16px; }
 .eco2-leg i { width: 14px; height: 2px; border-radius: 1px; display: inline-block; }
+
+.eco2-chip-out {
+  margin-left: auto; display: inline-flex; align-items: center;
+  color: rgba(255,255,255,0.45); padding: 2px; border-radius: 5px;
+}
+.eco2-chip-out:hover { color: var(--sa-accent); background: rgba(255,255,255,0.08); }
+.eco2-chip .nm { width: 100%; }
