@@ -4,6 +4,10 @@
 // TBD markers are honest unknowns — the derived-health system surfaces them
 // as attention (yellow) until resolved. Regenerate or hand-edit freely.
 // NOTE: this repo is public — no secrets, gate codes, or personal emails here.
+// Reconciled 2026-08-17 against th-tools (source of truth): registry.ts +
+// migration 078 seed (5 rows: achp, promise, pomegranate-market, mma-tracker,
+// pipeline-rebuild). th-tools' LIVE DB rows added in-app since May are not
+// reachable without credentials — flagged TBD where they may supersede this.
 
 export const ROOT = {
   id: 'root',
@@ -21,13 +25,13 @@ export const GROUPS = [
 export const PLATFORMS = [
   {
     id: "achp", group: "client", label: "ACHP", name: "ACHP Strategy Dashboard",
-    production: { url: "https://achp-dashboard.vercel.app", note: "CEO Sandbox fenced server-side" },
+    production: { url: "https://achp-dashboard-v3.vercel.app", note: "CEO Sandbox fenced server-side" },
     github: { repo: "Third-Horizon-Strategies/achp-dashboard", branch: "main", visibility: "private" },
-    supabase: { project: "TBD \u2014 confirm project ref", rls: "grant-fenced (LTS module)" },
-    vercel: { project: "achp-dashboard", scope: 'Third Horizon', deploy: "Git push \u2192 production" },
-    collaborators: ["carlospravia", "hartatsr4", "paytonncourt96", "thtopher", "ds016683", "jhailu1514096", "calvinlomaxTH", "awilson0812"],
-    users: ["David Smith (owner)", "Ceci Connolly (ACHP CEO)"],
-    changelog: [{ date: "2026-08-17", entry: "fix(tracker): archiving a never-touched bill 400ed (NOT NULL on updated_by)" }, { date: "2026-08-17", entry: "fix(tracker): widen detail page and enlarge editable fields" }, { date: "2026-08-17", entry: "fix(tracker): stop logging all 5 fields changed on a bill's first edit" }],
+    supabase: { project: "achp (per th-tools registry)", rls: "grant-fenced (LTS module)" },
+    vercel: { project: "achp-dashboard-v3", scope: 'Third Horizon', deploy: "Git push → production" },
+    collaborators: ["ds016683", "thtopher", "carlospravia", "hartatsr4", "paytonncourt96", "jhailu1514096", "calvinlomaxTH", "awilson0812"],
+    users: ["cheryl@achp.org (per th-tools)", "lindsay.reeves@achp.org (per th-tools)", "TBD — confirm vs live th-tools DB (Aug work adds Ceci Connolly CEO sandbox)"],
+    changelog: [{ date: "2026-08-17", entry: "fix(tracker): ground bill summaries in real text, not sparse fields" }, { date: "2026-08-17", entry: "fix(congress-sync): send an identifying User-Agent to Congress.gov" }, { date: "2026-08-17", entry: "fix(tracker): plain-text status column, add summary drafting" }],
   },
   {
     id: "achp-lts", group: "client", label: "ACHP LTS", name: "ACHP Long Term Strategy",
@@ -51,13 +55,13 @@ export const PLATFORMS = [
   },
   {
     id: "mma-tracker", group: "client", label: "MMA Tracker", name: "MMA Production Tracker",
-    production: { url: "TBD \u2014 confirm production URL", note: "Production task + budget tracking" },
-    github: { repo: "ds016683/mma-tracker", branch: "main", visibility: "public" },
-    supabase: { project: "TBD \u2014 confirm project ref" },
-    vercel: { project: "TBD \u2014 confirm Vercel project", scope: 'Third Horizon', deploy: "Git push \u2192 production" },
-    collaborators: ["tanner-ths", "thtopher", "ds016683"],
-    users: ["MMA production team"],
-    changelog: [{ date: "2026-07-22", entry: "fix: paginate msa_carrier_coverage fetch \u2014 PostgREST caps at 1000 rows" }, { date: "2026-07-22", entry: "fix: re-open sidebar groups when role loads (isPrivileged race condition)" }, { date: "2026-07-22", entry: "feat: load-ccm-msa edge function + fix deploy script to not kill function deployment on migration failure" }],
+    production: { url: null, note: "Vercel deployment pending (per th-tools, May)" },
+    github: { repo: "Third-Horizon-Strategies/mma-tracker", branch: "main", visibility: "private" },
+    supabase: { project: "None — BigQuery-backed (per th-tools)" },
+    vercel: { project: "TBD — none registered in th-tools yet", scope: 'Third Horizon', deploy: "Git push → production" },
+    collaborators: ["ds016683", "thtopher", "carlospravia"],
+    users: ["TBD — none registered in th-tools"],
+    changelog: [{ date: "2026-08-13", entry: "Production task and budget tracker for the Marsh McLennan Agency" }],
   },
   {
     id: "bellwether", group: "client", label: "Bellwether", name: "Bellwether Safety Net",
@@ -70,8 +74,8 @@ export const PLATFORMS = [
     changelog: [{ date: "2026-06-15", entry: "Merge pull request #18 from ds016683/thtopher/2-clickable-workbench-innovation-research/1" }, { date: "2026-06-15", entry: "docs: brainstorm + plan for clickable workbench Innovation Brief and Bellwether Lens" }, { date: "2026-06-14", entry: "Merge pull request #17 from ds016683/thtopher/1-visual-qa-sweep-fixes/1" }],
   },
   {
-    id: "pomegranate", group: "client", label: "Pomegranate", name: "Pomegranate Health Dashboard",
-    production: { url: "https://ds016683.github.io/cp-pomegranate-CMH-26-01-POM/", note: "Contract CMH-26-01-POM" },
+    id: "pomegranate", group: "client", label: "Pomegranate CMH", name: "Pomegranate Health Dashboard (CMH-26-01-POM)",
+    production: { url: "https://ds016683.github.io/cp-pomegranate-CMH-26-01-POM/", note: "th-tools separately tracks pomegranate-market (Cheryl-stewarded)" },
     github: { repo: "ds016683/cp-pomegranate-CMH-26-01-POM", branch: "main", visibility: "public" },
     supabase: { project: "None \u2014 GitHub Pages static" },
     vercel: { project: "None \u2014 GitHub Pages", scope: 'Third Horizon', deploy: "Push to main \u2192 Pages" },
@@ -160,14 +164,14 @@ export const PLATFORMS = [
     changelog: [{ date: "2026-03-29", entry: "fix: use raw Supabase REST calls instead of JS client" }, { date: "2026-03-29", entry: "Merge pull request #2 from ds016683/feat/vercel-nextjs-migration" }, { date: "2026-03-28", entry: "feat: cleanup old Flask/Fly.io files, add error handling, update README" }],
   },
   {
-    id: "promise", group: "sandbox", label: "Promise", name: "Promise Health Plan Rate Intel",
-    production: { url: "TBD \u2014 confirm production URL", note: "TH internal app" },
-    github: { repo: "ds016683/promise-rate-intelligence", branch: "main", visibility: "private" },
-    supabase: { project: "TBD \u2014 confirm project ref" },
-    vercel: { project: "TBD \u2014 confirm Vercel project", scope: 'Third Horizon', deploy: "Git push \u2192 production" },
-    collaborators: ["thtopher", "ds016683"],
-    users: ["TBD \u2014 enumerate users"],
-    changelog: [{ date: "2026-05-13", entry: "fix: pricing strategy patches per Peter's feedback" }, { date: "2026-05-13", entry: "feat: methodology restructure + table centering" }, { date: "2026-05-13", entry: "feat: pre-production cleanup pass" }],
+    id: "promise", group: "client", label: "Promise", name: "Promise Rate Intelligence",
+    production: { url: "https://promise-rate-intelligence.vercel.app", note: "Retired 2026-06-30 per th-tools · Methodology + Ask Odin built in" },
+    github: { repo: "Third-Horizon-Strategies/promise-rate-intelligence", branch: "main", visibility: "private" },
+    supabase: { project: "None registered in th-tools" },
+    vercel: { project: "promise-rate-intelligence", scope: 'Third Horizon', deploy: "Git push → production" },
+    collaborators: ["ds016683", "carlospravia"],
+    users: ["Seven users at a health system (per th-tools)"],
+    changelog: [],
   },
   {
     id: "pshp", group: "sandbox", label: "PSHP", name: "PSHP Rate Intelligence",
@@ -318,7 +322,7 @@ export const PLATFORM_STATE = {
   "starset-sandbox": { lifecycle: "dev", health: 'ok' },
   "clarity": { lifecycle: "dev", health: 'ok' },
   "bh-ri": { lifecycle: "dev", health: 'ok' },
-  "promise": { lifecycle: "dev", health: 'ok' },
+  "promise": { lifecycle: "inactive", health: 'ok' },
   "pshp": { lifecycle: "dev", health: 'ok' },
   "aha-cv": { lifecycle: "dev", health: 'ok' },
   "cip": { lifecycle: "live", health: 'ok' },
