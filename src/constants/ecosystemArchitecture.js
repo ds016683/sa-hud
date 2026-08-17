@@ -117,3 +117,21 @@ export const PLATFORMS = [
 ]
 
 export const STATUS_DOT = { Live: '#5FBF8A', Demo: '#9B7FE0', Building: '#F8C761' }
+
+// ---- Status semantics (design pass; wiring comes later) --------------------
+// lifecycle — the CONNECTION LINE color (branch -> platform):
+//   live: in production with real users using it for its intended purpose
+//   dev:  under active development
+//   inactive: suspended / set to be nerfed
+// health — the CHIP DOT (and viewer tag):
+//   ok: working properly · warn: something needs attention · critical: critical error
+export const LIFECYCLE_COLOR = { live: '#5FBF8A', dev: '#F8C761', inactive: '#E06C5F' }
+export const HEALTH_COLOR = { ok: '#5FBF8A', warn: '#F8C761', critical: '#E06C5F' }
+export const HEALTH_LABEL = { ok: 'OPERATIONAL', warn: 'NEEDS ATTENTION', critical: 'CRITICAL' }
+
+export const PLATFORM_STATE = {
+  achp: { lifecycle: 'live', health: 'ok' },
+  apnc: { lifecycle: 'live', health: 'ok' },
+  vitalic: { lifecycle: 'dev', health: 'ok' },
+  frontier: { lifecycle: 'dev', health: 'ok' },
+}

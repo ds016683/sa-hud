@@ -1158,3 +1158,6 @@ table.fin-grid { width: 100%; border-collapse: collapse; font-family: var(--font
 }
 
 .eco2-scale { transition: transform .38s cubic-bezier(0, 0, 0.2, 1); }
+
+.eco2-leg { display: inline-flex; align-items: center; gap: 6px; margin-right: 16px; }
+.eco2-leg i { width: 14px; height: 2px; border-radius: 1px; display: inline-block; }
