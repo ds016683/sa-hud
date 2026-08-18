@@ -4,7 +4,7 @@ import { PageHead } from './sa/SaUi'
 import { GROUPS, PLATFORMS, HEALTH_COLOR, HEALTH_LABEL, effectiveState } from '../constants/ecosystemArchitecture'
 import {
   ONTOLOGY, TH_REGISTRY, GHOSTS, SNAPSHOT_AS_OF,
-  derivedState, STATE_LABEL, STATE_COLOR, registryOpenItems, registryHealth, stewardship, lensFilter,
+  derivedState, STATE_LABEL, STATE_COLOR, registryOpenItems, registryHealth, stewardship,
 } from '../constants/thToolsMirror'
 
 const GHOST_STATE = Object.fromEntries(PLATFORMS.map((p) => [p.id, effectiveState(p)]))
@@ -26,8 +26,8 @@ const NATURAL_H = 2 * (RY_SPOKE + 150) + 150
 
 // Sparsest branch (sandbox: zero registered rows) takes the bottom, clear
 // of the unregistered triage tray.
-const NODE_ANGLE = { subscribeable: 0, 'th-hosted': 90, sandbox: 180, 'deployed-client': 270 }
-const NODE_HUE = Object.fromEntries(ONTOLOGY.map((g) => [g.id, g.color]))
+const TH_ANGLE = { subscribeable: 0, 'th-hosted': 90, sandbox: 180, 'deployed-client': 270 }
+const DAVID_ANGLE = { client: 90, sandbox: 270, firm: 0, personal: 180 }
 
 function edgeInset(dx, dy, hw, hh) {
   const ex = Math.abs(dx) < 1e-6 ? Infinity : hw / Math.abs(dx)
@@ -44,15 +44,15 @@ function curvePath(x1, y1, x2, y2) {
 
 const SVG_O = 1000
 
-function geoFor(registered) {
-  return ONTOLOGY.map((g) => {
-    const rad = ((NODE_ANGLE[g.id] - 90) * Math.PI) / 180
+function geoFor(groups, angleOf, itemsFor) {
+  return groups.map((g) => {
+    const rad = ((angleOf[g.id] - 90) * Math.PI) / 180
     const dx = Math.round(Math.cos(rad))
     const dy = Math.round(Math.sin(rad))
     const vertical = dy !== 0
     const cardX = dx * RX_SPOKE
     const cardY = dy * RY_SPOKE
-    const items = registered.filter((r) => r.type === g.id)
+    const items = itemsFor(g)
     const n = items.length
     let chips
     if (vertical) {
@@ -79,18 +79,18 @@ function geoFor(registered) {
   })
 }
 
-function Hub() {
+function Hub({ eb, nm, tg }) {
   return (
     <div className="eco2-hub">
       <div className="eco2-hub-inner"></div>
-      <div className="eb">TH-TOOLS REGISTRY</div>
-      <div className="nm">Third Horizon Platforms</div>
-      <div className="tg">tools.thirdhorizon.com · snapshot {SNAPSHOT_AS_OF.split(' (')[0]}</div>
+      <div className="eb">{eb}</div>
+      <div className="nm">{nm}</div>
+      <div className="tg">{tg}</div>
     </div>
   )
 }
 
-function Stage({ geo, sel, litGroup, onChip, onCard, onClear, onUp, children }) {
+function Stage({ geo, hub, hueOf, countLabel, footLegend, sel, litGroup, onChip, onCard, onClear, onUp, children }) {
   const wrapRef = useRef(null)
   const [dims, setDims] = useState({ w: 1, h: 1 })
 
@@ -136,7 +136,7 @@ function Stage({ geo, sel, litGroup, onChip, onCard, onClear, onUp, children }) 
                   <path
                     className={`${lit ? 'eco2-edge-active' : 'eco2-edge'}${hasSel && !lit ? ' eco2-dim' : ''}`}
                     d={curvePath(SVG_O + dx * HUB_RADIUS, SVG_O + dy * HUB_RADIUS, SVG_O + (cardX - dx * inset), SVG_O + (cardY - dy * inset))}
-                    fill="none" stroke={NODE_HUE[g.id]}
+                    fill="none" stroke={hueOf(g.id)}
                     strokeWidth={lit ? 2.4 : 1.6} strokeLinecap="round" strokeOpacity={lit ? 1 : 0.6}
                   />
                   {chips.map(({ r, x, y }) => {
@@ -157,19 +157,19 @@ function Stage({ geo, sel, litGroup, onChip, onCard, onClear, onUp, children }) 
             })}
           </svg>
 
-          <Hub />
+          <Hub {...hub} />
 
           {geo.map(({ g, cardX, cardY, chips }) => (
             <div key={g.id}>
               <div
                 className={`eco2-card${litGroup === g.id ? ' lit' : ''}${hasSel && litGroup !== g.id && !chips.some(({ r }) => r.id === sel) ? ' eco2-dim' : ''}`}
-                style={{ left: cardX, top: cardY, width: CARD_W, transform: 'translate(-50%, -50%)', '--node-hue': NODE_HUE[g.id] }}
+                style={{ left: cardX, top: cardY, width: CARD_W, transform: 'translate(-50%, -50%)', '--node-hue': hueOf(g.id) }}
                 onClick={(e) => { e.stopPropagation(); onCard(g.id) }}
               >
                 <div className="eb">{g.label.toUpperCase()}</div>
                 <div className="nm">{g.label}</div>
                 <div className="ds">{g.desc}</div>
-                <div className="ct">{chips.length} REGISTERED</div>
+                <div className="ct">{chips.length} {countLabel}</div>
               </div>
               {chips.map(({ r, x, y }) => (
                 <div
@@ -194,12 +194,7 @@ function Stage({ geo, sel, litGroup, onChip, onCard, onClear, onUp, children }) 
         </div>
       </div>
       {children}
-      <div className="eco2-foot">
-        <span style={{ marginRight: 22 }}>STATE IS DERIVED, NEVER STORED · ESC RELEASES</span>
-        <span className="eco2-leg"><i style={{ background: STATE_COLOR.production }}></i>PRODUCTION</span>
-        <span className="eco2-leg"><i style={{ background: STATE_COLOR.building }}></i>BUILDING</span>
-        <span className="eco2-leg"><i style={{ background: STATE_COLOR.retired }}></i>RETIRED</span>
-      </div>
+      <div className="eco2-foot">{footLegend}</div>
     </div>
   )
 }
@@ -425,23 +420,37 @@ function FallbackList({ registered, ghosts, onChip, onGhost }) {
 }
 
 /* ---------------- page ---------------- */
-const LENSES = [
-  { id: 'primary', label: 'Primary' },
-  { id: 'tertiary', label: 'Tertiary' },
-  { id: 'global', label: 'Global' },
+const VIEWS = [
+  { id: 'th', label: 'Third Horizon' },
+  { id: 'david', label: 'David' },
 ]
 
+const TH_HUB = {
+  eb: 'TH-TOOLS REGISTRY',
+  nm: 'Third Horizon Platforms',
+  tg: `tools.thirdhorizon.com · snapshot ${SNAPSHOT_AS_OF.split(' (')[0]}`,
+}
+const DAVID_HUB = {
+  eb: 'OPERATOR',
+  nm: "David's Architecture",
+  tg: 'Branches await assignment',
+}
+
+const TH_HUE = Object.fromEntries(ONTOLOGY.map((g) => [g.id, g.color]))
+const DAVID_HUE = Object.fromEntries(GROUPS.map((g) => [g.id, g.color]))
+
+const TH_GEO = geoFor(ONTOLOGY, TH_ANGLE, (g) => TH_REGISTRY.filter((r) => r.type === g.id))
+const DAVID_GEO = geoFor(GROUPS, DAVID_ANGLE, () => [])
+
 export default function EcosystemPage() {
-  const [sel, setSel] = useState(null) // registered id OR ghost id
+  const [view, setView] = useState('th')
+  const [sel, setSel] = useState(null)
   const [selKind, setSelKind] = useState(null) // 'registered' | 'ghost'
   const [litGroup, setLitGroup] = useState(null)
-  const [lens, setLens] = useState('primary')
 
-  const registered = lensFilter(lens, TH_REGISTRY, 'registered')
-  const ghosts = lensFilter(lens, GHOSTS, 'ghost')
-  const geo = geoFor(registered)
-  const regRow = selKind === 'registered' ? TH_REGISTRY.find((r) => r.id === sel) : null
-  const ghostRow = selKind === 'ghost' ? PLATFORMS.find((p) => p.id === sel) : null
+  const isTH = view === 'th'
+  const regRow = isTH && selKind === 'registered' ? TH_REGISTRY.find((r) => r.id === sel) : null
+  const ghostRow = isTH && selKind === 'ghost' ? PLATFORMS.find((p) => p.id === sel) : null
   const triageCount = TH_REGISTRY.reduce((n, r) => n + registryOpenItems(r).length, 0)
 
   useEffect(() => {
@@ -462,20 +471,35 @@ export default function EcosystemPage() {
       <PageHead
         eyebrow="NETWORK · ECOSYSTEM"
         title="Ecosystem"
-        em="— mirrored from th-tools"
-        desc={`Source of truth: the th-tools platform registry (snapshot ${SNAPSHOT_AS_OF}). ${TH_REGISTRY.length} registered · ${GHOSTS.length} observed-unregistered · ${triageCount} fields need triage.`}
+        em={isTH ? '— the firm platform map' : "— David's architecture"}
+        desc={isTH
+          ? `Source of truth: the th-tools platform registry (snapshot ${SNAPSHOT_AS_OF}). ${TH_REGISTRY.length} registered · ${GHOSTS.length} observed-unregistered · ${triageCount} fields need triage.`
+          : 'Your own map, on your own frame. Branches are standing empty — assignment comes next.'}
         right={
           <div className="pill-toggle">
-            {LENSES.map((l) => (
-              <button key={l.id} className={lens === l.id ? 'on' : ''} onClick={() => { setLens(l.id); clearAll() }}>
-                {l.label}
+            {VIEWS.map((v) => (
+              <button key={v.id} className={view === v.id ? 'on' : ''} onClick={() => { setView(v.id); clearAll() }}>
+                {v.label}
               </button>
             ))}
           </div>
         }
       />
       <Stage
-        geo={geo}
+        geo={isTH ? TH_GEO : DAVID_GEO}
+        hub={isTH ? TH_HUB : DAVID_HUB}
+        hueOf={(id) => (isTH ? TH_HUE : DAVID_HUE)[id]}
+        countLabel={isTH ? 'REGISTERED' : 'ASSIGNED'}
+        footLegend={isTH ? (
+          <>
+            <span style={{ marginRight: 22 }}>STATE IS DERIVED, NEVER STORED · ESC RELEASES</span>
+            <span className="eco2-leg"><i style={{ background: STATE_COLOR.production }}></i>PRODUCTION</span>
+            <span className="eco2-leg"><i style={{ background: STATE_COLOR.building }}></i>BUILDING</span>
+            <span className="eco2-leg"><i style={{ background: STATE_COLOR.retired }}></i>RETIRED</span>
+          </>
+        ) : (
+          <span>BRANCHES EMPTY · ASSIGNMENT PENDING · SELECT A BRANCH TO ZOOM</span>
+        )}
         sel={selKind === 'registered' ? sel : null}
         litGroup={litGroup}
         onChip={(id) => { setSel(id); setSelKind('registered') }}
@@ -483,9 +507,9 @@ export default function EcosystemPage() {
         onClear={clearAll}
         onUp={clearAll}
       >
-        <GhostTray ghosts={ghosts} sel={selKind === 'ghost' ? sel : null} onGhost={(id) => { setSel(id); setSelKind('ghost'); setLitGroup(null) }} />
+        {isTH && <GhostTray ghosts={GHOSTS} sel={selKind === 'ghost' ? sel : null} onGhost={(id) => { setSel(id); setSelKind('ghost'); setLitGroup(null) }} />}
       </Stage>
-      <FallbackList registered={registered} ghosts={ghosts} onChip={(id) => { setSel(id); setSelKind('registered') }} onGhost={(id) => { setSel(id); setSelKind('ghost') }} />
+      {isTH && <FallbackList registered={TH_REGISTRY} ghosts={GHOSTS} onChip={(id) => { setSel(id); setSelKind('registered') }} onGhost={(id) => { setSel(id); setSelKind('ghost') }} />}
       {regRow && <RegistryViewer r={regRow} onClose={() => { setSel(null); setSelKind(null) }} />}
       {ghostRow && <GhostViewer p={ghostRow} onClose={() => { setSel(null); setSelKind(null) }} />}
     </div>
