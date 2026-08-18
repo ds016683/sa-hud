@@ -1,16 +1,18 @@
 import { useState, useEffect, useRef } from 'react'
-import { ExternalLink, GitBranch, Database, Rocket, Users, ScrollText, ChevronDown, ChevronUp } from 'lucide-react'
+import { ExternalLink, GitBranch, Database, Rocket, Users, ScrollText, ChevronDown, ChevronUp, ShieldAlert } from 'lucide-react'
 import { PageHead } from './sa/SaUi'
-import { ROOT, GROUPS, PLATFORMS, LIFECYCLE_LABEL, LIFECYCLE_COLOR, HEALTH_COLOR, HEALTH_LABEL, effectiveState } from '../constants/ecosystemArchitecture'
+import { GROUPS, PLATFORMS, HEALTH_COLOR, HEALTH_LABEL, effectiveState } from '../constants/ecosystemArchitecture'
+import {
+  ONTOLOGY, TH_REGISTRY, GHOSTS, SNAPSHOT_AS_OF,
+  derivedState, STATE_LABEL, STATE_COLOR, registryOpenItems, registryHealth, stewardship, lensFilter,
+} from '../constants/thToolsMirror'
 
-const STATE = Object.fromEntries(PLATFORMS.map((p) => [p.id, effectiveState(p)]))
-const stateOf = (id) => STATE[id]
+const GHOST_STATE = Object.fromEntries(PLATFORMS.map((p) => [p.id, effectiveState(p)]))
 
 // ---- Geometry, ported from the investor deck's hub-and-spoke surface ------
-// Pixel geometry in an absolutely-positioned canvas centered on (0,0).
 const HUB_RADIUS = 110
-const RX_SPOKE = 330 // hub center -> horizontal spoke-card center
-const RY_SPOKE = 292 // hub center -> vertical spoke-card center
+const RX_SPOKE = 330
+const RY_SPOKE = 270
 const CARD_W = 252
 const CARD_H = 128
 const CARD_HW = CARD_W / 2
@@ -19,16 +21,14 @@ const CHIP_W = 186
 const CHIP_H = 52
 const CHIP_GAP = 40
 const CHIP_VSTEP = CHIP_H + 18
-// Width driven by horizontal spokes (up to two outward chip columns);
-// height by vertical spokes (chips flank the card left/right).
-const NATURAL_W = 2 * (RX_SPOKE + CARD_HW + CHIP_GAP + CHIP_W + 16 + CHIP_W) + 170
-const NATURAL_H = 2 * (RY_SPOKE + 160) + 130
+const NATURAL_W = 2 * (RX_SPOKE + CARD_HW + CHIP_GAP + CHIP_W) + 170
+const NATURAL_H = 2 * (RY_SPOKE + 150) + 150
 
-// Angles: 0 = up, 90 = right, 180 = down, 270 = left (CIP convention).
-const NODE_ANGLE = { client: 90, sandbox: 270, firm: 0, personal: 180 }
-const NODE_HUE = Object.fromEntries(GROUPS.map((g) => [g.id, g.color]))
+// Sparsest branch (sandbox: zero registered rows) takes the bottom, clear
+// of the unregistered triage tray.
+const NODE_ANGLE = { subscribeable: 0, 'th-hosted': 90, sandbox: 180, 'deployed-client': 270 }
+const NODE_HUE = Object.fromEntries(ONTOLOGY.map((g) => [g.id, g.color]))
 
-// Distance from a w×h box's center to its edge along (dx, dy).
 function edgeInset(dx, dy, hw, hh) {
   const ex = Math.abs(dx) < 1e-6 ? Infinity : hw / Math.abs(dx)
   const ey = Math.abs(dy) < 1e-6 ? Infinity : hh / Math.abs(dy)
@@ -36,75 +36,61 @@ function edgeInset(dx, dy, hw, hh) {
 }
 const calcInset = (dx, dy) => edgeInset(dx, dy, CARD_HW, CARD_HH)
 
-// Horizontal cubic S-curve between two anchor points.
 function curvePath(x1, y1, x2, y2) {
   const sign = x2 >= x1 ? 1 : -1
   const k = Math.min(Math.abs(x2 - x1), Math.max(22, Math.abs(x2 - x1) * 0.45))
   return `M${x1},${y1} C${x1 + sign * k},${y1} ${x2 - sign * k},${y2} ${x2},${y2}`
 }
 
-const SVG_O = 1000 // canvas (0,0) maps to SVG point (1000,1000)
+const SVG_O = 1000
 
-// Precomputed per-group geometry. Horizontal spokes stack chips in outward
-// columns (two columns past six chips); vertical spokes flank the card
-// left/right (CIP vertical-branch behavior).
-const GEO = GROUPS.map((g) => {
-  const rad = ((NODE_ANGLE[g.id] - 90) * Math.PI) / 180
-  const dx = Math.round(Math.cos(rad))
-  const dy = Math.round(Math.sin(rad))
-  const vertical = dy !== 0
-  const cardX = dx * RX_SPOKE
-  const cardY = dy * RY_SPOKE
-  const items = PLATFORMS.filter((p) => p.group === g.id)
-  const n = items.length
-  let chips
-  if (vertical) {
-    const half = Math.ceil(n / 2)
-    chips = items.map((p, i) => {
-      const side = i < half ? -1 : 1
-      const m = side === -1 ? half : n - half
-      const j = side === -1 ? i : i - half
-      const x = cardX + side * (CARD_HW + CHIP_GAP + CHIP_W / 2)
-      const y = cardY + (j - (m - 1) / 2) * CHIP_VSTEP
-      return { p, x, y }
-    })
-  } else {
-    const twoCol = n > 6
-    const rows = twoCol ? Math.ceil(n / 2) : n
-    const chipR = RX_SPOKE + CARD_HW + CHIP_GAP + CHIP_W / 2
-    chips = items.map((p, i) => {
-      const col = twoCol ? Math.floor(i / rows) : 0
-      const j = twoCol ? i % rows : i
-      const m = twoCol ? (col === 0 ? rows : n - rows) : n
-      const x = dx * (chipR + col * (CHIP_W + 16))
-      const y = (j - (m - 1) / 2) * CHIP_VSTEP
-      return { p, x, y }
-    })
-  }
-  // Branch bounding box (card + chips) for the zoom camera.
-  const xs = [cardX - CARD_HW, cardX + CARD_HW, ...chips.flatMap(({ x }) => [x - CHIP_W / 2, x + CHIP_W / 2])]
-  const ys = [cardY - CARD_HH, cardY + CARD_HH, ...chips.flatMap(({ y }) => [y - CHIP_H / 2, y + CHIP_H / 2])]
-  const bbox = {
-    cx: (Math.min(...xs) + Math.max(...xs)) / 2,
-    cy: (Math.min(...ys) + Math.max(...ys)) / 2,
-    w: Math.max(...xs) - Math.min(...xs) + 120,
-    h: Math.max(...ys) - Math.min(...ys) + 120,
-  }
-  return { g, dx, dy, vertical, cardX, cardY, chips, bbox }
-})
+function geoFor(registered) {
+  return ONTOLOGY.map((g) => {
+    const rad = ((NODE_ANGLE[g.id] - 90) * Math.PI) / 180
+    const dx = Math.round(Math.cos(rad))
+    const dy = Math.round(Math.sin(rad))
+    const vertical = dy !== 0
+    const cardX = dx * RX_SPOKE
+    const cardY = dy * RY_SPOKE
+    const items = registered.filter((r) => r.type === g.id)
+    const n = items.length
+    let chips
+    if (vertical) {
+      const half = Math.ceil(n / 2)
+      chips = items.map((r, i) => {
+        const side = i < half ? -1 : 1
+        const m = side === -1 ? half : n - half
+        const j = side === -1 ? i : i - half
+        return { r, x: cardX + side * (CARD_HW + CHIP_GAP + CHIP_W / 2), y: cardY + (j - (m - 1) / 2) * CHIP_VSTEP }
+      })
+    } else {
+      const chipR = RX_SPOKE + CARD_HW + CHIP_GAP + CHIP_W / 2
+      chips = items.map((r, i) => ({ r, x: dx * chipR, y: (i - (n - 1) / 2) * CHIP_VSTEP }))
+    }
+    const xs = [cardX - CARD_HW, cardX + CARD_HW, ...chips.flatMap(({ x }) => [x - CHIP_W / 2, x + CHIP_W / 2])]
+    const ys = [cardY - CARD_HH, cardY + CARD_HH, ...chips.flatMap(({ y }) => [y - CHIP_H / 2, y + CHIP_H / 2])]
+    const bbox = {
+      cx: (Math.min(...xs) + Math.max(...xs)) / 2,
+      cy: (Math.min(...ys) + Math.max(...ys)) / 2,
+      w: Math.max(...xs) - Math.min(...xs) + 120,
+      h: Math.max(...ys) - Math.min(...ys) + 120,
+    }
+    return { g, dx, dy, cardX, cardY, chips, bbox }
+  })
+}
 
 function Hub() {
   return (
     <div className="eco2-hub">
       <div className="eco2-hub-inner"></div>
-      <div className="eb">OPERATOR</div>
-      <div className="nm">{ROOT.label}</div>
-      <div className="tg">{ROOT.sub}</div>
+      <div className="eb">TH-TOOLS REGISTRY</div>
+      <div className="nm">Third Horizon Platforms</div>
+      <div className="tg">tools.thirdhorizon.com · snapshot {SNAPSHOT_AS_OF.split(' (')[0]}</div>
     </div>
   )
 }
 
-function Stage({ sel, litGroup, onChip, onCard, onClear, onUp }) {
+function Stage({ geo, sel, litGroup, onChip, onCard, onClear, onUp, children }) {
   const wrapRef = useRef(null)
   const [dims, setDims] = useState({ w: 1, h: 1 })
 
@@ -121,19 +107,14 @@ function Stage({ sel, litGroup, onChip, onCard, onClear, onUp }) {
   const hasSel = sel !== null || litGroup !== null
   const fitScale = Math.min(1, dims.w / NATURAL_W, dims.h / NATURAL_H)
 
-  // Camera: overview by default; zoom to a branch's bounding box when its
-  // card is selected. With the viewer open, cede its width and bias left.
   let transform
-  const zoomed = litGroup ? GEO.find((x) => x.g.id === litGroup) : null
+  const zoomed = litGroup ? geo.find((x) => x.g.id === litGroup) : null
   if (zoomed) {
     const viewerW = sel ? 400 : 0
     const k = Math.min(1.2, (dims.w - viewerW - 70) / zoomed.bbox.w, (dims.h - 80) / zoomed.bbox.h)
-    const tx = -zoomed.bbox.cx * k - viewerW / 2
-    const ty = -zoomed.bbox.cy * k
-    transform = `translate(${tx}px, ${ty}px) scale(${k})`
+    transform = `translate(${-zoomed.bbox.cx * k - viewerW / 2}px, ${-zoomed.bbox.cy * k}px) scale(${k})`
   } else {
-    const p = sel ? PLATFORMS.find((x) => x.id === sel) : null
-    const shift = p ? (['client', 'firm'].includes(p.group) ? -460 : -60) : 0
+    const shift = sel ? -380 : 0
     transform = `translateX(${shift}px) scale(${fitScale})`
   }
 
@@ -147,8 +128,8 @@ function Stage({ sel, litGroup, onChip, onCard, onClear, onUp }) {
       <div className="eco2-scale" style={{ transform }}>
         <div className="eco2-origin">
           <svg className="eco2-edges" aria-hidden="true">
-            {GEO.map(({ g, dx, dy, cardX, cardY, chips }) => {
-              const lit = litGroup === g.id || chips.some(({ p }) => p.id === sel)
+            {geo.map(({ g, dx, dy, cardX, cardY, chips }) => {
+              const lit = litGroup === g.id || chips.some(({ r }) => r.id === sel)
               const inset = calcInset(dx, dy)
               return (
                 <g key={g.id}>
@@ -158,18 +139,15 @@ function Stage({ sel, litGroup, onChip, onCard, onClear, onUp }) {
                     fill="none" stroke={NODE_HUE[g.id]}
                     strokeWidth={lit ? 2.4 : 1.6} strokeLinecap="round" strokeOpacity={lit ? 1 : 0.6}
                   />
-                  {chips.map(({ p, x, y }) => {
-                    const on = sel === p.id
+                  {chips.map(({ r, x, y }) => {
+                    const on = sel === r.id
                     const sign = x >= cardX ? 1 : -1
                     return (
                       <path
-                        key={p.id}
+                        key={r.id}
                         className={`${on || lit ? 'eco2-edge-active' : 'eco2-edge'}${hasSel && !on && !lit ? ' eco2-dim' : ''}`}
-                        d={curvePath(
-                          SVG_O + cardX + sign * CARD_HW, SVG_O + cardY,
-                          SVG_O + x - sign * (CHIP_W / 2), SVG_O + y
-                        )}
-                        fill="none" stroke={LIFECYCLE_COLOR[stateOf(p.id).lifecycle]}
+                        d={curvePath(SVG_O + cardX + sign * CARD_HW, SVG_O + cardY, SVG_O + x - sign * (CHIP_W / 2), SVG_O + y)}
+                        fill="none" stroke={STATE_COLOR[derivedState(r)]}
                         strokeWidth={on ? 2.4 : 1.6} strokeLinecap="round" strokeOpacity={on || lit ? 1 : 0.6}
                       />
                     )
@@ -181,53 +159,71 @@ function Stage({ sel, litGroup, onChip, onCard, onClear, onUp }) {
 
           <Hub />
 
-          {GEO.map(({ g, cardX, cardY, chips }) => (
+          {geo.map(({ g, cardX, cardY, chips }) => (
             <div key={g.id}>
               <div
-                className={`eco2-card${litGroup === g.id ? ' lit' : ''}${hasSel && litGroup !== g.id && !chips.some(({ p }) => p.id === sel) ? ' eco2-dim' : ''}`}
+                className={`eco2-card${litGroup === g.id ? ' lit' : ''}${hasSel && litGroup !== g.id && !chips.some(({ r }) => r.id === sel) ? ' eco2-dim' : ''}`}
                 style={{ left: cardX, top: cardY, width: CARD_W, transform: 'translate(-50%, -50%)', '--node-hue': NODE_HUE[g.id] }}
                 onClick={(e) => { e.stopPropagation(); onCard(g.id) }}
               >
-                <div className="eb">{g.id}.DAVID</div>
+                <div className="eb">{g.label.toUpperCase()}</div>
                 <div className="nm">{g.label}</div>
                 <div className="ds">{g.desc}</div>
-                <div className="ct">{chips.length} PLATFORMS</div>
+                <div className="ct">{chips.length} REGISTERED</div>
               </div>
-              {chips.map(({ p, x, y }) => (
+              {chips.map(({ r, x, y }) => (
                 <div
-                  key={p.id}
-                  className={`eco2-chip${sel === p.id ? ' on' : ''}${hasSel && sel !== p.id && litGroup !== g.id ? ' eco2-dim' : ''}`}
+                  key={r.id}
+                  className={`eco2-chip${sel === r.id ? ' on' : ''}${hasSel && sel !== r.id && litGroup !== g.id ? ' eco2-dim' : ''}`}
                   style={{ left: x, top: y, width: CHIP_W, transform: 'translate(-50%, -50%)' }}
-                  onClick={(e) => { e.stopPropagation(); onChip(p.id) }}
+                  onClick={(e) => { e.stopPropagation(); onChip(r.id) }}
                 >
-                  <div className="nm"><span className="dia">◆</span>{p.label}
-                    {p.production?.url && (
-                      <a
-                        className="eco2-chip-out"
-                        href={p.production.url} target="_blank" rel="noopener noreferrer"
-                        title={`Open ${p.production.url.replace('https://', '')}`}
-                        onClick={(e) => e.stopPropagation()}
-                      ><ExternalLink size={12} /></a>
+                  <div className="nm"><span className="dia">◆</span>{r.label}
+                    {r.url && (
+                      <a className="eco2-chip-out" href={r.url} target="_blank" rel="noopener noreferrer"
+                        title={`Open ${r.url.replace('https://', '')}`} onClick={(e) => e.stopPropagation()}>
+                        <ExternalLink size={12} />
+                      </a>
                     )}
                   </div>
-                  <div className="st"><i style={{ background: HEALTH_COLOR[stateOf(p.id).health] }}></i>{LIFECYCLE_LABEL[stateOf(p.id).lifecycle]} · OPEN VIEWER</div>
+                  <div className="st"><i style={{ background: HEALTH_COLOR[registryHealth(r)] }}></i>{STATE_LABEL[derivedState(r)]} · OPEN VIEWER</div>
                 </div>
               ))}
             </div>
           ))}
         </div>
       </div>
+      {children}
       <div className="eco2-foot">
-        <span style={{ marginRight: 22 }}>SELECT A NODE TO OPEN ITS VIEWER · ESC RELEASES</span>
-        <span className="eco2-leg"><i style={{ background: LIFECYCLE_COLOR.live }}></i>LIVE</span>
-        <span className="eco2-leg"><i style={{ background: LIFECYCLE_COLOR.dev }}></i>IN DEVELOPMENT</span>
-        <span className="eco2-leg"><i style={{ background: LIFECYCLE_COLOR.inactive }}></i>SUSPENDED</span>
+        <span style={{ marginRight: 22 }}>STATE IS DERIVED, NEVER STORED · ESC RELEASES</span>
+        <span className="eco2-leg"><i style={{ background: STATE_COLOR.production }}></i>PRODUCTION</span>
+        <span className="eco2-leg"><i style={{ background: STATE_COLOR.building }}></i>BUILDING</span>
+        <span className="eco2-leg"><i style={{ background: STATE_COLOR.retired }}></i>RETIRED</span>
       </div>
     </div>
   )
 }
 
-/* ---------------- viewer ---------------- */
+/* ---------------- triage tray: observed, unregistered ---------------- */
+function GhostTray({ ghosts, sel, onGhost }) {
+  if (!ghosts.length) return null
+  return (
+    <div className="eco2-tray" onClick={(e) => e.stopPropagation()}>
+      <div className="eco2-tray-head sa-tele">
+        OBSERVED · NOT IN REGISTRY · {ghosts.length} — register in th-tools to promote into the tree
+      </div>
+      <div className="eco2-tray-chips">
+        {ghosts.map((p) => (
+          <button key={p.id} className={`eco2-ghost${sel === p.id ? ' on' : ''}`} onClick={() => onGhost(p.id)}>
+            {p.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+/* ---------------- viewers ---------------- */
 function KV({ k, children, link }) {
   return (
     <div className="kv">
@@ -239,76 +235,137 @@ function KV({ k, children, link }) {
   )
 }
 
-function Viewer({ platform, onClose }) {
-  const [logOpen, setLogOpen] = useState(false)
-  const p = platform
-  const g = GROUPS.find((x) => x.id === p.group)
-  const commitsUrl = `https://github.com/${p.github.repo}/commits/${p.github.branch}`
-
+function ViewerShell({ eyebrow, eyebrowColor, health, name, url, note, onClose, children }) {
   return (
     <div className="eco2-viewer" onClick={(e) => e.stopPropagation()}>
       <button className="eco2-viewer-x" onClick={onClose} aria-label="Close viewer">×</button>
       <div style={{ padding: '20px 20px 16px', borderBottom: '1px solid rgba(255,255,255,0.09)' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
-          <div className="sa-tele" style={{ color: NODE_HUE[g.id] }}>{g.label.toUpperCase()} · {LIFECYCLE_LABEL[stateOf(p.id).lifecycle]}</div>
-          <span className="sa-tele" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: HEALTH_COLOR[stateOf(p.id).health] }}>
-            <i style={{ width: 7, height: 7, borderRadius: '50%', background: HEALTH_COLOR[stateOf(p.id).health], display: 'inline-block' }}></i>
-            {HEALTH_LABEL[stateOf(p.id).health]}
+          <div className="sa-tele" style={{ color: eyebrowColor }}>{eyebrow}</div>
+          <span className="sa-tele" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: HEALTH_COLOR[health] }}>
+            <i style={{ width: 7, height: 7, borderRadius: '50%', background: HEALTH_COLOR[health], display: 'inline-block' }}></i>
+            {HEALTH_LABEL[health]}
           </span>
         </div>
-        <div className="sa-serif" style={{ fontSize: 24, color: '#fff', marginTop: 5, lineHeight: 1.15 }}>{p.name}</div>
-        <a href={p.production.url} target="_blank" rel="noopener noreferrer"
-          style={{ display: 'inline-flex', alignItems: 'center', gap: 7, marginTop: 10, fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--sa-accent)', textDecoration: 'none' }}>
-          <ExternalLink size={12} /> {p.production.url.replace('https://', '')}
-        </a>
-        {p.production.note && <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9.5, letterSpacing: 0.8, color: 'rgba(255,255,255,0.45)', marginTop: 6 }}>{p.production.note.toUpperCase()}</div>}
-      </div>
-
-      <div style={{ padding: '6px 20px 20px' }}>
-        {stateOf(p.id).openItems.length > 0 && (
-          <div className="dpanel" style={{ borderColor: 'rgba(248,199,97,0.35)' }}>
-            <div className="ph" style={{ color: HEALTH_COLOR.warn }}>Needs attention · {stateOf(p.id).openItems.length}</div>
-            {stateOf(p.id).openItems.map((it, i) => (
-              <div key={i} style={{ fontSize: 11.5, color: 'rgba(255,255,255,0.75)', padding: '3px 0', lineHeight: 1.45 }}>· {it}</div>
-            ))}
-          </div>
+        <div className="sa-serif" style={{ fontSize: 24, color: '#fff', marginTop: 5, lineHeight: 1.15 }}>{name}</div>
+        {url && (
+          <a href={url} target="_blank" rel="noopener noreferrer"
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 7, marginTop: 10, fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--sa-accent)', textDecoration: 'none' }}>
+            <ExternalLink size={12} /> {url.replace('https://', '').replace('http://', '')}
+          </a>
         )}
-        <div className="dpanel">
-          <div className="ph"><GitBranch size={13} /> GitHub</div>
-          <KV k="Repo" link={`https://github.com/${p.github.repo}`}>{p.github.repo}</KV>
-          <KV k="Branch">{p.github.branch}</KV>
-          <KV k="Visibility">{p.github.visibility}</KV>
-        </div>
+        {note && <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9.5, letterSpacing: 0.8, color: 'rgba(255,255,255,0.45)', marginTop: 6 }}>{note.toUpperCase()}</div>}
+      </div>
+      <div style={{ padding: '6px 20px 20px' }}>{children}</div>
+    </div>
+  )
+}
 
-        <div className="dpanel">
-          <div className="ph"><Database size={13} /> Supabase</div>
-          <KV k="Project">{p.supabase.project}</KV>
-          {p.supabase.rls && <KV k="RLS">{p.supabase.rls}</KV>}
-        </div>
+function AttentionPanel({ items }) {
+  if (!items.length) return null
+  return (
+    <div className="dpanel" style={{ borderColor: 'rgba(248,199,97,0.35)' }}>
+      <div className="ph" style={{ color: HEALTH_COLOR.warn }}><ShieldAlert size={13} /> Needs attention · {items.length}</div>
+      {items.map((it, i) => (
+        <div key={i} style={{ fontSize: 11.5, color: 'rgba(255,255,255,0.75)', padding: '3px 0', lineHeight: 1.45 }}>· {it}</div>
+      ))}
+    </div>
+  )
+}
 
+function RegistryViewer({ r, onClose }) {
+  const g = ONTOLOGY.find((x) => x.id === r.type)
+  const items = registryOpenItems(r)
+  const lens = stewardship(r)
+  return (
+    <ViewerShell
+      eyebrow={`${g.label.toUpperCase()} · ${STATE_LABEL[derivedState(r)]}`}
+      eyebrowColor={g.color}
+      health={registryHealth(r)}
+      name={r.name}
+      url={r.url || null}
+      note={`TH-TOOLS REGISTRY · SNAPSHOT ${SNAPSHOT_AS_OF.split(' (')[0]}`}
+      onClose={onClose}
+    >
+      <AttentionPanel items={items} />
+      <div className="dpanel">
+        <div className="ph"><Users size={13} /> Stewardship</div>
+        <KV k="Steward">{r.steward}</KV>
+        <KV k="Your lens">{lens === 'primary' ? 'Primary — you steward this' : lens === 'tertiary' ? 'Tertiary — involved, not steward' : 'Global — no observed involvement'}</KV>
+        <KV k="Created">{r.createdAt}</KV>
+        {r.retirementAt && <KV k="Retirement">{r.retirementAt}</KV>}
+      </div>
+      <div className="dpanel">
+        <div className="ph"><GitBranch size={13} /> GitHub</div>
+        {r.github
+          ? <KV k="Repo" link={`https://github.com/${r.github}`}>{r.github}</KV>
+          : <KV k="Repo">NULL — needs triage</KV>}
+        {r.observed?.repoFound === false && <KV k="Observed">NOT FOUND in 8/17 sweep</KV>}
+      </div>
+      <div className="dpanel">
+        <div className="ph"><Database size={13} /> Supabase</div>
+        <KV k="Project">{r.supabase ?? 'NULL — needs triage'}</KV>
+      </div>
+      <div className="dpanel">
+        <div className="ph"><Rocket size={13} /> Vercel</div>
+        <KV k="Project">{r.vercel ?? 'NULL — needs triage'}</KV>
+      </div>
+      <div className="dpanel">
+        <div className="ph"><Users size={13} /> Users · {(r.users || []).length}</div>
+        {(r.users || []).length
+          ? r.users.map((u, i) => <div key={i} style={{ fontSize: 12, color: 'rgba(255,255,255,0.85)', padding: '4px 0' }}>{u}</div>)
+          : <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', padding: '4px 0' }}>None registered</div>}
+      </div>
+      {r.notes && (
         <div className="dpanel">
-          <div className="ph"><Rocket size={13} /> Vercel</div>
-          <KV k="Project">{p.vercel.project}</KV>
-          <KV k="Scope">{p.vercel.scope}</KV>
-          <KV k="Deploy">{p.vercel.deploy}</KV>
+          <div className="ph"><ScrollText size={13} /> Registry notes</div>
+          <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.8)', lineHeight: 1.5 }}>{r.notes}</div>
         </div>
+      )}
+    </ViewerShell>
+  )
+}
 
-        <div className="dpanel">
-          <div className="ph"><Users size={13} /> Co-collaborators · {p.collaborators.length}</div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginTop: 4 }}>
-            {p.collaborators.map((c) => (
-              <span key={c} style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'rgba(255,255,255,0.75)', background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 999, padding: '3px 9px' }}>{c}</span>
-            ))}
-          </div>
-        </div>
-
-        <div className="dpanel">
-          <div className="ph"><Users size={13} /> Users</div>
-          {p.users.map((u, i) => (
-            <div key={i} style={{ fontSize: 12, color: 'rgba(255,255,255,0.85)', padding: '4px 0' }}>{u}</div>
+function GhostViewer({ p, onClose }) {
+  const [logOpen, setLogOpen] = useState(false)
+  const st = GHOST_STATE[p.id]
+  const g = GROUPS.find((x) => x.id === p.group)
+  const commitsUrl = p.github ? `https://github.com/${p.github.repo}/commits/${p.github.branch}` : null
+  return (
+    <ViewerShell
+      eyebrow={`UNREGISTERED · OBSERVED (${(g?.label || '').toUpperCase()})`}
+      eyebrowColor="rgba(255,255,255,0.55)"
+      health="warn"
+      name={p.name}
+      url={p.production?.url || null}
+      note={p.production?.note || null}
+      onClose={onClose}
+    >
+      <AttentionPanel items={[`Not in the th-tools registry — register it (build_class covers personal tools) to bring it under surveillance`, ...st.openItems]} />
+      <div className="dpanel">
+        <div className="ph"><GitBranch size={13} /> GitHub (observed)</div>
+        <KV k="Repo" link={`https://github.com/${p.github.repo}`}>{p.github.repo}</KV>
+        <KV k="Branch">{p.github.branch}</KV>
+        <KV k="Visibility">{p.github.visibility}</KV>
+      </div>
+      <div className="dpanel">
+        <div className="ph"><Database size={13} /> Supabase (observed)</div>
+        <KV k="Project">{p.supabase.project}</KV>
+      </div>
+      <div className="dpanel">
+        <div className="ph"><Rocket size={13} /> Vercel (observed)</div>
+        <KV k="Project">{p.vercel.project}</KV>
+        <KV k="Deploy">{p.vercel.deploy}</KV>
+      </div>
+      <div className="dpanel">
+        <div className="ph"><Users size={13} /> Co-collaborators · {p.collaborators.length}</div>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginTop: 4 }}>
+          {p.collaborators.map((c) => (
+            <span key={c} style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'rgba(255,255,255,0.75)', background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 999, padding: '3px 9px' }}>{c}</span>
           ))}
         </div>
-
+      </div>
+      {p.changelog.length > 0 && (
         <div className="dpanel">
           <button onClick={() => setLogOpen(!logOpen)}
             style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', background: 'transparent', border: 0, cursor: 'pointer', padding: 0 }}>
@@ -325,103 +382,112 @@ function Viewer({ platform, onClose }) {
                   <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.8)', lineHeight: 1.45 }}>{c.entry}</span>
                 </div>
               ))}
-              <a href={commitsUrl} target="_blank" rel="noopener noreferrer"
-                style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: 10, fontFamily: 'var(--font-mono)', fontSize: 10, letterSpacing: 1, color: 'var(--sa-accent)', textDecoration: 'none' }}>
-                FULL HISTORY ON GITHUB <ExternalLink size={11} />
-              </a>
+              {commitsUrl && (
+                <a href={commitsUrl} target="_blank" rel="noopener noreferrer"
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: 10, fontFamily: 'var(--font-mono)', fontSize: 10, letterSpacing: 1, color: 'var(--sa-accent)', textDecoration: 'none' }}>
+                  FULL HISTORY ON GITHUB <ExternalLink size={11} />
+                </a>
+              )}
             </div>
           )}
         </div>
+      )}
+    </ViewerShell>
+  )
+}
+
+/* ---------------- narrow fallback ---------------- */
+function FallbackList({ registered, ghosts, onChip, onGhost }) {
+  return (
+    <div className="eco2-list">
+      {ONTOLOGY.map((g) => (
+        <div key={g.id} className="eco2-list-node">
+          <div className="eco2-list-head">
+            <span className="eco2-list-title">{g.label}</span>
+            <span className="eco2-list-dom" style={{ color: g.color }}>{registered.filter((r) => r.type === g.id).length} REGISTERED</span>
+          </div>
+          {registered.filter((r) => r.type === g.id).map((r) => (
+            <div key={r.id} className="eco2-chip" onClick={() => onChip(r.id)}>
+              <div className="nm"><span className="dia">◆</span>{r.label}</div>
+              <div className="st"><i style={{ background: HEALTH_COLOR[registryHealth(r)] }}></i>{STATE_LABEL[derivedState(r)]}</div>
+            </div>
+          ))}
+        </div>
+      ))}
+      <div className="eco2-list-node">
+        <div className="eco2-list-head"><span className="eco2-list-title">Unregistered</span></div>
+        {ghosts.map((p) => (
+          <button key={p.id} className="eco2-ghost" onClick={() => onGhost(p.id)}>{p.label}</button>
+        ))}
       </div>
     </div>
   )
 }
 
-/* ---------------- narrow fallback list ---------------- */
-function FallbackList({ sel, onChip }) {
-  return (
-    <div className="eco2-list">
-      {GROUPS.map((g) => (
-        <div key={g.id} className="eco2-list-node">
-          <div className="eco2-list-head">
-            <span className="eco2-list-title">{g.label}</span>
-            <span className="eco2-list-dom" style={{ color: NODE_HUE[g.id] }}>{g.id}.DAVID</span>
-          </div>
-          {PLATFORMS.filter((p) => p.group === g.id).map((p) => (
-            <div key={p.id} className={`eco2-chip${sel === p.id ? ' on' : ''}`} onClick={() => onChip(p.id)}>
-              <div className="nm"><span className="dia">◆</span>{p.label}</div>
-              <div className="st"><i style={{ background: HEALTH_COLOR[stateOf(p.id).health] }}></i>{LIFECYCLE_LABEL[stateOf(p.id).lifecycle]}</div>
-            </div>
-          ))}
-        </div>
-      ))}
-    </div>
-  )
-}
-
 /* ---------------- page ---------------- */
-// Ownership tiers: primary = David owns it; tertiary = involved in some
-// way; global = wider orbit. Everything mapped today is primary — the
-// other tiers await David's distinctions.
-const TIERS = ['primary', 'tertiary', 'global']
+const LENSES = [
+  { id: 'primary', label: 'Primary' },
+  { id: 'tertiary', label: 'Tertiary' },
+  { id: 'global', label: 'Global' },
+]
 
 export default function EcosystemPage() {
-  const [sel, setSel] = useState(null) // platform id
-  const [litGroup, setLitGroup] = useState(null) // group id (card click)
-  const [tier, setTier] = useState('primary')
-  const platform = PLATFORMS.find((p) => p.id === sel) || null
+  const [sel, setSel] = useState(null) // registered id OR ghost id
+  const [selKind, setSelKind] = useState(null) // 'registered' | 'ghost'
+  const [litGroup, setLitGroup] = useState(null)
+  const [lens, setLens] = useState('primary')
 
-  // Esc steps back one level: viewer first, then the zoom (CIP behavior).
+  const registered = lensFilter(lens, TH_REGISTRY, 'registered')
+  const ghosts = lensFilter(lens, GHOSTS, 'ghost')
+  const geo = geoFor(registered)
+  const regRow = selKind === 'registered' ? TH_REGISTRY.find((r) => r.id === sel) : null
+  const ghostRow = selKind === 'ghost' ? PLATFORMS.find((p) => p.id === sel) : null
+  const triageCount = TH_REGISTRY.reduce((n, r) => n + registryOpenItems(r).length, 0)
+
   useEffect(() => {
     if (!sel && !litGroup) return
     const onKey = (e) => {
       if (e.key !== 'Escape') return
-      if (sel) setSel(null)
+      if (sel) { setSel(null); setSelKind(null) }
       else setLitGroup(null)
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [sel, litGroup])
 
+  const clearAll = () => { setSel(null); setSelKind(null); setLitGroup(null) }
+
   return (
     <div className="eco2-wrap">
       <PageHead
         eyebrow="NETWORK · ECOSYSTEM"
         title="Ecosystem"
-        em="— the platforms you've built"
-        desc="Your digital architecture as a living tree. Select any platform node to open its full operating picture."
+        em="— mirrored from th-tools"
+        desc={`Source of truth: the th-tools platform registry (snapshot ${SNAPSHOT_AS_OF}). ${TH_REGISTRY.length} registered · ${GHOSTS.length} observed-unregistered · ${triageCount} fields need triage.`}
         right={
           <div className="pill-toggle">
-            {TIERS.map((t) => (
-              <button key={t} className={tier === t ? 'on' : ''} onClick={() => { setTier(t); setSel(null); setLitGroup(null) }}>
-                {t.charAt(0).toUpperCase() + t.slice(1)}
+            {LENSES.map((l) => (
+              <button key={l.id} className={lens === l.id ? 'on' : ''} onClick={() => { setLens(l.id); clearAll() }}>
+                {l.label}
               </button>
             ))}
           </div>
         }
       />
-      {tier !== 'primary' ? (
-        <div className="eco2-stage eco2-tier-empty">
-          <div className="sa-tele" style={{ color: 'var(--sa-accent)', letterSpacing: '0.22em' }}>{tier.toUpperCase()}</div>
-          <div className="sa-serif" style={{ fontSize: 26, color: '#fff' }}>
-            {tier === 'tertiary' ? 'Platforms you touch, not own.' : 'The wider orbit.'}
-          </div>
-          <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.55)', maxWidth: '44ch', lineHeight: 1.6 }}>
-            Nothing mapped at this tier yet — the distinctions land next.
-          </div>
-        </div>
-      ) : (
       <Stage
-        sel={sel}
+        geo={geo}
+        sel={selKind === 'registered' ? sel : null}
         litGroup={litGroup}
-        onChip={(id) => setSel(id)}
-        onCard={(id) => { setLitGroup(litGroup === id ? null : id); setSel(null) }}
-        onClear={() => { setSel(null); setLitGroup(null) }}
-        onUp={() => { setSel(null); setLitGroup(null) }}
-      />
-      )}
-      {tier === 'primary' && <FallbackList sel={sel} onChip={setSel} />}
-      {tier === 'primary' && platform && <Viewer platform={platform} onClose={() => setSel(null)} />}
+        onChip={(id) => { setSel(id); setSelKind('registered') }}
+        onCard={(id) => { setLitGroup(litGroup === id ? null : id); setSel(null); setSelKind(null) }}
+        onClear={clearAll}
+        onUp={clearAll}
+      >
+        <GhostTray ghosts={ghosts} sel={selKind === 'ghost' ? sel : null} onGhost={(id) => { setSel(id); setSelKind('ghost'); setLitGroup(null) }} />
+      </Stage>
+      <FallbackList registered={registered} ghosts={ghosts} onChip={(id) => { setSel(id); setSelKind('registered') }} onGhost={(id) => { setSel(id); setSelKind('ghost') }} />
+      {regRow && <RegistryViewer r={regRow} onClose={() => { setSel(null); setSelKind(null) }} />}
+      {ghostRow && <GhostViewer p={ghostRow} onClose={() => { setSel(null); setSelKind(null) }} />}
     </div>
   )
 }
