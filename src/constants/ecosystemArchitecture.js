@@ -34,6 +34,16 @@ export const PLATFORMS = [
     changelog: [{ date: "2026-08-17", entry: "fix(tracker): ground bill summaries in real text, not sparse fields" }, { date: "2026-08-17", entry: "fix(congress-sync): send an identifying User-Agent to Congress.gov" }, { date: "2026-08-17", entry: "fix(tracker): plain-text status column, add summary drafting" }],
   },
   {
+    id: "achp-archive", group: "client", label: "ACHP (v1)", name: "ACHP Federal Affairs (Archived)",
+    production: { url: null, note: "Archived repo — superseded by achp-dashboard-v3" },
+    github: { repo: "ds016683/achp-dashboard-archive-2026", branch: "main", visibility: "private" },
+    supabase: { project: "None — archived" },
+    vercel: { project: "None — archived", scope: 'Third Horizon', deploy: "Archived" },
+    collaborators: ["thtopher", "ds016683"],
+    users: ["Superseded"],
+    changelog: [{ date: "2026-05-14", entry: "feat: magic-link auth + first-login welcome modal" }, { date: "2026-05-14", entry: "rename: Assistant → Ask Odin (Powered by Third Horizon)" }],
+  },
+  {
     id: "achp-lts", group: "client", label: "ACHP LTS", name: "ACHP Long Term Strategy",
     production: { url: "TBD \u2014 confirm production URL", note: "Private David + Ceci workspace" },
     github: { repo: "Third-Horizon-Strategies/achp-ceo", branch: "main", visibility: "private" },
@@ -309,6 +319,7 @@ export const HEALTH_LABEL = { ok: 'OPERATIONAL', warn: 'NEEDS ATTENTION', critic
 
 export const PLATFORM_STATE = {
   "achp": { lifecycle: "live", health: 'ok' },
+  "achp-archive": { lifecycle: "inactive", health: 'ok' },
   "achp-lts": { lifecycle: "live", health: 'ok' },
   "apnc": { lifecycle: "live", health: 'ok' },
   "mma-tracker": { lifecycle: "live", health: 'ok' },
