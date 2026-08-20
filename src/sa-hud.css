@@ -1223,3 +1223,7 @@ table.fin-grid { width: 100%; border-collapse: collapse; font-family: var(--font
 }
 .eco2-ghost:hover { color: #fff; border-color: rgba(255,255,255,0.5); background: rgba(255,255,255,0.05); }
 .eco2-ghost.on { color: #1A354A; background: var(--sa-accent); border-color: var(--sa-accent); border-style: solid; }
+
+/* nodes materialize softly (plays on mount; subtree expansion rides it) */
+@keyframes eco2fadein { from { opacity: 0; transform: translate(-50%, -50%) scale(0.92); } to { opacity: 1; transform: translate(-50%, -50%) scale(1); } }
+.eco2-card, .eco2-chip { animation: eco2fadein 0.45s ease both; }

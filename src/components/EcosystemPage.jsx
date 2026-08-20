@@ -34,7 +34,6 @@ function edgeInset(dx, dy, hw, hh) {
   const ey = Math.abs(dy) < 1e-6 ? Infinity : hh / Math.abs(dy)
   return Math.min(ex, ey)
 }
-const calcInset = (dx, dy) => edgeInset(dx, dy, CARD_HW, CARD_HH)
 
 function curvePath(x1, y1, x2, y2) {
   const sign = x2 >= x1 ? 1 : -1
@@ -90,7 +89,7 @@ function Hub({ eb, nm, tg }) {
   )
 }
 
-function Stage({ geo, hub, hueOf, countLabel, footLegend, chipView, edgeColor, sel, litGroup, forceUp, onChip, onCard, onClear, onUp, children }) {
+function Stage({ geo, hub, hueOf, countLabel, footLegend, chipView, edgeColor, sel, litGroup, litSet, focusBBox, forceUp, onChip, onCard, onClear, onUp, children }) {
   const wrapRef = useRef(null)
   const [dims, setDims] = useState({ w: 1, h: 1 })
 
@@ -113,6 +112,10 @@ function Stage({ geo, hub, hueOf, countLabel, footLegend, chipView, edgeColor, s
     const viewerW = sel ? 400 : 0
     const k = Math.min(1.2, (dims.w - viewerW - 70) / zoomed.bbox.w, (dims.h - 80) / zoomed.bbox.h)
     transform = `translate(${-zoomed.bbox.cx * k - viewerW / 2}px, ${-zoomed.bbox.cy * k}px) scale(${k})`
+  } else if (focusBBox) {
+    const viewerW = sel ? 400 : 0
+    const k = Math.min(1.1, (dims.w - viewerW - 70) / focusBBox.w, (dims.h - 80) / focusBBox.h)
+    transform = `translate(${-focusBBox.cx * k - viewerW / 2}px, ${-focusBBox.cy * k}px) scale(${k})`
   } else {
     const shift = sel ? -380 : 0
     transform = `translateX(${shift}px) scale(${fitScale})`
@@ -128,14 +131,21 @@ function Stage({ geo, hub, hueOf, countLabel, footLegend, chipView, edgeColor, s
       <div className="eco2-scale" style={{ transform }}>
         <div className="eco2-origin">
           <svg className="eco2-edges" aria-hidden="true">
-            {geo.map(({ g, dx, dy, cardX, cardY, chips }) => {
-              const lit = litGroup === g.id || chips.some(({ r }) => r.id === sel)
-              const inset = calcInset(dx, dy)
+            {geo.map(({ g, cardX, cardY, chips, from }) => {
+              const lit = litGroup === g.id || (litSet ? litSet.has(g.id) : false) || chips.some(({ r }) => r.id === sel)
+              const dimmed = ((hasSel || !!litSet) && !lit)
+              const fx = from ? from.x : 0
+              const fy = from ? from.y : 0
+              const len = Math.hypot(cardX - fx, cardY - fy) || 1
+              const ux = (cardX - fx) / len
+              const uy = (cardY - fy) / len
+              const srcInset = from ? edgeInset(ux, uy, CARD_HW, CARD_HH) : HUB_RADIUS
+              const dstInset = edgeInset(ux, uy, CARD_HW, CARD_HH)
               return (
                 <g key={g.id}>
                   <path
-                    className={`${lit ? 'eco2-edge-active' : 'eco2-edge'}${hasSel && !lit ? ' eco2-dim' : ''}`}
-                    d={curvePath(SVG_O + dx * HUB_RADIUS, SVG_O + dy * HUB_RADIUS, SVG_O + (cardX - dx * inset), SVG_O + (cardY - dy * inset))}
+                    className={`${lit ? 'eco2-edge-active' : 'eco2-edge'}${dimmed ? ' eco2-dim' : ''}`}
+                    d={curvePath(SVG_O + fx + ux * srcInset, SVG_O + fy + uy * srcInset, SVG_O + (cardX - ux * dstInset), SVG_O + (cardY - uy * dstInset))}
                     fill="none" stroke={hueOf(g.id)}
                     strokeWidth={lit ? 2.4 : 1.6} strokeLinecap="round" strokeOpacity={lit ? 1 : 0.6}
                   />
@@ -145,7 +155,7 @@ function Stage({ geo, hub, hueOf, countLabel, footLegend, chipView, edgeColor, s
                     return (
                       <path
                         key={r.id}
-                        className={`${on || lit ? 'eco2-edge-active' : 'eco2-edge'}${hasSel && !on && !lit ? ' eco2-dim' : ''}`}
+                        className={`${on || lit ? 'eco2-edge-active' : 'eco2-edge'}${(dimmed || (hasSel && !on && !lit)) ? ' eco2-dim' : ''}`}
                         d={curvePath(SVG_O + cardX + sign * CARD_HW, SVG_O + cardY, SVG_O + x - sign * (CHIP_W / 2), SVG_O + y)}
                         fill="none" stroke={edgeColor(r)}
                         strokeWidth={on ? 2.4 : 1.6} strokeLinecap="round" strokeOpacity={on || lit ? 1 : 0.6}
@@ -451,11 +461,63 @@ const DAVID_GEO = geoFor(GROUPS, DAVID_ANGLE, (g) =>
     ? SUBGROUPS.map((sg) => ({ id: `sub:${sg.id}`, folder: true, label: sg.label, color: sg.color, count: SUB_COUNT[sg.id] }))
     : PLATFORMS.filter((p) => p.group === g.id))
 
-// David focused level: Sandbox re-rooted as the hub, children as branches.
-const SANDBOX_ANGLE = { bd: 90, global: 270, tl: 0 }
-const SANDBOX_GEO = geoFor(SUBGROUPS, SANDBOX_ANGLE, (sg) => PLATFORMS.filter((p) => p.subgroup === sg.id))
-const SANDBOX_HUB = { eb: 'DAVID · SANDBOX', nm: 'Sandbox', tg: 'Working demonstrations to win the next engagement.' }
+// David focused level: the SAME scene with Sandbox's subtree expanded in
+// place. Children hang off the Sandbox card (outward, away from the hub);
+// the camera glides to frame the subtree — hub and siblings stay in the
+// world, dimmed, exactly like a branch zoom.
 const SUB_HUE = Object.fromEntries(SUBGROUPS.map((sg) => [sg.id, sg.color]))
+const SBX = -RX_SPOKE // sandbox card center x (left spoke)
+const SUB_POS = {
+  tl: { x: SBX, y: -320 },
+  bd: { x: SBX, y: 320 },
+  global: { x: SBX - 470, y: 0 },
+}
+function subChips(sgId, cx, cy) {
+  const items = PLATFORMS.filter((p) => p.subgroup === sgId)
+  const n = items.length
+  if (sgId === 'bd') {
+    // flank left/right of the card
+    const half = Math.ceil(n / 2)
+    return items.map((p, i) => {
+      const side = i < half ? -1 : 1
+      const m = side === -1 ? half : n - half
+      const j = side === -1 ? i : i - half
+      return { r: p, x: cx + side * (CARD_HW + CHIP_GAP + CHIP_W / 2), y: cy + (j - (m - 1) / 2) * CHIP_VSTEP }
+    })
+  }
+  // column outward-left
+  return items.map((p, i) => ({ r: p, x: cx - (CARD_HW + CHIP_GAP + CHIP_W / 2), y: cy + (i - (n - 1) / 2) * CHIP_VSTEP }))
+}
+const SUB_ENTRIES = SUBGROUPS.map((sg) => {
+  const pos = SUB_POS[sg.id]
+  const chips = subChips(sg.id, pos.x, pos.y)
+  const xs = [pos.x - CARD_HW, pos.x + CARD_HW, ...chips.flatMap(({ x }) => [x - CHIP_W / 2, x + CHIP_W / 2])]
+  const ys = [pos.y - CARD_HH, pos.y + CARD_HH, ...chips.flatMap(({ y }) => [y - CHIP_H / 2, y + CHIP_H / 2])]
+  return {
+    g: sg, cardX: pos.x, cardY: pos.y, chips, from: { x: SBX, y: 0 },
+    bbox: { cx: 0, cy: 0, w: 0, h: 0 },
+    _xs: xs, _ys: ys,
+  }
+})
+// Expanded scene = root scene with Sandbox's folder chips removed + subtree.
+const DAVID_GEO_EXPANDED = [
+  ...DAVID_GEO.map((e) => (e.g.id === 'sandbox' ? { ...e, chips: [] } : e)),
+  ...SUB_ENTRIES,
+]
+// Camera frame: sandbox card + whole subtree, biased toward the sandbox card.
+const _fx = [SBX - CARD_HW, SBX + CARD_HW, ...SUB_ENTRIES.flatMap((e) => e._xs)]
+const _fy = [-CARD_HH, CARD_HH, ...SUB_ENTRIES.flatMap((e) => e._ys)]
+const _bb = {
+  minX: Math.min(..._fx), maxX: Math.max(..._fx),
+  minY: Math.min(..._fy), maxY: Math.max(..._fy),
+}
+const SANDBOX_FOCUS_BBOX = {
+  cx: ((_bb.minX + _bb.maxX) / 2) * 0.6 + SBX * 0.4,
+  cy: (_bb.minY + _bb.maxY) / 2,
+  w: _bb.maxX - _bb.minX + 140,
+  h: _bb.maxY - _bb.minY + 140,
+}
+const SANDBOX_LIT = new Set(['sandbox', 'bd', 'tl', 'global'])
 
 export default function EcosystemPage() {
   const [view, setView] = useState('th')
@@ -504,10 +566,12 @@ export default function EcosystemPage() {
         }
       />
       <Stage
-        key={isTH ? 'th' : `david:${davidFocus || 'root'}`}
-        geo={isTH ? TH_GEO : davidFocus ? SANDBOX_GEO : DAVID_GEO}
-        hub={isTH ? TH_HUB : davidFocus ? SANDBOX_HUB : DAVID_HUB}
-        hueOf={(id) => (isTH ? TH_HUE : davidFocus ? SUB_HUE : DAVID_HUE)[id]}
+        key={isTH ? 'th' : 'david'}
+        geo={isTH ? TH_GEO : davidFocus ? DAVID_GEO_EXPANDED : DAVID_GEO}
+        hub={isTH ? TH_HUB : DAVID_HUB}
+        hueOf={(id) => (isTH ? TH_HUE : { ...DAVID_HUE, ...SUB_HUE })[id]}
+        litSet={!isTH && davidFocus ? SANDBOX_LIT : null}
+        focusBBox={!isTH && davidFocus ? SANDBOX_FOCUS_BBOX : null}
         countLabel={isTH
           ? (g, n) => `${n} REGISTERED`
           : (g, n) => (g.id === 'sandbox' && !davidFocus ? `${n} BRANCHES` : `${n} PLATFORMS`)}
