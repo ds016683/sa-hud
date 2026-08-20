@@ -22,6 +22,14 @@ export const GROUPS = [
   { id: 'personal', label: 'Personal', desc: 'The operator\'s own systems.', color: '#F8C761' },
 ]
 
+// Sub-branches: Sandbox is a parent node with three child branches.
+// Clicking Sandbox in the David view re-roots the stage on it.
+export const SUBGROUPS = [
+  { id: 'bd', parent: 'sandbox', label: 'Business Development', desc: 'Demos built to open doors and win the next engagement.', color: '#B79BE8' },
+  { id: 'tl', parent: 'sandbox', label: 'Thought Leadership', desc: "Instruments that carry the firm's point of view.", color: '#8F7BD8' },
+  { id: 'global', parent: 'sandbox', label: 'Global', desc: 'Foundational sandboxes that serve everything else.', color: '#7A66C9' },
+]
+
 export const PLATFORMS = [
   {
     id: "achp", group: "client", label: "ACHP", name: "ACHP Strategy Dashboard",
@@ -74,7 +82,7 @@ export const PLATFORMS = [
     changelog: [{ date: "2026-08-13", entry: "Production task and budget tracker for the Marsh McLennan Agency" }],
   },
   {
-    id: "bellwether", group: "client", label: "Bellwether", name: "Bellwether Safety Net",
+    id: "bellwether", group: "sandbox", subgroup: "tl", label: "Bellwether", name: "Bellwether Safety Net",
     production: { url: "http://bellwether.thirdhorizon.com", note: "Chicago safety-net financial tracking" },
     github: { repo: "ds016683/bellwether", branch: "main", visibility: "private" },
     supabase: { project: "TBD \u2014 confirm project ref" },
@@ -114,7 +122,7 @@ export const PLATFORMS = [
     changelog: [{ date: "2026-03-23", entry: "init: Project Heart \u2014 THS x AHA cardiovascular transparency dashboard" }, { date: "2026-03-23", entry: "Initial commit" }],
   },
   {
-    id: "vitalic", group: "sandbox", label: "Vitalic", name: "Vitalic Health \u00d7 HFMA",
+    id: "vitalic", group: "sandbox", subgroup: "bd", label: "Vitalic", name: "Vitalic Health \u00d7 HFMA",
     production: { url: "https://sandbox.hfma.thirdhorizon.com", note: "Gate-code access" },
     github: { repo: "Third-Horizon-Strategies/sandbox.hfma", branch: "main", visibility: "private" },
     supabase: { project: "Vitalic_Sandbox" },
@@ -124,7 +132,7 @@ export const PLATFORMS = [
     changelog: [{ date: "2026-08-11", entry: "Vitalic Health demo platform: VPI, four pillar modules, Rate Lookup, Odin, gate" }],
   },
   {
-    id: "frontier", group: "sandbox", label: "Frontier", name: "Frontier Rate Intelligence",
+    id: "frontier", group: "sandbox", subgroup: "bd", label: "Frontier", name: "Frontier Rate Intelligence",
     production: { url: "https://sandbox.frontier.thirdhorizon.com", note: "MMA BD sandbox \u00b7 gate-code access" },
     github: { repo: "ds016683/sandbox.frontier", branch: "main", visibility: "private" },
     supabase: { project: "None \u2014 static data on MMA TiC foundation" },
@@ -134,7 +142,7 @@ export const PLATFORMS = [
     changelog: [{ date: "2026-08-12", entry: "Access gate on landing: code MMA2026, session-scoped unlock" }, { date: "2026-08-12", entry: "Landing: logo-only sidebar header; new Executive Overview subtitle" }, { date: "2026-08-12", entry: "Rebrand: Frontier Direct logo top left, MMA powered-by footer, TH silent" }],
   },
   {
-    id: "rosecrance", group: "sandbox", label: "Rosecrance", name: "Rosecrance Co-Creation",
+    id: "rosecrance", group: "sandbox", subgroup: "bd", label: "Rosecrance", name: "Rosecrance Co-Creation",
     production: { url: "https://rosecrance-sandbox.vercel.app", note: "Currently ungated" },
     github: { repo: "Third-Horizon-Strategies/rosecrance-sandbox", branch: "main", visibility: "private" },
     supabase: { project: "TBD \u2014 confirm project ref" },
@@ -144,7 +152,7 @@ export const PLATFORMS = [
     changelog: [{ date: "2026-08-15", entry: "Document the Git-connected deploy path" }, { date: "2026-08-15", entry: "Rebuild the palette on Rosecrance's own annual report" }, { date: "2026-08-15", entry: "Sharpen placement verdicts and add plan-year reset economics" }],
   },
   {
-    id: "starset-sandbox", group: "sandbox", label: "Starset App", name: "Starset Analytics Sandbox",
+    id: "starset-sandbox", group: "sandbox", subgroup: "global", label: "Starset App", name: "Starset Analytics Sandbox",
     production: { url: "TBD \u2014 confirm production URL" },
     github: { repo: "ds016683/starset-app-sandbox", branch: "main", visibility: "private" },
     supabase: { project: "TBD \u2014 confirm project ref" },
@@ -154,7 +162,7 @@ export const PLATFORMS = [
     changelog: [{ date: "2026-06-08", entry: "Initial commit: Starset application sandbox" }],
   },
   {
-    id: "clarity", group: "sandbox", label: "Clarity", name: "Starset Clarity",
+    id: "clarity", group: "sandbox", subgroup: "global", label: "Clarity", name: "Starset Clarity",
     production: { url: "TBD \u2014 confirm production URL", note: "Episode-based cost intelligence" },
     github: { repo: "ds016683/project-clarity", branch: "main", visibility: "private" },
     supabase: { project: "TBD \u2014 confirm project ref" },
@@ -164,7 +172,7 @@ export const PLATFORMS = [
     changelog: [{ date: "2026-04-11", entry: "feat: initial commit \u2014 Clarity preview app (proof of concept, synthetic data)" }],
   },
   {
-    id: "bh-ri", group: "sandbox", label: "BH Rate Intel", name: "BH Rate Intelligence",
+    id: "bh-ri", group: "sandbox", subgroup: "global", label: "BH Rate Intel", name: "BH Rate Intelligence",
     production: { url: "TBD \u2014 confirm production URL", note: "Succeeded by th-bh-ratebook (org)" },
     github: { repo: "ds016683/bh-rate-intelligence", branch: "main", visibility: "private" },
     supabase: { project: "TBD \u2014 confirm project ref" },
@@ -184,7 +192,7 @@ export const PLATFORMS = [
     changelog: [],
   },
   {
-    id: "pshp", group: "sandbox", label: "PSHP", name: "PSHP Rate Intelligence",
+    id: "pshp", group: "client", label: "PSHP", name: "PSHP Rate Intelligence",
     production: { url: "https://pshp-rate-intelligence.vercel.app" },
     github: { repo: "ds016683/pshp-rate-intelligence", branch: "main", visibility: "private" },
     supabase: { project: "vbzteaulswokozkvfhus" },
@@ -194,7 +202,7 @@ export const PLATFORMS = [
     changelog: [{ date: "2026-04-29", entry: "feat: suppress CAH IP rows with badge, exclude from system averages" }, { date: "2026-04-29", entry: "feat: collapsible tree sidebar with system group headers" }, { date: "2026-04-29", entry: "Initial commit \u2014 PSHP Rate Intelligence (Avera)" }],
   },
   {
-    id: "aha-cv", group: "sandbox", label: "AHA CV Index", name: "AHA Cardiovascular Index",
+    id: "aha-cv", group: "sandbox", subgroup: "bd", label: "AHA CV Index", name: "AHA Cardiovascular Index",
     production: { url: "TBD \u2014 confirm production URL", note: "Public repo demo" },
     github: { repo: "ds016683/aha-cardiovascular-index", branch: "main", visibility: "public" },
     supabase: { project: "None \u2014 static demo" },

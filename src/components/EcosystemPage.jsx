@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { ExternalLink, GitBranch, Database, Rocket, Users, ScrollText, ChevronDown, ChevronUp, ShieldAlert } from 'lucide-react'
 import { PageHead } from './sa/SaUi'
-import { GROUPS, PLATFORMS, HEALTH_COLOR, HEALTH_LABEL, LIFECYCLE_LABEL, LIFECYCLE_COLOR, effectiveState } from '../constants/ecosystemArchitecture'
+import { GROUPS, SUBGROUPS, PLATFORMS, HEALTH_COLOR, HEALTH_LABEL, LIFECYCLE_LABEL, LIFECYCLE_COLOR, effectiveState } from '../constants/ecosystemArchitecture'
 import {
   ONTOLOGY, TH_REGISTRY, GHOSTS, SNAPSHOT_AS_OF,
   derivedState, STATE_LABEL, STATE_COLOR, registryOpenItems, registryHealth, stewardship,
@@ -90,7 +90,7 @@ function Hub({ eb, nm, tg }) {
   )
 }
 
-function Stage({ geo, hub, hueOf, countLabel, footLegend, chipView, edgeColor, sel, litGroup, onChip, onCard, onClear, onUp, children }) {
+function Stage({ geo, hub, hueOf, countLabel, footLegend, chipView, edgeColor, sel, litGroup, forceUp, onChip, onCard, onClear, onUp, children }) {
   const wrapRef = useRef(null)
   const [dims, setDims] = useState({ w: 1, h: 1 })
 
@@ -120,7 +120,7 @@ function Stage({ geo, hub, hueOf, countLabel, footLegend, chipView, edgeColor, s
 
   return (
     <div className={`eco2-stage${hasSel ? ' eco2-has-sel' : ''}`} ref={wrapRef} onClick={onClear}>
-      {litGroup && (
+      {(litGroup || forceUp) && (
         <button className="eco2-up" onClick={(e) => { e.stopPropagation(); onUp() }} title="Back to full tree">
           <ChevronUp size={16} />
         </button>
@@ -169,7 +169,7 @@ function Stage({ geo, hub, hueOf, countLabel, footLegend, chipView, edgeColor, s
                 <div className="eb">{g.label.toUpperCase()}</div>
                 <div className="nm">{g.label}</div>
                 <div className="ds">{g.desc}</div>
-                <div className="ct">{chips.length} {countLabel}</div>
+                <div className="ct">{countLabel(g, chips.length)}</div>
               </div>
               {chips.map(({ r, x, y }) => {
                 const cv = chipView(r)
@@ -188,7 +188,7 @@ function Stage({ geo, hub, hueOf, countLabel, footLegend, chipView, edgeColor, s
                         </a>
                       )}
                     </div>
-                    <div className="st"><i style={{ background: cv.dot }}></i>{cv.label} · OPEN VIEWER</div>
+                    <div className="st"><i style={{ background: cv.dot }}></i>{cv.label}</div>
                   </div>
                 )
               })}
@@ -443,10 +443,23 @@ const TH_HUE = Object.fromEntries(ONTOLOGY.map((g) => [g.id, g.color]))
 const DAVID_HUE = Object.fromEntries(GROUPS.map((g) => [g.id, g.color]))
 
 const TH_GEO = geoFor(ONTOLOGY, TH_ANGLE, (g) => TH_REGISTRY.filter((r) => r.type === g.id))
-const DAVID_GEO = geoFor(GROUPS, DAVID_ANGLE, (g) => PLATFORMS.filter((p) => p.group === g.id))
+
+// David root level: Sandbox shows its three child branches as folder nodes.
+const SUB_COUNT = Object.fromEntries(SUBGROUPS.map((sg) => [sg.id, PLATFORMS.filter((p) => p.subgroup === sg.id).length]))
+const DAVID_GEO = geoFor(GROUPS, DAVID_ANGLE, (g) =>
+  g.id === 'sandbox'
+    ? SUBGROUPS.map((sg) => ({ id: `sub:${sg.id}`, folder: true, label: sg.label, color: sg.color, count: SUB_COUNT[sg.id] }))
+    : PLATFORMS.filter((p) => p.group === g.id))
+
+// David focused level: Sandbox re-rooted as the hub, children as branches.
+const SANDBOX_ANGLE = { bd: 90, global: 270, tl: 0 }
+const SANDBOX_GEO = geoFor(SUBGROUPS, SANDBOX_ANGLE, (sg) => PLATFORMS.filter((p) => p.subgroup === sg.id))
+const SANDBOX_HUB = { eb: 'DAVID · SANDBOX', nm: 'Sandbox', tg: 'Working demonstrations to win the next engagement.' }
+const SUB_HUE = Object.fromEntries(SUBGROUPS.map((sg) => [sg.id, sg.color]))
 
 export default function EcosystemPage() {
   const [view, setView] = useState('th')
+  const [davidFocus, setDavidFocus] = useState(null) // null | 'sandbox'
   const [sel, setSel] = useState(null)
   const [selKind, setSelKind] = useState(null) // 'registered' | 'ghost'
   const [litGroup, setLitGroup] = useState(null)
@@ -458,15 +471,16 @@ export default function EcosystemPage() {
   const triageCount = TH_REGISTRY.reduce((n, r) => n + registryOpenItems(r).length, 0)
 
   useEffect(() => {
-    if (!sel && !litGroup) return
+    if (!sel && !litGroup && !davidFocus) return
     const onKey = (e) => {
       if (e.key !== 'Escape') return
       if (sel) { setSel(null); setSelKind(null) }
-      else setLitGroup(null)
+      else if (litGroup) setLitGroup(null)
+      else setDavidFocus(null)
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [sel, litGroup])
+  }, [sel, litGroup, davidFocus])
 
   const clearAll = () => { setSel(null); setSelKind(null); setLitGroup(null) }
 
@@ -482,7 +496,7 @@ export default function EcosystemPage() {
         right={
           <div className="pill-toggle">
             {VIEWS.map((v) => (
-              <button key={v.id} className={view === v.id ? 'on' : ''} onClick={() => { setView(v.id); clearAll() }}>
+              <button key={v.id} className={view === v.id ? 'on' : ''} onClick={() => { setView(v.id); clearAll(); setDavidFocus(null) }}>
                 {v.label}
               </button>
             ))}
@@ -490,16 +504,22 @@ export default function EcosystemPage() {
         }
       />
       <Stage
-        geo={isTH ? TH_GEO : DAVID_GEO}
-        hub={isTH ? TH_HUB : DAVID_HUB}
-        hueOf={(id) => (isTH ? TH_HUE : DAVID_HUE)[id]}
-        countLabel={isTH ? 'REGISTERED' : 'PLATFORMS'}
+        key={isTH ? 'th' : `david:${davidFocus || 'root'}`}
+        geo={isTH ? TH_GEO : davidFocus ? SANDBOX_GEO : DAVID_GEO}
+        hub={isTH ? TH_HUB : davidFocus ? SANDBOX_HUB : DAVID_HUB}
+        hueOf={(id) => (isTH ? TH_HUE : davidFocus ? SUB_HUE : DAVID_HUE)[id]}
+        countLabel={isTH
+          ? (g, n) => `${n} REGISTERED`
+          : (g, n) => (g.id === 'sandbox' && !davidFocus ? `${n} BRANCHES` : `${n} PLATFORMS`)}
+        forceUp={!isTH && !!davidFocus}
         chipView={isTH
-          ? (r) => ({ url: r.url || null, dot: HEALTH_COLOR[registryHealth(r)], label: STATE_LABEL[derivedState(r)] })
-          : (p) => ({ url: p.production?.url || null, dot: HEALTH_COLOR[GHOST_STATE[p.id].health], label: LIFECYCLE_LABEL[GHOST_STATE[p.id].lifecycle] })}
+          ? (r) => ({ url: r.url || null, dot: HEALTH_COLOR[registryHealth(r)], label: `${STATE_LABEL[derivedState(r)]} · OPEN VIEWER` })
+          : (p) => p.folder
+            ? ({ url: null, dot: p.color, label: `${p.count} PLATFORMS · OPEN BRANCH` })
+            : ({ url: p.production?.url || null, dot: HEALTH_COLOR[GHOST_STATE[p.id].health], label: `${LIFECYCLE_LABEL[GHOST_STATE[p.id].lifecycle]} · OPEN VIEWER` })}
         edgeColor={isTH
           ? (r) => STATE_COLOR[derivedState(r)]
-          : (p) => LIFECYCLE_COLOR[GHOST_STATE[p.id].lifecycle]}
+          : (p) => p.folder ? p.color : LIFECYCLE_COLOR[GHOST_STATE[p.id].lifecycle]}
         footLegend={isTH ? (
           <>
             <span style={{ marginRight: 22 }}>STATE IS DERIVED, NEVER STORED · ESC RELEASES</span>
@@ -517,10 +537,16 @@ export default function EcosystemPage() {
         )}
         sel={selKind === 'registered' || selKind === 'david' ? sel : null}
         litGroup={litGroup}
-        onChip={(id) => { setSel(id); setSelKind(isTH ? 'registered' : 'david') }}
-        onCard={(id) => { setLitGroup(litGroup === id ? null : id); setSel(null); setSelKind(null) }}
+        onChip={(id) => {
+          if (!isTH && id.startsWith('sub:')) { setDavidFocus('sandbox'); setSel(null); setSelKind(null); setLitGroup(null); return }
+          setSel(id); setSelKind(isTH ? 'registered' : 'david')
+        }}
+        onCard={(id) => {
+          if (!isTH && id === 'sandbox' && !davidFocus) { setDavidFocus('sandbox'); setSel(null); setSelKind(null); setLitGroup(null); return }
+          setLitGroup(litGroup === id ? null : id); setSel(null); setSelKind(null)
+        }}
         onClear={clearAll}
-        onUp={clearAll}
+        onUp={() => { clearAll(); setDavidFocus(null) }}
       >
         {isTH && <GhostTray ghosts={GHOSTS} sel={selKind === 'ghost' ? sel : null} onGhost={(id) => { setSel(id); setSelKind('ghost'); setLitGroup(null) }} />}
       </Stage>
