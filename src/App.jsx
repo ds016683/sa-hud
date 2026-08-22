@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import {
   LayoutGrid, Lightbulb, Network, LogOut, Menu, X, Target, Users, Sparkles,
-  FileText, MessageSquare, Wallet, CreditCard, LayoutDashboard, Brain,
+  FileText, MessageSquare, Wallet, CreditCard, LayoutDashboard, Brain, Gauge,
 } from 'lucide-react'
 import { getSession, onAuthStateChange, signOut } from './lib/auth'
 import { statusFor, greetingFor } from './constants/saDesign'
@@ -18,8 +18,10 @@ import RelationshipsPage from './components/RelationshipsPage'
 import SlackPage from './components/SlackPage'
 import CompanyFinancePage from './components/CompanyFinancePage'
 import PersonalFinancePage from './components/PersonalFinancePage'
+import DailyPerformancePage from './components/DailyPerformancePage'
 
 const NAV_ITEMS = [
+  { id: 'daily-performance', label: 'Daily Performance', icon: Gauge,        group: 'DAILY PERFORMANCE' },
   { id: 'daily-dashboard', label: 'Daily Dashboard',  icon: LayoutDashboard, group: 'COMMAND' },
   { id: 'brain',           label: 'The Brain',        icon: Brain,           group: 'COMMAND' },
   { id: 'objectives',      label: 'Objectives',       icon: Target,          group: 'COMMAND' },
@@ -118,7 +120,11 @@ function Topbar({ active, now, sov }) {
   const greet = greetingFor(now.getHours())
   const navItem = NAV_ITEMS.find((n) => n.id === active) || {}
   const st = statusFor(sov)
-  const ctx = navItem.group ? `${navItem.group} · ${(navItem.label || '').toUpperCase()}` : 'DAILY DASHBOARD'
+  const ctx = navItem.group
+    ? (navItem.group === (navItem.label || '').toUpperCase()
+        ? navItem.group
+        : `${navItem.group} · ${(navItem.label || '').toUpperCase()}`)
+    : 'DAILY DASHBOARD'
   const title = active === 'daily-dashboard' ? 'Command Center' : navItem.label
 
   return (
@@ -201,6 +207,7 @@ export default function App() {
       <div className={`sa-main${active === 'ecosystem' ? ' sa-surface-dark' : ''}`}>
         <Topbar active={active} now={now} sov={gameState.sovereigntyLevel} />
         <div className="sa-content">
+          {active === 'daily-performance' && <DailyPerformancePage />}
           {active === 'daily-dashboard' && <DailyDashboardPage gameState={gameState} />}
           {active === 'brain'           && <BrainPlaceholder />}
           {active === 'objectives'      && <ObjectivesPage />}
