@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import {
   LayoutGrid, Lightbulb, Network, LogOut, Menu, X, Target, Users, Sparkles,
-  FileText, MessageSquare, Wallet, CreditCard, LayoutDashboard, Brain, Gauge,
+  FileText, MessageSquare, Wallet, CreditCard, LayoutDashboard, Brain, Gauge, ListChecks,
 } from 'lucide-react'
 import { getSession, onAuthStateChange, signOut } from './lib/auth'
 import { statusFor, greetingFor } from './constants/saDesign'
@@ -19,9 +19,11 @@ import SlackPage from './components/SlackPage'
 import CompanyFinancePage from './components/CompanyFinancePage'
 import PersonalFinancePage from './components/PersonalFinancePage'
 import DailyPerformancePage from './components/DailyPerformancePage'
+import SessionBoardsPage from './components/SessionBoardsPage'
 
 const NAV_ITEMS = [
   { id: 'daily-performance', label: 'Daily Performance', icon: Gauge,        group: 'DAILY PERFORMANCE' },
+  { id: 'session-boards',  label: 'Session Boards',   icon: ListChecks,      group: 'COMMAND' },
   { id: 'daily-dashboard', label: 'Daily Dashboard',  icon: LayoutDashboard, group: 'COMMAND' },
   { id: 'brain',           label: 'The Brain',        icon: Brain,           group: 'COMMAND' },
   { id: 'objectives',      label: 'Objectives',       icon: Target,          group: 'COMMAND' },
@@ -208,6 +210,7 @@ export default function App() {
         <Topbar active={active} now={now} sov={gameState.sovereigntyLevel} />
         <div className="sa-content">
           {active === 'daily-performance' && <DailyPerformancePage />}
+          {active === 'session-boards'  && <SessionBoardsPage />}
           {active === 'daily-dashboard' && <DailyDashboardPage gameState={gameState} />}
           {active === 'brain'           && <BrainPlaceholder />}
           {active === 'objectives'      && <ObjectivesPage />}
