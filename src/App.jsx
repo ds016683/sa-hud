@@ -206,7 +206,7 @@ export default function App() {
   return (
     <div className="sa-app">
       <Sidebar active={active} onChange={setActive} onSignOut={handleSignOut} />
-      <div className={`sa-main${active === 'ecosystem' ? ' sa-surface-dark' : ''}`}>
+      <div className={`sa-main${active === 'ecosystem' ? ' sa-surface-dark' : ''}${active === 'session-boards' ? ' sa-surface-dark sa-dark-scroll' : ''}`}>
         <Topbar active={active} now={now} sov={gameState.sovereigntyLevel} />
         <div className="sa-content">
           {active === 'daily-performance' && <DailyPerformancePage />}

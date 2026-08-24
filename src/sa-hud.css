@@ -1227,3 +1227,6 @@ table.fin-grid { width: 100%; border-collapse: collapse; font-family: var(--font
 /* nodes materialize softly (plays on mount; subtree expansion rides it) */
 @keyframes eco2fadein { from { opacity: 0; transform: translate(-50%, -50%) scale(0.92); } to { opacity: 1; transform: translate(-50%, -50%) scale(1); } }
 .eco2-card, .eco2-chip { animation: eco2fadein 0.45s ease both; }
+
+/* Dark surface variant: full-bleed navy but the page scrolls (Session Boards) */
+.sa-dark-scroll .sa-content { overflow-y: auto; display: block; }
