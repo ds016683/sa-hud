@@ -430,37 +430,33 @@ const DAVID_HUB = {
 const TH_HUE = Object.fromEntries(CATEGORIES.map((g) => [g.id, g.color]))
 const DAVID_HUE = Object.fromEntries(GROUPS.map((g) => [g.id, g.color]))
 
-// ---- TH view: six-spoke category architecture, mirroring the th-tools map.
-// Big categories take the vertical spokes (chips flank left/right); small
-// ones take horizontal spokes and corners (chips run in an outward column).
+// ---- TH view: the SAME six nodes off the nucleus as the th-tools map —
+// Unclassified upper-left, Subscription upper-right, Sandboxes left,
+// Deployed right, Internal lower-left, Business development lower-right.
+// Chips fill outward columns per node (cols listed inner→outer).
 const TH_ROWS = REGISTRY.map((r) => ({ ...r, label: r.name, cat: deriveCategory(r) }))
 const TH_LAYOUT = {
-  sandbox: { x: 0, y: -270, mode: 'flank' },
-  deployed: { x: 0, y: 270, mode: 'flank' },
-  unclassified: { x: -430, y: 0, mode: 'col', dir: -1 },
-  subscription: { x: 430, y: 0, mode: 'col', dir: 1 },
-  internal: { x: -500, y: 430, mode: 'col', dir: -1 },
-  business_development: { x: 500, y: 430, mode: 'col', dir: 1 },
-  client_platform: { x: 500, y: -430, mode: 'col', dir: 1 },
+  unclassified: { x: -260, y: -330, cols: [{ x: -519, n: 3 }, { x: -1, n: 3 }] },
+  subscription: { x: 260, y: -330, cols: [{ x: 519, n: 2 }] },
+  sandbox: { x: -430, y: 0, cols: [{ x: -689, n: 6 }, { x: -882, n: 6 }] },
+  deployed: { x: 430, y: 0, cols: [{ x: 689, n: 6 }, { x: 882, n: 6 }] },
+  internal: { x: -260, y: 330, cols: [{ x: -519, n: 2 }] },
+  business_development: { x: 260, y: 330, cols: [{ x: 519, n: 2 }] },
+  // Defensive slot: no registered rows today; hides while empty.
+  client_platform: { x: 0, y: 540, cols: [{ x: 259, n: 99 }] },
 }
-const CHIP_OFF = CARD_HW + CHIP_GAP + CHIP_W / 2
 const TH_GEO = CATEGORIES
   .map((g) => ({ g, items: TH_ROWS.filter((r) => r.cat === g.id) }))
   .filter(({ items }) => items.length > 0)
   .map(({ g, items }) => {
     const L = TH_LAYOUT[g.id]
-    const n = items.length
-    let chips
-    if (L.mode === 'flank') {
-      const half = Math.ceil(n / 2)
-      chips = items.map((r, i) => {
-        const side = i < half ? -1 : 1
-        const m = side === -1 ? half : n - half
-        const j = side === -1 ? i : i - half
-        return { r, x: L.x + side * CHIP_OFF, y: L.y + (j - (m - 1) / 2) * CHIP_VSTEP }
-      })
-    } else {
-      chips = items.map((r, i) => ({ r, x: L.x + L.dir * CHIP_OFF, y: L.y + (i - (n - 1) / 2) * CHIP_VSTEP }))
+    const chips = []
+    let idx = 0
+    for (const col of L.cols) {
+      const take = items.slice(idx, idx + col.n)
+      take.forEach((r, j) => chips.push({ r, x: col.x, y: L.y + (j - (take.length - 1) / 2) * CHIP_VSTEP }))
+      idx += take.length
+      if (idx >= items.length) break
     }
     const xs = [L.x - CARD_HW, L.x + CARD_HW, ...chips.flatMap(({ x }) => [x - CHIP_W / 2, x + CHIP_W / 2])]
     const ys = [L.y - CARD_HH, L.y + CARD_HH, ...chips.flatMap(({ y }) => [y - CHIP_H / 2, y + CHIP_H / 2])]
@@ -472,9 +468,9 @@ const TH_GEO = CATEGORIES
     }
     return { g, cardX: L.x, cardY: L.y, chips, bbox }
   })
-// Measured scene bounds (collision-checked): x ±852, y -471..494.
-const TH_NATURAL_W = 2 * (852 + 40) + 170
-const TH_NATURAL_H = 965 + 300
+// Measured scene bounds (collision-checked below via node script): x ±975.
+const TH_NATURAL_W = 2 * (975 + 40) + 170
+const TH_NATURAL_H = 860 + 300
 
 // David root level: Sandbox shows its three child branches as folder nodes.
 const SUB_COUNT = Object.fromEntries(SUBGROUPS.map((sg) => [sg.id, PLATFORMS.filter((p) => p.subgroup === sg.id).length]))
