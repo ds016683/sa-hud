@@ -7,6 +7,7 @@ const SECTION_BLUE = '#1F4060'
 // Ledger sources feeding the composer. key must match source_counts keys.
 const SOURCES = [
   { key: 'meetings', label: 'Granola' },
+  { key: 'sessions', label: 'Session Boards' },
   { key: 'emails', label: 'Email' },
   { key: 'calendar', label: 'Calendar' },
   { key: 'time', label: 'Time Tracking' },
@@ -66,13 +67,18 @@ export default function DailyPerformancePage() {
   const [saving, setSaving] = useState(false)
 
   const load = useCallback(async () => {
-    const { data, error } = await supabase
-      .from('daily_performance')
-      .select('*')
-      .order('generated_at', { ascending: false })
-      .limit(30)
-    if (!error) { setRows(data || []); setSel(0) }
-    else setRows([])
+    try {
+      const { data, error } = await supabase
+        .from('daily_performance')
+        .select('*')
+        .order('generated_at', { ascending: false })
+        .limit(30)
+      if (!error) { setRows(data || []); setSel(0) }
+      else setRows([])
+    } catch {
+      // network hiccup — show the empty state instead of hanging on LOADING
+      setRows((prev) => prev || [])
+    }
   }, [])
 
   useEffect(() => { load() }, [load])
