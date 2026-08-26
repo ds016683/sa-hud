@@ -226,6 +226,49 @@ export default function DailyPerformancePage() {
         ))}
       </div>
 
+      {/* Interactions */}
+      <div className="col-6 sa-card" style={{ padding: 'var(--sa-pad)' }}>
+        <SectionHeader>Interactions</SectionHeader>
+        {!(row.interactions || []).length && (
+          <div style={{ fontSize: '13.5px', color: 'var(--sa-ink-3)' }}>No interactions surfaced yet.</div>
+        )}
+        {(row.interactions || []).map((s, i) => (
+          <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', padding: '6px 0' }}>
+            <span style={{ width: '7px', height: '7px', borderRadius: '50%', flexShrink: 0, background: SECTION_BLUE, opacity: 0.55, marginTop: '7px' }} />
+            <span style={{ fontSize: '14px', lineHeight: 1.5, color: 'var(--sa-ink)' }}>{s}</span>
+          </div>
+        ))}
+      </div>
+
+      {/* Learned */}
+      <div className="col-6 sa-card" style={{ padding: 'var(--sa-pad)' }}>
+        <SectionHeader>What You Learned</SectionHeader>
+        {!(row.learned || []).length && (
+          <div style={{ fontSize: '13.5px', color: 'var(--sa-ink-3)' }}>Nothing banked yet.</div>
+        )}
+        {(row.learned || []).map((s, i) => (
+          <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', padding: '6px 0' }}>
+            <span style={{ width: '7px', height: '7px', borderRadius: '2px', flexShrink: 0, background: 'var(--sa-accent)', marginTop: '7px' }} />
+            <span style={{ fontSize: '14px', lineHeight: 1.5, color: 'var(--sa-ink)' }}>{s}</span>
+          </div>
+        ))}
+      </div>
+
+      {/* Team allocation */}
+      <div className="col-6 sa-card" style={{ padding: 'var(--sa-pad)' }}>
+        <SectionHeader>Team Allocation</SectionHeader>
+        {!(row.team_allocation || []).length && (
+          <div style={{ fontSize: '13.5px', color: 'var(--sa-ink-3)' }}>No time logged yet today.</div>
+        )}
+        {(row.team_allocation || []).map((s, i) => (
+          <div key={i} style={{
+            fontSize: '13.5px', lineHeight: 1.6, padding: '4px 0',
+            color: 'var(--sa-ink)', fontFamily: 'var(--font-mono, monospace)',
+            borderTop: i ? '1px solid var(--sa-border)' : 'none',
+          }}>{s}</div>
+        ))}
+      </div>
+
       {/* New items to resource / task / assign */}
       <div className="col-6 sa-card" style={{ padding: 'var(--sa-pad)' }}>
         <SectionHeader>Needs Resourcing · Tasking · Assignment</SectionHeader>
@@ -241,7 +284,7 @@ export default function DailyPerformancePage() {
       </div>
 
       {/* Composer's read on the day */}
-      <div className="col-6 sa-card" style={{ padding: 'var(--sa-pad)' }}>
+      <div className="col-12 sa-card" style={{ padding: 'var(--sa-pad)' }}>
         <SectionHeader>The Read</SectionHeader>
         {row.notes
           ? <p style={{ fontSize: '14px', lineHeight: 1.65, color: 'var(--sa-ink-2)', margin: 0 }}>{row.notes}</p>
