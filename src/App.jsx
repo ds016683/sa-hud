@@ -175,7 +175,16 @@ export default function App() {
   const [session, setSession] = useState(undefined)
   const [active, setActive] = useState('daily-dashboard')
   const [now, setNow] = useState(new Date())
+  const [dpCip, setDpCip] = useState(() => {
+    try { return localStorage.getItem('dp-theme') === 'cip' } catch { return false }
+  })
   const gameState = useGameState()
+
+  useEffect(() => {
+    const onTheme = (e) => setDpCip(!!e.detail)
+    window.addEventListener('dp-cip', onTheme)
+    return () => window.removeEventListener('dp-cip', onTheme)
+  }, [])
 
   useEffect(() => {
     getSession().then(s => setSession(s))
@@ -206,7 +215,7 @@ export default function App() {
   return (
     <div className="sa-app">
       <Sidebar active={active} onChange={setActive} onSignOut={handleSignOut} />
-      <div className={`sa-main${active === 'ecosystem' ? ' sa-surface-dark' : ''}${active === 'session-boards' ? ' sa-surface-dark sa-dark-scroll' : ''}`}>
+      <div className={`sa-main${active === 'ecosystem' ? ' sa-surface-dark' : ''}${active === 'session-boards' || (active === 'daily-performance' && dpCip) ? ' sa-surface-dark sa-dark-scroll' : ''}`}>
         <Topbar active={active} now={now} sov={gameState.sovereigntyLevel} />
         <div className="sa-content">
           {active === 'daily-performance' && <DailyPerformancePage />}
