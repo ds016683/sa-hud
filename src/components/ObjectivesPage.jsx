@@ -383,7 +383,7 @@ function MorningArrival({ meditation, onSubmit }) {
   if (meditation && !answerOpen && !playing && progress === 0) {
     // Already done today — collapsed pill
     return (
-      <div style={{ ...S.panel, background: 'linear-gradient(135deg, rgba(169,201,232,0.10) 0%, #FFFFFF 100%)', borderColor: 'rgba(169,201,232,0.35)' }}>
+      <div style={{ ...S.panel, marginBottom: 0, height: '100%', boxSizing: 'border-box', background: 'rgba(169,201,232,0.05)', borderColor: 'rgba(169,201,232,0.25)' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
           <div>
             <div style={{ fontSize: 11, color: GRAY, marginBottom: 2 }}>{dateStr} · Already arrived today</div>
@@ -399,7 +399,7 @@ function MorningArrival({ meditation, onSubmit }) {
   }
 
   return (
-    <div style={{ ...S.panel, background: 'linear-gradient(135deg, rgba(169,201,232,0.10) 0%, #FFFFFF 100%)', borderColor: 'rgba(169,201,232,0.35)' }}>
+    <div style={{ ...S.panel, marginBottom: 0, height: '100%', boxSizing: 'border-box', background: 'rgba(169,201,232,0.05)', borderColor: 'rgba(169,201,232,0.25)' }}>
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 8 }}>
         <div>
           <div style={{ fontSize: 11, fontWeight: 700, color: NAVY, textTransform: 'uppercase', letterSpacing: '0.1em' }}>☀ {greeting}</div>
@@ -421,7 +421,7 @@ function MorningArrival({ meditation, onSubmit }) {
           {Array.from({ length: dotCount }).map((_, i) => (
             <span key={i} style={{
               width: 6, height: 6, borderRadius: '50%',
-              background: i < filledDots ? NAVY : 'rgba(255,255,255,0.22)',
+              background: i < filledDots ? '#F8C761' : 'rgba(255,255,255,0.22)',
               transition: 'background 0.2s'
             }} />
           ))}
@@ -592,6 +592,76 @@ function CapacityMeter({ used, capacity }) {
           : remaining > 0 ? 'Pebbles only — keep it light.'
           : 'Full. Finish before adding.'}
       </div>
+    </div>
+  )
+}
+
+
+// =============================================================================
+// MetersRail — Sovereignty + Capacity as vertical gauges beside the content
+// =============================================================================
+
+function MetersRail({ score, pressure, used, capacity, breakdownCount, open, onToggle }) {
+  const zone = sovZone(score)
+  const capPct = Math.min(100, (used / capacity) * 100)
+  const over = used > capacity
+  const capColor = over ? '#E06C5F' : capPct >= 80 ? '#E6B54F' : '#A9C9E8'
+  const Meter = ({ value, valueColor, label, fill, chip }) => (
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, flex: 1, minWidth: 0 }}>
+      <div style={{ fontSize: 20, fontWeight: 700, color: valueColor, lineHeight: 1 }}>{value}</div>
+      <div style={{ flex: 1, minHeight: 130, width: 12, borderRadius: 999, background: 'rgba(255,255,255,0.10)', position: 'relative', overflow: 'hidden' }}>
+        {fill}
+      </div>
+      <div style={{ fontSize: 9, fontFamily: 'var(--font-mono, monospace)', letterSpacing: '1.6px', color: '#A9C9E8' }}>{label}</div>
+      {chip}
+    </div>
+  )
+  return (
+    <div style={{ ...S.panel, marginBottom: 0, height: '100%', boxSizing: 'border-box', display: 'flex', flexDirection: 'column', gap: 12, padding: '18px 14px 12px' }}>
+      <div style={{ display: 'flex', gap: 14, flex: 1, alignItems: 'stretch' }}>
+        <Meter
+          value={score} valueColor={zone.color} label="SOV"
+          fill={<div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: `${score * 10}%`, borderRadius: 999, transition: 'height .4s', background: 'linear-gradient(0deg, #E06C5F 0%, #E6B54F 35%, #A9C9E8 68%, #F8C761 100%)' }} />}
+          chip={<span style={{ ...S.chip(zone.bg, zone.color), fontSize: 8, padding: '2px 6px', textAlign: 'center' }}>{zone.label}</span>}
+        />
+        <Meter
+          value={`${used}/${capacity}`} valueColor={over ? '#E06C5F' : '#EAF1F8'} label="CAP"
+          fill={<div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: `${capPct}%`, borderRadius: 999, transition: 'height .4s', background: capColor }} />}
+          chip={<span style={{ fontSize: 9, color: GRAY, textAlign: 'center', lineHeight: 1.3 }}>{over ? 'over' : capacity - used >= 9 ? 'Boulder fits' : capacity - used >= 4 ? 'Stone fits' : capacity - used > 0 ? 'Pebbles only' : 'Full'}</span>}
+        />
+      </div>
+      <button onClick={onToggle} style={{ background: 'none', border: `1px solid ${PANEL_BORDER}`, borderRadius: 999, padding: '5px 8px', fontSize: 10, color: TEXT_DIM, cursor: 'pointer', fontFamily: 'inherit' }}>
+        {open ? 'hide detail' : `what's eating it (${breakdownCount})`}
+      </button>
+    </div>
+  )
+}
+
+function MetricsDetail({ breakdown, history, pressure }) {
+  return (
+    <div style={S.panel}>
+      <div style={{ ...S.panelTitle, display: 'flex', justifyContent: 'space-between' }}>
+        <span>Pressure · what&apos;s eating it</span>
+        <span style={{ color: GRAY, fontWeight: 400 }}>pressure {pressure} · 10 − pressure = sov</span>
+      </div>
+      {breakdown.length === 0 ? (
+        <div style={{ fontSize: 12, color: GRAY, fontStyle: 'italic' }}>Board is empty. Sovereignty is at ceiling.</div>
+      ) : breakdown.slice(0, 8).map(b => (
+        <div key={b.id} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 0', fontSize: 12, borderBottom: `1px solid ${PANEL_BORDER}` }}>
+          <span style={{ flex: 1, color: NAVY }}>{b.title}</span>
+          <span style={{ fontSize: 10, color: GRAY }}>w{b.weight}</span>
+          {b.stakes > 1 && <span style={S.chip('rgba(224,108,95,0.16)', '#F0A79E')}>×{b.stakes}</span>}
+          {b.urgency > 1 && <span style={S.chip('rgba(248,199,97,0.14)', '#F2D592')}>×{b.urgency}</span>}
+          {b.urgency < 1 && <span style={S.chip('rgba(255,255,255,0.10)', GRAY)}>×{b.urgency}</span>}
+          <span style={{ fontSize: 12, fontWeight: 700, color: NAVY, minWidth: 28, textAlign: 'right' }}>−{b.pressure}</span>
+        </div>
+      ))}
+      {history.length > 1 && (
+        <div style={{ marginTop: 12, paddingTop: 10, borderTop: `1px solid ${PANEL_BORDER}` }}>
+          <div style={{ fontSize: 10, color: '#A9C9E8', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '1.4px', fontFamily: 'var(--font-mono, monospace)' }}>30-day trend</div>
+          <SparkLine data={history.map(h => h.score)} />
+        </div>
+      )}
     </div>
   )
 }
@@ -1824,6 +1894,7 @@ export default function ObjectivesPage() {
   const [tab, setTab] = useState(() => localStorage.getItem('objectives-tab') || 'list') // 'list' | 'dashboard' | 'bin'
   const [container, setContainer] = useState(() => localStorage.getItem('objectives-container') || 'queue') // 'queue' | 'waiting' | 'delegated' | 'released' | 'inbox'
   const [editing, setEditing] = useState(null) // objective being edited
+  const [metricsOpen, setMetricsOpen] = useState(false)
 
   useEffect(() => { localStorage.setItem('objectives-view', viewMode) }, [viewMode])
   useEffect(() => { localStorage.setItem('objectives-tab', tab) }, [tab])
@@ -1942,11 +2013,16 @@ export default function ObjectivesPage() {
             onForeman={(id) => releaseObjective(id, 'foreman')}
           />
 
-          <MorningArrival meditation={meditation} onSubmit={saveMeditationAnswer} />
+          <div style={{ display: 'grid', gridTemplateColumns: '172px 1fr', gap: 12, marginBottom: 12, alignItems: 'stretch' }}>
+            <MetersRail
+              score={score} pressure={pressure} used={ramUsed} capacity={ramCap}
+              breakdownCount={pressureBreakdown.length}
+              open={metricsOpen} onToggle={() => setMetricsOpen(o => !o)}
+            />
+            <MorningArrival meditation={meditation} onSubmit={saveMeditationAnswer} />
+          </div>
 
-          <SovereigntyReading score={score} pressure={pressure} breakdown={pressureBreakdown} history={sovHistory} />
-
-          <CapacityMeter used={ramUsed} capacity={ramCap} />
+          {metricsOpen && <MetricsDetail breakdown={pressureBreakdown} history={sovHistory} pressure={pressure} />}
 
           {anchorActive && (
             <div style={S.panel}>
