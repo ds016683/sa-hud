@@ -2055,7 +2055,7 @@ export default function ObjectivesPage() {
             onEdit={setEditing}
           />
 
-          <div style={{ ...S.panel, background: 'rgba(169,201,232,0.12)', border: `2px solid rgba(169,201,232,0.4)`, boxShadow: '0 2px 12px rgba(34, 197, 94, 0.08)' }}>
+          <div style={{ ...S.panel, background: 'rgba(67,211,146,0.05)', border: `1px solid rgba(67,211,146,0.45)`, boxShadow: 'none' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, gap: 8, flexWrap: 'wrap' }}>
               <div style={{ ...S.panelTitle, fontSize: 16, color: '#43D392', marginBottom: 0, display: 'inline-flex', alignItems: 'center', gap: 8 }}>
                 <span style={{ width: 8, height: 8, borderRadius: 4, background: '#43D392', display: 'inline-block' }} />
