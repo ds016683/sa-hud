@@ -225,12 +225,23 @@ export default function DailyPerformancePage() {
         </div>
       </div>
 
-      {/* The day so far */}
+      {/* The day so far — CIP body copy is the sans (Lora is headings-only in
+          the deck grammar; serif body at 400/loose is the known dissonance) */}
       <div className={`col-12 ${T.cardClass}`} style={T.cardStyle}>
         <SectionHeader cip={cip}>The Day So Far</SectionHeader>
-        <p className="sa-serif" style={{ fontSize: cip ? '19px' : '18px', lineHeight: 1.7, margin: 0, maxWidth: '80ch', ...T.serifStyle, fontWeight: cip ? 400 : undefined }}>
-          {row.summary}
-        </p>
+        {cip ? (
+          <p style={{
+            fontSize: '15.5px', lineHeight: 1.75, margin: 0, maxWidth: '72ch',
+            color: 'rgba(234,241,248,0.88)',
+            paddingLeft: '18px', borderLeft: `2px solid rgba(248,199,97,0.55)`,
+          }}>
+            {row.summary}
+          </p>
+        ) : (
+          <p className="sa-serif" style={{ fontSize: '18px', lineHeight: 1.65, margin: 0, maxWidth: '78ch', color: 'var(--sa-ink)' }}>
+            {row.summary}
+          </p>
+        )}
       </div>
 
       {/* Must be done today */}
