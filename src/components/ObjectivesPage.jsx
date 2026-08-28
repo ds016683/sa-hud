@@ -63,7 +63,7 @@ function SizeDot({ weight }) {
 // 6-state route icon strip. Current state shows grayed; others are clickable.
 // states: active · parked (queue) · waiting · foreman (delegated) · released · inbox
 const ROUTE_STATES = [
-  { key: 'active',   label: 'Active',    color: '#F8C761', Icon: Play },
+  { key: 'active',   label: 'Active',    color: '#43D392', Icon: Play },
   { key: 'parked',   label: 'In Queue',  color: '#9DB0C1', Icon: RaceTrack },
   { key: 'waiting',  label: 'Waiting',   color: '#A9C9E8', Icon: Hourglass },
   { key: 'foreman',  label: 'Delegated', color: '#B4A3E8', Icon: ArrowUpRight },
@@ -120,7 +120,7 @@ const SOV_ZONES = [
   { min: 1, max: 3,  label: 'Triage',      color: '#E06C5F', bg: 'rgba(224,108,95,0.16)', desc: 'Execution only. Design parked.' },
   { min: 4, max: 6,  label: 'Operating',   color: '#E8C06A', bg: 'rgba(248,199,97,0.14)', desc: 'Normal mix. Working through.' },
   { min: 7, max: 8,  label: 'Caught Up',   color: '#A9C9E8', bg: 'rgba(169,201,232,0.14)', desc: 'Design work unlocked.' },
-  { min: 9, max: 10, label: 'Open Water',  color: '#E6B54F', bg: 'rgba(248,199,97,0.14)', desc: 'Generative. Build what only you can build.' },
+  { min: 9, max: 10, label: 'Open Water',  color: '#43D392', bg: 'rgba(67,211,146,0.14)', desc: 'Generative. Build what only you can build.' },
 ]
 const sovZone = (s) => SOV_ZONES.find(z => s >= z.min && s <= z.max) || SOV_ZONES[1]
 
@@ -329,9 +329,9 @@ const S = {
   sub: { fontSize: 10, color: GRAY, margin: '6px 0 0', fontFamily: 'var(--font-mono, monospace)', letterSpacing: '1.4px', textTransform: 'uppercase' },
   panel: { background: PANEL_BG, border: `1px solid ${PANEL_BORDER}`, borderRadius: 12, padding: 16, marginBottom: 12, boxShadow: 'none' },
   panelTitle: { fontSize: 10, fontWeight: 600, color: '#A9C9E8', textTransform: 'uppercase', letterSpacing: '1.6px', marginBottom: 10, fontFamily: 'var(--font-mono, monospace)' },
-  btnPrimary: { background: '#F8C761', color: '#16324A', border: 'none', borderRadius: 8, padding: '8px 14px', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' },
+  btnPrimary: { background: '#A9C9E8', color: '#0E2336', border: 'none', borderRadius: 8, padding: '8px 14px', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' },
   btnGhost: { background: 'rgba(255,255,255,0.05)', color: NAVY, border: `1px solid ${PANEL_BORDER}`, borderRadius: 8, padding: '6px 12px', fontSize: 12, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit' },
-  btnDone: { background: '#E6B54F', color: '#16324A', border: 'none', borderRadius: 6, padding: '6px 10px', fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', display: 'inline-flex', alignItems: 'center', gap: 4 },
+  btnDone: { background: '#A9C9E8', color: '#0E2336', border: 'none', borderRadius: 6, padding: '6px 10px', fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', display: 'inline-flex', alignItems: 'center', gap: 4 },
   btnForeman: { background: '#7C68C4', color: 'white', border: 'none', borderRadius: 6, padding: '6px 10px', fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', display: 'inline-flex', alignItems: 'center', gap: 4 },
   btnPark: { background: 'transparent', color: GRAY, border: `1px solid ${PANEL_BORDER}`, borderRadius: 6, padding: '6px 8px', fontSize: 11, cursor: 'pointer', fontFamily: 'inherit', display: 'inline-flex', alignItems: 'center', gap: 4 },
   chip: (bg, fg) => ({ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 9999, background: bg, color: fg, textTransform: 'uppercase', letterSpacing: '0.05em' }),
@@ -414,14 +414,14 @@ function MorningArrival({ meditation, onSubmit }) {
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '10px 0' }}>
         <button onClick={toggle} aria-label={playing ? 'Pause' : 'Play'}
-          style={{ width: 48, height: 48, borderRadius: '50%', border: 'none', background: '#F8C761', color: '#16324A', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: '0 2px 8px rgba(0,0,0,0.4)' }}>
+          style={{ width: 48, height: 48, borderRadius: '50%', border: 'none', background: '#A9C9E8', color: '#0E2336', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: '0 2px 8px rgba(0,0,0,0.4)' }}>
           {playing ? <Pause size={20} /> : <Play size={20} style={{ marginLeft: 2 }} />}
         </button>
         <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 3, flexWrap: 'wrap' }}>
           {Array.from({ length: dotCount }).map((_, i) => (
             <span key={i} style={{
               width: 6, height: 6, borderRadius: '50%',
-              background: i < filledDots ? '#F8C761' : 'rgba(255,255,255,0.22)',
+              background: i < filledDots ? '#A9C9E8' : 'rgba(255,255,255,0.22)',
               transition: 'background 0.2s'
             }} />
           ))}
@@ -498,7 +498,7 @@ function SovereigntyReading({ score, pressure, breakdown, history }) {
           <div style={{
             position: 'absolute', top: 0, left: 0, bottom: 0,
             width: `${score * 10}%`,
-            background: `linear-gradient(90deg, #E06C5F 0%, #E6B54F 35%, #A9C9E8 68%, #F8C761 100%)`,
+            background: `linear-gradient(90deg, #E06C5F 0%, #E6B54F 50%, #43D392 100%)`,
             transition: 'width 0.4s'
           }} />
           <div style={{ position: 'absolute', top: -2, left: `calc(${score * 10}% - 7px)`, width: 14, height: 14, borderRadius: '50%', background: 'rgba(255,255,255,0.05)', border: `2px solid ${zone.color}`, boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
@@ -605,7 +605,7 @@ function MetersRail({ score, pressure, used, capacity, breakdownCount, open, onT
   const zone = sovZone(score)
   const capPct = Math.min(100, (used / capacity) * 100)
   const over = used > capacity
-  const capColor = over ? '#E06C5F' : capPct >= 80 ? '#E6B54F' : '#A9C9E8'
+  const capColor = over ? '#E06C5F' : capPct >= 80 ? '#E6B54F' : '#43D392'
   const Meter = ({ value, valueColor, label, fill, chip }) => (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, flex: 1, minWidth: 0 }}>
       <div style={{ fontSize: 20, fontWeight: 700, color: valueColor, lineHeight: 1 }}>{value}</div>
@@ -621,7 +621,7 @@ function MetersRail({ score, pressure, used, capacity, breakdownCount, open, onT
       <div style={{ display: 'flex', gap: 14, flex: 1, alignItems: 'stretch' }}>
         <Meter
           value={score} valueColor={zone.color} label="SOV"
-          fill={<div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: `${score * 10}%`, borderRadius: 999, transition: 'height .4s', background: 'linear-gradient(0deg, #E06C5F 0%, #E6B54F 35%, #A9C9E8 68%, #F8C761 100%)' }} />}
+          fill={<div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: `${score * 10}%`, borderRadius: 999, transition: 'height .4s', background: 'linear-gradient(0deg, #E06C5F 0%, #E6B54F 50%, #43D392 100%)' }} />}
           chip={<span style={{ ...S.chip(zone.bg, zone.color), fontSize: 8, padding: '2px 6px', textAlign: 'center' }}>{zone.label}</span>}
         />
         <Meter
@@ -792,7 +792,7 @@ function EditObjectiveModal({ o, onClose, onSave, onDelete, onMove }) {
             <div style={{ fontSize: 10, color: GRAY, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Effort</div>
             <div style={{ display: 'flex', gap: 4 }}>
               {[1,2,3,4,5].map(n => (
-                <button key={n} onClick={() => setEffort(n)} style={{ flex: 1, padding: '8px 0', borderRadius: 6, border: effort === n ? `2px solid ${NAVY}` : `1px solid ${PANEL_BORDER}`, background: effort === n ? 'rgba(248,199,97,0.18)' : 'rgba(255,255,255,0.04)', color: NAVY, fontWeight: effort === n ? 700 : 500, cursor: 'pointer', fontSize: 13, fontFamily: 'inherit' }}>{n}</button>
+                <button key={n} onClick={() => setEffort(n)} style={{ flex: 1, padding: '8px 0', borderRadius: 6, border: effort === n ? `2px solid ${NAVY}` : `1px solid ${PANEL_BORDER}`, background: effort === n ? 'rgba(169,201,232,0.2)' : 'rgba(255,255,255,0.04)', color: NAVY, fontWeight: effort === n ? 700 : 500, cursor: 'pointer', fontSize: 13, fontFamily: 'inherit' }}>{n}</button>
               ))}
             </div>
           </div>
@@ -800,7 +800,7 @@ function EditObjectiveModal({ o, onClose, onSave, onDelete, onMove }) {
             <div style={{ fontSize: 10, color: GRAY, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Importance</div>
             <div style={{ display: 'flex', gap: 4 }}>
               {[1,2,3].map(n => (
-                <button key={n} onClick={() => setImportance(n)} style={{ flex: 1, padding: '8px 0', borderRadius: 6, border: importance === n ? `2px solid ${NAVY}` : `1px solid ${PANEL_BORDER}`, background: importance === n ? 'rgba(248,199,97,0.18)' : 'rgba(255,255,255,0.04)', color: NAVY, fontWeight: importance === n ? 700 : 500, cursor: 'pointer', fontSize: 13, fontFamily: 'inherit' }}>{n}</button>
+                <button key={n} onClick={() => setImportance(n)} style={{ flex: 1, padding: '8px 0', borderRadius: 6, border: importance === n ? `2px solid ${NAVY}` : `1px solid ${PANEL_BORDER}`, background: importance === n ? 'rgba(169,201,232,0.2)' : 'rgba(255,255,255,0.04)', color: NAVY, fontWeight: importance === n ? 700 : 500, cursor: 'pointer', fontSize: 13, fontFamily: 'inherit' }}>{n}</button>
               ))}
             </div>
           </div>
@@ -809,7 +809,7 @@ function EditObjectiveModal({ o, onClose, onSave, onDelete, onMove }) {
         <div style={{ fontSize: 10, color: GRAY, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Kind</div>
         <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
           {['execution','design'].map(k => (
-            <button key={k} onClick={() => setKind(k)} style={{ flex: 1, padding: '8px 0', borderRadius: 6, border: kind === k ? `2px solid ${NAVY}` : `1px solid ${PANEL_BORDER}`, background: kind === k ? 'rgba(248,199,97,0.18)' : 'rgba(255,255,255,0.04)', color: NAVY, fontWeight: kind === k ? 700 : 500, cursor: 'pointer', fontSize: 13, fontFamily: 'inherit' }}>{k}</button>
+            <button key={k} onClick={() => setKind(k)} style={{ flex: 1, padding: '8px 0', borderRadius: 6, border: kind === k ? `2px solid ${NAVY}` : `1px solid ${PANEL_BORDER}`, background: kind === k ? 'rgba(169,201,232,0.2)' : 'rgba(255,255,255,0.04)', color: NAVY, fontWeight: kind === k ? 700 : 500, cursor: 'pointer', fontSize: 13, fontFamily: 'inherit' }}>{k}</button>
           ))}
         </div>
 
@@ -928,13 +928,13 @@ function TriageQueue({ items, onSize, onEdit }) {
           <div style={{ display: 'flex', gap: 2 }}>
             {[1,2,3].map(i => (
               <button key={i} title={`Importance ${i}`} onClick={() => onSize(o.id, { importance: i })}
-                style={{ width: 24, height: 24, borderRadius: 4, border: o.importance === i ? `2px solid ${NAVY}` : `1px solid ${PANEL_BORDER}`, background: o.importance === i ? 'rgba(248,199,97,0.18)' : 'rgba(255,255,255,0.04)', color: NAVY, fontSize: 10, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>I{i}</button>
+                style={{ width: 24, height: 24, borderRadius: 4, border: o.importance === i ? `2px solid ${NAVY}` : `1px solid ${PANEL_BORDER}`, background: o.importance === i ? 'rgba(169,201,232,0.2)' : 'rgba(255,255,255,0.04)', color: NAVY, fontSize: 10, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>I{i}</button>
             ))}
           </div>
           <div style={{ display: 'flex', gap: 2 }}>
             {[1,2,3,4,5].map(e => (
               <button key={e} title={`Effort ${e}`} onClick={() => onSize(o.id, { effort: e })}
-                style={{ width: 22, height: 24, borderRadius: 4, border: o.effort === e ? `2px solid ${NAVY}` : `1px solid ${PANEL_BORDER}`, background: o.effort === e ? 'rgba(248,199,97,0.18)' : 'rgba(255,255,255,0.04)', color: NAVY, fontSize: 10, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>{e}</button>
+                style={{ width: 22, height: 24, borderRadius: 4, border: o.effort === e ? `2px solid ${NAVY}` : `1px solid ${PANEL_BORDER}`, background: o.effort === e ? 'rgba(169,201,232,0.2)' : 'rgba(255,255,255,0.04)', color: NAVY, fontSize: 10, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>{e}</button>
             ))}
           </div>
           <button onClick={() => onSize(o.id, { needs_sizing: false })} title="Looks right" style={{ ...S.btnGhost, fontSize: 10, padding: '4px 8px' }}>✓</button>
@@ -1096,7 +1096,7 @@ function AddObjective({ onAdd, onPark, onForeman }) {
           <div style={{ fontSize: 10, color: GRAY, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Effort (optional)</div>
           <div style={{ display: 'flex', gap: 4 }}>
             {[1,2,3,4,5].map(n => (
-              <button key={n} onClick={() => setEffort(effort === n ? null : n)} style={{ flex: 1, padding: '8px 0', borderRadius: 6, border: effort === n ? `2px solid ${NAVY}` : `1px solid ${PANEL_BORDER}`, background: effort === n ? 'rgba(248,199,97,0.18)' : 'rgba(255,255,255,0.04)', color: NAVY, fontWeight: effort === n ? 700 : 500, cursor: 'pointer', fontSize: 13, fontFamily: 'inherit' }}>{n}</button>
+              <button key={n} onClick={() => setEffort(effort === n ? null : n)} style={{ flex: 1, padding: '8px 0', borderRadius: 6, border: effort === n ? `2px solid ${NAVY}` : `1px solid ${PANEL_BORDER}`, background: effort === n ? 'rgba(169,201,232,0.2)' : 'rgba(255,255,255,0.04)', color: NAVY, fontWeight: effort === n ? 700 : 500, cursor: 'pointer', fontSize: 13, fontFamily: 'inherit' }}>{n}</button>
             ))}
           </div>
         </div>
@@ -1104,7 +1104,7 @@ function AddObjective({ onAdd, onPark, onForeman }) {
           <div style={{ fontSize: 10, color: GRAY, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Importance (optional)</div>
           <div style={{ display: 'flex', gap: 4 }}>
             {[1,2,3].map(n => (
-              <button key={n} onClick={() => setImportance(importance === n ? null : n)} style={{ flex: 1, padding: '8px 0', borderRadius: 6, border: importance === n ? `2px solid ${NAVY}` : `1px solid ${PANEL_BORDER}`, background: importance === n ? 'rgba(248,199,97,0.18)' : 'rgba(255,255,255,0.04)', color: NAVY, fontWeight: importance === n ? 700 : 500, cursor: 'pointer', fontSize: 13, fontFamily: 'inherit' }}>{n}</button>
+              <button key={n} onClick={() => setImportance(importance === n ? null : n)} style={{ flex: 1, padding: '8px 0', borderRadius: 6, border: importance === n ? `2px solid ${NAVY}` : `1px solid ${PANEL_BORDER}`, background: importance === n ? 'rgba(169,201,232,0.2)' : 'rgba(255,255,255,0.04)', color: NAVY, fontWeight: importance === n ? 700 : 500, cursor: 'pointer', fontSize: 13, fontFamily: 'inherit' }}>{n}</button>
             ))}
           </div>
         </div>
@@ -2057,10 +2057,10 @@ export default function ObjectivesPage() {
 
           <div style={{ ...S.panel, background: 'rgba(169,201,232,0.12)', border: `2px solid rgba(169,201,232,0.4)`, boxShadow: '0 2px 12px rgba(34, 197, 94, 0.08)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, gap: 8, flexWrap: 'wrap' }}>
-              <div style={{ ...S.panelTitle, fontSize: 16, color: '#F8C761', marginBottom: 0, display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-                <span style={{ width: 8, height: 8, borderRadius: 4, background: '#F8C761', display: 'inline-block' }} />
+              <div style={{ ...S.panelTitle, fontSize: 16, color: '#43D392', marginBottom: 0, display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ width: 8, height: 8, borderRadius: 4, background: '#43D392', display: 'inline-block' }} />
                 Active · {sortedActive.length}
-                <span style={{ fontSize: 10, fontWeight: 500, color: '#E8C06A', textTransform: 'none', letterSpacing: 0, marginLeft: 4 }}>← work this. nothing else.</span>
+                <span style={{ fontSize: 10, fontWeight: 500, color: 'rgba(67,211,146,0.8)', textTransform: 'none', letterSpacing: 0, marginLeft: 4 }}>← work this. nothing else.</span>
               </div>
               <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
                 <button onClick={() => setViewMode('cards')} title="Card view"
