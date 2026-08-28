@@ -45,7 +45,7 @@ function SizeDot({ weight }) {
   const cfg = {
     pebble:  { px: 6,  bg: '#D6BFA4', label: 'Pebble' },
     stone:   { px: 9,  bg: '#A8896B', label: 'Stone' },
-    boulder: { px: 12, bg: '#54677A', label: 'Boulder' },
+    boulder: { px: 12, bg: '#9DB0C1', label: 'Boulder' },
   }[tier]
   return (
     <span title={`Weight ${w} — ${cfg.label}`}
@@ -63,12 +63,12 @@ function SizeDot({ weight }) {
 // 6-state route icon strip. Current state shows grayed; others are clickable.
 // states: active · parked (queue) · waiting · foreman (delegated) · released · inbox
 const ROUTE_STATES = [
-  { key: 'active',   label: 'Active',    color: '#3E9B6E', Icon: Play },
-  { key: 'parked',   label: 'In Queue',  color: '#54677A', Icon: RaceTrack },
-  { key: 'waiting',  label: 'Waiting',   color: '#2E6F92', Icon: Hourglass },
-  { key: 'foreman',  label: 'Delegated', color: '#6E54B8', Icon: ArrowUpRight },
-  { key: 'released', label: 'Released',  color: '#3E8E68', Icon: CheckeredFlag },
-  { key: 'inbox',    label: 'Inbox',     color: '#A6791E', Icon: InboxIcon },
+  { key: 'active',   label: 'Active',    color: '#6FC094', Icon: Play },
+  { key: 'parked',   label: 'In Queue',  color: '#9DB0C1', Icon: RaceTrack },
+  { key: 'waiting',  label: 'Waiting',   color: '#7FB5D4', Icon: Hourglass },
+  { key: 'foreman',  label: 'Delegated', color: '#B4A3E8', Icon: ArrowUpRight },
+  { key: 'released', label: 'Released',  color: '#5FBF8A', Icon: CheckeredFlag },
+  { key: 'inbox',    label: 'Inbox',     color: '#E6B54F', Icon: InboxIcon },
 ]
 
 function RouteIcons({ o, onRoute, size = 14, gap = 3 }) {
@@ -91,16 +91,16 @@ function RouteIcons({ o, onRoute, size = 14, gap = 3 }) {
               display: 'inline-flex',
               alignItems: 'center',
               justifyContent: 'center',
-              border: `1px solid ${isCurrent ? '#E2E8F0' : color + '55'}`,
+              border: `1px solid ${isCurrent ? 'rgba(255,255,255,0.14)' : color + '55'}`,
               borderRadius: 5,
               background: isCurrent ? '#F1F5F9' : 'white',
-              color: isCurrent ? '#93A5B5' : color,
+              color: isCurrent ? '#9DB0C1' : color,
               cursor: isCurrent ? 'default' : 'pointer',
               transition: 'background 100ms',
               fontFamily: 'inherit',
             }}
             onMouseEnter={(e) => { if (!isCurrent) e.currentTarget.style.background = color + '15' }}
-            onMouseLeave={(e) => { if (!isCurrent) e.currentTarget.style.background = 'white' }}
+            onMouseLeave={(e) => { if (!isCurrent) e.currentTarget.style.background = 'rgba(255,255,255,0.04)' }}
           >
             <Icon size={size} />
           </button>
@@ -117,15 +117,15 @@ function RouteIcons({ o, onRoute, size = 14, gap = 3 }) {
 const RAM_CAP = 10
 
 const SOV_ZONES = [
-  { min: 1, max: 3,  label: 'Triage',      color: '#C4554A', bg: '#FBEAE7', desc: 'Execution only. Design parked.' },
-  { min: 4, max: 6,  label: 'Operating',   color: '#C08A2D', bg: '#F9EFD8', desc: 'Normal mix. Working through.' },
-  { min: 7, max: 8,  label: 'Caught Up',   color: '#3E8E68', bg: '#CCFBF1', desc: 'Design work unlocked.' },
-  { min: 9, max: 10, label: 'Open Water',  color: '#A6791E', bg: '#F9EFD8', desc: 'Generative. Build what only you can build.' },
+  { min: 1, max: 3,  label: 'Triage',      color: '#E06C5F', bg: 'rgba(224,108,95,0.16)', desc: 'Execution only. Design parked.' },
+  { min: 4, max: 6,  label: 'Operating',   color: '#E8C06A', bg: 'rgba(248,199,97,0.14)', desc: 'Normal mix. Working through.' },
+  { min: 7, max: 8,  label: 'Caught Up',   color: '#5FBF8A', bg: '#CCFBF1', desc: 'Design work unlocked.' },
+  { min: 9, max: 10, label: 'Open Water',  color: '#E6B54F', bg: 'rgba(248,199,97,0.14)', desc: 'Generative. Build what only you can build.' },
 ]
 const sovZone = (s) => SOV_ZONES.find(z => s >= z.min && s <= z.max) || SOV_ZONES[1]
 
 const sizeFor = (w) => w >= 9 ? 'Boulder' : w >= 4 ? 'Stone' : 'Pebble'
-const sizeColor = (w) => w >= 9 ? '#7A4A28' : w >= 4 ? '#2C5077' : '#2A6470'
+const sizeColor = (w) => w >= 9 ? '#D9A87C' : w >= 4 ? '#A8C6E8' : '#8FC7CE'
 
 // Default min_sov by kind × size (David's pick — "as is" lean)
 // Anchor + emergency always unlock at 1.
@@ -207,11 +207,11 @@ const fmtShort = (iso) => {
 const dueColor = (iso, hard) => {
   const d = daysFromToday(iso)
   if (d === null) return { bg: '#F1F5F9', fg: '#565656' }
-  if (d < 0) return { bg: '#FBEAE7', fg: '#8F3B32' }     // overdue
-  if (d === 0) return { bg: hard ? '#FBEAE7' : '#F9EFD8', fg: hard ? '#8F3B32' : '#8A651C' }
-  if (d <= 2) return { bg: '#F9EFD8', fg: '#8A651C' }
-  if (d <= 7) return { bg: '#E3EDF6', fg: '#2C5077' }
-  return { bg: '#F1F5F9', fg: '#54677A' }
+  if (d < 0) return { bg: 'rgba(224,108,95,0.16)', fg: '#F0A79E' }     // overdue
+  if (d === 0) return { bg: hard ? 'rgba(224,108,95,0.16)' : 'rgba(248,199,97,0.14)', fg: hard ? '#F0A79E' : '#EFD196' }
+  if (d <= 2) return { bg: 'rgba(248,199,97,0.14)', fg: '#EFD196' }
+  if (d <= 7) return { bg: 'rgba(150,168,240,0.14)', fg: '#A8C6E8' }
+  return { bg: '#F1F5F9', fg: '#9DB0C1' }
 }
 
 const VARIANT_LABEL = {
@@ -225,15 +225,15 @@ const BASE_URL = import.meta.env.BASE_URL || '/'
 // =============================================================================
 // STYLE TOKENS
 // =============================================================================
-const NAVY = '#1F4060'        // TH navy (deck SECTION_BLUE)
-const NAVY_DEEP = '#0E2336'   // TH shell bottom
-const BLUE = '#3E8E8E'        // TH teal accent
-const GRAY = '#7E93A6'        // TH ink-3
-const TEXT_DIM = '#5B7185'    // TH ink-2
-const PANEL_BORDER = '#E2E8F0'
-const PANEL_BG = '#FFFFFF'
-const PAGE_BG = 'transparent' // let the TH canvas show through
-const GOLD = '#B08A2E'        // TH gold, legible on cream
+const NAVY = '#EAF1F8'        // primary ink on the dark stage
+const NAVY_DEEP = '#0E2336'
+const BLUE = '#6FBFC6'        // TH teal, lifted for dark
+const GRAY = 'rgba(234,241,248,0.45)'
+const TEXT_DIM = 'rgba(234,241,248,0.66)'
+const PANEL_BORDER = 'rgba(255,255,255,0.10)'
+const PANEL_BG = 'rgba(255,255,255,0.035)'
+const PAGE_BG = 'transparent'
+const GOLD = '#E6B54F'
 
 // =============================================================================
 // Tag system (v1.10 — May 19, 2026)
@@ -244,22 +244,22 @@ const TAG_GROUPS = [
     id: 'scope',
     label: 'Scope',
     tags: [
-      { id: 'personal',       label: 'Personal',       bg: '#F1F5F9', fg: '#41556A', border: '#CBD5E1' },
-      { id: 'third-horizon',  label: 'Third Horizon',  bg: '#E4E6F5', fg: '#4A4490', border: '#AEB4E4' },
+      { id: 'personal',       label: 'Personal',       bg: '#F1F5F9', fg: '#C7D4DF', border: 'rgba(255,255,255,0.28)' },
+      { id: 'third-horizon',  label: 'Third Horizon',  bg: 'rgba(155,127,224,0.16)', fg: '#BDB8E8', border: 'rgba(155,127,224,0.45)' },
     ],
   },
   {
     id: 'domain',
     label: 'Domain',
     tags: [
-      { id: 'client',         label: 'Client',         bg: '#EDF7F0', fg: '#3E9B6E', border: '#A9D9BC' },
-      { id: 'biz-dev',        label: 'Business Dev',   bg: '#FCF8EE', fg: '#A6791E', border: '#E8CE8F' },
-      { id: 'finance',        label: 'Finance',        bg: '#EBF6F0', fg: '#37795B', border: '#A5D8C0' },
-      { id: 'administrative', label: 'Administrative', bg: '#F1F5F9', fg: '#54677A', border: '#CBD5E1' },
-      { id: 'management',     label: 'Management',     bg: '#F9F0F4', fg: '#8E3D5C', border: '#E5AFC6' },
-      { id: 'communications', label: 'Communications', bg: '#F0F5FA', fg: '#2C5077', border: '#A3C0DC' },
-      { id: 'content',        label: 'Content',        bg: '#F4F1FA', fg: '#6E54B8', border: '#C3B7E8' },
-      { id: 'tooling',        label: 'Tooling',        bg: '#E4EFF7', fg: '#2A5F7E', border: '#A8CBE2' },
+      { id: 'client',         label: 'Client',         bg: 'rgba(95,191,138,0.10)', fg: '#6FC094', border: 'rgba(95,191,138,0.45)' },
+      { id: 'biz-dev',        label: 'Business Dev',   bg: 'rgba(248,199,97,0.08)', fg: '#E6B54F', border: 'rgba(248,199,97,0.45)' },
+      { id: 'finance',        label: 'Finance',        bg: 'rgba(95,191,138,0.10)', fg: '#93CDAF', border: 'rgba(95,191,138,0.4)' },
+      { id: 'administrative', label: 'Administrative', bg: '#F1F5F9', fg: '#9DB0C1', border: 'rgba(255,255,255,0.28)' },
+      { id: 'management',     label: 'Management',     bg: 'rgba(227,168,191,0.16)', fg: '#E3A8BF', border: 'rgba(227,168,191,0.5)' },
+      { id: 'communications', label: 'Communications', bg: 'rgba(150,168,240,0.10)', fg: '#A8C6E8', border: 'rgba(150,168,240,0.45)' },
+      { id: 'content',        label: 'Content',        bg: 'rgba(155,127,224,0.14)', fg: '#B4A3E8', border: 'rgba(155,127,224,0.45)' },
+      { id: 'tooling',        label: 'Tooling',        bg: 'rgba(150,168,240,0.14)', fg: '#9CC6DE', border: 'rgba(150,168,240,0.45)' },
     ],
   },
 ]
@@ -307,7 +307,7 @@ function TagPicker({ value, onChange }) {
                   style={{
                     padding: '4px 10px', borderRadius: 999, cursor: 'pointer',
                     fontSize: 11, fontWeight: on ? 700 : 500, fontFamily: 'inherit',
-                    background: on ? t.bg : 'white',
+                    background: on ? t.bg : 'rgba(255,255,255,0.04)',
                     color: on ? t.fg : GRAY,
                     border: on ? `1.5px solid ${t.border}` : `1px solid ${PANEL_BORDER}`,
                   }}>
@@ -325,17 +325,17 @@ function TagPicker({ value, onChange }) {
 
 const S = {
   page: { maxWidth: 1040, margin: '0 auto', padding: '20px 24px 80px', fontFamily: 'inherit', color: NAVY },
-  h1: { fontSize: 28, fontWeight: 500, margin: 0, color: '#1A354A', fontFamily: "'Lora', Georgia, serif", letterSpacing: '-0.01em' },
+  h1: { fontSize: 28, fontWeight: 500, margin: 0, color: '#FFFFFF', fontFamily: "'Lora', Georgia, serif", letterSpacing: '-0.01em' },
   sub: { fontSize: 10, color: GRAY, margin: '6px 0 0', fontFamily: 'var(--font-mono, monospace)', letterSpacing: '1.4px', textTransform: 'uppercase' },
-  panel: { background: PANEL_BG, border: `1px solid ${PANEL_BORDER}`, borderRadius: 12, padding: 16, marginBottom: 12, boxShadow: '0 1px 2px rgba(26,53,74,0.06), 0 1px 3px rgba(26,53,74,0.05)' },
-  panelTitle: { fontSize: 10, fontWeight: 600, color: NAVY, textTransform: 'uppercase', letterSpacing: '1.6px', marginBottom: 10, fontFamily: 'var(--font-mono, monospace)' },
-  btnPrimary: { background: NAVY, color: 'white', border: 'none', borderRadius: 8, padding: '8px 14px', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' },
-  btnGhost: { background: 'white', color: NAVY, border: `1px solid ${PANEL_BORDER}`, borderRadius: 8, padding: '6px 12px', fontSize: 12, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit' },
-  btnDone: { background: '#3E8E68', color: 'white', border: 'none', borderRadius: 6, padding: '6px 10px', fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', display: 'inline-flex', alignItems: 'center', gap: 4 },
-  btnForeman: { background: '#7A5FC7', color: 'white', border: 'none', borderRadius: 6, padding: '6px 10px', fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', display: 'inline-flex', alignItems: 'center', gap: 4 },
+  panel: { background: PANEL_BG, border: `1px solid ${PANEL_BORDER}`, borderRadius: 12, padding: 16, marginBottom: 12, boxShadow: 'none' },
+  panelTitle: { fontSize: 10, fontWeight: 600, color: '#F8C761', textTransform: 'uppercase', letterSpacing: '1.6px', marginBottom: 10, fontFamily: 'var(--font-mono, monospace)' },
+  btnPrimary: { background: '#F8C761', color: '#16324A', border: 'none', borderRadius: 8, padding: '8px 14px', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' },
+  btnGhost: { background: 'rgba(255,255,255,0.05)', color: NAVY, border: `1px solid ${PANEL_BORDER}`, borderRadius: 8, padding: '6px 12px', fontSize: 12, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit' },
+  btnDone: { background: '#5FBF8A', color: 'white', border: 'none', borderRadius: 6, padding: '6px 10px', fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', display: 'inline-flex', alignItems: 'center', gap: 4 },
+  btnForeman: { background: '#A38FE0', color: 'white', border: 'none', borderRadius: 6, padding: '6px 10px', fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', display: 'inline-flex', alignItems: 'center', gap: 4 },
   btnPark: { background: 'transparent', color: GRAY, border: `1px solid ${PANEL_BORDER}`, borderRadius: 6, padding: '6px 8px', fontSize: 11, cursor: 'pointer', fontFamily: 'inherit', display: 'inline-flex', alignItems: 'center', gap: 4 },
   chip: (bg, fg) => ({ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 9999, background: bg, color: fg, textTransform: 'uppercase', letterSpacing: '0.05em' }),
-  input: { width: '100%', padding: '10px 12px', borderRadius: 8, border: `1px solid ${PANEL_BORDER}`, fontSize: 14, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' },
+  input: { width: '100%', padding: '10px 12px', borderRadius: 8, border: `1px solid ${PANEL_BORDER}`, fontSize: 14, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', background: 'rgba(255,255,255,0.07)', color: '#EAF1F8' },
 }
 
 // =============================================================================
@@ -383,7 +383,7 @@ function MorningArrival({ meditation, onSubmit }) {
   if (meditation && !answerOpen && !playing && progress === 0) {
     // Already done today — collapsed pill
     return (
-      <div style={{ ...S.panel, background: 'linear-gradient(135deg, #F2F7FB 0%, #FFFFFF 100%)', borderColor: '#CBDDEB' }}>
+      <div style={{ ...S.panel, background: 'linear-gradient(135deg, #F2F7FB 0%, #FFFFFF 100%)', borderColor: 'rgba(150,168,240,0.35)' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
           <div>
             <div style={{ fontSize: 11, color: GRAY, marginBottom: 2 }}>{dateStr} · Already arrived today</div>
@@ -399,13 +399,13 @@ function MorningArrival({ meditation, onSubmit }) {
   }
 
   return (
-    <div style={{ ...S.panel, background: 'linear-gradient(135deg, #F2F7FB 0%, #FFFFFF 100%)', borderColor: '#CBDDEB' }}>
+    <div style={{ ...S.panel, background: 'linear-gradient(135deg, #F2F7FB 0%, #FFFFFF 100%)', borderColor: 'rgba(150,168,240,0.35)' }}>
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 8 }}>
         <div>
           <div style={{ fontSize: 11, fontWeight: 700, color: NAVY, textTransform: 'uppercase', letterSpacing: '0.1em' }}>☀ {greeting}</div>
           <div style={S.sub}>{dateStr}</div>
         </div>
-        <select value={variant} onChange={e => setVariant(e.target.value)} style={{ fontSize: 11, padding: '4px 8px', border: `1px solid ${PANEL_BORDER}`, borderRadius: 6, background: 'white', color: NAVY, fontFamily: 'inherit' }}>
+        <select value={variant} onChange={e => setVariant(e.target.value)} style={{ fontSize: 11, padding: '4px 8px', border: `1px solid ${PANEL_BORDER}`, borderRadius: 6, background: 'rgba(255,255,255,0.05)', color: NAVY, fontFamily: 'inherit' }}>
           {Object.entries(VARIANT_LABEL).map(([k,v]) => <option key={k} value={k}>{v}</option>)}
         </select>
       </div>
@@ -414,14 +414,14 @@ function MorningArrival({ meditation, onSubmit }) {
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '10px 0' }}>
         <button onClick={toggle} aria-label={playing ? 'Pause' : 'Play'}
-          style={{ width: 48, height: 48, borderRadius: '50%', border: 'none', background: NAVY, color: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: '0 2px 8px rgba(26,53,74,0.3)' }}>
+          style={{ width: 48, height: 48, borderRadius: '50%', border: 'none', background: '#F8C761', color: '#16324A', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: '0 2px 8px rgba(0,0,0,0.4)' }}>
           {playing ? <Pause size={20} /> : <Play size={20} style={{ marginLeft: 2 }} />}
         </button>
         <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 3, flexWrap: 'wrap' }}>
           {Array.from({ length: dotCount }).map((_, i) => (
             <span key={i} style={{
               width: 6, height: 6, borderRadius: '50%',
-              background: i < filledDots ? NAVY : '#CBD8E4',
+              background: i < filledDots ? NAVY : 'rgba(255,255,255,0.22)',
               transition: 'background 0.2s'
             }} />
           ))}
@@ -457,18 +457,18 @@ function MorningArrival({ meditation, onSubmit }) {
 function EmergencyBanner({ items, onDone, onForeman }) {
   if (!items.length) return null
   return (
-    <div style={{ ...S.panel, background: '#FCF1EF', border: `2px solid #C4554A`, borderRadius: 12 }}>
+    <div style={{ ...S.panel, background: 'rgba(224,108,95,0.12)', border: `2px solid #C4554A`, borderRadius: 12 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
         <Flame size={16} color="#C4554A" />
-        <div style={{ fontSize: 11, fontWeight: 700, color: '#7A342C', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+        <div style={{ fontSize: 11, fontWeight: 700, color: '#F0A79E', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
           Emergency Mission · {items.length} active
         </div>
       </div>
       {items.map(o => (
         <div key={o.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 0', borderTop: `1px dashed #EBB7B0` }}>
-          <div style={{ fontSize: 14, fontWeight: 600, color: '#7A342C', flex: 1, paddingRight: 8 }}>{o.title}</div>
+          <div style={{ fontSize: 14, fontWeight: 600, color: '#F0A79E', flex: 1, paddingRight: 8 }}>{o.title}</div>
           <div style={{ display: 'flex', gap: 4 }}>
-            <button style={{ ...S.btnDone, background: '#C4554A' }} onClick={() => onDone(o.id)}><Check size={12} /> on it</button>
+            <button style={{ ...S.btnDone, background: '#E06C5F' }} onClick={() => onDone(o.id)}><Check size={12} /> on it</button>
             <button style={S.btnForeman} onClick={() => onForeman(o.id)}><ArrowUpRight size={12} /> delegate</button>
           </div>
         </div>
@@ -494,14 +494,14 @@ function SovereigntyReading({ score, pressure, breakdown, history }) {
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-        <div style={{ flex: 1, height: 10, background: '#E2E8F0', borderRadius: 9999, position: 'relative', overflow: 'hidden' }}>
+        <div style={{ flex: 1, height: 10, background: 'rgba(255,255,255,0.14)', borderRadius: 9999, position: 'relative', overflow: 'hidden' }}>
           <div style={{
             position: 'absolute', top: 0, left: 0, bottom: 0,
             width: `${score * 10}%`,
             background: `linear-gradient(90deg, #C4554A 0%, #C08A2D 30%, #3E8E68 60%, #A6791E 100%)`,
             transition: 'width 0.4s'
           }} />
-          <div style={{ position: 'absolute', top: -2, left: `calc(${score * 10}% - 7px)`, width: 14, height: 14, borderRadius: '50%', background: 'white', border: `2px solid ${zone.color}`, boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
+          <div style={{ position: 'absolute', top: -2, left: `calc(${score * 10}% - 7px)`, width: 14, height: 14, borderRadius: '50%', background: 'rgba(255,255,255,0.05)', border: `2px solid ${zone.color}`, boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
         </div>
         <div style={{ fontSize: 22, fontWeight: 700, color: zone.color, minWidth: 30, textAlign: 'right' }}>{score}</div>
       </div>
@@ -522,8 +522,8 @@ function SovereigntyReading({ score, pressure, breakdown, history }) {
             <div key={b.id} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 0', fontSize: 12, borderBottom: `1px solid ${PANEL_BORDER}` }}>
               <span style={{ flex: 1, color: NAVY }}>{b.title}</span>
               <span style={{ fontSize: 10, color: GRAY }}>w{b.weight}</span>
-              {b.stakes > 1 && <span style={S.chip('#FCF1EF', '#A8453B')}>×{b.stakes}</span>}
-              {b.urgency > 1 && <span style={S.chip('#F9EFD8', '#8A651C')}>×{b.urgency}</span>}
+              {b.stakes > 1 && <span style={S.chip('rgba(224,108,95,0.12)', '#EE9184')}>×{b.stakes}</span>}
+              {b.urgency > 1 && <span style={S.chip('rgba(248,199,97,0.14)', '#EFD196')}>×{b.urgency}</span>}
               {b.urgency < 1 && <span style={S.chip('#F1F5F9', GRAY)}>×{b.urgency}</span>}
               <span style={{ fontSize: 12, fontWeight: 700, color: NAVY, minWidth: 28, textAlign: 'right' }}>−{b.pressure}</span>
             </div>
@@ -571,14 +571,14 @@ function CapacityMeter({ used, capacity }) {
   const pct = Math.min(100, (used / capacity) * 100)
   const over = used > capacity
   const remaining = Math.max(0, capacity - used)
-  const fillColor = over ? '#C4554A' : pct >= 80 ? '#C08A2D' : pct >= 50 ? NAVY : '#3E8E68'
+  const fillColor = over ? '#E06C5F' : pct >= 80 ? '#E8C06A' : pct >= 50 ? NAVY : '#5FBF8A'
   return (
     <div style={S.panel}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 6 }}>
         <div style={S.panelTitle}>Capacity</div>
-        <div style={{ fontSize: 13, fontWeight: 700, color: over ? '#C4554A' : NAVY }}>{used} / {capacity}</div>
+        <div style={{ fontSize: 13, fontWeight: 700, color: over ? '#E06C5F' : NAVY }}>{used} / {capacity}</div>
       </div>
-      <div style={{ height: 12, background: '#E2E8F0', borderRadius: 9999, overflow: 'hidden' }}>
+      <div style={{ height: 12, background: 'rgba(255,255,255,0.14)', borderRadius: 9999, overflow: 'hidden' }}>
         <div style={{
           height: '100%', width: `${pct}%`,
           background: fillColor,
@@ -607,7 +607,7 @@ function ObjectiveCard({ o, onRoute, onToggleAnchor, onDelete, onEdit }) {
   const dueC = dueColor(o.due_date, o.hard_deadline)
   return (
     <div style={{
-      background: o.is_anchor ? 'linear-gradient(135deg, #FCF8EE 0%, #FEFCE8 100%)' : (o.needs_sizing ? '#FCF8F0' : 'white'),
+      background: o.is_anchor ? 'linear-gradient(135deg, #FCF8EE 0%, #FEFCE8 100%)' : (o.needs_sizing ? 'rgba(248,199,97,0.08)' : 'white'),
       border: o.is_anchor ? `2px solid ${GOLD}` : (o.needs_sizing ? `1px dashed #D3A94C` : `1px solid ${PANEL_BORDER}`),
       borderRadius: 10, padding: 12, marginBottom: 8, position: 'relative'
     }}>
@@ -627,13 +627,13 @@ function ObjectiveCard({ o, onRoute, onToggleAnchor, onDelete, onEdit }) {
         <span style={S.chip(sColor + '20', sColor)}>{size}</span>
         <span style={S.chip('#F1F5F9', NAVY)}>E{o.effort}</span>
         <span style={S.chip('#F1F5F9', NAVY)}>I{o.importance}</span>
-        <span style={S.chip(o.kind === 'design' ? '#F9EFD8' : '#E4EFF7', o.kind === 'design' ? '#A6791E' : '#2E6F92')}>{o.kind}</span>
+        <span style={S.chip(o.kind === 'design' ? 'rgba(248,199,97,0.14)' : 'rgba(150,168,240,0.14)', o.kind === 'design' ? '#E6B54F' : '#7FB5D4')}>{o.kind}</span>
         {(o.start_date || o.due_date) && (
           <span style={S.chip(dueC.bg, dueC.fg)}>
             {o.hard_deadline ? '🔒 ' : ''}📅 {o.start_date ? fmtShort(o.start_date) : '—'} → {o.due_date ? fmtDue(o.due_date) : 'no target'}
           </span>
         )}
-        {o.needs_sizing && <span style={S.chip('#F9EFD8', '#8A651C')}>⚠ size me</span>}
+        {o.needs_sizing && <span style={S.chip('rgba(248,199,97,0.14)', '#EFD196')}>⚠ size me</span>}
         {o.who && <span style={S.chip('#F1F5F9', TEXT_DIM)}>w/ {o.who}</span>}
       </div>
 
@@ -642,12 +642,12 @@ function ObjectiveCard({ o, onRoute, onToggleAnchor, onDelete, onEdit }) {
       </div>
 
       {menuOpen && (
-        <div style={{ position: 'absolute', top: 32, right: 8, background: 'white', border: `1px solid ${PANEL_BORDER}`, borderRadius: 8, boxShadow: '0 4px 12px rgba(0,0,0,0.1)', padding: 6, zIndex: 10, minWidth: 160 }}>
+        <div style={{ position: 'absolute', top: 32, right: 8, background: 'rgba(255,255,255,0.05)', border: `1px solid ${PANEL_BORDER}`, borderRadius: 8, boxShadow: '0 8px 24px rgba(0,0,0,0.5)', padding: 6, zIndex: 10, minWidth: 160 }}>
           <button style={{ ...S.btnGhost, width: '100%', textAlign: 'left', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 6 }}
             onClick={() => { onToggleAnchor(o.id, !o.is_anchor); setMenuOpen(false) }}>
             <Star size={12} /> {o.is_anchor ? 'Remove anchor ★' : 'Make anchor ★'}
           </button>
-          <button style={{ ...S.btnGhost, width: '100%', textAlign: 'left', color: '#C4554A', display: 'flex', alignItems: 'center', gap: 6 }}
+          <button style={{ ...S.btnGhost, width: '100%', textAlign: 'left', color: '#E06C5F', display: 'flex', alignItems: 'center', gap: 6 }}
             onClick={() => { if (confirm('Delete this objective?')) onDelete(o.id); setMenuOpen(false) }}>
             <Trash2 size={12} /> Delete
           </button>
@@ -697,7 +697,7 @@ function EditObjectiveModal({ o, onClose, onSave, onDelete, onMove }) {
 
   return (
     <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(14,35,54,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100, padding: 16 }}>
-      <div onClick={e => e.stopPropagation()} style={{ background: 'white', borderRadius: 12, maxWidth: 480, width: '100%', padding: 20, maxHeight: '90vh', overflowY: 'auto' }}>
+      <div onClick={e => e.stopPropagation()} style={{ background: '#10273B', border: '1px solid rgba(255,255,255,0.14)', borderRadius: 12, maxWidth: 480, width: '100%', padding: 20, maxHeight: '90vh', overflowY: 'auto' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
           <div style={{ fontSize: 14, fontWeight: 700, color: NAVY }}>Objective Card</div>
           <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: GRAY }}><X size={18} /></button>
@@ -722,7 +722,7 @@ function EditObjectiveModal({ o, onClose, onSave, onDelete, onMove }) {
             <div style={{ fontSize: 10, color: GRAY, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Effort</div>
             <div style={{ display: 'flex', gap: 4 }}>
               {[1,2,3,4,5].map(n => (
-                <button key={n} onClick={() => setEffort(n)} style={{ flex: 1, padding: '8px 0', borderRadius: 6, border: effort === n ? `2px solid ${NAVY}` : `1px solid ${PANEL_BORDER}`, background: effort === n ? '#EEF2F7' : 'white', color: NAVY, fontWeight: effort === n ? 700 : 500, cursor: 'pointer', fontSize: 13, fontFamily: 'inherit' }}>{n}</button>
+                <button key={n} onClick={() => setEffort(n)} style={{ flex: 1, padding: '8px 0', borderRadius: 6, border: effort === n ? `2px solid ${NAVY}` : `1px solid ${PANEL_BORDER}`, background: effort === n ? 'rgba(248,199,97,0.18)' : 'rgba(255,255,255,0.04)', color: NAVY, fontWeight: effort === n ? 700 : 500, cursor: 'pointer', fontSize: 13, fontFamily: 'inherit' }}>{n}</button>
               ))}
             </div>
           </div>
@@ -730,7 +730,7 @@ function EditObjectiveModal({ o, onClose, onSave, onDelete, onMove }) {
             <div style={{ fontSize: 10, color: GRAY, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Importance</div>
             <div style={{ display: 'flex', gap: 4 }}>
               {[1,2,3].map(n => (
-                <button key={n} onClick={() => setImportance(n)} style={{ flex: 1, padding: '8px 0', borderRadius: 6, border: importance === n ? `2px solid ${NAVY}` : `1px solid ${PANEL_BORDER}`, background: importance === n ? '#EEF2F7' : 'white', color: NAVY, fontWeight: importance === n ? 700 : 500, cursor: 'pointer', fontSize: 13, fontFamily: 'inherit' }}>{n}</button>
+                <button key={n} onClick={() => setImportance(n)} style={{ flex: 1, padding: '8px 0', borderRadius: 6, border: importance === n ? `2px solid ${NAVY}` : `1px solid ${PANEL_BORDER}`, background: importance === n ? 'rgba(248,199,97,0.18)' : 'rgba(255,255,255,0.04)', color: NAVY, fontWeight: importance === n ? 700 : 500, cursor: 'pointer', fontSize: 13, fontFamily: 'inherit' }}>{n}</button>
               ))}
             </div>
           </div>
@@ -739,7 +739,7 @@ function EditObjectiveModal({ o, onClose, onSave, onDelete, onMove }) {
         <div style={{ fontSize: 10, color: GRAY, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Kind</div>
         <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
           {['execution','design'].map(k => (
-            <button key={k} onClick={() => setKind(k)} style={{ flex: 1, padding: '8px 0', borderRadius: 6, border: kind === k ? `2px solid ${NAVY}` : `1px solid ${PANEL_BORDER}`, background: kind === k ? '#EEF2F7' : 'white', color: NAVY, fontWeight: kind === k ? 700 : 500, cursor: 'pointer', fontSize: 13, fontFamily: 'inherit' }}>{k}</button>
+            <button key={k} onClick={() => setKind(k)} style={{ flex: 1, padding: '8px 0', borderRadius: 6, border: kind === k ? `2px solid ${NAVY}` : `1px solid ${PANEL_BORDER}`, background: kind === k ? 'rgba(248,199,97,0.18)' : 'rgba(255,255,255,0.04)', color: NAVY, fontWeight: kind === k ? 700 : 500, cursor: 'pointer', fontSize: 13, fontFamily: 'inherit' }}>{k}</button>
           ))}
         </div>
 
@@ -771,8 +771,8 @@ function EditObjectiveModal({ o, onClose, onSave, onDelete, onMove }) {
 
         {/* Delegation metadata — editable inline (no sub-panel). Routing happens via Route to below. */}
         {(o.state === 'foreman' || o.who || o.follow_up_date) && (
-          <div style={{ marginBottom: 14, padding: 10, background: '#F4F1FA', border: `1px solid #DDD2F0`, borderRadius: 8 }}>
-            <div style={{ fontSize: 10, color: '#6E54B8', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 4 }}>
+          <div style={{ marginBottom: 14, padding: 10, background: 'rgba(155,127,224,0.14)', border: `1px solid #DDD2F0`, borderRadius: 8 }}>
+            <div style={{ fontSize: 10, color: '#B4A3E8', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 4 }}>
               <ArrowUpRight size={11} /> Delegation
             </div>
             <div style={{ fontSize: 10, color: GRAY, marginBottom: 4 }}>Delegated to</div>
@@ -787,7 +787,7 @@ function EditObjectiveModal({ o, onClose, onSave, onDelete, onMove }) {
         )}
 
         <div style={{ display: 'flex', gap: 8, justifyContent: 'space-between' }}>
-          <button onClick={() => { if (confirm('Delete this objective?')) { onDelete(o.id); onClose() } }} style={{ ...S.btnGhost, color: '#C4554A', borderColor: '#EBB7B0' }}><Trash2 size={12} style={{ marginRight: 4, verticalAlign: 'middle' }} />Delete</button>
+          <button onClick={() => { if (confirm('Delete this objective?')) { onDelete(o.id); onClose() } }} style={{ ...S.btnGhost, color: '#E06C5F', borderColor: 'rgba(224,108,95,0.5)' }}><Trash2 size={12} style={{ marginRight: 4, verticalAlign: 'middle' }} />Delete</button>
           <div style={{ display: 'flex', gap: 8 }}>
             <button onClick={onClose} style={S.btnGhost}>Cancel</button>
             <button onClick={save} style={S.btnPrimary}>Save</button>
@@ -802,12 +802,12 @@ function EditObjectiveModal({ o, onClose, onSave, onDelete, onMove }) {
             </div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
               {[
-                { id: 'active',   label: 'Active',    color: '#3E9B6E', bg: '#EDF7F0', border: '#A9D9BC' },
+                { id: 'active',   label: 'Active',    color: '#6FC094', bg: 'rgba(95,191,138,0.10)', border: 'rgba(95,191,138,0.45)' },
                 { id: 'parked',   label: 'In Queue',  color: NAVY,      bg: '#EEF2F7', border: PANEL_BORDER },
-                { id: 'waiting',  label: 'Waiting',   color: '#2E6F92', bg: '#F2F7FB', border: '#A8CBE2' },
-                { id: 'foreman',  label: 'Delegated', color: '#6E54B8', bg: '#F4F1FA', border: '#C3B7E8' },
-                { id: 'released', label: 'Released',  color: '#3E8E68', bg: '#EAF5F0', border: '#9ED4C2' },
-                { id: 'inbox',    label: 'Inbox',     color: '#8A651C', bg: '#FCF8EE', border: '#E8CE8F' },
+                { id: 'waiting',  label: 'Waiting',   color: '#7FB5D4', bg: 'rgba(150,168,240,0.10)', border: 'rgba(150,168,240,0.45)' },
+                { id: 'foreman',  label: 'Delegated', color: '#B4A3E8', bg: 'rgba(155,127,224,0.14)', border: 'rgba(155,127,224,0.45)' },
+                { id: 'released', label: 'Released',  color: '#5FBF8A', bg: 'rgba(95,191,138,0.08)', border: 'rgba(95,191,138,0.4)' },
+                { id: 'inbox',    label: 'Inbox',     color: '#EFD196', bg: 'rgba(248,199,97,0.08)', border: 'rgba(248,199,97,0.45)' },
               ].map(t => {
                 const isCurrent = o.state === t.id
                 return (
@@ -818,7 +818,7 @@ function EditObjectiveModal({ o, onClose, onSave, onDelete, onMove }) {
                     style={{
                       padding: '6px 12px', borderRadius: 6,
                       border: `1px solid ${isCurrent ? PANEL_BORDER : t.border}`,
-                      background: isCurrent ? '#F8FAFC' : t.bg,
+                      background: isCurrent ? 'rgba(255,255,255,0.06)' : t.bg,
                       color: isCurrent ? GRAY : t.color,
                       fontSize: 11, fontWeight: 600, fontFamily: 'inherit',
                       cursor: isCurrent ? 'default' : 'pointer',
@@ -844,10 +844,10 @@ function EditObjectiveModal({ o, onClose, onSave, onDelete, onMove }) {
 function TriageQueue({ items, onSize, onEdit }) {
   if (!items.length) return null
   return (
-    <div style={{ ...S.panel, background: '#FCF8F0', borderColor: '#E8CE8F' }}>
+    <div style={{ ...S.panel, background: 'rgba(248,199,97,0.08)', borderColor: 'rgba(248,199,97,0.45)' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
         <AlertTriangle size={14} color="#A6791E" />
-        <div style={{ ...S.panelTitle, marginBottom: 0, color: '#8A651C' }}>Triage · {items.length} need sizing</div>
+        <div style={{ ...S.panelTitle, marginBottom: 0, color: '#EFD196' }}>Triage · {items.length} need sizing</div>
       </div>
       <div style={{ fontSize: 11, color: TEXT_DIM, marginBottom: 10, lineHeight: 1.5 }}>
         Rate these to clear the queue. Tap E/I or open to edit fully.
@@ -858,13 +858,13 @@ function TriageQueue({ items, onSize, onEdit }) {
           <div style={{ display: 'flex', gap: 2 }}>
             {[1,2,3].map(i => (
               <button key={i} title={`Importance ${i}`} onClick={() => onSize(o.id, { importance: i })}
-                style={{ width: 24, height: 24, borderRadius: 4, border: o.importance === i ? `2px solid ${NAVY}` : `1px solid ${PANEL_BORDER}`, background: o.importance === i ? '#EEF2F7' : 'white', color: NAVY, fontSize: 10, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>I{i}</button>
+                style={{ width: 24, height: 24, borderRadius: 4, border: o.importance === i ? `2px solid ${NAVY}` : `1px solid ${PANEL_BORDER}`, background: o.importance === i ? 'rgba(248,199,97,0.18)' : 'rgba(255,255,255,0.04)', color: NAVY, fontSize: 10, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>I{i}</button>
             ))}
           </div>
           <div style={{ display: 'flex', gap: 2 }}>
             {[1,2,3,4,5].map(e => (
               <button key={e} title={`Effort ${e}`} onClick={() => onSize(o.id, { effort: e })}
-                style={{ width: 22, height: 24, borderRadius: 4, border: o.effort === e ? `2px solid ${NAVY}` : `1px solid ${PANEL_BORDER}`, background: o.effort === e ? '#EEF2F7' : 'white', color: NAVY, fontSize: 10, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>{e}</button>
+                style={{ width: 22, height: 24, borderRadius: 4, border: o.effort === e ? `2px solid ${NAVY}` : `1px solid ${PANEL_BORDER}`, background: o.effort === e ? 'rgba(248,199,97,0.18)' : 'rgba(255,255,255,0.04)', color: NAVY, fontSize: 10, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>{e}</button>
             ))}
           </div>
           <button onClick={() => onSize(o.id, { needs_sizing: false })} title="Looks right" style={{ ...S.btnGhost, fontSize: 10, padding: '4px 8px' }}>✓</button>
@@ -901,9 +901,9 @@ function TableView({ items, onRoute, onEdit }) {
         {o.is_anchor && <Star size={11} fill={GOLD} color={GOLD} />}
         <div style={{ flex: 1, color: NAVY, fontWeight: 500, lineHeight: 1.3 }}>{o.title}</div>
         <span style={{ ...S.chip('#F1F5F9', NAVY), fontSize: 9 }}>E{o.effort}·I{o.importance}</span>
-        {o.kind === 'design' && <span style={{ ...S.chip('#F9EFD8', '#A6791E'), fontSize: 9 }}>D</span>}
-        {o.needs_sizing && <span style={{ ...S.chip('#F9EFD8', '#8A651C'), fontSize: 9 }}>⚠</span>}
-        {o.stakeholder && <span style={{ ...S.chip('#E4EFF7', '#2A5F7E'), fontSize: 9 }} title={`Waiting on me: ${o.stakeholder}`}>← {o.stakeholder}</span>}
+        {o.kind === 'design' && <span style={{ ...S.chip('rgba(248,199,97,0.14)', '#E6B54F'), fontSize: 9 }}>D</span>}
+        {o.needs_sizing && <span style={{ ...S.chip('rgba(248,199,97,0.14)', '#EFD196'), fontSize: 9 }}>⚠</span>}
+        {o.stakeholder && <span style={{ ...S.chip('rgba(150,168,240,0.14)', '#9CC6DE'), fontSize: 9 }} title={`Waiting on me: ${o.stakeholder}`}>← {o.stakeholder}</span>}
         {o.notes && <span title="Has notes/links" style={{ fontSize: 11 }}>📝</span>}
         {o.who && <span style={{ fontSize: 10, color: GRAY }}>w/ {o.who}</span>}
         {o.tags && o.tags.length > 0 && <TagPills tags={o.tags} max={2} />}
@@ -921,7 +921,7 @@ function TableView({ items, onRoute, onEdit }) {
     <div>
       {['Boulder','Stone','Pebble'].map(b => buckets[b].length > 0 && (
         <div key={b} style={{ marginBottom: 14 }}>
-          <div style={{ fontSize: 10, fontWeight: 700, color: sizeColor(b === 'Boulder' ? 12 : b === 'Stone' ? 6 : 2), textTransform: 'uppercase', letterSpacing: '0.1em', padding: '6px 4px', background: '#F8FAFC', borderRadius: 4 }}>
+          <div style={{ fontSize: 10, fontWeight: 700, color: sizeColor(b === 'Boulder' ? 12 : b === 'Stone' ? 6 : 2), textTransform: 'uppercase', letterSpacing: '0.1em', padding: '6px 4px', background: 'rgba(255,255,255,0.06)', borderRadius: 4 }}>
             ─ {b}s · {buckets[b].length} ─
           </div>
           {buckets[b].map(o => <Row key={o.id} o={o} />)}
@@ -1026,7 +1026,7 @@ function AddObjective({ onAdd, onPark, onForeman }) {
           <div style={{ fontSize: 10, color: GRAY, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Effort (optional)</div>
           <div style={{ display: 'flex', gap: 4 }}>
             {[1,2,3,4,5].map(n => (
-              <button key={n} onClick={() => setEffort(effort === n ? null : n)} style={{ flex: 1, padding: '8px 0', borderRadius: 6, border: effort === n ? `2px solid ${NAVY}` : `1px solid ${PANEL_BORDER}`, background: effort === n ? '#EEF2F7' : 'white', color: NAVY, fontWeight: effort === n ? 700 : 500, cursor: 'pointer', fontSize: 13, fontFamily: 'inherit' }}>{n}</button>
+              <button key={n} onClick={() => setEffort(effort === n ? null : n)} style={{ flex: 1, padding: '8px 0', borderRadius: 6, border: effort === n ? `2px solid ${NAVY}` : `1px solid ${PANEL_BORDER}`, background: effort === n ? 'rgba(248,199,97,0.18)' : 'rgba(255,255,255,0.04)', color: NAVY, fontWeight: effort === n ? 700 : 500, cursor: 'pointer', fontSize: 13, fontFamily: 'inherit' }}>{n}</button>
             ))}
           </div>
         </div>
@@ -1034,7 +1034,7 @@ function AddObjective({ onAdd, onPark, onForeman }) {
           <div style={{ fontSize: 10, color: GRAY, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Importance (optional)</div>
           <div style={{ display: 'flex', gap: 4 }}>
             {[1,2,3].map(n => (
-              <button key={n} onClick={() => setImportance(importance === n ? null : n)} style={{ flex: 1, padding: '8px 0', borderRadius: 6, border: importance === n ? `2px solid ${NAVY}` : `1px solid ${PANEL_BORDER}`, background: importance === n ? '#EEF2F7' : 'white', color: NAVY, fontWeight: importance === n ? 700 : 500, cursor: 'pointer', fontSize: 13, fontFamily: 'inherit' }}>{n}</button>
+              <button key={n} onClick={() => setImportance(importance === n ? null : n)} style={{ flex: 1, padding: '8px 0', borderRadius: 6, border: importance === n ? `2px solid ${NAVY}` : `1px solid ${PANEL_BORDER}`, background: importance === n ? 'rgba(248,199,97,0.18)' : 'rgba(255,255,255,0.04)', color: NAVY, fontWeight: importance === n ? 700 : 500, cursor: 'pointer', fontSize: 13, fontFamily: 'inherit' }}>{n}</button>
             ))}
           </div>
         </div>
@@ -1065,7 +1065,7 @@ function AddObjective({ onAdd, onPark, onForeman }) {
           <input type="checkbox" checked={kind === 'design'} onChange={e => setKind(e.target.checked ? 'design' : 'execution')} />
           Design work (not execution)
         </label>
-        <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#C4554A', cursor: 'pointer', fontWeight: emergency ? 700 : 400 }}>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#E06C5F', cursor: 'pointer', fontWeight: emergency ? 700 : 400 }}>
           <input type="checkbox" checked={emergency} onChange={e => setEmergency(e.target.checked)} />
           🔥 Emergency
         </label>
@@ -1073,7 +1073,7 @@ function AddObjective({ onAdd, onPark, onForeman }) {
 
       <div style={{ fontSize: 11, color: GRAY, marginBottom: 10 }}>
         {unsized
-          ? <>Unsized — will land in <strong style={{ color: '#8A651C' }}>Triage Queue</strong> for later rating.</>
+          ? <>Unsized — will land in <strong style={{ color: '#EFD196' }}>Triage Queue</strong> for later rating.</>
           : <>Weight: <strong style={{ color: NAVY }}>{effort * importance}</strong> ({sizeFor(effort * importance)})</>}
       </div>
 
@@ -1083,21 +1083,21 @@ function AddObjective({ onAdd, onPark, onForeman }) {
       <div style={{ fontSize: 10, color: GRAY, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>Initial home</div>
       <div style={{ display: 'flex', gap: 6, marginBottom: route === 'delegate' ? 10 : 14 }}>
         {[
-          { id: 'active', label: 'Active', color: '#3E9B6E', bg: '#EDF7F0', border: '#A9D9BC' },
-          { id: 'park', label: 'Park', color: GRAY, bg: '#F8FAFC', border: PANEL_BORDER },
-          { id: 'delegate', label: 'Delegate', color: '#6E54B8', bg: '#F4F1FA', border: '#C3B7E8' },
+          { id: 'active', label: 'Active', color: '#6FC094', bg: 'rgba(95,191,138,0.10)', border: 'rgba(95,191,138,0.45)' },
+          { id: 'park', label: 'Park', color: GRAY, bg: 'rgba(255,255,255,0.06)', border: PANEL_BORDER },
+          { id: 'delegate', label: 'Delegate', color: '#B4A3E8', bg: 'rgba(155,127,224,0.14)', border: 'rgba(155,127,224,0.45)' },
         ].map(r => (
           <button key={r.id} onClick={() => setRoute(r.id)}
             style={{ flex: 1, padding: '8px', borderRadius: 6,
               border: route === r.id ? `2px solid ${r.color}` : `1px solid ${r.border}`,
-              background: route === r.id ? r.bg : 'white',
+              background: route === r.id ? r.bg : 'rgba(255,255,255,0.04)',
               color: r.color, fontSize: 12, fontWeight: route === r.id ? 700 : 500,
               cursor: 'pointer', fontFamily: 'inherit' }}>{r.label}</button>
         ))}
       </div>
 
       {route === 'delegate' && (
-        <div style={{ background: '#F4F1FA', border: `1px solid #C3B7E8`, borderRadius: 8, padding: 12, marginBottom: 14 }}>
+        <div style={{ background: 'rgba(155,127,224,0.14)', border: `1px solid #C3B7E8`, borderRadius: 8, padding: 12, marginBottom: 14 }}>
           <div style={{ fontSize: 10, color: GRAY, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Delegated to *</div>
           <input value={who} onChange={e => setWho(e.target.value)} placeholder="Name of person taking it on" style={{ ...S.input, marginBottom: 10 }} />
           <div style={{ fontSize: 10, color: GRAY, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Follow up when?</div>
@@ -1133,8 +1133,8 @@ function CoaxMode({ objective, onRelease, onSkip, onExit }) {
     <div style={{ minHeight: '70vh', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', padding: '20px', textAlign: 'center' }}>
       <div style={{ fontSize: 13, color: GRAY, textTransform: 'uppercase', letterSpacing: '0.15em', marginBottom: 24 }}>start here →</div>
       <div style={{
-        background: 'white', border: `2px solid ${NAVY}`, borderRadius: 16,
-        padding: '32px 24px', maxWidth: 380, width: '100%', boxShadow: '0 4px 24px rgba(26,53,74,0.15)'
+        background: '#10273B', border: `1px solid #F8C761`, borderRadius: 16,
+        padding: '32px 24px', maxWidth: 380, width: '100%', boxShadow: '0 4px 24px rgba(0,0,0,0.35)'
       }}>
         <div style={{ fontSize: 18, fontWeight: 600, color: NAVY, lineHeight: 1.4, marginBottom: 24 }}>{objective.title}</div>
         <button onClick={() => onRelease(objective.id)} style={{ ...S.btnPrimary, width: '100%', padding: '14px', fontSize: 15 }}>
@@ -1168,7 +1168,7 @@ function HabitGrid({ habit, grid, onToggle, onWeed }) {
     return arr
   }, [grid])
 
-  const cellColor = (s) => s === 0 ? '#E2E8F0' : s === 1 ? '#CBDDEB' : s === 2 ? '#A8CBE2' : s === 3 ? '#5FA8CF' : '#2E7CA6'
+  const cellColor = (s) => s === 0 ? 'rgba(255,255,255,0.14)' : s === 1 ? 'rgba(150,168,240,0.35)' : s === 2 ? 'rgba(150,168,240,0.45)' : s === 3 ? '#79BCDF' : '#6FADD0'
 
   return (
     <div style={S.panel}>
@@ -1187,7 +1187,7 @@ function HabitGrid({ habit, grid, onToggle, onWeed }) {
               style={{
                 flex: '1 1 calc(50% - 4px)', padding: '10px 8px',
                 borderRadius: 8, border: on ? `2px solid #2E7CA6` : `1px solid ${PANEL_BORDER}`,
-                background: on ? '#E4EFF7' : 'white',
+                background: on ? 'rgba(150,168,240,0.14)' : 'white',
                 color: NAVY, fontSize: 12, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit',
                 display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6
               }}>
@@ -1204,7 +1204,7 @@ function HabitGrid({ habit, grid, onToggle, onWeed }) {
                 style={{
                   width: 32, height: 28, borderRadius: 6,
                   border: (habit?.weed_count ?? 0) === n ? `2px solid #2E7CA6` : `1px solid ${PANEL_BORDER}`,
-                  background: (habit?.weed_count ?? 0) === n ? '#E4EFF7' : 'white',
+                  background: (habit?.weed_count ?? 0) === n ? 'rgba(150,168,240,0.14)' : 'white',
                   color: NAVY, fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit'
                 }}>{n === 3 ? '3+' : n}</button>
             ))}
@@ -1311,7 +1311,7 @@ function PillTabs({ tab, setTab, binCount }) {
     { id: 'bin', label: `Bin${binCount ? ` · ${binCount}` : ''}`, icon: Archive },
   ]
   return (
-    <div style={{ display: 'inline-flex', background: 'white', border: `1px solid ${PANEL_BORDER}`, borderRadius: 999, padding: 3, marginBottom: 16, gap: 2 }}>
+    <div style={{ display: 'inline-flex', background: 'rgba(255,255,255,0.05)', border: `1px solid ${PANEL_BORDER}`, borderRadius: 999, padding: 3, marginBottom: 16, gap: 2 }}>
       {tabs.map(t => {
         const active = tab === t.id
         const Icon = t.icon
@@ -1320,8 +1320,8 @@ function PillTabs({ tab, setTab, binCount }) {
             style={{
               display: 'inline-flex', alignItems: 'center', gap: 6,
               padding: '6px 14px', borderRadius: 999, border: 'none',
-              background: active ? NAVY : 'transparent',
-              color: active ? 'white' : NAVY,
+              background: active ? '#F8C761' : 'transparent',
+              color: active ? '#16324A' : NAVY,
               fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
             }}>
             <Icon size={13} /> {t.label}
@@ -1335,14 +1335,14 @@ function PillTabs({ tab, setTab, binCount }) {
 // v1.11 — Container pill switcher. Sits BELOW Active block, replaces stacked containers.
 function ContainerPills({ container, setContainer, counts }) {
   const pills = [
-    { id: 'queue',     label: 'In Queue',  icon: RaceTrack,     color: NAVY },
-    { id: 'waiting',   label: 'Waiting',   icon: Hourglass,     color: '#2E6F92' },
-    { id: 'delegated', label: 'Delegated', icon: ArrowUpRight,  color: '#6E54B8' },
-    { id: 'released',  label: 'Released',  icon: CheckeredFlag, color: '#3E8E68' },
-    { id: 'inbox',     label: 'Inbox',     icon: InboxIcon,     color: '#8A651C' },
+    { id: 'queue',     label: 'In Queue',  icon: RaceTrack,     color: '#46617A' },
+    { id: 'waiting',   label: 'Waiting',   icon: Hourglass,     color: '#7FB5D4' },
+    { id: 'delegated', label: 'Delegated', icon: ArrowUpRight,  color: '#B4A3E8' },
+    { id: 'released',  label: 'Released',  icon: CheckeredFlag, color: '#5FBF8A' },
+    { id: 'inbox',     label: 'Inbox',     icon: InboxIcon,     color: '#EFD196' },
   ]
   return (
-    <div style={{ display: 'inline-flex', background: 'white', border: `1px solid ${PANEL_BORDER}`, borderRadius: 999, padding: 3, marginTop: 4, marginBottom: 12, gap: 2, flexWrap: 'wrap' }}>
+    <div style={{ display: 'inline-flex', background: 'rgba(255,255,255,0.05)', border: `1px solid ${PANEL_BORDER}`, borderRadius: 999, padding: 3, marginTop: 4, marginBottom: 12, gap: 2, flexWrap: 'wrap' }}>
       {pills.map(p => {
         const active = container === p.id
         const Icon = p.icon
@@ -1395,7 +1395,7 @@ function WaitingContainer({ items, onRoute, onDelete, onEdit }) {
           {o.tags && o.tags.length > 0 && <TagPills tags={o.tags} max={2} />}
           <button onClick={() => onEdit(o)} title="Edit" style={{ background: 'none', border: 'none', color: GRAY, cursor: 'pointer', padding: 2 }}><Edit3 size={12} /></button>
           <RouteIcons o={o} onRoute={onRoute} size={12} gap={2} />
-          <button onClick={() => { if (confirm('Delete this objective?')) onDelete(o.id) }} title="Bin" style={{ ...S.btnGhost, fontSize: 11, padding: '4px 8px', color: '#C4554A', borderColor: '#EBB7B0' }}><Trash2 size={11} /></button>
+          <button onClick={() => { if (confirm('Delete this objective?')) onDelete(o.id) }} title="Bin" style={{ ...S.btnGhost, fontSize: 11, padding: '4px 8px', color: '#E06C5F', borderColor: 'rgba(224,108,95,0.5)' }}><Trash2 size={11} /></button>
           {o.due_date && (
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, padding: '2px 6px', borderRadius: 4, background: dueColor(o.due_date, o.hard_deadline).bg, color: dueColor(o.due_date, o.hard_deadline).fg }}>
               <Calendar size={10} /> {fmtShort(o.due_date)}
@@ -1426,7 +1426,7 @@ function InboxContainer({ items, onRoute, onDelete, onEdit }) {
           {o.tags && o.tags.length > 0 && <TagPills tags={o.tags} max={2} />}
           <button onClick={() => onEdit(o)} title="Edit" style={{ background: 'none', border: 'none', color: GRAY, cursor: 'pointer', padding: 2 }}><Edit3 size={12} /></button>
           <RouteIcons o={o} onRoute={onRoute} size={12} gap={2} />
-          <button onClick={() => { if (confirm('Delete this objective?')) onDelete(o.id) }} title="Bin" style={{ ...S.btnGhost, fontSize: 11, padding: '4px 8px', color: '#C4554A', borderColor: '#EBB7B0' }}><Trash2 size={11} /></button>
+          <button onClick={() => { if (confirm('Delete this objective?')) onDelete(o.id) }} title="Bin" style={{ ...S.btnGhost, fontSize: 11, padding: '4px 8px', color: '#E06C5F', borderColor: 'rgba(224,108,95,0.5)' }}><Trash2 size={11} /></button>
         </div>
       ))}
     </div>
@@ -1468,7 +1468,7 @@ function EligibleLockedSection({ parked, score, onActivate, onRoute, onEdit }) {
       <button onClick={() => setOpen(o => !o)} style={{ display: 'flex', width: '100%', justifyContent: 'space-between', alignItems: 'center', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
         <div style={{ ...S.panelTitle, marginBottom: 0 }}>Objectives in Queue · {parked.length}</div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: GRAY, fontSize: 11 }}>
-          {eligible.length > 0 && <span style={{ color: '#3E8E68', fontWeight: 600 }}>⚡ {eligible.length} eligible</span>}
+          {eligible.length > 0 && <span style={{ color: '#5FBF8A', fontWeight: 600 }}>⚡ {eligible.length} eligible</span>}
           {locked.length > 0 && <span><Lock size={10} style={{ verticalAlign: 'middle' }} /> {locked.length} locked</span>}
           {open ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
         </div>
@@ -1516,7 +1516,7 @@ function EligibleLockedSection({ parked, score, onActivate, onRoute, onEdit }) {
           </div>
           {eligible.length > 0 && (
             <div style={{ marginBottom: locked.length ? 16 : 0 }}>
-              <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5, color: '#3E8E68', fontWeight: 700, marginBottom: 6 }}>
+              <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5, color: '#5FBF8A', fontWeight: 700, marginBottom: 6 }}>
                 ⚡ Eligible at your current Sovereignty ({score})
               </div>
               {eligible.map(o => (
@@ -1568,7 +1568,7 @@ function ParkedRibbonRow({ o, variant, score, onActivate, onRoute, onEdit }) {
 
 function StatCard({ title, value, sub, accent = NAVY }) {
   return (
-    <div style={{ background: 'white', border: `1px solid ${PANEL_BORDER}`, borderRadius: 10, padding: 14, minWidth: 0 }}>
+    <div style={{ background: 'rgba(255,255,255,0.05)', border: `1px solid ${PANEL_BORDER}`, borderRadius: 10, padding: 14, minWidth: 0 }}>
       <div style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: 0.6, color: GRAY, fontWeight: 700, marginBottom: 6 }}>{title}</div>
       <div style={{ fontSize: 24, color: accent, fontWeight: 700, lineHeight: 1.1 }}>{value}</div>
       {sub && <div style={{ fontSize: 11, color: TEXT_DIM, marginTop: 4 }}>{sub}</div>}
@@ -1672,13 +1672,13 @@ function DashboardView({ objectives, sov, sovHistory, liveScore, livePressure })
           sub={overdue
             ? `${overdue} overdue · ${dueWeek} due this week`
             : `${dueWeek} due this week · ${dated}/${active.length} dated · ${hardDeadlines} hard 🔒`}
-          accent={overdue ? '#A8453B' : NAVY}
+          accent={overdue ? '#EE9184' : NAVY}
         />
         <StatCard
           title="Release pace"
           value={thisWeekReleased}
           sub={`this week · ${lastWeekReleased} prior · ${paceDelta >= 0 ? '+' : ''}${paceDelta}`}
-          accent={paceDelta >= 0 ? '#3E8E68' : '#A6791E'}
+          accent={paceDelta >= 0 ? '#5FBF8A' : '#E6B54F'}
         />
         <StatCard
           title="Released all-time"
@@ -1710,7 +1710,7 @@ function DashboardView({ objectives, sov, sovHistory, liveScore, livePressure })
               position: 'relative', flexShrink: 0,
             }}>
               <div style={{
-                position: 'absolute', inset: 22, borderRadius: '50%', background: 'white',
+                position: 'absolute', inset: 22, borderRadius: '50%', background: '#10273B',
                 display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
                 fontSize: 11, color: GRAY,
               }}>
@@ -1720,14 +1720,14 @@ function DashboardView({ objectives, sov, sovHistory, liveScore, livePressure })
             </div>
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 8, fontSize: 13 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span style={{ width: 12, height: 12, background: '#4A4490', borderRadius: 3 }} />
+                <span style={{ width: 12, height: 12, background: '#BDB8E8', borderRadius: 3 }} />
                 <span style={{ flex: 1, color: NAVY }}>Third Horizon</span>
                 <span style={{ color: GRAY, fontVariantNumeric: 'tabular-nums' }}>
                   {scopeMix.th.count} · {scopeMix.th.hours}h · {Math.round(thPct)}%
                 </span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span style={{ width: 12, height: 12, background: '#54677A', borderRadius: 3 }} />
+                <span style={{ width: 12, height: 12, background: '#9DB0C1', borderRadius: 3 }} />
                 <span style={{ flex: 1, color: NAVY }}>Personal</span>
                 <span style={{ color: GRAY, fontVariantNumeric: 'tabular-nums' }}>
                   {scopeMix.personal.count} · {scopeMix.personal.hours}h · {Math.round(personalPct)}%
@@ -1735,7 +1735,7 @@ function DashboardView({ objectives, sov, sovHistory, liveScore, livePressure })
               </div>
               {scopeMix.untagged.count > 0 && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ width: 12, height: 12, background: '#E2E8F0', borderRadius: 3, border: `1px solid ${PANEL_BORDER}` }} />
+                  <span style={{ width: 12, height: 12, background: 'rgba(255,255,255,0.14)', borderRadius: 3, border: `1px solid ${PANEL_BORDER}` }} />
                   <span style={{ flex: 1, color: GRAY }}>Untagged</span>
                   <span style={{ color: GRAY, fontVariantNumeric: 'tabular-nums' }}>
                     {scopeMix.untagged.count} · {scopeMix.untagged.hours}h · {Math.round(untaggedPct)}%
@@ -1752,7 +1752,7 @@ function DashboardView({ objectives, sov, sovHistory, liveScore, livePressure })
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, color: NAVY }}>
             <Anchor size={16} color={GOLD} />
             <span style={{ flex: 1 }}>{anchor.title}</span>
-            <span style={S.chip('#F9EFD8', GOLD)}>{sizeFor(anchor.weight)}</span>
+            <span style={S.chip('rgba(248,199,97,0.14)', GOLD)}>{sizeFor(anchor.weight)}</span>
           </div>
         </div>
       )}
@@ -1784,14 +1784,14 @@ function BinView({ items, onRestore, onPurge }) {
           <div key={o.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 0', borderBottom: `1px solid ${PANEL_BORDER}` }}>
             <span style={{ flex: 1, fontSize: 13, color: TEXT_DIM, textDecoration: 'line-through' }}>{o.title}</span>
             <span style={S.chip('#F1F5F9', GRAY)}>{sizeFor(o.weight)}</span>
-            <span style={{ fontSize: 11, color: daysLeft <= 7 ? '#A8453B' : GRAY }}>
+            <span style={{ fontSize: 11, color: daysLeft <= 7 ? '#EE9184' : GRAY }}>
               {daysLeft === 0 ? 'purges today' : `${daysLeft}d left`}
             </span>
             <button style={{ ...S.btnGhost, fontSize: 11, padding: '4px 10px', display: 'inline-flex', alignItems: 'center', gap: 4 }} onClick={() => onRestore(o.id)}>
               <RotateCcw size={11} /> restore
             </button>
             <button
-              style={{ background: 'white', border: `1px solid #EBB7B0`, color: '#A8453B', borderRadius: 6, padding: '4px 8px', cursor: 'pointer', fontSize: 11, fontFamily: 'inherit', display: 'inline-flex', alignItems: 'center', gap: 4 }}
+              style={{ background: 'rgba(255,255,255,0.05)', border: `1px solid #EBB7B0`, color: '#EE9184', borderRadius: 6, padding: '4px 8px', cursor: 'pointer', fontSize: 11, fontFamily: 'inherit', display: 'inline-flex', alignItems: 'center', gap: 4 }}
               onClick={() => { if (confirm('Permanently delete? This cannot be undone.')) onPurge(o.id) }}>
               <Trash2 size={11} /> purge
             </button>
@@ -1955,7 +1955,7 @@ export default function ObjectivesPage() {
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 0' }}>
                 <Anchor size={16} color={GOLD} />
                 <span style={{ flex: 1, fontSize: 14, color: NAVY, fontWeight: 600 }}>{anchorActive.title}</span>
-                <span style={S.chip('#F9EFD8', GOLD)}>{sizeFor(anchorActive.weight)}</span>
+                <span style={S.chip('rgba(248,199,97,0.14)', GOLD)}>{sizeFor(anchorActive.weight)}</span>
                 <button style={S.btnDone} onClick={() => releaseObjective(anchorActive.id, 'done')}>
                   <Check size={12} /> done
                 </button>
@@ -1975,20 +1975,20 @@ export default function ObjectivesPage() {
             onEdit={setEditing}
           />
 
-          <div style={{ ...S.panel, background: '#EDF7F0', border: `2px solid #A9D9BC`, boxShadow: '0 2px 12px rgba(34, 197, 94, 0.08)' }}>
+          <div style={{ ...S.panel, background: 'rgba(95,191,138,0.10)', border: `2px solid #A9D9BC`, boxShadow: '0 2px 12px rgba(34, 197, 94, 0.08)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, gap: 8, flexWrap: 'wrap' }}>
-              <div style={{ ...S.panelTitle, fontSize: 16, color: '#2E6E51', marginBottom: 0, display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+              <div style={{ ...S.panelTitle, fontSize: 16, color: '#8FD9B4', marginBottom: 0, display: 'inline-flex', alignItems: 'center', gap: 8 }}>
                 <span style={{ width: 8, height: 8, borderRadius: 4, background: '#5FBF8A', display: 'inline-block' }} />
                 Active · {sortedActive.length}
-                <span style={{ fontSize: 10, fontWeight: 500, color: '#3E9B6E', textTransform: 'none', letterSpacing: 0, marginLeft: 4 }}>← work this. nothing else.</span>
+                <span style={{ fontSize: 10, fontWeight: 500, color: '#6FC094', textTransform: 'none', letterSpacing: 0, marginLeft: 4 }}>← work this. nothing else.</span>
               </div>
               <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
                 <button onClick={() => setViewMode('cards')} title="Card view"
-                  style={{ background: viewMode === 'cards' ? '#EEF2F7' : 'white', border: `1px solid ${PANEL_BORDER}`, borderRadius: 6, padding: '4px 8px', cursor: 'pointer', color: NAVY, display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, fontFamily: 'inherit' }}>
+                  style={{ background: viewMode === 'cards' ? 'rgba(255,255,255,0.14)' : 'rgba(255,255,255,0.04)', border: `1px solid ${PANEL_BORDER}`, borderRadius: 6, padding: '4px 8px', cursor: 'pointer', color: NAVY, display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, fontFamily: 'inherit' }}>
                   <ListIcon size={11} /> cards
                 </button>
                 <button onClick={() => setViewMode('table')} title="Table view"
-                  style={{ background: viewMode === 'table' ? '#EEF2F7' : 'white', border: `1px solid ${PANEL_BORDER}`, borderRadius: 6, padding: '4px 8px', cursor: 'pointer', color: NAVY, display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, fontFamily: 'inherit' }}>
+                  style={{ background: viewMode === 'table' ? 'rgba(255,255,255,0.14)' : 'rgba(255,255,255,0.04)', border: `1px solid ${PANEL_BORDER}`, borderRadius: 6, padding: '4px 8px', cursor: 'pointer', color: NAVY, display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, fontFamily: 'inherit' }}>
                   <TableIcon size={11} /> table
                 </button>
                 <button style={{ ...S.btnGhost, fontSize: 11, padding: '4px 10px', marginLeft: 4 }} onClick={() => setCoax(true)}>stuck?</button>
@@ -1996,7 +1996,7 @@ export default function ObjectivesPage() {
             </div>
 
             {coaxAutoTrigger && !coax && (
-              <div style={{ background: '#F9EFD8', border: `1px solid #E8CE8F`, borderRadius: 8, padding: 10, marginBottom: 10, fontSize: 12, color: '#8A651C' }}>
+              <div style={{ background: 'rgba(248,199,97,0.14)', border: `1px solid #E8CE8F`, borderRadius: 8, padding: 10, marginBottom: 10, fontSize: 12, color: '#EFD196' }}>
                 Queue is heavy and Sovereignty is low. Try <button style={{ ...S.btnGhost, fontSize: 11, padding: '2px 8px', marginLeft: 4 }} onClick={() => setCoax(true)}>Coax Mode →</button>
               </div>
             )}
