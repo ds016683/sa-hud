@@ -91,9 +91,9 @@ function RouteIcons({ o, onRoute, size = 14, gap = 3 }) {
               display: 'inline-flex',
               alignItems: 'center',
               justifyContent: 'center',
-              border: `1px solid ${isCurrent ? 'rgba(255,255,255,0.14)' : color + '55'}`,
+              border: `1px solid ${isCurrent ? 'rgba(255,255,255,0.10)' : color + '66'}`,
               borderRadius: 5,
-              background: isCurrent ? 'rgba(255,255,255,0.10)' : 'white',
+              background: isCurrent ? 'rgba(255,255,255,0.10)' : 'rgba(255,255,255,0.03)',
               color: isCurrent ? '#9DB0C1' : color,
               cursor: isCurrent ? 'default' : 'pointer',
               transition: 'background 100ms',
@@ -328,7 +328,7 @@ const S = {
   h1: { fontSize: 28, fontWeight: 500, margin: 0, color: '#FFFFFF', fontFamily: "'Lora', Georgia, serif", letterSpacing: '-0.01em' },
   sub: { fontSize: 10, color: GRAY, margin: '6px 0 0', fontFamily: 'var(--font-mono, monospace)', letterSpacing: '1.4px', textTransform: 'uppercase' },
   panel: { background: PANEL_BG, border: `1px solid ${PANEL_BORDER}`, borderRadius: 12, padding: 16, marginBottom: 12, boxShadow: 'none' },
-  panelTitle: { fontSize: 10, fontWeight: 600, color: '#F8C761', textTransform: 'uppercase', letterSpacing: '1.6px', marginBottom: 10, fontFamily: 'var(--font-mono, monospace)' },
+  panelTitle: { fontSize: 10, fontWeight: 600, color: '#A9C9E8', textTransform: 'uppercase', letterSpacing: '1.6px', marginBottom: 10, fontFamily: 'var(--font-mono, monospace)' },
   btnPrimary: { background: '#F8C761', color: '#16324A', border: 'none', borderRadius: 8, padding: '8px 14px', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' },
   btnGhost: { background: 'rgba(255,255,255,0.05)', color: NAVY, border: `1px solid ${PANEL_BORDER}`, borderRadius: 8, padding: '6px 12px', fontSize: 12, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit' },
   btnDone: { background: '#E6B54F', color: '#16324A', border: 'none', borderRadius: 6, padding: '6px 10px', fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', display: 'inline-flex', alignItems: 'center', gap: 4 },
@@ -607,7 +607,7 @@ function ObjectiveCard({ o, onRoute, onToggleAnchor, onDelete, onEdit }) {
   const dueC = dueColor(o.due_date, o.hard_deadline)
   return (
     <div style={{
-      background: o.is_anchor ? 'linear-gradient(135deg, rgba(248,199,97,0.08) 0%, rgba(248,199,97,0.10) 100%)' : (o.needs_sizing ? 'rgba(248,199,97,0.08)' : 'white'),
+      background: o.is_anchor ? 'linear-gradient(135deg, rgba(248,199,97,0.08) 0%, rgba(248,199,97,0.10) 100%)' : (o.needs_sizing ? 'rgba(248,199,97,0.08)' : 'rgba(255,255,255,0.035)'),
       border: o.is_anchor ? `2px solid ${GOLD}` : (o.needs_sizing ? `1px dashed #E8C06A` : `1px solid ${PANEL_BORDER}`),
       borderRadius: 10, padding: 12, marginBottom: 8, position: 'relative'
     }}>
@@ -1187,7 +1187,7 @@ function HabitGrid({ habit, grid, onToggle, onWeed }) {
               style={{
                 flex: '1 1 calc(50% - 4px)', padding: '10px 8px',
                 borderRadius: 8, border: on ? `2px solid #A9C9E8` : `1px solid ${PANEL_BORDER}`,
-                background: on ? 'rgba(169,201,232,0.14)' : 'white',
+                background: on ? 'rgba(169,201,232,0.14)' : 'rgba(255,255,255,0.04)',
                 color: NAVY, fontSize: 12, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit',
                 display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6
               }}>
@@ -1204,7 +1204,7 @@ function HabitGrid({ habit, grid, onToggle, onWeed }) {
                 style={{
                   width: 32, height: 28, borderRadius: 6,
                   border: (habit?.weed_count ?? 0) === n ? `2px solid #A9C9E8` : `1px solid ${PANEL_BORDER}`,
-                  background: (habit?.weed_count ?? 0) === n ? 'rgba(169,201,232,0.14)' : 'white',
+                  background: (habit?.weed_count ?? 0) === n ? 'rgba(169,201,232,0.14)' : 'rgba(255,255,255,0.04)',
                   color: NAVY, fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit'
                 }}>{n === 3 ? '3+' : n}</button>
             ))}
@@ -1311,7 +1311,7 @@ function PillTabs({ tab, setTab, binCount }) {
     { id: 'bin', label: `Bin${binCount ? ` · ${binCount}` : ''}`, icon: Archive },
   ]
   return (
-    <div style={{ display: 'inline-flex', background: 'rgba(255,255,255,0.05)', border: `1px solid ${PANEL_BORDER}`, borderRadius: 999, padding: 3, marginBottom: 16, gap: 2 }}>
+    <div style={{ display: 'inline-flex', marginBottom: 16, gap: 8, flexWrap: 'wrap' }}>
       {tabs.map(t => {
         const active = tab === t.id
         const Icon = t.icon
@@ -1319,10 +1319,12 @@ function PillTabs({ tab, setTab, binCount }) {
           <button key={t.id} onClick={() => setTab(t.id)}
             style={{
               display: 'inline-flex', alignItems: 'center', gap: 6,
-              padding: '6px 14px', borderRadius: 999, border: 'none',
-              background: active ? '#F8C761' : 'transparent',
-              color: active ? '#16324A' : NAVY,
-              fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
+              padding: '7px 16px', borderRadius: 999,
+              border: `1px solid ${active ? '#A9C9E8' : 'rgba(255,255,255,0.16)'}`,
+              background: active ? '#A9C9E8' : 'transparent',
+              color: active ? '#0E2336' : 'rgba(234,241,248,0.6)',
+              fontSize: 11, fontWeight: 600, letterSpacing: '0.8px', textTransform: 'uppercase',
+              cursor: 'pointer', fontFamily: 'inherit',
             }}>
             <Icon size={13} /> {t.label}
           </button>
@@ -1342,7 +1344,7 @@ function ContainerPills({ container, setContainer, counts }) {
     { id: 'inbox',     label: 'Inbox',     icon: InboxIcon,     color: '#8F7434' },
   ]
   return (
-    <div style={{ display: 'inline-flex', background: 'rgba(255,255,255,0.05)', border: `1px solid ${PANEL_BORDER}`, borderRadius: 999, padding: 3, marginTop: 4, marginBottom: 12, gap: 2, flexWrap: 'wrap' }}>
+    <div style={{ display: 'inline-flex', marginTop: 4, marginBottom: 12, gap: 8, flexWrap: 'wrap' }}>
       {pills.map(p => {
         const active = container === p.id
         const Icon = p.icon
@@ -1351,10 +1353,12 @@ function ContainerPills({ container, setContainer, counts }) {
           <button key={p.id} onClick={() => setContainer(p.id)}
             style={{
               display: 'inline-flex', alignItems: 'center', gap: 6,
-              padding: '6px 12px', borderRadius: 999, border: 'none',
-              background: active ? p.color : 'transparent',
-              color: active ? 'white' : NAVY,
-              fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
+              padding: '7px 14px', borderRadius: 999,
+              border: `1px solid ${active ? '#A9C9E8' : 'rgba(255,255,255,0.16)'}`,
+              background: active ? '#A9C9E8' : 'transparent',
+              color: active ? '#0E2336' : 'rgba(234,241,248,0.6)',
+              fontSize: 11, fontWeight: 600, letterSpacing: '0.8px', textTransform: 'uppercase',
+              cursor: 'pointer', fontFamily: 'inherit',
             }}>
             <Icon size={12} /> {p.label}{n ? ` · ${n}` : ''}
           </button>
