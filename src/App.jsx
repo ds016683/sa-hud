@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import {
   LayoutGrid, Lightbulb, Network, LogOut, Menu, X, Target, Users, Sparkles,
-  FileText, MessageSquare, Wallet, CreditCard, LayoutDashboard, Brain, Gauge, ListChecks,
+  FileText, MessageSquare, Wallet, CreditCard, LayoutDashboard, Brain, Gauge, ListChecks, BookMarked,
 } from 'lucide-react'
 import { getSession, onAuthStateChange, signOut } from './lib/auth'
 import { statusFor, greetingFor } from './constants/saDesign'
@@ -20,9 +20,12 @@ import CompanyFinancePage from './components/CompanyFinancePage'
 import PersonalFinancePage from './components/PersonalFinancePage'
 import DailyPerformancePage from './components/DailyPerformancePage'
 import SessionBoardsPage from './components/SessionBoardsPage'
+import DayLibraryPage from './components/DayLibraryPage'
+import BrainPage from './components/BrainPage'
 
 const NAV_ITEMS = [
   { id: 'daily-performance', label: 'Daily Performance', icon: Gauge,        group: 'DAILY PERFORMANCE' },
+  { id: 'day-library',     label: 'Day Library',      icon: BookMarked,      group: 'DAILY PERFORMANCE' },
   { id: 'session-boards',  label: 'Session Boards',   icon: ListChecks,      group: 'COMMAND' },
   { id: 'daily-dashboard', label: 'Daily Dashboard',  icon: LayoutDashboard, group: 'COMMAND' },
   { id: 'brain',           label: 'The Brain',        icon: Brain,           group: 'COMMAND' },
@@ -154,23 +157,6 @@ function Topbar({ active, now, sov }) {
   )
 }
 
-function BrainPlaceholder() {
-  return (
-    <div className="sa-grid">
-      <div className="col-12 sa-card" style={{ padding: '64px', textAlign: 'center' }}>
-        <div className="sa-card-icon" style={{ margin: '0 auto 18px', width: '52px', height: '52px' }}>
-          <Brain size={26} />
-        </div>
-        <div className="sa-serif" style={{ fontSize: '30px', color: 'var(--sa-ink)' }}>The Brain</div>
-        <p style={{ maxWidth: '46ch', margin: '12px auto 0', fontSize: '14px', lineHeight: 1.6, color: 'var(--sa-ink-2)' }}>
-          Theo&rsquo;s daily brief lands here — what matters today, pulled from every connected source.
-        </p>
-        <div className="sa-tele" style={{ color: 'var(--sa-ink-3)', marginTop: '22px' }}>NEW SURFACE · COMING ONLINE</div>
-      </div>
-    </div>
-  )
-}
-
 export default function App() {
   const [session, setSession] = useState(undefined)
   const [active, setActive] = useState('daily-dashboard')
@@ -215,13 +201,14 @@ export default function App() {
   return (
     <div className="sa-app">
       <Sidebar active={active} onChange={setActive} onSignOut={handleSignOut} />
-      <div className={`sa-main${active === 'ecosystem' ? ' sa-surface-dark' : ''}${active === 'session-boards' || (active === 'daily-performance' && dpCip) ? ' sa-surface-dark sa-dark-scroll' : ''}`}>
+      <div className={`sa-main${active === 'ecosystem' ? ' sa-surface-dark' : ''}${active === 'session-boards' || active === 'day-library' || (active === 'daily-performance' && dpCip) ? ' sa-surface-dark sa-dark-scroll' : ''}`}>
         <Topbar active={active} now={now} sov={gameState.sovereigntyLevel} />
         <div className="sa-content">
           {active === 'daily-performance' && <DailyPerformancePage />}
+          {active === 'day-library'     && <DayLibraryPage />}
           {active === 'session-boards'  && <SessionBoardsPage />}
           {active === 'daily-dashboard' && <DailyDashboardPage gameState={gameState} />}
-          {active === 'brain'           && <BrainPlaceholder />}
+          {active === 'brain'           && <BrainPage />}
           {active === 'objectives'      && <ObjectivesPage />}
           {active === 'accomplishments' && <AccomplishmentsPage />}
           {active === 'meeting-notes'   && <MeetingNotesPage />}
