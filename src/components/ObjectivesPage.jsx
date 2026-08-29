@@ -718,7 +718,7 @@ function MetricsDetail({ breakdown, history, pressure }) {
 // ActiveRow — one line per active item: dot, title, due, done. Nothing else.
 // =============================================================================
 
-function ActiveRow({ o, onDone, onEdit }) {
+function ActiveRow({ o, onDone, onPark, onEdit }) {
   const dueC = dueColor(o.due_date, o.hard_deadline)
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 0', borderTop: `1px solid ${PANEL_BORDER}`, whiteSpace: 'nowrap', minWidth: 0 }}>
@@ -726,6 +726,7 @@ function ActiveRow({ o, onDone, onEdit }) {
       <SizeDot weight={o.weight} />
       <span onClick={() => onEdit(o)} title={o.title} style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', fontSize: 14, color: NAVY, cursor: 'pointer' }}>{o.title}</span>
       {o.due_date && <span style={{ ...S.chip(dueC.bg, dueC.fg), fontSize: 9, flexShrink: 0 }}>{o.hard_deadline ? '🔒 ' : ''}{fmtShort(o.due_date)}</span>}
+      <button onClick={() => onPark(o.id)} title="Back to queue" style={{ ...S.btnGhost, fontSize: 10, padding: '5px 8px', flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 4 }}><RaceTrack size={12} /></button>
       <button onClick={() => onDone(o.id)} style={{ ...S.btnDone, flexShrink: 0 }}><Check size={12} /> done</button>
       <button onClick={() => onEdit(o)} title="Open card" style={{ background: 'none', border: 'none', color: GRAY, cursor: 'pointer', padding: 2, flexShrink: 0 }}><Edit3 size={13} /></button>
     </div>
@@ -2137,6 +2138,7 @@ export default function ObjectivesPage() {
             ) : sortedActive.map(o => (
               <ActiveRow key={o.id} o={o}
                 onDone={(id) => releaseObjective(id, 'done')}
+                onPark={(id) => moveObjective(id, 'parked')}
                 onEdit={setEditing}
               />
             ))}
