@@ -609,7 +609,8 @@ function CapacityMeter({ used, capacity }) {
 // GameLegend — the rules of the game, fixed left of the gauges
 // =============================================================================
 
-function GameLegend() {
+function GameLegend({ score, used, capacity }) {
+  const [open, setOpen] = useState(false)
   const H = ({ children }) => (
     <div style={{ fontSize: 9, fontFamily: 'var(--font-mono, monospace)', letterSpacing: '1.6px', color: '#A9C9E8', textTransform: 'uppercase', margin: '14px 0 6px' }}>{children}</div>
   )
@@ -619,26 +620,45 @@ function GameLegend() {
       <span>{children}</span>
     </div>
   )
+  const sovLvl = score <= 3 ? ['LOW', '#E06C5F'] : score <= 7 ? ['MEDIUM', '#E6B54F'] : ['HIGH', '#43D392']
+  const pct = capacity ? (used / capacity) * 100 : 0
+  const capLvl = used > capacity ? ['OVER', '#E06C5F'] : pct >= 80 ? ['HIGH', '#E06C5F'] : pct >= 50 ? ['MEDIUM', '#E6B54F'] : ['LOW', '#43D392']
+  const Indicator = ({ label, lvl }) => (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '7px 0', borderBottom: `1px solid ${PANEL_BORDER}` }}>
+      <span style={{ fontSize: 10, fontFamily: 'var(--font-mono, monospace)', letterSpacing: '1.2px', color: TEXT_DIM }}>{label}</span>
+      <span style={{ fontSize: 9, fontFamily: 'var(--font-mono, monospace)', letterSpacing: '1px', fontWeight: 600, color: lvl[1], background: lvl[1] + '1f', border: `1px solid ${lvl[1]}55`, borderRadius: 999, padding: '2px 10px' }}>{lvl[0]}</span>
+    </div>
+  )
   return (
     <div style={{ ...S.panel, marginBottom: 0, height: '100%', boxSizing: 'border-box', padding: '14px 16px' }}>
-      <div style={{ ...S.panelTitle, marginBottom: 0 }}>How to read this</div>
-      <H>Sovereignty · 1-10</H>
-      <Row>10 − pressure. Pressure = Σ weight × stakes × urgency of everything ACTIVE.</Row>
-      <Row dot="#E06C5F">1-3 Triage · execution only</Row>
-      <Row dot="#E6B54F">4-6 Operating · normal mix</Row>
-      <Row dot="#A9C9E8">7-8 Caught Up · design unlocked</Row>
-      <Row dot="#43D392">9-10 Open Water · generative</Row>
-      <H>Weight · E × I</H>
-      <Row>Effort 1-5 (½h · 2h · 4h · 8h · 20h) × Importance 1-3.</Row>
-      <Row dot="rgba(234,241,248,0.55)">Pebble · weight 1-3</Row>
-      <Row dot="#A9C9E8">Stone · weight 4-8</Row>
-      <Row dot="#F8C761">Boulder · weight 9-10</Row>
-      <H>Capacity · Σ / 15</H>
-      <Row>Sum of active weights. Full means finish before adding.</Row>
-      <H>Multipliers</H>
-      <Row>Emergency ×2 · hard deadline ×1.5 · anchor ×1.3 · overdue ×2 · due ≤3d ×1.5 · ≤7d ×1.2 · undated ×0.9.</Row>
-      <H>Unlocks</H>
-      <Row>Queue items need minimum SOV: execution 1/3/5, design 4/6/7 (Pebble/Stone/Boulder). Anchor and emergencies always unlock.</Row>
+      <button onClick={() => setOpen(o => !o)} style={{ display: 'flex', width: '100%', justifyContent: 'space-between', alignItems: 'center', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
+        <span style={{ ...S.panelTitle, marginBottom: 0 }}>Task and Capacity Management</span>
+        {open ? <ChevronUp size={13} style={{ color: GRAY }} /> : <ChevronDown size={13} style={{ color: GRAY }} />}
+      </button>
+      <div style={{ marginTop: 10 }}>
+        <Indicator label="SOVEREIGNTY" lvl={sovLvl} />
+        <Indicator label="CAPACITY" lvl={capLvl} />
+      </div>
+      {open && (
+        <div style={{ marginTop: 4 }}>
+          <H>Sovereignty · 1-10</H>
+          <Row>10 − pressure. Pressure = Σ weight × stakes × urgency of everything ACTIVE.</Row>
+          <Row dot="#E06C5F">1-3 Triage · execution only</Row>
+          <Row dot="#E6B54F">4-6 Operating · normal mix</Row>
+          <Row dot="#A9C9E8">7-8 Caught Up · design unlocked</Row>
+          <Row dot="#43D392">9-10 Open Water · generative</Row>
+          <H>Weight · E × I</H>
+          <Row dot="rgba(234,241,248,0.55)">Pebble · weight 1-3</Row>
+          <Row dot="#A9C9E8">Stone · weight 4-8</Row>
+          <Row dot="#F8C761">Boulder · weight 9-10</Row>
+          <H>Capacity · Σ / 15</H>
+          <Row>Sum of active weights. Full means finish before adding.</Row>
+          <H>Multipliers</H>
+          <Row>Emergency ×2 · hard deadline ×1.5 · anchor ×1.3 · overdue ×2 · due ≤3d ×1.5 · ≤7d ×1.2 · undated ×0.9.</Row>
+          <H>Unlocks</H>
+          <Row>Queue items need minimum SOV: execution 1/3/5, design 4/6/7 (Pebble/Stone/Boulder). Anchor and emergencies always unlock.</Row>
+        </div>
+      )}
     </div>
   )
 }
@@ -655,10 +675,10 @@ function MetersRail({ score, pressure, used, capacity, breakdownCount, open, onT
   const Meter = ({ value, valueColor, label, fill, chip }) => (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, flex: 1, minWidth: 0 }}>
       <div style={{ fontSize: 20, fontWeight: 700, color: valueColor, lineHeight: 1 }}>{value}</div>
-      <div style={{ height: 180, width: 12, borderRadius: 999, background: 'rgba(255,255,255,0.10)', position: 'relative', overflow: 'hidden' }}>
+      <div style={{ flex: 1, minHeight: 180, alignSelf: 'stretch', width: 12, margin: '0 auto', borderRadius: 999, background: 'rgba(255,255,255,0.10)', position: 'relative', overflow: 'hidden' }}>
         {fill}
       </div>
-      <div style={{ fontSize: 9, fontFamily: 'var(--font-mono, monospace)', letterSpacing: '1.6px', color: '#A9C9E8' }}>{label}</div>
+      <div style={{ fontSize: 8, fontFamily: 'var(--font-mono, monospace)', letterSpacing: '1.4px', color: '#A9C9E8', whiteSpace: 'nowrap' }}>{label}</div>
       <div style={{ minHeight: 40, display: 'flex', alignItems: 'flex-start', justifyContent: 'center' }}>{chip}</div>
     </div>
   )
@@ -666,12 +686,12 @@ function MetersRail({ score, pressure, used, capacity, breakdownCount, open, onT
     <div style={{ ...S.panel, marginBottom: 0, height: '100%', boxSizing: 'border-box', display: 'flex', flexDirection: 'column', gap: 12, padding: '18px 14px 12px' }}>
       <div style={{ display: 'flex', gap: 14, flex: 1, alignItems: 'stretch' }}>
         <Meter
-          value={score} valueColor={zone.color} label="SOV"
+          value={score} valueColor={zone.color} label="SOVEREIGNTY"
           fill={<div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: `${score * 10}%`, borderRadius: 999, transition: 'height .4s', background: 'linear-gradient(0deg, #E06C5F 0%, #E6B54F 50%, #43D392 100%)' }} />}
           chip={<span style={{ ...S.chip(zone.bg, zone.color), fontSize: 8, padding: '2px 6px', textAlign: 'center' }}>{zone.label}</span>}
         />
         <Meter
-          value={`${used}/${capacity}`} valueColor={over ? '#E06C5F' : '#EAF1F8'} label="CAP"
+          value={`${used}/${capacity}`} valueColor={over ? '#E06C5F' : '#EAF1F8'} label="CAPACITY"
           fill={<div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: `${capPct}%`, borderRadius: 999, transition: 'height .4s', background: capColor }} />}
           chip={<span style={{ fontSize: 9, color: GRAY, textAlign: 'center', lineHeight: 1.3 }}>{over ? 'over' : capacity - used >= 9 ? 'Boulder fits' : capacity - used >= 4 ? 'Stone fits' : capacity - used > 0 ? 'Pebbles only' : 'Full'}</span>}
         />
@@ -1110,7 +1130,7 @@ function AddObjective({ onAdd, onPark, onForeman }) {
   }
 
   if (!open) return (
-    <button style={{ ...S.btnPrimary, width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '12px' }} onClick={() => setOpen(true)}>
+    <button style={{ ...S.btnPrimary, width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '12px', marginBottom: 18 }} onClick={() => setOpen(true)}>
       <Plus size={16} /> Add objective
     </button>
   )
@@ -1118,7 +1138,7 @@ function AddObjective({ onAdd, onPark, onForeman }) {
   const unsized = effort === null || importance === null
 
   return (
-    <div style={{ ...S.panel, border: `2px solid ${NAVY}` }}>
+    <div style={{ ...S.panel, border: `2px solid ${NAVY}`, marginBottom: 18 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
         <div style={S.panelTitle}>New objective</div>
         <button onClick={() => setOpen(false)} style={{ background: 'none', border: 'none', color: GRAY, cursor: 'pointer' }}><X size={16} /></button>
@@ -2067,18 +2087,18 @@ export default function ObjectivesPage() {
           />
 
           <div style={{ display: 'grid', gridTemplateColumns: '246px 172px 1fr', gap: 12, marginBottom: 12, alignItems: 'stretch' }}>
-            <GameLegend />
+            <GameLegend score={score} used={ramUsed} capacity={ramCap} />
             <MetersRail
               score={score} pressure={pressure} used={ramUsed} capacity={ramCap}
               breakdownCount={pressureBreakdown.length}
               open={metricsOpen} onToggle={() => setMetricsOpen(o => !o)}
             />
-          <div style={{ ...S.panel, marginBottom: 0, height: '100%', boxSizing: 'border-box', minWidth: 0, background: 'rgba(67,211,146,0.05)', border: `1px solid rgba(67,211,146,0.45)`, boxShadow: 'none' }}>
+          <div style={{ ...S.panel, marginBottom: 0, height: '100%', boxSizing: 'border-box', minWidth: 0, boxShadow: 'none' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, gap: 8, flexWrap: 'wrap' }}>
-              <div style={{ ...S.panelTitle, fontSize: 16, color: '#43D392', marginBottom: 0, display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 10 }}>
                 <span style={{ width: 8, height: 8, borderRadius: 4, background: '#43D392', display: 'inline-block' }} />
-                Active · {sortedActive.length}
-                <span style={{ fontSize: 10, fontWeight: 500, color: 'rgba(67,211,146,0.8)', textTransform: 'none', letterSpacing: 0, marginLeft: 4 }}>← work this. nothing else.</span>
+                <span style={{ fontFamily: "'Lora', Georgia, serif", fontWeight: 500, fontSize: 17, letterSpacing: '-0.01em', color: '#EAF1F8' }}>Active · {sortedActive.length}</span>
+                <span style={{ fontSize: 10, color: GRAY, fontFamily: 'var(--font-mono, monospace)', letterSpacing: '0.5px', marginLeft: 4 }}>work this. nothing else.</span>
               </div>
               <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
                 <button onClick={() => setViewMode('cards')} title="Card view"
