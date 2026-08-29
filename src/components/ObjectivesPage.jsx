@@ -609,8 +609,13 @@ function CapacityMeter({ used, capacity }) {
 // GameLegend — the rules of the game, fixed left of the gauges
 // =============================================================================
 
-function GameLegend({ score, used, capacity }) {
-  const [open, setOpen] = useState(false)
+const sovLevelOf = (score) => score <= 3 ? ['LOW', '#E06C5F'] : score <= 7 ? ['MEDIUM', '#E6B54F'] : ['HIGH', '#43D392']
+const capLevelOf = (used, capacity) => {
+  const pct = capacity ? (used / capacity) * 100 : 0
+  return used > capacity ? ['OVER', '#E06C5F'] : pct >= 80 ? ['HIGH', '#E06C5F'] : pct >= 50 ? ['MEDIUM', '#E6B54F'] : ['LOW', '#43D392']
+}
+
+function GameLegend() {
   const H = ({ children }) => (
     <div style={{ fontSize: 9, fontFamily: 'var(--font-mono, monospace)', letterSpacing: '1.6px', color: '#A9C9E8', textTransform: 'uppercase', margin: '14px 0 6px' }}>{children}</div>
   )
@@ -620,45 +625,25 @@ function GameLegend({ score, used, capacity }) {
       <span>{children}</span>
     </div>
   )
-  const sovLvl = score <= 3 ? ['LOW', '#E06C5F'] : score <= 7 ? ['MEDIUM', '#E6B54F'] : ['HIGH', '#43D392']
-  const pct = capacity ? (used / capacity) * 100 : 0
-  const capLvl = used > capacity ? ['OVER', '#E06C5F'] : pct >= 80 ? ['HIGH', '#E06C5F'] : pct >= 50 ? ['MEDIUM', '#E6B54F'] : ['LOW', '#43D392']
-  const Indicator = ({ label, lvl }) => (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '7px 0', borderBottom: `1px solid ${PANEL_BORDER}` }}>
-      <span style={{ fontSize: 10, fontFamily: 'var(--font-mono, monospace)', letterSpacing: '1.2px', color: TEXT_DIM }}>{label}</span>
-      <span style={{ fontSize: 9, fontFamily: 'var(--font-mono, monospace)', letterSpacing: '1px', fontWeight: 600, color: lvl[1], background: lvl[1] + '1f', border: `1px solid ${lvl[1]}55`, borderRadius: 999, padding: '2px 10px' }}>{lvl[0]}</span>
-    </div>
-  )
   return (
     <div style={{ ...S.panel, marginBottom: 0, height: '100%', boxSizing: 'border-box', padding: '14px 16px' }}>
-      <button onClick={() => setOpen(o => !o)} style={{ display: 'flex', width: '100%', justifyContent: 'space-between', alignItems: 'center', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
-        <span style={{ ...S.panelTitle, marginBottom: 0 }}>Task and Capacity Management</span>
-        {open ? <ChevronUp size={13} style={{ color: GRAY }} /> : <ChevronDown size={13} style={{ color: GRAY }} />}
-      </button>
-      <div style={{ marginTop: 10 }}>
-        <Indicator label="SOVEREIGNTY" lvl={sovLvl} />
-        <Indicator label="CAPACITY" lvl={capLvl} />
-      </div>
-      {open && (
-        <div style={{ marginTop: 4 }}>
-          <H>Sovereignty · 1-10</H>
-          <Row>10 − pressure. Pressure = Σ weight × stakes × urgency of everything ACTIVE.</Row>
-          <Row dot="#E06C5F">1-3 Triage · execution only</Row>
-          <Row dot="#E6B54F">4-6 Operating · normal mix</Row>
-          <Row dot="#A9C9E8">7-8 Caught Up · design unlocked</Row>
-          <Row dot="#43D392">9-10 Open Water · generative</Row>
-          <H>Weight · E × I</H>
-          <Row dot="rgba(234,241,248,0.55)">Pebble · weight 1-3</Row>
-          <Row dot="#A9C9E8">Stone · weight 4-8</Row>
-          <Row dot="#F8C761">Boulder · weight 9-10</Row>
-          <H>Capacity · Σ / 15</H>
-          <Row>Sum of active weights. Full means finish before adding.</Row>
-          <H>Multipliers</H>
-          <Row>Emergency ×2 · hard deadline ×1.5 · anchor ×1.3 · overdue ×2 · due ≤3d ×1.5 · ≤7d ×1.2 · undated ×0.9.</Row>
-          <H>Unlocks</H>
-          <Row>Queue items need minimum SOV: execution 1/3/5, design 4/6/7 (Pebble/Stone/Boulder). Anchor and emergencies always unlock.</Row>
-        </div>
-      )}
+      <div style={{ ...S.panelTitle, marginBottom: 0 }}>The rules</div>
+      <H>Sovereignty · 1-10</H>
+      <Row>10 − pressure. Pressure = Σ weight × stakes × urgency of everything ACTIVE.</Row>
+      <Row dot="#E06C5F">1-3 Triage · execution only</Row>
+      <Row dot="#E6B54F">4-6 Operating · normal mix</Row>
+      <Row dot="#A9C9E8">7-8 Caught Up · design unlocked</Row>
+      <Row dot="#43D392">9-10 Open Water · generative</Row>
+      <H>Weight · E × I</H>
+      <Row dot="rgba(234,241,248,0.55)">Pebble · weight 1-3</Row>
+      <Row dot="#A9C9E8">Stone · weight 4-8</Row>
+      <Row dot="#F8C761">Boulder · weight 9-10</Row>
+      <H>Capacity · Σ / 15</H>
+      <Row>Sum of active weights. Full means finish before adding.</Row>
+      <H>Multipliers</H>
+      <Row>Emergency ×2 · hard deadline ×1.5 · anchor ×1.3 · overdue ×2 · due ≤3d ×1.5 · ≤7d ×1.2 · undated ×0.9.</Row>
+      <H>Unlocks</H>
+      <Row>Queue items need minimum SOV: execution 1/3/5, design 4/6/7 (Pebble/Stone/Boulder). Anchor and emergencies always unlock.</Row>
     </div>
   )
 }
@@ -667,7 +652,7 @@ function GameLegend({ score, used, capacity }) {
 // MetersRail — Sovereignty + Capacity as vertical gauges beside the content
 // =============================================================================
 
-function MetersRail({ score, pressure, used, capacity, breakdownCount, open, onToggle }) {
+function MetersRail({ score, used, capacity }) {
   const zone = sovZone(score)
   const capPct = Math.min(100, (used / capacity) * 100)
   const over = used > capacity
@@ -696,9 +681,6 @@ function MetersRail({ score, pressure, used, capacity, breakdownCount, open, onT
           chip={<span style={{ fontSize: 9, color: GRAY, textAlign: 'center', lineHeight: 1.3 }}>{over ? 'over' : capacity - used >= 9 ? 'Boulder fits' : capacity - used >= 4 ? 'Stone fits' : capacity - used > 0 ? 'Pebbles only' : 'Full'}</span>}
         />
       </div>
-      <button onClick={onToggle} style={{ background: 'none', border: `1px solid ${PANEL_BORDER}`, borderRadius: 999, padding: '5px 8px', fontSize: 10, color: TEXT_DIM, cursor: 'pointer', fontFamily: 'inherit' }}>
-        {open ? 'hide detail' : `what's eating it (${breakdownCount})`}
-      </button>
     </div>
   )
 }
@@ -1967,7 +1949,7 @@ export default function ObjectivesPage() {
   const [tab, setTab] = useState(() => localStorage.getItem('objectives-tab') || 'list') // 'list' | 'dashboard' | 'bin'
   const [container, setContainer] = useState(() => localStorage.getItem('objectives-container') || 'queue') // 'queue' | 'waiting' | 'delegated' | 'released' | 'inbox'
   const [editing, setEditing] = useState(null) // objective being edited
-  const [metricsOpen, setMetricsOpen] = useState(false)
+  const [tcmManual, setTcmManual] = useState(null) // null = auto (open when anything is active)
 
   useEffect(() => { localStorage.setItem('objectives-view', viewMode) }, [viewMode])
   useEffect(() => { localStorage.setItem('objectives-tab', tab) }, [tab])
@@ -2035,6 +2017,14 @@ export default function ObjectivesPage() {
     }
   }, [loading, score, rateSovereignty])
 
+  // Block visibility: manual toggle wins; otherwise open whenever anything is active.
+  const tcmOpen = tcmManual === null ? loadItems.length > 0 : tcmManual
+  const prevLoadRef = useRef(loadItems.length)
+  useEffect(() => {
+    if (loadItems.length > prevLoadRef.current) setTcmManual(true) // activation materializes the block
+    prevLoadRef.current = loadItems.length
+  }, [loadItems.length])
+
   // Sort active: anchor first, then by due_date asc (nulls last), importance desc, weight desc
   const sortedActive = [...active].sort((a,b) => {
     if (a.is_anchor !== b.is_anchor) return a.is_anchor ? -1 : 1
@@ -2086,13 +2076,24 @@ export default function ObjectivesPage() {
             onForeman={(id) => releaseObjective(id, 'foreman')}
           />
 
+          <div
+            onClick={() => setTcmManual(o => (o === null ? !(loadItems.length > 0) : !o))}
+            style={{ ...S.panel, padding: '12px 16px', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 16, cursor: 'pointer', flexWrap: 'wrap' }}>
+            <span style={{ ...S.panelTitle, marginBottom: 0 }}>Task and Capacity Management</span>
+            {[['SOVEREIGNTY', sovLevelOf(score)], ['CAPACITY', capLevelOf(ramUsed, ramCap)]].map(([lbl, lvl]) => (
+              <span key={lbl} style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ fontSize: 9, fontFamily: 'var(--font-mono, monospace)', letterSpacing: '1.2px', color: TEXT_DIM }}>{lbl}</span>
+                <span style={{ fontSize: 9, fontFamily: 'var(--font-mono, monospace)', letterSpacing: '1px', fontWeight: 600, color: lvl[1], background: lvl[1] + '1f', border: `1px solid ${lvl[1]}55`, borderRadius: 999, padding: '2px 10px' }}>{lvl[0]}</span>
+              </span>
+            ))}
+            <span style={{ flex: 1 }} />
+            {tcmOpen ? <ChevronUp size={14} style={{ color: GRAY }} /> : <ChevronDown size={14} style={{ color: GRAY }} />}
+          </div>
+
+          {tcmOpen && (
           <div style={{ display: 'grid', gridTemplateColumns: '246px 172px 1fr', gap: 12, marginBottom: 12, alignItems: 'stretch' }}>
-            <GameLegend score={score} used={ramUsed} capacity={ramCap} />
-            <MetersRail
-              score={score} pressure={pressure} used={ramUsed} capacity={ramCap}
-              breakdownCount={pressureBreakdown.length}
-              open={metricsOpen} onToggle={() => setMetricsOpen(o => !o)}
-            />
+            <GameLegend />
+            <MetersRail score={score} used={ramUsed} capacity={ramCap} />
           <div style={{ ...S.panel, marginBottom: 0, height: '100%', boxSizing: 'border-box', minWidth: 0, boxShadow: 'none' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, gap: 8, flexWrap: 'wrap' }}>
               <div style={{ display: 'inline-flex', alignItems: 'center', gap: 10 }}>
@@ -2139,8 +2140,8 @@ export default function ObjectivesPage() {
             ))}
           </div>
           </div>
+          )}
 
-          {metricsOpen && <MetricsDetail breakdown={pressureBreakdown} history={sovHistory} pressure={pressure} />}
 
           {anchorActive && (
             <div style={S.panel}>
