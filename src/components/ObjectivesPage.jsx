@@ -351,7 +351,8 @@ function MorningArrival({ meditation, onSubmit }) {
   const audioRef = useRef(null)
 
   const hh = new Date().getHours()
-  const greeting = hh < 12 ? 'Morning Arrival' : hh < 17 ? 'Midday Check' : 'Evening Arrival'
+  const isMorning = hh < 12
+  const greeting = 'Morning Arrival'
   const dateStr = new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
 
   useEffect(() => {
@@ -380,26 +381,32 @@ function MorningArrival({ meditation, onSubmit }) {
   const dotCount = 24
   const filledDots = Math.round(progress * dotCount)
 
-  if (meditation && !answerOpen && !playing && progress === 0) {
+  if ((meditation || !isMorning) && !answerOpen && !playing && progress === 0) {
     // Already done today — collapsed pill
     return (
-      <div style={{ ...S.panel, marginBottom: 0, height: '100%', boxSizing: 'border-box', background: 'rgba(169,201,232,0.05)', borderColor: 'rgba(169,201,232,0.25)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+      <div style={{ ...S.panel, marginBottom: 0, height: '100%', boxSizing: 'border-box', display: 'flex', alignItems: 'center' }}>
+        <audio ref={audioRef} src={`${BASE_URL}audio/morning-arrival/${variant}.mp3`} preload="metadata" />
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, width: '100%' }}>
           <div>
-            <div style={{ fontSize: 11, color: GRAY, marginBottom: 2 }}>{dateStr} · Already arrived today</div>
-            <div style={{ fontSize: 14, fontWeight: 600, color: NAVY, lineHeight: 1.4 }}>
+            <div style={{ fontSize: 10, fontFamily: 'var(--font-mono, monospace)', letterSpacing: '1.4px', color: '#A9C9E8', textTransform: 'uppercase', marginBottom: 6 }}>
+              {meditation ? `${dateStr} · Arrived` : `${dateStr} · The morning window has passed`}
+            </div>
+            <div style={{ fontSize: 15, fontWeight: 600, color: NAVY, lineHeight: 1.45 }}>
               <Star size={13} style={{ display: 'inline', marginRight: 6, color: GOLD, marginBottom: -2 }} />
-              {meditation.rock_answer}
+              {meditation ? meditation.rock_answer : 'No anchor captured today. The Rock question waits for tomorrow, or answer it now.'}
             </div>
           </div>
-          <button style={S.btnGhost} onClick={() => { setProgress(0); setPlaying(false); setAnswerOpen(false); audioRef.current.currentTime = 0 }}>Play again</button>
+          <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+            {!meditation && <button style={S.btnGhost} onClick={() => setAnswerOpen(true)}>Answer now</button>}
+            <button style={S.btnGhost} onClick={() => { setProgress(0); setPlaying(false); setAnswerOpen(false); if (audioRef.current) { audioRef.current.currentTime = 0; audioRef.current.play(); setPlaying(true) } }}>{meditation ? 'Play again' : 'Play arrival'}</button>
+          </div>
         </div>
       </div>
     )
   }
 
   return (
-    <div style={{ ...S.panel, marginBottom: 0, height: '100%', boxSizing: 'border-box', background: 'rgba(169,201,232,0.05)', borderColor: 'rgba(169,201,232,0.25)' }}>
+    <div style={{ ...S.panel, marginBottom: 0, height: '100%', boxSizing: 'border-box' }}>
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 8 }}>
         <div>
           <div style={{ fontSize: 11, fontWeight: 700, color: NAVY, textTransform: 'uppercase', letterSpacing: '0.1em' }}>☀ {greeting}</div>
@@ -609,11 +616,11 @@ function MetersRail({ score, pressure, used, capacity, breakdownCount, open, onT
   const Meter = ({ value, valueColor, label, fill, chip }) => (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, flex: 1, minWidth: 0 }}>
       <div style={{ fontSize: 20, fontWeight: 700, color: valueColor, lineHeight: 1 }}>{value}</div>
-      <div style={{ flex: 1, minHeight: 130, width: 12, borderRadius: 999, background: 'rgba(255,255,255,0.10)', position: 'relative', overflow: 'hidden' }}>
+      <div style={{ height: 180, width: 12, borderRadius: 999, background: 'rgba(255,255,255,0.10)', position: 'relative', overflow: 'hidden' }}>
         {fill}
       </div>
       <div style={{ fontSize: 9, fontFamily: 'var(--font-mono, monospace)', letterSpacing: '1.6px', color: '#A9C9E8' }}>{label}</div>
-      {chip}
+      <div style={{ minHeight: 40, display: 'flex', alignItems: 'flex-start', justifyContent: 'center' }}>{chip}</div>
     </div>
   )
   return (
