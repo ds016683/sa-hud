@@ -1504,6 +1504,13 @@ function InboxContainer({ items, onRoute, onDelete, onEdit }) {
         <div key={o.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 0', borderTop: `1px solid ${PANEL_BORDER}`, fontSize: 13, flexWrap: 'wrap' }}>
           <InboxIcon size={14} color="#F2D592" />
           <span style={{ flex: 1, minWidth: 200, color: NAVY, cursor: 'pointer', overflow: 'hidden', textOverflow: 'ellipsis' }} onClick={() => onEdit(o)}>{o.title}</span>
+          {(o.tags || []).includes('maybe-dupe') && (
+            <span title={o.description || 'The heartbeat thinks this may duplicate an existing objective'} style={{
+              fontFamily: 'var(--font-mono, monospace)', fontSize: 9, letterSpacing: '0.8px', whiteSpace: 'nowrap',
+              padding: '2px 8px', borderRadius: 999, background: 'rgba(248,199,97,0.14)',
+              color: '#F2D592', border: '1px solid rgba(248,199,97,0.45)', cursor: 'help',
+            }}>≈ MAYBE DUPE</span>
+          )}
           {o.tags && o.tags.length > 0 && <TagPills tags={o.tags} max={2} />}
           <button onClick={() => onEdit(o)} title="Edit" style={{ background: 'none', border: 'none', color: GRAY, cursor: 'pointer', padding: 2 }}><Edit3 size={12} /></button>
           <RouteIcons o={o} onRoute={onRoute} size={12} gap={2} />
