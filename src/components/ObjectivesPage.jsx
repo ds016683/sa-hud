@@ -604,6 +604,45 @@ function CapacityMeter({ used, capacity }) {
 }
 
 
+
+// =============================================================================
+// GameLegend — the rules of the game, fixed left of the gauges
+// =============================================================================
+
+function GameLegend() {
+  const H = ({ children }) => (
+    <div style={{ fontSize: 9, fontFamily: 'var(--font-mono, monospace)', letterSpacing: '1.6px', color: '#A9C9E8', textTransform: 'uppercase', margin: '14px 0 6px' }}>{children}</div>
+  )
+  const Row = ({ dot, children }) => (
+    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 7, fontSize: 11, lineHeight: 1.5, color: TEXT_DIM, padding: '1.5px 0' }}>
+      {dot && <span style={{ width: 7, height: 7, borderRadius: '50%', background: dot, flexShrink: 0, marginTop: 4 }} />}
+      <span>{children}</span>
+    </div>
+  )
+  return (
+    <div style={{ ...S.panel, marginBottom: 0, height: '100%', boxSizing: 'border-box', padding: '14px 16px' }}>
+      <div style={{ ...S.panelTitle, marginBottom: 0 }}>How to read this</div>
+      <H>Sovereignty · 1-10</H>
+      <Row>10 − pressure. Pressure = Σ weight × stakes × urgency of everything ACTIVE.</Row>
+      <Row dot="#E06C5F">1-3 Triage · execution only</Row>
+      <Row dot="#E6B54F">4-6 Operating · normal mix</Row>
+      <Row dot="#A9C9E8">7-8 Caught Up · design unlocked</Row>
+      <Row dot="#43D392">9-10 Open Water · generative</Row>
+      <H>Weight · E × I</H>
+      <Row>Effort 1-5 (½h · 2h · 4h · 8h · 20h) × Importance 1-3.</Row>
+      <Row dot="rgba(234,241,248,0.55)">Pebble · weight 1-3</Row>
+      <Row dot="#A9C9E8">Stone · weight 4-8</Row>
+      <Row dot="#F8C761">Boulder · weight 9-10</Row>
+      <H>Capacity · Σ / 15</H>
+      <Row>Sum of active weights. Full means finish before adding.</Row>
+      <H>Multipliers</H>
+      <Row>Emergency ×2 · hard deadline ×1.5 · anchor ×1.3 · overdue ×2 · due ≤3d ×1.5 · ≤7d ×1.2 · undated ×0.9.</Row>
+      <H>Unlocks</H>
+      <Row>Queue items need minimum SOV: execution 1/3/5, design 4/6/7 (Pebble/Stone/Boulder). Anchor and emergencies always unlock.</Row>
+    </div>
+  )
+}
+
 // =============================================================================
 // MetersRail — Sovereignty + Capacity as vertical gauges beside the content
 // =============================================================================
@@ -2027,49 +2066,14 @@ export default function ObjectivesPage() {
             onForeman={(id) => releaseObjective(id, 'foreman')}
           />
 
-          <div style={{ display: 'grid', gridTemplateColumns: '172px 1fr', gap: 12, marginBottom: 12, alignItems: 'stretch' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '246px 172px 1fr', gap: 12, marginBottom: 12, alignItems: 'stretch' }}>
+            <GameLegend />
             <MetersRail
               score={score} pressure={pressure} used={ramUsed} capacity={ramCap}
               breakdownCount={pressureBreakdown.length}
               open={metricsOpen} onToggle={() => setMetricsOpen(o => !o)}
             />
-            <MorningArrival meditation={meditation} onSubmit={saveMeditationAnswer} />
-          </div>
-
-          {metricsOpen && <MetricsDetail breakdown={pressureBreakdown} history={sovHistory} pressure={pressure} />}
-
-          {anchorActive && (
-            <div style={S.panel}>
-              <div style={{ ...S.panelTitle, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span>Anchor</span>
-                <span style={{ fontSize: 10, color: GRAY, fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>
-                  today's keystone · counts toward pressure, not the active list
-                </span>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 0' }}>
-                <Anchor size={16} color={GOLD} />
-                <span style={{ flex: 1, fontSize: 14, color: NAVY, fontWeight: 600 }}>{anchorActive.title}</span>
-                <span style={S.chip('rgba(248,199,97,0.14)', GOLD)}>{sizeFor(anchorActive.weight)}</span>
-                <button style={S.btnDone} onClick={() => releaseObjective(anchorActive.id, 'done')}>
-                  <Check size={12} /> done
-                </button>
-              </div>
-            </div>
-          )}
-
-          <EmergencyBanner
-            items={emergencies}
-            onDone={(id) => releaseObjective(id, 'done')}
-            onForeman={(id) => releaseObjective(id, 'foreman')}
-          />
-
-          <TriageQueue
-            items={triage}
-            onSize={(id, patch) => updateObjective(id, patch)}
-            onEdit={setEditing}
-          />
-
-          <div style={{ ...S.panel, background: 'rgba(67,211,146,0.05)', border: `1px solid rgba(67,211,146,0.45)`, boxShadow: 'none' }}>
+          <div style={{ ...S.panel, marginBottom: 0, height: '100%', boxSizing: 'border-box', minWidth: 0, background: 'rgba(67,211,146,0.05)', border: `1px solid rgba(67,211,146,0.45)`, boxShadow: 'none' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, gap: 8, flexWrap: 'wrap' }}>
               <div style={{ ...S.panelTitle, fontSize: 16, color: '#43D392', marginBottom: 0, display: 'inline-flex', alignItems: 'center', gap: 8 }}>
                 <span style={{ width: 8, height: 8, borderRadius: 4, background: '#43D392', display: 'inline-block' }} />
@@ -2114,6 +2118,40 @@ export default function ObjectivesPage() {
               />
             ))}
           </div>
+          </div>
+
+          {metricsOpen && <MetricsDetail breakdown={pressureBreakdown} history={sovHistory} pressure={pressure} />}
+
+          {anchorActive && (
+            <div style={S.panel}>
+              <div style={{ ...S.panelTitle, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span>Anchor</span>
+                <span style={{ fontSize: 10, color: GRAY, fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>
+                  today's keystone · counts toward pressure, not the active list
+                </span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 0' }}>
+                <Anchor size={16} color={GOLD} />
+                <span style={{ flex: 1, fontSize: 14, color: NAVY, fontWeight: 600 }}>{anchorActive.title}</span>
+                <span style={S.chip('rgba(248,199,97,0.14)', GOLD)}>{sizeFor(anchorActive.weight)}</span>
+                <button style={S.btnDone} onClick={() => releaseObjective(anchorActive.id, 'done')}>
+                  <Check size={12} /> done
+                </button>
+              </div>
+            </div>
+          )}
+
+          <EmergencyBanner
+            items={emergencies}
+            onDone={(id) => releaseObjective(id, 'done')}
+            onForeman={(id) => releaseObjective(id, 'foreman')}
+          />
+
+          <TriageQueue
+            items={triage}
+            onSize={(id, patch) => updateObjective(id, patch)}
+            onEdit={setEditing}
+          />
 
           {/* v1.11 — Container pill switcher. Replaces stacked Queue/Delegated/Released. */}
           <ContainerPills
