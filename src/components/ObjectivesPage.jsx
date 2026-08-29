@@ -715,6 +715,24 @@ function MetricsDetail({ breakdown, history, pressure }) {
 }
 
 // =============================================================================
+// ActiveRow — one line per active item: dot, title, due, done. Nothing else.
+// =============================================================================
+
+function ActiveRow({ o, onDone, onEdit }) {
+  const dueC = dueColor(o.due_date, o.hard_deadline)
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 0', borderTop: `1px solid ${PANEL_BORDER}`, whiteSpace: 'nowrap', minWidth: 0 }}>
+      {o.is_anchor && <Star size={12} fill={GOLD} color={GOLD} style={{ flexShrink: 0 }} />}
+      <SizeDot weight={o.weight} />
+      <span onClick={() => onEdit(o)} title={o.title} style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', fontSize: 14, color: NAVY, cursor: 'pointer' }}>{o.title}</span>
+      {o.due_date && <span style={{ ...S.chip(dueC.bg, dueC.fg), fontSize: 9, flexShrink: 0 }}>{o.hard_deadline ? '🔒 ' : ''}{fmtShort(o.due_date)}</span>}
+      <button onClick={() => onDone(o.id)} style={{ ...S.btnDone, flexShrink: 0 }}><Check size={12} /> done</button>
+      <button onClick={() => onEdit(o)} title="Open card" style={{ background: 'none', border: 'none', color: GRAY, cursor: 'pointer', padding: 2, flexShrink: 0 }}><Edit3 size={13} /></button>
+    </div>
+  )
+}
+
+// =============================================================================
 // ObjectiveCard
 // =============================================================================
 
@@ -2102,15 +2120,7 @@ export default function ObjectivesPage() {
                 <span style={{ fontSize: 10, color: GRAY, fontFamily: 'var(--font-mono, monospace)', letterSpacing: '0.5px', marginLeft: 4 }}>work this. nothing else.</span>
               </div>
               <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
-                <button onClick={() => setViewMode('cards')} title="Card view"
-                  style={{ background: viewMode === 'cards' ? 'rgba(255,255,255,0.14)' : 'rgba(255,255,255,0.04)', border: `1px solid ${PANEL_BORDER}`, borderRadius: 6, padding: '4px 8px', cursor: 'pointer', color: NAVY, display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, fontFamily: 'inherit' }}>
-                  <ListIcon size={11} /> cards
-                </button>
-                <button onClick={() => setViewMode('table')} title="Table view"
-                  style={{ background: viewMode === 'table' ? 'rgba(255,255,255,0.14)' : 'rgba(255,255,255,0.04)', border: `1px solid ${PANEL_BORDER}`, borderRadius: 6, padding: '4px 8px', cursor: 'pointer', color: NAVY, display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, fontFamily: 'inherit' }}>
-                  <TableIcon size={11} /> table
-                </button>
-                <button style={{ ...S.btnGhost, fontSize: 11, padding: '4px 10px', marginLeft: 4 }} onClick={() => setCoax(true)}>stuck?</button>
+                <button style={{ ...S.btnGhost, fontSize: 11, padding: '4px 10px' }} onClick={() => setCoax(true)}>stuck?</button>
               </div>
             </div>
 
@@ -2124,17 +2134,9 @@ export default function ObjectivesPage() {
               <div style={{ padding: '20px 0', color: GRAY, fontSize: 13, textAlign: 'center' }}>
                 Nothing active. {meditation ? 'The Rock answer became your anchor — start there.' : 'Tap "Add objective" to begin.'}
               </div>
-            ) : viewMode === 'table' ? (
-              <TableView
-                items={sortedActive}
-                onRoute={moveObjective}
-                onEdit={setEditing}
-              />
             ) : sortedActive.map(o => (
-              <ObjectiveCard key={o.id} o={o}
-                onRoute={moveObjective}
-                onToggleAnchor={(id, val) => val ? setAnchor(id) : updateObjective(id, { is_anchor: false })}
-                onDelete={deleteObjective}
+              <ActiveRow key={o.id} o={o}
+                onDone={(id) => releaseObjective(id, 'done')}
                 onEdit={setEditing}
               />
             ))}
