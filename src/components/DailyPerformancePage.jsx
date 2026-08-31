@@ -102,6 +102,8 @@ export default function DailyPerformancePage() {
   const [rows, setRows] = useState(null)
   const [sel, setSel] = useState(0)
   const [saving, setSaving] = useState(false)
+  const [running, setRunning] = useState(false)
+  const [runError, setRunError] = useState(null)
   const [cip, setCip] = useState(() => {
     try { return localStorage.getItem('dp-theme') === 'cip' } catch { return false }
   })
@@ -128,6 +130,28 @@ export default function DailyPerformancePage() {
   }, [])
 
   useEffect(() => { load() }, [load])
+
+  // Manual update: the /api/refresh relay gathers the Ledger, composes the
+  // summary with Claude, and writes the new row. Takes a minute or two.
+  const runUpdate = useCallback(async () => {
+    if (running) return
+    setRunning(true); setRunError(null)
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) throw new Error('Not signed in')
+      const res = await fetch('/api/refresh', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      })
+      const out = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(out.error || `HTTP ${res.status}`)
+      await load()
+    } catch (e) {
+      setRunError(String(e.message || e))
+    } finally {
+      setRunning(false)
+    }
+  }, [running, load])
 
   const row = rows && rows[sel]
 
@@ -171,10 +195,18 @@ export default function DailyPerformancePage() {
         <div className={`col-12 ${T.cardClass}`} style={{ ...T.cardStyle, padding: '64px', textAlign: 'center' }}>
           <div className="sa-serif" style={{ fontSize: '26px', ...T.serifStyle }}>Daily Performance</div>
           <p style={{ maxWidth: '52ch', margin: '12px auto 0', fontSize: '14px', lineHeight: 1.6, color: T.ink2 }}>
-            Every 30 minutes, the day&rsquo;s new Ledger activity is read and summarized here:
+            Hit Run Update and the day&rsquo;s Ledger activity is read and summarized here:
             what got done, what must still happen today, and what needs to be resourced or assigned.
           </p>
-          <div className="sa-tele" style={{ color: T.ink3, marginTop: '22px' }}>NO RUNS YET · AWAITING FIRST HEARTBEAT</div>
+          <button onClick={runUpdate} disabled={running} style={{
+            marginTop: '22px', display: 'inline-flex', alignItems: 'center', gap: '6px',
+            fontSize: '13px', fontWeight: 600, padding: '9px 18px', borderRadius: '8px', border: 'none',
+            cursor: running ? 'default' : 'pointer', fontFamily: 'inherit',
+            background: cip ? GOLD : SECTION_BLUE, color: cip ? '#16324A' : '#fff', opacity: running ? 0.6 : 1,
+          }}>
+            <RefreshCw size={14} /> {running ? 'Running…' : 'Run Update'}
+          </button>
+          {runError && <div className="sa-tele" style={{ color: '#E06C5F', marginTop: '12px' }}>UPDATE FAILED · {runError.toUpperCase()}</div>}
         </div>
       </div>
     )
@@ -201,8 +233,11 @@ export default function DailyPerformancePage() {
           <div style={{ flex: 1, minWidth: '260px' }}>
             <div className="sa-serif" style={{ fontSize: cip ? '30px' : '26px', ...T.serifStyle }}>{fmtDay(row.day)}</div>
             <div className="sa-tele" style={{ color: cip ? PERIWINKLE : 'var(--sa-ink-3)', marginTop: '6px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <Clock size={12} /> AS OF {fmtTime(row.generated_at).toUpperCase()} · REFRESHES ON THE :15 AND :45
+              <Clock size={12} /> AS OF {fmtTime(row.generated_at).toUpperCase()} · {running ? 'COMPOSING THE UPDATE, GIVE IT A MINUTE OR TWO…' : 'MANUAL · HIT RUN UPDATE TO REGENERATE'}
             </div>
+            {runError && (
+              <div className="sa-tele" style={{ color: '#E06C5F', marginTop: '6px' }}>UPDATE FAILED · {runError.toUpperCase()}</div>
+            )}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
             {themePill}
@@ -215,8 +250,18 @@ export default function DailyPerformancePage() {
                 ))}
               </select>
             )}
-            <button onClick={load} title="Reload" style={T.controlStyle({ display: 'inline-flex', alignItems: 'center', gap: '6px' })}>
+            <button onClick={load} title="Reload the latest saved run" style={T.controlStyle({ display: 'inline-flex', alignItems: 'center', gap: '6px' })}>
               <RefreshCw size={13} /> Refresh
+            </button>
+            <button onClick={runUpdate} disabled={running} title="Regenerate the summary from the Ledger now" style={{
+              display: 'inline-flex', alignItems: 'center', gap: '6px',
+              fontSize: '12px', fontWeight: 600, padding: '6px 14px', borderRadius: '8px', border: 'none',
+              cursor: running ? 'default' : 'pointer', fontFamily: 'inherit',
+              background: running ? (cip ? 'rgba(230,181,79,0.35)' : 'rgba(31,64,96,0.4)') : (cip ? GOLD : SECTION_BLUE),
+              color: running ? (cip ? 'rgba(22,50,74,0.7)' : 'rgba(255,255,255,0.7)') : (cip ? '#16324A' : '#fff'),
+            }}>
+              <RefreshCw size={13} style={running ? { animation: 'spin 1.2s linear infinite' } : undefined} />
+              {running ? 'Running…' : 'Run Update'}
             </button>
           </div>
         </div>
