@@ -29,7 +29,7 @@ async function sb(path, { method = 'GET', body, prefer } = {}) {
   return res.json()
 }
 
-const INSTRUCTIONS = `You are the Daily Performance update for David Smith's personal operating system. You are given today's raw Ledger data as JSON. Gathering already happened; your job is judgment and prose. Respond with ONE JSON object and nothing else (no markdown fences): {"row": {...}, "create_objectives": [...]}.
+const INSTRUCTIONS = `You are the Daily Performance update for David Smith's personal operating system. You are given today's raw Ledger data as JSON. Gathering already happened; your job is judgment and prose. Submit your composed update by calling the submit_update tool exactly once.
 
 Objectives states: active = being worked (is_anchor true = keystone); parked = queue; waiting = blocked on others; foreman = delegated (who = to whom); released + released_at TODAY = finished today; inbox = awaiting David's triage; is_emergency = fire. Objectives tagged "agent" were discovered by a prior run. David's dispositions are law.
 
@@ -51,6 +51,46 @@ BOUNDARY: session boards and project tasks belong to PROJECTS, not to David's pe
 - model: "Manual Refresh"
 
 Never invent data. Never write an em dash anywhere; use commas, periods, or the middle dot.`
+
+const SUBMIT_TOOL = {
+  name: 'submit_update',
+  description: 'Submit the composed Daily Performance update.',
+  input_schema: {
+    type: 'object',
+    required: ['row', 'create_objectives'],
+    properties: {
+      row: {
+        type: 'object',
+        required: ['day', 'summary', 'accomplishments', 'learned', 'interactions', 'team_allocation', 'must_do', 'new_items', 'notes', 'source_counts', 'model'],
+        properties: {
+          day: { type: 'string' },
+          summary: { type: 'string' },
+          accomplishments: { type: 'array', items: { type: 'string' } },
+          learned: { type: 'array', items: { type: 'string' } },
+          interactions: { type: 'array', items: { type: 'string' } },
+          team_allocation: { type: 'array', items: { type: 'string' } },
+          must_do: { type: 'array', items: { type: 'object', required: ['text', 'done'], properties: { text: { type: 'string' }, done: { type: 'boolean' } } } },
+          new_items: { type: 'array', items: { type: 'string' } },
+          notes: { type: 'string' },
+          source_counts: {
+            type: 'object',
+            required: ['meetings', 'sessions', 'calendar', 'time', 'emails', 'todos'],
+            properties: { meetings: { type: 'integer' }, sessions: { type: 'integer' }, calendar: { type: 'integer' }, time: { type: 'integer' }, emails: { type: 'integer' }, todos: { type: 'integer' } },
+          },
+          model: { type: 'string' },
+        },
+      },
+      create_objectives: {
+        type: 'array',
+        items: {
+          type: 'object',
+          required: ['title', 'maybe_dupe', 'source'],
+          properties: { title: { type: 'string' }, maybe_dupe: { type: 'boolean' }, source: { type: 'string' }, closest: { type: 'string' } },
+        },
+      },
+    },
+  },
+}
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' })
@@ -82,23 +122,39 @@ export default async function handler(req, res) {
       return d === TODAY
     })
 
-    // ---- one model call composes everything
-    const payload = { TODAY, meetings, calendar, time_entries: time, emails, objectives, session_boards_updated_today: boardsToday, open_project_tasks: tasks, projects, prior_run: prior[0] || null }
+    // ---- one model call composes everything (payload slimmed so the response
+    // budget goes to the composition, not to echoing long email previews)
+    const slimEmails = emails.map(e => ({ ...e, preview: (e.preview || '').slice(0, 240) }))
+    const payload = { TODAY, meetings, calendar, time_entries: time, emails: slimEmails, objectives, session_boards_updated_today: boardsToday, open_project_tasks: tasks, projects, prior_run: prior[0] || null }
     const ai = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: { 'x-api-key': process.env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
       body: JSON.stringify({
         model: 'claude-sonnet-5',
-        max_tokens: 8000,
+        max_tokens: 24000,
         system: INSTRUCTIONS,
+        tools: [SUBMIT_TOOL],
+        tool_choice: { type: 'tool', name: 'submit_update' },
         messages: [{ role: 'user', content: `Ledger data:\n${JSON.stringify(payload)}` }],
       }),
     })
     if (!ai.ok) throw new Error(`anthropic -> ${ai.status}: ${await ai.text()}`)
     const msg = await ai.json()
-    let text = (msg.content || []).map(c => c.text || '').join('').trim()
-    if (text.startsWith('```')) text = text.replace(/^```(json)?\s*/, '').replace(/```\s*$/, '')
-    const out = JSON.parse(text)
+    if (msg.stop_reason === 'max_tokens') throw new Error('composition truncated (max_tokens); raise the cap')
+    const toolUse = (msg.content || []).find(c => c.type === 'tool_use' && c.name === 'submit_update')
+    if (!toolUse) throw new Error('model did not call submit_update')
+    let out = toolUse.input
+    // Defensive coercion: the tool input occasionally arrives stringified, with
+    // the row fields flattened to the top level, or with objects array-wrapped.
+    if (typeof out === 'string') { try { out = JSON.parse(out) } catch { /* fall through */ } }
+    if (out && !out.row && out.day && out.summary) {
+      const { create_objectives, ...rest } = out
+      out = { row: rest, create_objectives: create_objectives || [] }
+    }
+    if (typeof out.row === 'string') { try { out.row = JSON.parse(out.row) } catch { /* fall through */ } }
+    if (Array.isArray(out.row)) out.row = out.row[0]
+    if (!out.row || typeof out.row !== 'object') throw new Error(`submit_update shape unusable; top-level keys: ${Object.keys(out || {}).join(', ')}`)
+    if (!Array.isArray(out.create_objectives)) out.create_objectives = []
 
     // ---- deterministic writes
     const created = []
