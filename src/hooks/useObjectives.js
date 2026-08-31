@@ -78,9 +78,23 @@ export default function useObjectives() {
     return data
   }, [])
 
+  // Projects bridge: a promoted objective is linked from project_tasks.objective_id
+  // (objectives.parent_id is FK-locked to objectives itself, so the link lives on the
+  // task side only). Any release-as-done closes the underlying project task too.
+  const closeBridgedTask = useCallback(async (obj) => {
+    if (!obj?.id) return
+    const { error } = await supabase.from('project_tasks')
+      .update({ status: 'done', done: true, released_at: new Date().toISOString() })
+      .eq('objective_id', obj.id)
+      .neq('status', 'done')
+    if (error) console.error('[useObjectives] bridge task close failed:', error)
+  }, [])
+
   const releaseObjective = useCallback(async (id, kind = 'done') => {
-    return updateObjective(id, { state: kind === 'foreman' ? 'foreman' : 'released', released_kind: kind, released_at: new Date().toISOString() })
-  }, [updateObjective])
+    const data = await updateObjective(id, { state: kind === 'foreman' ? 'foreman' : 'released', released_kind: kind, released_at: new Date().toISOString() })
+    if (kind === 'done') await closeBridgedTask(data)
+    return data
+  }, [updateObjective, closeBridgedTask])
 
   const reopenObjective = useCallback((id) => updateObjective(id, { state: 'active', released_kind: null, released_at: null }), [updateObjective])
 
@@ -91,15 +105,21 @@ export default function useObjectives() {
   const waitObjective = useCallback((id) => updateObjective(id, { state: 'waiting', released_kind: null, released_at: null }), [updateObjective])
   const inboxObjective = useCallback((id) => updateObjective(id, { state: 'inbox', released_kind: null, released_at: null }), [updateObjective])
   // Generic "move to container" — every cross-container action flows through this.
-  const moveObjective = useCallback((id, targetState) => {
+  const moveObjective = useCallback(async (id, targetState) => {
     const patch = { state: targetState }
     // Reset release fields on any move out of released/foreman to prevent stale ledger artifacts.
     if (targetState !== 'released' && targetState !== 'foreman') {
       patch.released_kind = null
       patch.released_at = null
+    } else {
+      // Stamp the release so the Ledger heartbeats see route-icon releases too.
+      patch.released_kind = targetState === 'foreman' ? 'foreman' : 'done'
+      patch.released_at = new Date().toISOString()
     }
-    return updateObjective(id, patch)
-  }, [updateObjective])
+    const data = await updateObjective(id, patch)
+    if (targetState === 'released') await closeBridgedTask(data)
+    return data
+  }, [updateObjective, closeBridgedTask])
   const deleteObjective = useCallback((id) => updateObjective(id, { deleted_at: new Date().toISOString() }), [updateObjective])
   const restoreObjective = useCallback((id) => updateObjective(id, { deleted_at: null }), [updateObjective])
   const purgeObjective = useCallback(async (id) => {

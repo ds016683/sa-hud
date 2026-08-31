@@ -8,7 +8,7 @@ import { statusFor, greetingFor } from './constants/saDesign'
 import useGameState from './hooks/useGameState'
 import LoginPage from './components/LoginPage'
 import DailyDashboardPage from './components/DailyDashboardPage'
-import PortfolioPage from './components/PortfolioPage'
+import ProjectsPage from './components/ProjectsPage'
 import IdeasPage from './components/IdeasPage'
 import EcosystemPage from './components/EcosystemPage'
 import MeetingNotesPage from './components/MeetingNotesPage'
@@ -36,7 +36,7 @@ const NAV_ITEMS = [
   { id: 'personal-finance', label: 'Personal Finance', icon: CreditCard,     group: 'MONEY STUFF' },
   { id: 'relationships',   label: 'Relationships',    icon: Users,           group: 'NETWORK' },
   { id: 'slack',           label: 'Slack',            icon: MessageSquare,   group: 'NETWORK' },
-  { id: 'portfolio',       label: 'My Projects',      icon: LayoutGrid,      group: 'NETWORK' },
+  { id: 'portfolio',       label: 'Projects',         icon: LayoutGrid,      group: 'COMMAND' },
   { id: 'ideas',           label: 'Ideas Pipeline',   icon: Lightbulb,       group: 'NETWORK' },
   { id: 'ecosystem',       label: 'Ecosystem',        icon: Network,         group: 'NETWORK' },
 ]
@@ -201,7 +201,7 @@ export default function App() {
   return (
     <div className="sa-app">
       <Sidebar active={active} onChange={setActive} onSignOut={handleSignOut} />
-      <div className={`sa-main${active === 'ecosystem' ? ' sa-surface-dark' : ''}${active === 'session-boards' || active === 'day-library' || active === 'objectives' || (active === 'daily-performance' && dpCip) ? ' sa-surface-dark sa-dark-scroll' : ''}`}>
+      <div className={`sa-main${active === 'ecosystem' ? ' sa-surface-dark' : ''}${active === 'session-boards' || active === 'day-library' || active === 'objectives' || active === 'portfolio' || (active === 'daily-performance' && dpCip) ? ' sa-surface-dark sa-dark-scroll' : ''}`}>
         <Topbar active={active} now={now} sov={gameState.sovereigntyLevel} />
         <div className="sa-content">
           {active === 'daily-performance' && <DailyPerformancePage />}
@@ -216,7 +216,7 @@ export default function App() {
           {active === 'personal-finance' && <PersonalFinancePage />}
           {active === 'relationships'   && <RelationshipsPage />}
           {active === 'slack'           && <SlackPage />}
-          {active === 'portfolio'       && <PortfolioPage />}
+          {active === 'portfolio'       && <ProjectsPage />}
           {active === 'ideas'           && <IdeasPage />}
           {active === 'ecosystem'       && <EcosystemPage />}
         </div>
