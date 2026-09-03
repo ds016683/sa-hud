@@ -4,6 +4,8 @@
 // row + any discovered objectives → deterministic writes back to the Ledger.
 // Env (Vercel project): SUPABASE_SERVICE_KEY, ANTHROPIC_API_KEY.
 
+import { syncAll } from './_sync-core.mjs'
+
 export const config = { maxDuration: 300 }
 
 const URL_BASE = 'https://cmuvomnmaoseccxpeuxq.supabase.co'
@@ -40,7 +42,8 @@ BOUNDARY: session boards and project tasks belong to PROJECTS, not to David's pe
 "row" fields:
 - day: the provided TODAY
 - summary: 3 to 5 sentences: what the day held (calendar), what happened (meetings, session-board movement, hours, email flow, objectives released), what remains ahead. Honest when thin.
-- accomplishments: array: meeting outcomes worth banking, board tasks done today (verbatim, project-prefixed), objectives RELEASED today (titles verbatim, note delegation), project tasks completed today (formatted "<project name>: <task text>"), work the time entries evidence.
+- accomplishments: array, WHAT GOT DONE, concrete and complete: meeting outcomes worth banking, objectives RELEASED today (titles verbatim, note delegation), project tasks completed today (formatted "<project name>: <task text>", from project_tasks_completed_today), board tasks done today (verbatim, project-prefixed), work the time entries evidence. Every completed thing appears; nothing aspirational does.
+- noteworthy: 2 to 6 strings, the day's CONNECTIVE tissue. Each is one sentence that links two or more things: a meeting outcome that changes a project or objective, an email thread that touches a live deal or decision, a pattern across the team's hours, something said today that matters for a thing happening later this week. Write the connection explicitly ("X, which bears on Y"). Never restate a bare fact that sits in one lane; if it connects nothing, it does not belong here. Empty only when the day genuinely has no threads.
 - learned: array of concrete new knowledge from meetings and emails. Empty if nothing qualifies.
 - interactions: array, one per person engaged today, "Name · context", from meetings + calendar + significant email correspondents (skip bulk), excluding David.
 - team_allocation: array, one line per person by hours descending, "Name · X.Xh · dominant client or project", closing with "Firm total · X.Xh across N people". Empty if no time data.
@@ -61,11 +64,12 @@ const SUBMIT_TOOL = {
     properties: {
       row: {
         type: 'object',
-        required: ['day', 'summary', 'accomplishments', 'learned', 'interactions', 'team_allocation', 'must_do', 'new_items', 'notes', 'source_counts', 'model'],
+        required: ['day', 'summary', 'accomplishments', 'noteworthy', 'learned', 'interactions', 'team_allocation', 'must_do', 'new_items', 'notes', 'source_counts', 'model'],
         properties: {
           day: { type: 'string' },
           summary: { type: 'string' },
           accomplishments: { type: 'array', items: { type: 'string' } },
+          noteworthy: { type: 'array', items: { type: 'string' } },
           learned: { type: 'array', items: { type: 'string' } },
           interactions: { type: 'array', items: { type: 'string' } },
           team_allocation: { type: 'array', items: { type: 'string' } },
@@ -105,15 +109,21 @@ export default async function handler(req, res) {
 
   const TODAY = chicagoToday()
   try {
+    // ---- pull the pipes FIRST so the update never summarizes a stale Ledger.
+    // Pipe failures don't block composition; they're reported alongside.
+    let pipes = null
+    try { pipes = await syncAll() } catch (e) { pipes = { error: String(e.message || e) } }
+
     // ---- mechanical gather (mirrors the retired heartbeat's 8 sources)
-    const [meetings, calendar, time, emails, objectives, boards, tasks, projects, prior] = await Promise.all([
+    const [meetings, calendar, time, emails, objectives, boards, tasks, doneTasks, projects, prior] = await Promise.all([
       sb(`granola_meetings?select=title,attendees,summary&meeting_date=eq.${TODAY}`),
       sb(`calendar_events?select=subject,start_at,end_at,organizer,attendees&day=eq.${TODAY}&is_cancelled=eq.false&order=start_at.asc`),
       sb(`time_entries?select=person,client,project,task,hours&spent_date=eq.${TODAY}`),
-      sb(`emails?select=folder,subject,from_name,to_names,received_at,preview&day=eq.${TODAY}&order=received_at.asc`),
+      sb(`emails?select=folder,subject,from_name,to_names,received_at,preview,is_read&day=eq.${TODAY}&order=received_at.asc`),
       sb(`objectives?select=id,title,state,due_date,is_anchor,is_emergency,released_at,released_kind,who,tags,description&deleted_at=is.null`),
       sb(`session_boards?select=project,title,phases,updated_at`),
       sb(`project_tasks?select=id,text,status,source,due_date,project_id&status=neq.done`),
+      sb(`project_tasks?select=id,text,project_id,released_at&status=eq.done&released_at=gte.${TODAY}T00:00:00-06:00`),
       sb(`projects?select=id,key,name`),
       sb(`daily_performance?select=*&day=eq.${TODAY}&order=generated_at.desc&limit=1`),
     ])
@@ -125,36 +135,64 @@ export default async function handler(req, res) {
     // ---- one model call composes everything (payload slimmed so the response
     // budget goes to the composition, not to echoing long email previews)
     const slimEmails = emails.map(e => ({ ...e, preview: (e.preview || '').slice(0, 240) }))
-    const payload = { TODAY, meetings, calendar, time_entries: time, emails: slimEmails, objectives, session_boards_updated_today: boardsToday, open_project_tasks: tasks, projects, prior_run: prior[0] || null }
-    const ai = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: { 'x-api-key': process.env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
-      body: JSON.stringify({
-        model: 'claude-sonnet-5',
-        max_tokens: 24000,
-        system: INSTRUCTIONS,
-        tools: [SUBMIT_TOOL],
-        tool_choice: { type: 'tool', name: 'submit_update' },
-        messages: [{ role: 'user', content: `Ledger data:\n${JSON.stringify(payload)}` }],
-      }),
-    })
-    if (!ai.ok) throw new Error(`anthropic -> ${ai.status}: ${await ai.text()}`)
-    const msg = await ai.json()
-    if (msg.stop_reason === 'max_tokens') throw new Error('composition truncated (max_tokens); raise the cap')
-    const toolUse = (msg.content || []).find(c => c.type === 'tool_use' && c.name === 'submit_update')
-    if (!toolUse) throw new Error('model did not call submit_update')
-    let out = toolUse.input
-    // Defensive coercion: the tool input occasionally arrives stringified, with
-    // the row fields flattened to the top level, or with objects array-wrapped.
-    if (typeof out === 'string') { try { out = JSON.parse(out) } catch { /* fall through */ } }
-    if (out && !out.row && out.day && out.summary) {
-      const { create_objectives, ...rest } = out
-      out = { row: rest, create_objectives: create_objectives || [] }
+    const payload = { TODAY, meetings, calendar, time_entries: time, emails: slimEmails, objectives, session_boards_updated_today: boardsToday, open_project_tasks: tasks, project_tasks_completed_today: doneTasks, projects, prior_run: prior[0] || null }
+
+    // ---- deterministic scorecard: pure counts, never model-composed
+    const releasedToday = objectives.filter(o => o.state === 'released' && (o.released_at || '').length && chicagoToday() === new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Chicago', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(o.released_at)))
+    const inboxEmails = emails.filter(e => e.folder === 'inbox')
+    const firmHours = time.reduce((s, t) => s + (t.hours || 0), 0)
+    const davidHours = time.filter(t => (t.person || '').startsWith('David')).reduce((s, t) => s + (t.hours || 0), 0)
+    const scorecard = {
+      meetings_captured: meetings.length,
+      calendar_events: calendar.length,
+      emails_in: inboxEmails.length,
+      emails_read: inboxEmails.filter(e => e.is_read).length,
+      emails_sent: emails.filter(e => e.folder === 'sent').length,
+      tasks_done: releasedToday.length + doneTasks.length,
+      hours_firm: Math.round(firmHours * 10) / 10,
+      hours_david: Math.round(davidHours * 10) / 10,
+      people_logging: new Set(time.map(t => t.person).filter(Boolean)).size,
+      open_todos: objectives.filter(o => ['active', 'parked', 'waiting', 'inbox'].includes(o.state)).length,
     }
-    if (typeof out.row === 'string') { try { out.row = JSON.parse(out.row) } catch { /* fall through */ } }
-    if (Array.isArray(out.row)) out.row = out.row[0]
-    if (!out.row || typeof out.row !== 'object') throw new Error(`submit_update shape unusable; top-level keys: ${Object.keys(out || {}).join(', ')}`)
-    if (!Array.isArray(out.create_objectives)) out.create_objectives = []
+    // The tool input is occasionally malformed (stringified row, flattened
+    // fields, array wrapping) run-to-run. Coerce what we can and retry the
+    // model call once before giving up.
+    let out = null
+    let lastShapeError = ''
+    for (let attempt = 0; attempt < 2 && !out; attempt++) {
+      const ai = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'x-api-key': process.env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
+        body: JSON.stringify({
+          model: 'claude-sonnet-5',
+          max_tokens: 24000,
+          system: INSTRUCTIONS,
+          tools: [SUBMIT_TOOL],
+          tool_choice: { type: 'tool', name: 'submit_update' },
+          messages: [{ role: 'user', content: `Ledger data:\n${JSON.stringify(payload)}` }],
+        }),
+      })
+      if (!ai.ok) throw new Error(`anthropic -> ${ai.status}: ${await ai.text()}`)
+      const msg = await ai.json()
+      if (msg.stop_reason === 'max_tokens') { lastShapeError = 'truncated at max_tokens'; continue }
+      const toolUse = (msg.content || []).find(c => c.type === 'tool_use' && c.name === 'submit_update')
+      if (!toolUse) { lastShapeError = 'no submit_update call'; continue }
+      let cand = toolUse.input
+      if (typeof cand === 'string') { try { cand = JSON.parse(cand) } catch { /* fall through */ } }
+      if (cand && !cand.row && cand.day && cand.summary) {
+        const { create_objectives, ...rest } = cand
+        cand = { row: rest, create_objectives: create_objectives || [] }
+      }
+      if (cand && typeof cand.row === 'string') { try { cand.row = JSON.parse(cand.row) } catch { /* fall through */ } }
+      if (cand && Array.isArray(cand.row)) cand.row = cand.row[0]
+      if (cand && cand.row && typeof cand.row === 'object' && cand.row.summary) {
+        if (!Array.isArray(cand.create_objectives)) cand.create_objectives = []
+        out = cand
+      } else {
+        lastShapeError = `attempt ${attempt + 1}: row js-type ${Array.isArray(cand?.row) ? 'array' : typeof cand?.row}, keys ${Object.keys(cand || {}).join(',')}`
+      }
+    }
+    if (!out) throw new Error(`submit_update shape unusable after retry; ${lastShapeError}`)
 
     // ---- deterministic writes
     const created = []
@@ -164,10 +202,19 @@ export default async function handler(req, res) {
       await sb('objectives', { method: 'POST', prefer: 'return=minimal', body: { user_id: DAVID, title: String(c.title).slice(0, 120), state: 'inbox', tags, needs_sizing: true, effort: 2, importance: 2, description } })
       created.push(c.title)
     }
-    const row = { ...out.row, day: TODAY, model: 'Manual Refresh' }
-    await sb('daily_performance', { method: 'POST', prefer: 'return=minimal', body: row })
+    const row = { ...out.row, day: TODAY, model: 'Manual Refresh', scorecard }
+    try {
+      await sb('daily_performance', { method: 'POST', prefer: 'return=minimal', body: row })
+    } catch (e) {
+      // Migration lag: if the noteworthy/scorecard columns aren't in the table
+      // yet, land the row without them rather than failing the whole update.
+      if (String(e.message).includes('PGRST204')) {
+        const { noteworthy, scorecard: _sc, ...bare } = row
+        await sb('daily_performance', { method: 'POST', prefer: 'return=minimal', body: bare })
+      } else throw e
+    }
 
-    return res.status(200).json({ ok: true, day: TODAY, source_counts: row.source_counts, created_objectives: created })
+    return res.status(200).json({ ok: true, day: TODAY, source_counts: row.source_counts, created_objectives: created, pipes })
   } catch (e) {
     console.error('refresh failed:', e)
     return res.status(500).json({ error: String(e.message || e) })

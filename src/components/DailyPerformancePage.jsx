@@ -98,6 +98,35 @@ function SourceChips({ counts, cip, T }) {
   )
 }
 
+// Deterministic productivity strip. Numbers come from row.scorecard, computed
+// mechanically server-side at compose time — never model-authored.
+function Scorecard({ sc, cip, T }) {
+  if (!sc) return null
+  const tiles = [
+    { label: 'MEETINGS', value: sc.meetings_captured, sub: `${sc.calendar_events ?? 0} on calendar` },
+    { label: 'EMAILS IN', value: sc.emails_in, sub: `${sc.emails_read ?? 0} read` },
+    { label: 'SENT', value: sc.emails_sent, sub: 'emails out' },
+    { label: 'TASKS DONE', value: sc.tasks_done, sub: 'objectives + projects' },
+    { label: 'MY HOURS', value: sc.hours_david, sub: `${sc.hours_firm ?? 0}h firm · ${sc.people_logging ?? 0} people` },
+    { label: 'OPEN TODOS', value: sc.open_todos, sub: 'on the board' },
+  ]
+  return (
+    <div className={`col-12 ${T.cardClass}`} style={{ ...T.cardStyle, padding: '18px 20px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '14px' }}>
+        {tiles.map((t) => (
+          <div key={t.label} style={{ borderLeft: `2px solid ${cip ? 'rgba(248,199,97,0.45)' : 'rgba(31,64,96,0.25)'}`, paddingLeft: '12px' }}>
+            <div className="sa-tele" style={{ fontSize: '9.5px', letterSpacing: '1.4px', color: cip ? PERIWINKLE : 'var(--sa-ink-3)' }}>{t.label}</div>
+            <div className="sa-serif" style={{ fontSize: '28px', lineHeight: 1.15, marginTop: '2px', fontWeight: 500, letterSpacing: '-0.01em', color: cip ? '#FFFFFF' : SECTION_BLUE }}>
+              {t.value ?? 0}
+            </div>
+            <div style={{ fontSize: '11px', color: T.ink3, marginTop: '1px' }}>{t.sub}</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 export default function DailyPerformancePage() {
   const [rows, setRows] = useState(null)
   const [sel, setSel] = useState(0)
@@ -270,6 +299,9 @@ export default function DailyPerformancePage() {
         </div>
       </div>
 
+      {/* Scorecard — deterministic counts, the day at a glance */}
+      <Scorecard sc={row.scorecard} cip={cip} T={T} />
+
       {/* The day so far — CIP body copy is the sans (Lora is headings-only in
           the deck grammar; serif body at 400/loose is the known dissonance) */}
       <div className={`col-12 ${T.cardClass}`} style={T.cardStyle}>
@@ -288,6 +320,22 @@ export default function DailyPerformancePage() {
           </p>
         )}
       </div>
+
+      {/* Noteworthy & connective — the day's threads across areas */}
+      {(row.noteworthy || []).length > 0 && (
+        <div className={`col-12 ${T.cardClass}`} style={T.cardStyle}>
+          <SectionHeader cip={cip}>Noteworthy · Connective</SectionHeader>
+          {(row.noteworthy || []).map((s, i) => (
+            <div key={i} style={{ display: 'flex', gap: '12px', padding: '7px 0', alignItems: 'flex-start' }}>
+              <span style={{
+                width: '16px', height: '2px', flexShrink: 0, marginTop: '10px',
+                background: cip ? GOLD : SECTION_BLUE, opacity: 0.8,
+              }} />
+              <span style={{ fontSize: '14.5px', lineHeight: 1.6, color: T.ink, maxWidth: '92ch' }}>{s}</span>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Must be done today */}
       <div className={`col-6 ${T.cardClass}`} style={T.cardStyle}>
@@ -316,7 +364,7 @@ export default function DailyPerformancePage() {
 
       {/* Primary accomplishments */}
       <div className={`col-6 ${T.cardClass}`} style={T.cardStyle}>
-        <SectionHeader cip={cip}>Primary Accomplishments</SectionHeader>
+        <SectionHeader cip={cip}>What Got Done</SectionHeader>
         {(row.accomplishments || []).length === 0 && (
           <div style={{ fontSize: '13.5px', color: T.ink3 }}>Nothing banked yet.</div>
         )}
@@ -361,7 +409,7 @@ export default function DailyPerformancePage() {
 
       {/* New items to resource / task / assign */}
       <div className={`col-6 ${T.cardClass}`} style={T.cardStyle}>
-        <SectionHeader cip={cip}>Needs Resourcing · Tasking · Assignment</SectionHeader>
+        <SectionHeader cip={cip}>What Needs Doing From Here</SectionHeader>
         {(row.new_items || []).length === 0 && (
           <div style={{ fontSize: '13.5px', color: T.ink3 }}>Nothing new surfaced.</div>
         )}
