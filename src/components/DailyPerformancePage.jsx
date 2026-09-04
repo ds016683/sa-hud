@@ -308,14 +308,14 @@ export default function DailyPerformancePage() {
         <SectionHeader cip={cip}>The Day So Far</SectionHeader>
         {cip ? (
           <p style={{
-            fontSize: '15.5px', lineHeight: 1.75, margin: 0, maxWidth: '72ch',
+            fontSize: '15.5px', lineHeight: 1.75, margin: 0,
             color: 'rgba(234,241,248,0.88)',
             paddingLeft: '18px', borderLeft: `2px solid rgba(248,199,97,0.55)`,
           }}>
             {row.summary}
           </p>
         ) : (
-          <p className="sa-serif" style={{ fontSize: '18px', lineHeight: 1.65, margin: 0, maxWidth: '78ch', color: 'var(--sa-ink)' }}>
+          <p className="sa-serif" style={{ fontSize: '18px', lineHeight: 1.65, margin: 0, color: 'var(--sa-ink)' }}>
             {row.summary}
           </p>
         )}
