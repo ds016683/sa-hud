@@ -24,8 +24,8 @@ import DayLibraryPage from './components/DayLibraryPage'
 import BrainPage from './components/BrainPage'
 
 const NAV_ITEMS = [
-  { id: 'daily-performance', label: 'Daily Performance', icon: Gauge,        group: 'DAILY PERFORMANCE' },
-  { id: 'day-library',     label: 'Day Library',      icon: BookMarked,      group: 'DAILY PERFORMANCE' },
+  { id: 'daily-performance', label: 'Daily Monitor',     icon: Gauge,        group: 'DAILY MONITOR' },
+  { id: 'day-library',     label: 'Day Library',      icon: BookMarked,      group: 'DAILY MONITOR' },
   { id: 'session-boards',  label: 'Session Boards',   icon: ListChecks,      group: 'COMMAND' },
   { id: 'daily-dashboard', label: 'Daily Dashboard',  icon: LayoutDashboard, group: 'COMMAND' },
   { id: 'brain',           label: 'The Brain',        icon: Brain,           group: 'COMMAND' },

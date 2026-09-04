@@ -352,7 +352,7 @@ export default function DailyPerformancePage() {
     return (
       <div className="sa-grid">
         <div className={`col-12 ${T.cardClass}`} style={{ ...T.cardStyle, padding: '64px', textAlign: 'center' }}>
-          <div className="sa-serif" style={{ fontSize: '26px', ...T.serifStyle }}>Daily Performance</div>
+          <div className="sa-serif" style={{ fontSize: '26px', ...T.serifStyle }}>Daily Monitor</div>
           <p style={{ maxWidth: '52ch', margin: '12px auto 0', fontSize: '14px', lineHeight: 1.6, color: T.ink2 }}>
             Hit Run Update and the day&rsquo;s Ledger activity is read and summarized here:
             what got done, what must still happen today, and what needs to be resourced or assigned.
