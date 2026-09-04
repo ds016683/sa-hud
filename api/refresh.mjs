@@ -50,7 +50,6 @@ BOUNDARY: session boards and project tasks belong to PROJECTS, not to David's pe
 - must_do: array of {"text": string, "done": bool}, DERIVED FROM OBJECTIVES ONLY: (a) active objectives due on/before TODAY: done false; (b) "agent"-tagged objectives in inbox or active (due null or on/before TODAY): done false; (c) "agent"-tagged objectives released TODAY: done true; (d) any title marked done:true in the prior run's must_do stays done:true. EXCLUDE waiting, foreman, deleted, future-dated. Project tasks NEVER appear here. Any objective you list in create_objectives also appears here with done false.
 - new_items: array: blocked project tasks formatted "<project name>: <task text>", emails needing delegation, emergency objectives. Nothing already in must_do.
 - notes: one short paragraph, your read: time vs calendar, email shape, objectives and project movement; acknowledge deferrals/delegations and already-tracked discoveries when they occurred.
-- source_counts: {"meetings": N, "sessions": N, "calendar": N, "time": N, "emails": N, "todos": N} where todos = objectives in state active, parked, waiting, or inbox (counts computed from the provided data).
 - model: "Manual Refresh"
 
 Never invent data. Never write an em dash anywhere; use commas, periods, or the middle dot.`
@@ -64,7 +63,7 @@ const SUBMIT_TOOL = {
     properties: {
       row: {
         type: 'object',
-        required: ['day', 'summary', 'accomplishments', 'noteworthy', 'learned', 'interactions', 'team_allocation', 'must_do', 'new_items', 'notes', 'source_counts', 'model'],
+        required: ['day', 'summary', 'accomplishments', 'noteworthy', 'learned', 'interactions', 'team_allocation', 'must_do', 'new_items', 'notes', 'model'],
         properties: {
           day: { type: 'string' },
           summary: { type: 'string' },
@@ -76,11 +75,6 @@ const SUBMIT_TOOL = {
           must_do: { type: 'array', items: { type: 'object', required: ['text', 'done'], properties: { text: { type: 'string' }, done: { type: 'boolean' } } } },
           new_items: { type: 'array', items: { type: 'string' } },
           notes: { type: 'string' },
-          source_counts: {
-            type: 'object',
-            required: ['meetings', 'sessions', 'calendar', 'time', 'emails', 'todos'],
-            properties: { meetings: { type: 'integer' }, sessions: { type: 'integer' }, calendar: { type: 'integer' }, time: { type: 'integer' }, emails: { type: 'integer' }, todos: { type: 'integer' } },
-          },
           model: { type: 'string' },
         },
       },
@@ -259,7 +253,14 @@ export default async function handler(req, res) {
       await sb('objectives', { method: 'POST', prefer: 'return=minimal', body: { user_id: DAVID, title: String(c.title).slice(0, 120), state: 'inbox', tags, needs_sizing: true, effort: 2, importance: 2, description } })
       created.push(c.title)
     }
-    const row = { ...out.row, day: TODAY, model: 'Manual Refresh', scorecard }
+    // source_counts is mechanical, never model-authored (a run once emitted {}).
+    const row = {
+      ...out.row, day: TODAY, model: 'Manual Refresh', scorecard,
+      source_counts: {
+        meetings: meetings.length, sessions: boardsToday.length, calendar: calendar.length,
+        time: time.length, emails: emails.length, todos: scorecard.open_todos,
+      },
+    }
     try {
       await sb('daily_performance', { method: 'POST', prefer: 'return=minimal', body: row })
     } catch (e) {
