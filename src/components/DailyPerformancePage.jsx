@@ -181,8 +181,16 @@ function HaulOverlay({ haul, onClose }) {
 // mechanically server-side at compose time — never model-authored.
 function Scorecard({ sc, cip, T }) {
   if (!sc) return null
+  const sig = sc.signal || {}
+  const sigSub = [
+    sig.notes ? `notes ${sig.notes}` : null,
+    sig.time != null ? `time ${sig.time}%` : null,
+    sig.board != null ? `board ${sig.board ? 'live' : 'dark'}` : null,
+    sig.inbox != null ? `inbox ${sig.inbox}%` : null,
+  ].filter(Boolean).join(' · ')
   const tiles = [
     ...(sc.miles != null ? [{ label: 'MILES', value: sc.miles, sub: `grade ${milesGrade(sc.miles)} so far` }] : []),
+    ...(sig.score != null ? [{ label: 'SIGNAL', value: `${sig.score}%`, sub: sigSub || 'day documented' }] : []),
     { label: 'MEETINGS', value: sc.meetings_captured, sub: `${sc.calendar_events ?? 0} on calendar` },
     { label: 'EMAILS IN', value: sc.emails_in, sub: `${sc.emails_read ?? 0} read` },
     { label: 'SENT', value: sc.emails_sent, sub: 'emails out' },

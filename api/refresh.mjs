@@ -120,7 +120,7 @@ export default async function handler(req, res) {
       sb(`calendar_events?select=subject,start_at,end_at,organizer,attendees&day=eq.${TODAY}&is_cancelled=eq.false&order=start_at.asc`),
       sb(`time_entries?select=person,client,project,task,hours&spent_date=eq.${TODAY}`),
       sb(`emails?select=folder,subject,from_name,to_names,received_at,preview,is_read&day=eq.${TODAY}&order=received_at.asc`),
-      sb(`objectives?select=id,title,state,due_date,is_anchor,is_emergency,released_at,released_kind,who,tags,description&deleted_at=is.null`),
+      sb(`objectives?select=id,title,state,due_date,is_anchor,is_emergency,released_at,released_kind,who,tags,description,captured_at&deleted_at=is.null`),
       sb(`session_boards?select=project,title,phases,updated_at`),
       sb(`project_tasks?select=id,text,status,source,due_date,project_id&status=neq.done`),
       sb(`project_tasks?select=id,text,project_id,released_at&status=eq.done&released_at=gte.${TODAY}T00:00:00-06:00`),
@@ -155,6 +155,29 @@ export default async function handler(req, res) {
       open_todos: objectives.filter(o => ['active', 'parked', 'waiting', 'inbox'].includes(o.state)).length,
     }
 
+    // ---- Signal: how legible the day is to the agent. Perception depends on
+    // instrumentation; this scores the instrumentation itself. Components only
+    // count when they have a denominator, so quiet days are never punished.
+    const nowMs = Date.now()
+    const chiDay = (ts) => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Chicago', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(ts))
+    const endedMeetings = calendar.filter(e => !e.is_all_day && (e.attendees || []).length > 0 && new Date(e.end_at).getTime() < nowMs)
+    const notesRate = endedMeetings.length ? Math.min(1, meetings.length / endedMeetings.length) : null
+    // Elapsed workday: 8 AM to 6 PM Chicago, capped at 8 expected hours.
+    const chiHour = Number(new Intl.DateTimeFormat('en-US', { timeZone: 'America/Chicago', hour: 'numeric', hour12: false }).format(new Date()))
+    const elapsed = Math.max(0, Math.min(8, chiHour - 8))
+    const timeRate = elapsed >= 2 ? Math.min(1, davidHours / elapsed) : null
+    const boardMoved = releasedToday.length > 0 || objectives.some(o => o.captured_at && chiDay(o.captured_at) === TODAY)
+    const inboxRate = inboxEmails.length >= 5 ? scorecard.emails_read / inboxEmails.length : null
+    const sigParts = [notesRate, timeRate, boardMoved ? 1 : 0, inboxRate].filter(v => v !== null)
+    const signalScore = sigParts.length ? Math.round(100 * sigParts.reduce((s, v) => s + v, 0) / sigParts.length) : null
+    scorecard.signal = {
+      score: signalScore,
+      notes: endedMeetings.length ? `${meetings.length}/${endedMeetings.length}` : null,
+      time: timeRate !== null ? Math.round(timeRate * 100) : null,
+      board: boardMoved,
+      inbox: inboxRate !== null ? Math.round(inboxRate * 100) : null,
+    }
+
     // ---- badges: the intrinsic scoreboard (Volume II, Requirement 1).
     // Deterministic rules only; the model never judges. Loot rules: completion
     // and deployment earn, calm is rewarded, crisis endurance never is.
@@ -175,6 +198,8 @@ export default async function handler(req, res) {
     if (scorecard.hours_david >= 4) badges.push('deep-work')
     if (readRate >= 0.8 && inboxEmails.length >= 10) badges.push('correspondent')
     if (meetings.length >= 3) badges.push('chronicler')
+    // Perception track: the day is fully legible to the agent
+    if (signalScore !== null && signalScore >= 80 && sigParts.length >= 3) badges.push('clear-signal')
     scorecard.badges = badges
 
     // ---- miles made: the day's precision score, 0-10. Completion-weighted,

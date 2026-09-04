@@ -4,7 +4,7 @@
 // deployment, calm water is rewarded, crisis endurance never is.
 import {
   Map as MapIcon, Network, CheckCircle2, Shield, Waves, Compass,
-  Timer, Mail, BookOpen,
+  Timer, Mail, BookOpen, Signal,
 } from 'lucide-react'
 
 export const BADGES = {
@@ -17,6 +17,7 @@ export const BADGES = {
   'deep-work': { label: 'Deep Work', track: 'Playbound Creator', Icon: Timer, desc: 'Four or more hours in the seat' },
   'correspondent': { label: 'Correspondent', track: 'Playbound Creator', Icon: Mail, desc: 'The inbox handled, not hoarded' },
   'chronicler': { label: 'Chronicler', track: 'Playbound Creator', Icon: BookOpen, desc: 'Three or more meetings banked as knowledge' },
+  'clear-signal': { label: 'Clear Signal', track: 'Perception', Icon: Signal, desc: 'The day fully documented · notes, time, board, inbox' },
 }
 
 export const milesGrade = (m) => {
