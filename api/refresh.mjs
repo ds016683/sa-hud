@@ -41,7 +41,7 @@ BOUNDARY: session boards and project tasks belong to PROJECTS, not to David's pe
 
 "row" fields:
 - day: the provided TODAY
-- summary: written TO David in second person, opening with "Since your last check-in" (vary the sentence naturally after that opening; if there is no prior run today, open with "Since this morning" or similar). This is a SYNTHESIS, not a chronology: never walk the calendar hour by hour. Lead with what changed and what matters since the prior run (compare against prior_run when present), pull the connections and the noteworthy into the prose itself ("your Westat block set up what Thomasina needs Friday"), name what remains ahead, and be honest when thin. 5 to 8 sentences of dense, direct address.
+- summary: written TO David in second person, opening with "Since your last check-in" (vary the sentence naturally after that opening; if there is no prior run today, open with "Since this morning" or similar). This is a SYNTHESIS, not a chronology: never walk the calendar hour by hour. Lead with what changed and what matters since the prior run (compare against prior_run when present), pull the connections and the noteworthy into the prose itself ("your Westat block set up what Thomasina needs Friday"), name what remains ahead, and be honest when thin. 5 to 8 sentences of dense, direct address. The payload's deterministic_scorecard carries a signal object scoring how visible the day is to you (meeting notes captured, time logged, board movement, inbox handled). When signal.score is below 60, say so plainly in one clause, naming the dark zone ("only three of seven meetings left notes, so this read is partial"), and never present a dimly-seen day as a fully-known one.
 - accomplishments: array, WHAT GOT DONE, concrete and complete: meeting outcomes worth banking, objectives RELEASED today (titles verbatim, note delegation), project tasks completed today (formatted "<project name>: <task text>", from project_tasks_completed_today), board tasks done today (verbatim, project-prefixed), work the time entries evidence. Every completed thing appears; nothing aspirational does.
 - noteworthy: 2 to 6 strings, the day's CONNECTIVE tissue. Each is one sentence that links two or more things: a meeting outcome that changes a project or objective, an email thread that touches a live deal or decision, a pattern across the team's hours, something said today that matters for a thing happening later this week. Write the connection explicitly ("X, which bears on Y"). Never restate a bare fact that sits in one lane; if it connects nothing, it does not belong here. Empty only when the day genuinely has no threads.
 - learned: array of concrete new knowledge from meetings and emails. Empty if nothing qualifies.
@@ -205,6 +205,10 @@ export default async function handler(req, res) {
     miles += readRate >= 0.6 ? 1 : 0                               // correspondence handled
     miles += emergencies.length === 0 ? 1 : 0                      // calm water bonus
     scorecard.miles = Math.round(Math.min(10, miles) * 10) / 10
+    // Give the composer its own telemetry: the deterministic numbers plus an
+    // awareness of how much of the day it can actually see.
+    payload.deterministic_scorecard = scorecard
+
     // The tool input is occasionally malformed (stringified row, flattened
     // fields, array wrapping) run-to-run. Coerce what we can and retry the
     // model call once before giving up.

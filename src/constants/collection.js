@@ -20,6 +20,16 @@ export const BADGES = {
   'clear-signal': { label: 'Clear Signal', track: 'Perception', Icon: Signal, desc: 'The day fully documented · notes, time, board, inbox' },
 }
 
+// Visibility tiers: how much of the day the Ledger could actually see.
+// The grade scores the day; the tier qualifies how trustworthy the read is.
+export const signalTier = (s) => {
+  if (s == null) return null
+  if (s >= 80) return { id: 'clear', label: 'Clear View', ring: 'solid', opacity: 1 }
+  if (s >= 50) return { id: 'partial', label: 'Partial View', ring: 'dashed', opacity: 0.85 }
+  if (s >= 25) return { id: 'dim', label: 'Dim View', ring: 'dashed', opacity: 0.55 }
+  return { id: 'dark', label: 'Dark Water', ring: 'dotted', opacity: 0.35 }
+}
+
 export const milesGrade = (m) => {
   if (m == null) return null
   if (m >= 8.5) return 'S'

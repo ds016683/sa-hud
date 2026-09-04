@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { CheckCircle2, Circle, Flag, X } from 'lucide-react'
 import { PageHead } from './sa/SaUi'
 import { supabase } from '../lib/supabase'
-import { BADGES, milesGrade } from '../constants/collection'
+import { BADGES, milesGrade, signalTier } from '../constants/collection'
 
 const GOLD = '#F8C761'
 const PERIWINKLE = '#96A8F0'
@@ -84,6 +84,7 @@ function ScoringDashboard({ days, onClose }) {
             { label: 'DAYS COLLECTED', value: scored.length },
             { label: 'MILES DOWNRIVER', value: totalMiles },
             { label: 'AVG MILES / DAY', value: avg },
+            { label: 'AVG SIGNAL', value: (() => { const withSig = scored.filter(d => (d._sc.signal || {}).score != null); return withSig.length ? `${Math.round(withSig.reduce((s, d) => s + d._sc.signal.score, 0) / withSig.length)}%` : '·' })() },
             { label: 'BEST DAY', value: best ? `${best._sc.miles} · ${fmtDay(best.day, { month: 'short', day: 'numeric' })}` : '·' },
           ].map(t => (
             <div key={t.label} style={{ borderLeft: '2px solid rgba(248,199,97,0.45)', paddingLeft: 12 }}>
@@ -262,16 +263,22 @@ export default function DayLibraryPage() {
                       </span>
                     )}
                   </span>
-                  {g && (
-                    <span className="sa-serif" title={`${(d._sc || {}).miles} miles`} style={{
-                      width: 30, height: 30, borderRadius: '50%', flexShrink: 0,
-                      display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                      fontSize: 14.5, fontWeight: 500,
-                      color: g === 'S' ? '#16324A' : GOLD,
-                      background: g === 'S' ? GOLD : 'rgba(248,199,97,0.10)',
-                      border: `1px solid rgba(248,199,97,${g === 'S' ? 1 : 0.5})`,
-                    }}>{g}</span>
-                  )}
+                  {g && (() => {
+                    const tier = signalTier(((d._sc || {}).signal || {}).score)
+                    return (
+                      <span className="sa-serif"
+                        title={`${(d._sc || {}).miles} miles${tier ? ` · seen at ${d._sc.signal.score}% (${tier.label})` : ''}`}
+                        style={{
+                          width: 30, height: 30, borderRadius: '50%', flexShrink: 0,
+                          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                          fontSize: 14.5, fontWeight: 500,
+                          color: g === 'S' ? '#16324A' : GOLD,
+                          background: g === 'S' ? GOLD : 'rgba(248,199,97,0.10)',
+                          border: `1.5px ${tier ? tier.ring : 'solid'} rgba(248,199,97,${g === 'S' ? 1 : 0.6})`,
+                          opacity: tier ? tier.opacity : 1,
+                        }}>{g}</span>
+                    )
+                  })()}
                 </button>
               )
             })}
@@ -285,11 +292,15 @@ export default function DayLibraryPage() {
                   {fmtDay(row.day, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
                 </div>
                 <span className="sa-tele" style={{ color: PERIWINKLE }}>CLOSED {new Date(row.generated_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }).toUpperCase()}</span>
-                {row._sc && row._sc.miles != null && (
-                  <span className="sa-tele" style={{ color: GOLD, letterSpacing: '1.4px' }}>
-                    {row._sc.miles} MILES · GRADE {milesGrade(row._sc.miles)}
-                  </span>
-                )}
+                {row._sc && row._sc.miles != null && (() => {
+                  const tier = signalTier((row._sc.signal || {}).score)
+                  return (
+                    <span className="sa-tele" style={{ color: GOLD, letterSpacing: '1.4px' }}>
+                      {row._sc.miles} MILES · GRADE {milesGrade(row._sc.miles)}
+                      {tier && <span style={{ color: tier.id === 'clear' ? GOLD : INK3 }}> · SEEN AT {row._sc.signal.score}% · {tier.label.toUpperCase()}</span>}
+                    </span>
+                  )
+                })()}
               </div>
               {row._sc && (row._sc.badges || []).length > 0 && (
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 14 }}>
