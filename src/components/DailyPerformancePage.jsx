@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
-import { RefreshCw, CheckCircle2, Circle, Flag, Inbox, Clock } from 'lucide-react'
+import { RefreshCw, CheckCircle2, Circle, Flag, Inbox, Clock, X } from 'lucide-react'
+import { BADGES, milesGrade } from '../constants/collection'
 import { supabase } from '../lib/supabase'
 
 const SECTION_BLUE = '#1F4060'
@@ -98,11 +99,90 @@ function SourceChips({ counts, cip, T }) {
   )
 }
 
+// THE HAUL — the collection moment. Everything newly banked since the last
+// check-in drops in one at a time. Loot only exists for completions.
+function HaulOverlay({ haul, onClose }) {
+  const drops = [
+    ...haul.items.map(t => ({ kind: 'item', text: t })),
+    ...haul.badges.map(b => ({ kind: 'badge', id: b })),
+  ]
+  const empty = drops.length === 0
+  return (
+    <div onClick={onClose} style={{
+      position: 'fixed', inset: 0, zIndex: 200, cursor: 'pointer',
+      background: 'rgba(8,20,32,0.94)', backdropFilter: 'blur(6px)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px',
+    }}>
+      <div style={{ maxWidth: '620px', width: '100%', maxHeight: '84vh', overflowY: 'auto' }}>
+        <div className="sa-tele" style={{ color: PERIWINKLE, letterSpacing: '2.2px', fontSize: '10px', textAlign: 'center' }}>
+          SINCE {String(haul.sinceLabel).toUpperCase()}
+        </div>
+        <div className="sa-serif" style={{
+          fontSize: '34px', fontWeight: 500, letterSpacing: '-0.01em', color: '#FFFFFF',
+          textAlign: 'center', margin: '6px 0 26px',
+          animation: 'haulDrop 500ms cubic-bezier(0.2,0.9,0.3,1) both',
+        }}>
+          {empty ? 'Quiet Water' : 'The Haul'}
+        </div>
+
+        {empty && (
+          <div style={{ textAlign: 'center', color: 'rgba(234,241,248,0.66)', fontSize: '14.5px', lineHeight: 1.6, animation: 'haulDrop 500ms 150ms both' }}>
+            Nothing new banked since the last check-in. Steady is a state, not a failure.
+          </div>
+        )}
+
+        {drops.map((d, i) => (
+          <div key={i} style={{
+            display: 'flex', alignItems: 'center', gap: '14px', padding: '11px 16px',
+            marginBottom: '8px', borderRadius: '10px',
+            background: 'rgba(255,255,255,0.045)',
+            border: d.kind === 'badge' ? '1px solid rgba(248,199,97,0.55)' : '1px solid rgba(255,255,255,0.10)',
+            animation: `haulDrop 460ms ${180 + i * 260}ms cubic-bezier(0.2,0.9,0.3,1) both`,
+          }}>
+            {d.kind === 'badge' ? (() => {
+              const B = BADGES[d.id]
+              const Icon = B?.Icon || CheckCircle2
+              return (
+                <>
+                  <span style={{
+                    width: '38px', height: '38px', borderRadius: '50%', flexShrink: 0,
+                    border: '1.5px solid #F8C761', display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                    color: '#F8C761', background: 'rgba(248,199,97,0.10)', boxShadow: '0 0 18px rgba(248,199,97,0.25)',
+                  }}><Icon size={17} /></span>
+                  <span style={{ flex: 1 }}>
+                    <span className="sa-tele" style={{ display: 'block', fontSize: '9px', letterSpacing: '1.6px', color: '#F8C761' }}>BADGE EARNED · {B?.track?.toUpperCase()}</span>
+                    <span className="sa-serif" style={{ fontSize: '17px', fontWeight: 500, color: '#fff' }}>{B?.label || d.id}</span>
+                    <span style={{ display: 'block', fontSize: '12px', color: 'rgba(234,241,248,0.6)' }}>{B?.desc}</span>
+                  </span>
+                </>
+              )
+            })() : (
+              <>
+                <span style={{ width: '8px', height: '8px', borderRadius: '2px', flexShrink: 0, background: '#F8C761', boxShadow: '0 0 10px rgba(248,199,97,0.5)' }} />
+                <span style={{ fontSize: '14px', lineHeight: 1.5, color: '#EAF1F8' }}>{d.text}</span>
+              </>
+            )}
+          </div>
+        ))}
+
+        <div className="sa-tele" style={{
+          textAlign: 'center', marginTop: '24px', color: 'rgba(234,241,248,0.55)', fontSize: '10px', letterSpacing: '1.8px',
+          animation: `haulDrop 460ms ${240 + drops.length * 260}ms both`,
+        }}>
+          {empty ? '' : `${drops.length} COLLECTED · `}{haul.miles != null ? `${haul.miles} MILES MADE TODAY` : ''}
+          <span style={{ display: 'block', marginTop: '10px', color: 'rgba(234,241,248,0.35)' }}>CLICK ANYWHERE TO BANK IT</span>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // Deterministic productivity strip. Numbers come from row.scorecard, computed
 // mechanically server-side at compose time — never model-authored.
 function Scorecard({ sc, cip, T }) {
   if (!sc) return null
   const tiles = [
+    ...(sc.miles != null ? [{ label: 'MILES', value: sc.miles, sub: `grade ${milesGrade(sc.miles)} so far` }] : []),
     { label: 'MEETINGS', value: sc.meetings_captured, sub: `${sc.calendar_events ?? 0} on calendar` },
     { label: 'EMAILS IN', value: sc.emails_in, sub: `${sc.emails_read ?? 0} read` },
     { label: 'SENT', value: sc.emails_sent, sub: 'emails out' },
@@ -110,6 +190,7 @@ function Scorecard({ sc, cip, T }) {
     { label: 'MY HOURS', value: sc.hours_david, sub: `${sc.hours_firm ?? 0}h firm · ${sc.people_logging ?? 0} people` },
     { label: 'OPEN TODOS', value: sc.open_todos, sub: 'on the board' },
   ]
+  const earned = sc.badges || []
   return (
     <div className={`col-12 ${T.cardClass}`} style={{ ...T.cardStyle, padding: '18px 20px' }}>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '14px' }}>
@@ -123,6 +204,28 @@ function Scorecard({ sc, cip, T }) {
           </div>
         ))}
       </div>
+      {earned.length > 0 && (
+        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginTop: '16px', paddingTop: '14px', borderTop: `1px solid ${T.border}` }}>
+          {earned.map(id => {
+            const B = BADGES[id]
+            if (!B) return null
+            const Icon = B.Icon
+            return (
+              <span key={id} title={`${B.label} · ${B.desc}`} style={{
+                display: 'inline-flex', alignItems: 'center', gap: '7px', padding: '5px 12px 5px 6px',
+                borderRadius: '999px', border: `1px solid ${cip ? 'rgba(248,199,97,0.5)' : 'rgba(31,64,96,0.3)'}`,
+                background: cip ? 'rgba(248,199,97,0.08)' : 'rgba(31,64,96,0.05)',
+              }}>
+                <span style={{
+                  width: '24px', height: '24px', borderRadius: '50%', display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                  color: cip ? GOLD : SECTION_BLUE, border: `1px solid ${cip ? 'rgba(248,199,97,0.6)' : 'rgba(31,64,96,0.35)'}`,
+                }}><Icon size={13} /></span>
+                <span className="sa-tele" style={{ fontSize: '9.5px', letterSpacing: '1.2px', color: cip ? '#EAF1F8' : SECTION_BLUE }}>{B.label.toUpperCase()}</span>
+              </span>
+            )
+          })}
+        </div>
+      )}
     </div>
   )
 }
@@ -133,6 +236,7 @@ export default function DailyPerformancePage() {
   const [saving, setSaving] = useState(false)
   const [running, setRunning] = useState(false)
   const [runError, setRunError] = useState(null)
+  const [haul, setHaul] = useState(null) // {items, badges, miles, sinceLabel} after a run
   const [cip, setCip] = useState(() => {
     try { return localStorage.getItem('dp-theme') === 'cip' } catch { return false }
   })
@@ -151,10 +255,12 @@ export default function DailyPerformancePage() {
         .select('*')
         .order('generated_at', { ascending: false })
         .limit(30)
-      if (!error) { setRows(data || []); setSel(0) }
-      else setRows([])
+      if (!error) { setRows(data || []); setSel(0); return data || [] }
+      setRows([])
+      return []
     } catch {
       setRows((prev) => prev || [])
+      return []
     }
   }, [])
 
@@ -165,6 +271,7 @@ export default function DailyPerformancePage() {
   const runUpdate = useCallback(async () => {
     if (running) return
     setRunning(true); setRunError(null)
+    const prev = (rows && rows[0]) || null
     try {
       const { data: { session } } = await supabase.auth.getSession()
       if (!session) throw new Error('Not signed in')
@@ -174,13 +281,28 @@ export default function DailyPerformancePage() {
       })
       const out = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(out.error || `HTTP ${res.status}`)
-      await load()
+      const fresh = await load()
+      // The Haul: everything newly collected since the prior run. Loot drops
+      // only for completions — the diff makes it honest and unrepeatable.
+      const now = fresh && fresh[0]
+      if (now) {
+        const sameDay = prev && prev.day === now.day
+        const prevAcc = sameDay ? (prev.accomplishments || []) : []
+        const prevBadges = sameDay ? ((prev.scorecard || {}).badges || []) : []
+        const items = (now.accomplishments || []).filter(a => !prevAcc.includes(a))
+        const badges = ((now.scorecard || {}).badges || []).filter(b => !prevBadges.includes(b))
+        setHaul({
+          items, badges,
+          miles: (now.scorecard || {}).miles ?? null,
+          sinceLabel: sameDay && prev.generated_at ? fmtTime(prev.generated_at) : 'this morning',
+        })
+      }
     } catch (e) {
       setRunError(String(e.message || e))
     } finally {
       setRunning(false)
     }
-  }, [running, load])
+  }, [running, load, rows])
 
   const row = rows && rows[sel]
 
@@ -256,6 +378,7 @@ export default function DailyPerformancePage() {
 
   return (
     <div className="sa-grid" style={cip ? { maxWidth: 1060, margin: '0 auto', paddingBottom: 60 } : undefined}>
+      {haul && <HaulOverlay haul={haul} onClose={() => setHaul(null)} />}
       {/* Header: which run + source coverage + theme pill */}
       <div className={`col-12 ${T.cardClass}`} style={T.cardStyle}>
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: '16px', flexWrap: 'wrap' }}>

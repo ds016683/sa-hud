@@ -117,3 +117,9 @@ body {
 ::-webkit-scrollbar-thumb:hover { background: #009DE0; }
 
 @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+@keyframes haulDrop {
+  from { opacity: 0; transform: translateY(-16px) scale(0.98); }
+  60% { opacity: 1; }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}

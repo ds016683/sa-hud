@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { CheckCircle2, Circle, Flag } from 'lucide-react'
 import { PageHead } from './sa/SaUi'
 import { supabase } from '../lib/supabase'
+import { BADGES, milesGrade } from '../constants/collection'
 
 const GOLD = '#F8C761'
 const PERIWINKLE = '#96A8F0'
@@ -58,16 +59,19 @@ export default function DayLibraryPage() {
       const { data, error } = await supabase
         .from('daily_performance')
         .select('*')
-        .eq('model', 'Daily Report')
         .order('generated_at', { ascending: false })
-        .limit(200)
+        .limit(400)
       if (error) { setDays((p) => p || []); return }
-      // Latest report per day = the day's definitive record.
+      // Latest Daily Report per day = the definitive record. The day's latest
+      // SCORED row (any model) carries the collection: miles + badges.
       const byDay = new Map()
+      const scByDay = new Map()
       for (const r of data || []) {
-        if (!byDay.has(r.day)) byDay.set(r.day, r)
+        if (r.model === 'Daily Report' && !byDay.has(r.day)) byDay.set(r.day, r)
+        if (r.scorecard && !scByDay.has(r.day)) scByDay.set(r.day, r.scorecard)
       }
-      setDays([...byDay.values()].sort((a, b) => (a.day < b.day ? 1 : -1)))
+      const merged = [...byDay.values()].map(d => ({ ...d, _sc: scByDay.get(d.day) || null }))
+      setDays(merged.sort((a, b) => (a.day < b.day ? 1 : -1)))
     } catch { setDays((p) => p || []) }
   }, [])
 
@@ -97,24 +101,45 @@ export default function DayLibraryPage() {
 
       {row && (
         <div style={{ display: 'flex', gap: 22, alignItems: 'flex-start', maxWidth: 1220, margin: '0 auto', paddingBottom: 60 }}>
-          {/* The shelf */}
-          <div style={{ flex: '0 0 235px', position: 'sticky', top: 10 }}>
-            <div className="sa-tele" style={{ color: INK3, marginBottom: 10 }}>{days.length} FINISHED {days.length === 1 ? 'DAY' : 'DAYS'}</div>
+          {/* The shelf — the river chart of collected days */}
+          <div style={{ flex: '0 0 250px', position: 'sticky', top: 10 }}>
+            <div className="sa-tele" style={{ color: INK3, marginBottom: 6 }}>{days.length} FINISHED {days.length === 1 ? 'DAY' : 'DAYS'}</div>
+            {(() => {
+              const totalMiles = days.reduce((s, d) => s + ((d._sc || {}).miles || 0), 0)
+              return totalMiles > 0 ? (
+                <div className="sa-tele" style={{ color: GOLD, marginBottom: 12, letterSpacing: '1.4px' }}>
+                  {Math.round(totalMiles * 10) / 10} MILES DOWNRIVER
+                </div>
+              ) : <div style={{ marginBottom: 6 }} />
+            })()}
             {days.map((d) => {
               const on = d.day === row.day
+              const g = milesGrade((d._sc || {}).miles)
               return (
                 <button key={d.id} onClick={() => setSelDay(d.day)} style={{
-                  display: 'block', width: '100%', textAlign: 'left', cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', gap: 10, width: '100%', textAlign: 'left', cursor: 'pointer',
                   padding: '10px 14px', marginBottom: 8, borderRadius: 10,
                   border: `1px solid ${on ? 'rgba(248,199,97,0.55)' : LINE}`,
                   background: on ? 'rgba(248,199,97,0.10)' : 'rgba(255,255,255,0.03)',
                 }}>
-                  <div className="sa-serif" style={{ fontSize: 15.5, fontWeight: 500, letterSpacing: '-0.01em', color: on ? '#fff' : INK }}>
-                    {fmtDay(d.day, { weekday: 'long' })}
-                  </div>
-                  <div className="sa-tele" style={{ color: on ? GOLD : INK3, marginTop: 3 }}>
-                    {fmtDay(d.day, { month: 'short', day: 'numeric', year: 'numeric' }).toUpperCase()}
-                  </div>
+                  <span style={{ flex: 1, minWidth: 0 }}>
+                    <span className="sa-serif" style={{ display: 'block', fontSize: 15.5, fontWeight: 500, letterSpacing: '-0.01em', color: on ? '#fff' : INK }}>
+                      {fmtDay(d.day, { weekday: 'long' })}
+                    </span>
+                    <span className="sa-tele" style={{ display: 'block', color: on ? GOLD : INK3, marginTop: 3 }}>
+                      {fmtDay(d.day, { month: 'short', day: 'numeric', year: 'numeric' }).toUpperCase()}
+                    </span>
+                  </span>
+                  {g && (
+                    <span className="sa-serif" title={`${(d._sc || {}).miles} miles`} style={{
+                      width: 30, height: 30, borderRadius: '50%', flexShrink: 0,
+                      display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: 14.5, fontWeight: 500,
+                      color: g === 'S' ? '#16324A' : GOLD,
+                      background: g === 'S' ? GOLD : 'rgba(248,199,97,0.10)',
+                      border: `1px solid rgba(248,199,97,${g === 'S' ? 1 : 0.5})`,
+                    }}>{g}</span>
+                  )}
                 </button>
               )
             })}
@@ -128,7 +153,33 @@ export default function DayLibraryPage() {
                   {fmtDay(row.day, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
                 </div>
                 <span className="sa-tele" style={{ color: PERIWINKLE }}>CLOSED {new Date(row.generated_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }).toUpperCase()}</span>
+                {row._sc && row._sc.miles != null && (
+                  <span className="sa-tele" style={{ color: GOLD, letterSpacing: '1.4px' }}>
+                    {row._sc.miles} MILES · GRADE {milesGrade(row._sc.miles)}
+                  </span>
+                )}
               </div>
+              {row._sc && (row._sc.badges || []).length > 0 && (
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 14 }}>
+                  {(row._sc.badges || []).map(id => {
+                    const B = BADGES[id]
+                    if (!B) return null
+                    const Icon = B.Icon
+                    return (
+                      <span key={id} title={`${B.label} · ${B.desc}`} style={{
+                        display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 11px 4px 5px',
+                        borderRadius: 999, border: '1px solid rgba(248,199,97,0.5)', background: 'rgba(248,199,97,0.08)',
+                      }}>
+                        <span style={{
+                          width: 22, height: 22, borderRadius: '50%', display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                          color: GOLD, border: '1px solid rgba(248,199,97,0.6)',
+                        }}><Icon size={12} /></span>
+                        <span className="sa-tele" style={{ fontSize: 9, letterSpacing: '1.2px', color: INK }}>{B.label.toUpperCase()}</span>
+                      </span>
+                    )
+                  })}
+                </div>
+              )}
               <p style={{
                 fontSize: 15.5, lineHeight: 1.75, margin: '16px 0 0', maxWidth: '72ch',
                 color: 'rgba(234,241,248,0.88)', paddingLeft: 18, borderLeft: '2px solid rgba(248,199,97,0.55)',

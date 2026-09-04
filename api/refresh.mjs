@@ -154,6 +154,38 @@ export default async function handler(req, res) {
       people_logging: new Set(time.map(t => t.person).filter(Boolean)).size,
       open_todos: objectives.filter(o => ['active', 'parked', 'waiting', 'inbox'].includes(o.state)).length,
     }
+
+    // ---- badges: the intrinsic scoreboard (Volume II, Requirement 1).
+    // Deterministic rules only; the model never judges. Loot rules: completion
+    // and deployment earn, calm is rewarded, crisis endurance never is.
+    const delegatedToday = objectives.filter(o => o.state === 'foreman' && o.who)
+    const emergencies = objectives.filter(o => o.is_emergency && ['active', 'parked', 'waiting', 'inbox'].includes(o.state))
+    const agentInbox = objectives.filter(o => (o.tags || []).includes('agent') && o.state === 'inbox')
+    const readRate = inboxEmails.length ? scorecard.emails_read / inboxEmails.length : 0
+    const badges = []
+    // Master Architect track (design over domination, leverage, handoff)
+    if (releasedToday.some(o => o.released_kind === 'foreman') || delegatedToday.length >= 1) badges.push('cartographer')
+    if (doneTasks.length >= 2) badges.push('leverage')
+    if (scorecard.tasks_done >= 3) badges.push('closer')
+    // Integrated Sovereign track (strength without rigidity, boundaries)
+    if (objectives.some(o => o.state === 'waiting')) badges.push('walling')
+    if (scorecard.tasks_done >= 2 && emergencies.length === 0) badges.push('calm-water')
+    if (agentInbox.length === 0 && scorecard.tasks_done >= 1) badges.push('prospector')
+    // Playbound Creator + production
+    if (scorecard.hours_david >= 4) badges.push('deep-work')
+    if (readRate >= 0.8 && inboxEmails.length >= 10) badges.push('correspondent')
+    if (meetings.length >= 3) badges.push('chronicler')
+    scorecard.badges = badges
+
+    // ---- miles made: the day's precision score, 0-10. Completion-weighted,
+    // calm-bonused, never crisis-rewarded. Collected into the Day Library.
+    let miles = 0
+    miles += Math.min(4, scorecard.tasks_done * 1.25)              // completion is the core
+    miles += Math.min(2, doneTasks.length + (delegatedToday.length ? 1 : 0)) // deployment/handoff
+    miles += Math.min(2, scorecard.hours_david / 3)                // real engagement, capped low
+    miles += readRate >= 0.6 ? 1 : 0                               // correspondence handled
+    miles += emergencies.length === 0 ? 1 : 0                      // calm water bonus
+    scorecard.miles = Math.round(Math.min(10, miles) * 10) / 10
     // The tool input is occasionally malformed (stringified row, flattened
     // fields, array wrapping) run-to-run. Coerce what we can and retry the
     // model call once before giving up.
