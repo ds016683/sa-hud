@@ -37,7 +37,7 @@ Objectives states: active = being worked (is_anchor true = keystone); parked = q
 
 BOUNDARY: session boards and project tasks belong to PROJECTS, not to David's personal Objectives. NEVER propose objectives from session-board content or project tasks. Discovery draws ONLY from emails and meeting follow-ups.
 
-"create_objectives": to-do items David must personally act on, from inbound emails clearly requiring his reply or decision and meeting follow-ups assigned to him with no owner elsewhere. For EACH candidate, compare meaning (not exact strings) against ALL existing objectives AND open project tasks: clear match somewhere = do NOT include (acknowledge in notes); no plausible match = include as {"title": imperative max 120 chars, "maybe_dupe": false, "source": "<email/meeting + who>"}; unsure = include with "maybe_dupe": true and "closest": "<closest existing title>". Empty array when nothing qualifies.
+"create_objectives": to-do items David must personally act on, from inbound emails clearly requiring his reply or decision and meeting follow-ups assigned to him with no owner elsewhere. For EACH candidate, compare meaning (not exact strings) against ALL existing objectives AND open project tasks: clear match somewhere = do NOT include (acknowledge in notes); no plausible match = include as {"title": imperative max 120 chars, "maybe_dupe": false, "source": "<email/meeting + who>"}; unsure = include with "maybe_dupe": true and "closest": "<closest existing title>". Empty array when nothing qualifies. The payload's rejected_suggestions lists ideas David explicitly dismissed; NEVER propose anything matching one of those, in wording or in meaning.
 
 The remaining fields, each a separate top-level tool argument, never wrapped in a parent object and never stringified:
 - day: the provided TODAY
@@ -47,8 +47,7 @@ The remaining fields, each a separate top-level tool argument, never wrapped in 
 - learned: array of concrete new knowledge from meetings and emails. Empty if nothing qualifies.
 - interactions: array, one per person engaged today, "Name · context", from meetings + calendar + significant email correspondents (skip bulk), excluding David.
 - team_allocation: array, one line per person by hours descending, "Name · X.Xh · dominant client or project", closing with "Firm total · X.Xh across N people". Empty if no time data.
-- must_do: array of {"text": string, "done": bool}, DERIVED FROM OBJECTIVES ONLY: (a) active objectives due on/before TODAY: done false; (b) "agent"-tagged objectives in inbox or active (due null or on/before TODAY): done false; (c) "agent"-tagged objectives released TODAY: done true; (d) any title marked done:true in the prior run's must_do stays done:true. EXCLUDE waiting, foreman, deleted, future-dated. Project tasks NEVER appear here. Any objective you list in create_objectives also appears here with done false.
-- new_items: array: blocked project tasks formatted "<project name>: <task text>", emails needing delegation, emergency objectives. Nothing already in must_do.
+- new_items: array: blocked project tasks formatted "<project name>: <task text>", emails needing delegation, emergency objectives. Nothing that is due today or overdue (those live on the deterministic must-do list).
 - notes: one short paragraph, your read: time vs calendar, email shape, objectives and project movement; acknowledge deferrals/delegations and already-tracked discoveries when they occurred.
 - model: "Manual Refresh"
 
@@ -56,7 +55,7 @@ Never invent data. Never write an em dash anywhere; use commas, periods, or the 
 
 // Flat schema on purpose: a nested "row" object gets stringified by the model
 // often enough to have broken four runs; top-level fields hold reliably.
-const ROW_FIELDS = ['summary', 'accomplishments', 'noteworthy', 'learned', 'interactions', 'team_allocation', 'must_do', 'new_items', 'notes']
+const ROW_FIELDS = ['summary', 'accomplishments', 'noteworthy', 'learned', 'interactions', 'team_allocation', 'new_items', 'notes']
 const SUBMIT_TOOL = {
   name: 'submit_update',
   description: 'Submit the composed Daily Performance update. Every field is a separate top-level argument.',
@@ -70,7 +69,6 @@ const SUBMIT_TOOL = {
       learned: { type: 'array', items: { type: 'string' } },
       interactions: { type: 'array', items: { type: 'string' } },
       team_allocation: { type: 'array', items: { type: 'string' } },
-      must_do: { type: 'array', items: { type: 'object', required: ['text', 'done'], properties: { text: { type: 'string' }, done: { type: 'boolean' } } } },
       new_items: { type: 'array', items: { type: 'string' } },
       notes: { type: 'string' },
       create_objectives: {
@@ -127,6 +125,8 @@ export default async function handler(req, res) {
       sb(`projects?select=id,key,name`),
       sb(`daily_performance?select=*&day=eq.${TODAY}&order=generated_at.desc&limit=1`),
     ])
+    // Dismissed suggestions (soft-deleted agent objectives) — the do-not-resuggest list.
+    const rejected = await sb(`objectives?select=title&deleted_at=not.is.null&tags=cs.%7Bagent%7D&order=captured_at.desc.nullslast&limit=50`).catch(() => [])
     const boardsToday = boards.filter(b => {
       const d = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Chicago', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(b.updated_at))
       return d === TODAY
@@ -214,6 +214,24 @@ export default async function handler(req, res) {
     // Give the composer its own telemetry: the deterministic numbers plus an
     // awareness of how much of the day it can actually see.
     payload.deterministic_scorecard = scorecard
+    payload.rejected_suggestions = (rejected || []).map(r => r.title)
+
+    // ---- must_do is DETERMINISTIC (David's 9/8 rule): only objectives due
+    // today or previously due. Dispositions are law (waiting/foreman/deleted
+    // stay off); untriaged suggestions never appear. Overdue flagged for red.
+    const priorDone = new Set(((prior[0] || {}).must_do || []).filter(t => t.done).map(t => t.text))
+    const releasedTitles = new Set(releasedToday.map(o => o.title))
+    const mustDo = objectives
+      .filter(o => ['active', 'parked', 'inbox'].includes(o.state))
+      .filter(o => !(o.tags || []).includes('suggested'))
+      .filter(o => o.due_date && o.due_date <= TODAY)
+      .map(o => ({ text: o.title, done: priorDone.has(o.title) || releasedTitles.has(o.title), due_date: o.due_date, overdue: o.due_date < TODAY }))
+    for (const o of releasedToday) {
+      if (o.due_date && o.due_date <= TODAY && !mustDo.some(m => m.text === o.title)) {
+        mustDo.push({ text: o.title, done: true, due_date: o.due_date, overdue: false })
+      }
+    }
+    mustDo.sort((a, b) => (a.due_date < b.due_date ? -1 : 1))
 
     // The tool input is occasionally malformed (stringified row, flattened
     // fields, array wrapping) run-to-run. Coerce what we can and retry the
@@ -262,14 +280,14 @@ export default async function handler(req, res) {
     // ---- deterministic writes
     const created = []
     for (const c of out.create_objectives || []) {
-      const tags = c.maybe_dupe ? ['agent', 'maybe-dupe'] : ['agent']
+      const tags = c.maybe_dupe ? ['agent', 'suggested', 'maybe-dupe'] : ['agent', 'suggested']
       const description = `Manual refresh: discovered from ${c.source} on ${TODAY}` + (c.maybe_dupe && c.closest ? ` · Possible duplicate of: ${c.closest}` : '')
       await sb('objectives', { method: 'POST', prefer: 'return=minimal', body: { user_id: DAVID, title: String(c.title).slice(0, 120), state: 'inbox', tags, needs_sizing: true, effort: 2, importance: 2, description } })
       created.push(c.title)
     }
-    // source_counts is mechanical, never model-authored (a run once emitted {}).
+    // source_counts and must_do are mechanical, never model-authored.
     const row = {
-      ...out.row, day: TODAY, model: 'Manual Refresh', scorecard,
+      ...out.row, day: TODAY, model: 'Manual Refresh', scorecard, must_do: mustDo,
       source_counts: {
         meetings: meetings.length, sessions: boardsToday.length, calendar: calendar.length,
         time: time.length, emails: emails.length, todos: scorecard.open_todos,

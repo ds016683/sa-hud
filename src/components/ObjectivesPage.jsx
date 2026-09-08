@@ -2005,7 +2005,9 @@ export default function ObjectivesPage() {
     if ((b.importance || 0) !== (a.importance || 0)) return (b.importance || 0) - (a.importance || 0)
     return (b.weight || 0) - (a.weight || 0)
   })
-  const inboxItems = live.filter(o => o.state === 'inbox').sort((a,b) => new Date(b.captured_at || 0) - new Date(a.captured_at || 0))
+  // Untriaged agent suggestions live on the Daily Monitor's Suggested panel,
+  // not here; the Inbox holds only what David has accepted (or captured himself).
+  const inboxItems = live.filter(o => o.state === 'inbox' && !(o.tags || []).includes('suggested')).sort((a,b) => new Date(b.captured_at || 0) - new Date(a.captured_at || 0))
   const delegatedAll = live
     .filter(o => o.state === 'foreman')
     .sort((a,b) => new Date(b.released_at || 0) - new Date(a.released_at || 0))

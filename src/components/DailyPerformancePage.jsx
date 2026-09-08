@@ -259,6 +259,53 @@ function HaulOverlay({ haul, onClose }) {
   )
 }
 
+// Suggested to-dos awaiting David's triage. His verdict is law: queue it,
+// amend it, or dismiss it (dismissed ideas are never re-suggested).
+function SuggestionList({ items, onTriage, cip, T }) {
+  const [editing, setEditing] = useState(null) // id being amended
+  const [draft, setDraft] = useState('')
+  if (!items.length) {
+    return <div style={{ fontSize: '13.5px', color: T.ink3 }}>Nothing awaiting your verdict.</div>
+  }
+  return items.map(o => (
+    <div key={o.id} style={{ display: 'flex', alignItems: 'flex-start', gap: '9px', padding: '7px 0' }}>
+      {editing === o.id ? (
+        <>
+          <input autoFocus value={draft} onChange={e => setDraft(e.target.value)}
+            onKeyDown={e => {
+              if (e.key === 'Enter' && draft.trim()) { onTriage(o, 'accept', draft.trim()); setEditing(null) }
+              if (e.key === 'Escape') setEditing(null)
+            }}
+            style={{
+              flex: 1, minWidth: 0, padding: '6px 10px', borderRadius: '7px', fontSize: '13px', fontFamily: 'inherit',
+              border: `1px solid ${cip ? 'rgba(248,199,97,0.5)' : 'var(--sa-border-2)'}`,
+              background: cip ? 'rgba(255,255,255,0.07)' : 'var(--sa-surface)', color: T.ink, outline: 'none',
+            }} />
+          <button onClick={() => { if (draft.trim()) { onTriage(o, 'accept', draft.trim()); setEditing(null) } }} title="Save and queue"
+            style={{ background: 'none', border: 'none', color: '#43D392', cursor: 'pointer', padding: '4px', marginTop: '2px' }}><CheckCircle2 size={16} /></button>
+          <button onClick={() => setEditing(null)} title="Cancel"
+            style={{ background: 'none', border: 'none', color: T.ink3, cursor: 'pointer', padding: '4px', marginTop: '2px' }}><X size={15} /></button>
+        </>
+      ) : (
+        <>
+          <span style={{ flex: 1, minWidth: 0, fontSize: '13.5px', lineHeight: 1.5, color: T.ink }}>
+            {o.title}
+            {(o.tags || []).includes('maybe-dupe') && (
+              <span className="sa-tele" style={{ fontSize: '8.5px', letterSpacing: '1px', color: GOLD_DEEP, marginLeft: '8px' }}>≈ MAYBE DUPE</span>
+            )}
+          </span>
+          <button onClick={() => onTriage(o, 'accept')} title="Queue it: graduates to the Objectives inbox"
+            style={{ background: 'none', border: 'none', color: '#43D392', cursor: 'pointer', padding: '3px', flexShrink: 0 }}><CheckCircle2 size={16} /></button>
+          <button onClick={() => { setEditing(o.id); setDraft(o.title) }} title="Amend the wording, then queue"
+            style={{ background: 'none', border: 'none', color: cip ? PERIWINKLE : SECTION_BLUE, cursor: 'pointer', padding: '3px', flexShrink: 0, fontSize: '13px', lineHeight: 1 }}>✎</button>
+          <button onClick={() => onTriage(o, 'dismiss')} title="Dismiss: never suggested again"
+            style={{ background: 'none', border: 'none', color: '#E06C5F', cursor: 'pointer', padding: '3px', flexShrink: 0 }}><X size={16} /></button>
+        </>
+      )}
+    </div>
+  ))
+}
+
 // Deterministic productivity strip. Numbers come from row.scorecard, computed
 // mechanically server-side at compose time — never model-authored.
 function Scorecard({ sc, cip, T }) {
@@ -349,7 +396,7 @@ export default function DailyPerformancePage() {
       else setRows([])
       try {
         const { data: objs } = await supabase.from('objectives')
-          .select('id,title,state,activated_at').is('deleted_at', null)
+          .select('id,title,state,activated_at,tags,due_date').is('deleted_at', null)
         setBoard(objs || [])
       } catch { /* board controls degrade gracefully */ }
       return data || []
@@ -357,6 +404,19 @@ export default function DailyPerformancePage() {
       setRows((prev) => prev || [])
       return []
     }
+  }, [])
+
+  // Suggestion triage: ✓ graduates to the Inbox queue (drops the suggested
+  // tag), ✎ amends the wording first, ✗ dismisses (soft delete; the composer
+  // is told never to re-suggest dismissed ideas).
+  const triageSuggestion = useCallback(async (obj, verdict, newTitle) => {
+    const patch = verdict === 'dismiss'
+      ? { deleted_at: new Date().toISOString() }
+      : { tags: (obj.tags || []).filter(t => t !== 'suggested' && t !== 'maybe-dupe'), ...(newTitle ? { title: newTitle } : {}) }
+    const { error } = await supabase.from('objectives').update(patch).eq('id', obj.id)
+    if (!error) setBoard(prev => verdict === 'dismiss'
+      ? prev.filter(o => o.id !== obj.id)
+      : prev.map(o => o.id === obj.id ? { ...o, ...patch } : o))
   }, [])
 
   // Play a must-do straight onto the board: same board clock as the
@@ -683,8 +743,15 @@ export default function DailyPerformancePage() {
               }}>
                 {t.done
                   ? <CheckCircle2 size={17} style={{ color: GOLD_DEEP, flexShrink: 0, marginTop: '1px' }} />
-                  : <Circle size={17} style={{ color: T.border2, flexShrink: 0, marginTop: '1px' }} />}
-                <span style={{ fontSize: '14px', lineHeight: 1.5, textDecoration: t.done ? 'line-through' : 'none', textDecorationColor: cip ? 'rgba(255,255,255,0.3)' : undefined }}>{t.text}</span>
+                  : <Circle size={17} style={{ color: t.overdue ? '#E06C5F' : T.border2, flexShrink: 0, marginTop: '1px' }} />}
+                <span style={{ fontSize: '14px', lineHeight: 1.5, color: !t.done && t.overdue ? '#E06C5F' : undefined, textDecoration: t.done ? 'line-through' : 'none', textDecorationColor: cip ? 'rgba(255,255,255,0.3)' : undefined }}>
+                  {t.text}
+                  {!t.done && t.overdue && t.due_date && (
+                    <span className="sa-tele" style={{ fontSize: '8.5px', letterSpacing: '1px', color: '#E06C5F', marginLeft: '8px' }}>
+                      DUE {new Date(t.due_date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }).toUpperCase()}
+                    </span>
+                  )}
+                </span>
               </button>
               {onBoard && (
                 <span className="sa-tele" title="Active on the Objectives board · board clock running" style={{
@@ -702,6 +769,20 @@ export default function DailyPerformancePage() {
             </div>
           )
         })}
+      </div>
+
+      {/* Suggested to-dos — the agent's discoveries, staged for triage */}
+      <div className={`col-6 ${T.cardClass}`} style={T.cardStyle}>
+        <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
+          <SectionHeader cip={cip}>Suggested</SectionHeader>
+          {board.filter(o => o.state === 'inbox' && (o.tags || []).includes('suggested')).length > 0 && (
+            <span className="sa-tele" style={{ color: T.ink3 }}>✓ QUEUE · ✎ AMEND · ✗ DISMISS</span>
+          )}
+        </div>
+        <SuggestionList
+          items={board.filter(o => o.state === 'inbox' && (o.tags || []).includes('suggested'))}
+          onTriage={triageSuggestion} cip={cip} T={T}
+        />
       </div>
 
       {/* Primary accomplishments */}

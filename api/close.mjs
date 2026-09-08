@@ -48,14 +48,13 @@ Fields, each a separate top-level tool argument, never wrapped in a parent objec
 - learned: concrete new knowledge from meetings and emails. Facts, not process.
 - interactions: one per person engaged today, "Name · context", excluding David, skipping bulk senders.
 - team_allocation: one line per person by hours descending, "Name · X.Xh · dominant client or project", closing with "Firm total · X.Xh across N people".
-- must_do: the FINAL state of the day's list, from OBJECTIVES ONLY: active objectives due on/before today and agent-tagged inbox/active items as done:false; agent-tagged objectives released today done:true; anything done:true in the prior run stays done:true. Unfinished stays visibly unchecked; that is the honest record.
-- new_items: what carries into tomorrow needing resourcing, tasking, or a decision, including blocked project tasks as "<project name>: <task text>". Nothing already in must_do.
+- new_items: what carries into tomorrow needing resourcing, tasking, or a decision, including blocked project tasks as "<project name>: <task text>". Nothing that is due today or overdue (the deterministic must-do list holds those).
 - notes: the closing read, one paragraph: the day's pattern, calendar versus reality, board movement, deferrals acknowledged, and what deserves first attention tomorrow.
 
 Never invent data. Never write an em dash; use commas, periods, or the middle dot.`
 
 // Flat schema on purpose: nested wrappers get stringified by the model.
-const ROW_FIELDS = ['summary', 'accomplishments', 'noteworthy', 'learned', 'interactions', 'team_allocation', 'must_do', 'new_items', 'notes']
+const ROW_FIELDS = ['summary', 'accomplishments', 'noteworthy', 'learned', 'interactions', 'team_allocation', 'new_items', 'notes']
 const SUBMIT_TOOL = {
   name: 'submit_close',
   description: 'Commit the composed close-of-day record. Every field is a separate top-level argument.',
@@ -69,7 +68,6 @@ const SUBMIT_TOOL = {
       learned: { type: 'array', items: { type: 'string' } },
       interactions: { type: 'array', items: { type: 'string' } },
       team_allocation: { type: 'array', items: { type: 'string' } },
-      must_do: { type: 'array', items: { type: 'object', required: ['text', 'done'], properties: { text: { type: 'string' }, done: { type: 'boolean' } } } },
       new_items: { type: 'array', items: { type: 'string' } },
       notes: { type: 'string' },
     },
@@ -207,6 +205,22 @@ export default async function handler(req, res) {
       },
     }
 
+    // ---- must_do is DETERMINISTIC (David's 9/8 rule): due today or overdue
+    // only; dispositions are law; suggestions never appear. Final day state.
+    const priorDone = new Set((((prior[0] || {}).must_do) || []).filter(t => t.done).map(t => t.text))
+    const releasedTitlesMD = new Set(releasedToday.map(o => o.title))
+    const mustDo = objectives
+      .filter(o => ['active', 'parked', 'inbox'].includes(o.state))
+      .filter(o => !(o.tags || []).includes('suggested'))
+      .filter(o => o.due_date && o.due_date <= TARGET)
+      .map(o => ({ text: o.title, done: priorDone.has(o.title) || releasedTitlesMD.has(o.title), due_date: o.due_date, overdue: o.due_date < TARGET }))
+    for (const o of releasedToday) {
+      if (o.due_date && o.due_date <= TARGET && !mustDo.some(m => m.text === o.title)) {
+        mustDo.push({ text: o.title, done: true, due_date: o.due_date, overdue: false })
+      }
+    }
+    mustDo.sort((a, b) => (a.due_date < b.due_date ? -1 : 1))
+
     // ---- compose the definitive record
     const boardsToday = boards.filter(b => chiDayOf(b.updated_at) === TARGET)
     const slimEmails = emails.map(e => ({ ...e, preview: (e.preview || '').slice(0, 240) }))
@@ -252,7 +266,7 @@ export default async function handler(req, res) {
     // ---- commit: replace any prior Daily Report rows for the day, then write
     for (const r of existing) await sb(`daily_performance?id=eq.${r.id}`, { method: 'DELETE' })
     const row = {
-      ...out.row, day: TARGET, model: 'Daily Report', scorecard,
+      ...out.row, day: TARGET, model: 'Daily Report', scorecard, must_do: mustDo,
       source_counts: { meetings: meetings.length, sessions: boardsToday.length, calendar: calendar.length, time: time.length, emails: emails.length, todos: scorecard.open_todos },
     }
     await sb('daily_performance', { method: 'POST', prefer: 'return=minimal', body: row })
