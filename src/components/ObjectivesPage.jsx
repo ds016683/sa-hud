@@ -720,11 +720,26 @@ function MetricsDetail({ breakdown, history, pressure }) {
 
 function ActiveRow({ o, onDone, onPark, onEdit }) {
   const dueC = dueColor(o.due_date, o.hard_deadline)
+  // Board clock: rerender each minute so the elapsed chip ticks.
+  const [, setTick] = useState(0)
+  useEffect(() => {
+    if (!o.activated_at) return undefined
+    const t = setInterval(() => setTick(x => x + 1), 60000)
+    return () => clearInterval(t)
+  }, [o.activated_at])
+  const mins = o.activated_at ? Math.max(0, Math.floor((Date.now() - new Date(o.activated_at).getTime()) / 60000)) : null
+  const clock = mins !== null ? (mins >= 60 ? `${Math.floor(mins / 60)}H ${String(mins % 60).padStart(2, '0')}M` : `${mins}M`) : null
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 0', borderTop: `1px solid ${PANEL_BORDER}`, whiteSpace: 'nowrap', minWidth: 0 }}>
       {o.is_anchor && <Star size={12} fill={GOLD} color={GOLD} style={{ flexShrink: 0 }} />}
       <SizeDot weight={o.weight} />
       <span onClick={() => onEdit(o)} title={o.title} style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', fontSize: 14, color: NAVY, cursor: 'pointer' }}>{o.title}</span>
+      {clock && (
+        <span title="Time on the board this run · logs to Harvest when it leaves" style={{
+          fontFamily: 'var(--font-mono, monospace)', fontSize: 9, letterSpacing: '0.8px',
+          color: '#43D392', flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 3,
+        }}>⏱ {clock}</span>
+      )}
       {o.due_date && <span style={{ ...S.chip(dueC.bg, dueC.fg), fontSize: 9, flexShrink: 0 }}>{o.hard_deadline ? '🔒 ' : ''}{fmtShort(o.due_date)}</span>}
       <button onClick={() => onPark(o.id)} title="Back to queue" style={{ ...S.btnGhost, fontSize: 10, padding: '5px 8px', flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 4 }}><RaceTrack size={12} /></button>
       <button onClick={() => onDone(o.id)} style={{ ...S.btnDone, flexShrink: 0 }}><Check size={12} /> done</button>

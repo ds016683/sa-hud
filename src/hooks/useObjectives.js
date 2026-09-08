@@ -69,7 +69,13 @@ export default function useObjectives() {
   }, [])
 
   const updateObjective = useCallback(async (id, patch) => {
-    const { data, error } = await supabase.from('objectives').update(patch).eq('id', id).select().single()
+    let { data, error } = await supabase.from('objectives').update(patch).eq('id', id).select().single()
+    // Migration grace: if the board-clock column isn't in the schema yet,
+    // land the update without it rather than failing the board action.
+    if (error && String(error.message).includes('activated_at') && 'activated_at' in patch) {
+      const { activated_at, ...rest } = patch
+      ;({ data, error } = await supabase.from('objectives').update(rest).eq('id', id).select().single())
+    }
     if (error) {
       console.error('[useObjectives] updateObjective failed:', error, { id, patch })
       alert(`Save failed: ${error.message}\n\nIf this mentions 'start_date', the v1.4 migration hasn't been run in Supabase yet.`)
@@ -78,17 +84,21 @@ export default function useObjectives() {
     return data
   }, [])
 
-  // Harvest timeclock bridge: the board drives the real timer. Fire-and-forget;
-  // a Harvest hiccup must never block a board action. The server only ever
-  // touches timers the HUD itself started.
-  const timeClock = useCallback((action, title) => {
+  // Board clock -> Harvest. The HUD never touches Harvest's running timer
+  // (that stays David's, for meetings). Each objective accrues board time via
+  // activated_at; when it leaves the board, the span is logged as a completed
+  // Harvest entry. Fire-and-forget: Harvest hiccups never block the board.
+  const logBoardTime = useCallback((prevObj) => {
+    if (!prevObj || prevObj.state !== 'active' || !prevObj.activated_at) return
+    const hours = (Date.now() - new Date(prevObj.activated_at).getTime()) / 3600e3
+    if (hours < 0.05 || hours > 12) return // misclick floor / sanity ceiling
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (!session) return
       fetch('/api/time', {
         method: 'POST',
         headers: { Authorization: `Bearer ${session.access_token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action, title }),
-      }).catch(() => { /* timer is best-effort */ })
+        body: JSON.stringify({ action: 'log', title: prevObj.title, hours }),
+      }).catch(() => { /* best-effort */ })
     }).catch(() => { /* ignore */ })
   }, [])
 
@@ -105,32 +115,31 @@ export default function useObjectives() {
   }, [])
 
   const releaseObjective = useCallback(async (id, kind = 'done') => {
-    const data = await updateObjective(id, { state: kind === 'foreman' ? 'foreman' : 'released', released_kind: kind, released_at: new Date().toISOString() })
+    logBoardTime(objectives.find(o => o.id === id))
+    const data = await updateObjective(id, { state: kind === 'foreman' ? 'foreman' : 'released', released_kind: kind, released_at: new Date().toISOString(), activated_at: null })
     if (kind === 'done') await closeBridgedTask(data)
-    if (data) timeClock('stop', data.title)
     return data
-  }, [updateObjective, closeBridgedTask, timeClock])
+  }, [updateObjective, closeBridgedTask, logBoardTime, objectives])
 
-  const reopenObjective = useCallback((id) => updateObjective(id, { state: 'active', released_kind: null, released_at: null }), [updateObjective])
+  const reopenObjective = useCallback((id) => updateObjective(id, { state: 'active', released_kind: null, released_at: null, activated_at: new Date().toISOString() }), [updateObjective])
 
   const parkObjective = useCallback(async (id) => {
-    const data = await updateObjective(id, { state: 'parked', released_kind: null, released_at: null })
-    if (data) timeClock('stop', data.title)
-    return data
-  }, [updateObjective, timeClock])
+    logBoardTime(objectives.find(o => o.id === id))
+    return updateObjective(id, { state: 'parked', released_kind: null, released_at: null, activated_at: null })
+  }, [updateObjective, logBoardTime, objectives])
   const reactivateObjective = useCallback(async (id) => {
-    const data = await updateObjective(id, { state: 'active', released_kind: null, released_at: null })
-    if (data) timeClock('start', data.title)
-    return data
-  }, [updateObjective, timeClock])
+    return updateObjective(id, { state: 'active', released_kind: null, released_at: null, activated_at: new Date().toISOString() })
+  }, [updateObjective])
   const activateObjective = reactivateObjective // alias — eligible→active
   // v1.11 — Waiting / Inbox containers. Same single mutation surface.
   const waitObjective = useCallback(async (id) => {
-    const data = await updateObjective(id, { state: 'waiting', released_kind: null, released_at: null })
-    if (data) timeClock('stop', data.title)
-    return data
-  }, [updateObjective, timeClock])
-  const inboxObjective = useCallback((id) => updateObjective(id, { state: 'inbox', released_kind: null, released_at: null }), [updateObjective])
+    logBoardTime(objectives.find(o => o.id === id))
+    return updateObjective(id, { state: 'waiting', released_kind: null, released_at: null, activated_at: null })
+  }, [updateObjective, logBoardTime, objectives])
+  const inboxObjective = useCallback(async (id) => {
+    logBoardTime(objectives.find(o => o.id === id))
+    return updateObjective(id, { state: 'inbox', released_kind: null, released_at: null, activated_at: null })
+  }, [updateObjective, logBoardTime, objectives])
   // Generic "move to container" — every cross-container action flows through this.
   const moveObjective = useCallback(async (id, targetState) => {
     const patch = { state: targetState }
@@ -144,20 +153,20 @@ export default function useObjectives() {
       patch.released_at = new Date().toISOString()
     }
     const prev = objectives.find(o => o.id === id)
+    if (targetState === 'active') patch.activated_at = new Date().toISOString()
+    else {
+      logBoardTime(prev)
+      patch.activated_at = null
+    }
     const data = await updateObjective(id, patch)
     if (targetState === 'released') await closeBridgedTask(data)
-    if (data) {
-      if (targetState === 'active') timeClock('start', data.title)
-      else if (prev?.state === 'active') timeClock('stop', data.title)
-    }
     return data
-  }, [updateObjective, closeBridgedTask, timeClock, objectives])
+  }, [updateObjective, closeBridgedTask, logBoardTime, objectives])
   const deleteObjective = useCallback(async (id) => {
     const prev = objectives.find(o => o.id === id)
-    const data = await updateObjective(id, { deleted_at: new Date().toISOString() })
-    if (prev?.state === 'active') timeClock('stop', prev.title)
-    return data
-  }, [updateObjective, timeClock, objectives])
+    logBoardTime(prev)
+    return updateObjective(id, { deleted_at: new Date().toISOString(), activated_at: null })
+  }, [updateObjective, logBoardTime, objectives])
   const restoreObjective = useCallback((id) => updateObjective(id, { deleted_at: null }), [updateObjective])
   const purgeObjective = useCallback(async (id) => {
     await supabase.from('objectives').delete().eq('id', id)

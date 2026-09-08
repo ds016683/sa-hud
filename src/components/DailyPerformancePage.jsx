@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { RefreshCw, CheckCircle2, Circle, Flag, Inbox, Clock, X, BookMarked } from 'lucide-react'
+import { RefreshCw, CheckCircle2, Circle, Flag, Inbox, Clock, X, BookMarked, Play } from 'lucide-react'
 import { BADGES, milesGrade, signalTier } from '../constants/collection'
 import BadgeMedallion from './BadgeArt'
 
@@ -323,6 +323,7 @@ export default function DailyPerformancePage() {
   const [running, setRunning] = useState(false)
   const [runError, setRunError] = useState(null)
   const [haul, setHaul] = useState(null) // {items, badges, miles, sinceLabel} after a run
+  const [board, setBoard] = useState([]) // live objectives, for playing must-dos onto the board
   const [confirmClose, setConfirmClose] = useState(false)
   const [closing, setClosing] = useState(false)
   const [mint, setMint] = useState(null) // {day, miles, badges, signal} during the ceremony
@@ -344,13 +345,29 @@ export default function DailyPerformancePage() {
         .select('*')
         .order('generated_at', { ascending: false })
         .limit(30)
-      if (!error) { setRows(data || []); setSel(0); return data || [] }
-      setRows([])
-      return []
+      if (!error) { setRows(data || []); setSel(0) }
+      else setRows([])
+      try {
+        const { data: objs } = await supabase.from('objectives')
+          .select('id,title,state,activated_at').is('deleted_at', null)
+        setBoard(objs || [])
+      } catch { /* board controls degrade gracefully */ }
+      return data || []
     } catch {
       setRows((prev) => prev || [])
       return []
     }
+  }, [])
+
+  // Play a must-do straight onto the board: same board clock as the
+  // Objectives page (activated_at stamps, span logs to Harvest on exit).
+  const playMustDo = useCallback(async (obj) => {
+    const patch = { state: 'active', released_kind: null, released_at: null, activated_at: new Date().toISOString() }
+    let { error } = await supabase.from('objectives').update(patch).eq('id', obj.id)
+    if (error && String(error.message).includes('activated_at')) {
+      ;({ error } = await supabase.from('objectives').update({ state: 'active', released_kind: null, released_at: null }).eq('id', obj.id))
+    }
+    if (!error) setBoard(prev => prev.map(o => o.id === obj.id ? { ...o, state: 'active', activated_at: new Date().toISOString() } : o))
   }, [])
 
   useEffect(() => { load() }, [load])
@@ -653,18 +670,38 @@ export default function DailyPerformancePage() {
         {(row.must_do || []).length === 0 && (
           <div style={{ fontSize: '13.5px', color: T.ink3 }}>Nothing flagged for today.</div>
         )}
-        {(row.must_do || []).map((t, i) => (
-          <button key={i} onClick={() => toggleMustDo(i)} style={{
-            display: 'flex', alignItems: 'flex-start', gap: '10px', width: '100%',
-            textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer',
-            padding: '7px 0', color: t.done ? T.ink3 : T.ink,
-          }}>
-            {t.done
-              ? <CheckCircle2 size={17} style={{ color: GOLD_DEEP, flexShrink: 0, marginTop: '1px' }} />
-              : <Circle size={17} style={{ color: T.border2, flexShrink: 0, marginTop: '1px' }} />}
-            <span style={{ fontSize: '14px', lineHeight: 1.5, textDecoration: t.done ? 'line-through' : 'none', textDecorationColor: cip ? 'rgba(255,255,255,0.3)' : undefined }}>{t.text}</span>
-          </button>
-        ))}
+        {(row.must_do || []).map((t, i) => {
+          const obj = !t.done ? board.find(o => o.title === t.text) : null
+          const onBoard = obj && obj.state === 'active'
+          const playable = obj && ['parked', 'inbox', 'waiting'].includes(obj.state)
+          return (
+            <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', padding: '7px 0' }}>
+              <button onClick={() => toggleMustDo(i)} style={{
+                display: 'flex', alignItems: 'flex-start', gap: '10px', flex: 1, minWidth: 0,
+                textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer',
+                padding: 0, color: t.done ? T.ink3 : T.ink,
+              }}>
+                {t.done
+                  ? <CheckCircle2 size={17} style={{ color: GOLD_DEEP, flexShrink: 0, marginTop: '1px' }} />
+                  : <Circle size={17} style={{ color: T.border2, flexShrink: 0, marginTop: '1px' }} />}
+                <span style={{ fontSize: '14px', lineHeight: 1.5, textDecoration: t.done ? 'line-through' : 'none', textDecorationColor: cip ? 'rgba(255,255,255,0.3)' : undefined }}>{t.text}</span>
+              </button>
+              {onBoard && (
+                <span className="sa-tele" title="Active on the Objectives board · board clock running" style={{
+                  fontSize: '8.5px', letterSpacing: '1.2px', color: '#43D392', flexShrink: 0, marginTop: '4px',
+                }}>ON BOARD</span>
+              )}
+              {playable && (
+                <button onClick={() => playMustDo(obj)} title="Play: activate on the Objectives board and start its clock" style={{
+                  width: '22px', height: '22px', borderRadius: '50%', flexShrink: 0, cursor: 'pointer',
+                  border: `1px solid ${cip ? 'rgba(67,211,146,0.5)' : 'rgba(31,64,96,0.35)'}`,
+                  background: 'transparent', color: cip ? '#43D392' : SECTION_BLUE,
+                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: 0,
+                }}><Play size={11} style={{ marginLeft: '1px' }} /></button>
+              )}
+            </div>
+          )
+        })}
       </div>
 
       {/* Primary accomplishments */}
