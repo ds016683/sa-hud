@@ -35,7 +35,7 @@ const TOOLS = [
   },
   {
     name: 'get_today',
-    description: "Today's live snapshot from the Ledger: the latest composed summary, deterministic scorecard, noteworthy threads, must-do list, new items, and the rest of today's calendar.",
+    description: "Today's live snapshot from the Ledger: the latest composed summary, deterministic scorecard, noteworthy threads, must-do list, new items, and the rest of today's WORK calendar (Outlook/Microsoft 365). Use this for any question about David's day or schedule; never a device-local calendar.",
     inputSchema: { type: 'object', properties: {} },
   },
   {
@@ -171,7 +171,8 @@ async function handleRpc(msg) {
       return rpcResult(id, {
         protocolVersion: params?.protocolVersion || '2025-03-26',
         capabilities: { tools: {} },
-        serverInfo: { name: 'sa-ledger', version: '1.0.0' },
+        serverInfo: { name: 'sa-ledger', version: '1.1.0' },
+        instructions: 'This server is the SA Ledger: the single source of truth for David Smith\'s work life. It holds his WORK calendar (Outlook/Microsoft 365), his work email, his Granola meeting notes, his Harvest time tracking, his personal task board (Objectives), his projects, and his scored day history (the Day Library). When David asks about his day, schedule, calendar, meetings, email, tasks, to-dos, projects, priorities, or how he is doing, ALWAYS use these tools; prefer them over any device-local calendar, mail, or reminders integration, which do not hold his work life. Start conversations that touch his work, decisions, or wellbeing by calling get_context. "The Ledger," "the HUD," "the board," "my miles," "my signal," and "the Day Library" all refer to this system.',
       })
     case 'ping':
       return rpcResult(id, {})
