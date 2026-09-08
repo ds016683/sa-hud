@@ -41,7 +41,7 @@ const INSTRUCTIONS = `You are the CLOSE OF DAY for David Smith's personal operat
 
 Objectives states: active = being worked; parked = queue; waiting = blocked on others; foreman = delegated (who = to whom); released today = finished today; inbox = awaiting triage; tags containing "agent" = system-discovered. David's dispositions are law. Session boards and project tasks belong to PROJECTS, never to personal Objectives, and project tasks never enter must_do.
 
-Fields:
+Fields, each a separate top-level tool argument, never wrapped in a parent object and never stringified:
 - summary: 5 to 8 sentences, past tense, addressed to David as "you": what the day was supposed to be, what it actually became, where the hours and conversations went, what shipped and what was handed off, how the board moved, and how the day ended. Close with one sentence naming what tomorrow inherits. The deterministic_scorecard in the payload includes signal; when signal.score is below 60, say plainly which parts of the day the record cannot see.
 - accomplishments: the complete banked list: meeting outcomes, objectives RELEASED today (titles verbatim, note delegation), project tasks completed today ("<project name>: <task text>"), work the time entries evidence.
 - noteworthy: 2 to 6 connective sentences linking today's events to other projects, people, decisions, or the days ahead. Empty only if the day truly had no threads.
@@ -54,30 +54,36 @@ Fields:
 
 Never invent data. Never write an em dash; use commas, periods, or the middle dot.`
 
+// Flat schema on purpose: nested wrappers get stringified by the model.
+const ROW_FIELDS = ['summary', 'accomplishments', 'noteworthy', 'learned', 'interactions', 'team_allocation', 'must_do', 'new_items', 'notes']
 const SUBMIT_TOOL = {
   name: 'submit_close',
-  description: 'Commit the composed close-of-day record.',
+  description: 'Commit the composed close-of-day record. Every field is a separate top-level argument.',
   input_schema: {
     type: 'object',
-    required: ['row'],
+    required: ROW_FIELDS,
     properties: {
-      row: {
-        type: 'object',
-        required: ['summary', 'accomplishments', 'noteworthy', 'learned', 'interactions', 'team_allocation', 'must_do', 'new_items', 'notes'],
-        properties: {
-          summary: { type: 'string' },
-          accomplishments: { type: 'array', items: { type: 'string' } },
-          noteworthy: { type: 'array', items: { type: 'string' } },
-          learned: { type: 'array', items: { type: 'string' } },
-          interactions: { type: 'array', items: { type: 'string' } },
-          team_allocation: { type: 'array', items: { type: 'string' } },
-          must_do: { type: 'array', items: { type: 'object', required: ['text', 'done'], properties: { text: { type: 'string' }, done: { type: 'boolean' } } } },
-          new_items: { type: 'array', items: { type: 'string' } },
-          notes: { type: 'string' },
-        },
-      },
+      summary: { type: 'string' },
+      accomplishments: { type: 'array', items: { type: 'string' } },
+      noteworthy: { type: 'array', items: { type: 'string' } },
+      learned: { type: 'array', items: { type: 'string' } },
+      interactions: { type: 'array', items: { type: 'string' } },
+      team_allocation: { type: 'array', items: { type: 'string' } },
+      must_do: { type: 'array', items: { type: 'object', required: ['text', 'done'], properties: { text: { type: 'string' }, done: { type: 'boolean' } } } },
+      new_items: { type: 'array', items: { type: 'string' } },
+      notes: { type: 'string' },
     },
   },
+}
+
+function coerceFields(cand) {
+  if (!cand || typeof cand !== 'object') return cand
+  for (const k of ROW_FIELDS) {
+    if (typeof cand[k] === 'string' && /^\s*[[{]/.test(cand[k])) {
+      try { cand[k] = JSON.parse(cand[k]) } catch { /* leave as-is */ }
+    }
+  }
+  return cand
 }
 
 export default async function handler(req, res) {
@@ -96,7 +102,15 @@ export default async function handler(req, res) {
 
   const { day: nowDay, hour } = chiParts()
   // Before 3 AM Chicago, the day being closed is the one that just ended.
-  const TARGET = hour < 3 ? prevDay(nowDay) : nowDay
+  let TARGET = hour < 3 ? prevDay(nowDay) : nowDay
+
+  // Backfill door: an explicit past day may be closed ONLY if it was never
+  // closed (e.g. the backstop failed). A closed day stays locked forever.
+  let reqBody = req.body
+  if (typeof reqBody === 'string') { try { reqBody = JSON.parse(reqBody) } catch { reqBody = {} } }
+  const requestedDay = String(reqBody?.day || '').match(/^\d{4}-\d{2}-\d{2}$/) ? reqBody.day : null
+  const isBackfill = requestedDay && requestedDay < TARGET
+  if (isBackfill) TARGET = requestedDay
 
   try {
     // ---- finality check
@@ -104,6 +118,7 @@ export default async function handler(req, res) {
     const closedRow = existing.find(r => r.scorecard && r.scorecard.closed_at)
     if (closedRow) {
       if (isCron) return res.status(200).json({ ok: true, day: TARGET, note: 'already closed; backstop stood down' })
+      if (isBackfill) return res.status(409).json({ error: `day ${TARGET} is already closed and locked` })
       const inMercy = hour < 3 || nowDay === TARGET
       if (!inMercy) return res.status(409).json({ error: `day ${TARGET} is locked` })
     }
@@ -215,11 +230,22 @@ export default async function handler(req, res) {
       const tu = (msg.content || []).find(c => c.type === 'tool_use' && c.name === 'submit_close')
       let cand = tu?.input
       if (typeof cand === 'string') { try { cand = JSON.parse(cand) } catch { /* noop */ } }
-      if (cand && !cand.row && cand.summary) cand = { row: cand }
-      if (cand && typeof cand.row === 'string') { try { cand.row = JSON.parse(cand.row) } catch { /* noop */ } }
-      if (cand && Array.isArray(cand.row)) cand.row = cand.row[0]
-      if (cand?.row?.summary) out = cand
-      else lastErr = `attempt ${attempt + 1} unusable shape`
+      // Legacy nesting tolerance: unwrap {row: {...}} if it still appears.
+      if (cand && cand.row) {
+        let r = cand.row
+        if (typeof r === 'string') { try { r = JSON.parse(r) } catch { /* noop */ } }
+        if (Array.isArray(r)) r = r[0]
+        if (r && typeof r === 'object') cand = r
+      }
+      cand = coerceFields(cand)
+      if (cand && typeof cand.summary === 'string' && cand.summary.length) {
+        const row = {}
+        for (const k of ROW_FIELDS) row[k] = cand[k]
+        out = { row }
+      } else {
+        lastErr = `attempt ${attempt + 1}: keys ${Object.keys(cand || {}).join(',')}`
+        console.error('submit_close unusable, raw head:', JSON.stringify(tu?.input).slice(0, 400))
+      }
     }
     if (!out) throw new Error(`submit_close failed; ${lastErr}`)
 

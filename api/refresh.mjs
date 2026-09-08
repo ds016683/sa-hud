@@ -39,7 +39,7 @@ BOUNDARY: session boards and project tasks belong to PROJECTS, not to David's pe
 
 "create_objectives": to-do items David must personally act on, from inbound emails clearly requiring his reply or decision and meeting follow-ups assigned to him with no owner elsewhere. For EACH candidate, compare meaning (not exact strings) against ALL existing objectives AND open project tasks: clear match somewhere = do NOT include (acknowledge in notes); no plausible match = include as {"title": imperative max 120 chars, "maybe_dupe": false, "source": "<email/meeting + who>"}; unsure = include with "maybe_dupe": true and "closest": "<closest existing title>". Empty array when nothing qualifies.
 
-"row" fields:
+The remaining fields, each a separate top-level tool argument, never wrapped in a parent object and never stringified:
 - day: the provided TODAY
 - summary: written TO David in second person, opening with "Since your last check-in" (vary the sentence naturally after that opening; if there is no prior run today, open with "Since this morning" or similar). This is a SYNTHESIS, not a chronology: never walk the calendar hour by hour. Lead with what changed and what matters since the prior run (compare against prior_run when present), pull the connections and the noteworthy into the prose itself ("your Westat block set up what Thomasina needs Friday"), name what remains ahead, and be honest when thin. 5 to 8 sentences of dense, direct address. The payload's deterministic_scorecard carries a signal object scoring how visible the day is to you (meeting notes captured, time logged, board movement, inbox handled). When signal.score is below 60, say so plainly in one clause, naming the dark zone ("only three of seven meetings left notes, so this read is partial"), and never present a dimly-seen day as a fully-known one.
 - accomplishments: array, WHAT GOT DONE, concrete and complete: meeting outcomes worth banking, objectives RELEASED today (titles verbatim, note delegation), project tasks completed today (formatted "<project name>: <task text>", from project_tasks_completed_today), board tasks done today (verbatim, project-prefixed), work the time entries evidence. Every completed thing appears; nothing aspirational does.
@@ -54,30 +54,25 @@ BOUNDARY: session boards and project tasks belong to PROJECTS, not to David's pe
 
 Never invent data. Never write an em dash anywhere; use commas, periods, or the middle dot.`
 
+// Flat schema on purpose: a nested "row" object gets stringified by the model
+// often enough to have broken four runs; top-level fields hold reliably.
+const ROW_FIELDS = ['summary', 'accomplishments', 'noteworthy', 'learned', 'interactions', 'team_allocation', 'must_do', 'new_items', 'notes']
 const SUBMIT_TOOL = {
   name: 'submit_update',
-  description: 'Submit the composed Daily Performance update.',
+  description: 'Submit the composed Daily Performance update. Every field is a separate top-level argument.',
   input_schema: {
     type: 'object',
-    required: ['row', 'create_objectives'],
+    required: [...ROW_FIELDS, 'create_objectives'],
     properties: {
-      row: {
-        type: 'object',
-        required: ['day', 'summary', 'accomplishments', 'noteworthy', 'learned', 'interactions', 'team_allocation', 'must_do', 'new_items', 'notes', 'model'],
-        properties: {
-          day: { type: 'string' },
-          summary: { type: 'string' },
-          accomplishments: { type: 'array', items: { type: 'string' } },
-          noteworthy: { type: 'array', items: { type: 'string' } },
-          learned: { type: 'array', items: { type: 'string' } },
-          interactions: { type: 'array', items: { type: 'string' } },
-          team_allocation: { type: 'array', items: { type: 'string' } },
-          must_do: { type: 'array', items: { type: 'object', required: ['text', 'done'], properties: { text: { type: 'string' }, done: { type: 'boolean' } } } },
-          new_items: { type: 'array', items: { type: 'string' } },
-          notes: { type: 'string' },
-          model: { type: 'string' },
-        },
-      },
+      summary: { type: 'string' },
+      accomplishments: { type: 'array', items: { type: 'string' } },
+      noteworthy: { type: 'array', items: { type: 'string' } },
+      learned: { type: 'array', items: { type: 'string' } },
+      interactions: { type: 'array', items: { type: 'string' } },
+      team_allocation: { type: 'array', items: { type: 'string' } },
+      must_do: { type: 'array', items: { type: 'object', required: ['text', 'done'], properties: { text: { type: 'string' }, done: { type: 'boolean' } } } },
+      new_items: { type: 'array', items: { type: 'string' } },
+      notes: { type: 'string' },
       create_objectives: {
         type: 'array',
         items: {
@@ -88,6 +83,17 @@ const SUBMIT_TOOL = {
       },
     },
   },
+}
+
+// Salvage individual fields that arrive as JSON-in-a-string.
+function coerceFields(cand) {
+  if (!cand || typeof cand !== 'object') return cand
+  for (const k of [...ROW_FIELDS, 'create_objectives']) {
+    if (typeof cand[k] === 'string' && /^\s*[[{]/.test(cand[k])) {
+      try { cand[k] = JSON.parse(cand[k]) } catch { /* leave as-is */ }
+    }
+  }
+  return cand
 }
 
 export default async function handler(req, res) {
@@ -234,17 +240,21 @@ export default async function handler(req, res) {
       if (!toolUse) { lastShapeError = 'no submit_update call'; continue }
       let cand = toolUse.input
       if (typeof cand === 'string') { try { cand = JSON.parse(cand) } catch { /* fall through */ } }
-      if (cand && !cand.row && cand.day && cand.summary) {
-        const { create_objectives, ...rest } = cand
-        cand = { row: rest, create_objectives: create_objectives || [] }
+      // Legacy nesting tolerance: unwrap {row: {...}} if the model still emits it.
+      if (cand && cand.row) {
+        let r = cand.row
+        if (typeof r === 'string') { try { r = JSON.parse(r) } catch { /* noop */ } }
+        if (Array.isArray(r)) r = r[0]
+        if (r && typeof r === 'object') cand = { ...r, create_objectives: cand.create_objectives || r.create_objectives }
       }
-      if (cand && typeof cand.row === 'string') { try { cand.row = JSON.parse(cand.row) } catch { /* fall through */ } }
-      if (cand && Array.isArray(cand.row)) cand.row = cand.row[0]
-      if (cand && cand.row && typeof cand.row === 'object' && cand.row.summary) {
-        if (!Array.isArray(cand.create_objectives)) cand.create_objectives = []
-        out = cand
+      cand = coerceFields(cand)
+      if (cand && typeof cand.summary === 'string' && cand.summary.length) {
+        const row = {}
+        for (const k of ROW_FIELDS) row[k] = cand[k]
+        out = { row, create_objectives: Array.isArray(cand.create_objectives) ? cand.create_objectives : [] }
       } else {
-        lastShapeError = `attempt ${attempt + 1}: row js-type ${Array.isArray(cand?.row) ? 'array' : typeof cand?.row}, keys ${Object.keys(cand || {}).join(',')}`
+        lastShapeError = `attempt ${attempt + 1}: keys ${Object.keys(cand || {}).join(',')}`
+        console.error('submit_update unusable, raw head:', JSON.stringify(toolUse.input).slice(0, 400))
       }
     }
     if (!out) throw new Error(`submit_update shape unusable after retry; ${lastShapeError}`)
