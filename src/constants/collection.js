@@ -8,16 +8,16 @@ import {
 } from 'lucide-react'
 
 export const BADGES = {
-  'cartographer': { label: 'Cartographer', track: 'Master Architect', Icon: MapIcon, desc: 'Work deployed to other hands' },
-  'leverage': { label: 'Leverage', track: 'Master Architect', Icon: Network, desc: 'Project tasks closed through the system' },
-  'closer': { label: 'Closer', track: 'Master Architect', Icon: CheckCircle2, desc: 'Three or more completions banked' },
-  'walling': { label: 'Walling', track: 'Integrated Sovereign', Icon: Shield, desc: 'A boundary held · not yours to carry' },
-  'calm-water': { label: 'Calm Water', track: 'Integrated Sovereign', Icon: Waves, desc: 'Real completion, zero emergencies' },
-  'prospector': { label: 'Prospector', track: 'Integrated Sovereign', Icon: Compass, desc: 'Every discovery triaged' },
-  'deep-work': { label: 'Deep Work', track: 'Playbound Creator', Icon: Timer, desc: 'Four or more hours in the seat' },
-  'correspondent': { label: 'Correspondent', track: 'Playbound Creator', Icon: Mail, desc: 'The inbox handled, not hoarded' },
-  'chronicler': { label: 'Chronicler', track: 'Playbound Creator', Icon: BookOpen, desc: 'Three or more meetings banked as knowledge' },
-  'clear-signal': { label: 'Clear Signal', track: 'Perception', Icon: Signal, desc: 'The day fully documented · notes, time, board, inbox' },
+  'cartographer': { label: 'Cartographer', track: 'Master Architect', Icon: MapIcon, desc: 'Work deployed to other hands', lore: 'The map outlives the hand that drew it.' },
+  'leverage': { label: 'Leverage', track: 'Master Architect', Icon: Network, desc: 'Project tasks closed through the system', lore: 'Move the world; let the beam bear the weight.' },
+  'closer': { label: 'Closer', track: 'Master Architect', Icon: CheckCircle2, desc: 'Three or more completions banked', lore: 'What is finished can finally be judged, and it held.' },
+  'walling': { label: 'Walling', track: 'Integrated Sovereign', Icon: Shield, desc: 'A boundary held · not yours to carry', lore: 'The rampart knows what is not yours to carry.' },
+  'calm-water': { label: 'Calm Water', track: 'Integrated Sovereign', Icon: Waves, desc: 'Real completion, zero emergencies', lore: 'Meaning made in still water, where the old system saw nothing.' },
+  'prospector': { label: 'Prospector', track: 'Integrated Sovereign', Icon: Compass, desc: 'Every discovery triaged', lore: 'Every fleck sifted; nothing left glinting in the silt.' },
+  'deep-work': { label: 'Deep Work', track: 'Playbound Creator', Icon: Timer, desc: 'Four or more hours in the seat', lore: 'The sand ran, and you stayed in the chair.' },
+  'correspondent': { label: 'Correspondent', track: 'Playbound Creator', Icon: Mail, desc: 'The inbox handled, not hoarded', lore: 'Every letter answered or archived, the seal unbroken.' },
+  'chronicler': { label: 'Chronicler', track: 'Playbound Creator', Icon: BookOpen, desc: 'Three or more meetings banked as knowledge', lore: 'The day wrote itself down, and so it survives.' },
+  'clear-signal': { label: 'Clear Signal', track: 'Perception', Icon: Signal, desc: 'The day fully documented · notes, time, board, inbox', lore: 'The watchtower saw the whole river today.' },
 }
 
 // Visibility tiers: how much of the day the Ledger could actually see.

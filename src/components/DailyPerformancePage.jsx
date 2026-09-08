@@ -1,6 +1,9 @@
 import { useState, useEffect, useCallback } from 'react'
-import { RefreshCw, CheckCircle2, Circle, Flag, Inbox, Clock, X } from 'lucide-react'
-import { BADGES, milesGrade } from '../constants/collection'
+import { RefreshCw, CheckCircle2, Circle, Flag, Inbox, Clock, X, BookMarked } from 'lucide-react'
+import { BADGES, milesGrade, signalTier } from '../constants/collection'
+import BadgeMedallion from './BadgeArt'
+
+const chiToday = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Chicago', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date())
 import { supabase } from '../lib/supabase'
 
 const SECTION_BLUE = '#1F4060'
@@ -99,6 +102,90 @@ function SourceChips({ counts, cip, T }) {
   )
 }
 
+// THE MINTING — the close-of-day ceremony. The day becomes a collected object:
+// title, badges struck one by one with their lore, then the grade reveal and
+// the miles pouring into the river. Reserved for the formal act of closing.
+function MintingOverlay({ mint, onDone }) {
+  const [stage, setStage] = useState(0)
+  const badges = mint.badges || []
+  // stages: 0 title · 1..n badges · n+1 grade · n+2 collected
+  const gradeStage = 1 + badges.length
+  const finalStage = gradeStage + 1
+  useEffect(() => {
+    if (stage >= finalStage) return
+    const delay = stage === 0 ? 1700 : stage < gradeStage ? 1900 : 2200
+    const t = setTimeout(() => setStage(s => s + 1), delay)
+    return () => clearTimeout(t)
+  }, [stage, gradeStage, finalStage])
+  const g = milesGrade(mint.miles)
+  const dayLabel = new Date(mint.day + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })
+  return (
+    <div onClick={() => stage >= finalStage ? onDone() : setStage(s => Math.min(finalStage, s + 1))} style={{
+      position: 'fixed', inset: 0, zIndex: 300, cursor: 'pointer',
+      background: 'radial-gradient(ellipse at 50% 35%, #16324A 0%, #0A1B2B 70%)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24,
+    }}>
+      <div style={{ maxWidth: 560, width: '100%', textAlign: 'center' }}>
+        <div className="sa-tele" style={{ color: PERIWINKLE, letterSpacing: '3px', fontSize: 10, animation: 'haulDrop 600ms both' }}>
+          CLOSING THE DAY
+        </div>
+        <div className="sa-serif" style={{ fontSize: 36, fontWeight: 500, letterSpacing: '-0.01em', color: '#fff', margin: '8px 0 34px', animation: 'haulDrop 700ms 200ms both' }}>
+          {dayLabel}
+        </div>
+
+        {stage >= 1 && badges.slice(0, Math.min(stage, badges.length)).map((id, i) => {
+          const B = BADGES[id]
+          if (!B) return null
+          return (
+            <div key={id} style={{
+              display: 'flex', alignItems: 'center', gap: 18, textAlign: 'left',
+              padding: '13px 18px', marginBottom: 10, borderRadius: 12,
+              background: 'rgba(248,199,97,0.05)', border: '1px solid rgba(248,199,97,0.35)',
+              animation: `haulDrop 550ms ${i === stage - 1 ? '0ms' : '0ms'} both`,
+            }}>
+              <BadgeMedallion id={id} size={54} glow />
+              <span>
+                <span className="sa-tele" style={{ display: 'block', fontSize: 8.5, letterSpacing: '1.8px', color: GOLD }}>{B.track.toUpperCase()}</span>
+                <span className="sa-serif" style={{ fontSize: 19, fontWeight: 500, color: '#fff' }}>{B.label}</span>
+                <span style={{ display: 'block', fontSize: 12, color: 'rgba(234,241,248,0.6)', fontStyle: 'italic' }}>{B.lore}</span>
+              </span>
+            </div>
+          )
+        })}
+        {stage >= 1 && badges.length === 0 && stage < gradeStage + 1 && (
+          <div style={{ color: 'rgba(234,241,248,0.6)', fontSize: 14, marginBottom: 16, animation: 'haulDrop 500ms both' }}>
+            No badges struck today. The river still moved.
+          </div>
+        )}
+
+        {stage >= gradeStage && (
+          <div style={{ margin: '26px 0 8px', animation: 'haulDrop 700ms both' }}>
+            <span className="sa-serif" style={{
+              fontSize: 96, fontWeight: 500, lineHeight: 1, color: g === 'S' ? GOLD : '#FFFFFF',
+              textShadow: g === 'S' ? '0 0 34px rgba(248,199,97,0.55)' : '0 0 24px rgba(150,168,240,0.3)',
+            }}>{g}</span>
+            <div className="sa-tele" style={{ color: GOLD, letterSpacing: '2px', fontSize: 11, marginTop: 10 }}>
+              {mint.miles} MILES POURED INTO THE RIVER
+            </div>
+            {mint.signal != null && (
+              <div className="sa-tele" style={{ color: 'rgba(234,241,248,0.5)', letterSpacing: '1.6px', fontSize: 9.5, marginTop: 6 }}>
+                SEEN AT {mint.signal}% · {(signalTier(mint.signal) || {}).label?.toUpperCase()}
+              </div>
+            )}
+          </div>
+        )}
+
+        {stage >= finalStage && (
+          <div className="sa-tele" style={{ color: 'rgba(234,241,248,0.55)', letterSpacing: '2px', fontSize: 10, marginTop: 28, animation: 'haulDrop 600ms both' }}>
+            THE DAY IS CANON · SHELVED IN THE LIBRARY<br />
+            <span style={{ color: 'rgba(234,241,248,0.35)', display: 'inline-block', marginTop: 8 }}>CLICK TO BEGIN ANEW</span>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 // THE HAUL — the collection moment. Everything newly banked since the last
 // check-in drops in one at a time. Loot only exists for completions.
 function HaulOverlay({ haul, onClose }) {
@@ -141,18 +228,13 @@ function HaulOverlay({ haul, onClose }) {
           }}>
             {d.kind === 'badge' ? (() => {
               const B = BADGES[d.id]
-              const Icon = B?.Icon || CheckCircle2
               return (
                 <>
-                  <span style={{
-                    width: '38px', height: '38px', borderRadius: '50%', flexShrink: 0,
-                    border: '1.5px solid #F8C761', display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                    color: '#F8C761', background: 'rgba(248,199,97,0.10)', boxShadow: '0 0 18px rgba(248,199,97,0.25)',
-                  }}><Icon size={17} /></span>
+                  <BadgeMedallion id={d.id} size={46} glow />
                   <span style={{ flex: 1 }}>
                     <span className="sa-tele" style={{ display: 'block', fontSize: '9px', letterSpacing: '1.6px', color: '#F8C761' }}>BADGE EARNED · {B?.track?.toUpperCase()}</span>
                     <span className="sa-serif" style={{ fontSize: '17px', fontWeight: 500, color: '#fff' }}>{B?.label || d.id}</span>
-                    <span style={{ display: 'block', fontSize: '12px', color: 'rgba(234,241,248,0.6)' }}>{B?.desc}</span>
+                    <span style={{ display: 'block', fontSize: '12px', color: 'rgba(234,241,248,0.6)', fontStyle: 'italic' }}>{B?.lore || B?.desc}</span>
                   </span>
                 </>
               )
@@ -217,17 +299,13 @@ function Scorecard({ sc, cip, T }) {
           {earned.map(id => {
             const B = BADGES[id]
             if (!B) return null
-            const Icon = B.Icon
             return (
-              <span key={id} title={`${B.label} · ${B.desc}`} style={{
-                display: 'inline-flex', alignItems: 'center', gap: '7px', padding: '5px 12px 5px 6px',
+              <span key={id} title={`${B.label} · ${B.desc} · "${B.lore}"`} style={{
+                display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '4px 12px 4px 4px',
                 borderRadius: '999px', border: `1px solid ${cip ? 'rgba(248,199,97,0.5)' : 'rgba(31,64,96,0.3)'}`,
                 background: cip ? 'rgba(248,199,97,0.08)' : 'rgba(31,64,96,0.05)',
               }}>
-                <span style={{
-                  width: '24px', height: '24px', borderRadius: '50%', display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                  color: cip ? GOLD : SECTION_BLUE, border: `1px solid ${cip ? 'rgba(248,199,97,0.6)' : 'rgba(31,64,96,0.35)'}`,
-                }}><Icon size={13} /></span>
+                <BadgeMedallion id={id} size={28} />
                 <span className="sa-tele" style={{ fontSize: '9.5px', letterSpacing: '1.2px', color: cip ? '#EAF1F8' : SECTION_BLUE }}>{B.label.toUpperCase()}</span>
               </span>
             )
@@ -245,6 +323,9 @@ export default function DailyPerformancePage() {
   const [running, setRunning] = useState(false)
   const [runError, setRunError] = useState(null)
   const [haul, setHaul] = useState(null) // {items, badges, miles, sinceLabel} after a run
+  const [confirmClose, setConfirmClose] = useState(false)
+  const [closing, setClosing] = useState(false)
+  const [mint, setMint] = useState(null) // {day, miles, badges, signal} during the ceremony
   const [cip, setCip] = useState(() => {
     try { return localStorage.getItem('dp-theme') === 'cip' } catch { return false }
   })
@@ -312,7 +393,31 @@ export default function DailyPerformancePage() {
     }
   }, [running, load, rows])
 
+  // The formal act. A close is final; the server enforces the mercy window.
+  const closeDay = useCallback(async () => {
+    setConfirmClose(false)
+    if (closing) return
+    setClosing(true); setRunError(null)
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) throw new Error('Not signed in')
+      const res = await fetch('/api/close', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      })
+      const out = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(out.error || `HTTP ${res.status}`)
+      await load()
+      setMint({ day: out.day, miles: out.miles, badges: out.badges || [], signal: out.signal })
+    } catch (e) {
+      setRunError(String(e.message || e))
+    } finally {
+      setClosing(false)
+    }
+  }, [closing, load])
+
   const row = rows && rows[sel]
+  const todayReport = (rows || []).find(r => r.day === chiToday() && r.model === 'Daily Report' && (r.scorecard || {}).closed_at)
 
   const toggleMustDo = async (idx) => {
     if (!row || saving) return
@@ -384,16 +489,74 @@ export default function DailyPerformancePage() {
     </div>
   )
 
+  // Once the day is closed and the ceremony has played, the Monitor rests:
+  // the day is canon, the new day begins blank at midnight.
+  if (todayReport && !mint) {
+    const sc = todayReport.scorecard || {}
+    const g = milesGrade(sc.miles)
+    return (
+      <div className="sa-grid" style={cip ? { maxWidth: 1060, margin: '0 auto', paddingBottom: 60 } : undefined}>
+        <div className={`col-12 ${T.cardClass}`} style={{ ...T.cardStyle, padding: '56px 40px', textAlign: 'center' }}>
+          <div className="sa-tele" style={{ color: cip ? PERIWINKLE : 'var(--sa-ink-3)', letterSpacing: '2.4px', fontSize: 10 }}>
+            {fmtDay(todayReport.day).toUpperCase()} · COLLECTED {sc.closed_by === 'backstop' ? 'AT MIDNIGHT' : `AT ${fmtTime(sc.closed_at).toUpperCase()}`}
+          </div>
+          <div className="sa-serif" style={{ fontSize: 84, fontWeight: 500, lineHeight: 1.1, margin: '18px 0 4px', color: g === 'S' ? GOLD : (cip ? '#fff' : SECTION_BLUE) }}>{g}</div>
+          <div className="sa-tele" style={{ color: cip ? GOLD : GOLD_DEEP, letterSpacing: '1.8px', fontSize: 11 }}>
+            {sc.miles} MILES{sc.signal?.score != null ? ` · SEEN AT ${sc.signal.score}%` : ''}
+          </div>
+          {(sc.badges || []).length > 0 && (
+            <div style={{ display: 'flex', gap: 14, justifyContent: 'center', marginTop: 26, flexWrap: 'wrap' }}>
+              {(sc.badges || []).map(id => <BadgeMedallion key={id} id={id} size={46} />)}
+            </div>
+          )}
+          <p style={{ maxWidth: '52ch', margin: '30px auto 0', fontSize: 14, lineHeight: 1.65, color: T.ink2 }}>
+            The day is canon and shelved in the Library. A new day begins blank at midnight.
+          </p>
+          <div className="sa-tele" style={{ color: T.ink3, marginTop: 18, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            <BookMarked size={12} /> FIND IT IN THE DAY LIBRARY
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="sa-grid" style={cip ? { maxWidth: 1060, margin: '0 auto', paddingBottom: 60 } : undefined}>
+      {mint && <MintingOverlay mint={mint} onDone={() => setMint(null)} />}
       {haul && <HaulOverlay haul={haul} onClose={() => setHaul(null)} />}
+      {confirmClose && (
+        <div onClick={() => setConfirmClose(false)} style={{
+          position: 'fixed', inset: 0, zIndex: 250, background: 'rgba(8,20,32,0.9)', backdropFilter: 'blur(4px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24,
+        }}>
+          <div onClick={e => e.stopPropagation()} style={{
+            maxWidth: 420, width: '100%', background: '#10273B', border: '1px solid rgba(248,199,97,0.4)',
+            borderRadius: 14, padding: 30, textAlign: 'center',
+          }}>
+            <div className="sa-serif" style={{ fontSize: 24, fontWeight: 500, color: '#fff' }}>Close the Day?</div>
+            <p style={{ fontSize: 13.5, lineHeight: 1.6, color: 'rgba(234,241,248,0.66)', margin: '12px 0 24px' }}>
+              The final sweep runs, the record composes, the score locks, and the day becomes canon. A close is final.
+            </p>
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
+              <button onClick={() => setConfirmClose(false)} style={{
+                padding: '9px 18px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.2)', background: 'transparent',
+                color: 'rgba(234,241,248,0.7)', fontSize: 13, cursor: 'pointer', fontFamily: 'inherit',
+              }}>Not yet</button>
+              <button onClick={closeDay} style={{
+                padding: '9px 20px', borderRadius: 8, border: 'none', background: GOLD, color: '#16324A',
+                fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+              }}>Close the Day</button>
+            </div>
+          </div>
+        </div>
+      )}
       {/* Header: which run + source coverage + theme pill */}
       <div className={`col-12 ${T.cardClass}`} style={T.cardStyle}>
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: '16px', flexWrap: 'wrap' }}>
           <div style={{ flex: 1, minWidth: '260px' }}>
             <div className="sa-serif" style={{ fontSize: cip ? '30px' : '26px', ...T.serifStyle }}>{fmtDay(row.day)}</div>
             <div className="sa-tele" style={{ color: cip ? PERIWINKLE : 'var(--sa-ink-3)', marginTop: '6px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <Clock size={12} /> AS OF {fmtTime(row.generated_at).toUpperCase()} · {running ? 'COMPOSING THE UPDATE, GIVE IT A MINUTE OR TWO…' : 'MANUAL · HIT RUN UPDATE TO REGENERATE'}
+              <Clock size={12} /> AS OF {fmtTime(row.generated_at).toUpperCase()} · {closing ? 'MINTING THE DAY, THE FINAL SWEEP IS RUNNING…' : running ? 'COMPOSING THE UPDATE, GIVE IT A MINUTE OR TWO…' : 'MANUAL · HIT RUN UPDATE TO REGENERATE'}
             </div>
             {runError && (
               <div className="sa-tele" style={{ color: '#E06C5F', marginTop: '6px' }}>UPDATE FAILED · {runError.toUpperCase()}</div>
@@ -422,6 +585,17 @@ export default function DailyPerformancePage() {
             }}>
               <RefreshCw size={13} style={running ? { animation: 'spin 1.2s linear infinite' } : undefined} />
               {running ? 'Running…' : 'Run Update'}
+            </button>
+            <button onClick={() => setConfirmClose(true)} disabled={closing || running} title="The formal close: final sweep, definitive record, the day becomes canon" style={{
+              display: 'inline-flex', alignItems: 'center', gap: '6px',
+              fontSize: '12px', fontWeight: 700, padding: '6px 14px', borderRadius: '8px',
+              border: `1px solid ${cip ? GOLD : SECTION_BLUE}`,
+              cursor: closing ? 'default' : 'pointer', fontFamily: 'inherit',
+              background: closing ? 'rgba(248,199,97,0.35)' : 'transparent',
+              color: closing ? '#16324A' : (cip ? GOLD : SECTION_BLUE),
+            }}>
+              <BookMarked size={13} style={closing ? { animation: 'spin 1.4s linear infinite' } : undefined} />
+              {closing ? 'Minting…' : 'Close the Day'}
             </button>
           </div>
         </div>

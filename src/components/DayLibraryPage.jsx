@@ -3,6 +3,7 @@ import { CheckCircle2, Circle, Flag, X } from 'lucide-react'
 import { PageHead } from './sa/SaUi'
 import { supabase } from '../lib/supabase'
 import { BADGES, milesGrade, signalTier } from '../constants/collection'
+import BadgeMedallion from './BadgeArt'
 
 const GOLD = '#F8C761'
 const PERIWINKLE = '#96A8F0'
@@ -130,10 +131,7 @@ function ScoringDashboard({ days, onClose }) {
                 border: `1px solid ${n ? 'rgba(248,199,97,0.45)' : LINE}`,
                 background: n ? 'rgba(248,199,97,0.06)' : 'rgba(255,255,255,0.02)', opacity: n ? 1 : 0.55,
               }}>
-                <span style={{
-                  width: 30, height: 30, borderRadius: '50%', flexShrink: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                  color: n ? GOLD : INK3, border: `1px solid ${n ? 'rgba(248,199,97,0.6)' : LINE}`,
-                }}><Icon size={14} /></span>
+                <BadgeMedallion id={id} size={34} earned={n > 0} />
                 <span style={{ flex: 1, minWidth: 0 }}>
                   <span className="sa-tele" style={{ display: 'block', fontSize: 9, letterSpacing: '1.2px', color: n ? INK : INK3 }}>{B.label.toUpperCase()}</span>
                   <span style={{ fontSize: 10.5, color: INK3 }}>{B.track}</span>
@@ -249,17 +247,9 @@ export default function DayLibraryPage() {
                     </span>
                     {((d._sc || {}).badges || []).length > 0 && (
                       <span style={{ display: 'flex', gap: 4, marginTop: 5 }}>
-                        {(d._sc.badges || []).slice(0, 5).map(id => {
-                          const B = BADGES[id]
-                          if (!B) return null
-                          const Icon = B.Icon
-                          return (
-                            <span key={id} title={B.label} style={{
-                              width: 17, height: 17, borderRadius: '50%', display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                              color: GOLD, border: '1px solid rgba(248,199,97,0.45)', background: 'rgba(248,199,97,0.07)',
-                            }}><Icon size={9} /></span>
-                          )
-                        })}
+                        {(d._sc.badges || []).slice(0, 5).map(id => (
+                          BADGES[id] ? <BadgeMedallion key={id} id={id} size={18} /> : null
+                        ))}
                       </span>
                     )}
                   </span>
@@ -309,14 +299,11 @@ export default function DayLibraryPage() {
                     if (!B) return null
                     const Icon = B.Icon
                     return (
-                      <span key={id} title={`${B.label} · ${B.desc}`} style={{
-                        display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 11px 4px 5px',
+                      <span key={id} title={`${B.label} · ${B.desc} · \"${B.lore}\"`} style={{
+                        display: 'inline-flex', alignItems: 'center', gap: 7, padding: '3px 11px 3px 3px',
                         borderRadius: 999, border: '1px solid rgba(248,199,97,0.5)', background: 'rgba(248,199,97,0.08)',
                       }}>
-                        <span style={{
-                          width: 22, height: 22, borderRadius: '50%', display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                          color: GOLD, border: '1px solid rgba(248,199,97,0.6)',
-                        }}><Icon size={12} /></span>
+                        <BadgeMedallion id={id} size={26} />
                         <span className="sa-tele" style={{ fontSize: 9, letterSpacing: '1.2px', color: INK }}>{B.label.toUpperCase()}</span>
                       </span>
                     )
