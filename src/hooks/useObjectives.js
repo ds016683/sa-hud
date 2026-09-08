@@ -78,6 +78,20 @@ export default function useObjectives() {
     return data
   }, [])
 
+  // Harvest timeclock bridge: the board drives the real timer. Fire-and-forget;
+  // a Harvest hiccup must never block a board action. The server only ever
+  // touches timers the HUD itself started.
+  const timeClock = useCallback((action, title) => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!session) return
+      fetch('/api/time', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${session.access_token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action, title }),
+      }).catch(() => { /* timer is best-effort */ })
+    }).catch(() => { /* ignore */ })
+  }, [])
+
   // Projects bridge: a promoted objective is linked from project_tasks.objective_id
   // (objectives.parent_id is FK-locked to objectives itself, so the link lives on the
   // task side only). Any release-as-done closes the underlying project task too.
@@ -93,16 +107,29 @@ export default function useObjectives() {
   const releaseObjective = useCallback(async (id, kind = 'done') => {
     const data = await updateObjective(id, { state: kind === 'foreman' ? 'foreman' : 'released', released_kind: kind, released_at: new Date().toISOString() })
     if (kind === 'done') await closeBridgedTask(data)
+    if (data) timeClock('stop', data.title)
     return data
-  }, [updateObjective, closeBridgedTask])
+  }, [updateObjective, closeBridgedTask, timeClock])
 
   const reopenObjective = useCallback((id) => updateObjective(id, { state: 'active', released_kind: null, released_at: null }), [updateObjective])
 
-  const parkObjective = useCallback((id) => updateObjective(id, { state: 'parked', released_kind: null, released_at: null }), [updateObjective])
-  const reactivateObjective = useCallback((id) => updateObjective(id, { state: 'active', released_kind: null, released_at: null }), [updateObjective])
+  const parkObjective = useCallback(async (id) => {
+    const data = await updateObjective(id, { state: 'parked', released_kind: null, released_at: null })
+    if (data) timeClock('stop', data.title)
+    return data
+  }, [updateObjective, timeClock])
+  const reactivateObjective = useCallback(async (id) => {
+    const data = await updateObjective(id, { state: 'active', released_kind: null, released_at: null })
+    if (data) timeClock('start', data.title)
+    return data
+  }, [updateObjective, timeClock])
   const activateObjective = reactivateObjective // alias — eligible→active
   // v1.11 — Waiting / Inbox containers. Same single mutation surface.
-  const waitObjective = useCallback((id) => updateObjective(id, { state: 'waiting', released_kind: null, released_at: null }), [updateObjective])
+  const waitObjective = useCallback(async (id) => {
+    const data = await updateObjective(id, { state: 'waiting', released_kind: null, released_at: null })
+    if (data) timeClock('stop', data.title)
+    return data
+  }, [updateObjective, timeClock])
   const inboxObjective = useCallback((id) => updateObjective(id, { state: 'inbox', released_kind: null, released_at: null }), [updateObjective])
   // Generic "move to container" — every cross-container action flows through this.
   const moveObjective = useCallback(async (id, targetState) => {
@@ -116,11 +143,21 @@ export default function useObjectives() {
       patch.released_kind = targetState === 'foreman' ? 'foreman' : 'done'
       patch.released_at = new Date().toISOString()
     }
+    const prev = objectives.find(o => o.id === id)
     const data = await updateObjective(id, patch)
     if (targetState === 'released') await closeBridgedTask(data)
+    if (data) {
+      if (targetState === 'active') timeClock('start', data.title)
+      else if (prev?.state === 'active') timeClock('stop', data.title)
+    }
     return data
-  }, [updateObjective, closeBridgedTask])
-  const deleteObjective = useCallback((id) => updateObjective(id, { deleted_at: new Date().toISOString() }), [updateObjective])
+  }, [updateObjective, closeBridgedTask, timeClock, objectives])
+  const deleteObjective = useCallback(async (id) => {
+    const prev = objectives.find(o => o.id === id)
+    const data = await updateObjective(id, { deleted_at: new Date().toISOString() })
+    if (prev?.state === 'active') timeClock('stop', prev.title)
+    return data
+  }, [updateObjective, timeClock, objectives])
   const restoreObjective = useCallback((id) => updateObjective(id, { deleted_at: null }), [updateObjective])
   const purgeObjective = useCallback(async (id) => {
     await supabase.from('objectives').delete().eq('id', id)
