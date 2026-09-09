@@ -85,12 +85,13 @@ function coerceFields(cand) {
 }
 
 export default async function handler(req, res) {
-  if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' })
-
-  // ---- auth: David's session, or the midnight backstop cron
+  // ---- auth: David's session, or the midnight backstop cron.
+  // Vercel cron invocations arrive as GET (this bit us 9/9: the backstop's
+  // first fire bounced 405), so the method gate must come after cron auth.
   const token = (req.headers.authorization || '').replace(/^Bearer /, '')
   let isCron = false
   if (process.env.CRON_SECRET && token === process.env.CRON_SECRET) isCron = true
+  if (req.method !== 'POST' && !isCron) return res.status(405).json({ error: 'POST only (cron may GET)' })
   if (!isCron) {
     if (!token) return res.status(401).json({ error: 'missing token' })
     const who = await fetch(`${URL_BASE}/auth/v1/user`, { headers: { apikey: ANON_KEY, Authorization: `Bearer ${token}` } })
