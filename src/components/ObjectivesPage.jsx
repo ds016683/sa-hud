@@ -718,7 +718,7 @@ function MetricsDetail({ breakdown, history, pressure }) {
 // ActiveRow — one line per active item: dot, title, due, done. Nothing else.
 // =============================================================================
 
-function ActiveRow({ o, onDone, onPark, onEdit }) {
+function ActiveRow({ o, onDone, onPark, onEdit, onToggleClock }) {
   const dueC = dueColor(o.due_date, o.hard_deadline)
   // Board clock: rerender each minute so the elapsed chip ticks.
   const [, setTick] = useState(0)
@@ -734,12 +734,18 @@ function ActiveRow({ o, onDone, onPark, onEdit }) {
       {o.is_anchor && <Star size={12} fill={GOLD} color={GOLD} style={{ flexShrink: 0 }} />}
       <SizeDot weight={o.weight} />
       <span onClick={() => onEdit(o)} title={o.title} style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', fontSize: 14, color: NAVY, cursor: 'pointer' }}>{o.title}</span>
-      {clock && (
-        <span title="Time on the board this run · logs to Harvest when it leaves" style={{
+      <button onClick={() => onToggleClock(o.id)}
+        title={o.activated_at ? 'Clock running · click to pause (logs the span to Harvest)' : 'Clock off · click to start recording'}
+        style={{
           fontFamily: 'var(--font-mono, monospace)', fontSize: 9, letterSpacing: '0.8px',
-          color: '#43D392', flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 3,
-        }}>⏱ {clock}</span>
-      )}
+          flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 3, cursor: 'pointer',
+          padding: '3px 8px', borderRadius: 999,
+          border: o.activated_at ? '1px solid rgba(67,211,146,0.45)' : `1px solid ${PANEL_BORDER}`,
+          background: o.activated_at ? 'rgba(67,211,146,0.10)' : 'transparent',
+          color: o.activated_at ? '#43D392' : GRAY,
+        }}>
+        {o.activated_at ? <>⏱ {clock}</> : <>⏸ OFF</>}
+      </button>
       {o.due_date && <span style={{ ...S.chip(dueC.bg, dueC.fg), fontSize: 9, flexShrink: 0 }}>{o.hard_deadline ? '🔒 ' : ''}{fmtShort(o.due_date)}</span>}
       <button onClick={() => onPark(o.id)} title="Back to queue" style={{ ...S.btnGhost, fontSize: 10, padding: '5px 8px', flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 4 }}><RaceTrack size={12} /></button>
       <button onClick={() => onDone(o.id)} style={{ ...S.btnDone, flexShrink: 0 }}><Check size={12} /> done</button>
@@ -1972,7 +1978,7 @@ function BinView({ items, onRestore, onPurge }) {
 export default function ObjectivesPage() {
   const {
     loading, objectives, sov, sovHistory, habit, habitGrid, meditation,
-    addObjective, releaseObjective, reopenObjective, parkObjective, reactivateObjective, activateObjective, waitObjective, inboxObjective, moveObjective,
+    addObjective, releaseObjective, reopenObjective, parkObjective, reactivateObjective, activateObjective, waitObjective, inboxObjective, moveObjective, toggleClock,
     deleteObjective, restoreObjective, purgeObjective,
     setAnchor, updateObjective, rateSovereignty, upsertHabit, saveMeditationAnswer
   } = useObjectives()
@@ -2157,6 +2163,7 @@ export default function ObjectivesPage() {
                 onDone={(id) => releaseObjective(id, 'done')}
                 onPark={(id) => moveObjective(id, 'parked')}
                 onEdit={setEditing}
+                onToggleClock={toggleClock}
               />
             ))}
           </div>

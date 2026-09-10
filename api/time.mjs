@@ -16,7 +16,7 @@ const DAVID = '9d28e8cf-3e35-48d9-a029-1327bd37fdd4'
 const DEFAULT_PROJECT_ID = 39452500 // Business Administration
 const DEFAULT_TASK_ID = 21843034    // THS Internal
 const NOTE_PREFIX = 'HUD · '
-const MIN_HOURS = 0.05  // ~3 minutes; anything shorter is a misclick
+const MIN_HOURS = 0.01  // ~36 seconds; anything shorter is a misclick
 const MAX_HOURS = 12    // sanity ceiling
 
 async function harvest(path, { method = 'GET', body } = {}) {
@@ -54,13 +54,20 @@ export default async function handler(req, res) {
       if (!title || !Number.isFinite(h)) return res.status(400).json({ error: 'title and hours required' })
       if (h < MIN_HOURS) return res.status(200).json({ ok: true, note: `span ${h}h under minimum; not logged` })
       if (h > MAX_HOURS) return res.status(400).json({ error: `span ${h}h over sanity ceiling` })
+      const today = chiToday()
+      const notes = NOTE_PREFIX + String(title).slice(0, 200)
+      // One entry per objective per day: append to today's existing entry.
+      const me = await harvest('users/me')
+      const existing = (await harvest(`time_entries?user_id=${me.id}&from=${today}&to=${today}&per_page=100`)).time_entries || []
+      const match = existing.find(e => e.notes === notes && !e.is_running)
+      if (match) {
+        const total = Math.round((match.hours + h) * 100) / 100
+        const entry = await harvest(`time_entries/${match.id}`, { method: 'PATCH', body: { hours: total } })
+        return res.status(200).json({ ok: true, appended: true, entry_id: entry.id, added: h, hours: total })
+      }
       const entry = await harvest('time_entries', {
         method: 'POST',
-        body: {
-          project_id: DEFAULT_PROJECT_ID, task_id: DEFAULT_TASK_ID,
-          spent_date: chiToday(), hours: h,
-          notes: NOTE_PREFIX + String(title).slice(0, 200),
-        },
+        body: { project_id: DEFAULT_PROJECT_ID, task_id: DEFAULT_TASK_ID, spent_date: today, hours: h, notes },
       })
       return res.status(200).json({ ok: true, logged: true, entry_id: entry.id, hours: h })
     }

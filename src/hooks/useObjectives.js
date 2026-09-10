@@ -91,7 +91,7 @@ export default function useObjectives() {
   const logBoardTime = useCallback((prevObj) => {
     if (!prevObj || prevObj.state !== 'active' || !prevObj.activated_at) return
     const hours = (Date.now() - new Date(prevObj.activated_at).getTime()) / 3600e3
-    if (hours < 0.05 || hours > 12) return // misclick floor / sanity ceiling
+    if (hours < 0.01 || hours > 12) return // misclick floor / sanity ceiling
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (!session) return
       fetch('/api/time', {
@@ -101,6 +101,18 @@ export default function useObjectives() {
       }).catch(() => { /* best-effort */ })
     }).catch(() => { /* ignore */ })
   }, [])
+
+  // Clock toggle (David 9/10): the elapsed chip pauses/resumes the board
+  // clock. Pause logs (appends) the span to Harvest; resume starts new time.
+  const toggleClock = useCallback(async (id) => {
+    const o = objectives.find(x => x.id === id)
+    if (!o || o.state !== 'active') return
+    if (o.activated_at) {
+      logBoardTime(o)
+      return updateObjective(id, { activated_at: null })
+    }
+    return updateObjective(id, { activated_at: new Date().toISOString() })
+  }, [objectives, logBoardTime, updateObjective])
 
   // Projects bridge: a promoted objective is linked from project_tasks.objective_id
   // (objectives.parent_id is FK-locked to objectives itself, so the link lives on the
@@ -228,7 +240,7 @@ export default function useObjectives() {
 
   return {
     loading, objectives, sov, sovHistory, habit, habitGrid, meditation,
-    addObjective, updateObjective, releaseObjective, reopenObjective, parkObjective, reactivateObjective, activateObjective, waitObjective, inboxObjective, moveObjective, deleteObjective, restoreObjective, purgeObjective,
+    addObjective, updateObjective, releaseObjective, reopenObjective, parkObjective, reactivateObjective, activateObjective, waitObjective, inboxObjective, moveObjective, deleteObjective, restoreObjective, purgeObjective, toggleClock,
     setAnchor, rateSovereignty, upsertHabit, saveMeditationAnswer, refresh: fetchAll
   }
 }
