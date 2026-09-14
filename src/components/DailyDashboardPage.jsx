@@ -98,7 +98,7 @@ function Hero({ sov, onCommit, greeting, currentLoop }) {
 
       <svg className="sa-rapids" viewBox="0 0 1200 64" preserveAspectRatio="none" aria-hidden="true">
         <path d="M0 40 C 120 12, 220 12, 340 40 S 560 68, 680 40 S 900 12, 1020 40 S 1180 56, 1200 44" fill="none" stroke="var(--sa-accent)" strokeWidth="1.5" opacity="0.7" />
-        <path d="M0 52 C 140 30, 260 30, 380 52 S 600 74, 720 52 S 940 30, 1060 52 1200 52" fill="none" stroke="#4DA3FF" strokeWidth="1" opacity="0.4" />
+        <path d="M0 52 C 140 30, 260 30, 380 52 S 600 74, 720 52 S 940 30, 1060 52 L 1200 52" fill="none" stroke="#4DA3FF" strokeWidth="1" opacity="0.4" />
       </svg>
     </section>
   )

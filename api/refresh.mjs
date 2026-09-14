@@ -84,12 +84,20 @@ const SUBMIT_TOOL = {
 }
 
 // Salvage individual fields that arrive as JSON-in-a-string.
+const LIST_FIELDS = ['accomplishments', 'noteworthy', 'learned', 'interactions', 'team_allocation', 'new_items']
+
 function coerceFields(cand) {
   if (!cand || typeof cand !== 'object') return cand
   for (const k of [...ROW_FIELDS, 'create_objectives']) {
     if (typeof cand[k] === 'string' && /^\s*[[{]/.test(cand[k])) {
       try { cand[k] = JSON.parse(cand[k]) } catch { /* leave as-is */ }
     }
+  }
+  // List fields must land as arrays; a bare prose string (9/13's noteworthy)
+  // blanks the Monitor, so wrap it rather than write it through.
+  for (const k of LIST_FIELDS) {
+    if (cand[k] == null || cand[k] === '') cand[k] = []
+    else if (!Array.isArray(cand[k])) cand[k] = [String(cand[k])]
   }
   return cand
 }

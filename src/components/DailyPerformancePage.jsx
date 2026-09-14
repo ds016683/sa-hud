@@ -363,6 +363,24 @@ function Scorecard({ sc, cip, T }) {
   )
 }
 
+// A composer slip can land a list field as a bare string (9/13's noteworthy
+// blanked the whole page); rows are canon, so tolerate any shape on read.
+const asList = (v) => {
+  if (Array.isArray(v)) return v
+  if (v == null || v === '') return []
+  if (typeof v === 'string') {
+    if (/^\s*\[/.test(v)) { try { const p = JSON.parse(v); if (Array.isArray(p)) return p } catch { /* fall through */ } }
+    return [v]
+  }
+  return [v]
+}
+const LIST_FIELDS = ['accomplishments', 'noteworthy', 'learned', 'interactions', 'team_allocation', 'new_items', 'must_do']
+const normalizeRow = (r) => {
+  const out = { ...r }
+  for (const k of LIST_FIELDS) out[k] = asList(r[k])
+  return out
+}
+
 export default function DailyPerformancePage() {
   const [rows, setRows] = useState(null)
   const [sel, setSel] = useState(0)
@@ -392,7 +410,7 @@ export default function DailyPerformancePage() {
         .select('*')
         .order('generated_at', { ascending: false })
         .limit(30)
-      if (!error) { setRows(data || []); setSel(0) }
+      if (!error) { setRows((data || []).map(normalizeRow)); setSel(0) }
       else setRows([])
       try {
         const { data: objs } = await supabase.from('objectives')
