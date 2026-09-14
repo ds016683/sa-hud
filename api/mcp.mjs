@@ -40,7 +40,7 @@ const TOOLS = [
   },
   {
     name: 'get_objectives',
-    description: "David's personal task board (Objectives), grouped by state: active (being worked), parked (queue), waiting (blocked on others), foreman (delegated), inbox (awaiting his triage), plus anything released today. His dispositions are law.",
+    description: "David's personal task board (Objectives), grouped by state: active (being worked), parked (queue), waiting (blocked on others), follow_up (parked against a future follow_up_date; the system nudges him from two days out), foreman (delegated), inbox (awaiting his triage), plus anything released today. His dispositions are law.",
     inputSchema: { type: 'object', properties: {} },
   },
   {
@@ -107,8 +107,8 @@ async function callTool(name, args) {
       return JSON.stringify({ today: TODAY, as_of: r.generated_at, summary: r.summary, scorecard: r.scorecard, noteworthy: r.noteworthy, must_do: r.must_do, new_items: r.new_items, composer_notes: r.notes, calendar_remaining: remaining }, null, 2)
     }
     case 'get_objectives': {
-      const os = await sb(`objectives?select=title,state,due_date,is_anchor,is_emergency,released_at,released_kind,who,tags&deleted_at=is.null&order=captured_at.desc`)
-      const grouped = { active: [], parked: [], waiting: [], foreman: [], inbox: [], released_today: [] }
+      const os = await sb(`objectives?select=title,state,due_date,follow_up_date,is_anchor,is_emergency,released_at,released_kind,who,tags&deleted_at=is.null&order=captured_at.desc`)
+      const grouped = { active: [], parked: [], waiting: [], follow_up: [], foreman: [], inbox: [], released_today: [] }
       for (const o of os) {
         if (o.state === 'released') {
           if (o.released_at && chiToday() === new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Chicago', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(o.released_at))) grouped.released_today.push(o)
@@ -116,6 +116,7 @@ async function callTool(name, args) {
         }
         if (grouped[o.state]) grouped[o.state].push(o)
       }
+      grouped.follow_up.sort((a, b) => String(a.follow_up_date || '9999').localeCompare(String(b.follow_up_date || '9999')))
       return JSON.stringify(grouped, null, 2)
     }
     case 'get_projects': {
