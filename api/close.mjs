@@ -166,17 +166,23 @@ export default async function handler(req, res) {
     const sigParts = [notesRate, timeRate, boardMoved ? 1 : 0, inboxRate].filter(v => v !== null)
     const signalScore = sigParts.length ? Math.round(100 * sigParts.reduce((s, v) => s + v, 0) / sigParts.length) : null
 
+    // Each award carries its citation: the concrete actions that earned it.
     const badges = []
-    if (delegated) badges.push('cartographer')
-    if (doneTasks.length >= 2) badges.push('leverage')
-    if (tasksDone >= 3) badges.push('closer')
-    if (objectives.some(o => o.state === 'waiting')) badges.push('walling')
-    if (tasksDone >= 2 && emergencies.length === 0) badges.push('calm-water')
-    if (agentInbox.length === 0 && tasksDone >= 1) badges.push('prospector')
-    if (davidHours >= 4) badges.push('deep-work')
-    if (readRate >= 0.8 && inboxEmails.length >= 10) badges.push('correspondent')
-    if (meetings.length >= 3) badges.push('chronicler')
-    if (signalScore !== null && signalScore >= 80 && sigParts.length >= 3) badges.push('clear-signal')
+    const badgeWhy = {}
+    const award = (id, why) => { badges.push(id); badgeWhy[id] = why }
+    const few = (arr, n = 3) => arr.length > n ? `${arr.slice(0, n).join(', ')} +${arr.length - n} more` : arr.join(', ')
+    const waitingObjs = objectives.filter(o => o.state === 'waiting')
+    const delegatedObjs = [...releasedToday.filter(o => o.released_kind === 'foreman'), ...objectives.filter(o => o.state === 'foreman' && o.who)]
+    if (delegated) award('cartographer', `Delegated: ${few(delegatedObjs.map(o => o.who ? `${o.title} (${o.who})` : o.title))}`)
+    if (doneTasks.length >= 2) award('leverage', `${doneTasks.length} project tasks done: ${few(doneTasks.map(t => t.text))}`)
+    if (tasksDone >= 3) award('closer', `${tasksDone} completions: ${releasedToday.length} objectives released, ${doneTasks.length} project tasks done`)
+    if (waitingObjs.length) award('walling', `${waitingObjs.length} held at the wall as waiting: ${few(waitingObjs.map(o => o.title))}`)
+    if (tasksDone >= 2 && emergencies.length === 0) award('calm-water', `${tasksDone} completions with zero emergencies on the board`)
+    if (agentInbox.length === 0 && tasksDone >= 1) award('prospector', `Agent inbox cleared to zero with ${tasksDone} completions banked`)
+    if (davidHours >= 4) award('deep-work', `${Math.round(davidHours * 10) / 10}h logged by David today`)
+    if (readRate >= 0.8 && inboxEmails.length >= 10) award('correspondent', `${inboxEmails.filter(e => e.is_read).length} of ${inboxEmails.length} inbox emails read (${Math.round(readRate * 100)}%)`)
+    if (meetings.length >= 3) award('chronicler', `${meetings.length} meetings captured: ${few(meetings.map(m => m.title))}`)
+    if (signalScore !== null && signalScore >= 80 && sigParts.length >= 3) award('clear-signal', `Signal at ${signalScore}% across ${sigParts.length} instruments`)
 
     let miles = 0
     miles += Math.min(4, tasksDone * 1.25)
@@ -201,7 +207,7 @@ export default async function handler(req, res) {
       hours_david: Math.round(davidHours * 10) / 10,
       people_logging: new Set(time.map(t => t.person).filter(Boolean)).size,
       open_todos: objectives.filter(o => ['active', 'parked', 'waiting', 'inbox'].includes(o.state)).length,
-      badges, miles,
+      badges, badge_evidence: badgeWhy, miles,
       signal: { score: signalScore, notes: realMeetings.length ? `${meetings.length}/${realMeetings.length}` : null, time: Math.round(timeRate * 100), board: boardMoved, inbox: inboxRate !== null ? Math.round(inboxRate * 100) : null },
       // The board as it stood at close: the Ledger's daily board history.
       snapshot: {
@@ -280,7 +286,7 @@ export default async function handler(req, res) {
     }
     await sb('daily_performance', { method: 'POST', prefer: 'return=minimal', body: row })
 
-    return res.status(200).json({ ok: true, day: TARGET, closed_by: scorecard.closed_by, miles, badges, signal: signalScore, snapshot: scorecard.snapshot, pipes })
+    return res.status(200).json({ ok: true, day: TARGET, closed_by: scorecard.closed_by, miles, badges, badge_evidence: badgeWhy, signal: signalScore, snapshot: scorecard.snapshot, pipes })
   } catch (e) {
     console.error('close failed:', e)
     return res.status(500).json({ error: String(e.message || e) })

@@ -148,6 +148,11 @@ function MintingOverlay({ mint, onDone }) {
                 <span className="sa-tele" style={{ display: 'block', fontSize: 8.5, letterSpacing: '1.8px', color: GOLD }}>{B.track.toUpperCase()}</span>
                 <span className="sa-serif" style={{ fontSize: 19, fontWeight: 500, color: '#fff' }}>{B.label}</span>
                 <span style={{ display: 'block', fontSize: 12, color: 'rgba(234,241,248,0.6)', fontStyle: 'italic' }}>{B.lore}</span>
+                {(mint.badge_evidence || {})[id] && (
+                  <span style={{ display: 'block', fontSize: 11.5, color: 'rgba(248,199,97,0.75)', marginTop: 3 }}>
+                    {mint.badge_evidence[id]}
+                  </span>
+                )}
               </span>
             </div>
           )
@@ -235,6 +240,11 @@ function HaulOverlay({ haul, onClose }) {
                     <span className="sa-tele" style={{ display: 'block', fontSize: '9px', letterSpacing: '1.6px', color: '#F8C761' }}>BADGE EARNED · {B?.track?.toUpperCase()}</span>
                     <span className="sa-serif" style={{ fontSize: '17px', fontWeight: 500, color: '#fff' }}>{B?.label || d.id}</span>
                     <span style={{ display: 'block', fontSize: '12px', color: 'rgba(234,241,248,0.6)', fontStyle: 'italic' }}>{B?.lore || B?.desc}</span>
+                    {(haul.badge_evidence || {})[d.id] && (
+                      <span style={{ display: 'block', fontSize: '11.5px', color: 'rgba(248,199,97,0.75)', marginTop: '3px' }}>
+                        {haul.badge_evidence[d.id]}
+                      </span>
+                    )}
                   </span>
                 </>
               )
@@ -477,6 +487,7 @@ export default function DailyPerformancePage() {
         const badges = ((now.scorecard || {}).badges || []).filter(b => !prevBadges.includes(b))
         setHaul({
           items, badges,
+          badge_evidence: (now.scorecard || {}).badge_evidence || {},
           miles: (now.scorecard || {}).miles ?? null,
           sinceLabel: sameDay && prev.generated_at ? fmtTime(prev.generated_at) : 'this morning',
         })
@@ -503,7 +514,7 @@ export default function DailyPerformancePage() {
       const out = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(out.error || `HTTP ${res.status}`)
       await load()
-      setMint({ day: out.day, miles: out.miles, badges: out.badges || [], signal: out.signal })
+      setMint({ day: out.day, miles: out.miles, badges: out.badges || [], badge_evidence: out.badge_evidence || {}, signal: out.signal })
     } catch (e) {
       setRunError(String(e.message || e))
     } finally {
