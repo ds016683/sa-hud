@@ -4,7 +4,7 @@ A personal operating system disguised as a game. Browser-based HUD for tracking 
 
 ## Live Demo
 
-https://ds016683.github.io/sa-hud/
+https://sa-hud.vercel.app
 
 ## Core Systems
 

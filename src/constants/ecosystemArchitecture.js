@@ -293,7 +293,7 @@ export const PLATFORMS = [
   },
   {
     id: "sa-hud", group: "personal", label: "SA-HUD", name: "Sovereign Architect HUD",
-    production: { url: "https://ds016683.github.io/sa-hud/", note: "This app" },
+    production: { url: "https://sa-hud.vercel.app", note: "This app" },
     github: { repo: "ds016683/sa-hud", branch: "main", visibility: "public" },
     supabase: { project: "cmuvomnmaoseccxpeuxq" },
     vercel: { project: "None \u2014 GitHub Pages", scope: 'Third Horizon', deploy: "Push to main \u2192 Pages" },

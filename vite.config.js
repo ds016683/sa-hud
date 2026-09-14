@@ -7,7 +7,7 @@ const ts = Date.now()
 
 export default defineConfig({
   plugins: [react()],
-  base: '/sa-hud/',
+  base: '/',
   build: {
     rollupOptions: {
       output: {

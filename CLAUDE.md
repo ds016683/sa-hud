@@ -4,7 +4,7 @@
 
 Sovereign Architect HUD — a personal operating system disguised as a game. Browser-based dashboard for tracking personal sovereignty (energy), managing activity through an 8-phase Identity Loop, and monitoring psychological shadow patterns. Dark fantasy RPG aesthetic.
 
-**Live site:** https://ds016683.github.io/sa-hud/
+**Live site:** https://sa-hud.vercel.app (Vercel, auto-deploys from `main`; the Ledger API lives in `api/`)
 **Repo:** https://github.com/ds016683/sa-hud.git
 **GitHub account:** ds016683 (`david@thirdhorizon.com`)
 
@@ -20,18 +20,18 @@ Sovereign Architect HUD — a personal operating system disguised as a game. Bro
 ## Commands
 
 ```bash
-npm run dev       # Dev server at localhost:5173 (base path: /sa-hud/)
+npm run dev       # Dev server at localhost:5173
 npm run build     # Production build
 npm run preview   # Preview production build
 npm run lint      # ESLint
-npm run deploy    # Build + deploy to GitHub Pages via gh-pages
 ```
 
 ## Deployment
 
-- GitHub Pages via GitHub Actions (`.github/workflows/deploy.yml`)
-- Base path: `/sa-hud/` (set in `vite.config.js`)
-- Push to `main` triggers auto-deploy
+- Vercel project `sa-hud-preview` (team third-horizon-58c0ce68), git-connected to `ds016683/sa-hud`
+- Push to `main` triggers the production build (Vite static + `api/*.mjs` functions + `vercel.json` crons)
+- Domains: sa-hud.vercel.app and sa-hud-preview.vercel.app (same deployment)
+- GitHub Pages retired 9/14/2026 (it could not host the Ledger functions)
 
 ## Architecture
 
