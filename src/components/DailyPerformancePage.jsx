@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { RefreshCw, CheckCircle2, Circle, Flag, Inbox, Clock, X, BookMarked, Play, Bell } from 'lucide-react'
 import { BADGES, milesGrade, signalTier } from '../constants/collection'
+import { buildHaulItems } from '../lib/haul'
 import BadgeMedallion from './BadgeArt'
 
 const chiToday = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Chicago', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date())
@@ -525,9 +526,10 @@ export default function DailyPerformancePage() {
       const now = fresh && fresh[0]
       if (now) {
         const sameDay = prev && prev.day === now.day
-        const prevAcc = sameDay ? (prev.accomplishments || []) : []
         const prevBadges = sameDay ? ((prev.scorecard || {}).badges || []) : []
-        const items = (now.accomplishments || []).filter(a => !prevAcc.includes(a))
+        // Items diff against every prior run today (deterministic releases +
+        // normalized prose), so composer rephrasing can never re-drop loot.
+        const items = buildHaulItems(now, fresh.filter(r => r.day === now.day))
         const badges = ((now.scorecard || {}).badges || []).filter(b => !prevBadges.includes(b))
         setHaul({
           items, badges,

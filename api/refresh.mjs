@@ -217,6 +217,8 @@ export default async function handler(req, res) {
     if (signalScore !== null && signalScore >= 80 && sigParts.length >= 3) award('clear-signal', `Signal at ${signalScore}% across ${sigParts.length} instruments`)
     scorecard.badges = badges
     scorecard.badge_evidence = badgeWhy
+    // Deterministic release list: the Haul drops these by title, never by prose.
+    scorecard.released_today = releasedToday.map(o => o.title)
 
     // ---- miles made: the day's precision score, 0-10. Completion-weighted,
     // calm-bonused, never crisis-rewarded. Collected into the Day Library.
