@@ -71,7 +71,17 @@ export default async function handler(req, res) {
       })
       return res.status(200).json({ ok: true, logged: true, entry_id: entry.id, hours: h })
     }
-    return res.status(400).json({ error: 'action must be log' })
+    if (action === 'status') {
+      const today = chiToday()
+      const me = await harvest('users/me')
+      const existing = (await harvest(`time_entries?user_id=${me.id}&from=${today}&to=${today}&per_page=100`)).time_entries || []
+      const banked = {}
+      for (const e of existing) {
+        if ((e.notes || '').startsWith(NOTE_PREFIX)) banked[e.notes.slice(NOTE_PREFIX.length)] = e.hours
+      }
+      return res.status(200).json({ ok: true, banked })
+    }
+    return res.status(400).json({ error: 'action must be log or status' })
   } catch (e) {
     console.error('time failed:', e)
     return res.status(500).json({ error: String(e.message || e) })

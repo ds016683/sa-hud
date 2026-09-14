@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 
 // Use Chicago/Central time for "today" — David is in CT.
@@ -88,8 +88,14 @@ export default function useObjectives() {
   // (that stays David's, for meetings). Each objective accrues board time via
   // activated_at; when it leaves the board, the span is logged as a completed
   // Harvest entry. Fire-and-forget: Harvest hiccups never block the board.
+  const recentlyLogged = useRef(new Map())
   const logBoardTime = useCallback((prevObj) => {
     if (!prevObj || prevObj.state !== 'active' || !prevObj.activated_at) return
+    // Race guard: a fast pause-then-release (or double click) can fire twice
+    // before local state settles; one span must never log twice.
+    const last = recentlyLogged.current.get(prevObj.id)
+    if (last && Date.now() - last < 5000) return
+    recentlyLogged.current.set(prevObj.id, Date.now())
     const hours = (Date.now() - new Date(prevObj.activated_at).getTime()) / 3600e3
     if (hours < 0.01 || hours > 12) return // misclick floor / sanity ceiling
     supabase.auth.getSession().then(({ data: { session } }) => {

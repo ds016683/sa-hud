@@ -1,6 +1,7 @@
 import { useState, useMemo, useRef, useEffect } from 'react'
 import { Plus, Play, Pause, Star, Flame, ChevronDown, ChevronUp, X, Trash2, ArrowUpRight, Check, Send, Anchor, Calendar, Edit3, Table as TableIcon, List as ListIcon, AlertTriangle, AlertCircle, BarChart3, Lock, Zap, RotateCcw, Archive, Inbox as InboxIcon, Hand, MoveRight, Hourglass } from 'lucide-react'
 import useObjectives from '../hooks/useObjectives'
+import { supabase } from '../lib/supabase'
 
 // =============================================================================
 // CUSTOM ROUTE ICONS — lucide-style inline SVGs (24×24 viewBox, strokeWidth 2)
@@ -718,7 +719,7 @@ function MetricsDetail({ breakdown, history, pressure }) {
 // ActiveRow — one line per active item: dot, title, due, done. Nothing else.
 // =============================================================================
 
-function ActiveRow({ o, onDone, onPark, onEdit, onToggleClock }) {
+function ActiveRow({ o, onDone, onPark, onEdit, onToggleClock, bankedHours }) {
   const dueC = dueColor(o.due_date, o.hard_deadline)
   // Board clock: rerender each minute so the elapsed chip ticks.
   const [, setTick] = useState(0)
@@ -745,6 +746,11 @@ function ActiveRow({ o, onDone, onPark, onEdit, onToggleClock }) {
           color: o.activated_at ? '#43D392' : GRAY,
         }}>
         {o.activated_at ? <>⏱ {clock}</> : <>⏸ OFF</>}
+        {bankedHours > 0 && (
+          <span style={{ color: o.activated_at ? 'rgba(67,211,146,0.65)' : GRAY, marginLeft: 2 }}>
+            · {bankedHours >= 1 ? `${Math.floor(bankedHours)}H ${String(Math.round((bankedHours % 1) * 60)).padStart(2, '0')}M` : `${Math.round(bankedHours * 60)}M`} TODAY
+          </span>
+        )}
       </button>
       {o.due_date && <span style={{ ...S.chip(dueC.bg, dueC.fg), fontSize: 9, flexShrink: 0 }}>{o.hard_deadline ? '🔒 ' : ''}{fmtShort(o.due_date)}</span>}
       <button onClick={() => onPark(o.id)} title="Back to queue" style={{ ...S.btnGhost, fontSize: 10, padding: '5px 8px', flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 4 }}><RaceTrack size={12} /></button>
@@ -1983,6 +1989,29 @@ export default function ObjectivesPage() {
     setAnchor, updateObjective, rateSovereignty, upsertHabit, saveMeditationAnswer
   } = useObjectives()
 
+  // Today's banked Harvest hours per objective (the append total), so the
+  // clock chip can show run time AND day total. Refreshes every 2 minutes.
+  const [banked, setBanked] = useState({})
+  useEffect(() => {
+    let alive = true
+    const pull = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession()
+        if (!session) return
+        const res = await fetch('/api/time', {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${session.access_token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'status' }),
+        })
+        const d = await res.json().catch(() => ({}))
+        if (alive && d.banked) setBanked(d.banked)
+      } catch { /* chip degrades to run-only */ }
+    }
+    pull()
+    const t = setInterval(pull, 120000)
+    return () => { alive = false; clearInterval(t) }
+  }, [])
+
   const [coax, setCoax] = useState(false)
   const [coaxIdx, setCoaxIdx] = useState(0)
   const [viewMode, setViewMode] = useState(() => localStorage.getItem('objectives-view') || 'cards') // 'cards' | 'table'
@@ -2164,6 +2193,7 @@ export default function ObjectivesPage() {
                 onPark={(id) => moveObjective(id, 'parked')}
                 onEdit={setEditing}
                 onToggleClock={toggleClock}
+                bankedHours={banked[o.title]}
               />
             ))}
           </div>
