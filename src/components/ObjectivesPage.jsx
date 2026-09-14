@@ -1,5 +1,5 @@
 import { useState, useMemo, useRef, useEffect } from 'react'
-import { Plus, Play, Pause, Star, Flame, ChevronDown, ChevronUp, X, Trash2, ArrowUpRight, Check, Send, Anchor, Calendar, Edit3, Table as TableIcon, List as ListIcon, AlertTriangle, AlertCircle, BarChart3, Lock, Zap, RotateCcw, Archive, Inbox as InboxIcon, Hand, MoveRight, Hourglass } from 'lucide-react'
+import { Plus, Play, Pause, Star, Flame, ChevronDown, ChevronUp, X, Trash2, ArrowUpRight, Check, Send, Anchor, Calendar, Edit3, Table as TableIcon, List as ListIcon, AlertTriangle, AlertCircle, BarChart3, Lock, Zap, RotateCcw, Archive, Inbox as InboxIcon, Hand, MoveRight, Hourglass, Bell } from 'lucide-react'
 import useObjectives from '../hooks/useObjectives'
 import { supabase } from '../lib/supabase'
 
@@ -64,12 +64,13 @@ function SizeDot({ weight }) {
 // 6-state route icon strip. Current state shows grayed; others are clickable.
 // states: active · parked (queue) · waiting · foreman (delegated) · released · inbox
 const ROUTE_STATES = [
-  { key: 'active',   label: 'Active',    color: '#43D392', Icon: Play },
-  { key: 'parked',   label: 'In Queue',  color: '#9DB0C1', Icon: RaceTrack },
-  { key: 'waiting',  label: 'Waiting',   color: '#A9C9E8', Icon: Hourglass },
-  { key: 'foreman',  label: 'Delegated', color: '#B4A3E8', Icon: ArrowUpRight },
-  { key: 'released', label: 'Released',  color: '#7FA8D4', Icon: CheckeredFlag },
-  { key: 'inbox',    label: 'Inbox',     color: '#E6B54F', Icon: InboxIcon },
+  { key: 'active',    label: 'Active',    color: '#43D392', Icon: Play },
+  { key: 'parked',    label: 'In Queue',  color: '#9DB0C1', Icon: RaceTrack },
+  { key: 'waiting',   label: 'Waiting',   color: '#A9C9E8', Icon: Hourglass },
+  { key: 'follow_up', label: 'Follow Up', color: '#E0985C', Icon: Bell },
+  { key: 'foreman',   label: 'Delegated', color: '#B4A3E8', Icon: ArrowUpRight },
+  { key: 'released',  label: 'Released',  color: '#7FA8D4', Icon: CheckeredFlag },
+  { key: 'inbox',     label: 'Inbox',     color: '#E6B54F', Icon: InboxIcon },
 ]
 
 function RouteIcons({ o, onRoute, size = 14, gap = 3 }) {
@@ -933,8 +934,24 @@ function EditObjectiveModal({ o, onClose, onSave, onDelete, onMove }) {
           Weight: <strong style={{ color: NAVY }}>{effort * importance}</strong> ({sizeFor(effort * importance)})
         </div>
 
+        {/* Follow-up scheduling — the target date the system starts nudging me toward. */}
+        {o.state === 'follow_up' && (
+          <div style={{ marginBottom: 14, padding: 10, background: 'rgba(224,152,92,0.12)', border: `1px solid rgba(224,152,92,0.4)`, borderRadius: 8 }}>
+            <div style={{ fontSize: 10, color: '#E0985C', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 4 }}>
+              <Bell size={11} /> Follow up on
+            </div>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+              <input type="date" value={followUpDate} onChange={e => setFollowUpDate(e.target.value)} style={{ ...S.input, flex: '1 1 160px', padding: '8px 10px' }} />
+              <button type="button" onClick={() => { const d = new Date(); d.setDate(d.getDate()+3); setFollowUpDate(d.toISOString().slice(0,10)) }} style={{ ...S.btnGhost, fontSize: 11 }}>+3d</button>
+              <button type="button" onClick={() => { const d = new Date(); d.setDate(d.getDate()+7); setFollowUpDate(d.toISOString().slice(0,10)) }} style={{ ...S.btnGhost, fontSize: 11 }}>+1wk</button>
+              <button type="button" onClick={() => { const d = new Date(); d.setMonth(d.getMonth()+1); setFollowUpDate(d.toISOString().slice(0,10)) }} style={{ ...S.btnGhost, fontSize: 11 }}>+1mo</button>
+            </div>
+            <div style={{ fontSize: 10, color: GRAY, marginTop: 6 }}>The Daily Monitor starts nudging you two days out.</div>
+          </div>
+        )}
+
         {/* Delegation metadata — editable inline (no sub-panel). Routing happens via Route to below. */}
-        {(o.state === 'foreman' || o.who || o.follow_up_date) && (
+        {(o.state === 'foreman' || o.who || (o.follow_up_date && o.state !== 'follow_up')) && (
           <div style={{ marginBottom: 14, padding: 10, background: 'rgba(155,127,224,0.14)', border: `1px solid rgba(155,127,224,0.4)`, borderRadius: 8 }}>
             <div style={{ fontSize: 10, color: '#B4A3E8', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 4 }}>
               <ArrowUpRight size={11} /> Delegation
@@ -966,12 +983,13 @@ function EditObjectiveModal({ o, onClose, onSave, onDelete, onMove }) {
             </div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
               {[
-                { id: 'active',   label: 'Active',    color: '#A9C9E8', bg: 'rgba(169,201,232,0.12)', border: 'rgba(169,201,232,0.4)' },
-                { id: 'parked',   label: 'In Queue',  color: NAVY,      bg: 'rgba(255,255,255,0.12)', border: PANEL_BORDER },
-                { id: 'waiting',  label: 'Waiting',   color: '#A9C9E8', bg: 'rgba(169,201,232,0.10)', border: 'rgba(169,201,232,0.45)' },
-                { id: 'foreman',  label: 'Delegated', color: '#B4A3E8', bg: 'rgba(155,127,224,0.14)', border: 'rgba(155,127,224,0.45)' },
-                { id: 'released', label: 'Released',  color: '#A9C9E8', bg: 'rgba(169,201,232,0.10)', border: 'rgba(169,201,232,0.4)' },
-                { id: 'inbox',    label: 'Inbox',     color: '#F2D592', bg: 'rgba(248,199,97,0.08)', border: 'rgba(248,199,97,0.45)' },
+                { id: 'active',    label: 'Active',    color: '#A9C9E8', bg: 'rgba(169,201,232,0.12)', border: 'rgba(169,201,232,0.4)' },
+                { id: 'parked',    label: 'In Queue',  color: NAVY,      bg: 'rgba(255,255,255,0.12)', border: PANEL_BORDER },
+                { id: 'waiting',   label: 'Waiting',   color: '#A9C9E8', bg: 'rgba(169,201,232,0.10)', border: 'rgba(169,201,232,0.45)' },
+                { id: 'follow_up', label: 'Follow Up', color: '#E0985C', bg: 'rgba(224,152,92,0.12)', border: 'rgba(224,152,92,0.45)' },
+                { id: 'foreman',   label: 'Delegated', color: '#B4A3E8', bg: 'rgba(155,127,224,0.14)', border: 'rgba(155,127,224,0.45)' },
+                { id: 'released',  label: 'Released',  color: '#A9C9E8', bg: 'rgba(169,201,232,0.10)', border: 'rgba(169,201,232,0.4)' },
+                { id: 'inbox',     label: 'Inbox',     color: '#F2D592', bg: 'rgba(248,199,97,0.08)', border: 'rgba(248,199,97,0.45)' },
               ].map(t => {
                 const isCurrent = o.state === t.id
                 return (
@@ -1501,11 +1519,12 @@ function PillTabs({ tab, setTab, binCount }) {
 // v1.11 — Container pill switcher. Sits BELOW Active block, replaces stacked containers.
 function ContainerPills({ container, setContainer, counts }) {
   const pills = [
-    { id: 'queue',     label: 'In Queue',  icon: RaceTrack,     color: '#46617A' },
-    { id: 'waiting',   label: 'Waiting',   icon: Hourglass,     color: '#4A7DAF' },
-    { id: 'delegated', label: 'Delegated', icon: ArrowUpRight,  color: '#7C68C4' },
-    { id: 'released',  label: 'Released',  icon: CheckeredFlag, color: '#38618C' },
-    { id: 'inbox',     label: 'Inbox',     icon: InboxIcon,     color: '#8F7434' },
+    { id: 'queue',      label: 'In Queue',  icon: RaceTrack,     color: '#46617A' },
+    { id: 'waiting',    label: 'Waiting',   icon: Hourglass,     color: '#4A7DAF' },
+    { id: 'follow_up',  label: 'Follow Up', icon: Bell,          color: '#B87A3E' },
+    { id: 'delegated',  label: 'Delegated', icon: ArrowUpRight,  color: '#7C68C4' },
+    { id: 'released',   label: 'Released',  icon: CheckeredFlag, color: '#38618C' },
+    { id: 'inbox',      label: 'Inbox',     icon: InboxIcon,     color: '#8F7434' },
   ]
   return (
     <div style={{ display: 'inline-flex', marginTop: 4, marginBottom: 12, gap: 8, flexWrap: 'wrap' }}>
@@ -1571,6 +1590,71 @@ function WaitingContainer({ items, onRoute, onDelete, onEdit }) {
           )}
         </div>
       ))}
+    </div>
+  )
+}
+
+// Follow-up window: how the target date reads today. Within 2 days (or past)
+// it is "up" and gets the amber nudge treatment; further out it just waits.
+function followUpStatus(dateStr) {
+  if (!dateStr) return { label: 'no date set', due: false, days: null, fg: GRAY, bg: 'rgba(255,255,255,0.08)' }
+  const today = new Date(); today.setHours(0, 0, 0, 0)
+  const target = new Date(dateStr + 'T00:00:00')
+  const days = Math.round((target - today) / 86400000)
+  if (days < 0) return { label: `${-days}d overdue`, due: true, days, fg: '#E0985C', bg: 'rgba(224,152,92,0.18)' }
+  if (days === 0) return { label: 'today', due: true, days, fg: '#E0985C', bg: 'rgba(224,152,92,0.18)' }
+  if (days <= 2) return { label: days === 1 ? 'tomorrow' : `in ${days}d`, due: true, days, fg: '#E0985C', bg: 'rgba(224,152,92,0.14)' }
+  return { label: `in ${days}d`, due: false, days, fg: '#9DB0C1', bg: 'rgba(255,255,255,0.06)' }
+}
+
+// Follow-Up container: items parked against a future date, sorted soonest
+// first. When the target lands within two days the row lights amber; the
+// Daily Monitor surfaces the same window as a nudge.
+function FollowUpContainer({ items, onRoute, onDelete, onEdit }) {
+  const sorted = [...items].sort((a, b) => {
+    const ad = a.follow_up_date ? new Date(a.follow_up_date).getTime() : Infinity
+    const bd = b.follow_up_date ? new Date(b.follow_up_date).getTime() : Infinity
+    return ad - bd
+  })
+  const upCount = sorted.filter(o => followUpStatus(o.follow_up_date).due).length
+  if (!items.length) {
+    return (
+      <div style={S.panel}>
+        <div style={{ ...S.panelTitle, marginBottom: 0, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+          <Bell size={12} /> Follow Up · 0
+        </div>
+        <div style={{ padding: '14px 0 4px', color: GRAY, fontSize: 12, textAlign: 'center' }}>
+          Nothing scheduled. Route an item here with a date to be nudged when it comes due.
+        </div>
+      </div>
+    )
+  }
+  return (
+    <div style={S.panel}>
+      <div style={{ ...S.panelTitle, marginBottom: 8, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+        <Bell size={12} color="#E0985C" /> Follow Up · {items.length}
+        {upCount > 0 && <span style={{ fontSize: 10, fontWeight: 600, color: '#E0985C', textTransform: 'none', letterSpacing: 0, marginLeft: 4 }}>· {upCount} coming up</span>}
+        <span style={{ fontSize: 10, fontWeight: 500, color: GRAY, textTransform: 'none', letterSpacing: 0, marginLeft: 4 }}>← waiting on a future date</span>
+      </div>
+      {sorted.map(o => {
+        const st = followUpStatus(o.follow_up_date)
+        return (
+          <div key={o.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 0', borderTop: `1px solid ${PANEL_BORDER}`, fontSize: 13, flexWrap: 'wrap' }}>
+            <Bell size={14} color={st.due ? '#E0985C' : '#9DB0C1'} />
+            <span style={{ flex: 1, minWidth: 200, color: NAVY, cursor: 'pointer', overflow: 'hidden', textOverflow: 'ellipsis', fontWeight: st.due ? 600 : 400 }} onClick={() => onEdit(o)}>
+              {o.title}
+            </span>
+            <span style={S.chip('rgba(255,255,255,0.10)', GRAY)}>E{o.effort || 2}·I{o.importance || 2}</span>
+            {o.tags && o.tags.length > 0 && <TagPills tags={o.tags} max={2} />}
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 999, background: st.bg, color: st.fg }}>
+              <Calendar size={10} /> {o.follow_up_date ? `${fmtShort(o.follow_up_date)} · ${st.label}` : 'set a date'}
+            </span>
+            <button onClick={() => onEdit(o)} title="Edit" style={{ background: 'none', border: 'none', color: GRAY, cursor: 'pointer', padding: 2 }}><Edit3 size={12} /></button>
+            <RouteIcons o={o} onRoute={onRoute} size={12} gap={2} />
+            <button onClick={() => { if (confirm('Delete this objective?')) onDelete(o.id) }} title="Bin" style={{ ...S.btnGhost, fontSize: 11, padding: '4px 8px', color: '#E06C5F', borderColor: 'rgba(224,108,95,0.5)' }}><Trash2 size={11} /></button>
+          </div>
+        )
+      })}
     </div>
   )
 }
@@ -2043,6 +2127,7 @@ export default function ObjectivesPage() {
   // Untriaged agent suggestions live on the Daily Monitor's Suggested panel,
   // not here; the Inbox holds only what David has accepted (or captured himself).
   const inboxItems = live.filter(o => o.state === 'inbox' && !(o.tags || []).includes('suggested')).sort((a,b) => new Date(b.captured_at || 0) - new Date(a.captured_at || 0))
+  const followUp = live.filter(o => o.state === 'follow_up')
   const delegatedAll = live
     .filter(o => o.state === 'foreman')
     .sort((a,b) => new Date(b.released_at || 0) - new Date(a.released_at || 0))
@@ -2239,6 +2324,7 @@ export default function ObjectivesPage() {
             counts={{
               queue: parked.length,
               waiting: waiting.length,
+              follow_up: followUp.length,
               delegated: delegatedAll.length,
               released: releasedToday.length,
               inbox: inboxItems.length,
@@ -2258,6 +2344,15 @@ export default function ObjectivesPage() {
           {container === 'waiting' && (
             <WaitingContainer
               items={waiting}
+              onRoute={moveObjective}
+              onDelete={deleteObjective}
+              onEdit={setEditing}
+            />
+          )}
+
+          {container === 'follow_up' && (
+            <FollowUpContainer
+              items={followUp}
               onRoute={moveObjective}
               onDelete={deleteObjective}
               onEdit={setEditing}

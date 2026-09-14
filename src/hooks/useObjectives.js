@@ -176,6 +176,12 @@ export default function useObjectives() {
       logBoardTime(prev)
       patch.activated_at = null
     }
+    // Follow-ups need a target date to nudge against; default to +1 week when
+    // routed in without one (editable afterward in the Follow Up view).
+    if (targetState === 'follow_up' && !prev?.follow_up_date) {
+      const d = new Date(); d.setDate(d.getDate() + 7)
+      patch.follow_up_date = d.toISOString().slice(0, 10)
+    }
     const data = await updateObjective(id, patch)
     if (targetState === 'released') await closeBridgedTask(data)
     return data

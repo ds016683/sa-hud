@@ -139,7 +139,7 @@ export default async function handler(req, res) {
       sb(`calendar_events?select=subject,start_at,end_at,organizer,attendees,is_all_day&day=eq.${TARGET}&is_cancelled=eq.false&order=start_at.asc`),
       sb(`time_entries?select=person,client,project,task,hours&spent_date=eq.${TARGET}`),
       sb(`emails?select=folder,subject,from_name,to_names,received_at,preview,is_read&day=eq.${TARGET}&order=received_at.asc`),
-      sb(`objectives?select=id,title,state,due_date,is_anchor,is_emergency,released_at,released_kind,who,tags,captured_at&deleted_at=is.null`),
+      sb(`objectives?select=id,title,state,due_date,is_anchor,is_emergency,released_at,released_kind,who,tags,captured_at,follow_up_date&deleted_at=is.null`),
       sb(`session_boards?select=project,title,phases,updated_at`),
       sb(`project_tasks?select=id,text,status,source,due_date,project_id&status=neq.done`),
       sb(`project_tasks?select=id,text,project_id,released_at&status=eq.done&released_at=gte.${TARGET}T00:00:00-05:00&released_at=lt.${TARGET}T23:59:59-05:00`),
@@ -235,6 +235,14 @@ export default async function handler(req, res) {
       }
     }
     mustDo.sort((a, b) => (a.due_date < b.due_date ? -1 : 1))
+
+    // Follow-ups coming due (within two days of TARGET, or already overdue).
+    const followWindow = new Date(TARGET + 'T00:00:00'); followWindow.setDate(followWindow.getDate() + 2)
+    const FOLLOW_HORIZON = followWindow.toISOString().slice(0, 10)
+    scorecard.follow_ups = objectives
+      .filter(o => o.state === 'follow_up' && o.follow_up_date && o.follow_up_date <= FOLLOW_HORIZON)
+      .map(o => ({ text: o.title, follow_up_date: o.follow_up_date, overdue: o.follow_up_date < TARGET, today: o.follow_up_date === TARGET }))
+      .sort((a, b) => (a.follow_up_date < b.follow_up_date ? -1 : 1))
 
     // ---- compose the definitive record
     const boardsToday = boards.filter(b => chiDayOf(b.updated_at) === TARGET)

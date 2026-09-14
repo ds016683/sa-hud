@@ -126,7 +126,7 @@ export default async function handler(req, res) {
       sb(`calendar_events?select=subject,start_at,end_at,organizer,attendees&day=eq.${TODAY}&is_cancelled=eq.false&order=start_at.asc`),
       sb(`time_entries?select=person,client,project,task,hours&spent_date=eq.${TODAY}`),
       sb(`emails?select=folder,subject,from_name,to_names,received_at,preview,is_read&day=eq.${TODAY}&order=received_at.asc`),
-      sb(`objectives?select=id,title,state,due_date,is_anchor,is_emergency,released_at,released_kind,who,tags,description,captured_at&deleted_at=is.null`),
+      sb(`objectives?select=id,title,state,due_date,is_anchor,is_emergency,released_at,released_kind,who,tags,description,captured_at,follow_up_date&deleted_at=is.null`),
       sb(`session_boards?select=project,title,phases,updated_at`),
       sb(`project_tasks?select=id,text,status,source,due_date,project_id&status=neq.done`),
       sb(`project_tasks?select=id,text,project_id,released_at&status=eq.done&released_at=gte.${TODAY}T00:00:00-06:00`),
@@ -248,6 +248,17 @@ export default async function handler(req, res) {
       }
     }
     mustDo.sort((a, b) => (a.due_date < b.due_date ? -1 : 1))
+
+    // Follow-ups coming due: items David parked against a future date. The
+    // nudge window opens two days out (and stays open once overdue).
+    const followWindow = new Date(); followWindow.setDate(followWindow.getDate() + 2)
+    const FOLLOW_HORIZON = followWindow.toISOString().slice(0, 10)
+    const followUps = objectives
+      .filter(o => o.state === 'follow_up' && o.follow_up_date && o.follow_up_date <= FOLLOW_HORIZON)
+      .map(o => ({ text: o.title, follow_up_date: o.follow_up_date, overdue: o.follow_up_date < TODAY, today: o.follow_up_date === TODAY }))
+      .sort((a, b) => (a.follow_up_date < b.follow_up_date ? -1 : 1))
+    // Nested on scorecard (jsonb) to avoid a schema change for a new column.
+    scorecard.follow_ups = followUps
 
     // The tool input is occasionally malformed (stringified row, flattened
     // fields, array wrapping) run-to-run. Coerce what we can and retry the

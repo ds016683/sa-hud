@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { RefreshCw, CheckCircle2, Circle, Flag, Inbox, Clock, X, BookMarked, Play } from 'lucide-react'
+import { RefreshCw, CheckCircle2, Circle, Flag, Inbox, Clock, X, BookMarked, Play, Bell } from 'lucide-react'
 import { BADGES, milesGrade, signalTier } from '../constants/collection'
 import BadgeMedallion from './BadgeArt'
 
@@ -789,6 +789,36 @@ export default function DailyPerformancePage() {
               <span style={{ fontSize: '14.5px', lineHeight: 1.6, color: T.ink, maxWidth: '92ch' }}>{s}</span>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Follow-ups coming up — the amber nudge as target dates approach */}
+      {((row.scorecard || {}).follow_ups || []).length > 0 && (
+        <div className={`col-12 ${T.cardClass}`} style={{ ...T.cardStyle, borderLeft: '3px solid #E0985C' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+            <Bell size={15} style={{ color: '#E0985C' }} />
+            <SectionHeader cip={cip}>Follow-Ups Coming Up</SectionHeader>
+          </div>
+          {((row.scorecard || {}).follow_ups || []).map((f, i) => {
+            const label = f.overdue
+              ? `${Math.round((new Date(row.day + 'T00:00:00') - new Date(f.follow_up_date + 'T00:00:00')) / 86400000)}d overdue`
+              : f.today ? 'today' : (() => {
+                  const days = Math.round((new Date(f.follow_up_date + 'T00:00:00') - new Date(row.day + 'T00:00:00')) / 86400000)
+                  return days === 1 ? 'tomorrow' : `in ${days} days`
+                })()
+            return (
+              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 0', borderTop: i ? `1px solid ${T.border}` : 'none' }}>
+                <Bell size={14} style={{ color: '#E0985C', flexShrink: 0 }} />
+                <span style={{ flex: 1, fontSize: '14px', lineHeight: 1.5, color: T.ink }}>{f.text}</span>
+                <span className="sa-tele" style={{
+                  fontSize: '9px', letterSpacing: '1px', padding: '3px 9px', borderRadius: '999px', whiteSpace: 'nowrap',
+                  color: '#E0985C', background: 'rgba(224,152,92,0.14)', border: '1px solid rgba(224,152,92,0.4)',
+                }}>
+                  {new Date(f.follow_up_date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }).toUpperCase()} · {label.toUpperCase()}
+                </span>
+              </div>
+            )
+          })}
         </div>
       )}
 
