@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import {
   LayoutGrid, Lightbulb, Network, LogOut, Menu, X, Target, Users, Sparkles,
-  FileText, MessageSquare, Wallet, CreditCard, LayoutDashboard, Brain, Gauge, ListChecks, BookMarked,
+  FileText, MessageSquare, Wallet, CreditCard, LayoutDashboard, Brain, Gauge, ListChecks, BookMarked, Compass,
 } from 'lucide-react'
 import { getSession, onAuthStateChange, signOut } from './lib/auth'
 import { statusFor, greetingFor } from './constants/saDesign'
@@ -22,6 +22,7 @@ import DailyPerformancePage from './components/DailyPerformancePage'
 import SessionBoardsPage from './components/SessionBoardsPage'
 import DayLibraryPage from './components/DayLibraryPage'
 import BrainPage from './components/BrainPage'
+import MHPIPage from './components/MHPIPage'
 
 const NAV_ITEMS = [
   { id: 'daily-performance', label: 'Daily Monitor',     icon: Gauge,        group: 'DAILY MONITOR' },
@@ -32,6 +33,7 @@ const NAV_ITEMS = [
   { id: 'objectives',      label: 'Objectives',       icon: Target,          group: 'COMMAND' },
   { id: 'accomplishments', label: 'Daily Summary',    icon: Sparkles,        group: 'COMMAND' },
   { id: 'meeting-notes',   label: 'Meeting Notes',    icon: FileText,        group: 'COMMAND' },
+  { id: 'mhpi',            label: 'MHPI',             icon: Compass,         group: 'STRATEGY' },
   { id: 'company-finance', label: 'Company Finance',  icon: Wallet,          group: 'MONEY STUFF' },
   { id: 'personal-finance', label: 'Personal Finance', icon: CreditCard,     group: 'MONEY STUFF' },
   { id: 'relationships',   label: 'Relationships',    icon: Users,           group: 'NETWORK' },
@@ -201,7 +203,7 @@ export default function App() {
   return (
     <div className="sa-app">
       <Sidebar active={active} onChange={setActive} onSignOut={handleSignOut} />
-      <div className={`sa-main${active === 'ecosystem' ? ' sa-surface-dark' : ''}${active === 'session-boards' || active === 'day-library' || active === 'objectives' || active === 'portfolio' || (active === 'daily-performance' && dpCip) ? ' sa-surface-dark sa-dark-scroll' : ''}`}>
+      <div className={`sa-main${active === 'ecosystem' ? ' sa-surface-dark' : ''}${active === 'session-boards' || active === 'day-library' || active === 'objectives' || active === 'portfolio' || active === 'mhpi' || (active === 'daily-performance' && dpCip) ? ' sa-surface-dark sa-dark-scroll' : ''}`}>
         <Topbar active={active} now={now} sov={gameState.sovereigntyLevel} />
         <div className="sa-content">
           {active === 'daily-performance' && <DailyPerformancePage />}
@@ -212,6 +214,7 @@ export default function App() {
           {active === 'objectives'      && <ObjectivesPage />}
           {active === 'accomplishments' && <AccomplishmentsPage />}
           {active === 'meeting-notes'   && <MeetingNotesPage />}
+          {active === 'mhpi'            && <MHPIPage />}
           {active === 'company-finance' && <CompanyFinancePage />}
           {active === 'personal-finance' && <PersonalFinancePage />}
           {active === 'relationships'   && <RelationshipsPage />}
