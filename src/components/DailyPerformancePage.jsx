@@ -318,7 +318,47 @@ function SuggestionList({ items, onTriage, cip, T }) {
 
 // Deterministic productivity strip. Numbers come from row.scorecard, computed
 // mechanically server-side at compose time — never model-authored.
+// Clicking an earned badge opens its provenance: the medallion, the lore,
+// and the citation (scorecard.badge_evidence) naming what struck it.
+function BadgeDetailModal({ id, evidence, onClose }) {
+  const B = BADGES[id]
+  if (!B) return null
+  return (
+    <div onClick={onClose} style={{
+      position: 'fixed', inset: 0, zIndex: 250, cursor: 'pointer',
+      background: 'rgba(8,20,32,0.9)', backdropFilter: 'blur(4px)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24,
+    }}>
+      <div onClick={e => e.stopPropagation()} style={{
+        maxWidth: 440, width: '100%', cursor: 'default', textAlign: 'center',
+        background: '#10273B', border: '1px solid rgba(248,199,97,0.4)',
+        borderRadius: 14, padding: '34px 30px 28px',
+        animation: 'haulDrop 420ms cubic-bezier(0.2,0.9,0.3,1) both',
+      }}>
+        <BadgeMedallion id={id} size={92} glow />
+        <div className="sa-tele" style={{ fontSize: 9, letterSpacing: '2px', color: GOLD, marginTop: 16 }}>
+          BADGE EARNED · {B.track.toUpperCase()}
+        </div>
+        <div className="sa-serif" style={{ fontSize: 26, fontWeight: 500, color: '#fff', marginTop: 4 }}>{B.label}</div>
+        <div style={{ fontSize: 13, color: 'rgba(234,241,248,0.6)', fontStyle: 'italic', marginTop: 6 }}>{B.lore}</div>
+        <div style={{ margin: '20px 0 0', paddingTop: 18, borderTop: '1px solid rgba(248,199,97,0.25)' }}>
+          <div className="sa-tele" style={{ fontSize: 9, letterSpacing: '2px', color: PERIWINKLE }}>STRUCK BY</div>
+          <div style={{ fontSize: 14.5, lineHeight: 1.6, color: '#EAF1F8', marginTop: 8 }}>
+            {evidence || 'This run predates citations; the rule that struck it is below.'}
+          </div>
+          <div style={{ fontSize: 12, color: 'rgba(234,241,248,0.5)', marginTop: 12 }}>{B.desc}</div>
+        </div>
+        <button onClick={onClose} style={{
+          marginTop: 22, padding: '8px 22px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.2)',
+          background: 'transparent', color: 'rgba(234,241,248,0.7)', fontSize: 12.5, cursor: 'pointer', fontFamily: 'inherit',
+        }}>Bank it</button>
+      </div>
+    </div>
+  )
+}
+
 function Scorecard({ sc, cip, T }) {
+  const [openBadge, setOpenBadge] = useState(null)
   if (!sc) return null
   const sig = sc.signal || {}
   const sigSub = [
@@ -357,17 +397,21 @@ function Scorecard({ sc, cip, T }) {
             const B = BADGES[id]
             if (!B) return null
             return (
-              <span key={id} title={`${B.label} · ${B.desc} · "${B.lore}"`} style={{
+              <button key={id} onClick={() => setOpenBadge(id)} title={`${B.label} · click for what struck it`} style={{
                 display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '4px 12px 4px 4px',
                 borderRadius: '999px', border: `1px solid ${cip ? 'rgba(248,199,97,0.5)' : 'rgba(31,64,96,0.3)'}`,
                 background: cip ? 'rgba(248,199,97,0.08)' : 'rgba(31,64,96,0.05)',
+                cursor: 'pointer', fontFamily: 'inherit',
               }}>
                 <BadgeMedallion id={id} size={28} />
                 <span className="sa-tele" style={{ fontSize: '9.5px', letterSpacing: '1.2px', color: cip ? '#EAF1F8' : SECTION_BLUE }}>{B.label.toUpperCase()}</span>
-              </span>
+              </button>
             )
           })}
         </div>
+      )}
+      {openBadge && (
+        <BadgeDetailModal id={openBadge} evidence={(sc.badge_evidence || {})[openBadge]} onClose={() => setOpenBadge(null)} />
       )}
     </div>
   )
