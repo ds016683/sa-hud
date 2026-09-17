@@ -1,19 +1,16 @@
 import { useState, useEffect } from 'react'
 import {
-  LayoutGrid, Lightbulb, Network, LogOut, Menu, X, Target, Users, Sparkles,
-  FileText, MessageSquare, Wallet, CreditCard, LayoutDashboard, Brain, Gauge, ListChecks, BookMarked, Compass,
+  LayoutGrid, Network, LogOut, Menu, X, Target, Users,
+  FileText, MessageSquare, Wallet, CreditCard, Brain, Gauge, ListChecks, BookMarked, Compass,
 } from 'lucide-react'
 import { getSession, onAuthStateChange, signOut } from './lib/auth'
 import { statusFor, greetingFor } from './constants/saDesign'
 import useGameState from './hooks/useGameState'
 import LoginPage from './components/LoginPage'
-import DailyDashboardPage from './components/DailyDashboardPage'
 import ProjectsPage from './components/ProjectsPage'
-import IdeasPage from './components/IdeasPage'
 import EcosystemPage from './components/EcosystemPage'
 import MeetingNotesPage from './components/MeetingNotesPage'
 import ObjectivesPage from './components/ObjectivesPage'
-import AccomplishmentsPage from './components/AccomplishmentsPage'
 import RelationshipsPage from './components/RelationshipsPage'
 import SlackPage from './components/SlackPage'
 import CompanyFinancePage from './components/CompanyFinancePage'
@@ -28,10 +25,8 @@ const NAV_ITEMS = [
   { id: 'daily-performance', label: 'Daily Monitor',     icon: Gauge,        group: 'DAILY MONITOR' },
   { id: 'day-library',     label: 'Day Library',      icon: BookMarked,      group: 'DAILY MONITOR' },
   { id: 'session-boards',  label: 'Session Boards',   icon: ListChecks,      group: 'COMMAND' },
-  { id: 'daily-dashboard', label: 'Daily Dashboard',  icon: LayoutDashboard, group: 'COMMAND' },
   { id: 'brain',           label: 'The Brain',        icon: Brain,           group: 'COMMAND' },
   { id: 'objectives',      label: 'Objectives',       icon: Target,          group: 'COMMAND' },
-  { id: 'accomplishments', label: 'Daily Summary',    icon: Sparkles,        group: 'COMMAND' },
   { id: 'meeting-notes',   label: 'Meeting Notes',    icon: FileText,        group: 'COMMAND' },
   { id: 'mhpi',            label: 'MHPI',             icon: Compass,         group: 'STRATEGY' },
   { id: 'company-finance', label: 'Company Finance',  icon: Wallet,          group: 'MONEY STUFF' },
@@ -39,7 +34,6 @@ const NAV_ITEMS = [
   { id: 'relationships',   label: 'Relationships',    icon: Users,           group: 'NETWORK' },
   { id: 'slack',           label: 'Slack',            icon: MessageSquare,   group: 'NETWORK' },
   { id: 'portfolio',       label: 'Projects',         icon: LayoutGrid,      group: 'COMMAND' },
-  { id: 'ideas',           label: 'Ideas Pipeline',   icon: Lightbulb,       group: 'NETWORK' },
   { id: 'ecosystem',       label: 'Ecosystem',        icon: Network,         group: 'NETWORK' },
 ]
 
@@ -131,8 +125,8 @@ function Topbar({ active, now, sov }) {
     ? (navItem.group === (navItem.label || '').toUpperCase()
         ? navItem.group
         : `${navItem.group} · ${(navItem.label || '').toUpperCase()}`)
-    : 'DAILY DASHBOARD'
-  const title = active === 'daily-dashboard' ? 'Command Center' : navItem.label
+    : 'DAILY MONITOR'
+  const title = navItem.label || 'Command Center'
 
   return (
     <header className="sa-topbar">
@@ -161,7 +155,7 @@ function Topbar({ active, now, sov }) {
 
 export default function App() {
   const [session, setSession] = useState(undefined)
-  const [active, setActive] = useState('daily-dashboard')
+  const [active, setActive] = useState('daily-performance')
   const [now, setNow] = useState(new Date())
   const [dpCip, setDpCip] = useState(() => {
     try { return localStorage.getItem('dp-theme') === 'cip' } catch { return false }
@@ -209,10 +203,8 @@ export default function App() {
           {active === 'daily-performance' && <DailyPerformancePage />}
           {active === 'day-library'     && <DayLibraryPage />}
           {active === 'session-boards'  && <SessionBoardsPage />}
-          {active === 'daily-dashboard' && <DailyDashboardPage gameState={gameState} />}
           {active === 'brain'           && <BrainPage />}
           {active === 'objectives'      && <ObjectivesPage />}
-          {active === 'accomplishments' && <AccomplishmentsPage />}
           {active === 'meeting-notes'   && <MeetingNotesPage />}
           {active === 'mhpi'            && <MHPIPage />}
           {active === 'company-finance' && <CompanyFinancePage />}
@@ -220,7 +212,6 @@ export default function App() {
           {active === 'relationships'   && <RelationshipsPage />}
           {active === 'slack'           && <SlackPage />}
           {active === 'portfolio'       && <ProjectsPage />}
-          {active === 'ideas'           && <IdeasPage />}
           {active === 'ecosystem'       && <EcosystemPage />}
         </div>
       </div>

@@ -131,6 +131,11 @@ export const TOOLS = [
     inputSchema: { type: 'object', properties: { text: { type: 'string' }, cadence: { type: 'string' }, next_at: { type: 'string' } }, required: ['text'] },
   },
   {
+    name: 'create_project',
+    description: "Create a project on the Projects layer (long-standing work with its own task list). Give it a key like 'Platform.Lumen' so the session board and Lumen can address it. category: client | third-horizon | personal | commercial-infra | q2-must | biz-dev | learning.",
+    inputSchema: { type: 'object', properties: { name: { type: 'string' }, key: { type: 'string' }, category: { type: 'string' }, description: { type: 'string' } }, required: ['name'] },
+  },
+  {
     name: 'list_standing_orders',
     description: 'The active standing orders Lumen is holding for David.',
     inputSchema: { type: 'object', properties: {} },
@@ -276,6 +281,14 @@ export async function callTool(name, args = {}) {
     case 'set_standing_order': {
       const out = await sbWrite('POST', 'standing_orders', { text: String(args.text || '').trim(), cadence: args.cadence || null, next_at: args.next_at || null })
       return JSON.stringify({ ok: true, order: out?.[0] })
+    }
+    case 'create_project': {
+      const name = String(args.name || '').trim()
+      if (!name) throw new Error('name required')
+      const dupes = await sb(`projects?select=id,name,key&or=(name.ilike.${encodeURIComponent(esc(name))},key.eq.${encodeURIComponent(args.key || '__none__')})&limit=3`)
+      if (dupes.length) return JSON.stringify({ ok: false, note: 'project exists', existing: dupes })
+      const out = await sbWrite('POST', 'projects', { name, key: args.key || null, category: args.category || 'third-horizon', status: 'active', description: args.description || null, last_activity_at: new Date().toISOString() })
+      return JSON.stringify({ ok: true, project: out?.[0] })
     }
     case 'list_standing_orders': {
       return JSON.stringify(await sb('standing_orders?select=id,text,cadence,next_at,last_fired_at&active=eq.true&order=next_at.asc.nullslast'), null, 2)
