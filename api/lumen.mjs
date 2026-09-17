@@ -82,6 +82,22 @@ async function speak(text) {
 const allowed = () => (process.env.LUMEN_ALLOWED_NUMBERS || '').split(',').map(s => s.replace(/\D/g, '')).filter(Boolean)
 
 export default async function handler(req, res) {
+  // ---- admin: is the WhatsApp Business Account subscribed to this app? (?admin=waba&key=MCP_TOKEN)
+  // Meta registers the webhook on the app, but inbound traffic only flows once
+  // the WABA itself is subscribed; the dashboard does not always do that step.
+  if (req.method === 'GET' && (req.query || {}).admin === 'waba') {
+    if ((req.query || {}).key !== process.env.MCP_TOKEN) return res.status(401).json({ error: 'unauthorized' })
+    const waba = (req.query || {}).waba || process.env.WHATSAPP_WABA_ID
+    if (!waba) return res.status(400).json({ error: 'waba id required' })
+    const list = await fetch(`${GRAPH}/${waba}/subscribed_apps`, { headers: waHeaders() }).then(r => r.json()).catch(e => ({ error: String(e) }))
+    let subscribed = null
+    if ((req.query || {}).subscribe === '1') {
+      subscribed = await fetch(`${GRAPH}/${waba}/subscribed_apps`, { method: 'POST', headers: waHeaders() }).then(r => r.json()).catch(e => ({ error: String(e) }))
+    }
+    const after = subscribed ? await fetch(`${GRAPH}/${waba}/subscribed_apps`, { headers: waHeaders() }).then(r => r.json()).catch(() => null) : null
+    return res.status(200).json({ waba, before: list, subscribe_result: subscribed, after })
+  }
+
   // ---- verification handshake
   if (req.method === 'GET') {
     const q = req.query || {}
