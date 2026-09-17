@@ -119,6 +119,14 @@ export default async function handler(req, res) {
     return res.status(200).json({ status: r.status, body: await r.json().catch(() => null) })
   }
 
+  // ---- admin: what can the configured token do? (?admin=tokeninfo&key=)
+  if (req.method === 'GET' && (req.query || {}).admin === 'tokeninfo') {
+    if ((req.query || {}).key !== process.env.MCP_TOKEN) return res.status(401).json({ error: 'unauthorized' })
+    const out = await fetch(`${GRAPH}/debug_token?input_token=${encodeURIComponent(process.env.WHATSAPP_TOKEN || '')}`, { headers: waHeaders() }).then(r => r.json()).catch(e => ({ error: String(e) }))
+    const d = out?.data || out
+    return res.status(200).json({ type: d?.type, app_id: d?.app_id, application: d?.application, expires_at: d?.expires_at, scopes: d?.scopes, granular_scopes: d?.granular_scopes, user_id: d?.user_id, error: out?.error })
+  }
+
   // ---- verification handshake
   if (req.method === 'GET') {
     const q = req.query || {}
