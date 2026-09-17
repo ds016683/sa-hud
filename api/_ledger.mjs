@@ -121,6 +121,11 @@ export const TOOLS = [
     inputSchema: { type: 'object', properties: { project: { type: 'string', description: 'project key or name' }, text: { type: 'string' }, due_date: { type: 'string' } }, required: ['project', 'text'] },
   },
   {
+    name: 'activate_project_task',
+    description: "Play a project task onto David's Objectives board: creates the linked objective (the same bridge the Projects page uses, so releasing the objective closes the task) and, by default, makes it active with the board clock running. state 'parked' queues it instead. To de-activate, use move_objective on the objective (parked keeps the link; released closes the task).",
+    inputSchema: { type: 'object', properties: { project: { type: 'string', description: 'project key or name' }, text: { type: 'string', description: 'task text, exact-then-contains' }, state: { type: 'string', enum: ['active', 'parked'] } }, required: ['project', 'text'] },
+  },
+  {
     name: 'complete_project_task',
     description: 'Mark a project task done by matching its text (exact-then-contains, refuses ambiguity).',
     inputSchema: { type: 'object', properties: { text: { type: 'string' } }, required: ['text'] },
@@ -270,6 +275,28 @@ export async function callTool(name, args = {}) {
       if (ps.length !== 1) throw new Error(ps.length ? `project ambiguous: ${ps.map(p => p.name).join(' | ')}` : `no project matches "${args.project}"`)
       const out = await sbWrite('POST', 'project_tasks', { project_id: ps[0].id, text: String(args.text || '').trim(), status: 'open', source: 'lumen', due_date: args.due_date || null })
       return JSON.stringify({ ok: true, project: ps[0].name, task: out?.[0]?.text || args.text })
+    }
+    case 'activate_project_task': {
+      const pq = esc(args.project || '')
+      const ps = await sb(`projects?select=id,key,name&or=(key.ilike.${encodeURIComponent(pq)},name.ilike.*${encodeURIComponent(pq)}*)&limit=5`)
+      if (ps.length !== 1) throw new Error(ps.length ? `project ambiguous: ${ps.map(p => p.name).join(' | ')}` : `no project matches "${args.project}"`)
+      const tq = esc(args.text || '')
+      let ts = await sb(`project_tasks?select=id,text,status,objective_id&project_id=eq.${ps[0].id}&status=neq.done&text=ilike.${encodeURIComponent(tq)}&limit=5`)
+      if (ts.length !== 1) ts = await sb(`project_tasks?select=id,text,status,objective_id&project_id=eq.${ps[0].id}&status=neq.done&text=ilike.*${encodeURIComponent(tq)}*&limit=5`)
+      if (ts.length !== 1) throw new Error(ts.length ? `task ambiguous: ${ts.map(t => t.text).join(' | ')}` : `no open task matches "${args.text}"`)
+      const task = ts[0]
+      const state = args.state === 'parked' ? 'parked' : 'active'
+      const now = new Date().toISOString()
+      if (task.objective_id) {
+        await sbWrite('PATCH', `objectives?id=eq.${task.objective_id}`, { state, activated_at: state === 'active' ? now : null, released_at: null, released_kind: null }, 'return=minimal')
+        return JSON.stringify({ ok: true, task: task.text, objective: 'existing', state })
+      }
+      const obj = await sbWrite('POST', 'objectives', {
+        user_id: DAVID, title: task.text.slice(0, 120), state, kind: 'execution', effort: 2, importance: 2, needs_sizing: false,
+        description: `Promoted from project: ${ps[0].name}`, captured_at: now, activated_at: state === 'active' ? now : null,
+      })
+      await sbWrite('PATCH', `project_tasks?id=eq.${task.id}`, { objective_id: obj[0].id, status: task.status === 'blocked' ? 'blocked' : 'promoted' }, 'return=minimal')
+      return JSON.stringify({ ok: true, task: task.text, objective: obj[0].title, state })
     }
     case 'complete_project_task': {
       const q = esc(args.text || '')
