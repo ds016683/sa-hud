@@ -268,7 +268,7 @@ export async function callTool(name, args = {}) {
       const q = esc(args.project || '')
       const ps = await sb(`projects?select=id,key,name&or=(key.ilike.${encodeURIComponent(q)},name.ilike.*${encodeURIComponent(q)}*)&limit=5`)
       if (ps.length !== 1) throw new Error(ps.length ? `project ambiguous: ${ps.map(p => p.name).join(' | ')}` : `no project matches "${args.project}"`)
-      const out = await sbWrite('POST', 'project_tasks', { user_id: DAVID, project_id: ps[0].id, text: String(args.text || '').trim(), status: 'open', source: 'lumen', due_date: args.due_date || null })
+      const out = await sbWrite('POST', 'project_tasks', { project_id: ps[0].id, text: String(args.text || '').trim(), status: 'open', source: 'lumen', due_date: args.due_date || null })
       return JSON.stringify({ ok: true, project: ps[0].name, task: out?.[0]?.text || args.text })
     }
     case 'complete_project_task': {
@@ -291,8 +291,7 @@ export async function callTool(name, args = {}) {
         let claimed = 0
         for (const d of dupes.filter(d => !d.user_id)) {
           await sbWrite('PATCH', `projects?id=eq.${d.id}`, { user_id: DAVID }, 'return=minimal')
-          const ts = await sbWrite('PATCH', `project_tasks?project_id=eq.${d.id}&user_id=is.null`, { user_id: DAVID })
-          claimed += 1 + (ts?.length || 0)
+          claimed += 1  // tasks carry no owner; they are visible through their project
         }
         return JSON.stringify({ ok: false, note: claimed ? `project exists; claimed ${claimed} ownerless rows for David` : 'project exists', existing: dupes.map(({ user_id, ...d }) => d) })
       }
