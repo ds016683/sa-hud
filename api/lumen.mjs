@@ -107,6 +107,18 @@ export default async function handler(req, res) {
     return res.status(200).json(out)
   }
 
+  // ---- admin: send a test text and surface Meta's full error (?admin=send&to=&text=&key=)
+  if (req.method === 'GET' && (req.query || {}).admin === 'send') {
+    if ((req.query || {}).key !== process.env.MCP_TOKEN) return res.status(401).json({ error: 'unauthorized' })
+    const to = String((req.query || {}).to || '').replace(/\D/g, '')
+    if (!allowed().includes(to)) return res.status(400).json({ error: 'recipient not allowlisted' })
+    const r = await fetch(`${GRAPH}/${process.env.WHATSAPP_PHONE_ID}/messages`, {
+      method: 'POST', headers: { ...waHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ messaging_product: 'whatsapp', to, type: 'text', text: { body: String((req.query || {}).text || 'Lumen test') } }),
+    })
+    return res.status(200).json({ status: r.status, body: await r.json().catch(() => null) })
+  }
+
   // ---- verification handshake
   if (req.method === 'GET') {
     const q = req.query || {}
