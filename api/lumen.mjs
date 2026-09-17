@@ -98,6 +98,15 @@ export default async function handler(req, res) {
     return res.status(200).json({ waba, before: list, subscribe_result: subscribed, after })
   }
 
+  // ---- admin: read-only Graph inspection (?admin=graph&path=<node>&fields=...&key=MCP_TOKEN)
+  if (req.method === 'GET' && (req.query || {}).admin === 'graph') {
+    if ((req.query || {}).key !== process.env.MCP_TOKEN) return res.status(401).json({ error: 'unauthorized' })
+    const path = String((req.query || {}).path || '').replace(/[^A-Za-z0-9_\/.-]/g, '')
+    const fields = String((req.query || {}).fields || '').replace(/[^A-Za-z0-9_,{}]/g, '')
+    const out = await fetch(`${GRAPH}/${path}${fields ? `?fields=${fields}` : ''}`, { headers: waHeaders() }).then(r => r.json()).catch(e => ({ error: String(e) }))
+    return res.status(200).json(out)
+  }
+
   // ---- verification handshake
   if (req.method === 'GET') {
     const q = req.query || {}
