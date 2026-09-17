@@ -30,7 +30,7 @@ npm run lint      # ESLint
 
 - Vercel project `sa-hud-preview` (team third-horizon-58c0ce68), git-connected to `ds016683/sa-hud`
 - Push to `main` triggers the production build (Vite static + `api/*.mjs` functions + `vercel.json` crons)
-- Domains: sa-hud.vercel.app and sa-hud-preview.vercel.app (same deployment)
+- Domain: sa-hud.vercel.app (project renamed to `sa-hud` 9/14/2026; the preview domain is gone)
 - GitHub Pages retired 9/14/2026 (it could not host the Ledger functions)
 
 ## Architecture
