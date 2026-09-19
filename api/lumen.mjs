@@ -139,6 +139,15 @@ export default async function handler(req, res) {
     } catch (e) { return res.status(200).json({ ok: false, error: String(e.message || e) }) }
   }
 
+  // ---- admin: list ElevenLabs voices on the account (?admin=voices&key=)
+  if (req.method === 'GET' && (req.query || {}).admin === 'voices') {
+    if ((req.query || {}).key !== process.env.MCP_TOKEN) return res.status(401).json({ error: 'unauthorized' })
+    const r = await fetch('https://api.elevenlabs.io/v2/voices?page_size=100', { headers: { 'xi-api-key': process.env.ELEVENLABS_API_KEY } })
+    const j = await r.json().catch(() => null)
+    const voices = (j?.voices || []).map(v => ({ id: v.voice_id, name: v.name, category: v.category, labels: v.labels }))
+    return res.status(200).json({ status: r.status, count: voices.length, voices })
+  }
+
   // ---- verification handshake
   if (req.method === 'GET') {
     const q = req.query || {}
