@@ -127,6 +127,18 @@ export default async function handler(req, res) {
     return res.status(200).json({ type: d?.type, app_id: d?.app_id, application: d?.application, expires_at: d?.expires_at, scopes: d?.scopes, granular_scopes: d?.granular_scopes, user_id: d?.user_id, error: out?.error })
   }
 
+  // ---- admin: voice probe. Speaks a line with ElevenLabs and sends it as a voice note (?admin=voice&to=&text=&key=)
+  if (req.method === 'GET' && (req.query || {}).admin === 'voice') {
+    if ((req.query || {}).key !== process.env.MCP_TOKEN) return res.status(401).json({ error: 'unauthorized' })
+    const to = String((req.query || {}).to || '').replace(/\D/g, '')
+    if (!allowed().includes(to)) return res.status(400).json({ error: 'recipient not allowlisted' })
+    try {
+      const mp3 = await speak(String((req.query || {}).text || 'This is Lumen. The voice line is open.'))
+      const id = await waSendAudio(to, mp3)
+      return res.status(200).json({ ok: true, bytes: mp3.length, message_id: id, voice: process.env.ELEVENLABS_VOICE_ID ? 'set' : 'missing', whisper_key: process.env.OPENAI_API_KEY ? 'set' : 'missing' })
+    } catch (e) { return res.status(200).json({ ok: false, error: String(e.message || e) }) }
+  }
+
   // ---- verification handshake
   if (req.method === 'GET') {
     const q = req.query || {}
