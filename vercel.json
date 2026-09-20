@@ -1,6 +1,16 @@
 {
   "crons": [
-    { "path": "/api/sync", "schedule": "*/30 * * * *" },
-    { "path": "/api/close", "schedule": "5 5 * * *" }
+    {
+      "path": "/api/sync",
+      "schedule": "*/30 * * * *"
+    },
+    {
+      "path": "/api/close",
+      "schedule": "5 5 * * *"
+    },
+    {
+      "path": "/api/pulse",
+      "schedule": "12,42 * * * *"
+    }
   ]
 }
