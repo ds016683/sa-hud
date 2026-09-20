@@ -114,6 +114,16 @@ export default async function handler(req, res) {
     return res.status(200).json({ status: r.status, body: await r.json().catch(() => null) })
   }
 
+  // ---- admin: plain text-to-speech passthrough (?admin=say&text=&key=) for the Mac listener's cached acks
+  if (req.method === 'GET' && (req.query || {}).admin === 'say') {
+    if ((req.query || {}).key !== process.env.MCP_TOKEN) return res.status(401).json({ error: 'unauthorized' })
+    try {
+      const mp3 = await speak(String((req.query || {}).text || 'Yeah?'))
+      res.setHeader('Content-Type', 'audio/mpeg'); res.setHeader('Content-Length', String(mp3.length))
+      return res.status(200).end(Buffer.from(mp3))
+    } catch (e) { return res.status(200).json({ ok: false, error: String(e.message || e) }) }
+  }
+
   // ---- verification handshake
   if (req.method === 'GET') {
     const q = req.query || {}
