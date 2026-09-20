@@ -50,6 +50,8 @@ export default async function handler(req, res) {
   catch (e) { return res.status(200).json({ transcript: text, error: `brain failed: ${String(e.message || e)}` }) }
   await remember({ channel: 'voice', direction: 'out', kind: 'audio', body: reply, meta: { via: (req.query || {}).via || 'talk' } })
 
+  // ?notts=1: text only (the realtime client reads Claude's answer aloud itself)
+  if ((req.query || {}).notts === '1') return res.status(200).json({ transcript: text, reply })
   let mp3 = null
   try { mp3 = await speak(reply) } catch (e) { console.error('talk: tts failed', e.message) }
 
