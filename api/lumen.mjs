@@ -148,6 +148,38 @@ export default async function handler(req, res) {
     return res.status(200).json({ status: r.status, count: voices.length, voices })
   }
 
+  // ---- admin: Voice Design. Generates candidate voices from a description and sends each
+  // as a voice note (?admin=design&to=&desc=&sample=&key=); save one with ?admin=savevoice&gid=&name=
+  if (req.method === 'GET' && (req.query || {}).admin === 'design') {
+    if ((req.query || {}).key !== process.env.MCP_TOKEN) return res.status(401).json({ error: 'unauthorized' })
+    const to = String((req.query || {}).to || '').replace(/\D/g, '')
+    if (!allowed().includes(to)) return res.status(400).json({ error: 'recipient not allowlisted' })
+    const r = await fetch('https://api.elevenlabs.io/v1/text-to-voice/design?output_format=mp3_44100_128', {
+      method: 'POST', headers: { 'xi-api-key': process.env.ELEVENLABS_API_KEY, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ voice_description: String((req.query || {}).desc || ''), text: String((req.query || {}).sample || ''), model_id: 'eleven_ttv_v3' }),
+    })
+    const j = await r.json().catch(() => null)
+    if (!r.ok) return res.status(200).json({ ok: false, status: r.status, error: j })
+    const out = []
+    for (const [i, pv] of (j.previews || []).entries()) {
+      try {
+        const bytes = Uint8Array.from(Buffer.from(pv.audio_base_64, 'base64'))
+        await waSendText(to, `Candidate ${i + 1} of ${j.previews.length}`)
+        const id = await waSendAudio(to, bytes)
+        out.push({ candidate: i + 1, generated_voice_id: pv.generated_voice_id, sent: id })
+      } catch (e) { out.push({ candidate: i + 1, generated_voice_id: pv.generated_voice_id, error: String(e.message || e) }) }
+    }
+    return res.status(200).json({ ok: true, candidates: out })
+  }
+  if (req.method === 'GET' && (req.query || {}).admin === 'savevoice') {
+    if ((req.query || {}).key !== process.env.MCP_TOKEN) return res.status(401).json({ error: 'unauthorized' })
+    const r = await fetch('https://api.elevenlabs.io/v1/text-to-voice', {
+      method: 'POST', headers: { 'xi-api-key': process.env.ELEVENLABS_API_KEY, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ voice_name: String((req.query || {}).name || 'Lumen 3'), voice_description: String((req.query || {}).desc || 'Lumen'), generated_voice_id: String((req.query || {}).gid || '') }),
+    })
+    return res.status(200).json({ status: r.status, body: await r.json().catch(() => null) })
+  }
+
   // ---- verification handshake
   if (req.method === 'GET') {
     const q = req.query || {}
