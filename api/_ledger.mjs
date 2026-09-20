@@ -59,8 +59,13 @@ export const TOOLS = [
   },
   {
     name: 'get_today',
-    description: "Today's live snapshot from the Ledger: the latest composed summary, deterministic scorecard, noteworthy threads, must-do list, follow-ups coming due, new items, and the rest of today's WORK calendar (Outlook/Microsoft 365). Use this for any question about David's day or schedule; never a device-local calendar.",
+    description: "Today's live snapshot from the Ledger: the latest composed summary, deterministic scorecard, noteworthy threads, must-do list, follow-ups coming due, new items, and the rest of today's WORK calendar (Outlook/Microsoft 365). For any day after today use get_calendar. Never a device-local calendar.",
     inputSchema: { type: 'object', properties: {} },
+  },
+  {
+    name: 'get_calendar',
+    description: "David's WORK calendar (Outlook/Microsoft 365) for a date range, up to four weeks ahead. Use this for anything beyond today: 'what does Monday look like', 'am I free Thursday afternoon', 'what's next week'. Dates YYYY-MM-DD; defaults to today through 14 days out. Never a device-local calendar.",
+    inputSchema: { type: 'object', properties: { from: { type: 'string', description: 'YYYY-MM-DD, default today' }, to: { type: 'string', description: 'YYYY-MM-DD inclusive, default from+14' } } },
   },
   {
     name: 'get_objectives',
@@ -183,6 +188,15 @@ export async function callTool(name, args = {}) {
       if (!r) return JSON.stringify({ today: TODAY, note: 'No update composed yet today. Calendar below.', calendar: cal }, null, 2)
       const remaining = cal.filter(e => new Date(e.end_at).getTime() > Date.now())
       return JSON.stringify({ today: TODAY, as_of: r.generated_at, summary: r.summary, scorecard: r.scorecard, noteworthy: r.noteworthy, must_do: r.must_do, new_items: r.new_items, composer_notes: r.notes, calendar_remaining: remaining }, null, 2)
+    }
+    case 'get_calendar': {
+      const from = String(args.from || TODAY).slice(0, 10)
+      const d = new Date(from + 'T12:00:00'); d.setDate(d.getDate() + 14)
+      const to = String(args.to || d.toISOString().slice(0, 10)).slice(0, 10)
+      const rows = await sb(`calendar_events?select=day,subject,start_at,end_at,organizer,attendees,is_all_day&day=gte.${from}&day=lte.${to}&is_cancelled=eq.false&order=start_at.asc&limit=300`)
+      const byDay = {}
+      for (const e of rows) (byDay[e.day] ||= []).push({ subject: e.subject, start: e.start_at, end: e.end_at, all_day: e.is_all_day, organizer: e.organizer, attendees: (e.attendees || []).slice(0, 8) })
+      return JSON.stringify({ from, to, timezone_note: 'times are UTC; Chicago is UTC-5 in September', days: byDay }, null, 2)
     }
     case 'get_objectives': {
       const os = await sb(`objectives?select=title,state,due_date,follow_up_date,is_anchor,is_emergency,released_at,released_kind,who,tags&deleted_at=is.null&order=captured_at.desc`)

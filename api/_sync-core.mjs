@@ -139,11 +139,11 @@ export async function syncEmail(token) {
   return { written }
 }
 
-// ---- Calendar: -1d..+7d calendarView
+// ---- Calendar: -1d..+28d calendarView (Lumen needs to see a few weeks out)
 export async function syncCalendar(token) {
   token = token || await graphToken()
   const start = new Date(Date.now() - 1 * 86400e3).toISOString().slice(0, 10) + 'T00:00:00Z'
-  const end = new Date(Date.now() + 7 * 86400e3).toISOString().slice(0, 10) + 'T00:00:00Z'
+  const end = new Date(Date.now() + 28 * 86400e3).toISOString().slice(0, 10) + 'T00:00:00Z'
   const url = `https://graph.microsoft.com/v1.0/users/${MAILBOX}/calendarView?startDateTime=${start}&endDateTime=${end}&$top=200&$select=id,subject,start,end,attendees,organizer,isAllDay,isCancelled`
   const events = await graphPages(url, token)
   const rows = events.map(e => {
