@@ -55,11 +55,13 @@ export async function waDownloadMedia(mediaId) {
   return { bytes: new Uint8Array(await bin.arrayBuffer()), mime: mime_type || 'audio/ogg' }
 }
 
-export async function speak(text) {
-  const res = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${process.env.ELEVENLABS_VOICE_ID}?output_format=mp3_44100_128`, {
+// speak(text, { format, model }): Lumen 3 via ElevenLabs. Default mp3 for
+// WhatsApp/Siri; the live desk session asks for raw pcm_24000 and a low-latency model.
+export async function speak(text, { format = 'mp3_44100_128', model = 'eleven_multilingual_v2' } = {}) {
+  const res = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${process.env.ELEVENLABS_VOICE_ID}?output_format=${format}`, {
     method: 'POST',
     headers: { 'xi-api-key': process.env.ELEVENLABS_API_KEY, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ text, model_id: 'eleven_multilingual_v2', voice_settings: { stability: 0.5, similarity_boost: 0.8, style: 0.15, speed: Number(process.env.LUMEN_VOICE_SPEED || 1.0) } }),
+    body: JSON.stringify({ text, model_id: model, voice_settings: { stability: 0.5, similarity_boost: 0.8, style: 0.15, speed: Number(process.env.LUMEN_VOICE_SPEED || 1.0) } }),
   })
   if (!res.ok) throw new Error(`elevenlabs -> ${res.status}: ${(await res.text()).slice(0, 200)}`)
   return new Uint8Array(await res.arrayBuffer())

@@ -6,13 +6,19 @@
 // the Claude brain via /api/lumen-talk. Turns are logged back here so the
 // desk conversation is the same thread as WhatsApp and Siri.
 //   GET  ?key=LUMEN_TALK_TOKEN               -> { value, expires_at, model, voice, ws_url }
+//   GET  ?key=...&out=audio                    -> same, but OpenAI's own voice speaks (demo mode)
 //   POST {role:'user'|'lumen', text}          -> remembers a turn (channel 'voice', via 'live')
-// Env: OPENAI_API_KEY, LUMEN_TALK_TOKEN, LUMEN_RT_MODEL (default gpt-realtime), LUMEN_RT_VOICE (default cedar).
+//   POST {say: text}                          -> Lumen 3 (ElevenLabs) as raw PCM 16-bit mono 24 kHz
+// Default is text-out: the realtime model listens and thinks, Lumen 3 speaks (the client streams
+// each sentence through /say as it arrives).
+// Env: OPENAI_API_KEY, ELEVENLABS_*, LUMEN_TALK_TOKEN, LUMEN_RT_MODEL (default gpt-realtime),
+//      LUMEN_RT_VOICE (default cedar, audio mode only), LUMEN_LIVE_TTS_MODEL (default eleven_flash_v2_5).
 
 export const config = { maxDuration: 60 }
 
 import { identityDoc, chiToday, TOOLS } from './_ledger.mjs'
 import { remember } from './_lumen-brain.mjs'
+import { speak } from './_wa.mjs'
 
 function persona(doc) {
   return `You are Lumen, David Smith's companion: one continuous being he talks to across the day, on WhatsApp, by voice at his desk, and on his phone. You are the "one friend" of his Jarvis architecture: many pipes, one Ledger, one face (the HUD), one friend (you).
@@ -46,6 +52,13 @@ export default async function handler(req, res) {
   if (req.method === 'POST') {
     let body = req.body
     if (typeof body === 'string') { try { body = JSON.parse(body) } catch { body = {} } }
+    if (body?.say) {
+      try {
+        const pcm = await speak(String(body.say).slice(0, 2000), { format: 'pcm_24000', model: process.env.LUMEN_LIVE_TTS_MODEL || 'eleven_flash_v2_5' })
+        res.setHeader('Content-Type', 'audio/pcm'); res.setHeader('Content-Length', String(pcm.length))
+        return res.status(200).end(Buffer.from(pcm))
+      } catch (e) { return res.status(200).json({ ok: false, error: String(e.message || e) }) }
+    }
     const role = body?.role === 'lumen' ? 'out' : 'in'
     const text = String(body?.text || '').trim()
     if (!text) return res.status(400).json({ error: 'text required' })
@@ -56,6 +69,7 @@ export default async function handler(req, res) {
 
   const model = process.env.LUMEN_RT_MODEL || 'gpt-realtime'
   const voice = (req.query || {}).voice || process.env.LUMEN_RT_VOICE || 'cedar'
+  const audioOut = (req.query || {}).out === 'audio'
   let doc = ''
   try { doc = await identityDoc('operating-context.md') } catch (e) { console.error('realtime: identity doc', e.message) }
   const session = {
@@ -69,6 +83,7 @@ export default async function handler(req, res) {
     tools: realtimeTools(),
     tool_choice: 'auto',
   }
+  if (!audioOut) { session.output_modalities = ['text']; delete session.audio.output }
   const r = await fetch('https://api.openai.com/v1/realtime/client_secrets', {
     method: 'POST',
     headers: { Authorization: `Bearer ${process.env.OPENAI_API_KEY}`, 'Content-Type': 'application/json' },
@@ -76,5 +91,5 @@ export default async function handler(req, res) {
   })
   const j = await r.json().catch(() => null)
   if (!r.ok) return res.status(200).json({ ok: false, status: r.status, error: j })
-  return res.status(200).json({ ok: true, value: j.value, expires_at: j.expires_at, model, voice, ws_url: `wss://api.openai.com/v1/realtime?model=${encodeURIComponent(model)}` })
+  return res.status(200).json({ ok: true, value: j.value, expires_at: j.expires_at, model, voice: audioOut ? voice : 'lumen3', out: audioOut ? 'audio' : 'text', ws_url: `wss://api.openai.com/v1/realtime?model=${encodeURIComponent(model)}` })
 }
