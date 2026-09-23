@@ -313,7 +313,7 @@ export async function callTool(name, args = {}) {
       if (!bin.ok) throw new Error(`attachment download -> ${bin.status}: ${(await bin.text()).slice(0, 200)}`)
       const bytes = new Uint8Array(await bin.arrayBuffer())
       const sent = await waSendDocument(davidNumber(), bytes, { filename: pick.name, mime: pick.contentType || 'application/octet-stream', caption: args.caption || '' })
-      return JSON.stringify({ ok: true, sent: pick.name, size: pick.size, wa_message_id: (sent.messages || [])[0]?.id || null })
+      return JSON.stringify({ ok: true, sent: pick.name, size: pick.size, wa_message_id: sent || null })
     }
     case 'get_day': {
       const date = String(args.date || '').slice(0, 10)
