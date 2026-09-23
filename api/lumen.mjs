@@ -19,6 +19,29 @@ export default async function handler(req, res) {
   // ---- admin: is the WhatsApp Business Account subscribed to this app? (?admin=waba&key=MCP_TOKEN)
   // Meta registers the webhook on the app, but inbound traffic only flows once
   // the WABA itself is subscribed; the dashboard does not always do that step.
+  // ?admin=template&key=MCP_TOKEN[&submit=1]: list the WABA's message templates, or submit
+  // Lumen's utility template (lumen_pulse) for review so the pulse can reach David outside
+  // the 24-hour window. Idempotent: submit=1 with an existing lumen_pulse just reports it.
+  if (req.method === 'GET' && (req.query || {}).admin === 'template') {
+    if ((req.query || {}).key !== process.env.MCP_TOKEN) return res.status(401).json({ error: 'unauthorized' })
+    const waba = (req.query || {}).waba || process.env.WHATSAPP_WABA_ID
+    if (!waba) return res.status(400).json({ error: 'waba id required' })
+    const name = (req.query || {}).name || 'lumen_pulse'
+    const list = await fetch(`${GRAPH}/${waba}/message_templates?fields=name,status,category,language,components&limit=50`, { headers: waHeaders() }).then(r => r.json()).catch(e => ({ error: String(e) }))
+    const existing = (list.data || []).find(t => t.name === name)
+    let submitted = null
+    if ((req.query || {}).submit === '1' && !existing) {
+      submitted = await fetch(`${GRAPH}/${waba}/message_templates`, {
+        method: 'POST', headers: { ...waHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name, language: 'en_US', category: 'UTILITY', allow_category_change: true,
+          components: [{ type: 'BODY', text: 'Lumen here. {{1}}\n\nReply any time to pick this up.', example: { body_text: [['Your morning read is ready.']] } }],
+        }),
+      }).then(r => r.json()).catch(e => ({ error: String(e) }))
+    }
+    return res.status(200).json({ waba, name, existing: existing || null, submitted, all: (list.data || []).map(t => `${t.name} · ${t.status} · ${t.category} · ${t.language}`) })
+  }
+
   if (req.method === 'GET' && (req.query || {}).admin === 'waba') {
     if ((req.query || {}).key !== process.env.MCP_TOKEN) return res.status(401).json({ error: 'unauthorized' })
     const waba = (req.query || {}).waba || process.env.WHATSAPP_WABA_ID
