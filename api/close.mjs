@@ -6,6 +6,7 @@
 // 3 AM Chicago the following morning.
 
 import { syncAll } from './_sync-core.mjs'
+import { strikeDay } from './_river.mjs'
 
 export const config = { maxDuration: 300 }
 
@@ -167,30 +168,9 @@ export default async function handler(req, res) {
     const signalScore = sigParts.length ? Math.round(100 * sigParts.reduce((s, v) => s + v, 0) / sigParts.length) : null
 
     // Each award carries its citation: the concrete actions that earned it.
-    const badges = []
-    const badgeWhy = {}
-    const award = (id, why) => { badges.push(id); badgeWhy[id] = why }
-    const few = (arr, n = 3) => arr.length > n ? `${arr.slice(0, n).join(', ')} +${arr.length - n} more` : arr.join(', ')
-    const waitingObjs = objectives.filter(o => o.state === 'waiting')
-    const delegatedObjs = [...releasedToday.filter(o => o.released_kind === 'foreman'), ...objectives.filter(o => o.state === 'foreman' && o.who)]
-    if (delegated) award('cartographer', `Delegated: ${few(delegatedObjs.map(o => o.who ? `${o.title} (${o.who})` : o.title))}`)
-    if (doneTasks.length >= 2) award('leverage', `${doneTasks.length} project tasks done: ${few(doneTasks.map(t => t.text))}`)
-    if (tasksDone >= 3) award('closer', `${tasksDone} completions: ${releasedToday.length} objectives released, ${doneTasks.length} project tasks done`)
-    if (waitingObjs.length) award('walling', `${waitingObjs.length} held at the wall as waiting: ${few(waitingObjs.map(o => o.title))}`)
-    if (tasksDone >= 2 && emergencies.length === 0) award('calm-water', `${tasksDone} completions with zero emergencies on the board`)
-    if (agentInbox.length === 0 && tasksDone >= 1) award('prospector', `Agent inbox cleared to zero with ${tasksDone} completions banked`)
-    if (davidHours >= 4) award('deep-work', `${Math.round(davidHours * 10) / 10}h logged by David today`)
-    if (readRate >= 0.8 && inboxEmails.length >= 10) award('correspondent', `${inboxEmails.filter(e => e.is_read).length} of ${inboxEmails.length} inbox emails read (${Math.round(readRate * 100)}%)`)
-    if (meetings.length >= 3) award('chronicler', `${meetings.length} meetings captured: ${few(meetings.map(m => m.title))}`)
-    if (signalScore !== null && signalScore >= 80 && sigParts.length >= 3) award('clear-signal', `Signal at ${signalScore}% across ${sigParts.length} instruments`)
-
-    let miles = 0
-    miles += Math.min(4, tasksDone * 1.25)
-    miles += Math.min(2, doneTasks.length + (delegated ? 1 : 0))
-    miles += Math.min(2, davidHours / 3)
-    miles += readRate >= 0.6 ? 1 : 0
-    miles += emergencies.length === 0 ? 1 : 0
-    miles = Math.round(Math.min(10, miles) * 10) / 10
+    let river = { badges: [], badge_evidence: {}, miles: 0, total: 0 }
+    try { river = await strikeDay(TARGET, { closing: true }) } catch (e) { console.error('river strike failed', e.message) }
+    const badges = river.badges, badgeWhy = river.badge_evidence, miles = river.miles
 
     const stateCounts = {}
     for (const o of objectives) stateCounts[o.state] = (stateCounts[o.state] || 0) + 1

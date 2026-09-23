@@ -88,11 +88,109 @@ const EMBLEMS = {
       <path d="M17.5 13.5 a 9 9 0 0 1 13 0 M20 16.5 a 5.5 5.5 0 0 1 8 0" fill="none" opacity="0.85" />
     </g>
   ),
+  // ---- River badges (miles_ledger). Same grammar: gold line art, faint fill.
+  // Main Mission Complete · a flag planted on the peak
+  'main-mission': (
+    <g>
+      <path d="M12 36 L21 22 L26 28 L31 19 L36 36 Z" fill="rgba(248,199,97,0.10)" />
+      <path d="M31 19 V10.5" />
+      <path d="M31 10.5 h7 l-2 2.5 l2 2.5 h-7 Z" fill="rgba(248,199,97,0.35)" />
+    </g>
+  ),
+  // Side Mission Complete · a small target, the arrow home
+  'side-mission': (
+    <g>
+      <circle cx="24" cy="25" r="10" fill="none" />
+      <circle cx="24" cy="25" r="5.5" fill="rgba(248,199,97,0.12)" />
+      <circle cx="24" cy="25" r="1.6" fill={GOLD} stroke="none" />
+      <path d="M24 25 L34 15" />
+      <path d="M31 15 h3.5 v3.5" />
+    </g>
+  ),
+  // Maintenance Bundle · the wrench, five turns
+  'maintenance-bundle': (
+    <g>
+      <path d="M29 13.5 a6 6 0 0 0 -7 8.2 L13.5 30.2 a2.4 2.4 0 0 0 3.4 3.4 L25.4 25 a6 6 0 0 0 8.2 -7 l-3.6 3.6 l-3.4 -0.8 l-0.8 -3.4 Z" fill="rgba(248,199,97,0.12)" />
+      <circle cx="15.5" cy="32" r="0.9" fill={GOLD} stroke="none" />
+    </g>
+  ),
+  // Exercise · the kettlebell
+  'exercise': (
+    <g>
+      <path d="M18.5 21 c-1.5 -7 3 -9 5.5 -9 s7 2 5.5 9" fill="none" />
+      <circle cx="24" cy="27.5" r="8" fill="rgba(248,199,97,0.12)" />
+      <path d="M20.5 27 q3.5 -2.5 7 0" strokeWidth="1.2" opacity="0.8" />
+    </g>
+  ),
+  // Sleep · the crescent moon over still water
+  'sleep': (
+    <g>
+      <path d="M27.5 13 a10 10 0 1 0 6.5 16.5 a8 8 0 0 1 -6.5 -16.5 Z" fill="rgba(248,199,97,0.12)" />
+      <circle cx="15" cy="17" r="1" fill={GOLD} stroke="none" />
+      <circle cx="19.5" cy="12.5" r="0.8" fill={GOLD} stroke="none" />
+      <path d="M13 35 q5.5 -3 11 0 t11 0" opacity="0.8" />
+    </g>
+  ),
+  // Toastmaster General · the microphone at the lectern
+  'toastmaster': (
+    <g>
+      <rect x="20" y="11.5" width="8" height="13" rx="4" fill="rgba(248,199,97,0.14)" />
+      <path d="M16.5 20.5 a7.5 7.5 0 0 0 15 0" fill="none" />
+      <path d="M24 28 V33" />
+      <path d="M17 36 h14" />
+      <path d="M22 16 h4 M22 19 h4" strokeWidth="1.1" opacity="0.7" />
+    </g>
+  ),
+  // Work Horse · the plow, furrow behind it
+  'work-horse': (
+    <g>
+      <path d="M13 34 q11 -2.5 22 0" opacity="0.7" />
+      <path d="M13 30 q11 -2.5 22 0" opacity="0.45" />
+      <path d="M31 13.5 L24 21 L20 25.5 L25 29.5" />
+      <path d="M31 13.5 L35 16.5" />
+      <path d="M17 25.5 h9" />
+      <path d="M22 21.5 L17 28 h5 Z" fill="rgba(248,199,97,0.18)" />
+    </g>
+  ),
+  // Clean Close · the door shut for the night
+  'clean-close': (
+    <g>
+      <rect x="15.5" y="12.5" width="17" height="24" rx="1.5" fill="rgba(248,199,97,0.10)" />
+      <rect x="19" y="16" width="10" height="7" rx="0.8" fill="none" strokeWidth="1.1" opacity="0.8" />
+      <circle cx="28.5" cy="27.5" r="1.4" fill={GOLD} stroke="none" />
+      <path d="M12.5 36.5 h23" />
+    </g>
+  ),
+  // Discomforter · a flame over cold water, on purpose
+  'discomforter': (
+    <g>
+      <path d="M24 11.5 c-1 4 -6 6 -6 11.5 a6 6 0 0 0 12 0 c0 -3.5 -2 -5 -2.5 -7.5 c-1 1.5 -2 2.5 -3.5 -4 Z" fill="rgba(248,199,97,0.14)" />
+      <path d="M22 26 a2.2 2.2 0 0 0 4 0 c0 -1.5 -1.2 -2.2 -2 -3.8 c-0.8 1.6 -2 2.3 -2 3.8 Z" fill={GOLD} stroke="none" opacity="0.7" />
+      <path d="M13 33 q5.5 -3.2 11 0 t11 0" />
+      <path d="M13 37 q5.5 -3.2 11 0 t11 0" opacity="0.6" />
+    </g>
+  ),
+  // Hygiene · the droplet with a spark
+  'hygiene': (
+    <g>
+      <path d="M24 12.5 c-4 6 -8 10 -8 15.5 a8 8 0 0 0 16 0 c0 -5.5 -4 -9.5 -8 -15.5 Z" fill="rgba(248,199,97,0.12)" />
+      <path d="M19.5 28.5 a4.5 4.5 0 0 0 3 4" strokeWidth="1.2" opacity="0.8" />
+      <path d="M34 15 v5 M31.5 17.5 h5" strokeWidth="1.3" />
+      <path d="M13.5 22 v3 M12 23.5 h3" strokeWidth="1.1" opacity="0.7" />
+    </g>
+  ),
 }
 
+// Unknown ids fall back to a plain struck coin: a single point at the center.
+const GENERIC = (
+  <g>
+    <circle cx="24" cy="25" r="7" fill="rgba(248,199,97,0.10)" />
+    <circle cx="24" cy="25" r="1.6" fill={GOLD} stroke="none" />
+  </g>
+)
+
 export default function BadgeMedallion({ id, size = 34, earned = true, glow = false }) {
-  const emblem = EMBLEMS[id]
-  if (!emblem) return null
+  const emblem = EMBLEMS[id] || GENERIC
   const stroke = earned ? GOLD : 'rgba(234,241,248,0.28)'
   return (
     <svg width={size} height={size} viewBox="0 0 48 48" aria-hidden="true" style={{

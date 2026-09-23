@@ -5,6 +5,7 @@
 // Env (Vercel project): SUPABASE_SERVICE_KEY, ANTHROPIC_API_KEY.
 
 import { syncAll } from './_sync-core.mjs'
+import { strikeDay } from './_river.mjs'
 
 export const config = { maxDuration: 300 }
 
@@ -186,49 +187,16 @@ export default async function handler(req, res) {
       inbox: inboxRate !== null ? Math.round(inboxRate * 100) : null,
     }
 
-    // ---- badges: the intrinsic scoreboard (Volume II, Requirement 1).
-    // Deterministic rules only; the model never judges. Loot rules: completion
-    // and deployment earn, calm is rewarded, crisis endurance never is.
-    const delegatedToday = objectives.filter(o => o.state === 'foreman' && o.who)
-    const emergencies = objectives.filter(o => o.is_emergency && ['active', 'parked', 'waiting', 'inbox'].includes(o.state))
-    const agentInbox = objectives.filter(o => (o.tags || []).includes('agent') && o.state === 'inbox')
-    const readRate = inboxEmails.length ? scorecard.emails_read / inboxEmails.length : 0
-    // Each award carries its citation: the concrete actions that earned it.
-    const badges = []
-    const badgeWhy = {}
-    const award = (id, why) => { badges.push(id); badgeWhy[id] = why }
-    const few = (arr, n = 3) => arr.length > n ? `${arr.slice(0, n).join(', ')} +${arr.length - n} more` : arr.join(', ')
-    const waitingObjs = objectives.filter(o => o.state === 'waiting')
-    const relForeman = releasedToday.filter(o => o.released_kind === 'foreman')
-    // Master Architect track (design over domination, leverage, handoff)
-    if (relForeman.length || delegatedToday.length >= 1)
-      award('cartographer', `Delegated: ${few([...relForeman, ...delegatedToday].map(o => o.who ? `${o.title} (${o.who})` : o.title))}`)
-    if (doneTasks.length >= 2) award('leverage', `${doneTasks.length} project tasks done: ${few(doneTasks.map(t => t.text))}`)
-    if (scorecard.tasks_done >= 3) award('closer', `${scorecard.tasks_done} completions: ${releasedToday.length} objectives released, ${doneTasks.length} project tasks done`)
-    // Integrated Sovereign track (strength without rigidity, boundaries)
-    if (waitingObjs.length) award('walling', `${waitingObjs.length} held at the wall as waiting: ${few(waitingObjs.map(o => o.title))}`)
-    if (scorecard.tasks_done >= 2 && emergencies.length === 0) award('calm-water', `${scorecard.tasks_done} completions with zero emergencies on the board`)
-    if (agentInbox.length === 0 && scorecard.tasks_done >= 1) award('prospector', `Agent inbox cleared to zero with ${scorecard.tasks_done} completions banked`)
-    // Playbound Creator + production
-    if (scorecard.hours_david >= 4) award('deep-work', `${scorecard.hours_david}h logged by David today`)
-    if (readRate >= 0.8 && inboxEmails.length >= 10) award('correspondent', `${scorecard.emails_read} of ${inboxEmails.length} inbox emails read (${Math.round(readRate * 100)}%)`)
-    if (meetings.length >= 3) award('chronicler', `${meetings.length} meetings captured: ${few(meetings.map(m => m.title))}`)
-    // Perception track: the day is fully legible to the agent
-    if (signalScore !== null && signalScore >= 80 && sigParts.length >= 3) award('clear-signal', `Signal at ${signalScore}% across ${sigParts.length} instruments`)
-    scorecard.badges = badges
-    scorecard.badge_evidence = badgeWhy
-    // Deterministic release list: the Haul drops these by title, never by prose.
+    // ---- badges and miles: the River strikes the day's awards into miles_ledger
+    // (deterministic, idempotent); the scorecard carries the result.
+    let river = { badges: [], badge_evidence: {}, miles: 0, total: 0 }
+    try { river = await strikeDay(TODAY) } catch (e) { console.error('river strike failed', e.message) }
+    scorecard.badges = river.badges
+    scorecard.badge_evidence = river.badge_evidence
+    scorecard.river_total = river.total
     scorecard.released_today = releasedToday.map(o => o.title)
 
-    // ---- miles made: the day's precision score, 0-10. Completion-weighted,
-    // calm-bonused, never crisis-rewarded. Collected into the Day Library.
-    let miles = 0
-    miles += Math.min(4, scorecard.tasks_done * 1.25)              // completion is the core
-    miles += Math.min(2, doneTasks.length + (delegatedToday.length ? 1 : 0)) // deployment/handoff
-    miles += Math.min(2, scorecard.hours_david / 3)                // real engagement, capped low
-    miles += readRate >= 0.6 ? 1 : 0                               // correspondence handled
-    miles += emergencies.length === 0 ? 1 : 0                      // calm water bonus
-    scorecard.miles = Math.round(Math.min(10, miles) * 10) / 10
+    scorecard.miles = river.miles
     // Give the composer its own telemetry: the deterministic numbers plus an
     // awareness of how much of the day it can actually see.
     payload.deterministic_scorecard = scorecard

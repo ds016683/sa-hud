@@ -2218,7 +2218,7 @@ export default function ObjectivesPage() {
   return (
     <div style={{ ...S.page, background: PAGE_BG }}>
       <div style={{ marginBottom: 16 }}>
-        <h1 style={S.h1}>Objectives</h1>
+        <h1 style={S.h1}>Side Missions</h1>
         <div style={S.sub}>The infinite game · capacity 15 · sovereignty is what's left after pressure</div>
       </div>
 

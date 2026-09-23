@@ -162,6 +162,26 @@ export const TOOLS = [
     inputSchema: { type: 'object', properties: { message_id: { type: 'string' }, filename: { type: 'string' }, max_chars: { type: 'integer' } }, required: ['message_id'] },
   },
   {
+    name: 'log_day',
+    description: "Log something David did or is about to do today, for the River's badges. kind: 'discomfort' (he tells you he is about to do something consciously uncomfortable; three a day strike Discomforter), 'hygiene' (what: 'brush', 'shower', or 'whiten'; teeth three times plus shower plus whitening strike Hygiene), 'exercise' (value: minutes; 60 in a day strikes Exercise), 'sleep' (value: hours; 6 strikes Sleep), 'note' (a thought he wants kept in the day's record), 'activity' (something he did that no pipe sees: a call, a document, a decision). Log silently and confirm in a few words; never lecture.",
+    inputSchema: { type: 'object', properties: { kind: { type: 'string', enum: ['discomfort', 'hygiene', 'exercise', 'sleep', 'note', 'activity'] }, what: { type: 'string', description: 'short label of the thing' }, value: { type: 'number', description: 'minutes for exercise, hours for sleep' }, note: { type: 'string' }, day: { type: 'string', description: 'YYYY-MM-DD, default today (Chicago)' } }, required: ['kind'] },
+  },
+  {
+    name: 'get_river',
+    description: "The River: miles banked toward Calm Water (10,535), today's badges and miles, and what is still open to earn today (discomforts logged so far, hygiene items, exercise minutes, sleep).",
+    inputSchema: { type: 'object', properties: { day: { type: 'string' } }, required: [] },
+  },
+  {
+    name: 'add_maintenance',
+    description: "Add a maintenance item (the small recurring upkeep of a life: content, hygiene, exercise, other). Five done in a day strike a Maintenance Bundle.",
+    inputSchema: { type: 'object', properties: { title: { type: 'string' }, category: { type: 'string', enum: ['content', 'hygiene', 'exercise', 'other'] }, cadence: { type: 'string' } }, required: ['title', 'category'] },
+  },
+  {
+    name: 'complete_maintenance',
+    description: 'Mark an open maintenance item done today by matching its title (exact-then-contains).',
+    inputSchema: { type: 'object', properties: { title: { type: 'string' } }, required: ['title'] },
+  },
+  {
     name: 'get_day',
     description: 'A finished day from the Day Library: the definitive Daily Report record plus its collection scorecard (miles, grade, badges, signal). Date format YYYY-MM-DD.',
     inputSchema: { type: 'object', properties: { date: { type: 'string', description: 'YYYY-MM-DD' } }, required: ['date'] },
@@ -390,6 +410,43 @@ export async function callTool(name, args = {}) {
       if (!bin.ok) throw new Error(`attachment download -> ${bin.status}`)
       const doc = await extractText(new Uint8Array(await bin.arrayBuffer()), pick.name, pick.contentType || '')
       return JSON.stringify({ ok: true, name: pick.name, kind: doc.kind, pages: doc.pages, note: doc.note, text: clip(doc.text, Number(args.max_chars) || 24000) })
+    }
+    case 'log_day': {
+      const day = String(args.day || chiToday()).slice(0, 10)
+      const row = { day, kind: args.kind, what: args.what ? String(args.what).slice(0, 200) : null, value: args.value != null ? Number(args.value) : null, note: args.note ? String(args.note).slice(0, 2000) : null, source: 'lumen' }
+      const out = await sbWrite('POST', 'daily_logs', row)
+      const counts = await sb(`daily_logs?select=kind&day=eq.${day}`)
+      const n = counts.filter(c => c.kind === args.kind).length
+      return JSON.stringify({ ok: true, logged: out?.[0] || row, count_today_for_kind: n })
+    }
+    case 'get_river': {
+      const day = String(args.day || chiToday()).slice(0, 10)
+      const [all, today, logs] = await Promise.all([
+        sb(`miles_ledger?select=miles`), sb(`miles_ledger?select=badge,miles,evidence&day=eq.${day}&order=id.asc`), sb(`daily_logs?select=kind,what,value,at&day=eq.${day}&order=at.asc`),
+      ])
+      const total = Math.round(all.reduce((s, r) => s + Number(r.miles || 0), 0) * 100) / 100
+      const byKind = (k) => logs.filter(l => l.kind === k)
+      return JSON.stringify({
+        day, miles_total: total, miles_remaining: Math.round((10535 - total) * 100) / 100, miles_today: Math.round(today.reduce((s, r) => s + Number(r.miles || 0), 0) * 100) / 100,
+        badges_today: today, open_today: {
+          discomforts_logged: byKind('discomfort').length, discomforts_needed: 3,
+          hygiene_logged: byKind('hygiene').map(l => l.what), hygiene_needed: ['brush x3', 'shower', 'whiten'],
+          exercise_minutes: byKind('exercise').reduce((s, l) => s + (Number(l.value) || 0), 0), exercise_needed: 60,
+          sleep_hours: Math.max(0, ...byKind('sleep').map(l => Number(l.value) || 0)), sleep_needed: 6,
+        },
+      }, null, 2)
+    }
+    case 'add_maintenance': {
+      const out = await sbWrite('POST', 'maintenance_items', { title: String(args.title || '').trim(), category: args.category || 'other', cadence: args.cadence || null, status: 'open' })
+      return JSON.stringify({ ok: true, item: out?.[0] })
+    }
+    case 'complete_maintenance': {
+      const q = esc(args.title || '')
+      let ts = await sb(`maintenance_items?select=id,title&status=eq.open&title=ilike.${encodeURIComponent(q)}&limit=5`)
+      if (ts.length !== 1) ts = await sb(`maintenance_items?select=id,title&status=eq.open&title=ilike.*${encodeURIComponent(q)}*&limit=5`)
+      if (ts.length !== 1) throw new Error(ts.length ? `ambiguous: ${ts.map(t => t.title).join(' | ')}` : `no open maintenance item matches "${args.title}"`)
+      await sbWrite('PATCH', `maintenance_items?id=eq.${ts[0].id}`, { status: 'done', day: chiToday(), done_at: new Date().toISOString() }, 'return=minimal')
+      return JSON.stringify({ ok: true, completed: ts[0].title })
     }
     case 'get_day': {
       const date = String(args.date || '').slice(0, 10)

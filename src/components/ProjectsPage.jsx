@@ -440,7 +440,7 @@ export default function ProjectsPage() {
     <div style={S.page}>
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16, flexWrap: 'wrap' }}>
         <div style={{ flex: 1, minWidth: 260 }}>
-          <h1 style={S.h1}>Projects</h1>
+          <h1 style={S.h1}>Main Missions</h1>
           <div style={S.sub}>
             {active.length} standing · {blockedTotal > 0 ? `${blockedTotal} decisions waiting on you` : 'nothing waiting on you'}
           </div>

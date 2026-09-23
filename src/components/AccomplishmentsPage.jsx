@@ -1,221 +1,259 @@
-import { useMemo } from 'react'
-import { Check, X as XIcon, ArrowUpRight, Plus, Sparkles } from 'lucide-react'
-import useObjectives from '../hooks/useObjectives'
+// ACCOMPLISHMENTS. Badges only. Every badge carries miles; miles are the only
+// thing that moves David down the river. Awards are struck server-side into
+// miles_ledger; this page reads the ledger and presents the catalogue.
+import { useEffect, useMemo, useState } from 'react'
+import { ChevronLeft, ChevronRight, X as XIcon } from 'lucide-react'
+import { supabase } from '../lib/supabase'
+import { BADGES, RIVER_TOTAL_MILES } from '../constants/collection'
+import BadgeMedallion from './BadgeArt'
+import {
+  INK, INK2, GRAY, PANEL_BORDER, GOLD, GOLD_BRIGHT, BLUE, MONO, SERIF,
+  S, Eyebrow, Label, Stat, Panel, chiToday, fmtDay,
+} from './river/canon'
 
-const NAVY = '#002C77'
-const GRAY = '#5E7187'
-const TEAL = '#0F766E'
-const PANEL_BORDER = '#E1E8F0'
-const GOLD = '#D4A106'
-
-const S = {
-  panel: {
-    background: 'white',
-    border: `1px solid ${PANEL_BORDER}`,
-    borderRadius: 10,
-    padding: 16,
-    marginBottom: 14,
-  },
-  panelTitle: {
-    fontSize: 11,
-    fontWeight: 700,
-    color: NAVY,
-    textTransform: 'uppercase',
-    letterSpacing: '0.08em',
-    marginBottom: 10,
-  },
-  pill: (bg, fg) => ({
-    background: bg,
-    color: fg,
-    fontWeight: 600,
-    fontSize: 10,
-    padding: '2px 8px',
-    borderRadius: 999,
-    textTransform: 'uppercase',
-    letterSpacing: '0.05em',
-    display: 'inline-flex',
-    alignItems: 'center',
-    gap: 4,
-  }),
+// ---- Day helpers (Chicago day strings, YYYY-MM-DD)
+const shiftDay = (day, n) => {
+  const d = new Date(day + 'T12:00:00')
+  d.setDate(d.getDate() + n)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
-
-// CT-local "today" — matches DB rows which are keyed on David's CT day, not UTC.
-const todayStr = () => {
-  const fmt = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Chicago', year:'numeric', month:'2-digit', day:'2-digit' })
-  return fmt.format(new Date())
+const weekBounds = (day) => {
+  const dow = new Date(day + 'T12:00:00').getDay() // 0 = Sunday
+  const mon = shiftDay(day, -((dow + 6) % 7))
+  return { mon, sun: shiftDay(mon, 6) }
 }
-const ctDayOf = (iso) => {
-  if (!iso) return null
-  const fmt = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Chicago', year:'numeric', month:'2-digit', day:'2-digit' })
-  return fmt.format(new Date(iso))
+const fmtMiles = (m) => {
+  const n = Number(m) || 0
+  return Number.isInteger(n) ? String(n) : n.toFixed(n < 1 ? 2 : 1).replace(/\.?0+$/, '')
 }
-const isToday = (iso) => iso && ctDayOf(iso) === todayStr()
+const shortDay = (day) => day ? new Date(day + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : ''
 
-function HabitRow({ ok, label, icon }) {
+const CATALOGUE = Object.entries(BADGES).filter(([, b]) => !b.legacy).map(([id, b]) => ({ id, ...b }))
+
+// ---- Small pieces
+const MilesChip = ({ miles, bright = false }) => (
+  <span style={{ ...S.chip('rgba(248,199,97,0.10)', bright ? GOLD_BRIGHT : GOLD), border: `1px solid ${GOLD}55`, fontFamily: MONO, fontWeight: 600, fontSize: 9.5, letterSpacing: '1px', padding: '2px 8px' }}>
+    {fmtMiles(miles)} MI
+  </span>
+)
+const RepeatChip = () => (
+  <span style={{ ...S.chip('transparent', BLUE), border: `1px solid ${BLUE}55`, fontFamily: MONO, fontWeight: 600, fontSize: 8.5, letterSpacing: '1px', padding: '1px 7px' }}>repeatable</span>
+)
+
+function DayControl({ day, onPrev, onNext, canNext }) {
+  const btn = (disabled) => ({
+    width: 28, height: 28, borderRadius: 8, border: `1px solid ${PANEL_BORDER}`, background: 'transparent',
+    color: disabled ? GRAY : INK, cursor: disabled ? 'default' : 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', opacity: disabled ? 0.4 : 1,
+  })
   return (
-    <div style={{
-      display: 'flex', alignItems: 'center', gap: 10,
-      padding: '10px 12px',
-      borderRadius: 8,
-      background: ok ? '#F0FDF4' : '#F8FAFC',
-      border: `1px solid ${ok ? '#86EFAC' : PANEL_BORDER}`,
-      marginBottom: 6,
-    }}>
-      <div style={{ fontSize: 18 }}>{icon}</div>
-      <div style={{ flex: 1, fontSize: 13, color: NAVY, fontWeight: 500 }}>{label}</div>
-      {ok ? (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: '#15803D', fontWeight: 700, fontSize: 12 }}>
-          <Check size={14} /> done
-        </div>
-      ) : (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: GRAY, fontSize: 12 }}>
-          <XIcon size={12} /> not yet
-        </div>
-      )}
+    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 10 }}>
+      <button onClick={onPrev} style={btn(false)} aria-label="Previous day"><ChevronLeft size={14} /></button>
+      <span style={{ fontFamily: MONO, fontSize: 11, letterSpacing: '1.2px', textTransform: 'uppercase', color: INK2, minWidth: 220, textAlign: 'center' }}>{fmtDay(day)}</span>
+      <button onClick={canNext ? onNext : undefined} style={btn(!canNext)} aria-label="Next day" disabled={!canNext}><ChevronRight size={14} /></button>
     </div>
   )
 }
 
-function ItemRow({ o, accent }) {
+function StruckRow({ row }) {
+  const b = BADGES[row.badge]
   return (
-    <div style={{
-      display: 'flex', alignItems: 'center', gap: 8,
-      padding: '8px 10px',
-      borderTop: `1px solid ${PANEL_BORDER}`,
-      fontSize: 12,
-    }}>
-      <div style={{ flex: 1, color: NAVY, fontWeight: 500, lineHeight: 1.3 }}>
-        {o.title}
-        {o.stakeholder && <span style={{ marginLeft: 8, fontSize: 10, color: '#075985' }}>← {o.stakeholder}</span>}
-        {o.who && <span style={{ marginLeft: 8, fontSize: 10, color: GRAY }}>→ {o.who}</span>}
+    <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start', padding: '12px 0', borderTop: `1px solid ${PANEL_BORDER}` }}>
+      <BadgeMedallion id={row.badge} size={54} glow />
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+          <span style={{ fontFamily: SERIF, fontSize: 17, fontWeight: 500, color: '#fff', letterSpacing: '-0.01em' }}>{b?.label || row.badge}</span>
+          <MilesChip miles={row.miles} bright />
+        </div>
+        {row.evidence && <div style={{ fontSize: 12.5, lineHeight: 1.55, color: INK2, marginTop: 5 }}>{row.evidence}</div>}
+        {b?.lore && <div style={{ fontSize: 11.5, color: GRAY, fontStyle: 'italic', marginTop: 4 }}>{b.lore}</div>}
       </div>
-      <span style={{ ...S.pill('#F1F5F9', NAVY), fontSize: 9 }}>E{o.effort}·I{o.importance}</span>
-      <span style={{ ...S.pill(accent.bg, accent.fg), fontSize: 9 }}>+{(o.effort||0) * (o.importance||0)}</span>
+    </div>
+  )
+}
+
+function BadgeCard({ badge, history, onOpen }) {
+  const n = history.length
+  const last = n ? history[0].day : null
+  return (
+    <div onClick={() => onOpen(badge.id)} role="button" tabIndex={0} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') onOpen(badge.id) }} style={{
+      ...S.panel, marginBottom: 0, cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: 10,
+      opacity: n > 0 ? 1 : 0.85, transition: 'border-color 160ms',
+    }}
+      onMouseEnter={e => { e.currentTarget.style.borderColor = `${GOLD}66` }}
+      onMouseLeave={e => { e.currentTarget.style.borderColor = PANEL_BORDER }}
+    >
+      <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+        <BadgeMedallion id={badge.id} size={48} earned={n > 0} />
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontFamily: SERIF, fontSize: 16, fontWeight: 500, color: '#fff', letterSpacing: '-0.01em', lineHeight: 1.2 }}>{badge.label}</div>
+          <div style={{ display: 'flex', gap: 6, marginTop: 6, flexWrap: 'wrap' }}>
+            <MilesChip miles={badge.miles} />
+            {badge.repeatable && <RepeatChip />}
+          </div>
+        </div>
+      </div>
+      <div style={{ fontSize: 12.5, lineHeight: 1.55, color: INK2 }}>{badge.desc}</div>
+      <div style={{ fontSize: 12, lineHeight: 1.5, color: GRAY, fontStyle: 'italic' }}>{badge.lore}</div>
+      <div>
+        <Label>How it is earned</Label>
+        <div style={{ fontSize: 12, lineHeight: 1.5, color: INK2 }}>{badge.desc}</div>
+      </div>
+      <div style={{ ...S.source, marginTop: 'auto', paddingTop: 10, borderTop: `1px solid ${PANEL_BORDER}`, color: n > 0 ? GOLD : GRAY }}>
+        {n > 0 ? `struck ${n} time${n === 1 ? '' : 's'} · last ${shortDay(last)}` : 'never struck yet'}
+      </div>
+    </div>
+  )
+}
+
+function HistoryModal({ badgeId, history, onClose }) {
+  const b = BADGES[badgeId]
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === 'Escape') onClose() }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [onClose])
+  if (!b) return null
+  const total = history.reduce((s, r) => s + (Number(r.miles) || 0), 0)
+  return (
+    <div onClick={onClose} style={{
+      position: 'fixed', inset: 0, zIndex: 250, cursor: 'pointer',
+      background: 'rgba(8,20,32,0.88)', backdropFilter: 'blur(4px)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24,
+    }}>
+      <div onClick={e => e.stopPropagation()} style={{
+        maxWidth: 520, width: '100%', maxHeight: '80vh', overflowY: 'auto', cursor: 'default',
+        background: '#10273B', border: `1px solid ${PANEL_BORDER}`, borderRadius: 14, padding: '24px 26px 22px',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14 }}>
+          <BadgeMedallion id={badgeId} size={64} earned={history.length > 0} glow={history.length > 0} />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <Eyebrow style={{ marginBottom: 6 }}>Award history</Eyebrow>
+            <div style={{ fontFamily: SERIF, fontSize: 22, fontWeight: 500, color: '#fff', letterSpacing: '-0.01em' }}>{b.label}</div>
+            <div style={{ display: 'flex', gap: 6, marginTop: 6, flexWrap: 'wrap' }}>
+              <MilesChip miles={b.miles} />
+              {b.repeatable && <RepeatChip />}
+            </div>
+          </div>
+          <button onClick={onClose} aria-label="Close" style={{ width: 28, height: 28, borderRadius: 8, border: `1px solid ${PANEL_BORDER}`, background: 'transparent', color: INK2, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <XIcon size={14} />
+          </button>
+        </div>
+        <div style={{ fontSize: 12, color: GRAY, fontStyle: 'italic', marginTop: 12 }}>{b.lore}</div>
+
+        <div style={{ marginTop: 18, paddingTop: 14, borderTop: `1px solid ${PANEL_BORDER}` }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 8 }}>
+            <Label style={{ marginBottom: 0 }}>{history.length} award{history.length === 1 ? '' : 's'}</Label>
+            <span style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '1px', color: GOLD }}>{fmtMiles(total)} MI BANKED</span>
+          </div>
+          {history.length === 0 ? (
+            <div style={{ fontSize: 12.5, color: GRAY, padding: '10px 0' }}>Never struck yet.</div>
+          ) : (
+            history.map((r, i) => (
+              <div key={r.id || i} style={{ display: 'grid', gridTemplateColumns: '92px 56px 1fr', gap: 10, alignItems: 'start', padding: '9px 0', borderTop: i ? `1px solid ${PANEL_BORDER}` : 'none' }}>
+                <div style={{ fontFamily: MONO, fontSize: 10.5, letterSpacing: '0.6px', color: INK2, paddingTop: 2 }}>{shortDay(r.day)}{r.day ? `, ${r.day.slice(0, 4)}` : ''}</div>
+                <div style={{ fontFamily: SERIF, fontSize: 15, fontWeight: 500, color: GOLD }}>{fmtMiles(r.miles)}<span style={{ fontSize: 9.5, fontFamily: MONO, color: GRAY, marginLeft: 3 }}>MI</span></div>
+                <div style={{ fontSize: 12.5, lineHeight: 1.5, color: INK2 }}>{r.evidence || <span style={{ color: GRAY }}>no citation recorded</span>}</div>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
     </div>
   )
 }
 
 export default function AccomplishmentsPage() {
-  const { loading, objectives, habit, meditation } = useObjectives()
+  const [ledger, setLedger] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [day, setDay] = useState(chiToday)
+  const [open, setOpen] = useState(null)
 
-  const { released, newToday, delegatedToday, totalScore } = useMemo(() => {
-    const released = objectives.filter(o => o.released_kind === 'done' && isToday(o.released_at))
-    const delegatedToday = objectives.filter(o => o.released_kind === 'foreman' && isToday(o.released_at))
-    const newToday = objectives.filter(o => isToday(o.captured_at))
-    const totalScore = released.reduce((sum, o) => sum + (o.effort || 0) * (o.importance || 0), 0)
-    return { released, newToday, delegatedToday, totalScore }
-  }, [objectives])
+  useEffect(() => {
+    let alive = true
+    const load = async () => {
+      const { data, error } = await supabase
+        .from('miles_ledger')
+        .select('id,day,badge,key,miles,evidence,awarded_at')
+        .order('awarded_at', { ascending: false })
+        .limit(5000)
+      if (error) console.warn('miles_ledger fetch', error.message)
+      if (alive) { setLedger(Array.isArray(data) ? data : []); setLoading(false) }
+    }
+    load()
+    const id = setInterval(load, 60_000)
+    return () => { alive = false; clearInterval(id) }
+  }, [])
 
-  const habitsCompleted = [habit?.sleep_ok, habit?.devotional, habit?.meditation, habit?.gym].filter(Boolean).length
-  const meditationAnswered = !!(meditation && (meditation.rock_answer || meditation.coal_answer || meditation.gem_answer))
+  const today = chiToday()
+  const { mon, sun } = weekBounds(today)
 
-  if (loading) {
-    return (
-      <div style={{ padding: 40, textAlign: 'center', color: GRAY, fontFamily: 'Arial, Helvetica, sans-serif' }}>
-        Loading...
-      </div>
-    )
-  }
+  const totals = useMemo(() => {
+    const sum = (rows) => rows.reduce((s, r) => s + (Number(r.miles) || 0), 0)
+    return {
+      all: sum(ledger),
+      week: sum(ledger.filter(r => r.day >= mon && r.day <= sun)),
+      today: sum(ledger.filter(r => r.day === today)),
+      struck: ledger.length,
+    }
+  }, [ledger, mon, sun, today])
+
+  const byBadge = useMemo(() => {
+    const m = {}
+    for (const r of ledger) (m[r.badge] ||= []).push(r)
+    for (const k in m) m[k].sort((a, b) => (b.awarded_at || b.day || '').localeCompare(a.awarded_at || a.day || ''))
+    return m
+  }, [ledger])
+
+  const struckOnDay = useMemo(() => ledger.filter(r => r.day === day).sort((a, b) => (a.awarded_at || '').localeCompare(b.awarded_at || '')), [ledger, day])
+
+  const pct = RIVER_TOTAL_MILES ? Math.min(100, (totals.all / RIVER_TOTAL_MILES) * 100) : 0
 
   return (
-    <div style={{
-      maxWidth: 880,
-      margin: '0 auto',
-      padding: '24px 20px 60px',
-      fontFamily: 'Arial, Helvetica, sans-serif',
-      color: NAVY,
-    }}>
-      {/* Header */}
-      <div style={{ marginBottom: 20 }}>
-        <div style={{ fontSize: 11, color: GRAY, textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: 4 }}>
-          {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
-        </div>
-        <div style={{ fontSize: 22, fontWeight: 700, color: NAVY, display: 'flex', alignItems: 'center', gap: 8 }}>
-          <Sparkles size={20} color={GOLD} />
-          Today's Accomplishments
-        </div>
-        <div style={{ fontSize: 12, color: GRAY, marginTop: 4 }}>
-          You've already arrived. Here's what that looks like today.
-        </div>
+    <div style={S.page}>
+      <div style={{ marginBottom: 24 }}>
+        <Eyebrow>Accomplishments</Eyebrow>
+        <h1 style={S.h1}>Badges</h1>
+        <p style={S.sub}>each badge carries miles · miles move you down the river</p>
       </div>
 
-      {/* Habits — lead */}
-      <div style={S.panel}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 10 }}>
-          <div style={S.panelTitle}>Habits · {habitsCompleted} of 4</div>
-          <div style={{ fontSize: 10, color: GRAY }}>foundation</div>
+      <Panel>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 14 }}>
+          <Stat v={loading ? '·' : fmtMiles(totals.all)} l={`Miles banked · of ${RIVER_TOTAL_MILES.toLocaleString()} to Calm Water`} color={GOLD} />
+          <Stat v={loading ? '·' : fmtMiles(totals.week)} l="This week · Monday to Sunday" />
+          <Stat v={loading ? '·' : fmtMiles(totals.today)} l="Today" color={totals.today > 0 ? GOLD_BRIGHT : '#fff'} />
+          <Stat v={loading ? '·' : totals.struck} l="Badges struck" />
         </div>
-        <HabitRow ok={!!habit?.sleep_ok}   label="Sleep"      icon="💤" />
-        <HabitRow ok={!!habit?.devotional} label="Devotional" icon="📖" />
-        <HabitRow ok={!!habit?.meditation} label="Meditation" icon="🧘" />
-        <HabitRow ok={!!habit?.gym}        label="Gym"        icon="🏋️" />
+        <div style={{ marginTop: 14, height: 3, borderRadius: 2, background: 'rgba(255,255,255,0.06)', overflow: 'hidden' }}>
+          <div style={{ width: `${pct}%`, height: '100%', background: GOLD, transition: 'width 400ms' }} />
+        </div>
+        <div style={S.source}>RIVER · {pct.toFixed(pct < 1 ? 2 : 1)}% of the way</div>
+      </Panel>
 
-        {/* Morning meditation answers — bonus signal */}
-        <div style={{
-          marginTop: 10, padding: '8px 12px',
-          background: meditationAnswered ? '#F0FDF4' : '#F8FAFC',
-          border: `1px solid ${meditationAnswered ? '#86EFAC' : PANEL_BORDER}`,
-          borderRadius: 8,
-          display: 'flex', alignItems: 'center', gap: 10, fontSize: 12,
-        }}>
-          <div style={{ fontSize: 16 }}>🌅</div>
-          <div style={{ flex: 1, color: NAVY, fontWeight: 500 }}>Morning Arrival</div>
-          {meditationAnswered
-            ? <div style={{ color: '#15803D', fontWeight: 700, fontSize: 12, display:'inline-flex', alignItems:'center', gap:4 }}><Check size={14} /> answered</div>
-            : <div style={{ color: GRAY, fontSize: 12 }}>not yet</div>}
+      <Panel>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap', marginBottom: 6 }}>
+          <div style={S.panelTitle}>Struck on {fmtDay(day)}</div>
+          <DayControl day={day} onPrev={() => setDay(d => shiftDay(d, -1))} onNext={() => setDay(d => shiftDay(d, 1))} canNext={day < today} />
         </div>
-      </div>
-
-      {/* Released today */}
-      <div style={S.panel}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 10 }}>
-          <div style={S.panelTitle}>Released today · {released.length}</div>
-          <div style={{ fontSize: 11, color: TEAL, fontWeight: 700 }}>
-            Total score: {totalScore}
-          </div>
-        </div>
-        {released.length === 0 ? (
-          <div style={{ fontSize: 12, color: GRAY, fontStyle: 'italic', padding: '4px 0' }}>
-            Nothing released yet today. The day's still in motion.
+        {struckOnDay.length === 0 ? (
+          <div style={{ padding: '14px 0 6px' }}>
+            <div style={{ fontFamily: SERIF, fontSize: 17, fontWeight: 500, color: '#fff', letterSpacing: '-0.01em' }}>{day === today ? 'Nothing struck yet today.' : 'Nothing struck that day.'}</div>
+            <div style={{ fontSize: 12, color: GRAY, marginTop: 4 }}>The ledger strikes on the rules below.</div>
           </div>
         ) : (
-          <div>{released.map(o => <ItemRow key={o.id} o={o} accent={{ bg: '#D1FAE5', fg: '#065F46' }} />)}</div>
+          <div>
+            {struckOnDay.map((r, i) => <StruckRow key={r.id || i} row={r} />)}
+            <div style={{ ...S.source, color: GOLD }}>{fmtMiles(struckOnDay.reduce((s, r) => s + (Number(r.miles) || 0), 0))} MI struck · {struckOnDay.length} badge{struckOnDay.length === 1 ? '' : 's'}</div>
+          </div>
         )}
-      </div>
+      </Panel>
 
-      {/* New today */}
-      <div style={S.panel}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 10 }}>
-          <div style={S.panelTitle}>New today · {newToday.length}</div>
-          <div style={{ fontSize: 10, color: GRAY, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-            <Plus size={11} /> captured
-          </div>
-        </div>
-        {newToday.length === 0 ? (
-          <div style={{ fontSize: 12, color: GRAY, fontStyle: 'italic', padding: '4px 0' }}>
-            No new captures yet today.
-          </div>
-        ) : (
-          <div>{newToday.map(o => <ItemRow key={o.id} o={o} accent={{ bg: '#DBEAFE', fg: '#1E40AF' }} />)}</div>
-        )}
+      <div style={{ ...S.panelTitle, marginTop: 24 }}>The catalogue</div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 12 }}>
+        {CATALOGUE.map(b => <BadgeCard key={b.id} badge={b} history={byBadge[b.id] || []} onOpen={setOpen} />)}
       </div>
+      <div style={S.source}>SOURCE · miles_ledger · struck by deterministic rules at close</div>
 
-      {/* Delegated today */}
-      <div style={S.panel}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 10 }}>
-          <div style={S.panelTitle}>Delegated today · {delegatedToday.length}</div>
-          <div style={{ fontSize: 10, color: '#6D28D9', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-            <ArrowUpRight size={11} /> released to foreman
-          </div>
-        </div>
-        {delegatedToday.length === 0 ? (
-          <div style={{ fontSize: 12, color: GRAY, fontStyle: 'italic', padding: '4px 0' }}>
-            Nothing handed off today.
-          </div>
-        ) : (
-          <div>{delegatedToday.map(o => <ItemRow key={o.id} o={o} accent={{ bg: '#EDE9FE', fg: '#6D28D9' }} />)}</div>
-        )}
-      </div>
+      {open && <HistoryModal badgeId={open} history={byBadge[open] || []} onClose={() => setOpen(null)} />}
     </div>
   )
 }

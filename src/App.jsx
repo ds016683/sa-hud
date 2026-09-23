@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import {
   LayoutGrid, Network, LogOut, Menu, X, Target, Users,
-  FileText, MessageSquare, Wallet, CreditCard, Brain, Gauge, ListChecks, BookMarked, Compass,
+  FileText, Wallet, CreditCard, ListChecks, Compass, Waves, CalendarDays, BookOpen, Activity, Award, Wrench, GraduationCap, Sparkles,
 } from 'lucide-react'
 import { getSession, onAuthStateChange, signOut } from './lib/auth'
 import { statusFor, greetingFor } from './constants/saDesign'
@@ -12,29 +12,37 @@ import EcosystemPage from './components/EcosystemPage'
 import MeetingNotesPage from './components/MeetingNotesPage'
 import ObjectivesPage from './components/ObjectivesPage'
 import RelationshipsPage from './components/RelationshipsPage'
-import SlackPage from './components/SlackPage'
 import CompanyFinancePage from './components/CompanyFinancePage'
 import PersonalFinancePage from './components/PersonalFinancePage'
-import DailyPerformancePage from './components/DailyPerformancePage'
 import SessionBoardsPage from './components/SessionBoardsPage'
-import DayLibraryPage from './components/DayLibraryPage'
-import BrainPage from './components/BrainPage'
 import MHPIPage from './components/MHPIPage'
+import LandingPage from './components/LandingPage'
+import AgendaPage from './components/AgendaPage'
+import NarrativePage from './components/NarrativePage'
+import ActivityPage from './components/ActivityPage'
+import AccomplishmentsPage from './components/AccomplishmentsPage'
+import MaintenancePage from './components/MaintenancePage'
+import LearningPage from './components/LearningPage'
+import AnthropicPage from './components/AnthropicPage'
 
 const NAV_ITEMS = [
-  { id: 'daily-performance', label: 'Daily Monitor',     icon: Gauge,        group: 'DAILY MONITOR' },
-  { id: 'day-library',     label: 'Day Library',      icon: BookMarked,      group: 'DAILY MONITOR' },
-  { id: 'session-boards',  label: 'Session Boards',   icon: ListChecks,      group: 'COMMAND' },
-  { id: 'brain',           label: 'The Brain',        icon: Brain,           group: 'COMMAND' },
-  { id: 'objectives',      label: 'Objectives',       icon: Target,          group: 'COMMAND' },
-  { id: 'meeting-notes',   label: 'Meeting Notes',    icon: FileText,        group: 'COMMAND' },
-  { id: 'mhpi',            label: 'MHPI',             icon: Compass,         group: 'STRATEGY' },
-  { id: 'company-finance', label: 'Company Finance',  icon: Wallet,          group: 'MONEY STUFF' },
-  { id: 'personal-finance', label: 'Personal Finance', icon: CreditCard,     group: 'MONEY STUFF' },
-  { id: 'relationships',   label: 'Relationships',    icon: Users,           group: 'NETWORK' },
-  { id: 'slack',           label: 'Slack',            icon: MessageSquare,   group: 'NETWORK' },
-  { id: 'portfolio',       label: 'Projects',         icon: LayoutGrid,      group: 'COMMAND' },
-  { id: 'ecosystem',       label: 'Ecosystem',        icon: Network,         group: 'NETWORK' },
+  { id: 'river',            label: 'The River',             icon: Waves,          group: 'LANDING' },
+  { id: 'agenda',           label: 'Agenda',                icon: CalendarDays,   group: 'MONITOR' },
+  { id: 'narrative',        label: 'Narrative',             icon: BookOpen,       group: 'MONITOR' },
+  { id: 'activity',         label: 'Activity',              icon: Activity,       group: 'MONITOR' },
+  { id: 'accomplishments',  label: 'Accomplishments',       icon: Award,          group: 'MONITOR' },
+  { id: 'notes',            label: 'Notes',                 icon: FileText,       group: 'MONITOR' },
+  { id: 'main-missions',    label: 'Main Missions',         icon: LayoutGrid,     group: 'MISSION BOARD' },
+  { id: 'side-missions',    label: 'Side Missions',         icon: Target,         group: 'MISSION BOARD' },
+  { id: 'maintenance',      label: 'Maintenance',           icon: Wrench,         group: 'MISSION BOARD' },
+  { id: 'session-boards',   label: 'Session Boards',        icon: ListChecks,     group: 'WORK BOARD' },
+  { id: 'company-finance',  label: 'Third Horizon Finance', icon: Wallet,         group: 'RESOURCES' },
+  { id: 'personal-finance', label: 'Personal Finance',      icon: CreditCard,     group: 'RESOURCES' },
+  { id: 'network',          label: 'Network',               icon: Users,          group: 'RESOURCES' },
+  { id: 'ecosystem',        label: 'Ecosystem',             icon: Network,        group: 'RESOURCES' },
+  { id: 'mhpi',             label: 'MHPI',                  icon: Compass,        group: 'STRATEGY' },
+  { id: 'learning',         label: 'Machine Learning',      icon: GraduationCap,  group: 'LEARNING' },
+  { id: 'anthropic',        label: 'Anthropic',             icon: Sparkles,       group: 'LEARNING' },
 ]
 
 function Sidebar({ active, onChange, onSignOut }) {
@@ -155,18 +163,9 @@ function Topbar({ active, now, sov }) {
 
 export default function App() {
   const [session, setSession] = useState(undefined)
-  const [active, setActive] = useState('daily-performance')
+  const [active, setActive] = useState('river')
   const [now, setNow] = useState(new Date())
-  const [dpCip, setDpCip] = useState(() => {
-    try { return localStorage.getItem('dp-theme') === 'cip' } catch { return false }
-  })
   const gameState = useGameState()
-
-  useEffect(() => {
-    const onTheme = (e) => setDpCip(!!e.detail)
-    window.addEventListener('dp-cip', onTheme)
-    return () => window.removeEventListener('dp-cip', onTheme)
-  }, [])
 
   useEffect(() => {
     getSession().then(s => setSession(s))
@@ -197,22 +196,26 @@ export default function App() {
   return (
     <div className="sa-app">
       <Sidebar active={active} onChange={setActive} onSignOut={handleSignOut} />
-      <div className={`sa-main${active === 'ecosystem' ? ' sa-surface-dark' : ''}${active === 'session-boards' || active === 'day-library' || active === 'objectives' || active === 'portfolio' || active === 'mhpi' || (active === 'daily-performance' && dpCip) ? ' sa-surface-dark sa-dark-scroll' : ''}`}>
+      <div className={`sa-main sa-surface-dark sa-dark-scroll`}>
         <Topbar active={active} now={now} sov={gameState.sovereigntyLevel} />
         <div className="sa-content">
-          {active === 'daily-performance' && <DailyPerformancePage />}
-          {active === 'day-library'     && <DayLibraryPage />}
-          {active === 'session-boards'  && <SessionBoardsPage />}
-          {active === 'brain'           && <BrainPage />}
-          {active === 'objectives'      && <ObjectivesPage />}
-          {active === 'meeting-notes'   && <MeetingNotesPage />}
-          {active === 'mhpi'            && <MHPIPage />}
-          {active === 'company-finance' && <CompanyFinancePage />}
+          {active === 'river'            && <LandingPage onNavigate={setActive} />}
+          {active === 'agenda'           && <AgendaPage />}
+          {active === 'narrative'        && <NarrativePage />}
+          {active === 'activity'         && <ActivityPage />}
+          {active === 'accomplishments'  && <AccomplishmentsPage />}
+          {active === 'notes'            && <MeetingNotesPage />}
+          {active === 'main-missions'    && <ProjectsPage />}
+          {active === 'side-missions'    && <ObjectivesPage />}
+          {active === 'maintenance'      && <MaintenancePage />}
+          {active === 'session-boards'   && <SessionBoardsPage />}
+          {active === 'company-finance'  && <CompanyFinancePage />}
           {active === 'personal-finance' && <PersonalFinancePage />}
-          {active === 'relationships'   && <RelationshipsPage />}
-          {active === 'slack'           && <SlackPage />}
-          {active === 'portfolio'       && <ProjectsPage />}
-          {active === 'ecosystem'       && <EcosystemPage />}
+          {active === 'network'          && <RelationshipsPage />}
+          {active === 'ecosystem'        && <EcosystemPage />}
+          {active === 'mhpi'             && <MHPIPage />}
+          {active === 'learning'         && <LearningPage />}
+          {active === 'anthropic'        && <AnthropicPage />}
         </div>
       </div>
     </div>
