@@ -39,7 +39,7 @@ async function say({ kind, day, item, instruction, dry }) {
   let via = 'text', id = null, skipped = null
   try {
     if (open) id = await waSendText(davidNumber(), text)
-    else if (process.env.LUMEN_TEMPLATE_NAME) { via = 'template'; id = await waSendTemplate(davidNumber(), text) }
+    else if ((process.env.LUMEN_TEMPLATE_NAME || 'lumen_pulse')) { via = 'template'; id = await waSendTemplate(davidNumber(), text) }
     else { skipped = 'window closed, no template' }
   } catch (e) { skipped = String(e.message || e) }
   await remember({ channel: 'pulse', direction: 'out', kind: skipped ? 'system' : 'text', body: text, external_id: id, meta: { kind, day, item: item || null, via, skipped } })
