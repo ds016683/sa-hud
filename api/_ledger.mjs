@@ -71,6 +71,23 @@ async function mailAttachments(token, encodedId) {
 }
 
 
+// ---- file store (private bucket 'files'), walked recursively
+async function listFiles(prefix) {
+  const out = []
+  const walk = async (pre) => {
+    const res = await fetch(`${URL_BASE}/storage/v1/object/list/files`, { method: 'POST', headers: { ...sbHeaders(), 'Content-Type': 'application/json' }, body: JSON.stringify({ prefix: pre, limit: 1000, sortBy: { column: 'name', order: 'asc' } }) })
+    if (!res.ok) throw new Error(`files list -> ${res.status}`)
+    for (const e of await res.json()) {
+      if (e.name === '.emptyFolderPlaceholder') continue
+      const p = pre ? `${pre}/${e.name}` : e.name
+      if (e.id) out.push({ path: p, size: e.metadata?.size || null, type: e.metadata?.mimetype || null, updated: e.updated_at || null })
+      else await walk(p)
+    }
+  }
+  await walk(prefix || '')
+  return out
+}
+
 export const TOOLS = [
   // ---- reads
   {
@@ -122,6 +139,16 @@ export const TOOLS = [
     name: 'send_attachment',
     description: "Pull an attachment off an email and post it into David's WhatsApp chat as a document he can open. message_id from search_mailbox or read_email; filename picks one attachment by (partial) name, otherwise the only or first file attachment is sent. Say what you sent in one line after.",
     inputSchema: { type: 'object', properties: { message_id: { type: 'string' }, filename: { type: 'string' }, caption: { type: 'string', description: 'short caption shown under the file' } }, required: ['message_id'] },
+  },
+  {
+    name: 'search_files',
+    description: "Find documents in David's file store (Supabase bucket 'files': panel packets, decks, contracts, anything he has dropped in) by words in the path or file name. Returns paths for send_file. Empty query lists everything.",
+    inputSchema: { type: 'object', properties: { query: { type: 'string' }, limit: { type: 'integer', description: 'default 25' } }, required: [] },
+  },
+  {
+    name: 'send_file',
+    description: "Post a document from David's file store into his WhatsApp chat so he can open it. path from search_files (exact). Say what you sent in one line after.",
+    inputSchema: { type: 'object', properties: { path: { type: 'string' }, caption: { type: 'string' } }, required: ['path'] },
   },
   {
     name: 'get_day',
@@ -314,6 +341,23 @@ export async function callTool(name, args = {}) {
       const bytes = new Uint8Array(await bin.arrayBuffer())
       const sent = await waSendDocument(davidNumber(), bytes, { filename: pick.name, mime: pick.contentType || 'application/octet-stream', caption: args.caption || '' })
       return JSON.stringify({ ok: true, sent: pick.name, size: pick.size, wa_message_id: sent || null })
+    }
+    case 'search_files': {
+      const q = String(args.query || '').toLowerCase().split(/\s+/).filter(Boolean)
+      const all = await listFiles('')
+      const hits = all.filter(f => q.every(w => f.path.toLowerCase().includes(w))).slice(0, Math.min(Number(args.limit) || 25, 100))
+      return JSON.stringify(hits, null, 2)
+    }
+    case 'send_file': {
+      const path = String(args.path || '').replace(/^\/+/, '')
+      const res = await fetch(`${URL_BASE}/storage/v1/object/files/${path.split('/').map(encodeURIComponent).join('/')}`, { headers: sbHeaders() })
+      if (!res.ok) return JSON.stringify({ ok: false, error: `no such file: ${path}` })
+      const mime = res.headers.get('content-type') || 'application/octet-stream'
+      const bytes = new Uint8Array(await res.arrayBuffer())
+      if (bytes.length > 95 * 1024 * 1024) return JSON.stringify({ ok: false, error: 'too large for WhatsApp' })
+      const filename = path.split('/').pop()
+      const id = await waSendDocument(davidNumber(), bytes, { filename, mime, caption: args.caption || '' })
+      return JSON.stringify({ ok: true, sent: filename, size: bytes.length, wa_message_id: id || null })
     }
     case 'get_day': {
       const date = String(args.date || '').slice(0, 10)
