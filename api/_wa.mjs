@@ -23,7 +23,7 @@ export const waSendText = (to, text) => post({ to, type: 'text', text: { body: t
 // template. One generic utility template with a single body parameter covers
 // the morning read, nudges, and the close summary.
 export function waSendTemplate(to, text) {
-  const name = process.env.LUMEN_TEMPLATE_NAME
+  const name = process.env.LUMEN_TEMPLATE_NAME || 'lumen_pulse'
   if (!name) throw new Error('no template configured (LUMEN_TEMPLATE_NAME)')
   return post({
     to, type: 'template',
