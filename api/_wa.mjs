@@ -42,6 +42,18 @@ export async function waSendAudio(to, mp3Bytes) {
   return post({ to, type: 'audio', audio: { id } })
 }
 
+// Send a file (pdf, docx, xlsx, pptx, images as documents) into the chat.
+export async function waSendDocument(to, bytes, { filename = 'file', mime = 'application/octet-stream', caption = '' } = {}) {
+  const form = new FormData()
+  form.append('messaging_product', 'whatsapp')
+  form.append('type', mime)
+  form.append('file', new Blob([bytes], { type: mime }), filename)
+  const up = await fetch(`${GRAPH}/${process.env.WHATSAPP_PHONE_ID}/media`, { method: 'POST', headers: waHeaders(), body: form })
+  if (!up.ok) throw new Error(`wa media upload -> ${up.status}: ${(await up.text()).slice(0, 200)}`)
+  const { id } = await up.json()
+  return post({ to, type: 'document', document: { id, filename, ...(caption ? { caption: caption.slice(0, 1000) } : {}) } })
+}
+
 export function waMarkRead(messageId) {
   return post({ status: 'read', message_id: messageId }).catch(() => null)
 }

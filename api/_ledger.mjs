@@ -4,6 +4,9 @@
 // Writes touch only David's own tables and always go through PostgREST with
 // the service key; nothing here can reach the pipes or the identity bucket.
 
+import { graphToken, MAILBOX } from './_sync-core.mjs'
+import { waSendDocument, davidNumber } from './_wa.mjs'
+
 const URL_BASE = 'https://cmuvomnmaoseccxpeuxq.supabase.co'
 export const DAVID = '9d28e8cf-3e35-48d9-a029-1327bd37fdd4'
 
@@ -50,6 +53,24 @@ async function findObjective(title) {
 }
 
 // ---------------------------------------------------------------- tools
+
+// ---- live mailbox helpers (Microsoft Graph, app-only, David's mailbox)
+let FOLDER_CACHE = null
+async function graphFolders(token) {
+  if (FOLDER_CACHE) return FOLDER_CACHE
+  const res = await fetch(`https://graph.microsoft.com/v1.0/users/${MAILBOX}/mailFolders?$select=id,displayName&$top=100`, { headers: { Authorization: `Bearer ${token}` } })
+  const map = {}
+  if (res.ok) for (const f of (await res.json()).value || []) map[f.id] = f.displayName
+  FOLDER_CACHE = map
+  return map
+}
+async function mailAttachments(token, encodedId) {
+  const res = await fetch(`https://graph.microsoft.com/v1.0/users/${MAILBOX}/messages/${encodedId}/attachments?$select=id,name,contentType,size,isInline`, { headers: { Authorization: `Bearer ${token}` } })
+  if (!res.ok) throw new Error(`attachments -> ${res.status}: ${(await res.text()).slice(0, 200)}`)
+  return ((await res.json()).value || []).filter(a => (a['@odata.type'] || '').includes('fileAttachment') && !a.isInline)
+}
+
+
 export const TOOLS = [
   // ---- reads
   {
@@ -86,6 +107,21 @@ export const TOOLS = [
     name: 'search_emails',
     description: "Search David's piped email (subject, sender, preview) over recent days. Previews only; full bodies stay in the mailbox.",
     inputSchema: { type: 'object', properties: { query: { type: 'string' }, days: { type: 'integer', description: 'lookback window in days, default 14' } }, required: ['query'] },
+  },
+  {
+    name: 'search_mailbox',
+    description: "Search David's whole live mailbox (Inbox, Sent, every folder, any age) by words in subject, sender, or body. Use this when the piped email (search_emails) does not reach far enough, when he asks whether he replied to someone (Sent folder), or to find a message that carries an attachment. Returns message ids for read_email and send_attachment.",
+    inputSchema: { type: 'object', properties: { query: { type: 'string', description: 'words to search, e.g. a subject, a name, a topic' }, limit: { type: 'integer', description: 'max results, default 10' } }, required: ['query'] },
+  },
+  {
+    name: 'read_email',
+    description: 'Read one message in full from the live mailbox: body text and the list of attachments (id, name, type, size). message_id comes from search_mailbox.',
+    inputSchema: { type: 'object', properties: { message_id: { type: 'string' } }, required: ['message_id'] },
+  },
+  {
+    name: 'send_attachment',
+    description: "Pull an attachment off an email and post it into David's WhatsApp chat as a document he can open. message_id from search_mailbox or read_email; filename picks one attachment by (partial) name, otherwise the only or first file attachment is sent. Say what you sent in one line after.",
+    inputSchema: { type: 'object', properties: { message_id: { type: 'string' }, filename: { type: 'string' }, caption: { type: 'string', description: 'short caption shown under the file' } }, required: ['message_id'] },
   },
   {
     name: 'get_day',
@@ -232,6 +268,52 @@ export async function callTool(name, args = {}) {
       const since = new Date(Date.now() - days * 86400e3).toISOString()
       const es = await sb(`emails?select=folder,subject,from_name,to_names,received_at,preview,is_read&received_at=gte.${since}&or=(subject.ilike.*${encodeURIComponent(q)}*,from_name.ilike.*${encodeURIComponent(q)}*,preview.ilike.*${encodeURIComponent(q)}*)&order=received_at.desc&limit=25`)
       return JSON.stringify(es, null, 2)
+    }
+    case 'search_mailbox': {
+      const token = await graphToken()
+      const q = String(args.query || '').replace(/"/g, '').trim()
+      const limit = Math.min(Number(args.limit) || 10, 25)
+      const qs = `$search="${encodeURIComponent(q)}"&$select=id,subject,from,toRecipients,receivedDateTime,sentDateTime,hasAttachments,bodyPreview,parentFolderId&$top=${limit}`
+      const res = await fetch(`https://graph.microsoft.com/v1.0/users/${MAILBOX}/messages?${qs}`, { headers: { Authorization: `Bearer ${token}` } })
+      if (!res.ok) throw new Error(`mailbox search -> ${res.status}: ${(await res.text()).slice(0, 200)}`)
+      const folders = await graphFolders(token)
+      const out = ((await res.json()).value || []).map(m => ({
+        message_id: m.id, folder: folders[m.parentFolderId] || 'other', subject: m.subject || '(no subject)',
+        from: (m.from || {}).emailAddress ? `${m.from.emailAddress.name || ''} <${m.from.emailAddress.address}>` : null,
+        to: (m.toRecipients || []).map(r => (r.emailAddress || {}).name || (r.emailAddress || {}).address).filter(Boolean),
+        at: m.receivedDateTime || m.sentDateTime, has_attachments: !!m.hasAttachments, preview: (m.bodyPreview || '').slice(0, 300),
+      }))
+      return JSON.stringify(out, null, 2)
+    }
+    case 'read_email': {
+      const token = await graphToken()
+      const id = encodeURIComponent(String(args.message_id || ''))
+      const h = { Authorization: `Bearer ${token}`, Prefer: 'outlook.body-content-type="text"' }
+      const m = await fetch(`https://graph.microsoft.com/v1.0/users/${MAILBOX}/messages/${id}?$select=id,subject,from,toRecipients,ccRecipients,receivedDateTime,sentDateTime,body,hasAttachments`, { headers: h })
+      if (!m.ok) throw new Error(`read_email -> ${m.status}: ${(await m.text()).slice(0, 200)}`)
+      const msg = await m.json()
+      const atts = await mailAttachments(token, id)
+      return JSON.stringify({
+        message_id: msg.id, subject: msg.subject, from: (msg.from || {}).emailAddress || null,
+        to: (msg.toRecipients || []).map(r => r.emailAddress), cc: (msg.ccRecipients || []).map(r => r.emailAddress),
+        at: msg.receivedDateTime || msg.sentDateTime, body: String((msg.body || {}).content || '').slice(0, 12000),
+        attachments: atts.map(a => ({ id: a.id, name: a.name, type: a.contentType, size: a.size })),
+      }, null, 2)
+    }
+    case 'send_attachment': {
+      const token = await graphToken()
+      const id = encodeURIComponent(String(args.message_id || ''))
+      const atts = await mailAttachments(token, id)
+      if (!atts.length) return JSON.stringify({ ok: false, error: 'that message has no file attachments' })
+      const want = String(args.filename || '').toLowerCase()
+      const pick = want ? atts.find(a => a.name.toLowerCase() === want) || atts.find(a => a.name.toLowerCase().includes(want)) : (atts.length === 1 ? atts[0] : null)
+      if (!pick) return JSON.stringify({ ok: false, error: 'which one?', attachments: atts.map(a => a.name) })
+      if (pick.size > 95 * 1024 * 1024) return JSON.stringify({ ok: false, error: `${pick.name} is too large for WhatsApp (${Math.round(pick.size / 1048576)} MB)` })
+      const bin = await fetch(`https://graph.microsoft.com/v1.0/users/${MAILBOX}/messages/${id}/attachments/${encodeURIComponent(pick.id)}/$value`, { headers: { Authorization: `Bearer ${token}` } })
+      if (!bin.ok) throw new Error(`attachment download -> ${bin.status}: ${(await bin.text()).slice(0, 200)}`)
+      const bytes = new Uint8Array(await bin.arrayBuffer())
+      const sent = await waSendDocument(davidNumber(), bytes, { filename: pick.name, mime: pick.contentType || 'application/octet-stream', caption: args.caption || '' })
+      return JSON.stringify({ ok: true, sent: pick.name, size: pick.size, wa_message_id: (sent.messages || [])[0]?.id || null })
     }
     case 'get_day': {
       const date = String(args.date || '').slice(0, 10)

@@ -6,7 +6,7 @@
 // private refresh-token API the Actions script uses; rows are identical.
 
 const URL_BASE = 'https://cmuvomnmaoseccxpeuxq.supabase.co'
-const MAILBOX = 'david.smith@thirdhorizon.com'
+export const MAILBOX = 'david.smith@thirdhorizon.com'
 
 function sbHeaders() {
   const key = process.env.SUPABASE_SERVICE_KEY
@@ -80,7 +80,7 @@ export async function syncGranola() {
 }
 
 // ---- Microsoft Graph shared token
-async function graphToken() {
+export async function graphToken() {
   const body = new URLSearchParams({
     client_id: process.env.M365_CLIENT_ID,
     client_secret: process.env.M365_CLIENT_SECRET,
