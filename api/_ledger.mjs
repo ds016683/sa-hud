@@ -6,6 +6,7 @@
 
 import { graphToken, MAILBOX } from './_sync-core.mjs'
 import { waSendDocument, davidNumber } from './_wa.mjs'
+import { extractText, clip } from './_docs.mjs'
 
 const URL_BASE = 'https://cmuvomnmaoseccxpeuxq.supabase.co'
 export const DAVID = '9d28e8cf-3e35-48d9-a029-1327bd37fdd4'
@@ -149,6 +150,16 @@ export const TOOLS = [
     name: 'send_file',
     description: "Post a document from David's file store into his WhatsApp chat so he can open it. path from search_files (exact). Say what you sent in one line after.",
     inputSchema: { type: 'object', properties: { path: { type: 'string' }, caption: { type: 'string' } }, required: ['path'] },
+  },
+  {
+    name: 'read_file',
+    description: "Read the contents of a document in David's file store as text (PDF, Word, Excel, PowerPoint, text). Use it to answer questions about what a document says: interview questions, scorecards, packets, decks. path from search_files.",
+    inputSchema: { type: 'object', properties: { path: { type: 'string' }, max_chars: { type: 'integer', description: 'default 24000' } }, required: ['path'] },
+  },
+  {
+    name: 'read_attachment',
+    description: 'Read an email attachment as text (PDF, Word, Excel, PowerPoint). message_id from search_mailbox; filename picks one attachment by (partial) name, otherwise the only or first file attachment.',
+    inputSchema: { type: 'object', properties: { message_id: { type: 'string' }, filename: { type: 'string' }, max_chars: { type: 'integer' } }, required: ['message_id'] },
   },
   {
     name: 'get_day',
@@ -358,6 +369,27 @@ export async function callTool(name, args = {}) {
       const filename = path.split('/').pop()
       const id = await waSendDocument(davidNumber(), bytes, { filename, mime, caption: args.caption || '' })
       return JSON.stringify({ ok: true, sent: filename, size: bytes.length, wa_message_id: id || null })
+    }
+    case 'read_file': {
+      const path = String(args.path || '').replace(/^\/+/, '')
+      const res = await fetch(`${URL_BASE}/storage/v1/object/files/${path.split('/').map(encodeURIComponent).join('/')}`, { headers: sbHeaders() })
+      if (!res.ok) return JSON.stringify({ ok: false, error: `no such file: ${path}` })
+      const mime = res.headers.get('content-type') || ''
+      const doc = await extractText(new Uint8Array(await res.arrayBuffer()), path.split('/').pop(), mime)
+      return JSON.stringify({ ok: true, path, kind: doc.kind, pages: doc.pages, sheets: doc.sheets, slides: doc.slides, note: doc.note, text: clip(doc.text, Number(args.max_chars) || 24000) })
+    }
+    case 'read_attachment': {
+      const token = await graphToken()
+      const id = encodeURIComponent(String(args.message_id || ''))
+      const atts = await mailAttachments(token, id)
+      if (!atts.length) return JSON.stringify({ ok: false, error: 'that message has no file attachments' })
+      const want = String(args.filename || '').toLowerCase()
+      const pick = want ? atts.find(a => a.name.toLowerCase() === want) || atts.find(a => a.name.toLowerCase().includes(want)) : (atts.length === 1 ? atts[0] : null)
+      if (!pick) return JSON.stringify({ ok: false, error: 'which one?', attachments: atts.map(a => a.name) })
+      const bin = await fetch(`https://graph.microsoft.com/v1.0/users/${MAILBOX}/messages/${id}/attachments/${encodeURIComponent(pick.id)}/$value`, { headers: { Authorization: `Bearer ${token}` } })
+      if (!bin.ok) throw new Error(`attachment download -> ${bin.status}`)
+      const doc = await extractText(new Uint8Array(await bin.arrayBuffer()), pick.name, pick.contentType || '')
+      return JSON.stringify({ ok: true, name: pick.name, kind: doc.kind, pages: doc.pages, note: doc.note, text: clip(doc.text, Number(args.max_chars) || 24000) })
     }
     case 'get_day': {
       const date = String(args.date || '').slice(0, 10)
