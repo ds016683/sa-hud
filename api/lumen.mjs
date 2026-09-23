@@ -12,6 +12,7 @@
 export const config = { maxDuration: 120 }
 
 import { think, remember, alreadySeen } from './_lumen-brain.mjs'
+import { flushPending } from './pulse.mjs'
 
 import { GRAPH, waHeaders, allowed, waSendText, waSendAudio, waMarkRead, waDownloadMedia, speak, transcribe } from './_wa.mjs'
 
@@ -189,6 +190,11 @@ export default async function handler(req, res) {
         text = `[${m.type} message]`
       }
       await remember({ channel: 'whatsapp', direction: 'in', kind, body: text, external_id: m.id, meta: { from, type: m.type } })
+
+      // His reply opened the window: deliver anything Lumen knocked about first.
+      let flushed = []
+      try { flushed = await flushPending(from) } catch (e) { console.error('lumen: flush', e.message) }
+      if (flushed.length && /^\s*(ok|okay|yes|yep|sure|go|send|send it|open|k|ready|please|yeah|y)\W*$/i.test(text)) continue
 
       const reply = await think({ channel: 'whatsapp', text, spoken: kind === 'audio' })
 

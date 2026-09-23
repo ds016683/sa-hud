@@ -31,7 +31,16 @@ async function alreadySent(kind, day, extra) {
   return (await sb(q)).length > 0
 }
 
+const LABEL = { morning: 'morning read', close: 'day summary', nudge: 'follow-up reminder', order: 'standing-order note' }
+function knockLabel(kind, day) {
+  const d = new Date(`${day}T12:00:00Z`)
+  const pretty = new Intl.DateTimeFormat('en-US', { weekday: 'long', month: 'long', day: 'numeric', timeZone: 'UTC' }).format(d)
+  return `${LABEL[kind] || 'note'} for ${pretty}`
+}
+
 // Compose through the brain so the pulse has Lumen's voice, then deliver.
+// Window open: send the text. Window closed: send the knock template and park
+// the text as pending; the WhatsApp door flushes pending pulses when he replies.
 async function say({ kind, day, item, instruction, dry }) {
   const text = await think({ channel: 'pulse', text: instruction, spoken: false })
   if (dry) return { kind, item, would_send: text }
@@ -39,10 +48,25 @@ async function say({ kind, day, item, instruction, dry }) {
   let via = 'text', id = null, skipped = null
   try {
     if (open) id = await waSendText(davidNumber(), text)
-    else { via = 'template'; id = await waSendTemplate(davidNumber(), text) }
+    else { via = 'knock'; id = await waSendTemplate(davidNumber(), knockLabel(kind, day)) }
   } catch (e) { skipped = String(e.message || e) }
-  await remember({ channel: 'pulse', direction: 'out', kind: skipped ? 'system' : 'text', body: text, external_id: id, meta: { kind, day, item: item || null, via, skipped } })
+  await remember({ channel: 'pulse', direction: 'out', kind: skipped ? 'system' : 'text', body: text, external_id: id, meta: { kind, day, item: item || null, via, skipped, pending: via === 'knock' && !skipped } })
   return { kind, item, sent: !skipped, via, skipped, text }
+}
+
+// Called by the WhatsApp door on every inbound message: deliver anything that
+// was knocked for but not yet sent, oldest first, then clear the flag.
+export async function flushPending(to) {
+  const rows = await sb(`lumen_messages?select=id,body,meta&channel=eq.pulse&direction=eq.out&meta->>pending=eq.true&order=id.asc&limit=10`)
+  const sent = []
+  for (const r of rows) {
+    try {
+      const id = await waSendText(to, r.body)
+      await sbWrite('PATCH', `lumen_messages?id=eq.${r.id}`, { meta: { ...(r.meta || {}), pending: false, delivered_id: id, delivered_at: new Date().toISOString() } }, 'return=minimal')
+      sent.push(r.meta?.kind || 'pulse')
+    } catch (e) { console.error('pulse: flush failed', e.message) }
+  }
+  return sent
 }
 
 export default async function handler(req, res) {

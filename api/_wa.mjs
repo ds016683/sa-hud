@@ -20,14 +20,15 @@ async function post(body) {
 export const waSendText = (to, text) => post({ to, type: 'text', text: { body: text } })
 
 // Business-initiated messages outside the 24-hour window must use an approved
-// template. One generic utility template with a single body parameter covers
-// the morning read, nudges, and the close summary.
-export function waSendTemplate(to, text) {
-  const name = process.env.LUMEN_TEMPLATE_NAME || 'lumen_pulse'
-  if (!name) throw new Error('no template configured (LUMEN_TEMPLATE_NAME)')
+// template. Lumen's is a knock: "Your {{1}} from Lumen is ready. Reply to this
+// message and I will send it over." The parameter is a short label (e.g.
+// "morning read for Tuesday, September 23"); the real text waits as a pending
+// pulse and goes out the moment David replies (the reply opens the window).
+export function waSendTemplate(to, label) {
+  const name = process.env.LUMEN_TEMPLATE_NAME || 'lumen_knock'
   return post({
     to, type: 'template',
-    template: { name, language: { code: process.env.LUMEN_TEMPLATE_LANG || 'en_US' }, components: [{ type: 'body', parameters: [{ type: 'text', text: text.slice(0, 900) }] }] },
+    template: { name, language: { code: process.env.LUMEN_TEMPLATE_LANG || 'en_US' }, components: [{ type: 'body', parameters: [{ type: 'text', text: String(label).slice(0, 200) }] }] },
   })
 }
 
