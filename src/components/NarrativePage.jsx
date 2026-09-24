@@ -69,7 +69,6 @@ export default function NarrativePage() {
   const [row, setRow] = useState(null)            // latest row for the day
   const [count, setCount] = useState(0)           // updates written that day
   const [loading, setLoading] = useState(true)
-  const [running, setRunning] = useState(false)
   const [error, setError] = useState(null)
 
   const loadDays = useCallback(async () => {
@@ -105,51 +104,6 @@ export default function NarrativePage() {
 
   useEffect(() => { loadDays() }, [loadDays])
   useEffect(() => { loadDay(day) }, [day, loadDay])
-
-  // Manual update: the /api/refresh relay gathers the Ledger, composes the
-  // narrative with Claude, and writes a new row for today.
-  const runUpdate = useCallback(async () => {
-    if (running) return
-    setRunning(true); setError(null)
-    try {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session) throw new Error('Not signed in')
-      const res = await fetch('/api/refresh', { method: 'POST', headers: { Authorization: `Bearer ${session.access_token}` } })
-      const out = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(out.error || `HTTP ${res.status}`)
-      const today = chiToday()
-      await loadDays()
-      if (day === today) await loadDay(today); else setDay(today)
-    } catch (e) {
-      setError(String(e.message || e))
-    } finally {
-      setRunning(false)
-    }
-  }, [running, day, loadDays, loadDay])
-
-  // Close the Day: the nightly close run by hand (mints the day, strikes the
-  // River, writes the Daily Report row).
-  const [closing, setClosing] = useState(false)
-  const closeDay = useCallback(async () => {
-    if (closing || running) return
-    if (!window.confirm('Close the day now? This mints today, strikes the River, and writes the Daily Report.')) return
-    setClosing(true); setError(null)
-    try {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session) throw new Error('Not signed in')
-      const res = await fetch('/api/close', { method: 'POST', headers: { Authorization: `Bearer ${session.access_token}` } })
-      const out = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(out.error || `HTTP ${res.status}`)
-      const t = chiToday()
-      await loadDays()
-      if (day === t) await loadDay(t); else setDay(t)
-    } catch (e) {
-      setError(String(e.message || e))
-    } finally {
-      setClosing(false)
-    }
-  }, [closing, running, day, loadDays, loadDay])
-
 
   const today = chiToday()
   const closed = isClosed(row)
@@ -191,20 +145,8 @@ export default function NarrativePage() {
             <option key={d} value={d} style={{ color: '#1A354A' }}>{fmtDay(d)}{d === today ? ' · today' : ''}</option>
           ))}
         </select>
-        <button onClick={runUpdate} disabled={running} title="Compose a fresh narrative from the Ledger now" style={control({
-          border: 'none',
-          background: running ? 'rgba(230,181,79,0.35)' : GOLD,
-          color: running ? 'rgba(22,50,74,0.7)' : NAVY_DEEP,
-          cursor: running ? 'default' : 'pointer', fontWeight: 700,
-        })}>
-          <RefreshCw size={12} style={running ? { animation: 'spin 1.2s linear infinite' } : undefined} />
-          {running ? 'Composing…' : 'Run Update'}
-        </button>
         <button onClick={() => window.print()} title="Print this narrative for the binder" style={control()}>
           <Printer size={12} /> Print
-        </button>
-        <button onClick={closeDay} disabled={closing || running} title="Run the nightly close now: mint the day and strike the River" style={control({ border: `1px solid ${GOLD}`, color: GOLD, cursor: closing ? 'default' : 'pointer', fontWeight: 600 })}>
-          {closing ? 'Minting the day…' : 'Close the Day'}
         </button>
       </div>
 

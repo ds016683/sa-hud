@@ -325,7 +325,22 @@ function ProjectDetail({ project, board, api, onBack }) {
 
   return (
     <div style={S.page}>
-      <button onClick={onBack} style={{ ...S.btnGhost, marginBottom: 18 }}><ArrowLeft size={13} /> All projects</button>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, marginBottom: 18, flexWrap: 'wrap' }}>
+        <button onClick={onBack} style={S.btnGhost}><ArrowLeft size={13} /> All missions</button>
+        {project.status !== 'completed' && !project.archived_at && (
+          <button
+            onClick={async () => {
+              if (!window.confirm(`Mark "${project.name}" complete? The River strikes 10 miles on the next update.`)) return
+              const ok = await api.updateProject(project.id, { status: 'completed', archived_at: new Date().toISOString() })
+              if (ok) onBack()
+            }}
+            title="Whole mission complete: 10 miles on the River"
+            style={{ ...S.btnGhost, border: '1px solid rgba(67,211,146,0.5)', color: '#43D392' }}
+          >
+            ✓ Mark mission complete
+          </button>
+        )}
+      </div>
 
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16, flexWrap: 'wrap', marginBottom: 6 }}>
         <div style={{ flex: 1, minWidth: 280 }}>

@@ -13,7 +13,7 @@ async function sb(path) {
 }
 
 export const MILES = {
-  'main-mission': 10, 'side-mission': 4, 'maintenance-bundle': 0.2, 'exercise': 5, 'sleep': 4,
+  'main-mission': 10, 'mission-task': 1, 'side-mission': 4, 'maintenance-bundle': 0.2, 'exercise': 5, 'sleep': 4,
   'toastmaster': 4, 'work-horse': 10, 'clean-close': 2, 'discomforter': 5, 'hygiene': 3,
 }
 
@@ -31,7 +31,7 @@ function documented(subject, meetings) {
 // Compute the day's awards from the Ledger. Returns [{badge, key, miles, evidence}].
 export async function computeAwards(day, { closing = false } = {}) {
   const from = `${day}T00:00:00-05:00`, to = `${day}T23:59:59-05:00`
-  const [doneTasks, released, taskObjIds, maint, logs, calendar, meetings, time, emails, inboxObjs] = await Promise.all([
+  const [doneTasks, released, taskObjIds, maint, logs, calendar, meetings, time, emails, inboxObjs, doneProjects] = await Promise.all([
     sb(`project_tasks?select=id,text,project_id,released_at&status=eq.done&released_at=gte.${from}&released_at=lte.${to}`),
     sb(`objectives?select=id,title,released_at,released_kind&state=eq.released&released_kind=eq.done&released_at=gte.${from}&released_at=lte.${to}&deleted_at=is.null`),
     sb(`project_tasks?select=objective_id&objective_id=not.is.null`),
@@ -42,12 +42,15 @@ export async function computeAwards(day, { closing = false } = {}) {
     sb(`time_entries?select=person,hours&spent_date=eq.${day}`),
     sb(`emails?select=is_read&folder=eq.inbox&day=eq.${day}`),
     sb(`objectives?select=id&state=eq.inbox&deleted_at=is.null`),
+    sb(`projects?select=id,name,status,archived_at,last_activity_at&status=in.(completed,complete,done)`),
   ])
   const linked = new Set(taskObjIds.map(t => t.objective_id))
   const awards = []
   const add = (badge, key, evidence) => awards.push({ badge, key: String(key ?? ''), miles: MILES[badge], evidence })
 
-  for (const t of doneTasks) add('main-mission', t.id, `Main Mission task closed: ${t.text}`)
+  const onDay = (ts) => ts && ts >= from && ts <= to
+  for (const p of doneProjects) if (onDay(p.archived_at) || onDay(p.last_activity_at)) add('main-mission', p.id, `Main Mission complete: ${p.name}`)
+  for (const t of doneTasks) add('mission-task', t.id, `Mission task closed: ${t.text}`)
   for (const o of released) if (!linked.has(o.id)) add('side-mission', o.id, `Side Mission released: ${o.title}`)
   const bundles = Math.floor(maint.length / 5)
   for (let i = 1; i <= bundles; i++) add('maintenance-bundle', i, `Bundle ${i}: ${maint.slice((i - 1) * 5, i * 5).map(m => m.title).join(', ')}`)

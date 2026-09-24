@@ -189,17 +189,21 @@ const GENERIC = (
   </g>
 )
 
+import { BADGES, badgeTier, TIER_COLORS } from '../constants/collection'
+const hexA = (hex, a) => { const n = parseInt(hex.slice(1), 16); return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})` }
+
 export default function BadgeMedallion({ id, size = 34, earned = true, glow = false }) {
   const emblem = EMBLEMS[id] || GENERIC
-  const stroke = earned ? GOLD : 'rgba(234,241,248,0.28)'
+  const tierColor = BADGES[id] && !BADGES[id].legacy ? TIER_COLORS[badgeTier(id)] : GOLD
+  const stroke = earned ? tierColor : 'rgba(234,241,248,0.28)'
   return (
     <svg width={size} height={size} viewBox="0 0 48 48" aria-hidden="true" style={{
       display: 'block', flexShrink: 0,
-      filter: glow ? 'drop-shadow(0 0 10px rgba(248,199,97,0.55))' : undefined,
+      filter: glow ? `drop-shadow(0 0 10px ${earned ? hexA(tierColor, 0.55) : 'rgba(248,199,97,0.55)'})` : undefined,
       opacity: earned ? 1 : 0.45,
     }}>
-      <circle cx="24" cy="24" r="22.5" fill={earned ? 'rgba(248,199,97,0.06)' : 'rgba(255,255,255,0.03)'} stroke={stroke} strokeWidth="1.6" />
-      <circle cx="24" cy="24" r="18.5" fill="none" stroke={earned ? GOLD_DEEP : stroke} strokeWidth="0.8" opacity="0.65" />
+      <circle cx="24" cy="24" r="22.5" fill={earned ? hexA(tierColor, 0.06) : 'rgba(255,255,255,0.03)'} stroke={stroke} strokeWidth="1.6" />
+      <circle cx="24" cy="24" r="18.5" fill="none" stroke={stroke} strokeWidth="0.8" opacity="0.65" />
       <g transform="translate(0,-1)" stroke={stroke} strokeWidth="1.6" fill="none" strokeLinecap="round" strokeLinejoin="round">
         {emblem}
       </g>

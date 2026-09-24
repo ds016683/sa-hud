@@ -10,7 +10,8 @@ export const RIVER_TOTAL_MILES = 10535
 export const RIVER_START_DAY = '2026-09-23'
 
 export const BADGES = {
-  'main-mission':       { label: 'Main Mission Complete', miles: 10,  Icon: Flag,       repeatable: true,  desc: 'A Main Mission task closed', lore: 'The map moves when the mission moves.' },
+  'main-mission':       { label: 'Main Mission Complete', miles: 10,  Icon: Flag,       repeatable: true,  desc: 'A whole Main Mission (project) marked complete', lore: 'The map moves when the mission moves.' },
+  'mission-task':       { label: 'Mission Task Closed',   miles: 1,   Icon: Flag,       repeatable: true,  desc: 'A component task of a Main Mission closed', lore: 'One plank at a time, the bridge.' },
   'side-mission':       { label: 'Side Mission Complete', miles: 4,   Icon: Target,     repeatable: true,  desc: 'A Side Mission released as done', lore: 'Small tributaries still reach the sea.' },
   'maintenance-bundle': { label: 'Maintenance Bundle',    miles: 0.2, Icon: Wrench,     repeatable: true,  desc: 'Five maintenance items done', lore: 'The hull holds because someone checked the hull.' },
   'exercise':           { label: 'Exercise',              miles: 5,   Icon: Dumbbell,   repeatable: false, desc: 'One hour of physical exercise logged', lore: 'The body rows; the mind steers.' },
@@ -21,6 +22,14 @@ export const BADGES = {
   'discomforter':       { label: 'Discomforter',          miles: 5,   Icon: Flame,      repeatable: false, desc: 'Three deliberate discomforts told to Lumen', lore: 'Three times into the cold water, on purpose.' },
   'hygiene':            { label: 'Hygiene',               miles: 3,   Icon: Droplets,   repeatable: false, desc: 'Teeth three times, shower on waking, whitening', lore: 'Bright teeth, clear head.' },
 }
+
+// Tiers by effort, for the medallion outline: highest = light purple,
+// middle = light blue, lower = green (canon tokens).
+export const badgeTier = (id) => {
+  const m = (BADGES[id] || {}).miles || 0
+  return m >= 10 ? 'high' : m >= 4 ? 'mid' : 'low'
+}
+export const TIER_COLORS = { high: '#B4A3E8', mid: '#A9C9E8', low: '#43D392' }
 
 // The retired composite-score badges (pre-River). Kept so older daily reads
 // still render their chips; they carry no miles and never strike again.

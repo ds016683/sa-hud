@@ -146,7 +146,7 @@ function MainMissionPanel({ tasks, projects, loading, day }) {
 
 // ---- Side Mission (objectives) --------------------------------------------
 function SideMissionPanel({ objectives, loading, day }) {
-  if (loading && !objectives) return <Panel title="Side Mission tasks" style={{ marginBottom: 0 }}><Empty>Loading…</Empty></Panel>
+  if (loading && !objectives) return <Panel title="Side Missions" style={{ marginBottom: 0 }}><Empty>Loading…</Empty></Panel>
   const rows = [...(objectives || [])].sort((a, b) => {
     const aa = a.state === 'active' ? 0 : 1, ba = b.state === 'active' ? 0 : 1
     if (aa !== ba) return aa - ba
@@ -154,7 +154,7 @@ function SideMissionPanel({ objectives, loading, day }) {
     return String(a.due_date || a.follow_up_date || '9999').localeCompare(String(b.due_date || b.follow_up_date || '9999'))
   })
   return (
-    <Panel title="Side Mission tasks" style={{ marginBottom: 0 }}>
+    <Panel title="Side Missions" style={{ marginBottom: 0 }}>
       {rows.length === 0 && <Empty>No objectives calling today.</Empty>}
       {rows.map((o) => {
         const active = o.state === 'active'

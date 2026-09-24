@@ -163,7 +163,19 @@ function Topbar({ active, now, sov }) {
 
 export default function App() {
   const [session, setSession] = useState(undefined)
-  const [active, setActive] = useState('river')
+  // Hash routing so the browser's back and forward work between pages.
+  const readHash = () => { const h = (window.location.hash || '').replace(/^#\/?/, ''); return NAV_ITEMS.some(n => n.id === h) ? h : 'river' }
+  const [active, setActiveState] = useState(readHash)
+  const setActive = (id) => {
+    if (id === active) return
+    try { window.history.pushState({ page: id }, '', `#/${id}`) } catch { /* no-op */ }
+    setActiveState(id)
+  }
+  useEffect(() => {
+    const onPop = () => setActiveState(readHash())
+    window.addEventListener('popstate', onPop)
+    return () => window.removeEventListener('popstate', onPop)
+  }, [])
   const [now, setNow] = useState(new Date())
   const gameState = useGameState()
 
@@ -196,7 +208,7 @@ export default function App() {
   return (
     <div className="sa-app">
       <Sidebar active={active} onChange={setActive} onSignOut={handleSignOut} />
-      <div className={`sa-main sa-surface-dark sa-dark-scroll`}>
+      <div className={`sa-main sa-surface-dark${active === 'ecosystem' ? '' : ' sa-dark-scroll'}`}>
         <Topbar active={active} now={now} sov={gameState.sovereigntyLevel} />
         <div className="sa-content">
           {active === 'river'            && <LandingPage onNavigate={setActive} />}
