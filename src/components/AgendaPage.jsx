@@ -70,10 +70,10 @@ const isRunning = (s) => !!(s?.started_at && !s?.stopped_at)
 // Attendance for a timed event: closed out, attended (attended_at from the
 // timer or Lumen, or a started timer), needs confirmation (ended with no
 // trace), or nothing yet (upcoming or live).
-const attendanceState = (event, session, nowMs) => {
+const attendanceState = (event, session, nowMs, notes) => {
   if (!event || event.is_all_day) return null
   if (session?.closed_at) return 'closed'
-  if (session?.attended_at || session?.started_at) return 'attended'
+  if (session?.attended_at || session?.started_at || notes) return 'attended'
   const en = event.end_at ? new Date(event.end_at).getTime() : null
   return en != null && en <= nowMs ? 'confirm' : null
 }
@@ -171,7 +171,7 @@ function CalendarPanel({ events, loading, now, day, refresh }) {
         const isBusy = !!busy[e.id]
         const err = errors[e.id]
         const hoursText = ses?.hours != null ? fmtHours(ses.hours) : null
-        const attendance = attendanceState(e, ses, nowMs)
+        const attendance = attendanceState(e, ses, nowMs, e.notes)
         return (
           <div key={e.id || i} style={{
             display: 'grid', gridTemplateColumns: '84px 1fr', gap: 14, alignItems: 'flex-start',

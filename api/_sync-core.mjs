@@ -190,6 +190,44 @@ export async function syncHarvest() {
 }
 
 // ---- Run everything; never let one pipe's failure hide the others' results.
+// Notes confirm attendance: after each sync, any calendar event on the last
+// two days with a matching Granola note gets its session stamped attended_at
+// (and the note attached), so the Agenda, Notes, and Lumen all agree.
+const STOPW = new Set(['the', 'and', 'with', 'for', 'call', 'meeting', 'sync', 'weekly', 'monthly', 'david', 'smith', 'third', 'horizon'])
+const wordsOf = (x) => new Set(String(x || '').toLowerCase().replace(/[^a-z0-9 ]/g, ' ').split(/\s+/).filter(w => w.length > 2 && !STOPW.has(w)))
+function titleMatch(a, b) {
+  const A = String(a || '').trim().toLowerCase(), B = String(b || '').trim().toLowerCase()
+  if (A && A === B) return true
+  const wa = wordsOf(a), wb = wordsOf(b)
+  if (!wa.size) return false
+  return [...wa].filter(w => wb.has(w)).length >= Math.min(2, wa.size)
+}
+export async function stampAttendance() {
+  const days = [0, 1].map(n => chicagoDay(Date.now() - n * 86400e3))
+  const get = async (path) => { const r = await fetch(`${URL_BASE}/rest/v1/${path}`, { headers: sbHeaders() }); if (!r.ok) throw new Error(`${path.split('?')[0]} -> ${r.status}`); return r.json() }
+  let stamped = 0
+  for (const day of days) {
+    const [events, notes, sessions] = await Promise.all([
+      get(`calendar_events?select=id,subject,day&day=eq.${day}&is_cancelled=eq.false&is_all_day=eq.false`),
+      get(`granola_meetings?select=id,title,summary&meeting_date=eq.${day}`),
+      get(`meeting_sessions?select=event_id,attended_at,notes_meeting_id&day=eq.${day}`).catch(() => []),
+    ])
+    const byEvent = new Map(sessions.map(s => [s.event_id, s]))
+    for (const e of events) {
+      const note = notes.find(n => titleMatch(e.subject, n.title))
+      if (!note) continue
+      const cur = byEvent.get(e.id)
+      if (cur && cur.attended_at && cur.notes_meeting_id) continue
+      const row = { event_id: e.id, day, subject: e.subject, attended_at: cur?.attended_at || new Date().toISOString(), notes_meeting_id: note.id, notes_summary: note.summary, updated_at: new Date().toISOString() }
+      const r = cur
+        ? await fetch(`${URL_BASE}/rest/v1/meeting_sessions?event_id=eq.${encodeURIComponent(e.id)}`, { method: 'PATCH', headers: { ...sbHeaders(), Prefer: 'return=minimal' }, body: JSON.stringify(row) })
+        : await fetch(`${URL_BASE}/rest/v1/meeting_sessions`, { method: 'POST', headers: { ...sbHeaders(), Prefer: 'return=minimal' }, body: JSON.stringify(row) })
+      if (r.ok) stamped++
+    }
+  }
+  return { stamped }
+}
+
 export async function syncAll() {
   let token = null
   try { token = await graphToken() } catch { /* email+calendar will each report */ }
@@ -197,5 +235,7 @@ export async function syncAll() {
     syncGranola(), syncEmail(token), syncCalendar(token), syncHarvest(),
   ])
   const shape = (r) => r.status === 'fulfilled' ? { ok: true, ...r.value } : { ok: false, error: String(r.reason?.message || r.reason).slice(0, 200) }
-  return { granola: shape(granola), email: shape(email), calendar: shape(calendar), harvest: shape(harvest) }
+  let attendance = null
+  try { attendance = await stampAttendance() } catch (e) { attendance = { error: String(e.message || e).slice(0, 120) } }
+  return { granola: shape(granola), email: shape(email), calendar: shape(calendar), harvest: shape(harvest), attendance }
 }

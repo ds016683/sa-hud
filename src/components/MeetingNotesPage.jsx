@@ -105,10 +105,10 @@ const fmtHours = (h) => {
 // Attendance for a timed event: closed out, attended (attended_at from the
 // timer or Lumen, or a started timer), needs confirmation (ended with no
 // trace), or nothing yet (upcoming or live).
-function attendanceState(event, session, nowMs) {
+function attendanceState(event, session, nowMs, notes) {
   if (!event || event.is_all_day) return null
   if (session?.closed_at) return 'closed'
-  if (session?.attended_at || session?.started_at) return 'attended'
+  if (session?.attended_at || session?.started_at || notes) return 'attended'
   const en = event.end_at ? new Date(event.end_at).getTime() : null
   return en != null && en <= nowMs ? 'confirm' : null
 }
@@ -241,7 +241,7 @@ function eventUnit(event, session, notes, nowMs) {
     subject: event.subject || '(no subject)',
     organizer: event.organizer || '',
     attendees,
-    attendance: attendanceState(event, session, nowMs),
+    attendance: attendanceState(event, session, nowMs, notes),
     session: session || null,
     notes: notes || null,
     followUps,
