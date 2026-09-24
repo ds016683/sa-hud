@@ -107,6 +107,25 @@ export default async function handler(req, res) {
           `[PULSE] A follow-up is coming due: "${o.title}" on ${o.follow_up_date} (today is ${TODAY}). Nudge David in one or two sentences, the way a friend would, and ask what he wants done with it: do it now, push the date, or drop it. If he answers, you can move it with move_objective.` }))
       }
     }
+    // ---- meeting close-outs: a meeting ended 20+ minutes ago and is not
+    // closed out; ask once per meeting what happened (waking hours only).
+    if ((kind === 'sweep' && chiHour() >= 8 && chiHour() < 21) || kind === 'meetings') {
+      const cutoff = new Date(Date.now() - 20 * 60e3).toISOString()
+      const [events, sessions] = await Promise.all([
+        sb(`calendar_events?select=id,subject,start_at,end_at,attendees&day=eq.${TODAY}&is_cancelled=eq.false&is_all_day=eq.false&end_at=lte.${cutoff}&order=start_at.asc`),
+        sb(`meeting_sessions?select=event_id,closed_at,attended_at,started_at,hours,notes_meeting_id&day=eq.${TODAY}`).catch(() => []),
+      ])
+      const byEvent = new Map(sessions.map(x => [x.event_id, x]))
+      for (const e of events) {
+        const ses = byEvent.get(e.id)
+        if (ses?.closed_at) continue
+        if (!dry && await alreadySent('meeting', TODAY, e.id)) continue
+        const attended = !!(ses?.attended_at || ses?.started_at || ses?.notes_meeting_id)
+        const endT = new Date(e.end_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'America/Chicago' })
+        out.push(await say({ kind: 'meeting', day: TODAY, item: e.id, dry, instruction:
+          `[PULSE] "${e.subject}" ended at ${endT} today and is not closed out yet${attended ? ' (attended; notes ' + (ses?.notes_meeting_id ? 'captured' : 'not captured yet') + ')' : ' (no sign he attended)'}. Ask David in one or two sentences, the way a friend would, what happened: any follow-ups, anything worth keeping, or whether he skipped it. When he answers, use close_meeting with the subject "${e.subject}" (follow-ups as a list, notes as special_notes); if he skipped it, say so and leave it. Do not stack questions.` }))
+      }
+    }
     // ---- standing orders
     if (kind === 'sweep' || kind === 'orders') {
       const now = new Date().toISOString()
