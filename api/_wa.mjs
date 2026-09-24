@@ -24,12 +24,22 @@ export const waSendText = (to, text) => post({ to, type: 'text', text: { body: t
 // message and I will send it over." The parameter is a short label (e.g.
 // "morning read for Tuesday, September 23"); the real text waits as a pending
 // pulse and goes out the moment David replies (the reply opens the window).
-export function waSendTemplate(to, label) {
+export async function waSendTemplate(to, label) {
   const name = process.env.LUMEN_TEMPLATE_NAME || 'lumen_knock'
-  return post({
-    to, type: 'template',
-    template: { name, language: { code: process.env.LUMEN_TEMPLATE_LANG || 'en_US' }, components: [{ type: 'body', parameters: [{ type: 'text', text: String(label).slice(0, 200) }] }] },
-  })
+  const lang = { code: process.env.LUMEN_TEMPLATE_LANG || 'en_US' }
+  try {
+    return await post({
+      to, type: 'template',
+      template: { name, language: lang, components: [{ type: 'body', parameters: [{ type: 'text', text: String(label).slice(0, 200) }] }] },
+    })
+  } catch (e) {
+    // Until Meta approves lumen_knock, fall back to the sandbox's pre-approved
+    // hello_world (no parameters). Cheesy, but it opens the window when David
+    // replies, and the parked text follows.
+    if (name === 'hello_world') throw e
+    console.warn('wa template fallback -> hello_world:', String(e.message || e).slice(0, 160))
+    return post({ to, type: 'template', template: { name: 'hello_world', language: { code: 'en_US' } } })
+  }
 }
 
 export async function waSendAudio(to, mp3Bytes) {
