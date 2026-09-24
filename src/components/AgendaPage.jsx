@@ -1,9 +1,15 @@
 // MONITOR · AGENDA. The day's agenda for a selected day (default today,
 // Chicago): the full calendar on the left, and on the right the Main Mission
 // tasks (projects), Side Mission tasks (objectives), and open Maintenance.
-import { useState, useEffect } from 'react'
+// The calendar is also where meetings are run: each event carries a timer
+// (Start / Stop, logged to Harvest through meeting_sessions), a "Notes
+// captured" chip when a Granola note matched, and a Close out flow that files
+// follow-ups as Side Missions (see river/MeetingCloseout.jsx).
+import { useState, useEffect, useCallback } from 'react'
 import { ChevronLeft, ChevronRight, CalendarDays, Circle, Wrench } from 'lucide-react'
 import { supabase } from '../lib/supabase'
+import { matchNotes, hoursBetween, upsertSession, logToHarvest } from '../lib/meetings'
+import MeetingCloseout, { renderMarkdown, CloseoutBlock, friendlyError, fmtHours } from './river/MeetingCloseout'
 import {
   INK, INK2, GRAY, NAVY_DEEP, PANEL_BORDER, GOLD, GOLD_BRIGHT, BLUE, PERIWINKLE, GREEN, RED, MONO, SERIF,
   S, Eyebrow, Panel, chiToday, fmtTime, weekday,
@@ -55,8 +61,82 @@ const DueTag = ({ due, day, prefix = 'Due' }) => {
 }
 
 // ---- Calendar -------------------------------------------------------------
-function CalendarPanel({ events, loading, now }) {
+// Chip-buttons on an event row (timer, close out) share this hairline look.
+const chipBtn = (fg = INK2, border = 'rgba(255,255,255,0.16)', extra = {}) => ({
+  ...S.chip('transparent', fg), border: `1px solid ${border}`, cursor: 'pointer', fontFamily: MONO, fontWeight: 600,
+  fontSize: 9.5, letterSpacing: '0.8px', padding: '2px 9px', lineHeight: '16px', ...extra,
+})
+const isRunning = (s) => !!(s?.started_at && !s?.stopped_at)
+const fmtElapsed = (startedAt, nowMs) => {
+  const m = Math.max(0, Math.floor((nowMs - new Date(startedAt).getTime()) / 60000))
+  return m >= 60 ? `${Math.floor(m / 60)}h ${String(m % 60).padStart(2, '0')}m` : `${m}m`
+}
+
+function CalendarPanel({ events, loading, now, day, refresh }) {
   const nowMs = now.getTime()
+  // Per-row error lines, expanded rows, in-flight writes, and the close-out target.
+  const [errors, setErrors] = useState({})
+  const [open, setOpen] = useState(() => new Set())
+  const [busy, setBusy] = useState({})
+  const [closing, setClosing] = useState(null)
+  // A running timer ticks on its own 30s clock (the page's NOW clock is a minute).
+  const [tickMs, setTickMs] = useState(() => Date.now())
+  const anyRunning = !!events?.some(e => isRunning(e.session))
+  useEffect(() => {
+    if (!anyRunning) return
+    const t = setInterval(() => setTickMs(Date.now()), 30_000)
+    return () => clearInterval(t)
+  }, [anyRunning])
+  const liveMs = Math.max(nowMs, tickMs)
+
+  const setErr = (id, msg) => setErrors(prev => ({ ...prev, [id]: msg || undefined }))
+  const setBusyFor = (id, v) => setBusy(prev => ({ ...prev, [id]: v }))
+  const toggleOpen = (id) => setOpen(prev => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n })
+
+  // Stop a running timer: write the span, then log it to Harvest (skipped
+  // under ~1 minute). A Harvest failure leaves the session stopped but
+  // unlogged and surfaces on the row; a session write failure throws.
+  const stopSession = useCallback(async (e) => {
+    const s = e.session
+    if (!isRunning(s)) return
+    const nowIso = new Date().toISOString()
+    const hours = hoursBetween(s.started_at, nowIso)
+    await upsertSession({ event_id: e.id, day, subject: e.subject || null, stopped_at: nowIso, hours })
+    if (hours >= 0.02) {
+      try {
+        await logToHarvest(e.subject || '(no subject)', hours)
+        await upsertSession({ event_id: e.id, harvest_logged: true })
+      } catch (err) {
+        setErr(e.id, `Stopped at ${fmtHours(hours)} but Harvest did not take it: ${friendlyError(err)}`)
+      }
+    }
+  }, [day])
+
+  const onStart = async (e) => {
+    const other = events.find(x => x.id !== e.id && isRunning(x.session))
+    if (other) {
+      if (!window.confirm(`"${other.subject || '(no subject)'}" is still running. Stop it first?`)) return
+    }
+    setBusyFor(e.id, true); setErr(e.id, null)
+    try {
+      if (other) await stopSession(other)
+      await upsertSession({ event_id: e.id, day, subject: e.subject || null, started_at: new Date().toISOString() })
+    } catch (err) {
+      setErr(e.id, friendlyError(err))
+    } finally {
+      setBusyFor(e.id, false); refresh()
+    }
+  }
+  const onStop = async (e) => {
+    setBusyFor(e.id, true); setErr(e.id, null)
+    try { await stopSession(e) } catch (err) { setErr(e.id, friendlyError(err)) } finally { setBusyFor(e.id, false); refresh() }
+  }
+  // The modal stops the timer through the same path, then refreshes on its own.
+  const onModalStop = useCallback(async (e) => { await stopSession(e); refresh() }, [stopSession, refresh])
+  const onModalCancel = useCallback(() => setClosing(null), [])
+  const onModalSaved = useCallback(() => { setClosing(null); refresh() }, [refresh])
+
+  const closingEvent = closing ? (events || []).find(e => e.id === closing) : null
   return (
     <Panel title="Full daily calendar" style={{ marginBottom: 0, height: '100%' }}>
       {loading && !events && <Empty>Loading…</Empty>}
@@ -67,30 +147,82 @@ function CalendarPanel({ events, loading, now }) {
         const live = s != null && en != null && s <= nowMs && nowMs < en
         const past = en != null && en <= nowMs
         const n = attendeeCount(e.attendees)
+        const ses = e.session
+        const running = isRunning(ses)
+        const stopped = !!ses?.stopped_at
+        const closed = !!ses?.closed_at
+        const hasCloseout = !!(ses?.special_notes || (Array.isArray(ses?.follow_ups) && ses.follow_ups.length))
+        const expandable = !!e.notes || hasCloseout
+        const expanded = expandable && open.has(e.id)
+        const canClose = !e.is_all_day && !closed && (past || stopped)
+        const isBusy = !!busy[e.id]
+        const err = errors[e.id]
+        const hoursText = ses?.hours != null ? fmtHours(ses.hours) : null
         return (
           <div key={e.id || i} style={{
             display: 'grid', gridTemplateColumns: '84px 1fr', gap: 14, alignItems: 'flex-start',
             padding: '10px 0 10px 12px', marginLeft: -12,
             borderTop: i ? `1px solid ${PANEL_BORDER}` : 'none',
-            borderLeft: `2px solid ${live ? GOLD : 'transparent'}`,
-            opacity: past ? 0.55 : 1,
+            borderLeft: `2px solid ${live ? GOLD : running ? GREEN : 'transparent'}`,
+            opacity: past && !running ? 0.55 : 1,
           }}>
             <div style={{ fontFamily: MONO, fontSize: 11, color: live ? GOLD_BRIGHT : INK2, letterSpacing: '0.4px', paddingTop: 3, lineHeight: 1.5 }}>
               {e.is_all_day ? 'All day' : fmtTime(e.start_at)}
               {!e.is_all_day && e.end_at && <div style={{ color: GRAY, fontSize: 10 }}>to {fmtTime(e.end_at)}</div>}
             </div>
             <div style={{ minWidth: 0 }}>
-              <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
-                <span style={{ fontFamily: SERIF, fontSize: 15, fontWeight: 500, color: '#fff', letterSpacing: '-0.01em', lineHeight: 1.3 }}>{e.subject || '(no subject)'}</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                <span
+                  onClick={expandable ? () => toggleOpen(e.id) : undefined}
+                  title={expandable ? (expanded ? 'Hide notes' : 'Show notes') : undefined}
+                  style={{ fontFamily: SERIF, fontSize: 15, fontWeight: 500, color: '#fff', letterSpacing: '-0.01em', lineHeight: 1.3, cursor: expandable ? 'pointer' : 'default', minWidth: 0 }}
+                >{e.subject || '(no subject)'}</span>
                 {live && <span style={S.chip('rgba(230,181,79,0.18)', GOLD_BRIGHT)}>Now</span>}
+                {e.notes && <span onClick={() => toggleOpen(e.id)} style={{ ...S.chip('rgba(169,201,232,0.14)', BLUE), cursor: 'pointer' }}>Notes captured</span>}
+                {closed && <span style={S.chip('rgba(67,211,146,0.14)', GREEN)}>Closed out{hoursText ? ` · ${hoursText}` : ''}</span>}
+
+                {/* Timer + close-out controls sit at the right and wrap under the subject on narrow widths. */}
+                {!e.is_all_day && (
+                  <span style={{ display: 'inline-flex', gap: 6, marginLeft: 'auto', flexWrap: 'wrap' }}>
+                    {!ses?.started_at && !closed && (
+                      <button disabled={isBusy} onClick={() => onStart(e)} style={chipBtn(INK2, 'rgba(255,255,255,0.16)', { opacity: isBusy ? 0.5 : 1 })}>⏱ Start</button>
+                    )}
+                    {running && (
+                      <button disabled={isBusy} onClick={() => onStop(e)} style={chipBtn(GREEN, GREEN, { opacity: isBusy ? 0.5 : 1 })}>⏹ Stop · {fmtElapsed(ses.started_at, liveMs)}</button>
+                    )}
+                    {stopped && !closed && (
+                      <span style={{ ...S.chip('transparent', GRAY), fontFamily: MONO, fontWeight: 600, fontSize: 9.5, letterSpacing: '0.8px', padding: '2px 4px' }}>
+                        {ses.harvest_logged ? `✓ ${hoursText} logged` : `${hoursText} · not logged`}
+                      </span>
+                    )}
+                    {canClose && (
+                      <button disabled={isBusy} onClick={() => setClosing(e.id)} style={chipBtn(GOLD_BRIGHT, 'rgba(230,181,79,0.45)', { opacity: isBusy ? 0.5 : 1 })}>Close out</button>
+                    )}
+                  </span>
+                )}
               </div>
               <div style={{ fontSize: 11.5, color: GRAY, marginTop: 3 }}>
                 {e.organizer ? e.organizer : 'No organizer'}{n > 0 ? ` · ${n} attendee${n === 1 ? '' : 's'}` : ''}
               </div>
+              {err && <div style={{ fontFamily: MONO, fontSize: 10, color: RED, marginTop: 4, letterSpacing: '0.4px', lineHeight: 1.5 }}>{err}</div>}
+              {expanded && (
+                <div style={{ marginTop: 8, padding: '8px 12px', borderLeft: `2px solid rgba(169,201,232,0.35)`, background: 'rgba(255,255,255,0.025)', borderRadius: '0 8px 8px 0' }}>
+                  {e.notes && (
+                    <div>
+                      <div style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '1px', color: GRAY }}>GRANOLA · {e.notes.title}</div>
+                      {renderMarkdown(e.notes.summary)}
+                    </div>
+                  )}
+                  {hasCloseout && <div style={{ marginTop: e.notes ? 10 : 0 }}><CloseoutBlock session={ses} /></div>}
+                </div>
+              )}
             </div>
           </div>
         )
       })}
+      {closingEvent && (
+        <MeetingCloseout event={closingEvent} day={day} onStop={onModalStop} onCancel={onModalCancel} onSaved={onModalSaved} />
+      )}
     </Panel>
   )
 }
@@ -215,6 +347,12 @@ export default function AgendaPage() {
   const [projects, setProjects] = useState([])
   const [objectives, setObjectives] = useState(null)
   const [maintenance, setMaintenance] = useState(null)
+  // Granola notes and meeting sessions for the day (both tolerant: an error reads as empty).
+  const [meetings, setMeetings] = useState([])
+  const [sessions, setSessions] = useState([])
+  // Bumped after any write so the day's data re-pulls without clearing the panels.
+  const [refreshKey, setRefreshKey] = useState(0)
+  const refresh = useCallback(() => setRefreshKey(k => k + 1), [])
   const [now, setNow] = useState(() => new Date())
   // Loading is derived: a null list means the fetch for this day is in flight.
   const loading = events === null || tasks === null || objectives === null || maintenance === null
@@ -232,19 +370,24 @@ export default function AgendaPage() {
     const d = day
     const horizon = addDays(d, 2)
     const pull = async () => {
-      let ev, pt, pj, ob, mt
+      let ev, pt, pj, ob, mt, gm, ms
       try {
-        ;[ev, pt, pj, ob, mt] = await Promise.all([
+        ;[ev, pt, pj, ob, mt, gm, ms] = await Promise.all([
           supabase.from('calendar_events').select('*').eq('day', d).eq('is_cancelled', false).order('start_at', { ascending: true }),
           supabase.from('project_tasks').select('id,text,status,due_date,project_id,objective_id').in('status', ['open', 'promoted', 'blocked']),
           supabase.from('projects').select('id,name,key'),
           supabase.from('objectives').select('id,title,state,due_date,activated_at,is_emergency,deleted_at,follow_up_date').is('deleted_at', null).in('state', ['active', 'parked', 'waiting', 'follow_up']),
           supabase.from('maintenance_items').select('*').eq('status', 'open'),
+          supabase.from('granola_meetings').select('id,title,meeting_date,attendees,summary').eq('meeting_date', d),
+          // meeting_sessions may not exist yet; its error reads as empty.
+          supabase.from('meeting_sessions').select('*').eq('day', d),
         ])
       } catch {
-        ev = pt = pj = ob = mt = { error: true }
+        ev = pt = pj = ob = mt = gm = ms = { error: true }
       }
       if (!alive) return
+      setMeetings(gm.error ? [] : (gm.data || []))
+      setSessions(ms.error ? [] : (ms.data || []))
       setEvents(ev.error ? [] : (ev.data || []))
       setProjects(pj.error ? [] : (pj.data || []))
       setTasks(pt.error ? [] : (pt.data || []).filter(t => t.status === 'promoted' || (t.due_date && t.due_date <= d)))
@@ -255,10 +398,14 @@ export default function AgendaPage() {
     }
     pull()
     return () => { alive = false }
-  }, [day])
+  }, [day, refreshKey])
 
   // Day change clears the lists so each panel shows its loading state.
-  const go = (d) => { setEvents(null); setTasks(null); setObjectives(null); setMaintenance(null); setDay(d) }
+  const go = (d) => { setEvents(null); setTasks(null); setObjectives(null); setMaintenance(null); setMeetings([]); setSessions([]); setDay(d) }
+
+  // Each event carries its matched Granola note and its session row, if any.
+  const sessionByEvent = new Map(sessions.map(s => [s.event_id, s]))
+  const calEvents = events ? events.map(e => ({ ...e, notes: matchNotes(e, meetings), session: sessionByEvent.get(e.id) })) : events
 
   const today = chiToday()
   return (
@@ -287,7 +434,7 @@ export default function AgendaPage() {
 
       <div className="agenda-grid">
         <div className="agenda-cal">
-          <CalendarPanel events={events} loading={loading} now={now} />
+          <CalendarPanel events={calEvents} loading={loading} now={now} day={day} refresh={refresh} />
         </div>
         <div className="agenda-side">
           <MainMissionPanel tasks={tasks} projects={projects} loading={loading} day={day} />
@@ -296,7 +443,7 @@ export default function AgendaPage() {
         </div>
       </div>
       <div style={{ ...S.source, marginTop: 14 }}>
-        SOURCES · calendar_events · project_tasks + projects · objectives · maintenance_items
+        SOURCES · calendar_events · granola_meetings · meeting_sessions · project_tasks + projects · objectives · maintenance_items
       </div>
     </div>
   )

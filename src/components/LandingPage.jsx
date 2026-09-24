@@ -247,44 +247,46 @@ export default function LandingPage({ onNavigate }) {
       <style>{css}</style>
       {haul && <HaulOverlay haul={haul} onClose={() => setHaul(null)} />}
       {mint && <MintingOverlay mint={mint} onDone={() => setMint(null)} />}
-      <div className="river-grid">
-        {/* LEFT: header, odometer, river, recent miles */}
+      <Eyebrow>The River</Eyebrow>
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
         <div>
-          <Eyebrow>The River</Eyebrow>
-          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
-            <div>
-              <h1 style={S.h1}>{greeting()}, David. {longDate()}.</h1>
-              <p style={S.sub}>{RIVER_TOTAL_MILES.toLocaleString()} miles to Calm Water</p>
-            </div>
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', paddingTop: 4 }}>
-              <button onClick={runUpdate} disabled={running || closing} title="Read the Ledger, compose the narrative, strike the River" style={{
-                display: 'inline-flex', alignItems: 'center', gap: 7, fontSize: 12, fontWeight: 700, padding: '9px 14px', borderRadius: 10, cursor: running ? 'default' : 'pointer', border: 'none',
-                background: running ? 'rgba(230,181,79,0.35)' : GOLD_BRIGHT, color: '#16324A',
-              }}>
-                <RefreshCw size={13} style={running ? { animation: 'spin 1.2s linear infinite' } : undefined} /> {running ? 'Composing…' : 'Run Update'}
-              </button>
-              <button onClick={closeDay} disabled={running || closing} title="Mint the day: final sweep, Daily Report, River struck" style={{
-                display: 'inline-flex', alignItems: 'center', gap: 7, fontSize: 12, fontWeight: 600, padding: '9px 14px', borderRadius: 10, cursor: closing ? 'default' : 'pointer',
-                border: `1px solid ${GOLD_BRIGHT}`, background: 'transparent', color: GOLD_BRIGHT,
-              }}>
-                <BookmarkCheck size={13} /> {closing ? 'Minting…' : 'Close the Day'}
-              </button>
-            </div>
-          </div>
-          {runError && <div style={{ fontFamily: MONO, fontSize: 10.5, letterSpacing: '1px', color: '#E8836F', marginTop: 8 }}>UPDATE FAILED · {runError.toUpperCase()}</div>}
+          <h1 style={S.h1}>{greeting()}, David. {longDate()}.</h1>
+          <p style={S.sub}>{RIVER_TOTAL_MILES.toLocaleString()} miles to Calm Water</p>
+        </div>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', paddingTop: 4 }}>
+          <button onClick={runUpdate} disabled={running || closing} title="Read the Ledger, compose the narrative, strike the River" style={{
+            display: 'inline-flex', alignItems: 'center', gap: 7, fontSize: 12, fontWeight: 700, padding: '9px 14px', borderRadius: 10, cursor: running ? 'default' : 'pointer', border: 'none',
+            background: running ? 'rgba(230,181,79,0.35)' : GOLD_BRIGHT, color: '#16324A',
+          }}>
+            <RefreshCw size={13} style={running ? { animation: 'spin 1.2s linear infinite' } : undefined} /> {running ? 'Composing…' : 'Run Update'}
+          </button>
+          <button onClick={closeDay} disabled={running || closing} title="Mint the day: final sweep, Daily Report, River struck" style={{
+            display: 'inline-flex', alignItems: 'center', gap: 7, fontSize: 12, fontWeight: 600, padding: '9px 14px', borderRadius: 10, cursor: closing ? 'default' : 'pointer',
+            border: `1px solid ${GOLD_BRIGHT}`, background: 'transparent', color: GOLD_BRIGHT,
+          }}>
+            <BookmarkCheck size={13} /> {closing ? 'Minting…' : 'Close the Day'}
+          </button>
+        </div>
+      </div>
+      {runError && <div style={{ fontFamily: MONO, fontSize: 10.5, letterSpacing: '1px', color: '#E8836F', marginTop: 8 }}>UPDATE FAILED · {runError.toUpperCase()}</div>}
 
-          {ledger === null ? (
-            <div style={{ ...S.sub, marginTop: 24, textTransform: 'none', letterSpacing: '0.6px' }}>Loading the river…</div>
-          ) : (
+      {ledger === null ? (
+        <div style={{ ...S.sub, marginTop: 24, textTransform: 'none', letterSpacing: '0.6px' }}>Loading the river…</div>
+      ) : (
+      <div className="river-odometer" style={{ marginTop: 24 }}>
+        <Stat v={fmtMiles(total)} l="Miles banked" color={GOLD_BRIGHT} />
+        <Stat v={fmtMiles(todayMiles)} l="Today" />
+        <Stat v={fmtMiles(yMiles)} l="Yesterday" />
+        <Stat v={daysOn} l={daysOn === 1 ? 'Day on the river' : 'Days on the river'} />
+        <Stat v={fmtMiles(remaining)} l="Remaining to Calm Water" />
+      </div>
+      )}
+
+      <div className="river-grid" style={{ marginTop: 24 }}>
+        {/* LEFT: river, recent miles */}
+        <div>
+          {ledger !== null && (
             <>
-              <div className="river-odometer" style={{ marginTop: 24 }}>
-                <Stat v={fmtMiles(total)} l="Miles banked" color={GOLD_BRIGHT} />
-                <Stat v={fmtMiles(todayMiles)} l="Today" />
-                <Stat v={fmtMiles(yMiles)} l="Yesterday" />
-                <Stat v={daysOn} l={daysOn === 1 ? 'Day on the river' : 'Days on the river'} />
-                <Stat v={fmtMiles(remaining)} l="Remaining to Calm Water" />
-              </div>
-
               <Panel style={{ marginTop: 24, padding: '12px 8px 4px' }}>
                 <RiverGraphic miles={total} awards={awards} />
               </Panel>

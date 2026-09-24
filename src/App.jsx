@@ -125,7 +125,7 @@ function Sidebar({ active, onChange, onSignOut }) {
   )
 }
 
-function Topbar({ active, now, sov }) {
+function Topbar({ active, now, sov, onBack }) {
   const greet = greetingFor(now.getHours())
   const navItem = NAV_ITEMS.find((n) => n.id === active) || {}
   const st = statusFor(sov)
@@ -138,6 +138,12 @@ function Topbar({ active, now, sov }) {
 
   return (
     <header className="sa-topbar">
+      {active !== 'river' && (
+        <button onClick={onBack} title="Back" aria-label="Back" style={{
+          display: 'inline-flex', alignItems: 'center', gap: 6, marginRight: 14, padding: '6px 10px', borderRadius: 8, cursor: 'pointer',
+          border: '1px solid rgba(255,255,255,0.18)', background: 'rgba(255,255,255,0.05)', color: 'rgba(234,241,248,0.85)', fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase', fontFamily: 'var(--font-mono, monospace)',
+        }}>← Back</button>
+      )}
       <div className="crumb">
         <div className="sa-tele ctx">{ctx}</div>
         <div className="ttl">{title}</div>
@@ -170,6 +176,10 @@ export default function App() {
     if (id === active) return
     try { window.history.pushState({ page: id }, '', `#/${id}`) } catch { /* no-op */ }
     setActiveState(id)
+  }
+  const goBack = () => {
+    if (window.history.state && window.history.state.page) window.history.back()
+    else setActive('river')
   }
   useEffect(() => {
     const onPop = () => setActiveState(readHash())
@@ -209,7 +219,7 @@ export default function App() {
     <div className="sa-app">
       <Sidebar active={active} onChange={setActive} onSignOut={handleSignOut} />
       <div className={`sa-main sa-surface-dark${active === 'ecosystem' ? '' : ' sa-dark-scroll'}`}>
-        <Topbar active={active} now={now} sov={gameState.sovereigntyLevel} />
+        <Topbar active={active} now={now} sov={gameState.sovereigntyLevel} onBack={goBack} />
         <div className="sa-content">
           {active === 'river'            && <LandingPage onNavigate={setActive} />}
           {active === 'agenda'           && <AgendaPage />}
