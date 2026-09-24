@@ -36,6 +36,26 @@ async function harvest(path, { method = 'GET', body } = {}) {
 
 const chiToday = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Chicago', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date())
 
+// Log a completed span to Harvest: one entry per title per day (appends).
+export async function logHours(title, hours) {
+  const h = Math.round(Number(hours) * 100) / 100
+  if (!title || !Number.isFinite(h)) return { error: 'title and hours required' }
+  if (h < MIN_HOURS) return { ok: true, note: `span ${h}h under minimum; not logged` }
+  if (h > MAX_HOURS) return { error: `span ${h}h over sanity ceiling` }
+  const today = chiToday()
+  const notes = NOTE_PREFIX + String(title).slice(0, 200)
+  const me = await harvest('users/me')
+  const existing = (await harvest(`time_entries?user_id=${me.id}&from=${today}&to=${today}&per_page=100`)).time_entries || []
+  const match = existing.find(e => e.notes === notes && !e.is_running)
+  if (match) {
+    const total = Math.round((match.hours + h) * 100) / 100
+    const entry = await harvest(`time_entries/${match.id}`, { method: 'PATCH', body: { hours: total } })
+    return { ok: true, appended: true, entry_id: entry.id, added: h, hours: total }
+  }
+  const entry = await harvest('time_entries', { method: 'POST', body: { project_id: DEFAULT_PROJECT_ID, task_id: DEFAULT_TASK_ID, spent_date: today, hours: h, notes } })
+  return { ok: true, logged: true, entry_id: entry.id, hours: h }
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' })
   const token = (req.headers.authorization || '').replace(/^Bearer /, '')
@@ -50,26 +70,8 @@ export default async function handler(req, res) {
 
   try {
     if (action === 'log') {
-      const h = Math.round(Number(hours) * 100) / 100
-      if (!title || !Number.isFinite(h)) return res.status(400).json({ error: 'title and hours required' })
-      if (h < MIN_HOURS) return res.status(200).json({ ok: true, note: `span ${h}h under minimum; not logged` })
-      if (h > MAX_HOURS) return res.status(400).json({ error: `span ${h}h over sanity ceiling` })
-      const today = chiToday()
-      const notes = NOTE_PREFIX + String(title).slice(0, 200)
-      // One entry per objective per day: append to today's existing entry.
-      const me = await harvest('users/me')
-      const existing = (await harvest(`time_entries?user_id=${me.id}&from=${today}&to=${today}&per_page=100`)).time_entries || []
-      const match = existing.find(e => e.notes === notes && !e.is_running)
-      if (match) {
-        const total = Math.round((match.hours + h) * 100) / 100
-        const entry = await harvest(`time_entries/${match.id}`, { method: 'PATCH', body: { hours: total } })
-        return res.status(200).json({ ok: true, appended: true, entry_id: entry.id, added: h, hours: total })
-      }
-      const entry = await harvest('time_entries', {
-        method: 'POST',
-        body: { project_id: DEFAULT_PROJECT_ID, task_id: DEFAULT_TASK_ID, spent_date: today, hours: h, notes },
-      })
-      return res.status(200).json({ ok: true, logged: true, entry_id: entry.id, hours: h })
+      const out = await logHours(title, hours)
+      return res.status(out.error ? 400 : 200).json(out)
     }
     if (action === 'status') {
       const today = chiToday()

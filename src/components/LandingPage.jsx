@@ -9,7 +9,7 @@
 // elapsed clocks. Data comes from Supabase (miles_ledger, objectives,
 // project_tasks, projects) and refreshes every 60s.
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { AlertTriangle, Compass, Map as MapIcon, RefreshCw, BookmarkCheck } from 'lucide-react'
+import { AlertTriangle, Compass, Map as MapIcon } from 'lucide-react'
 import { buildHaulItems } from '../lib/haul'
 import { HaulOverlay, MintingOverlay } from './river/RiverOverlays'
 import { supabase } from '../lib/supabase'
@@ -146,73 +146,57 @@ export default function LandingPage({ onNavigate }) {
   }, [])
   useEffect(() => {
     aliveRef.current = true
-    load().catch(e => console.error('[River]', e))
+    Promise.resolve().then(() => load()).catch(e => console.error('[River]', e))
     const id = setInterval(() => load().catch(e => console.error('[River]', e)), 60000)
     return () => { aliveRef.current = false; clearInterval(id) }
   }, [load])
 
-  // Run Update and Close the Day live here: the Ledger is read, the narrative
-  // composed, the River struck, and the result shown as a ceremony.
-  const [running, setRunning] = useState(false)
-  const [closing, setClosing] = useState(false)
+  // The ceremonies. Lumen runs the update and the close on David's word; the
+  // HUD greets him with whatever landed since he last looked: the Haul after an
+  // update, the Minting after a close. "Last looked" lives in localStorage.
   const [haul, setHaul] = useState(null)
   const [mint, setMint] = useState(null)
-  const [runError, setRunError] = useState(null)
+  const [lastRun, setLastRun] = useState(null)   // latest daily_performance row today
+  const greeted = useRef(false)
   const sumMiles = (rows, day) => rows.filter(r => !day || r.day === day).reduce((a, r) => a + (Number(r.miles) || 0), 0)
-  const runUpdate = useCallback(async () => {
-    if (running || closing) return
-    setRunning(true); setRunError(null)
-    const t0 = chiToday()
-    try {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session) throw new Error('Not signed in')
-      const before = ledger || []
-      const beforeIds = new Set(before.map(r => r.id))
-      const { data: prevRows } = await supabase.from('daily_performance').select('*').eq('day', t0).order('generated_at', { ascending: false })
-      const res = await fetch('/api/refresh', { method: 'POST', headers: { Authorization: `Bearer ${session.access_token}` } })
-      const out = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(out.error || `HTTP ${res.status}`)
-      const after = (await load()) || []
-      const { data: rowsNow } = await supabase.from('daily_performance').select('*').eq('day', t0).order('generated_at', { ascending: false })
-      const nowRow = rowsNow && rowsNow[0]
-      const items = nowRow ? buildHaulItems(nowRow, rowsNow) : []
-      const fresh = after.filter(r => !beforeIds.has(r.id) && r.day === t0)
-      const evidence = {}
-      for (const r of fresh) evidence[r.badge] = evidence[r.badge] ? `${evidence[r.badge]} · ${r.evidence}` : r.evidence
-      const prev = prevRows && prevRows[0]
-      setHaul({
-        items, badges: [...new Set(fresh.map(r => r.badge))], badge_evidence: evidence,
-        milesDelta: sumMiles(fresh), milesToday: sumMiles(after, t0), total: sumMiles(after),
-        sinceLabel: prev && prev.generated_at ? new Date(prev.generated_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'America/Chicago' }) : 'this morning',
-      })
-    } catch (e) {
-      setRunError(String(e.message || e))
-    } finally {
-      setRunning(false)
-    }
-  }, [running, closing, ledger, load])
-  const closeDay = useCallback(async () => {
-    if (running || closing) return
-    if (!window.confirm('Close the day now? This mints today, strikes the River, and writes the Daily Report.')) return
-    setClosing(true); setRunError(null)
-    try {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session) throw new Error('Not signed in')
-      const res = await fetch('/api/close', { method: 'POST', headers: { Authorization: `Bearer ${session.access_token}` } })
-      const out = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(out.error || `HTTP ${res.status}`)
-      const after = (await load()) || []
-      const day = out.day || chiToday()
-      const dayRows = after.filter(r => r.day === day)
-      const evidence = {}
-      for (const r of dayRows) evidence[r.badge] = evidence[r.badge] ? `${evidence[r.badge]} · ${r.evidence}` : r.evidence
-      setMint({ day, badges: [...new Set(dayRows.map(r => r.badge))], badge_evidence: evidence, miles: sumMiles(dayRows), total: sumMiles(after) })
-    } catch (e) {
-      setRunError(String(e.message || e))
-    } finally {
-      setClosing(false)
-    }
-  }, [running, closing, load])
+  const readSeen = () => { try { return JSON.parse(localStorage.getItem('river-seen') || 'null') } catch { return null } }
+  const writeSeen = (v) => { try { localStorage.setItem('river-seen', JSON.stringify(v)) } catch { /* no-op */ } }
+  useEffect(() => {
+    if (ledger === null || greeted.current) return
+    greeted.current = true
+    let alive = true
+    ;(async () => {
+      const t0 = chiToday()
+      const { data: runs } = await supabase.from('daily_performance').select('id, day, model, generated_at, summary, accomplishments, noteworthy, must_do, scorecard').order('generated_at', { ascending: false }).limit(12)
+      if (!alive) return
+      const latest = (runs || [])[0] || null
+      setLastRun(latest)
+      const rows = ledger
+      const maxId = rows.reduce((m, r) => Math.max(m, Number(r.id) || 0), 0)
+      const closes = (runs || []).filter(r => r.model === 'Daily Report' && (r.scorecard || {}).closed_at)
+      const latestClose = closes[0] || null
+      const seen = readSeen()
+      const marker = { ledgerMaxId: maxId, updateAt: latest ? latest.generated_at : null, closedAt: latestClose ? latestClose.scorecard.closed_at : null }
+      if (!seen) { writeSeen(marker); return }
+      const fresh = rows.filter(r => (Number(r.id) || 0) > (seen.ledgerMaxId || 0))
+      const evidence = (list) => { const e = {}; for (const r of list) e[r.badge] = e[r.badge] ? `${e[r.badge]} · ${r.evidence}` : r.evidence; return e }
+      if (latestClose && latestClose.scorecard.closed_at !== seen.closedAt) {
+        const day = latestClose.day
+        const dayRows = rows.filter(r => r.day === day)
+        setMint({ day, badges: [...new Set(dayRows.map(r => r.badge))], badge_evidence: evidence(dayRows), miles: sumMiles(dayRows), total: sumMiles(rows) })
+      } else if ((latest && latest.generated_at !== seen.updateAt) || fresh.length) {
+        const todayRuns = (runs || []).filter(r => r.day === t0)
+        const items = latest && latest.day === t0 ? buildHaulItems(latest, todayRuns) : []
+        setHaul({
+          items, badges: [...new Set(fresh.map(r => r.badge))], badge_evidence: evidence(fresh),
+          milesDelta: sumMiles(fresh), milesToday: sumMiles(rows, t0), total: sumMiles(rows),
+          sinceLabel: seen.updateAt ? new Date(seen.updateAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'America/Chicago' }) : 'last look',
+        })
+      }
+      writeSeen(marker)
+    })().catch(e => console.error('[River] greeting', e))
+    return () => { alive = false }
+  }, [ledger])
 
   useEffect(() => {
     const id = setInterval(() => setNow(Date.now()), 30000)
@@ -253,22 +237,13 @@ export default function LandingPage({ onNavigate }) {
           <h1 style={S.h1}>{greeting()}, David. {longDate()}.</h1>
           <p style={S.sub}>{RIVER_TOTAL_MILES.toLocaleString()} miles to Calm Water</p>
         </div>
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', paddingTop: 4 }}>
-          <button onClick={runUpdate} disabled={running || closing} title="Read the Ledger, compose the narrative, strike the River" style={{
-            display: 'inline-flex', alignItems: 'center', gap: 7, fontSize: 12, fontWeight: 700, padding: '9px 14px', borderRadius: 10, cursor: running ? 'default' : 'pointer', border: 'none',
-            background: running ? 'rgba(230,181,79,0.35)' : GOLD_BRIGHT, color: '#16324A',
-          }}>
-            <RefreshCw size={13} style={running ? { animation: 'spin 1.2s linear infinite' } : undefined} /> {running ? 'Composing…' : 'Run Update'}
-          </button>
-          <button onClick={closeDay} disabled={running || closing} title="Mint the day: final sweep, Daily Report, River struck" style={{
-            display: 'inline-flex', alignItems: 'center', gap: 7, fontSize: 12, fontWeight: 600, padding: '9px 14px', borderRadius: 10, cursor: closing ? 'default' : 'pointer',
-            border: `1px solid ${GOLD_BRIGHT}`, background: 'transparent', color: GOLD_BRIGHT,
-          }}>
-            <BookmarkCheck size={13} /> {closing ? 'Minting…' : 'Close the Day'}
-          </button>
+        <div style={{ textAlign: 'right', paddingTop: 6 }}>
+          <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '1.6px', color: GRAY, textTransform: 'uppercase' }}>
+            {lastRun ? `Last update ${new Date(lastRun.generated_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'America/Chicago' })}${lastRun.model === 'Daily Report' ? ' · closed' : ''}` : 'No update yet today'}
+          </div>
+          <div style={{ fontSize: 11.5, color: INK2, marginTop: 4 }}>Ask Lumen to run the update or close the day.</div>
         </div>
       </div>
-      {runError && <div style={{ fontFamily: MONO, fontSize: 10.5, letterSpacing: '1px', color: '#E8836F', marginTop: 8 }}>UPDATE FAILED · {runError.toUpperCase()}</div>}
 
       {ledger === null ? (
         <div style={{ ...S.sub, marginTop: 24, textTransform: 'none', letterSpacing: '0.6px' }}>Loading the river…</div>

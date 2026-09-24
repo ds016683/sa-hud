@@ -21,3 +21,6 @@ create table if not exists meeting_sessions (
 create index if not exists meeting_sessions_day on meeting_sessions (day);
 alter table meeting_sessions enable row level security;
 create policy "owner all" on meeting_sessions for all to authenticated using (true) with check (true);
+
+-- 9/24 later: attendance stamp (set by the Agenda timer, close-out, or Lumen)
+alter table meeting_sessions add column if not exists attended_at timestamptz;

@@ -9,7 +9,7 @@
 //      (comma-separated E.164 digits), OPENAI_API_KEY, ELEVENLABS_API_KEY,
 //      ELEVENLABS_VOICE_ID, ANTHROPIC_API_KEY, SUPABASE_SERVICE_KEY.
 
-export const config = { maxDuration: 120 }
+export const config = { maxDuration: 300 }
 
 import { think, remember, alreadySeen } from './_lumen-brain.mjs'
 import { flushPending } from './pulse.mjs'

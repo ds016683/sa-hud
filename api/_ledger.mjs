@@ -7,6 +7,7 @@
 import { graphToken, MAILBOX } from './_sync-core.mjs'
 import { waSendDocument, davidNumber } from './_wa.mjs'
 import { extractText, clip } from './_docs.mjs'
+import { logHours } from './time.mjs'
 
 const URL_BASE = 'https://cmuvomnmaoseccxpeuxq.supabase.co'
 export const DAVID = '9d28e8cf-3e35-48d9-a029-1327bd37fdd4'
@@ -87,6 +88,31 @@ async function listFiles(prefix) {
   }
   await walk(prefix || '')
   return out
+}
+
+// ---- meetings: find a calendar event by words, and write its session row
+const STOPW = new Set(['the', 'and', 'with', 'for', 'call', 'meeting', 'sync', 'weekly', 'monthly', 'david', 'smith', 'third', 'horizon'])
+const wordsOf = (x) => new Set(String(x || '').toLowerCase().replace(/[^a-z0-9 ]/g, ' ').split(/\s+/).filter(w => w.length > 2 && !STOPW.has(w)))
+function titleMatch(a, b) {
+  const A = String(a || '').trim().toLowerCase(), B = String(b || '').trim().toLowerCase()
+  if (A && A === B) return true
+  const wa = wordsOf(a), wb = wordsOf(b)
+  if (!wa.size) return false
+  const shared = [...wa].filter(w => wb.has(w)).length
+  return shared >= Math.min(2, wa.size)
+}
+async function findEvent(day, subject) {
+  const evs = await sb(`calendar_events?select=id,subject,start_at,end_at,is_all_day&day=eq.${day}&is_cancelled=eq.false&order=start_at.asc`)
+  const q = String(subject || '').toLowerCase().trim()
+  return evs.find(e => String(e.subject || '').toLowerCase() === q)
+    || evs.find(e => String(e.subject || '').toLowerCase().includes(q))
+    || evs.find(e => titleMatch(subject, e.subject))
+    || null
+}
+async function putSession(cur, patch) {
+  const row = { ...patch, updated_at: new Date().toISOString() }
+  if (cur) return sbWrite('PATCH', `meeting_sessions?event_id=eq.${encodeURIComponent(cur.event_id)}`, row, 'return=minimal')
+  return sbWrite('POST', 'meeting_sessions', row)
 }
 
 export const TOOLS = [
@@ -180,6 +206,31 @@ export const TOOLS = [
     name: 'complete_maintenance',
     description: 'Mark an open maintenance item done today by matching its title (exact-then-contains).',
     inputSchema: { type: 'object', properties: { title: { type: 'string' } }, required: ['title'] },
+  },
+  {
+    name: 'run_update',
+    description: "Run the HUD's Update on David's word: reads every pipe, composes the day's narrative, strikes the River. Takes one to two minutes; call it and wait. Returns miles today, badges struck, and what was released. Use when he says 'run the update', 'update the board', 'refresh the day'.",
+    inputSchema: { type: 'object', properties: {}, required: [] },
+  },
+  {
+    name: 'close_day',
+    description: "Close the day on David's word: the final sweep, the Daily Report, the River struck with Clean Close eligible. Only when he clearly asks to close the day. Takes a minute or two. Returns miles, badges, and the day's total.",
+    inputSchema: { type: 'object', properties: {}, required: [] },
+  },
+  {
+    name: 'meeting_attended',
+    description: "Stamp a calendar meeting as attended (the green check on the Agenda). subject matches the calendar item by words; day defaults to today. Use when he says he was in a meeting, joined a call, or asks to mark one attended.",
+    inputSchema: { type: 'object', properties: { subject: { type: 'string' }, day: { type: 'string' } }, required: ['subject'] },
+  },
+  {
+    name: 'meeting_timer',
+    description: "Start or stop the timer on a calendar meeting. Stop logs the span to Harvest as a completed entry. Use when he says 'start the clock on X', 'I'm in the NN2 call now', 'stop the timer', 'call's over'.",
+    inputSchema: { type: 'object', properties: { subject: { type: 'string' }, action: { type: 'string', enum: ['start', 'stop'] }, day: { type: 'string' } }, required: ['subject', 'action'] },
+  },
+  {
+    name: 'close_meeting',
+    description: "Close out a calendar meeting: stops a running timer, attaches the Granola notes, records follow-ups (each becomes a Side Mission in Follow Up, due a week out) and special notes. Use when he gives you follow-ups or notes from a meeting, or asks to close one out.",
+    inputSchema: { type: 'object', properties: { subject: { type: 'string' }, follow_ups: { type: 'array', items: { type: 'string' } }, special_notes: { type: 'string' }, day: { type: 'string' } }, required: ['subject'] },
   },
   {
     name: 'get_day',
@@ -447,6 +498,60 @@ export async function callTool(name, args = {}) {
       if (ts.length !== 1) throw new Error(ts.length ? `ambiguous: ${ts.map(t => t.title).join(' | ')}` : `no open maintenance item matches "${args.title}"`)
       await sbWrite('PATCH', `maintenance_items?id=eq.${ts[0].id}`, { status: 'done', day: chiToday(), done_at: new Date().toISOString() }, 'return=minimal')
       return JSON.stringify({ ok: true, completed: ts[0].title })
+    }
+    case 'run_update':
+    case 'close_day': {
+      const base = process.env.HUD_BASE || 'https://sa-hud.vercel.app'
+      const path = name === 'close_day' ? '/api/close' : '/api/refresh'
+      const r = await fetch(`${base}${path}`, { method: 'POST', headers: { Authorization: `Bearer ${process.env.CRON_SECRET}` } })
+      const j = await r.json().catch(() => ({}))
+      if (!r.ok) return JSON.stringify({ ok: false, error: j.error || `HTTP ${r.status}` })
+      return JSON.stringify({ ok: true, day: j.day, miles_today: j.miles, badges: j.badges || [], badge_evidence: j.badge_evidence || {}, river_total: j.river_total ?? j.total, released_today: j.released_today || [], closed: name === 'close_day' }, null, 2)
+    }
+    case 'meeting_attended':
+    case 'meeting_timer':
+    case 'close_meeting': {
+      const day = String(args.day || chiToday()).slice(0, 10)
+      const ev = await findEvent(day, args.subject)
+      if (!ev) return JSON.stringify({ ok: false, error: `no calendar meeting on ${day} matches "${args.subject}"` })
+      const cur = (await sb(`meeting_sessions?select=*&event_id=eq.${encodeURIComponent(ev.id)}&limit=1`))[0] || null
+      const now = new Date().toISOString()
+      const base = { event_id: ev.id, day, subject: ev.subject, attended_at: cur?.attended_at || now }
+      if (name === 'meeting_attended') {
+        await putSession(cur, base)
+        return JSON.stringify({ ok: true, attended: ev.subject, day })
+      }
+      if (name === 'meeting_timer') {
+        if (args.action === 'start') {
+          if (cur?.started_at && !cur?.stopped_at) return JSON.stringify({ ok: true, already_running: true, since: cur.started_at, subject: ev.subject })
+          await putSession(cur, { ...base, started_at: now, stopped_at: null, hours: null, harvest_logged: false })
+          return JSON.stringify({ ok: true, started: ev.subject, at: now })
+        }
+        if (!cur?.started_at || cur?.stopped_at) return JSON.stringify({ ok: false, error: `no timer running on "${ev.subject}"` })
+        const hours = Math.round(((Date.now() - new Date(cur.started_at).getTime()) / 3600e3) * 100) / 100
+        let harvest = null, logged = false
+        try { harvest = await logHours(ev.subject, hours); logged = !!harvest?.ok && !harvest?.note } catch (e) { harvest = { error: String(e.message || e) } }
+        await putSession(cur, { ...base, stopped_at: now, hours, harvest_logged: logged })
+        return JSON.stringify({ ok: true, stopped: ev.subject, hours, harvest })
+      }
+      // close_meeting
+      let hours = cur?.hours ?? null, harvest = null
+      if (cur?.started_at && !cur?.stopped_at) {
+        hours = Math.round(((Date.now() - new Date(cur.started_at).getTime()) / 3600e3) * 100) / 100
+        try { harvest = await logHours(ev.subject, hours) } catch (e) { harvest = { error: String(e.message || e) } }
+      }
+      const notes = (await sb(`granola_meetings?select=id,title,summary&meeting_date=eq.${day}`)).find(m => titleMatch(ev.subject, m.title)) || null
+      const lines = (args.follow_ups || []).map(x => String(x || '').trim()).filter(Boolean)
+      const patch = { ...base, closed_at: now, follow_ups: [...((cur?.follow_ups) || []), ...lines], special_notes: [cur?.special_notes, args.special_notes].filter(Boolean).join('\n\n') || null, notes_meeting_id: notes?.id || cur?.notes_meeting_id || null, notes_summary: notes?.summary || cur?.notes_summary || null }
+      if (hours != null) { patch.hours = hours; if (cur?.started_at && !cur?.stopped_at) { patch.stopped_at = now; patch.harvest_logged = !!harvest?.ok && !harvest?.note } }
+      await putSession(cur, patch)
+      const due = new Date(new Date(`${day}T12:00:00`).getTime() + 7 * 86400e3).toISOString().slice(0, 10)
+      const created = []
+      for (const text of lines) {
+        const o = await sbWrite('POST', 'objectives', { user_id: DAVID, title: text.slice(0, 160), state: 'follow_up', kind: 'execution', effort: 1, importance: 2, needs_sizing: false, follow_up_date: due, description: `Follow-up from ${ev.subject} on ${day}`, captured_at: now })
+        created.push(o?.[0]?.title || text)
+      }
+      return JSON.stringify({ ok: true, closed: ev.subject, day, hours, notes_attached: !!notes, follow_ups_on_board: created, follow_up_date: due })
     }
     case 'get_day': {
       const date = String(args.date || '').slice(0, 10)

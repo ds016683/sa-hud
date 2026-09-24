@@ -6,7 +6,7 @@
 // v1.2: reads plus the hands (add/move objectives, project tasks, standing
 // orders). The toolbox itself lives in api/_ledger.mjs, shared with Lumen.
 
-export const config = { maxDuration: 60 }
+export const config = { maxDuration: 300 }
 
 import { TOOLS, callTool } from './_ledger.mjs'
 

@@ -5,7 +5,7 @@
 // "Unscheduled recordings". Rows expand in place to show the Granola summary
 // rendered from markdown and the close-out. Styled to the River canon.
 import { useState, useEffect, useMemo } from 'react'
-import { Check, ChevronRight, ExternalLink, Search } from 'lucide-react'
+import { Check, ChevronRight, ExternalLink, HelpCircle, Search } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { matchNotes } from '../lib/meetings'
 import {
@@ -101,6 +101,20 @@ const fmtHours = (h) => {
   if (!isFinite(n) || n <= 0) return null
   return `${Math.round(n * 100) / 100}h`
 }
+
+// Attendance for a timed event: closed out, attended (attended_at from the
+// timer or Lumen, or a started timer), needs confirmation (ended with no
+// trace), or nothing yet (upcoming or live).
+function attendanceState(event, session, nowMs) {
+  if (!event || event.is_all_day) return null
+  if (session?.closed_at) return 'closed'
+  if (session?.attended_at || session?.started_at) return 'attended'
+  const en = event.end_at ? new Date(event.end_at).getTime() : null
+  return en != null && en <= nowMs ? 'confirm' : null
+}
+const CONFIRM_TITLE = 'Not confirmed attended. Start the timer, close it out, or tell Lumen.'
+const attendedChip = S.chip('rgba(67,211,146,0.16)', GREEN)
+const confirmChip = S.chip('rgba(230,181,79,0.16)', GOLD_BRIGHT)
 
 /* -------------------- search highlight + snippet -------------------- */
 // Splits `text` on case-insensitive occurrences of `q`, wrapping matches in gold.
@@ -214,7 +228,7 @@ function Markdown({ text }) {
 /* -------------------- units -------------------- */
 // A unit is one row: a calendar event (with optional session + notes), or an
 // unscheduled Granola recording. Both share the same row grammar.
-function eventUnit(event, session, notes) {
+function eventUnit(event, session, notes, nowMs) {
   const attendees = attendeeList(event.attendees)
   const followUps = followUpsOf(session)
   return {
@@ -227,6 +241,7 @@ function eventUnit(event, session, notes) {
     subject: event.subject || '(no subject)',
     organizer: event.organizer || '',
     attendees,
+    attendance: attendanceState(event, session, nowMs),
     session: session || null,
     notes: notes || null,
     followUps,
@@ -250,6 +265,7 @@ function notesUnit(m) {
     subject: m.title || '(untitled)',
     organizer: '',
     attendees,
+    attendance: null,
     session: null,
     notes: m,
     followUps: [],
@@ -299,8 +315,14 @@ function MeetingRow({ unit, query, open, onToggle, first }) {
         <div style={{ minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
             <span style={{ fontFamily: SERIF, fontSize: 15, fontWeight: 500, color: '#fff', letterSpacing: '-0.01em', lineHeight: 1.3 }}>{highlight(unit.subject, query)}</span>
+            {/* Attendance leads the chips: closed out or attended (green), or a Confirm prompt once the meeting has ended with no trace. */}
+            {(unit.attendance === 'closed' || unit.attendance === 'attended') && (
+              <span style={attendedChip}><Check size={11} />{unit.attendance === 'closed' ? 'Closed out' : 'Attended'}</span>
+            )}
+            {unit.attendance === 'confirm' && (
+              <span title={CONFIRM_TITLE} style={confirmChip}><HelpCircle size={11} />Confirm</span>
+            )}
             {hasNotes && <span style={S.chip('rgba(169,201,232,0.14)', BLUE)}>Notes</span>}
-            {closed && <span style={S.chip('rgba(67,211,146,0.14)', GREEN)}>Closed out</span>}
             {hours && <span style={chipMono('rgba(255,255,255,0.08)', GRAY)}>{hours}</span>}
             {!hasNotes && !session && <span style={S.chip('rgba(255,255,255,0.05)', GRAY)}>No notes</span>}
           </div>
@@ -389,12 +411,14 @@ function DaySection({ day, events, recordings, query, openIds, onToggle }) {
   const n = events.length
   const isToday = day === chiToday()
   const documented = events.filter(u => hasRecording(u.notes)).length
+  const unconfirmed = events.filter(u => u.attendance === 'confirm').length
   return (
     <section style={{ marginBottom: 22 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
         <Eyebrow style={{ marginBottom: 0, color: isToday ? GOLD_BRIGHT : INK2 }}>{dayLabel(day)}{isToday ? ' · today' : ''}</Eyebrow>
         <span style={S.chip('rgba(255,255,255,0.08)', GRAY)}>{n} {n === 1 ? 'meeting' : 'meetings'}</span>
         {documented > 0 && <span style={S.chip('rgba(169,201,232,0.14)', BLUE)}>{documented} with notes</span>}
+        {unconfirmed > 0 && <span style={confirmChip}><HelpCircle size={11} />{unconfirmed} to confirm</span>}
         <div style={{ flex: 1, height: 1, background: PANEL_BORDER }} />
       </div>
       <div style={{ ...S.panel, padding: '0 16px', marginBottom: 0 }}>
@@ -444,7 +468,7 @@ async function fetchRange(start, end) {
 /* -------------------- page -------------------- */
 export default function MeetingNotesPage() {
   const [days, setDays] = useState(DAYS_STEP)
-  const [data, setData] = useState(null) // { days, events, notes, sessions }
+  const [data, setData] = useState(null) // { days, fetchedAt, events, notes, sessions }
   const [query, setQuery] = useState('')
   const [focused, setFocused] = useState(false)
   const [openIds, setOpenIds] = useState(() => new Set())
@@ -455,7 +479,7 @@ export default function MeetingNotesPage() {
   useEffect(() => {
     let alive = true
     fetchRange(start, today).then(res => {
-      if (alive) setData({ days, ...res })
+      if (alive) setData({ days, fetchedAt: Date.now(), ...res })
     })
     return () => { alive = false }
   }, [days, start, today])
@@ -471,6 +495,8 @@ export default function MeetingNotesPage() {
     const notesById = new Map(recorded.map(m => [m.id, m]))
     const sessionsByEvent = new Map(data.sessions.filter(s => s.event_id).map(s => [s.event_id, s]))
     const claimed = new Set()
+    // Attendance is judged as of the fetch, so the memo stays pure.
+    const nowMs = data.fetchedAt
 
     const events = data.events.filter(e => !e.is_cancelled && !e.is_all_day)
       .map(e => ({ e, session: sessionsByEvent.get(e.id) || null, day: e.day || chiDayOf(e.start_at) || 'unknown' }))
@@ -490,7 +516,7 @@ export default function MeetingNotesPage() {
         notes = matchNotes(e, pool)
         if (notes) claimed.add(notes.id)
       }
-      out.push(eventUnit(e, session, notes))
+      out.push(eventUnit(e, session, notes, nowMs))
     }
     for (const m of recorded) if (!claimed.has(m.id)) out.push(notesUnit(m))
     return out

@@ -6,7 +6,7 @@
 // captured" chip when a Granola note matched, and a Close out flow that files
 // follow-ups as Side Missions (see river/MeetingCloseout.jsx).
 import { useState, useEffect, useCallback } from 'react'
-import { ChevronLeft, ChevronRight, CalendarDays, Circle, Wrench } from 'lucide-react'
+import { ChevronLeft, ChevronRight, CalendarDays, Circle, Wrench, Check, HelpCircle } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { matchNotes, hoursBetween, upsertSession, logToHarvest } from '../lib/meetings'
 import MeetingCloseout, { renderMarkdown, CloseoutBlock, friendlyError, fmtHours } from './river/MeetingCloseout'
@@ -67,6 +67,19 @@ const chipBtn = (fg = INK2, border = 'rgba(255,255,255,0.16)', extra = {}) => ({
   fontSize: 9.5, letterSpacing: '0.8px', padding: '2px 9px', lineHeight: '16px', ...extra,
 })
 const isRunning = (s) => !!(s?.started_at && !s?.stopped_at)
+// Attendance for a timed event: closed out, attended (attended_at from the
+// timer or Lumen, or a started timer), needs confirmation (ended with no
+// trace), or nothing yet (upcoming or live).
+const attendanceState = (event, session, nowMs) => {
+  if (!event || event.is_all_day) return null
+  if (session?.closed_at) return 'closed'
+  if (session?.attended_at || session?.started_at) return 'attended'
+  const en = event.end_at ? new Date(event.end_at).getTime() : null
+  return en != null && en <= nowMs ? 'confirm' : null
+}
+const CONFIRM_TITLE = 'Not confirmed attended. Start the timer, close it out, or tell Lumen.'
+const attendedChip = S.chip('rgba(67,211,146,0.16)', GREEN)
+const confirmChip = { ...S.chip('rgba(230,181,79,0.16)', GOLD_BRIGHT), cursor: 'pointer' }
 const fmtElapsed = (startedAt, nowMs) => {
   const m = Math.max(0, Math.floor((nowMs - new Date(startedAt).getTime()) / 60000))
   return m >= 60 ? `${Math.floor(m / 60)}h ${String(m % 60).padStart(2, '0')}m` : `${m}m`
@@ -158,6 +171,7 @@ function CalendarPanel({ events, loading, now, day, refresh }) {
         const isBusy = !!busy[e.id]
         const err = errors[e.id]
         const hoursText = ses?.hours != null ? fmtHours(ses.hours) : null
+        const attendance = attendanceState(e, ses, nowMs)
         return (
           <div key={e.id || i} style={{
             display: 'grid', gridTemplateColumns: '84px 1fr', gap: 14, alignItems: 'flex-start',
@@ -177,9 +191,19 @@ function CalendarPanel({ events, loading, now, day, refresh }) {
                   title={expandable ? (expanded ? 'Hide notes' : 'Show notes') : undefined}
                   style={{ fontFamily: SERIF, fontSize: 15, fontWeight: 500, color: '#fff', letterSpacing: '-0.01em', lineHeight: 1.3, cursor: expandable ? 'pointer' : 'default', minWidth: 0 }}
                 >{e.subject || '(no subject)'}</span>
+                {/* Attendance leads the chips: closed out or attended (green), or a Confirm prompt once the meeting has ended with no trace. */}
+                {(attendance === 'closed' || attendance === 'attended') && (
+                  <span style={attendedChip}>
+                    <Check size={11} />{attendance === 'closed' ? `Closed out${hoursText ? ` · ${hoursText}` : ''}` : 'Attended'}
+                  </span>
+                )}
+                {attendance === 'confirm' && (
+                  <span onClick={() => setClosing(e.id)} title={CONFIRM_TITLE} style={confirmChip}>
+                    <HelpCircle size={11} />Confirm
+                  </span>
+                )}
                 {live && <span style={S.chip('rgba(230,181,79,0.18)', GOLD_BRIGHT)}>Now</span>}
                 {e.notes && <span onClick={() => toggleOpen(e.id)} style={{ ...S.chip('rgba(169,201,232,0.14)', BLUE), cursor: 'pointer' }}>Notes captured</span>}
-                {closed && <span style={S.chip('rgba(67,211,146,0.14)', GREEN)}>Closed out{hoursText ? ` · ${hoursText}` : ''}</span>}
 
                 {/* Timer + close-out controls sit at the right and wrap under the subject on narrow widths. */}
                 {!e.is_all_day && (

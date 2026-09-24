@@ -106,13 +106,16 @@ function coerceFields(cand) {
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' })
 
-  // ---- auth: must be David's live Supabase session
+  // ---- auth: David's live Supabase session, or the cron secret (Lumen runs
+  // the update on David's word, from the brain's tools).
   const token = (req.headers.authorization || '').replace(/^Bearer /, '')
   if (!token) return res.status(401).json({ error: 'missing token' })
-  const who = await fetch(`${URL_BASE}/auth/v1/user`, { headers: { apikey: ANON_KEY, Authorization: `Bearer ${token}` } })
-  if (!who.ok) return res.status(401).json({ error: 'invalid session' })
-  const user = await who.json()
-  if (user.id !== DAVID) return res.status(403).json({ error: 'not authorized' })
+  if (!(process.env.CRON_SECRET && token === process.env.CRON_SECRET)) {
+    const who = await fetch(`${URL_BASE}/auth/v1/user`, { headers: { apikey: ANON_KEY, Authorization: `Bearer ${token}` } })
+    if (!who.ok) return res.status(401).json({ error: 'invalid session' })
+    const user = await who.json()
+    if (user.id !== DAVID) return res.status(403).json({ error: 'not authorized' })
+  }
 
   const TODAY = chicagoToday()
   try {
@@ -301,7 +304,7 @@ export default async function handler(req, res) {
       } else throw e
     }
 
-    return res.status(200).json({ ok: true, day: TODAY, source_counts: row.source_counts, created_objectives: created, pipes })
+    return res.status(200).json({ ok: true, day: TODAY, source_counts: row.source_counts, created_objectives: created, pipes, miles: scorecard.miles, badges: scorecard.badges, badge_evidence: scorecard.badge_evidence, river_total: scorecard.river_total, released_today: scorecard.released_today })
   } catch (e) {
     console.error('refresh failed:', e)
     return res.status(500).json({ error: String(e.message || e) })

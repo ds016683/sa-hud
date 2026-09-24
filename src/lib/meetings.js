@@ -32,6 +32,7 @@ export const hoursBetween = (a, b) => Math.round(((new Date(b) - new Date(a)) / 
 // trips NOT NULL on day), so: update if the row exists, otherwise insert.
 export async function upsertSession(patch) {
   const row = { ...patch, updated_at: new Date().toISOString() }
+  if ((patch.started_at || patch.stopped_at || patch.closed_at) && !patch.attended_at) row.attended_at = new Date().toISOString()
   const { data: upd, error: e1 } = await supabase.from('meeting_sessions').update(row).eq('event_id', row.event_id).select()
   if (e1) throw e1
   if (upd && upd.length) return upd[0]
