@@ -14,7 +14,7 @@ export const config = { maxDuration: 300 }
 import { think, remember, alreadySeen } from './_lumen-brain.mjs'
 import { flushPending } from './pulse.mjs'
 
-import { GRAPH, waHeaders, allowed, waSendText, waSendAudio, waMarkRead, waDownloadMedia, speak, transcribe } from './_wa.mjs'
+import { GRAPH, waHeaders, allowed, waSendText, waSendTemplate, waSendAudio, waMarkRead, waDownloadMedia, speak, transcribe, davidNumber } from './_wa.mjs'
 
 export default async function handler(req, res) {
   // ---- admin: is the WhatsApp Business Account subscribed to this app? (?admin=waba&key=MCP_TOKEN)
@@ -46,7 +46,12 @@ export default async function handler(req, res) {
         }),
       }).then(r => r.json()).catch(e => ({ error: String(e) }))
     }
-    return res.status(200).json({ waba, name, existing: existing || null, submitted, deleted, all: (list.data || []).map(t => `${t.name} · ${t.status} · ${t.category} · ${t.language}${t.rejected_reason && t.rejected_reason !== 'NONE' ? ' · ' + t.rejected_reason : ''}`) })
+    // &knock=1: send the knock itself to David as a live test (label = "test knock")
+    let knock = null
+    if (q.knock === '1') {
+      try { knock = { sent: await waSendTemplate(davidNumber(), q.label || 'test knock, reply anything to check the door') } } catch (e) { knock = { error: String(e.message || e) } }
+    }
+    return res.status(200).json({ waba, name, existing: existing || null, submitted, deleted, knock, all: (list.data || []).map(t => `${t.name} · ${t.status} · ${t.category} · ${t.language}${t.rejected_reason && t.rejected_reason !== 'NONE' ? ' · ' + t.rejected_reason : ''}`) })
   }
 
   if (req.method === 'GET' && (req.query || {}).admin === 'waba') {
