@@ -27,10 +27,15 @@ export function matchNotes(event, meetings) {
 
 export const hoursBetween = (a, b) => Math.round(((new Date(b) - new Date(a)) / 3600e3) * 100) / 100
 
-// Upsert a session row for an event (event_id unique).
+// Upsert a session row for an event (event_id unique). A partial patch on an
+// existing row must not go through INSERT ... ON CONFLICT (the insert half
+// trips NOT NULL on day), so: update if the row exists, otherwise insert.
 export async function upsertSession(patch) {
   const row = { ...patch, updated_at: new Date().toISOString() }
-  const { data, error } = await supabase.from('meeting_sessions').upsert(row, { onConflict: 'event_id' }).select().single()
+  const { data: upd, error: e1 } = await supabase.from('meeting_sessions').update(row).eq('event_id', row.event_id).select()
+  if (e1) throw e1
+  if (upd && upd.length) return upd[0]
+  const { data, error } = await supabase.from('meeting_sessions').insert(row).select().single()
   if (error) throw error
   return data
 }
