@@ -60,7 +60,7 @@ export async function think({ channel = 'whatsapp', text, spoken = false }) {
   const tools = TOOLS.map(t => ({ name: t.name, description: t.description, input_schema: t.inputSchema }))
   const messages = [{ role: 'user', content: text || '(empty message)' }]
   let reply = ''
-  for (let step = 0; step < 8; step++) {
+  for (let step = 0; step < 12; step++) {
     const res = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: { 'x-api-key': process.env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
@@ -81,7 +81,20 @@ export async function think({ channel = 'whatsapp', text, spoken = false }) {
     messages.push({ role: 'user', content: results })
     reply = textParts.join('\n').trim() || reply
   }
-  if (!reply) reply = 'I lost the thread on that one. Say it again?'
+  // Ran out of steps mid-work: never drop the thread. One more turn, no tools,
+  // to say what got done and what did not.
+  if (!reply) {
+    try {
+      messages.push({ role: 'user', content: 'You are out of tool steps. In two or three plain sentences tell David what you completed, what failed and why, and what you still need from him. No tools.' })
+      const r2 = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST', headers: { 'x-api-key': process.env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
+        body: JSON.stringify({ model: MODEL(), max_tokens: 600, system, messages }),
+      })
+      const j2 = await r2.json()
+      reply = ((j2.content || []).filter(c => c.type === 'text').map(c => c.text).join('\n')).trim()
+    } catch (e) { console.error('lumen: wrap-up failed', e.message) }
+  }
+  if (!reply) reply = 'I ran out of room working on that and lost the thread. Say it again, one thing at a time?'
   foldMemory(ctx).catch(e => console.error('lumen: fold failed', e.message))
   return reply
 }
