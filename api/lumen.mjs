@@ -54,6 +54,28 @@ export default async function handler(req, res) {
     return res.status(200).json({ waba, name, existing: existing || null, submitted, deleted, knock, all: (list.data || []).map(t => `${t.name} · ${t.status} · ${t.category} · ${t.language}${t.rejected_reason && t.rejected_reason !== 'NONE' ? ' · ' + t.rejected_reason : ''}`) })
   }
 
+  // ?admin=mailbox&key=MCP_TOKEN[&user=lumen@thirdhorizon.com][&sendtest=1]: can the Graph app
+  // read that mailbox (and send from it)? Probing Lumen's own address.
+  if (req.method === 'GET' && (req.query || {}).admin === 'mailbox') {
+    const q = req.query || {}
+    if (q.key !== process.env.MCP_TOKEN) return res.status(401).json({ error: 'unauthorized' })
+    const user = q.user || 'lumen@thirdhorizon.com'
+    const { graphToken } = await import('./_sync-core.mjs')
+    let token = null
+    try { token = await graphToken() } catch (e) { return res.status(200).json({ ok: false, error: `graph token: ${e.message}` }) }
+    const H = { Authorization: `Bearer ${token}` }
+    const who = await fetch(`https://graph.microsoft.com/v1.0/users/${encodeURIComponent(user)}?$select=id,displayName,mail,userPrincipalName,accountEnabled`, { headers: H })
+    const whoBody = await who.json().catch(() => null)
+    const inbox = await fetch(`https://graph.microsoft.com/v1.0/users/${encodeURIComponent(user)}/mailFolders/inbox/messages?$top=3&$select=subject,from,receivedDateTime,isRead&$orderby=receivedDateTime desc`, { headers: H })
+    const inboxBody = await inbox.json().catch(() => null)
+    let send = null
+    if (q.sendtest === '1') {
+      const r = await fetch(`https://graph.microsoft.com/v1.0/users/${encodeURIComponent(user)}/sendMail`, { method: 'POST', headers: { ...H, 'Content-Type': 'application/json' }, body: JSON.stringify({ message: { subject: 'Lumen mail door test', body: { contentType: 'Text', content: 'This is Lumen. If you are reading this, the mail door is open.' }, toRecipients: [{ emailAddress: { address: q.to || 'david.smith@thirdhorizon.com' } }] }, saveToSentItems: true }) })
+      send = { status: r.status, body: r.status === 202 ? 'accepted' : (await r.text()).slice(0, 300) }
+    }
+    return res.status(200).json({ ok: who.ok, user: { status: who.status, ...(whoBody || {}) }, inbox: { status: inbox.status, messages: (inboxBody?.value || []).map(m => ({ subject: m.subject, from: m.from?.emailAddress?.address, at: m.receivedDateTime, read: m.isRead })), error: inboxBody?.error?.message }, send })
+  }
+
   if (req.method === 'GET' && (req.query || {}).admin === 'waba') {
     if ((req.query || {}).key !== process.env.MCP_TOKEN) return res.status(401).json({ error: 'unauthorized' })
     const waba = (req.query || {}).waba || process.env.WHATSAPP_WABA_ID
