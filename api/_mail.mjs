@@ -13,7 +13,7 @@ async function graphToken() {
   if (!id || !secret) return davidAppToken()
   const body = new URLSearchParams({ client_id: id, client_secret: secret, scope: 'https://graph.microsoft.com/.default', grant_type: 'client_credentials' })
   const res = await fetch(`https://login.microsoftonline.com/${process.env.LUMEN_MAIL_TENANT_ID || process.env.M365_TENANT_ID}/oauth2/v2.0/token`, { method: 'POST', body })
-  if (!res.ok) throw new Error(`lumen mail token -> ${res.status}`)
+  if (!res.ok) { const t = await res.text().catch(() => ''); const code = (t.match(/AADSTS\d+/) || [])[0] || ''; throw new Error(`lumen mail token -> ${res.status} ${code} ${(JSON.parse(t || '{}').error_description || '').split('.')[0].slice(0, 160)}`) }
   return (await res.json()).access_token
 }
 export const __token = () => graphToken()
