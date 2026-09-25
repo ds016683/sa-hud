@@ -7,7 +7,7 @@
 import { graphToken, MAILBOX } from './_sync-core.mjs'
 import { waSendDocument, davidNumber } from './_wa.mjs'
 import { extractText, clip } from './_docs.mjs'
-import { logHours } from './time.mjs'
+import { logHours, setHours } from './time.mjs'
 import { sendMail } from './_mail.mjs'
 
 const URL_BASE = 'https://cmuvomnmaoseccxpeuxq.supabase.co'
@@ -225,8 +225,8 @@ export const TOOLS = [
   },
   {
     name: 'meeting_timer',
-    description: "Start or stop the timer on a calendar meeting. Stop logs the span to Harvest as a completed entry. Use when he says 'start the clock on X', 'I'm in the NN2 call now', 'stop the timer', 'call's over'.",
-    inputSchema: { type: 'object', properties: { subject: { type: 'string' }, action: { type: 'string', enum: ['start', 'stop'] }, day: { type: 'string' } }, required: ['subject', 'action'] },
+    description: "Start or stop the timer on a calendar meeting, or set its hours outright. Stop logs the span to Harvest as a completed entry; set writes the exact hours (default: the scheduled length) and fixes a forgotten or late toggle. Use when he says 'start the clock on X', 'call's over', 'I forgot the timer on CSOG, log it'.",
+    inputSchema: { type: 'object', properties: { subject: { type: 'string' }, action: { type: 'string', enum: ['start', 'stop', 'set'] }, hours: { type: 'number', description: "for 'set': the exact hours the meeting should carry in Harvest (defaults to the scheduled length)" }, day: { type: 'string' } }, required: ['subject', 'action'] },
   },
   {
     name: 'close_meeting',
@@ -543,6 +543,15 @@ export async function callTool(name, args = {}) {
           await putSession(cur, { ...base, started_at: now, stopped_at: null, hours: null, harvest_logged: false })
           return JSON.stringify({ ok: true, started: ev.subject, at: now })
         }
+        if (args.action === 'set') {
+          const sched = ev.start_at && ev.end_at ? Math.round(((new Date(ev.end_at) - new Date(ev.start_at)) / 3600e3) * 100) / 100 : null
+          const hours = args.hours != null ? Math.round(Number(args.hours) * 100) / 100 : sched
+          if (!hours) return JSON.stringify({ ok: false, error: 'hours required' })
+          let harvest = null
+          try { harvest = await setHours(ev.subject, hours) } catch (e) { harvest = { error: String(e.message || e) } }
+          await putSession(cur, { ...base, started_at: cur?.started_at || ev.start_at, stopped_at: cur?.stopped_at || ev.end_at, hours, harvest_logged: !!harvest?.ok })
+          return JSON.stringify({ ok: true, set: ev.subject, hours, harvest })
+        }
         if (!cur?.started_at || cur?.stopped_at) return JSON.stringify({ ok: false, error: `no timer running on "${ev.subject}"` })
         const hours = Math.round(((Date.now() - new Date(cur.started_at).getTime()) / 3600e3) * 100) / 100
         let harvest = null, logged = false
@@ -634,6 +643,7 @@ export async function callTool(name, args = {}) {
       if (dupes.length) return JSON.stringify({ ok: false, note: 'already on the board', existing: dupes })
       const row = {
         user_id: DAVID, title, state, captured_at: new Date().toISOString(),
+        kind: 'execution', effort: 1, importance: 2, needs_sizing: state === 'inbox',
         due_date: args.due_date || null,
         follow_up_date: state === 'follow_up' ? (args.follow_up_date || plusDays(7)) : (args.follow_up_date || null),
         description: args.description || null,

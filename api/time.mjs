@@ -56,6 +56,24 @@ export async function logHours(title, hours) {
   return { ok: true, logged: true, entry_id: entry.id, hours: h }
 }
 
+// Set today's Harvest entry for a title to exactly `hours` (create if absent).
+export async function setHours(title, hours) {
+  const h = Math.round(Number(hours) * 100) / 100
+  if (!title || !Number.isFinite(h) || h <= 0) return { error: 'title and positive hours required' }
+  if (h > MAX_HOURS) return { error: `span ${h}h over sanity ceiling` }
+  const today = chiToday()
+  const notes = NOTE_PREFIX + String(title).slice(0, 200)
+  const me = await harvest('users/me')
+  const existing = (await harvest(`time_entries?user_id=${me.id}&from=${today}&to=${today}&per_page=100`)).time_entries || []
+  const match = existing.find(e => e.notes === notes && !e.is_running)
+  if (match) {
+    const entry = await harvest(`time_entries/${match.id}`, { method: 'PATCH', body: { hours: h } })
+    return { ok: true, set: true, entry_id: entry.id, hours: h, was: match.hours }
+  }
+  const entry = await harvest('time_entries', { method: 'POST', body: { project_id: DEFAULT_PROJECT_ID, task_id: DEFAULT_TASK_ID, spent_date: today, hours: h, notes } })
+  return { ok: true, logged: true, entry_id: entry.id, hours: h }
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' })
   const token = (req.headers.authorization || '').replace(/^Bearer /, '')
