@@ -15,7 +15,8 @@
 export const config = { maxDuration: 120 }
 
 import { sb, sbWrite, chiToday } from './_ledger.mjs'
-import { think, remember } from './_lumen-brain.mjs'
+import { think, remember, alreadySeen } from './_lumen-brain.mjs'
+import { readUnread, markRead, sendMail, mailAllowed } from './_mail.mjs'
 import { waSendText, waSendTemplate, davidNumber } from './_wa.mjs'
 
 const chiHour = () => Number(new Intl.DateTimeFormat('en-US', { timeZone: 'America/Chicago', hour: 'numeric', hour12: false }).format(new Date()))
@@ -124,6 +125,36 @@ export default async function handler(req, res) {
         const endT = new Date(e.end_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'America/Chicago' })
         out.push(await say({ kind: 'meeting', day: TODAY, item: e.id, dry, instruction:
           `[PULSE] "${e.subject}" ended at ${endT} today and is not closed out yet${attended ? ' (attended; notes ' + (ses?.notes_meeting_id ? 'captured' : 'not captured yet') + ')' : ' (no sign he attended)'}. Ask David in one or two sentences, the way a friend would, what happened: any follow-ups, anything worth keeping, or whether he skipped it. When he answers, use close_meeting with the subject "${e.subject}" (follow-ups as a list, notes as special_notes); if he skipped it, say so and leave it. Do not stack questions.` }))
+      }
+    }
+    // ---- agenda from notes: when a meeting's Granola notes land, Lumen reads
+    // them once and touches the board (follow-ups, dates), then tells David.
+    if (kind === 'sweep' || kind === 'notes') {
+      const sessions = await sb(`meeting_sessions?select=event_id,subject,notes_meeting_id,notes_summary,closed_at,agenda_touched_at&day=eq.${TODAY}&notes_meeting_id=not.is.null&agenda_touched_at=is.null&limit=4`).catch(() => [])
+      for (const ses of sessions) {
+        if (!dry) await sbWrite('PATCH', `meeting_sessions?event_id=eq.${encodeURIComponent(ses.event_id)}`, { agenda_touched_at: new Date().toISOString() }, 'return=minimal')
+        out.push(await say({ kind: 'notes', day: TODAY, item: ses.event_id, dry, instruction:
+          `[PULSE] Granola notes just landed for today's meeting "${ses.subject}". Here they are:\n\n${String(ses.notes_summary || '').slice(0, 6000)}\n\nWork the board from them: for each action item that is David's (not someone else's), add_objective in state follow_up with a sensible follow_up_date (a week out unless the notes name a date) and description "From ${ses.subject} notes"; if the notes move a deadline on something already on his board (check get_objectives), use set_due. Skip anything already on the board. Then message David two or three plain sentences: what you put on the board from this meeting, any date you moved, and nothing else. If there was nothing for him to do, say that in one line.` }))
+      }
+    }
+    // ---- mail: unread messages in lumen@ from David are conversation turns;
+    // Lumen answers from its own address. Anything else is left unread.
+    if (kind === 'sweep' || kind === 'mail') {
+      let msgs = []
+      try { msgs = await readUnread(10) } catch (e) { out.push({ kind: 'mail', skipped: String(e.message || e).slice(0, 160) }) }
+      for (const m of msgs) {
+        const from = String(m.from?.emailAddress?.address || '').toLowerCase()
+        if (!mailAllowed().includes(from)) continue
+        if (await alreadySeen('email', m.id)) continue
+        const text = `Subject: ${m.subject || '(no subject)'}\n\n${String(m.body?.content || m.bodyPreview || '').trim().slice(0, 8000)}`
+        if (dry) { out.push({ kind: 'mail', item: m.subject, would_answer: text.slice(0, 200) }); continue }
+        await remember({ channel: 'email', direction: 'in', kind: 'text', body: text, external_id: m.id, meta: { from, subject: m.subject, conversation: m.conversationId } })
+        let reply
+        try { reply = await think({ channel: 'email', text, spoken: false }) } catch (e) { reply = `I hit a wall answering this one: ${String(e.message || e).slice(0, 120)}` }
+        try { await sendMail({ to: from, subject: `Re: ${m.subject || ''}`.trim(), text: reply, replyToId: m.id }) } catch (e) { out.push({ kind: 'mail', item: m.subject, skipped: String(e.message || e).slice(0, 160) }); continue }
+        await markRead(m.id).catch(() => null)
+        await remember({ channel: 'email', direction: 'out', kind: 'text', body: reply, meta: { to: from, subject: m.subject } })
+        out.push({ kind: 'mail', item: m.subject, sent: true })
       }
     }
     // ---- standing orders

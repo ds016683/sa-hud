@@ -8,6 +8,7 @@ import { graphToken, MAILBOX } from './_sync-core.mjs'
 import { waSendDocument, davidNumber } from './_wa.mjs'
 import { extractText, clip } from './_docs.mjs'
 import { logHours } from './time.mjs'
+import { sendMail } from './_mail.mjs'
 
 const URL_BASE = 'https://cmuvomnmaoseccxpeuxq.supabase.co'
 export const DAVID = '9d28e8cf-3e35-48d9-a029-1327bd37fdd4'
@@ -189,8 +190,8 @@ export const TOOLS = [
   },
   {
     name: 'log_day',
-    description: "Log something David did or is about to do today, for the River's badges. kind: 'discomfort' (he tells you he is about to do something consciously uncomfortable; three a day strike Discomforter), 'hygiene' (what: 'brush', 'shower', or 'whiten'; teeth three times plus shower plus whitening strike Hygiene), 'exercise' (value: minutes; 60 in a day strikes Exercise), 'sleep' (value: hours; 6 strikes Sleep), 'note' (a thought he wants kept in the day's record), 'activity' (something he did that no pipe sees: a call, a document, a decision). Log silently and confirm in a few words; never lecture.",
-    inputSchema: { type: 'object', properties: { kind: { type: 'string', enum: ['discomfort', 'hygiene', 'exercise', 'sleep', 'note', 'activity'] }, what: { type: 'string', description: 'short label of the thing' }, value: { type: 'number', description: 'minutes for exercise, hours for sleep' }, note: { type: 'string' }, day: { type: 'string', description: 'YYYY-MM-DD, default today (Chicago)' } }, required: ['kind'] },
+    description: "Log something David did or is about to do today, for the River's badges. kind: 'discomfort' (he tells you he is about to do something consciously uncomfortable; three a day strike Discomforter), 'hygiene' (what: 'brush', 'shower', or 'whiten'; teeth three times plus shower plus whitening strike Hygiene), 'exercise' (value: minutes; 60 in a day strikes Exercise), 'sleep' (value: hours; 6 strikes Sleep), 'note' (a thought he wants kept in the day's record), 'activity' (something he did that no pipe sees: a call, a document, a decision), 'medication' (what: the medication taken), 'diet' (what he ate or a diet note). Log silently and confirm in a few words; never lecture.",
+    inputSchema: { type: 'object', properties: { kind: { type: 'string', enum: ['discomfort', 'hygiene', 'exercise', 'sleep', 'note', 'activity', 'medication', 'diet'] }, what: { type: 'string', description: 'short label of the thing' }, value: { type: 'number', description: 'minutes for exercise, hours for sleep' }, note: { type: 'string' }, day: { type: 'string', description: 'YYYY-MM-DD, default today (Chicago)' } }, required: ['kind'] },
   },
   {
     name: 'get_river',
@@ -231,6 +232,16 @@ export const TOOLS = [
     name: 'close_meeting',
     description: "Close out a calendar meeting: stops a running timer, attaches the Granola notes, records follow-ups (each becomes a Side Mission in Follow Up, due a week out) and special notes. Use when he gives you follow-ups or notes from a meeting, or asks to close one out.",
     inputSchema: { type: 'object', properties: { subject: { type: 'string' }, follow_ups: { type: 'array', items: { type: 'string' } }, special_notes: { type: 'string' }, day: { type: 'string' } }, required: ['subject'] },
+  },
+  {
+    name: 'set_due',
+    description: "Change when a Side Mission is due or should be followed up: due_date and/or follow_up_date (YYYY-MM-DD). Matches the objective by title (exact-then-contains). Use when notes or David move a deadline.",
+    inputSchema: { type: 'object', properties: { title: { type: 'string' }, due_date: { type: 'string' }, follow_up_date: { type: 'string' } }, required: ['title'] },
+  },
+  {
+    name: 'send_email',
+    description: "Send an email from Lumen's own address (lumen@thirdhorizon.com). Recipients are limited to David's addresses for now. Use when he asks you to email him something: a draft, a summary, a document's text, a list too long for WhatsApp.",
+    inputSchema: { type: 'object', properties: { to: { type: 'string', description: 'default david.smith@thirdhorizon.com' }, subject: { type: 'string' }, body: { type: 'string' } }, required: ['subject', 'body'] },
   },
   {
     name: 'get_day',
@@ -552,6 +563,19 @@ export async function callTool(name, args = {}) {
         created.push(o?.[0]?.title || text)
       }
       return JSON.stringify({ ok: true, closed: ev.subject, day, hours, notes_attached: !!notes, follow_ups_on_board: created, follow_up_date: due })
+    }
+    case 'set_due': {
+      const o = await findObjective(args.title)
+      const patch = {}
+      if (args.due_date) patch.due_date = String(args.due_date).slice(0, 10)
+      if (args.follow_up_date) patch.follow_up_date = String(args.follow_up_date).slice(0, 10)
+      if (!Object.keys(patch).length) return JSON.stringify({ ok: false, error: 'nothing to change' })
+      await sbWrite('PATCH', `objectives?id=eq.${o.id}`, patch, 'return=minimal')
+      return JSON.stringify({ ok: true, title: o.title, ...patch })
+    }
+    case 'send_email': {
+      const out = await sendMail({ to: args.to || 'david.smith@thirdhorizon.com', subject: String(args.subject || '').slice(0, 200), text: String(args.body || '') })
+      return JSON.stringify({ ok: true, ...out, to: args.to || 'david.smith@thirdhorizon.com' })
     }
     case 'get_day': {
       const date = String(args.date || '').slice(0, 10)
