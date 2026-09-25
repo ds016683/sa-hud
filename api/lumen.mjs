@@ -60,9 +60,9 @@ export default async function handler(req, res) {
     const q = req.query || {}
     if (q.key !== process.env.MCP_TOKEN) return res.status(401).json({ error: 'unauthorized' })
     const user = q.user || 'lumen@thirdhorizon.com'
-    const { graphToken } = await import('./_sync-core.mjs')
+    const mail = await import('./_mail.mjs')
     let token = null
-    try { token = await graphToken() } catch (e) { return res.status(200).json({ ok: false, error: `graph token: ${e.message}` }) }
+    try { token = await mail.__token() } catch (e) { return res.status(200).json({ ok: false, error: `graph token: ${e.message}` }) }
     const H = { Authorization: `Bearer ${token}` }
     const who = await fetch(`https://graph.microsoft.com/v1.0/users/${encodeURIComponent(user)}?$select=id,displayName,mail,userPrincipalName,accountEnabled`, { headers: H })
     const whoBody = await who.json().catch(() => null)

@@ -244,6 +244,11 @@ export const TOOLS = [
     inputSchema: { type: 'object', properties: { to: { type: 'string', description: 'default david.smith@thirdhorizon.com' }, subject: { type: 'string' }, body: { type: 'string' } }, required: ['subject', 'body'] },
   },
   {
+    name: 'update_meeting',
+    description: "Change a calendar meeting on David's word: shorten or move it (new start and/or end, Chicago local time like '10:00' or '10:30'), or cancel it (David must be the organizer; otherwise decline). Use after he decides: 'keep it but cut to 30 minutes', 'push it to 2', 'cancel CSOG'. Confirm in one line with the new time.",
+    inputSchema: { type: 'object', properties: { subject: { type: 'string' }, day: { type: 'string' }, start_time: { type: 'string', description: 'HH:MM Chicago' }, end_time: { type: 'string', description: 'HH:MM Chicago' }, cancel: { type: 'boolean' }, comment: { type: 'string' } }, required: ['subject'] },
+  },
+  {
     name: 'get_day',
     description: 'A finished day from the Day Library: the definitive Daily Report record plus its collection scorecard (miles, grade, badges, signal). Date format YYYY-MM-DD.',
     inputSchema: { type: 'object', properties: { date: { type: 'string', description: 'YYYY-MM-DD' } }, required: ['date'] },
@@ -576,6 +581,34 @@ export async function callTool(name, args = {}) {
     case 'send_email': {
       const out = await sendMail({ to: args.to || 'david.smith@thirdhorizon.com', subject: String(args.subject || '').slice(0, 200), text: String(args.body || '') })
       return JSON.stringify({ ok: true, ...out, to: args.to || 'david.smith@thirdhorizon.com' })
+    }
+    case 'update_meeting': {
+      const day = String(args.day || chiToday()).slice(0, 10)
+      const ev = await findEvent(day, args.subject)
+      if (!ev) return JSON.stringify({ ok: false, error: `no calendar meeting on ${day} matches "${args.subject}"` })
+      const token = await graphToken()
+      const H = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }
+      const base = `https://graph.microsoft.com/v1.0/users/${MAILBOX}/events/${encodeURIComponent(ev.id)}`
+      if (args.cancel) {
+        const me = await fetch(`${base}?$select=isOrganizer`, { headers: H }).then(r => r.json()).catch(() => ({}))
+        const r = me.isOrganizer
+          ? await fetch(`${base}/cancel`, { method: 'POST', headers: H, body: JSON.stringify({ comment: args.comment || 'Cancelled by David.' }) })
+          : await fetch(`${base}/decline`, { method: 'POST', headers: H, body: JSON.stringify({ comment: args.comment || 'David cannot make this one.', sendResponse: true }) })
+        if (!r.ok && r.status !== 202) throw new Error(`calendar ${me.isOrganizer ? 'cancel' : 'decline'} -> ${r.status}: ${(await r.text()).slice(0, 200)}`)
+        await sbWrite('PATCH', `calendar_events?id=eq.${encodeURIComponent(ev.id)}`, { is_cancelled: true }, 'return=minimal').catch(() => null)
+        return JSON.stringify({ ok: true, subject: ev.subject, day, [me.isOrganizer ? 'cancelled' : 'declined']: true })
+      }
+      const patch = {}
+      const local = (hhmm) => `${day}T${String(hhmm).trim().padStart(5, '0')}:00`
+      if (args.start_time) patch.start = { dateTime: local(args.start_time), timeZone: 'America/Chicago' }
+      if (args.end_time) patch.end = { dateTime: local(args.end_time), timeZone: 'America/Chicago' }
+      if (!Object.keys(patch).length) return JSON.stringify({ ok: false, error: 'nothing to change: give start_time, end_time, or cancel' })
+      const r = await fetch(base, { method: 'PATCH', headers: H, body: JSON.stringify(patch) })
+      if (!r.ok) throw new Error(`calendar update -> ${r.status}: ${(await r.text()).slice(0, 200)}`)
+      const j = await r.json()
+      const toIso = (dt) => dt?.dateTime ? new Date(dt.dateTime + (dt.timeZone === 'UTC' ? 'Z' : '')).toISOString() : null
+      await sbWrite('PATCH', `calendar_events?id=eq.${encodeURIComponent(ev.id)}`, { ...(j.start ? { start_at: toIso(j.start) } : {}), ...(j.end ? { end_at: toIso(j.end) } : {}) }, 'return=minimal').catch(() => null)
+      return JSON.stringify({ ok: true, subject: ev.subject, day, start: j.start?.dateTime, end: j.end?.dateTime, timeZone: j.start?.timeZone })
     }
     case 'get_day': {
       const date = String(args.date || '').slice(0, 10)

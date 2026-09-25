@@ -157,6 +157,33 @@ export default async function handler(req, res) {
         out.push({ kind: 'mail', item: m.subject, sent: true })
       }
     }
+    // ---- meeting signals: email today that touches an upcoming meeting
+    // (can't make it, running late, move it). Ask David once per meeting.
+    if ((kind === 'sweep' && chiHour() >= 6 && chiHour() < 21) || kind === 'signals') {
+      const soon = new Date(Date.now() + 4 * 3600e3).toISOString()
+      const [events, mails] = await Promise.all([
+        sb(`calendar_events?select=id,subject,start_at,end_at,attendees&day=eq.${TODAY}&is_cancelled=eq.false&is_all_day=eq.false&end_at=gte.${new Date().toISOString()}&start_at=lte.${soon}&order=start_at.asc`),
+        sb(`emails?select=subject,from_name,preview,received_at&day=eq.${TODAY}&folder=eq.inbox&order=received_at.desc&limit=60`),
+      ])
+      const SIG = /(can'?t|cannot|won'?t be able|unable to)\s+(make|join|attend)|running late|need to (move|push|reschedule)|reschedul|conflict|have to (drop|skip|miss)|not going to make/i
+      const w = (x) => String(x || '').toLowerCase().replace(/[^a-z0-9 ]/g, ' ').split(/\s+/).filter(t => t.length > 2)
+      for (const e of events) {
+        if (!dry && await alreadySent('signal', TODAY, e.id)) continue
+        const subj = w(e.subject)
+        const names = (Array.isArray(e.attendees) ? e.attendees : []).map(a => String(a).split(' ')[0].toLowerCase()).filter(n => n.length > 2)
+        const hits = mails.filter(m => {
+          const text = `${m.subject || ''} ${m.preview || ''}`
+          if (!SIG.test(text)) return false
+          const tw = w(text)
+          const mentionsMeeting = subj.some(t => tw.includes(t)) || names.some(n => tw.includes(n))
+          return mentionsMeeting
+        })
+        if (!hits.length) continue
+        const startT = new Date(e.start_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'America/Chicago' })
+        out.push(await say({ kind: 'signal', day: TODAY, item: e.id, dry, instruction:
+          `[PULSE] Email today looks like it affects "${e.subject}" at ${startT}: ${hits.slice(0, 3).map(h => `${h.from_name || 'someone'}: "${(h.preview || h.subject || '').slice(0, 160)}"`).join(' | ')}. Tell David in one or two sentences who cannot make it or what is being asked, then ask what he wants: keep as is, shorten (say to what), move, or cancel. When he answers, use update_meeting. Do not decide for him.` }))
+      }
+    }
     // ---- standing orders
     if (kind === 'sweep' || kind === 'orders') {
       const now = new Date().toISOString()
