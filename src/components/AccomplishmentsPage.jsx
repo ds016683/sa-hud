@@ -276,7 +276,6 @@ export default function AccomplishmentsPage() {
 
   const struckOnDay = useMemo(() => ledger.filter(r => r.day === day).sort((a, b) => (a.awarded_at || '').localeCompare(b.awarded_at || '')), [ledger, day])
 
-  const pct = RIVER_TOTAL_MILES ? Math.min(100, (totals.all / RIVER_TOTAL_MILES) * 100) : 0
 
   return (
     <div style={S.page}>
