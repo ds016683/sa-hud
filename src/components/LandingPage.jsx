@@ -304,7 +304,7 @@ export default function LandingPage({ onNavigate }) {
         <div>
           {ledger !== null && (
             <>
-              <Panel style={{ marginTop: 24, padding: '12px 8px 4px' }}>
+              <Panel style={{ marginTop: 0, padding: '12px 8px 4px' }}>
                 <RiverGraphic miles={total} awards={awards} />
               </Panel>
 
