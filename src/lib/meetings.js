@@ -5,7 +5,7 @@ import { supabase } from './supabase'
 
 export const DAVID = '9d28e8cf-3e35-48d9-a029-1327bd37fdd4'
 const STOP = new Set(['the', 'and', 'with', 'for', 'call', 'meeting', 'sync', 'weekly', 'monthly', 'david', 'smith', 'third', 'horizon'])
-export const words = (s) => new Set(String(s || '').toLowerCase().replace(/[^a-z0-9 ]/g, ' ').split(/\s+/).filter(w => w.length > 2 && !STOP.has(w)))
+export const words = (s) => new Set(String(s || '').toLowerCase().replace(/[^a-z0-9 ]/g, ' ').split(/\s+/).filter(w => w.length > 1 && !STOP.has(w)))
 
 // Find the Granola note that belongs to a calendar event: exact title, or
 // two or more shared meaningful words (or every word when the subject is short).
@@ -20,7 +20,7 @@ export function matchNotes(event, meetings) {
   for (const m of meetings) {
     const b = words(m.title)
     if (!b.size) continue
-    const shared = [...a].filter(w => b.has(w)).length
+    const shared = [...a].filter(w => b.has(w) || [...b].some(x => (x.length >= 4 && w.startsWith(x)) || (w.length >= 4 && x.startsWith(w)))).length
     if (shared >= Math.min(2, a.size, b.size) && shared > bestN) { best = m; bestN = shared }
   }
   return best

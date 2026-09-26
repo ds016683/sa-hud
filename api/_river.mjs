@@ -17,14 +17,14 @@ export const MILES = {
   'toastmaster': 4, 'work-horse': 10, 'clean-close': 2, 'discomforter': 5, 'hygiene': 3,
 }
 
-const words = (s) => new Set(String(s || '').toLowerCase().replace(/[^a-z0-9 ]/g, ' ').split(/\s+/).filter(w => w.length > 2 && !['the', 'and', 'with', 'for', 'call', 'meeting', 'sync', 'weekly'].includes(w)))
+const words = (s) => new Set(String(s || '').toLowerCase().replace(/[^a-z0-9 ]/g, ' ').split(/\s+/).filter(w => w.length > 1 && !['the', 'and', 'with', 'for', 'call', 'meeting', 'sync', 'weekly'].includes(w)))
 function documented(subject, meetings) {
   const a = words(subject)
   if (!a.size) return false
   return meetings.some(m => {
     const b = words(m.title)
     if (!b.size) return false
-    const shared = [...a].filter(w => b.has(w)).length
+    const shared = [...a].filter(w => b.has(w) || [...b].some(x => (x.length >= 4 && w.startsWith(x)) || (w.length >= 4 && x.startsWith(w)))).length
     return shared >= Math.min(2, a.size, b.size)
   })
 }

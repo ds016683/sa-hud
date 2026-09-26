@@ -194,13 +194,13 @@ export async function syncHarvest() {
 // two days with a matching Granola note gets its session stamped attended_at
 // (and the note attached), so the Agenda, Notes, and Lumen all agree.
 const STOPW = new Set(['the', 'and', 'with', 'for', 'call', 'meeting', 'sync', 'weekly', 'monthly', 'david', 'smith', 'third', 'horizon'])
-const wordsOf = (x) => new Set(String(x || '').toLowerCase().replace(/[^a-z0-9 ]/g, ' ').split(/\s+/).filter(w => w.length > 2 && !STOPW.has(w)))
+const wordsOf = (x) => new Set(String(x || '').toLowerCase().replace(/[^a-z0-9 ]/g, ' ').split(/\s+/).filter(w => w.length > 1 && !STOPW.has(w)))
 function titleMatch(a, b) {
   const A = String(a || '').trim().toLowerCase(), B = String(b || '').trim().toLowerCase()
   if (A && A === B) return true
   const wa = wordsOf(a), wb = wordsOf(b)
   if (!wa.size) return false
-  return [...wa].filter(w => wb.has(w)).length >= Math.min(2, wa.size, wb.size)
+  return [...wa].filter(w => wb.has(w) || [...wb].some(x => (x.length >= 4 && w.startsWith(x)) || (w.length >= 4 && x.startsWith(w)))).length >= Math.min(2, wa.size, wb.size)
 }
 export async function stampAttendance() {
   const days = [0, 1].map(n => chicagoDay(Date.now() - n * 86400e3))

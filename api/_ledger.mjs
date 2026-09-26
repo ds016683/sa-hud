@@ -93,13 +93,13 @@ async function listFiles(prefix) {
 
 // ---- meetings: find a calendar event by words, and write its session row
 const STOPW = new Set(['the', 'and', 'with', 'for', 'call', 'meeting', 'sync', 'weekly', 'monthly', 'david', 'smith', 'third', 'horizon'])
-const wordsOf = (x) => new Set(String(x || '').toLowerCase().replace(/[^a-z0-9 ]/g, ' ').split(/\s+/).filter(w => w.length > 2 && !STOPW.has(w)))
+const wordsOf = (x) => new Set(String(x || '').toLowerCase().replace(/[^a-z0-9 ]/g, ' ').split(/\s+/).filter(w => w.length > 1 && !STOPW.has(w)))
 function titleMatch(a, b) {
   const A = String(a || '').trim().toLowerCase(), B = String(b || '').trim().toLowerCase()
   if (A && A === B) return true
   const wa = wordsOf(a), wb = wordsOf(b)
   if (!wa.size) return false
-  const shared = [...wa].filter(w => wb.has(w)).length
+  const shared = [...wa].filter(w => wb.has(w) || [...wb].some(x => (x.length >= 4 && w.startsWith(x)) || (w.length >= 4 && x.startsWith(w)))).length
   return shared >= Math.min(2, wa.size, wb.size)
 }
 async function findEvent(day, subject) {
