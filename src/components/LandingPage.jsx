@@ -48,6 +48,10 @@ const css = `
 @keyframes river-pulse { 0%, 100% { opacity: 0.35; transform: scale(1); } 50% { opacity: 0.85; transform: scale(1.6); } }
 .river-glow { transform-box: fill-box; transform-origin: center; animation: river-pulse 2.4s ease-in-out infinite; }
 .river-travelled { transition: stroke-dashoffset 1.2s ease-out; }
+@keyframes river-flow { from { stroke-dashoffset: 0; } to { stroke-dashoffset: -36; } }
+.river-current { animation: river-flow 1.6s linear infinite; }
+@keyframes river-blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+.river-marker { animation: river-blink 1.8s ease-in-out infinite; }
 .river-btn { display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; border-radius: 999px; border: 1px solid rgba(255,255,255,0.16); background: transparent; color: rgba(234,241,248,0.7); font-size: 11px; font-weight: 600; letter-spacing: 0.8px; text-transform: uppercase; cursor: pointer; font-family: inherit; }
 .river-btn:hover { border-color: ${BLUE}; color: ${INK}; }
 `
@@ -92,6 +96,16 @@ function RiverGraphic({ miles, awards }) {
         <path className="river-travelled" d={RIVER_PATH} fill="none" stroke="url(#river-gold)" strokeWidth="10" strokeLinecap="round" strokeLinejoin="round"
           strokeDasharray={len} strokeDashoffset={offset} />
       ) : null}
+      {/* The current: a baby-blue flow moving downstream, only ahead of the marker */}
+      {len > 0 ? (
+        <>
+          <mask id="river-ahead">
+            <path d={RIVER_PATH} fill="none" stroke="#fff" strokeWidth="14" strokeLinecap="round" strokeLinejoin="round"
+              strokeDasharray={`${Math.max(0, len - len * frac)} ${len}`} strokeDashoffset={-(len * frac)} />
+          </mask>
+          <path className="river-current" mask="url(#river-ahead)" d={RIVER_PATH} fill="none" stroke="#BFD9F2" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" strokeDasharray="10 26" opacity="0.55" />
+        </>
+      ) : null}
       {/* Badge points along the travelled stretch */}
       {geom ? geom.dots.map((d, i) => <circle key={i} cx={d.x} cy={d.y} r="3" fill={BLUE} opacity="0.6" />) : null}
       {/* Waypoints */}
@@ -99,10 +113,13 @@ function RiverGraphic({ miles, awards }) {
         const passed = miles >= w.at
         const end = i === 0 || i === geom.way.length - 1
         const anchor = i === 0 ? 'start' : i === geom.way.length - 1 ? 'end' : 'middle'
+        const prev = geom.way[i - 1]
+        const crowded = prev && Math.hypot(w.x - prev.x, w.y - prev.y) < 90
+        const ty = crowded ? w.y - 14 : w.y + 22
         return (
           <g key={w.label}>
             <circle cx={w.x} cy={w.y} r={end ? 5 : 3.5} fill={passed ? GOLD : '#0E2336'} stroke={passed ? GOLD_BRIGHT : 'rgba(255,255,255,0.35)'} strokeWidth="1.5" />
-            <text x={w.x} y={w.y + 22} textAnchor={anchor} fill={end ? INK2 : GRAY} fontFamily={MONO} fontSize={end ? 11 : 9} letterSpacing="1">{(w.short || w.label).toUpperCase()}</text>
+            <text x={w.x} y={ty} textAnchor={anchor} fill={end ? INK2 : GRAY} fontFamily={MONO} fontSize={end ? 11 : 9} letterSpacing="1">{(w.short || w.label).toUpperCase()}</text>
           </g>
         )
       }) : null}
@@ -110,7 +127,7 @@ function RiverGraphic({ miles, awards }) {
       {geom ? (
         <g>
           <circle className="river-glow" cx={geom.marker.x} cy={geom.marker.y} r="18" fill="url(#river-glow-grad)" />
-          <circle cx={geom.marker.x} cy={geom.marker.y} r="6.5" fill={GOLD_BRIGHT} stroke="#0E2336" strokeWidth="2" />
+          <circle className="river-marker" cx={geom.marker.x} cy={geom.marker.y} r="6.5" fill={GOLD_BRIGHT} stroke="#0E2336" strokeWidth="2" />
           <text x={geom.marker.x} y={geom.marker.y - 16} textAnchor="middle" fill={GOLD_BRIGHT} fontFamily={MONO} fontSize="10" letterSpacing="1">{fmtMiles(miles)} MI</text>
         </g>
       ) : null}
