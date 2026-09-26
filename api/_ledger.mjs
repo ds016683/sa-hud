@@ -100,7 +100,7 @@ function titleMatch(a, b) {
   const wa = wordsOf(a), wb = wordsOf(b)
   if (!wa.size) return false
   const shared = [...wa].filter(w => wb.has(w)).length
-  return shared >= Math.min(2, wa.size)
+  return shared >= Math.min(2, wa.size, wb.size)
 }
 async function findEvent(day, subject) {
   const evs = await sb(`calendar_events?select=id,subject,start_at,end_at,is_all_day&day=eq.${day}&is_cancelled=eq.false&order=start_at.asc`)
@@ -215,8 +215,8 @@ export const TOOLS = [
   },
   {
     name: 'close_day',
-    description: "Close the day on David's word: the final sweep, the Daily Report, the River struck with Clean Close eligible. Only when he clearly asks to close the day. Takes a minute or two. Returns miles, badges, and the day's total.",
-    inputSchema: { type: 'object', properties: {}, required: [] },
+    description: "Close a day on David's word: the final sweep, the Daily Report, the River struck with Clean Close eligible. Default target is yesterday if it is still open, otherwise today (only after 6 PM Chicago unless force is true). If the target is already closed, report that and do nothing. Takes a minute or two.",
+    inputSchema: { type: 'object', properties: { day: { type: 'string', description: 'YYYY-MM-DD to close; default yesterday-if-open else today' }, force: { type: 'boolean', description: 'close today before 6 PM Chicago' } }, required: [] },
   },
   {
     name: 'meeting_attended',
@@ -247,6 +247,11 @@ export const TOOLS = [
     name: 'update_meeting',
     description: "Change a calendar meeting on David's word: shorten or move it (new start and/or end, Chicago local time like '10:00' or '10:30'), or cancel it (David must be the organizer; otherwise decline). Use after he decides: 'keep it but cut to 30 minutes', 'push it to 2', 'cancel CSOG'. Confirm in one line with the new time.",
     inputSchema: { type: 'object', properties: { subject: { type: 'string' }, day: { type: 'string' }, start_time: { type: 'string', description: 'HH:MM Chicago' }, end_time: { type: 'string', description: 'HH:MM Chicago' }, cancel: { type: 'boolean' }, comment: { type: 'string' } }, required: ['subject'] },
+  },
+  {
+    name: 'work_timer',
+    description: "A timer for work that is not a calendar meeting: 'Personal Administration', 'APNC proposal', 'Hud Development'. start opens it, stop closes it and logs the span to Harvest, log writes hours directly. One running ad-hoc timer at a time. Use when he says 'throw up a timer for X' or 'log two hours on Y'.",
+    inputSchema: { type: 'object', properties: { title: { type: 'string' }, action: { type: 'string', enum: ['start', 'stop', 'log', 'status'] }, hours: { type: 'number', description: "for 'log'" } }, required: ['title', 'action'] },
   },
   {
     name: 'get_day',
@@ -519,7 +524,18 @@ export async function callTool(name, args = {}) {
     case 'close_day': {
       const base = process.env.HUD_BASE || 'https://sa-hud.vercel.app'
       const path = name === 'close_day' ? '/api/close' : '/api/refresh'
-      const r = await fetch(`${base}${path}`, { method: 'POST', headers: { Authorization: `Bearer ${process.env.CRON_SECRET}` } })
+      let body
+      if (name === 'close_day') {
+        const today = chiToday()
+        const yday = new Date(new Date(`${today}T12:00:00`).getTime() - 86400e3).toISOString().slice(0, 10)
+        const hourChi = Number(new Intl.DateTimeFormat('en-US', { timeZone: 'America/Chicago', hour: 'numeric', hour12: false }).format(new Date()))
+        const closed = async (d) => (await sb(`daily_performance?select=id&day=eq.${d}&model=eq.Daily%20Report&limit=1`)).length > 0
+        let target = String(args.day || '').match(/^\d{4}-\d{2}-\d{2}$/) ? args.day : (await closed(yday) ? today : yday)
+        if (await closed(target)) return JSON.stringify({ ok: true, day: target, already_closed: true, note: `${target} is already closed and canon; nothing to do` })
+        if (target === today && hourChi < 18 && !args.force) return JSON.stringify({ ok: false, day: today, error: 'today is still open; closing before 6 PM Chicago needs force=true. Say so to David and let him decide.' })
+        body = JSON.stringify({ day: target })
+      }
+      const r = await fetch(`${base}${path}`, { method: 'POST', headers: { Authorization: `Bearer ${process.env.CRON_SECRET}`, 'Content-Type': 'application/json' }, body })
       const j = await r.json().catch(() => ({}))
       if (!r.ok) return JSON.stringify({ ok: false, error: j.error || `HTTP ${r.status}` })
       return JSON.stringify({ ok: true, day: j.day, miles_today: j.miles, badges: j.badges || [], badge_evidence: j.badge_evidence || {}, river_total: j.river_total ?? j.total, released_today: j.released_today || [], closed: name === 'close_day' }, null, 2)
@@ -618,6 +634,39 @@ export async function callTool(name, args = {}) {
       const toIso = (dt) => dt?.dateTime ? new Date(dt.dateTime + (dt.timeZone === 'UTC' ? 'Z' : '')).toISOString() : null
       await sbWrite('PATCH', `calendar_events?id=eq.${encodeURIComponent(ev.id)}`, { ...(j.start ? { start_at: toIso(j.start) } : {}), ...(j.end ? { end_at: toIso(j.end) } : {}) }, 'return=minimal').catch(() => null)
       return JSON.stringify({ ok: true, subject: ev.subject, day, start: j.start?.dateTime, end: j.end?.dateTime, timeZone: j.start?.timeZone })
+    }
+    case 'work_timer': {
+      const day = chiToday()
+      const title = String(args.title || '').trim()
+      if (!title) throw new Error('title required')
+      const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+      const eid = `adhoc:${day}:${slug}`
+      const cur = (await sb(`meeting_sessions?select=*&event_id=eq.${encodeURIComponent(eid)}&limit=1`))[0] || null
+      const now = new Date().toISOString()
+      if (args.action === 'status') {
+        const running = await sb(`meeting_sessions?select=subject,started_at&day=eq.${day}&started_at=not.is.null&stopped_at=is.null`)
+        return JSON.stringify({ running: running.map(r => ({ subject: r.subject, since: r.started_at })) })
+      }
+      if (args.action === 'log') {
+        const h = Math.round(Number(args.hours) * 100) / 100
+        if (!h) return JSON.stringify({ ok: false, error: 'hours required' })
+        let harvest = null
+        try { harvest = await logHours(title, h) } catch (e) { harvest = { error: String(e.message || e) } }
+        await putSession(cur, { event_id: eid, day, subject: title, hours: (cur?.hours || 0) + h, harvest_logged: !!harvest?.ok, attended_at: cur?.attended_at || now })
+        return JSON.stringify({ ok: true, logged: title, hours: h, harvest })
+      }
+      if (args.action === 'start') {
+        const running = await sb(`meeting_sessions?select=subject,started_at&day=eq.${day}&started_at=not.is.null&stopped_at=is.null&event_id=like.adhoc:*`)
+        if (running.length) return JSON.stringify({ ok: false, error: `"${running[0].subject}" is already running since ${running[0].started_at}; stop it first` })
+        await putSession(cur, { event_id: eid, day, subject: title, started_at: now, stopped_at: null, attended_at: now })
+        return JSON.stringify({ ok: true, started: title, at: now })
+      }
+      if (!cur?.started_at || cur?.stopped_at) return JSON.stringify({ ok: false, error: `no timer running on "${title}"` })
+      const hours = Math.round(((Date.now() - new Date(cur.started_at).getTime()) / 3600e3) * 100) / 100
+      let harvest = null
+      try { harvest = await logHours(title, hours) } catch (e) { harvest = { error: String(e.message || e) } }
+      await putSession(cur, { event_id: eid, day, subject: title, stopped_at: now, hours: (cur?.hours || 0) + hours, harvest_logged: !!harvest?.ok })
+      return JSON.stringify({ ok: true, stopped: title, hours, harvest })
     }
     case 'get_day': {
       const date = String(args.date || '').slice(0, 10)

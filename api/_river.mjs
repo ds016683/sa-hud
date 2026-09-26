@@ -23,8 +23,9 @@ function documented(subject, meetings) {
   if (!a.size) return false
   return meetings.some(m => {
     const b = words(m.title)
+    if (!b.size) return false
     const shared = [...a].filter(w => b.has(w)).length
-    return shared >= Math.min(2, a.size)
+    return shared >= Math.min(2, a.size, b.size)
   })
 }
 

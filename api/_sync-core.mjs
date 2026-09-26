@@ -200,7 +200,7 @@ function titleMatch(a, b) {
   if (A && A === B) return true
   const wa = wordsOf(a), wb = wordsOf(b)
   if (!wa.size) return false
-  return [...wa].filter(w => wb.has(w)).length >= Math.min(2, wa.size)
+  return [...wa].filter(w => wb.has(w)).length >= Math.min(2, wa.size, wb.size)
 }
 export async function stampAttendance() {
   const days = [0, 1].map(n => chicagoDay(Date.now() - n * 86400e3))

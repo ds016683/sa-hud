@@ -19,8 +19,9 @@ export function matchNotes(event, meetings) {
   let best = null, bestN = 0
   for (const m of meetings) {
     const b = words(m.title)
+    if (!b.size) continue
     const shared = [...a].filter(w => b.has(w)).length
-    if (shared >= Math.min(2, a.size) && shared > bestN) { best = m; bestN = shared }
+    if (shared >= Math.min(2, a.size, b.size) && shared > bestN) { best = m; bestN = shared }
   }
   return best
 }
