@@ -3,7 +3,7 @@
 // Awards are struck by deterministic rules on the server (api/_river.mjs)
 // into miles_ledger; this file only knows how to present them.
 import {
-  Flag, Target, Wrench, Dumbbell, Moon, Mic, Tractor, DoorClosed, Flame, Droplets,
+  Flag, Target, Wrench, Dumbbell, Moon, Mic, Tractor, DoorClosed, Flame, Droplets, Timer,
 } from 'lucide-react'
 
 export const RIVER_TOTAL_MILES = 10535
@@ -16,7 +16,8 @@ export const BADGES = {
   'maintenance-bundle': { label: 'Maintenance Bundle',    miles: 0.2, Icon: Wrench,     repeatable: true,  desc: 'Five maintenance items done', lore: 'The hull holds because someone checked the hull.' },
   'exercise':           { label: 'Exercise',              miles: 5,   Icon: Dumbbell,   repeatable: false, desc: 'One hour of physical exercise logged', lore: 'The body rows; the mind steers.' },
   'sleep':              { label: 'Sleep',                 miles: 4,   Icon: Moon,       repeatable: false, desc: 'Six hours of sleep', lore: 'The river runs at night whether you watch it or not.' },
-  'toastmaster':        { label: 'Toastmaster General',  miles: 4,   Icon: Mic,        repeatable: false, desc: 'Attended and documented every scheduled meeting', lore: 'Every word said was written down.' },
+  'toastmaster':        { label: 'Toastmaster General',  miles: 4,   Icon: Mic,        repeatable: false, desc: 'Every meeting attended, and each documented or closed out', lore: 'Every word said was written down.' },
+  'full-day':           { label: 'Full Day',             miles: 4,   Icon: Timer,      repeatable: false, desc: 'Six or more hours of dedicated work in Harvest', lore: 'The oars did not stop until the light did.' },
   'work-horse':         { label: 'Work Horse',            miles: 10,  Icon: Tractor,      repeatable: false, desc: 'More than twelve hours of dedicated work in Harvest', lore: 'The current did not carry you. You carried the current.' },
   'clean-close':        { label: 'Clean Close',           miles: 2,   Icon: DoorClosed, repeatable: false, desc: 'Emails addressed, tasks organized, tomorrow prepped and reviewed', lore: 'Camp struck, fire out, boat tied.' },
   'discomforter':       { label: 'Discomforter',          miles: 5,   Icon: Flame,      repeatable: false, desc: 'Three deliberate discomforts told to Lumen', lore: 'Three times into the cold water, on purpose.' },

@@ -14,7 +14,7 @@ async function sb(path) {
 
 export const MILES = {
   'main-mission': 10, 'mission-task': 1, 'side-mission': 4, 'maintenance-bundle': 0.2, 'exercise': 5, 'sleep': 4,
-  'toastmaster': 4, 'work-horse': 10, 'clean-close': 2, 'discomforter': 5, 'hygiene': 3,
+  'toastmaster': 4, 'full-day': 4, 'work-horse': 10, 'clean-close': 2, 'discomforter': 5, 'hygiene': 3,
 }
 
 const words = (s) => new Set(String(s || '').toLowerCase().replace(/[^a-z0-9 ]/g, ' ').split(/\s+/).filter(w => w.length > 1 && !['the', 'and', 'with', 'for', 'call', 'meeting', 'sync', 'weekly'].includes(w)))
@@ -32,18 +32,19 @@ function documented(subject, meetings) {
 // Compute the day's awards from the Ledger. Returns [{badge, key, miles, evidence}].
 export async function computeAwards(day, { closing = false } = {}) {
   const from = `${day}T00:00:00-05:00`, to = `${day}T23:59:59-05:00`
-  const [doneTasks, released, taskObjIds, maint, logs, calendar, meetings, time, emails, inboxObjs, doneProjects] = await Promise.all([
+  const [doneTasks, released, taskObjIds, maint, logs, calendar, meetings, time, emails, inboxObjs, doneProjects, sessions] = await Promise.all([
     sb(`project_tasks?select=id,text,project_id,released_at&status=eq.done&released_at=gte.${from}&released_at=lte.${to}`),
     sb(`objectives?select=id,title,released_at,released_kind&state=eq.released&released_kind=eq.done&released_at=gte.${from}&released_at=lte.${to}&deleted_at=is.null`),
     sb(`project_tasks?select=objective_id&objective_id=not.is.null`),
     sb(`maintenance_items?select=id,title&status=eq.done&day=eq.${day}`).catch(() => []),
     sb(`daily_logs?select=kind,what,value,note,at&day=eq.${day}`).catch(() => []),
-    sb(`calendar_events?select=subject,start_at,end_at,attendees,organizer&day=eq.${day}&is_cancelled=eq.false`),
+    sb(`calendar_events?select=id,subject,start_at,end_at,attendees,organizer,is_all_day&day=eq.${day}&is_cancelled=eq.false`),
     sb(`granola_meetings?select=title&meeting_date=eq.${day}`),
     sb(`time_entries?select=person,hours&spent_date=eq.${day}`),
     sb(`emails?select=is_read&folder=eq.inbox&day=eq.${day}`),
     sb(`objectives?select=id&state=eq.inbox&deleted_at=is.null`),
     sb(`projects?select=id,name,status,archived_at,last_activity_at&status=in.(completed,complete,done)`),
+    sb(`meeting_sessions?select=event_id,attended_at,started_at,closed_at,notes_meeting_id&day=eq.${day}`).catch(() => []),
   ])
   const linked = new Set(taskObjIds.map(t => t.objective_id))
   const awards = []
@@ -69,12 +70,22 @@ export async function computeAwards(day, { closing = false } = {}) {
   const whiten = hyg.some(w => w.includes('whiten'))
   if (brushes >= 3 && shower && whiten) add('hygiene', '', `Teeth ${brushes}x, shower, whitening`)
 
+  // Toastmaster: every real meeting of the day attended, and each one either
+  // documented (notes) or closed out. Sessions carry the stamps.
   const now = Date.now()
-  const real = calendar.filter(c => Array.isArray(c.attendees) ? c.attendees.length >= 1 : true).filter(c => new Date(c.end_at).getTime() <= now)
-  if (real.length >= 1 && real.every(c => documented(c.subject, meetings)) && (closing || real.length === calendar.length)) {
-    add('toastmaster', '', `${real.length} of ${real.length} meetings attended and documented: ${real.map(c => c.subject).join(', ')}`)
+  const real = calendar.filter(c => !c.is_all_day).filter(c => new Date(c.end_at).getTime() <= now)
+  const byEvent = new Map(sessions.map(x => [x.event_id, x]))
+  const ok = (c) => {
+    const s = byEvent.get(c.id)
+    const attended = !!(s && (s.attended_at || s.started_at || s.closed_at || s.notes_meeting_id)) || documented(c.subject, meetings)
+    const recorded = !!(s && (s.closed_at || s.notes_meeting_id)) || documented(c.subject, meetings)
+    return attended && recorded
+  }
+  if (real.length >= 1 && real.every(ok) && (closing || real.length === calendar.filter(c => !c.is_all_day).length)) {
+    add('toastmaster', '', `${real.length} of ${real.length} meetings attended and documented or closed out: ${real.map(c => c.subject.trim()).join(', ')}`)
   }
   const davidHours = time.filter(t => (t.person || '').startsWith('David')).reduce((s, t) => s + (t.hours || 0), 0)
+  if (davidHours >= 6) add('full-day', '', `${Math.round(davidHours * 10) / 10} hours logged in Harvest`)
   if (davidHours > 12) add('work-horse', '', `${Math.round(davidHours * 10) / 10} hours logged in Harvest`)
   if (closing && emails.length && emails.every(e => e.is_read) && inboxObjs.length === 0) {
     add('clean-close', '', `Closed clean: ${emails.length} inbox emails all read, agent inbox at zero, tomorrow reviewed`)

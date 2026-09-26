@@ -52,9 +52,15 @@ ${doc}`
 
 // One turn: returns the reply text. Runs the tool loop against the Ledger.
 export async function think({ channel = 'whatsapp', text, spoken = false }) {
-  const [doc, ctx] = await Promise.all([identityDoc('operating-context.md'), threadContext()])
+  const [doc, ctx, constitution, rules] = await Promise.all([
+    identityDoc('operating-context.md'), threadContext(),
+    identityDoc('constitution.md').catch(() => ''),
+    sb('lumen_rules?select=id,text,kind,created_at&active=eq.true&order=id.asc&limit=200').catch(() => []),
+  ])
   const transcript = ctx.recent.map(m => `[${m.at.slice(0, 16).replace('T', ' ')} ${m.direction === 'in' ? 'David' : 'Lumen'}${m.kind === 'audio' ? ' (voice)' : ''}] ${m.body}`).join('\n')
-  const system = persona(doc, spoken, channel)
+  const system = (constitution ? `${constitution}\n\n` : '')
+    + (rules.length ? `## Rules David has added (newest wins)\n${rules.map(r => `${r.id}. [${r.kind}] ${r.text}`).join('\n')}\n\n` : '')
+    + persona(doc, spoken, channel)
     + (ctx.memory ? `\n\n## Longer memory (summary of the thread before the recent messages)\n${ctx.memory.summary}` : '')
     + (transcript ? `\n\n## Recent thread\n${transcript}` : '')
 

@@ -254,6 +254,21 @@ export const TOOLS = [
     inputSchema: { type: 'object', properties: { title: { type: 'string' }, action: { type: 'string', enum: ['start', 'stop', 'log', 'status'] }, hours: { type: 'number', description: "for 'log'" } }, required: ['title', 'action'] },
   },
   {
+    name: 'remember_rule',
+    description: "Make something durable: a rule for how you behave, a preference of David's, or a fact worth keeping. It loads into every future turn under the constitution. Use when he says 'remember this', 'from now on', 'never again', or corrects you on something that will recur. Write it as one clear sentence in the imperative or as a plain fact.",
+    inputSchema: { type: 'object', properties: { text: { type: 'string' }, kind: { type: 'string', enum: ['rule', 'preference', 'fact'] } }, required: ['text'] },
+  },
+  {
+    name: 'forget_rule',
+    description: 'Retire a rule or fact by its id (from list_rules) or by matching text. Only on David\'s word.',
+    inputSchema: { type: 'object', properties: { id: { type: 'integer' }, text: { type: 'string' } }, required: [] },
+  },
+  {
+    name: 'list_rules',
+    description: 'List the active rules, preferences, and facts David has given you, with ids.',
+    inputSchema: { type: 'object', properties: {}, required: [] },
+  },
+  {
     name: 'get_day',
     description: 'A finished day from the Day Library: the definitive Daily Report record plus its collection scorecard (miles, grade, badges, signal). Date format YYYY-MM-DD.',
     inputSchema: { type: 'object', properties: { date: { type: 'string', description: 'YYYY-MM-DD' } }, required: ['date'] },
@@ -667,6 +682,25 @@ export async function callTool(name, args = {}) {
       try { harvest = await logHours(title, hours) } catch (e) { harvest = { error: String(e.message || e) } }
       await putSession(cur, { event_id: eid, day, subject: title, stopped_at: now, hours: (cur?.hours || 0) + hours, harvest_logged: !!harvest?.ok })
       return JSON.stringify({ ok: true, stopped: title, hours, harvest })
+    }
+    case 'remember_rule': {
+      const text = String(args.text || '').trim()
+      if (!text) throw new Error('text required')
+      const dupes = await sb(`lumen_rules?select=id,text&active=eq.true&text=ilike.${encodeURIComponent(esc(text))}&limit=1`)
+      if (dupes.length) return JSON.stringify({ ok: true, already: dupes[0] })
+      const out = await sbWrite('POST', 'lumen_rules', { text, kind: ['rule', 'preference', 'fact'].includes(args.kind) ? args.kind : 'rule', source: 'david' })
+      return JSON.stringify({ ok: true, rule: out?.[0] })
+    }
+    case 'forget_rule': {
+      let rows = []
+      if (args.id) rows = await sb(`lumen_rules?select=id,text&active=eq.true&id=eq.${Number(args.id)}`)
+      else if (args.text) rows = await sb(`lumen_rules?select=id,text&active=eq.true&text=ilike.*${encodeURIComponent(esc(args.text))}*&limit=5`)
+      if (rows.length !== 1) return JSON.stringify({ ok: false, error: rows.length ? 'ambiguous' : 'no such rule', matches: rows })
+      await sbWrite('PATCH', `lumen_rules?id=eq.${rows[0].id}`, { active: false, retired_at: new Date().toISOString() }, 'return=minimal')
+      return JSON.stringify({ ok: true, retired: rows[0] })
+    }
+    case 'list_rules': {
+      return JSON.stringify(await sb('lumen_rules?select=id,text,kind,created_at&active=eq.true&order=id.asc'), null, 2)
     }
     case 'get_day': {
       const date = String(args.date || '').slice(0, 10)
