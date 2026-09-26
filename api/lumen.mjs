@@ -13,6 +13,27 @@ export const config = { maxDuration: 300 }
 
 import { think, remember, alreadySeen } from './_lumen-brain.mjs'
 import { flushPending } from './pulse.mjs'
+import { sbWrite, chiToday as chiTodayStr } from './_ledger.mjs'
+
+// Look at a photo. If it is an InBody results screen, pull the four numbers;
+// otherwise describe it in a sentence so the brain can respond to it.
+async function readImage(bytes, mime, caption) {
+  const b64 = Buffer.from(bytes).toString('base64')
+  const r = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST', headers: { 'x-api-key': process.env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
+    body: JSON.stringify({ model: process.env.LUMEN_MODEL || 'claude-sonnet-5', max_tokens: 400, messages: [{ role: 'user', content: [
+      { type: 'image', source: { type: 'base64', media_type: mime || 'image/jpeg', data: b64 } },
+      { type: 'text', text: `If this is an InBody body-composition results screen, reply with ONLY JSON: {"scan":{"weight_lbs":number,"smm_lbs":number,"pbf_pct":number,"ecw_tbw":number}} using Weight, Skeletal Muscle Mass, Percent Body Fat, ECW/TBW (leave a field null if unreadable). Otherwise reply with ONLY JSON: {"text":"one plain sentence describing what the photo shows"}.${caption ? ` Caption from David: ${caption}` : ''}` },
+    ] }] }),
+  })
+  const j = await r.json().catch(() => ({}))
+  const raw = ((j.content || []).find(c => c.type === 'text') || {}).text || ''
+  try {
+    const parsed = JSON.parse(raw.replace(/^```json|```$/g, '').trim())
+    if (parsed.scan && parsed.scan.weight_lbs) return { scan: parsed.scan, text: '[InBody scan photo]' }
+    return { scan: null, text: `[photo: ${parsed.text || 'an image'}]${caption ? ' ' + caption : ''}` }
+  } catch { return { scan: null, text: `[photo]${caption ? ' ' + caption : ''}` } }
+}
 
 import { GRAPH, waHeaders, allowed, waSendText, waSendTemplate, waSendAudio, waMarkRead, waDownloadMedia, speak, transcribe, davidNumber } from './_wa.mjs'
 
@@ -213,6 +234,18 @@ export default async function handler(req, res) {
         kind = 'audio'
         const { bytes, mime } = await waDownloadMedia(m.audio.id)
         text = await transcribe(bytes, mime)
+      } else if (m.type === 'image') {
+        kind = 'image'
+        const { bytes, mime } = await waDownloadMedia(m.image.id)
+        const seen = await readImage(bytes, mime, m.image.caption || '')
+        text = seen.text
+        if (seen.scan) {
+          const day = chiTodayStr()
+          try {
+            await sbWrite('POST', 'body_scans?on_conflict=day,source', { day, ...seen.scan, source: 'whatsapp', image_ref: m.image.id, note: m.image.caption || null }, 'resolution=merge-duplicates,return=minimal')
+            text = `[InBody scan photo, logged for ${day}: weight ${seen.scan.weight_lbs} lbs, skeletal muscle ${seen.scan.smm_lbs} lbs, body fat ${seen.scan.pbf_pct}%, ECW/TBW ${seen.scan.ecw_tbw}]${m.image.caption ? ' ' + m.image.caption : ''}`
+          } catch (e) { text = `[InBody scan photo read but not saved: ${String(e.message || e).slice(0, 120)}] ${seen.text}` }
+        }
       } else {
         text = `[${m.type} message]`
       }

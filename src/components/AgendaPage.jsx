@@ -442,8 +442,8 @@ export default function AgendaPage() {
 
       <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap', marginBottom: 18 }}>
         <div>
-          <Eyebrow>Agenda</Eyebrow>
-          <h1 style={S.h1}><CalendarDays size={22} color={BLUE} style={{ verticalAlign: '-3px', marginRight: 8 }} />{weekday(day)}&rsquo;s Agenda</h1>
+          <Eyebrow>Board</Eyebrow>
+          <h1 style={S.h1}><CalendarDays size={22} color={BLUE} style={{ verticalAlign: '-3px', marginRight: 8 }} />{weekday(day)}&rsquo;s Board</h1>
           <div style={S.sub}>{fmtFullDay(day)}{day === today ? ' · today' : ''} · Chicago</div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>

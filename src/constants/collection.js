@@ -22,7 +22,9 @@ export const BADGES = {
   'work-horse':         { label: 'Work Horse',            miles: 10,  Icon: Tractor,      repeatable: false, desc: 'More than twelve hours of dedicated work in Harvest', lore: 'The current did not carry you. You carried the current.' },
   'clean-close':        { label: 'Clean Close',           miles: 2,   Icon: DoorClosed, repeatable: false, desc: 'Emails addressed, tasks organized, tomorrow prepped and reviewed', lore: 'Camp struck, fire out, boat tied.' },
   'discomforter':       { label: 'Discomforter',          miles: 5,   Icon: Flame,      repeatable: false, desc: 'Three deliberate discomforts told to Lumen', lore: 'Three times into the cold water, on purpose.' },
-  'hygiene':            { label: 'Hygiene',               miles: 3,   Icon: Droplets,   repeatable: false, desc: 'Teeth three times, shower on waking, whitening', lore: 'Bright teeth, clear head.' },
+  'hygiene-item':       { label: 'Hygiene Item',          miles: 0.25, Icon: Droplets,  repeatable: true,  desc: 'One item of the daily hygiene list logged', lore: 'Small water, every day.' },
+  'devotional':         { label: 'Morning Devotional',    miles: 2,   Icon: Moon,       repeatable: false, desc: 'The day opened with the devotional, told to Lumen', lore: 'Before the river, the spring.' },
+  'hygiene':            { label: 'Hygiene',               miles: 3,   Icon: Droplets,   repeatable: false, desc: 'All eight hygiene items in one day', lore: 'Bright teeth, clear head.' },
 }
 
 // Tiers by effort, for the medallion outline: highest = light purple,

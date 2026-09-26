@@ -14,7 +14,7 @@ async function sb(path) {
 
 export const MILES = {
   'main-mission': 10, 'mission-task': 1, 'side-mission': 4, 'maintenance-bundle': 1, 'cartographer': 2, 'exercise': 5, 'sleep': 4,
-  'toastmaster': 4, 'full-day': 4, 'work-horse': 10, 'clean-close': 2, 'discomforter': 5, 'hygiene': 3,
+  'toastmaster': 4, 'full-day': 4, 'work-horse': 10, 'clean-close': 2, 'discomforter': 5, 'hygiene': 3, 'hygiene-item': 0.25, 'devotional': 2,
 }
 
 const words = (s) => new Set(String(s || '').toLowerCase().replace(/[^a-z0-9 ]/g, ' ').split(/\s+/).filter(w => w.length > 1 && !['the', 'and', 'with', 'for', 'call', 'meeting', 'sync', 'weekly'].includes(w)))
@@ -67,11 +67,23 @@ export async function computeAwards(day, { closing = false } = {}) {
   if (sleepH >= 6) add('sleep', '', `${sleepH} hours of sleep`)
   const disc = by('discomfort')
   if (disc.length >= 3) add('discomforter', '', `Three deliberate discomforts: ${disc.slice(0, 3).map(l => l.what || l.note).filter(Boolean).join('; ')}`)
-  const hyg = by('hygiene').map(l => String(l.what || '').toLowerCase())
-  const brushes = hyg.filter(w => w.includes('brush') || w.includes('teeth')).length
-  const shower = hyg.some(w => w.includes('shower'))
-  const whiten = hyg.some(w => w.includes('whiten'))
-  if (brushes >= 3 && shower && whiten) add('hygiene', '', `Teeth ${brushes}x, shower, whitening`)
+  // Hygiene: eight daily items, 0.25 each; all eight strike the badge. Free-text
+  // "brushed" / "showered" / "whitened" from Lumen map onto the list by keyword.
+  const HYG = ['peptide-am', 'shower', 'brush-am', 'shave', 'brush-mid', 'whiten', 'peptide-pm', 'brush-pm']
+  const hygDone = new Set()
+  for (const l of by('hygiene')) {
+    const w = String(l.what || '').toLowerCase()
+    const hourChi = Number(new Intl.DateTimeFormat('en-US', { timeZone: 'America/Chicago', hour: 'numeric', hour12: false }).format(new Date(l.at || Date.now())))
+    if (HYG.includes(w)) hygDone.add(w)
+    else if (w.includes('shower')) hygDone.add('shower')
+    else if (w.includes('shave')) hygDone.add('shave')
+    else if (w.includes('whiten')) hygDone.add('whiten')
+    else if (w.includes('peptide')) hygDone.add(hourChi < 14 ? 'peptide-am' : 'peptide-pm')
+    else if (w.includes('brush') || w.includes('teeth')) hygDone.add(hourChi < 11 ? 'brush-am' : hourChi < 17 ? 'brush-mid' : 'brush-pm')
+  }
+  for (const k of hygDone) add('hygiene-item', k, `Hygiene: ${k}`)
+  if (HYG.every(k => hygDone.has(k))) add('hygiene', '', 'All eight hygiene items in one day')
+  if (by('devotional').length) add('devotional', '', `Morning devotional: ${(by('devotional')[0].note || by('devotional')[0].what || 'done').slice(0, 120)}`)
 
   // Toastmaster: every real meeting of the day attended, and each one either
   // documented (notes) or closed out. Sessions carry the stamps.

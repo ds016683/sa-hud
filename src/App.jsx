@@ -27,7 +27,7 @@ import AnthropicPage from './components/AnthropicPage'
 
 const NAV_ITEMS = [
   { id: 'river',            label: 'The River',             icon: Waves,          group: 'LANDING' },
-  { id: 'agenda',           label: 'Agenda',                icon: CalendarDays,   group: 'MONITOR' },
+  { id: 'agenda',           label: 'Board',                icon: CalendarDays,   group: 'MONITOR' },
   { id: 'narrative',        label: 'Narrative',             icon: BookOpen,       group: 'MONITOR' },
   { id: 'activity',         label: 'Activity',              icon: Activity,       group: 'MONITOR' },
   { id: 'accomplishments',  label: 'Accomplishments',       icon: Award,          group: 'MONITOR' },

@@ -228,6 +228,52 @@ export async function stampAttendance() {
   return { stamped }
 }
 
+// Workouts ride in on Harvest: David logs LT time with the detail in the
+// comment, one exercise per line, "Name/Weight: reps reps reps". Every synced
+// LT entry becomes a workouts row (idempotent on harvest_entry_id) and an
+// exercise log for the day (minutes), which the Exercise badge reads.
+const CATEGORY = [
+  ['push', /press|push|fly|butterfly|dip|extension|chest|shoulder|tricep/i],
+  ['pull', /row|pull|traction|curl|lat|bicep|shrug|deadlift|face/i],
+  ['core', /core|crunch|plank|ab|cable center|twist|leg raise|sit-?up/i],
+]
+export function parseWorkout(notes) {
+  const lines = String(notes || '').split(/\r?\n/).map(l => l.trim()).filter(Boolean)
+  const exercises = []
+  for (const line of lines) {
+    const m = line.match(/^([A-Za-z][A-Za-z0-9 .'()-]*?)\s*\/\s*([0-9.]+)\s*(?:lbs?|#)?\s*:\s*([0-9 ,x×]+)\s*$/)
+    if (!m) continue
+    const name = m[1].trim()
+    const weight = Number(m[2])
+    const sets = m[3].split(/[ ,x×]+/).map(Number).filter(n => Number.isFinite(n) && n > 0)
+    const category = (CATEGORY.find(([, re]) => re.test(name)) || ['other'])[0]
+    exercises.push({ name, category, weight_lbs: weight, sets })
+  }
+  return exercises
+}
+export async function syncWorkouts() {
+  const since = chicagoDay(Date.now() - 14 * 86400e3)
+  const get = async (path) => { const r = await fetch(`${URL_BASE}/rest/v1/${path}`, { headers: sbHeaders() }); if (!r.ok) throw new Error(`${path.split('?')[0]} -> ${r.status}`); return r.json() }
+  const entries = await get(`time_entries?select=id,spent_date,hours,notes,task&person=ilike.David*&notes=ilike.LT*&spent_date=gte.${since}&order=spent_date.asc`)
+  if (!entries.length) return { parsed: 0 }
+  const have = new Set((await get(`workouts?select=harvest_entry_id&harvest_entry_id=in.(${entries.map(e => e.id).join(',')})`).catch(() => [])).map(w => w.harvest_entry_id))
+  let parsed = 0
+  for (const e of entries) {
+    if (have.has(e.id)) continue
+    const exercises = parseWorkout(e.notes)
+    const minutes = Math.round((Number(e.hours) || 0) * 60)
+    const summary = exercises.length ? `${exercises.length} exercises: ${exercises.map(x => x.name).join(', ')}` : String(e.notes || '').replace(/^LT\s*/i, '').slice(0, 160)
+    const row = { day: e.spent_date, harvest_entry_id: e.id, minutes, raw: e.notes, exercises, summary }
+    const r = await fetch(`${URL_BASE}/rest/v1/workouts?on_conflict=harvest_entry_id`, { method: 'POST', headers: { ...sbHeaders(), Prefer: 'resolution=merge-duplicates,return=minimal' }, body: JSON.stringify(row) })
+    if (!r.ok) throw new Error(`workouts upsert -> ${r.status}: ${(await r.text()).slice(0, 160)}`)
+    // one exercise log per entry; the badge sums minutes for the day
+    const logs = await get(`daily_logs?select=id&day=eq.${e.spent_date}&kind=eq.exercise&source=eq.harvest:${e.id}&limit=1`).catch(() => [])
+    if (!logs.length) await fetch(`${URL_BASE}/rest/v1/daily_logs`, { method: 'POST', headers: { ...sbHeaders(), Prefer: 'return=minimal' }, body: JSON.stringify({ day: e.spent_date, kind: 'exercise', what: 'LT', value: minutes, note: summary, source: `harvest:${e.id}` }) })
+    parsed++
+  }
+  return { parsed, seen: entries.length }
+}
+
 export async function syncAll() {
   let token = null
   try { token = await graphToken() } catch { /* email+calendar will each report */ }
@@ -235,7 +281,8 @@ export async function syncAll() {
     syncGranola(), syncEmail(token), syncCalendar(token), syncHarvest(),
   ])
   const shape = (r) => r.status === 'fulfilled' ? { ok: true, ...r.value } : { ok: false, error: String(r.reason?.message || r.reason).slice(0, 200) }
-  let attendance = null
+  let attendance = null, workouts = null
   try { attendance = await stampAttendance() } catch (e) { attendance = { error: String(e.message || e).slice(0, 120) } }
-  return { granola: shape(granola), email: shape(email), calendar: shape(calendar), harvest: shape(harvest), attendance }
+  try { workouts = await syncWorkouts() } catch (e) { workouts = { error: String(e.message || e).slice(0, 120) } }
+  return { granola: shape(granola), email: shape(email), calendar: shape(calendar), harvest: shape(harvest), attendance, workouts }
 }
