@@ -189,22 +189,9 @@ function HistoryModal({ badgeId, history, onClose }) {
 
         <DayGrid history={history} />
 
-        <div style={{ marginTop: 18, paddingTop: 14, borderTop: `1px solid ${PANEL_BORDER}` }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 8 }}>
-            <Label style={{ marginBottom: 0 }}>{history.length} award{history.length === 1 ? '' : 's'}</Label>
-            <span style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '1px', color: GOLD }}>{fmtMiles(total)} MI BANKED</span>
-          </div>
-          {history.length === 0 ? (
-            <div style={{ fontSize: 12.5, color: GRAY, padding: '10px 0' }}>Never struck yet.</div>
-          ) : (
-            history.map((r, i) => (
-              <div key={r.id || i} style={{ display: 'grid', gridTemplateColumns: '92px 56px 1fr', gap: 10, alignItems: 'start', padding: '9px 0', borderTop: i ? `1px solid ${PANEL_BORDER}` : 'none' }}>
-                <div style={{ fontFamily: MONO, fontSize: 10.5, letterSpacing: '0.6px', color: INK2, paddingTop: 2 }}>{shortDay(r.day)}{r.day ? `, ${r.day.slice(0, 4)}` : ''}</div>
-                <div style={{ fontFamily: SERIF, fontSize: 15, fontWeight: 500, color: GOLD }}>{fmtMiles(r.miles)}<span style={{ fontSize: 9.5, fontFamily: MONO, color: GRAY, marginLeft: 3 }}>MI</span></div>
-                <div style={{ fontSize: 12.5, lineHeight: 1.5, color: INK2 }}>{r.evidence || <span style={{ color: GRAY }}>no citation recorded</span>}</div>
-              </div>
-            ))
-          )}
+        <div style={{ marginTop: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+          <Label style={{ marginBottom: 0 }}>{history.length} award{history.length === 1 ? '' : 's'}</Label>
+          <span style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '1px', color: GOLD }}>{fmtMiles(total)} MI BANKED</span>
         </div>
       </div>
     </div>
