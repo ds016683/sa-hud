@@ -1,10 +1,10 @@
 // ACCOMPLISHMENTS. Badges only. Every badge carries miles; miles are the only
 // thing that moves David down the river. Awards are struck server-side into
 // miles_ledger; this page reads the ledger and presents the catalogue.
-import { useEffect, useMemo, useState } from 'react'
+import { Fragment, useEffect, useMemo, useState } from 'react'
 import { ChevronLeft, ChevronRight, X as XIcon } from 'lucide-react'
 import { supabase } from '../lib/supabase'
-import { BADGES, RIVER_TOTAL_MILES } from '../constants/collection'
+import { BADGES, RIVER_TOTAL_MILES, RIVER_START_DAY } from '../constants/collection'
 import BadgeMedallion from './BadgeArt'
 import {
   INK, INK2, GRAY, PANEL_BORDER, GOLD, GOLD_BRIGHT, BLUE, MONO, SERIF,
@@ -105,6 +105,53 @@ function BadgeCard({ badge, history, onOpen }) {
   )
 }
 
+// The days since the river started, one cell each: gold when the badge
+// struck (brighter with more strikes), hairline when it did not, blank ahead.
+function DayGrid({ history }) {
+  const today = chiToday()
+  const byDay = {}
+  for (const r of history) byDay[r.day] = (byDay[r.day] || 0) + 1
+  const start = new Date(RIVER_START_DAY + 'T12:00:00')
+  const end = new Date(today + 'T12:00:00')
+  const days = []
+  for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) days.push(d.toISOString().slice(0, 10))
+  const lead = (start.getDay() + 6) % 7   // Monday-first
+  const cells = [...Array(lead).fill(null), ...days]
+  while (cells.length % 7) cells.push(null)
+  const weeks = []
+  for (let i = 0; i < cells.length; i += 7) weeks.push(cells.slice(i, i + 7))
+  const struck = Object.keys(byDay).length
+  return (
+    <div style={{ marginTop: 16, paddingTop: 14, borderTop: `1px solid ${PANEL_BORDER}` }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 8 }}>
+        <Label style={{ marginBottom: 0 }}>Days on the river</Label>
+        <span style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '1px', color: GRAY }}>STRUCK {struck} OF {days.length} DAYS</span>
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: '28px repeat(7, 1fr)', gap: 4, alignItems: 'center' }}>
+        <span />
+        {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((d, i) => <span key={i} style={{ fontFamily: MONO, fontSize: 9, color: GRAY, textAlign: 'center' }}>{d}</span>)}
+        {weeks.map((w, wi) => (
+          <Fragment key={wi}>
+            <span style={{ fontFamily: MONO, fontSize: 9, color: GRAY }}>{(w.find(Boolean) || '').slice(5).replace('-', '/')}</span>
+            {w.map((d, di) => {
+              if (!d) return <span key={di} />
+              const n = byDay[d] || 0
+              return (
+                <div key={d} title={`${shortDay(d)}: ${n ? `struck ${n}x` : 'not struck'}`} style={{
+                  height: 22, borderRadius: 5, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontFamily: MONO, fontSize: 9.5, color: n ? '#16324A' : GRAY,
+                  background: n ? (n > 1 ? GOLD_BRIGHT : GOLD) : 'rgba(255,255,255,0.04)',
+                  border: `1px solid ${n ? 'transparent' : PANEL_BORDER}`, opacity: n ? 1 : 0.8,
+                }}>{n > 1 ? n : d.slice(8).replace(/^0/, '')}</div>
+              )
+            })}
+          </Fragment>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 function HistoryModal({ badgeId, history, onClose }) {
   const b = BADGES[badgeId]
   useEffect(() => {
@@ -139,6 +186,8 @@ function HistoryModal({ badgeId, history, onClose }) {
           </button>
         </div>
         <div style={{ fontSize: 12, color: GRAY, fontStyle: 'italic', marginTop: 12 }}>{b.lore}</div>
+
+        <DayGrid history={history} />
 
         <div style={{ marginTop: 18, paddingTop: 14, borderTop: `1px solid ${PANEL_BORDER}` }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 8 }}>

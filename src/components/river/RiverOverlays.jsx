@@ -83,7 +83,7 @@ export function MintingOverlay({ mint, onDone }) {
         {stage >= milesStage && (
           <div style={{ margin: '26px 0 8px', animation: 'haulDrop 700ms both' }}>
             <span style={{ fontFamily: SERIF, fontSize: 84, fontWeight: 500, lineHeight: 1, color: GOLD_BRIGHT, textShadow: '0 0 34px rgba(248,199,97,0.45)' }}>{fmt(mint.miles)}</span>
-            <div style={{ fontFamily: MONO, color: GOLD_BRIGHT, letterSpacing: '2px', fontSize: 11, marginTop: 10 }}>MILES POURED INTO THE RIVER</div>
+            <div style={{ fontFamily: MONO, color: GOLD_BRIGHT, letterSpacing: '2px', fontSize: 11, marginTop: 10 }}>MILES TRAVELED DOWN THE RIVER</div>
             <div style={{ margin: '18px auto 0', maxWidth: 380, height: 6, borderRadius: 3, background: 'rgba(255,255,255,0.10)', overflow: 'hidden' }}>
               <div style={{ width: `${pct}%`, height: '100%', background: 'linear-gradient(90deg, #E6B54F, #F8C761)', transition: 'width 1.2s ease-out' }} />
             </div>

@@ -13,7 +13,7 @@ async function sb(path) {
 }
 
 export const MILES = {
-  'main-mission': 10, 'mission-task': 1, 'side-mission': 4, 'maintenance-bundle': 0.2, 'exercise': 5, 'sleep': 4,
+  'main-mission': 10, 'mission-task': 1, 'side-mission': 4, 'maintenance-bundle': 1, 'cartographer': 2, 'exercise': 5, 'sleep': 4,
   'toastmaster': 4, 'full-day': 4, 'work-horse': 10, 'clean-close': 2, 'discomforter': 5, 'hygiene': 3,
 }
 
@@ -34,7 +34,7 @@ export async function computeAwards(day, { closing = false } = {}) {
   const from = `${day}T00:00:00-05:00`, to = `${day}T23:59:59-05:00`
   const [doneTasks, released, taskObjIds, maint, logs, calendar, meetings, time, emails, inboxObjs, doneProjects, sessions] = await Promise.all([
     sb(`project_tasks?select=id,text,project_id,released_at&status=eq.done&released_at=gte.${from}&released_at=lte.${to}`),
-    sb(`objectives?select=id,title,released_at,released_kind&state=eq.released&released_kind=eq.done&released_at=gte.${from}&released_at=lte.${to}&deleted_at=is.null`),
+    sb(`objectives?select=id,title,released_at,released_kind,who,state&released_at=gte.${from}&released_at=lte.${to}&deleted_at=is.null`),
     sb(`project_tasks?select=objective_id&objective_id=not.is.null`),
     sb(`maintenance_items?select=id,title&status=eq.done&day=eq.${day}`).catch(() => []),
     sb(`daily_logs?select=kind,what,value,note,at&day=eq.${day}`).catch(() => []),
@@ -53,7 +53,10 @@ export async function computeAwards(day, { closing = false } = {}) {
   const onDay = (ts) => ts && ts >= from && ts <= to
   for (const p of doneProjects) if (onDay(p.archived_at) || onDay(p.last_activity_at)) add('main-mission', p.id, `Main Mission complete: ${p.name}`)
   for (const t of doneTasks) add('mission-task', t.id, `Mission task closed: ${t.text}`)
-  for (const o of released) if (!linked.has(o.id)) add('side-mission', o.id, `Side Mission released: ${o.title}`)
+  for (const o of released) {
+    if (o.state === 'released' && o.released_kind === 'done' && !linked.has(o.id)) add('side-mission', o.id, `Side Mission released: ${o.title}`)
+    if (o.released_kind === 'foreman' || o.state === 'foreman') add('cartographer', o.id, `Handed off: ${o.title}${o.who ? ` (${o.who})` : ''}`)
+  }
   const bundles = Math.floor(maint.length / 5)
   for (let i = 1; i <= bundles; i++) add('maintenance-bundle', i, `Bundle ${i}: ${maint.slice((i - 1) * 5, i * 5).map(m => m.title).join(', ')}`)
 

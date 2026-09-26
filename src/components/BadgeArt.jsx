@@ -117,9 +117,11 @@ const EMBLEMS = {
   // Exercise · the kettlebell
   'exercise': (
     <g>
-      <path d="M18.5 21 c-1.5 -7 3 -9 5.5 -9 s7 2 5.5 9" fill="none" />
-      <circle cx="24" cy="27.5" r="8" fill="rgba(248,199,97,0.12)" />
-      <path d="M20.5 27 q3.5 -2.5 7 0" strokeWidth="1.2" opacity="0.8" />
+      <path d="M19 24 H29" strokeWidth="2" />
+      <rect x="13.5" y="19" width="4" height="10" rx="1" fill="rgba(248,199,97,0.12)" />
+      <rect x="30.5" y="19" width="4" height="10" rx="1" fill="rgba(248,199,97,0.12)" />
+      <rect x="10" y="21" width="3" height="6" rx="0.8" />
+      <rect x="35" y="21" width="3" height="6" rx="0.8" />
     </g>
   ),
   // Sleep · the crescent moon over still water

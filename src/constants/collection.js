@@ -3,7 +3,7 @@
 // Awards are struck by deterministic rules on the server (api/_river.mjs)
 // into miles_ledger; this file only knows how to present them.
 import {
-  Flag, Target, Wrench, Dumbbell, Moon, Mic, Tractor, DoorClosed, Flame, Droplets, Timer,
+  Flag, Target, Wrench, Dumbbell, Moon, Mic, Tractor, DoorClosed, Flame, Droplets, Timer, Map,
 } from 'lucide-react'
 
 export const RIVER_TOTAL_MILES = 10535
@@ -13,7 +13,8 @@ export const BADGES = {
   'main-mission':       { label: 'Main Mission Complete', miles: 10,  Icon: Flag,       repeatable: true,  desc: 'A whole Main Mission (project) marked complete', lore: 'The map moves when the mission moves.' },
   'mission-task':       { label: 'Mission Task Closed',   miles: 1,   Icon: Flag,       repeatable: true,  desc: 'A component task of a Main Mission closed', lore: 'One plank at a time, the bridge.' },
   'side-mission':       { label: 'Side Mission Complete', miles: 4,   Icon: Target,     repeatable: true,  desc: 'A Side Mission released as done', lore: 'Small tributaries still reach the sea.' },
-  'maintenance-bundle': { label: 'Maintenance Bundle',    miles: 0.2, Icon: Wrench,     repeatable: true,  desc: 'Five maintenance items done', lore: 'The hull holds because someone checked the hull.' },
+  'maintenance-bundle': { label: 'Maintenance Bundle',    miles: 1,   Icon: Wrench,     repeatable: true,  desc: 'Five maintenance items done', lore: 'The hull holds because someone checked the hull.' },
+  'cartographer':       { label: 'Cartographer',          miles: 2,   Icon: Map,        repeatable: true,  desc: 'A Side Mission handed to other hands, with a named owner', lore: 'The map outlives the hand that drew it.' },
   'exercise':           { label: 'Exercise',              miles: 5,   Icon: Dumbbell,   repeatable: false, desc: 'One hour of physical exercise logged', lore: 'The body rows; the mind steers.' },
   'sleep':              { label: 'Sleep',                 miles: 4,   Icon: Moon,       repeatable: false, desc: 'Six hours of sleep', lore: 'The river runs at night whether you watch it or not.' },
   'toastmaster':        { label: 'Toastmaster General',  miles: 4,   Icon: Mic,        repeatable: false, desc: 'Every meeting attended, and each documented or closed out', lore: 'Every word said was written down.' },
@@ -35,7 +36,6 @@ export const TIER_COLORS = { high: '#B4A3E8', mid: '#A9C9E8', low: '#43D392' }
 // The retired composite-score badges (pre-River). Kept so older daily reads
 // still render their chips; they carry no miles and never strike again.
 export const LEGACY_BADGES = {
-  'cartographer': { label: 'Cartographer', legacy: true, miles: 0, Icon: Flag, desc: 'Work deployed to other hands', lore: 'The map outlives the hand that drew it.' },
   'leverage': { label: 'Leverage', legacy: true, miles: 0, Icon: Flag, desc: 'Project tasks closed through the system', lore: 'Move the world; let the beam bear the weight.' },
   'closer': { label: 'Closer', legacy: true, miles: 0, Icon: Target, desc: 'Three or more completions banked', lore: 'What is finished can finally be judged, and it held.' },
   'walling': { label: 'Walling', legacy: true, miles: 0, Icon: DoorClosed, desc: 'A boundary held', lore: 'The rampart knows what is not yours to carry.' },
