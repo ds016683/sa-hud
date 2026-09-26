@@ -78,9 +78,11 @@ export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' })
   const token = (req.headers.authorization || '').replace(/^Bearer /, '')
   if (!token) return res.status(401).json({ error: 'missing token' })
-  const who = await fetch(`${URL_BASE}/auth/v1/user`, { headers: { apikey: ANON_KEY, Authorization: `Bearer ${token}` } })
-  if (!who.ok) return res.status(401).json({ error: 'invalid session' })
-  if ((await who.json()).id !== DAVID) return res.status(403).json({ error: 'not authorized' })
+  if (!(process.env.CRON_SECRET && token === process.env.CRON_SECRET)) {
+    const who = await fetch(`${URL_BASE}/auth/v1/user`, { headers: { apikey: ANON_KEY, Authorization: `Bearer ${token}` } })
+    if (!who.ok) return res.status(401).json({ error: 'invalid session' })
+    if ((await who.json()).id !== DAVID) return res.status(403).json({ error: 'not authorized' })
+  }
 
   let body = req.body
   if (typeof body === 'string') { try { body = JSON.parse(body) } catch { body = {} } }

@@ -28,7 +28,7 @@ const fmtMiles = (m) => {
 }
 const shortDay = (day) => day ? new Date(day + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : ''
 
-const CATALOGUE = Object.entries(BADGES).filter(([, b]) => !b.legacy).map(([id, b]) => ({ id, ...b }))
+const CATALOGUE = Object.entries(BADGES).filter(([, b]) => !b.legacy && !b.silent).map(([id, b]) => ({ id, ...b }))
 
 // ---- Small pieces
 const MilesChip = ({ miles, bright = false }) => (

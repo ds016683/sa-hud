@@ -30,3 +30,16 @@ alter table body_scans enable row level security;
 create policy "owner read" on workouts for select to authenticated using (true);
 create policy "owner all" on body_scans for all to authenticated using (true) with check (true);
 create policy "owner delete hud" on daily_logs for delete to authenticated using (source = 'hud');
+
+-- Regimen overrides: move a dose to another day, or skip one, without touching the schedule
+create table if not exists medication_overrides (
+  id bigserial primary key,
+  day date not null,
+  key text not null,
+  due boolean not null,
+  note text,
+  created_at timestamptz default now(),
+  unique (day, key)
+);
+alter table medication_overrides enable row level security;
+create policy "owner all" on medication_overrides for all to authenticated using (true) with check (true);

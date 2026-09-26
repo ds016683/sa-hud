@@ -32,7 +32,7 @@ function BadgeRow({ id, evidence, delayMs = 0 }) {
 export function HaulOverlay({ haul, onClose }) {
   const drops = [
     ...(haul.items || []).map(t => ({ kind: 'item', text: t })),
-    ...(haul.badges || []).map(b => ({ kind: 'badge', id: b })),
+    ...(haul.badges || []).filter(b => !(BADGES[b] || {}).silent).map(b => ({ kind: 'badge', id: b })),
   ]
   const empty = drops.length === 0
   return (
@@ -65,7 +65,7 @@ export function HaulOverlay({ haul, onClose }) {
 
 export function MintingOverlay({ mint, onDone }) {
   const [stage, setStage] = useState(0)
-  const badges = mint.badges || []
+  const badges = (mint.badges || []).filter(b => !(BADGES[b] || {}).silent)
   const milesStage = 1 + badges.length
   const finalStage = milesStage + 1
   useEffect(() => {

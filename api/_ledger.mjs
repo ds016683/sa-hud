@@ -190,7 +190,7 @@ export const TOOLS = [
   },
   {
     name: 'log_day',
-    description: "Log something David did or is about to do today, for the River's badges. kind: 'discomfort' (he tells you he is about to do something consciously uncomfortable; three a day strike Discomforter), 'hygiene' (what: one of peptide-am, shower, brush-am, shave, brush-mid, whiten, peptide-pm, brush-pm; each is 0.25 miles, all eight strike Hygiene; put specifics like the peptide and dose in note; 'none today' for a peptide still counts), 'exercise' (value: minutes; 60 in a day strikes Exercise), 'sleep' (value: hours; 6 strikes Sleep), 'note' (a thought he wants kept in the day's record), 'devotional' (he opened the day with his morning devotional; note = anything he shared about it), 'activity' (something he did that no pipe sees: a call, a document, a decision), 'medication' (what: the medication taken), 'diet' (what he ate or a diet note). Log silently and confirm in a few words; never lecture.",
+    description: "Log something David did or is about to do today, for the River's badges. kind: 'discomfort' (he tells you he is about to do something consciously uncomfortable; three a day strike Discomforter), 'hygiene' (what: one of peptide-am, shower, brush-am, shave, brush-mid, whiten, peptide-pm, brush-pm; each is 0.25 miles, all eight strike Hygiene; put specifics like the peptide and dose in note; 'none today' for a peptide still counts), 'exercise' (value: minutes; 60 in a day strikes Exercise), 'sleep' (value: hours; 6 strikes Sleep), 'note' (a thought he wants kept in the day's record), 'devotional' (he opened the day with his morning devotional; note = anything he shared about it), 'activity' (something he did that no pipe sees: a call, a document, a decision), 'medication' (what: the regimen key: vyvanse-am, vyvanse-pm, testosterone, nad, cjc-blend, selank, biweekly-5mg; 0.5 miles each; note = dose or anything he says), 'diet' (what he ate or a diet note). Log silently and confirm in a few words; never lecture.",
     inputSchema: { type: 'object', properties: { kind: { type: 'string', enum: ['discomfort', 'hygiene', 'exercise', 'sleep', 'note', 'activity', 'medication', 'diet', 'devotional'] }, what: { type: 'string', description: 'short label of the thing' }, value: { type: 'number', description: 'minutes for exercise, hours for sleep' }, note: { type: 'string' }, day: { type: 'string', description: 'YYYY-MM-DD, default today (Chicago)' } }, required: ['kind'] },
   },
   {
@@ -267,6 +267,11 @@ export const TOOLS = [
     name: 'list_rules',
     description: 'List the active rules, preferences, and facts David has given you, with ids.',
     inputSchema: { type: 'object', properties: {}, required: [] },
+  },
+  {
+    name: 'regimen',
+    description: "The medication regimen for a day: what is due, what is taken, what is moved. Also moves a dose: action 'skip' (not due that day) or 'add' (due that day instead), with a note, when David and you reassign one (e.g. testosterone deferred from Friday to Monday).",
+    inputSchema: { type: 'object', properties: { day: { type: 'string' }, action: { type: 'string', enum: ['status', 'skip', 'add', 'clear'] }, key: { type: 'string', enum: ['vyvanse-am', 'vyvanse-pm', 'testosterone', 'nad', 'cjc-blend', 'selank', 'biweekly-5mg'] }, note: { type: 'string' } }, required: [] },
   },
   {
     name: 'get_day',
@@ -701,6 +706,17 @@ export async function callTool(name, args = {}) {
     }
     case 'list_rules': {
       return JSON.stringify(await sb('lumen_rules?select=id,text,kind,created_at&active=eq.true&order=id.asc'), null, 2)
+    }
+    case 'regimen': {
+      const day = String(args.day || chiToday()).slice(0, 10)
+      const action = args.action || 'status'
+      if (action !== 'status') {
+        if (!args.key) throw new Error('key required')
+        if (action === 'clear') { await sbWrite('DELETE', `medication_overrides?day=eq.${day}&key=eq.${args.key}`, undefined, 'return=minimal'); return JSON.stringify({ ok: true, cleared: args.key, day }) }
+        await sbWrite('POST', 'medication_overrides?on_conflict=day,key', { day, key: args.key, due: action === 'add', note: args.note || null }, 'resolution=merge-duplicates,return=minimal')
+      }
+      const { computeRegimen } = await import('./_river.mjs')
+      return JSON.stringify(await computeRegimen(day), null, 2)
     }
     case 'get_day': {
       const date = String(args.date || '').slice(0, 10)
