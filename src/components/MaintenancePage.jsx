@@ -1,11 +1,14 @@
 // Maintenance: the upkeep of a life. Four pillars (Health, Hygiene, Spiritual,
 // Family) on the maintenance_items table, plus a Health dashboard that reads
-// daily_logs (sleep, exercise, medication, diet). Five items done in a day
-// strike a Maintenance Bundle.
+// daily_logs (sleep, exercise, medication, diet, hygiene, devotional), the
+// workouts table (parsed from Harvest), and body_scans (InBody). Five items
+// done in a day strike a Maintenance Bundle.
 import { useState, useEffect } from 'react'
-import { Plus, Check, X } from 'lucide-react'
+import { Plus, Check, X, ChevronRight } from 'lucide-react'
 import { supabase } from '../lib/supabase'
-import { S, Eyebrow, Panel, Stat, Label, GRAY, INK2, GOLD, GREEN, BLUE, PURPLE, PERIWINKLE, RED, PANEL_BORDER, MONO, chiToday } from './river/canon'
+import { HYGIENE_ITEMS, HYGIENE_KEYS } from '../constants/hygiene'
+import HygieneChecklist from './river/HygieneChecklist'
+import { S, Eyebrow, Panel, Stat, Label, GRAY, INK2, GOLD, GREEN, BLUE, PURPLE, PERIWINKLE, RED, PANEL_BORDER, MONO, chiToday, fmtTime } from './river/canon'
 
 // ---------- constants ----------
 const TOP_PILLS = [
@@ -47,6 +50,25 @@ const chiDayMinus = (n) => {
   return t.toISOString().slice(0, 10)
 }
 const last14 = () => Array.from({ length: 14 }, (_, i) => chiDayMinus(i))
+const last28 = () => Array.from({ length: 28 }, (_, i) => chiDayMinus(i))
+const WINDOW_DAYS = 28
+// Chicago hour (0-23) of a timestamp, for legacy free-text hygiene rows.
+const chiHour = (iso) => iso ? Number(new Intl.DateTimeFormat('en-US', { timeZone: 'America/Chicago', hour: 'numeric', hour12: false }).format(new Date(iso))) % 24 : 12
+// Map a hygiene daily_logs row to a HYGIENE_ITEMS key. The key in `what` is
+// primary; older free-text rows ('showered', 'brushed teeth') fall back to
+// keyword matching, with brush and peptide placed by time of day.
+const hygieneKeyOf = (l) => {
+  if (HYGIENE_KEYS.includes(l.what)) return l.what
+  const t = `${l.what || ''} ${l.note || ''}`.toLowerCase()
+  const h = chiHour(l.at)
+  if (/shower/.test(t)) return 'shower'
+  if (/shave/.test(t)) return 'shave'
+  if (/whiten/.test(t)) return 'whiten'
+  if (/peptide|inject/.test(t)) return h < 14 ? 'peptide-am' : 'peptide-pm'
+  if (/brush|teeth|tooth/.test(t)) return h < 11 ? 'brush-am' : h < 17 ? 'brush-mid' : 'brush-pm'
+  return null
+}
+const hygieneCount = (arr) => new Set(arr.map(hygieneKeyOf).filter(Boolean)).size
 // Monday-start week containing today (Chicago).
 const weekStart = () => {
   const today = chiToday()
@@ -217,11 +239,222 @@ function Placeholder({ title, copy }) {
   )
 }
 
+// A thin panel-styled bar that reveals its children when opened. Children
+// keep their own panels, so nothing nests two borders.
+function Collapsed({ title, children }) {
+  const [open, setOpen] = useState(false)
+  return (
+    <>
+      <button onClick={() => setOpen(o => !o)} style={{
+        ...S.panel, width: '100%', textAlign: 'left', cursor: 'pointer', padding: '10px 16px',
+        display: 'flex', alignItems: 'center', gap: 8,
+      }}>
+        <ChevronRight size={12} color={BLUE} style={{ transform: open ? 'rotate(90deg)' : 'none', transition: 'transform 120ms' }} />
+        <span style={{ ...S.panelTitle, marginBottom: 0 }}>{title}</span>
+      </button>
+      {open && children}
+    </>
+  )
+}
+
+// A row of small day cells, oldest on the left. `days` newest first;
+// `cell(day)` returns { text, full, some }.
+function DayStrip({ days, cell }) {
+  const today = chiToday()
+  return (
+    <div style={{ display: 'flex', gap: 4 }}>
+      {[...days].reverse().map(d => {
+        const c = cell(d)
+        return (
+          <div key={d} title={d} style={{
+            flex: 1, minWidth: 0, textAlign: 'center', padding: '5px 0 4px', borderRadius: 6,
+            border: `1px solid ${c.full ? 'rgba(230,181,79,0.6)' : d === today ? 'rgba(255,255,255,0.22)' : PANEL_BORDER}`,
+            background: c.full ? 'rgba(230,181,79,0.14)' : c.some ? 'rgba(255,255,255,0.04)' : 'transparent',
+          }}>
+            <div style={{ fontFamily: MONO, fontSize: 9.5, color: c.full ? GOLD : c.some ? INK2 : GRAY, whiteSpace: 'nowrap' }}>{c.text}</div>
+            <div style={{ fontFamily: MONO, fontSize: 8.5, color: GRAY, marginTop: 2 }}>{Number(d.slice(8, 10))}</div>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+// ---------- spiritual ----------
+function DevotionalPanel({ logs, onChanged }) {
+  const [open, setOpen] = useState(false)
+  const [note, setNote] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [err, setErr] = useState(null)
+  const today = chiToday()
+  const dev = logs.filter(l => l.kind === 'devotional')
+  const daysWith = new Set(dev.map(l => l.day))
+  const todays = dev.find(l => l.day === today)
+
+  // Streak: consecutive days ending today (or yesterday, if today is still open).
+  let streak = 0
+  if (daysWith.has(today) || daysWith.has(chiDayMinus(1))) {
+    let i = daysWith.has(today) ? 0 : 1
+    while (i < WINDOW_DAYS && daysWith.has(chiDayMinus(i))) { streak++; i++ }
+  }
+  const streakText = streak >= WINDOW_DAYS ? `${WINDOW_DAYS}+` : String(streak)
+
+  const save = async () => {
+    setBusy(true)
+    const { error } = await supabase.from('daily_logs').insert({ day: today, kind: 'devotional', what: 'devotional', note: note.trim() || null, source: 'hud' })
+    setBusy(false)
+    if (error) { setErr(friendly(error, 'daily_logs')); return }
+    setErr(null); setNote(''); setOpen(false); onChanged()
+  }
+
+  return (
+    <Panel title="Morning Devotional">
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 14, marginBottom: 14 }}>
+        <Stat v={todays ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}><Check size={20} color={GREEN} /> {fmtTime(todays.at)}</span> : '·'} l={todays ? 'done today' : 'not yet today'} color={todays ? GREEN : '#fff'} />
+        <Stat v={streakText} l="day streak" color={streak > 0 ? GOLD : '#fff'} />
+      </div>
+      {todays
+        ? (todays.note && <div style={{ fontSize: 13, color: GRAY, marginBottom: 12 }}>{todays.note}</div>)
+        : (
+          <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginBottom: 12 }}>
+            <span style={{ fontSize: 13, color: INK2, flex: '1 1 260px' }}>Not yet today. Tell Lumen when you've done it; that opens the day.</span>
+            {!open && <button onClick={() => setOpen(true)} style={{ ...BTN, borderColor: 'rgba(230,181,79,0.5)', color: GOLD }}><Plus size={14} /> Log it here</button>}
+          </div>
+        )}
+      {open && !todays && (
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
+          <input autoFocus value={note} onChange={e => setNote(e.target.value)} onKeyDown={e => e.key === 'Enter' && save()} placeholder="Note (optional)" style={{ ...CTRL, flex: '1 1 220px' }} />
+          <button onClick={save} disabled={busy} style={{ ...BTN, borderColor: 'rgba(67,211,146,0.5)', color: GREEN, opacity: busy ? 0.6 : 1 }}><Check size={14} /> Save</button>
+          <button onClick={() => setOpen(false)} style={{ ...BTN, color: GRAY }}><X size={14} /></button>
+        </div>
+      )}
+      <ErrLine msg={err} />
+      <Label>last 28 days</Label>
+      <DayStrip days={last28()} cell={d => ({ text: daysWith.has(d) ? '✓' : '·', full: daysWith.has(d), some: false })} />
+    </Panel>
+  )
+}
+
+// ---------- workouts ----------
+const WO_CAT = [
+  { id: 'push', label: 'Push', color: BLUE },
+  { id: 'pull', label: 'Pull', color: PERIWINKLE },
+  { id: 'core', label: 'Core', color: GREEN },
+  { id: 'other', label: 'Other', color: GRAY },
+]
+const woList = (w) => Array.isArray(w?.exercises) ? w.exercises : []
+
+function WorkoutCard({ w }) {
+  const ex = woList(w)
+  const groups = WO_CAT.map(c => ({ ...c, rows: ex.filter(e => (WO_CAT.some(k => k.id === e.category) ? e.category : 'other') === c.id) })).filter(g => g.rows.length)
+  const td = { fontSize: 12.5, color: INK2, padding: '4px 10px 4px 0', verticalAlign: 'top' }
+  return (
+    <div style={{ padding: '12px 0', borderTop: `1px solid ${PANEL_BORDER}` }}>
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 8 }}>
+        <span style={{ fontSize: 13.5, color: '#EAF1F8' }}>{shortDay(w.day)}</span>
+        {num(w.minutes) !== null && <span style={{ fontFamily: MONO, fontSize: 11, color: GOLD }}>{fmtNum(num(w.minutes))} min</span>}
+        <span style={{ fontFamily: MONO, fontSize: 10, color: GRAY }}>{ex.length} exercise{ex.length === 1 ? '' : 's'}</span>
+      </div>
+      {groups.map(g => (
+        <div key={g.id} style={{ display: 'flex', gap: 12, alignItems: 'flex-start', marginBottom: 6 }}>
+          <span style={{ ...S.chip(`${g.color}22`, g.color), marginTop: 4, minWidth: 48, justifyContent: 'center' }}>{g.label}</span>
+          <table style={{ borderCollapse: 'collapse', flex: 1 }}>
+            <tbody>
+              {g.rows.map((e, i) => (
+                <tr key={i}>
+                  <td style={{ ...td, color: '#EAF1F8', width: '45%' }}>{e.name}</td>
+                  <td style={{ ...td, fontFamily: MONO, whiteSpace: 'nowrap' }}>{num(e.weight_lbs) !== null ? `${fmtNum(num(e.weight_lbs))} lb` : ''}</td>
+                  <td style={{ ...td, fontFamily: MONO, whiteSpace: 'nowrap' }}>{Array.isArray(e.sets) ? e.sets.join(' · ') : ''}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ))}
+      {w.summary && <div style={{ fontSize: 12.5, color: GRAY, marginTop: 4 }}>{w.summary}</div>}
+    </div>
+  )
+}
+
+// ---------- scans ----------
+const fmtScanDay = (day) => day ? new Date(day + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : ''
+
+// Two-line SVG chart: weight (gold, left axis) and body fat % (blue, right axis).
+function ScanChart({ scans }) {
+  const pts = scans.filter(s => num(s.weight_lbs) !== null || num(s.pbf_pct) !== null)
+  if (pts.length < 2) return <div style={{ color: GRAY, fontSize: 13 }}>{pts.length === 0 ? 'No scans yet.' : 'One scan so far. The chart starts with the second.'}</div>
+  const W = 640, H = 200, L = 44, R = 44, T = 14, B = 30
+  const iw = W - L - R, ih = H - T - B
+  const ts = pts.map(p => Date.parse(p.day + 'T12:00:00'))
+  const t0 = Math.min(...ts), t1 = Math.max(...ts), span = (t1 - t0) || 1
+  const x = (i) => L + ((ts[i] - t0) / span) * iw
+  const scaleOf = (vals) => {
+    const v = vals.filter(a => a !== null)
+    if (!v.length) return null
+    let lo = Math.min(...v), hi = Math.max(...v)
+    const pad = (hi - lo) * 0.15 || 1
+    lo -= pad; hi += pad
+    return { lo, hi, y: (a) => T + ih * (1 - (a - lo) / (hi - lo)) }
+  }
+  const wv = pts.map(p => num(p.weight_lbs)), fv = pts.map(p => num(p.pbf_pct))
+  const ws = scaleOf(wv), fs = scaleOf(fv)
+  const path = (vals, sc) => vals.map((v, i) => v === null ? null : `${x(i).toFixed(1)},${sc.y(v).toFixed(1)}`).filter(Boolean).map((p, i) => (i === 0 ? 'M' : 'L') + p).join(' ')
+  const labelIdx = pts.length <= 5 ? pts.map((_, i) => i) : [0, Math.round((pts.length - 1) / 4), Math.round((pts.length - 1) / 2), Math.round(3 * (pts.length - 1) / 4), pts.length - 1]
+  const axis = { fontFamily: MONO, fontSize: 9, fill: GRAY }
+  return (
+    <div>
+      <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', height: 'auto', display: 'block' }} role="img" aria-label="Weight and body fat over time">
+        <line x1={L} y1={T + ih} x2={W - R} y2={T + ih} stroke={PANEL_BORDER} />
+        {[0.5].map(f => <line key={f} x1={L} y1={T + ih * f} x2={W - R} y2={T + ih * f} stroke={PANEL_BORDER} strokeDasharray="2 4" />)}
+        {ws && <>
+          <path d={path(wv, ws)} fill="none" stroke={GOLD} strokeWidth={1.8} />
+          {wv.map((v, i) => v === null ? null : <circle key={i} cx={x(i)} cy={ws.y(v)} r={2.6} fill={GOLD} />)}
+          <text x={L - 6} y={T + 4} textAnchor="end" style={{ ...axis, fill: GOLD }}>{fmtNum(Math.round(ws.hi * 10) / 10)}</text>
+          <text x={L - 6} y={T + ih} textAnchor="end" style={{ ...axis, fill: GOLD }}>{fmtNum(Math.round(ws.lo * 10) / 10)}</text>
+        </>}
+        {fs && <>
+          <path d={path(fv, fs)} fill="none" stroke={BLUE} strokeWidth={1.8} />
+          {fv.map((v, i) => v === null ? null : <circle key={i} cx={x(i)} cy={fs.y(v)} r={2.6} fill={BLUE} />)}
+          <text x={W - R + 6} y={T + 4} style={{ ...axis, fill: BLUE }}>{fmtNum(Math.round(fs.hi * 10) / 10)}%</text>
+          <text x={W - R + 6} y={T + ih} style={{ ...axis, fill: BLUE }}>{fmtNum(Math.round(fs.lo * 10) / 10)}%</text>
+        </>}
+        {labelIdx.map(i => (
+          <text key={i} x={x(i)} y={H - 10} textAnchor={i === 0 ? 'start' : i === pts.length - 1 ? 'end' : 'middle'} style={axis}>{fmtScanDay(pts[i].day)}</text>
+        ))}
+      </svg>
+      <div style={{ ...S.source, marginTop: 6 }}>
+        <span style={{ color: GOLD }}>weight lbs</span> · <span style={{ color: BLUE }}>body fat %</span> · {pts.length} scans
+      </div>
+    </div>
+  )
+}
+
+function ScansPanel({ scans }) {
+  const latest = scans.length ? scans[scans.length - 1] : null
+  const v = (k, suffix = '', digits = null) => {
+    const n = latest ? num(latest[k]) : null
+    if (n === null) return '·'
+    return (digits === null ? fmtNum(n) : n.toFixed(digits)) + suffix
+  }
+  return (
+    <Panel title={latest ? `Scans · latest ${shortDay(latest.day)}` : 'Scans'}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 14, marginBottom: 16 }}>
+        <Stat v={v('weight_lbs')} l="weight, lbs" color={GOLD} />
+        <Stat v={v('smm_lbs')} l="skeletal muscle mass, lbs" />
+        <Stat v={v('pbf_pct', '%')} l="body fat" color={BLUE} />
+        <Stat v={v('ecw_tbw', '', 3)} l="ECW/TBW" />
+      </div>
+      <ScanChart scans={scans} />
+      <div style={{ ...S.source, marginTop: 10 }}>Every Saturday morning: send the InBody photo to Lumen.</div>
+    </Panel>
+  )
+}
+
 // ---------- log shaping ----------
 // Group the 14-day logs by day; one row per day, newest first.
 const byDay = (logs) => {
   const days = last14()
-  const map = Object.fromEntries(days.map(d => [d, { day: d, sleep: [], exercise: [], medication: [], diet: [] }]))
+  const map = Object.fromEntries(days.map(d => [d, { day: d, sleep: [], exercise: [], medication: [], diet: [], hygiene: [], devotional: [] }]))
   for (const l of logs) {
     const r = map[l.day]
     if (!r || !r[l.kind]) continue
@@ -234,7 +467,7 @@ const joinWhat = (arr) => arr.map(l => l.what).filter(Boolean).join(', ')
 const joinNote = (arr) => arr.map(l => l.note).filter(Boolean).join(' · ')
 
 // ---------- health views ----------
-function HealthOverview({ rows, logs, items, onChanged }) {
+function HealthOverview({ rows, logs, items, scans, onChanged }) {
   const today = chiToday(), yday = chiDayMinus(1), ws = weekStart()
   const sleepRow = rows.find(r => r.day === today && r.sleep.length) || rows.find(r => r.day === yday && r.sleep.length)
   const sleepLast = sleepRow ? sumVal(sleepRow.sleep) : null
@@ -250,6 +483,8 @@ function HealthOverview({ rows, logs, items, onChanged }) {
     { key: 'exmin', label: 'Ex min', render: r => r.exercise.length ? fmtNum(sumVal(r.exercise)) : '' },
     { key: 'exwhat', label: 'Exercise', render: r => joinWhat(r.exercise) },
     { key: 'med', label: 'Med', render: r => r.medication.length ? <Check size={13} color={GREEN} /> : '' },
+    { key: 'hyg', label: 'Hygiene', render: r => r.hygiene.length ? <span style={{ fontFamily: MONO, color: hygieneCount(r.hygiene) === HYGIENE_ITEMS.length ? GOLD : INK2 }}>{hygieneCount(r.hygiene)}/{HYGIENE_ITEMS.length}</span> : '' },
+    { key: 'dev', label: 'Devo', render: r => r.devotional.length ? <Check size={13} color={GREEN} /> : '' },
     { key: 'diet', label: 'Diet', render: r => [joinWhat(r.diet), joinNote(r.diet)].filter(Boolean).join(' · ') },
   ]
 
@@ -270,7 +505,7 @@ function HealthOverview({ rows, logs, items, onChanged }) {
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 12, marginTop: 12 }}>
         <Placeholder title="Fitness tracker" copy="Tracker data lands here when the feed is connected." />
-        <Placeholder title="Scans" copy="Scan images and readings land here." />
+        <ScansPanel scans={scans} />
       </div>
     </>
   )
@@ -293,9 +528,11 @@ function SleepView({ rows, onChanged }) {
   )
 }
 
-function ExerciseView({ rows, logs, onChanged }) {
+function ExerciseView({ rows, workouts, onChanged }) {
   const ws = weekStart()
-  const weekMin = sumVal(logs.filter(l => l.kind === 'exercise' && l.day >= ws))
+  const week = workouts.filter(w => w.day >= ws)
+  const weekMin = week.reduce((a, w) => a + (num(w.minutes) || 0), 0)
+  const last = workouts[0]
   const cols = [
     { key: 'day', label: 'Day', render: r => shortDay(r.day) },
     { key: 'min', label: 'Minutes', render: r => r.exercise.length ? fmtNum(sumVal(r.exercise)) : '' },
@@ -305,13 +542,23 @@ function ExerciseView({ rows, logs, onChanged }) {
   return (
     <>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 14, margin: '0 0 18px' }}>
-        <Stat v={fmtNum(weekMin)} l="minutes this week (Mon start)" color={GOLD} />
+        <Stat v={week.length} l="sessions this week (Mon start)" color={GOLD} />
+        <Stat v={fmtNum(weekMin)} l="minutes this week" color={GOLD} />
+        <Stat v={workouts.length} l="sessions, last 28 days" />
+        <Stat v={last ? shortDay(last.day) : '·'} l="last session" />
       </div>
-      <Panel title="Log exercise">
-        <QuickAdd kind="exercise" onAdded={onChanged} hint="Or tell Lumen: ran 40 minutes."
-          fields={[{ key: 'value', type: 'number', placeholder: 'Minutes', width: '0 1 110px' }, { key: 'what', placeholder: 'What (run, lift, walk)' }, { key: 'note', placeholder: 'Note (optional)' }]} />
+      <Panel title="Workouts">
+        <div style={{ ...S.source, marginTop: 0, marginBottom: 6 }}>Logged in Harvest as LT with the detail in the comment, one line per exercise: Name/Weight: reps reps reps. The sync parses it.</div>
+        {workouts.length === 0 && <div style={{ color: GRAY, fontSize: 13, marginTop: 8 }}>No workouts in the last 28 days.</div>}
+        {workouts.map(w => <WorkoutCard key={w.id ?? `${w.day}-${w.harvest_entry_id}`} w={w} />)}
       </Panel>
-      <Panel title="Last 14 days"><LogTable14 cols={cols} rows={rows} blank="No exercise logged in the last 14 days." /></Panel>
+      <Collapsed title="Other exercise logs">
+        <Panel title="Log exercise">
+          <QuickAdd kind="exercise" onAdded={onChanged} hint="Or tell Lumen: ran 40 minutes."
+            fields={[{ key: 'value', type: 'number', placeholder: 'Minutes', width: '0 1 110px' }, { key: 'what', placeholder: 'What (run, lift, walk)' }, { key: 'note', placeholder: 'Note (optional)' }]} />
+        </Panel>
+        <Panel title="Last 14 days"><LogTable14 cols={cols} rows={rows} blank="No exercise logged in the last 14 days." /></Panel>
+      </Collapsed>
     </>
   )
 }
@@ -361,21 +608,28 @@ export default function MaintenancePage() {
 
   const [items, setItems] = useState([])
   const [logs, setLogs] = useState([])
+  const [workouts, setWorkouts] = useState([])
+  const [scans, setScans] = useState([])
   const [loadErr, setLoadErr] = useState(null)
   const [tick, setTick] = useState(0)
   const refresh = () => setTick(t => t + 1)
 
   useEffect(() => {
     let alive = true
-    const since = chiDayMinus(13)
+    const since = chiDayMinus(WINDOW_DAYS - 1)
     Promise.all([
       supabase.from('maintenance_items').select('*').order('created_at', { ascending: false }).limit(300),
-      supabase.from('daily_logs').select('day,kind,what,value,note,at').gte('day', since).order('at', { ascending: true }).limit(1000),
-    ]).then(([it, lg]) => {
+      supabase.from('daily_logs').select('id,day,kind,what,value,note,at,source').gte('day', since).order('at', { ascending: true }).limit(2000),
+      // workouts and body_scans may not exist yet; any error reads as empty.
+      supabase.from('workouts').select('*').gte('day', since).order('day', { ascending: false }).limit(200),
+      supabase.from('body_scans').select('*').order('day', { ascending: true }).limit(500),
+    ]).then(([it, lg, wo, sc]) => {
       if (!alive) return
       const errs = []
       if (it.error) errs.push(friendly(it.error, 'maintenance_items')); else setItems(it.data || [])
       if (lg.error) errs.push(friendly(lg.error, 'daily_logs')); else setLogs(lg.data || [])
+      setWorkouts(wo.error ? [] : (wo.data || []))
+      setScans(sc.error ? [] : (sc.data || []))
       setLoadErr(errs.length ? errs.join(' ') : null)
     }).catch(e => { if (alive) setLoadErr(friendly(e, 'maintenance_items')) })
     return () => { alive = false }
@@ -387,14 +641,32 @@ export default function MaintenancePage() {
   const renderHealth = () => {
     switch (hpill) {
       case 'sleep': return <SleepView rows={rows} onChanged={refresh} />
-      case 'exercise': return <ExerciseView rows={rows} logs={logs} onChanged={refresh} />
+      case 'exercise': return <ExerciseView rows={rows} workouts={workouts} onChanged={refresh} />
       case 'medication': return <MedicationView rows={rows} onChanged={refresh} />
       case 'diet': return <DietView rows={rows} onChanged={refresh} />
-      default: return <HealthOverview rows={rows} logs={logs} items={items} onChanged={refresh} />
+      default: return <HealthOverview rows={rows} logs={logs} items={items} scans={scans} onChanged={refresh} />
     }
   }
 
   const label = TOP_PILLS.find(p => p.id === pill)?.label || 'Items'
+  const renderPill = () => {
+    if (pill === 'health') return renderHealth()
+    if (pill === 'hygiene') return (
+      <>
+        <HygieneChecklist logs={logs} days={last14()} keyOf={hygieneKeyOf} friendly={friendly} onChanged={refresh} />
+        <Collapsed title="Other hygiene items">
+          <ItemList items={items} cats={PILL_CATS.hygiene} insertCat="hygiene" onChanged={refresh} title="Hygiene · open" blank="Nothing here yet. Add the first item above." />
+        </Collapsed>
+      </>
+    )
+    if (pill === 'spiritual') return (
+      <>
+        <DevotionalPanel logs={logs} onChanged={refresh} />
+        <ItemList items={items} cats={PILL_CATS.spiritual} insertCat="spiritual" onChanged={refresh} title="Spiritual · open" blank="Nothing here yet. Add the first item above." />
+      </>
+    )
+    return <ItemList items={items} cats={PILL_CATS[pill] || [pill]} insertCat={pill} onChanged={refresh} title={`${label} · open`} blank="Nothing here yet. Add the first item above." />
+  }
 
   return (
     <div style={S.page}>
@@ -406,9 +678,7 @@ export default function MaintenancePage() {
       {pill !== 'health' && <div style={{ height: 8 }} />}
       <ErrLine msg={loadErr} />
       {doneToday > 0 && <div style={{ ...S.source, marginTop: 0, marginBottom: 12 }}>{doneToday} done today · {Math.floor(doneToday / 5)} bundle{Math.floor(doneToday / 5) === 1 ? '' : 's'} struck</div>}
-      {pill === 'health'
-        ? renderHealth()
-        : <ItemList items={items} cats={PILL_CATS[pill] || [pill]} insertCat={pill} onChanged={refresh} title={`${label} · open`} blank="Nothing here yet. Add the first item above." />}
+      {renderPill()}
     </div>
   )
 }
