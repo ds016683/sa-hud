@@ -42,10 +42,10 @@ const badgeLabel = (id) => (BADGES[id] && !BADGES[id].legacy ? BADGES[id].label 
 const RIVER_PATH = 'M 80 50 H 900 A 40 40 0 0 1 900 130 H 100 A 40 40 0 0 0 100 210 H 900 A 40 40 0 0 1 900 290 H 100 A 40 40 0 0 0 100 370 H 920'
 
 // Flecks on the water: a fixed set so the scene is stable across renders.
-const FLECKS = Array.from({ length: 34 }, (_, i) => {
+const FLECKS = Array.from({ length: 16 }, (_, i) => {
   const seed = (i * 9301 + 49297) % 233280 / 233280
   const seed2 = ((i + 7) * 9301 + 49297) % 233280 / 233280
-  return { lane: (seed - 0.5) * 6, r: 0.8 + seed2 * 1.3, dur: 26 + seed * 30, begin: seed2 * 56, twinkle: 1.6 + seed * 2.4, alpha: 0.45 + seed2 * 0.5 }
+  return { lane: (seed - 0.5) * 5, r: 0.9 + seed2 * 0.9, dur: 22 + seed * 26, begin: seed2 * 48, twinkle: 2.2 + seed * 3, alpha: 0.5 + seed2 * 0.5 }
 })
 
 const css = `
@@ -56,9 +56,9 @@ const css = `
 .river-glow { transform-box: fill-box; transform-origin: center; animation: river-pulse 2.4s ease-in-out infinite; }
 .river-travelled { transition: stroke-dashoffset 1.2s ease-out; }
 @keyframes river-band { from { stroke-dashoffset: 0; } to { stroke-dashoffset: -200; } }
-.river-band { animation: river-band 9s linear infinite; }
+.river-band { animation: river-band 7s linear infinite; }
 @keyframes river-band2 { from { stroke-dashoffset: 0; } to { stroke-dashoffset: -112; } }
-.river-band2 { animation: river-band2 4.2s linear infinite; }
+.river-band2 { animation: river-band2 3.4s linear infinite; }
 @keyframes river-blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
 .river-marker { animation: river-blink 1.8s ease-in-out infinite; }
 .river-btn { display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; border-radius: 999px; border: 1px solid rgba(255,255,255,0.16); background: transparent; color: rgba(234,241,248,0.7); font-size: 11px; font-weight: 600; letter-spacing: 0.8px; text-transform: uppercase; cursor: pointer; font-family: inherit; }
@@ -96,6 +96,7 @@ function RiverGraphic({ miles, awards }) {
         <linearGradient id="river-gold" x1="0" y1="0" x2="1" y2="0">
           <stop offset="0" stopColor={GOLD} /><stop offset="1" stopColor={GOLD_BRIGHT} />
         </linearGradient>
+        <filter id="river-soft" x="-5%" y="-20%" width="110%" height="140%"><feGaussianBlur stdDeviation="1.6" /></filter>
         <radialGradient id="river-glow-grad"><stop offset="0" stopColor={GOLD_BRIGHT} stopOpacity="0.9" /><stop offset="1" stopColor={GOLD_BRIGHT} stopOpacity="0" /></radialGradient>
       </defs>
       {/* Full course, faint */}
@@ -113,18 +114,20 @@ function RiverGraphic({ miles, awards }) {
               strokeDasharray={`${Math.max(0, len - len * frac)} ${len}`} strokeDashoffset={-(len * frac)} />
           </mask>
           <g mask="url(#river-ahead)">
-            {/* the body of the water */}
-            <path d={RIVER_PATH} fill="none" stroke="#5C8BB8" strokeWidth="10" strokeLinecap="round" strokeLinejoin="round" opacity="0.55" />
-            {/* light bands drifting downstream */}
-            <path className="river-band" d={RIVER_PATH} fill="none" stroke="#BFD9F2" strokeWidth="10" strokeLinecap="round" strokeLinejoin="round" strokeDasharray="70 130" opacity="0.14" />
-            <path className="river-band2" d={RIVER_PATH} fill="none" stroke="#DCEBF8" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round" strokeDasharray="22 90" opacity="0.10" />
-            {/* flecks: the churn, each riding the path at its own speed and lane */}
+            {/* deep water in the channel */}
+            <path d={RIVER_PATH} fill="none" stroke="#3E6B96" strokeWidth="10" strokeLinecap="round" strokeLinejoin="round" opacity="0.38" />
+            {/* currents: soft, blurred streaks sliding downstream at different speeds */}
+            <g filter="url(#river-soft)">
+              <path className="river-band" d={RIVER_PATH} fill="none" stroke="#9FC4E8" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" strokeDasharray="90 150" opacity="0.22" transform="translate(0 -2)" />
+              <path className="river-band2" d={RIVER_PATH} fill="none" stroke="#CFE4F7" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" strokeDasharray="34 120" opacity="0.28" transform="translate(0 2)" />
+            </g>
+            {/* churn: small bright streaks riding the current, showing its direction */}
             {FLECKS.map((f, i) => (
               <g key={i} transform={`translate(${f.lane} ${f.lane * 0.6})`} opacity={f.alpha}>
-                <circle r={f.r} fill="#EAF6FF">
+                <rect x={-f.r * 3} y={-f.r * 0.5} width={f.r * 6} height={f.r} rx={f.r * 0.5} fill="#EAF6FF">
                   <animateMotion dur={`${f.dur}s`} begin={`-${f.begin}s`} repeatCount="indefinite" path={RIVER_PATH} rotate="auto" />
-                  <animate attributeName="opacity" values="0.2;1;0.4;0.9;0.2" dur={`${f.twinkle}s`} repeatCount="indefinite" />
-                </circle>
+                  <animate attributeName="opacity" values="0;1;0.7;0" dur={`${f.twinkle}s`} repeatCount="indefinite" />
+                </rect>
               </g>
             ))}
           </g>
