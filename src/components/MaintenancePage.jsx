@@ -7,7 +7,9 @@ import { useState, useEffect } from 'react'
 import { Plus, Check, X, ChevronRight } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { HYGIENE_ITEMS, HYGIENE_KEYS } from '../constants/hygiene'
+import { MEDICATIONS, dueOn } from '../constants/medications'
 import HygieneChecklist from './river/HygieneChecklist'
+import RegimenChecklist from './river/RegimenChecklist'
 import { S, Eyebrow, Panel, Stat, Label, GRAY, INK2, GOLD, GREEN, BLUE, PURPLE, PERIWINKLE, RED, PANEL_BORDER, MONO, chiToday, fmtTime } from './river/canon'
 
 // ---------- constants ----------
@@ -64,7 +66,7 @@ const hygieneKeyOf = (l) => {
   if (/shower/.test(t)) return 'shower'
   if (/shave/.test(t)) return 'shave'
   if (/whiten/.test(t)) return 'whiten'
-  if (/peptide|inject/.test(t)) return h < 14 ? 'peptide-am' : 'peptide-pm'
+  if (/peptide|inject/.test(t)) return null // injections moved to the medication regimen
   if (/brush|teeth|tooth/.test(t)) return h < 11 ? 'brush-am' : h < 17 ? 'brush-mid' : 'brush-pm'
   return null
 }
@@ -462,12 +464,25 @@ const byDay = (logs) => {
   }
   return days.map(d => map[d])
 }
+// Regimen tally for a day: doses due (dueOn with overrides, as-needed items
+// excluded) and how many of those have a medication log keyed to them.
+const regimenTally = (medLogs, overrides, day) => {
+  let due = 0, taken = 0
+  for (const m of MEDICATIONS) {
+    if (m.schedule.asNeeded) continue
+    const o = overrides.find(x => x.day === day && x.key === m.key)
+    if (!dueOn(m, day, o ? o.due : undefined)) continue
+    due++
+    if (medLogs.some(l => l.what === m.key)) taken++
+  }
+  return { due, taken }
+}
 const sumVal = (arr) => arr.reduce((a, l) => a + (num(l.value) || 0), 0)
 const joinWhat = (arr) => arr.map(l => l.what).filter(Boolean).join(', ')
 const joinNote = (arr) => arr.map(l => l.note).filter(Boolean).join(' · ')
 
 // ---------- health views ----------
-function HealthOverview({ rows, logs, items, scans, onChanged }) {
+function HealthOverview({ rows, logs, overrides, items, scans, onChanged }) {
   const today = chiToday(), yday = chiDayMinus(1), ws = weekStart()
   const sleepRow = rows.find(r => r.day === today && r.sleep.length) || rows.find(r => r.day === yday && r.sleep.length)
   const sleepLast = sleepRow ? sumVal(sleepRow.sleep) : null
@@ -482,7 +497,11 @@ function HealthOverview({ rows, logs, items, scans, onChanged }) {
     { key: 'sleep', label: 'Sleep h', render: r => r.sleep.length ? fmtNum(sumVal(r.sleep)) : '' },
     { key: 'exmin', label: 'Ex min', render: r => r.exercise.length ? fmtNum(sumVal(r.exercise)) : '' },
     { key: 'exwhat', label: 'Exercise', render: r => joinWhat(r.exercise) },
-    { key: 'med', label: 'Med', render: r => r.medication.length ? <Check size={13} color={GREEN} /> : '' },
+    { key: 'med', label: 'Med', render: r => {
+      if (!r.medication.length) return ''
+      const t = regimenTally(r.medication, overrides, r.day)
+      return <span style={{ fontFamily: MONO, color: t.due > 0 && t.taken === t.due ? GOLD : INK2 }}>{t.taken}/{t.due}</span>
+    } },
     { key: 'hyg', label: 'Hygiene', render: r => r.hygiene.length ? <span style={{ fontFamily: MONO, color: hygieneCount(r.hygiene) === HYGIENE_ITEMS.length ? GOLD : INK2 }}>{hygieneCount(r.hygiene)}/{HYGIENE_ITEMS.length}</span> : '' },
     { key: 'dev', label: 'Devo', render: r => r.devotional.length ? <Check size={13} color={GREEN} /> : '' },
     { key: 'diet', label: 'Diet', render: r => [joinWhat(r.diet), joinNote(r.diet)].filter(Boolean).join(' · ') },
@@ -563,7 +582,7 @@ function ExerciseView({ rows, workouts, onChanged }) {
   )
 }
 
-function MedicationView({ rows, onChanged }) {
+function MedicationView({ rows, logs, overrides, onChanged }) {
   const cols = [
     { key: 'day', label: 'Day', render: r => shortDay(r.day) },
     { key: 'what', label: 'Medication', render: r => joinWhat(r.medication) },
@@ -571,12 +590,15 @@ function MedicationView({ rows, onChanged }) {
   ]
   return (
     <>
-      <Panel title="Log medication">
-        <div style={{ ...S.source, marginTop: 0, marginBottom: 10 }}>Regimen to be defined.</div>
-        <QuickAdd kind="medication" onAdded={onChanged}
-          fields={[{ key: 'what', placeholder: 'Medication' }, { key: 'note', placeholder: 'Note (optional)' }]} />
-      </Panel>
-      <Panel title="Last 14 days"><LogTable14 cols={cols} rows={rows} blank="No medication logged in the last 14 days." /></Panel>
+      <RegimenChecklist logs={logs} overrides={overrides} days={last14()} friendly={friendly} onChanged={onChanged} />
+      <Collapsed title="Other medication logs">
+        <Panel title="Log medication">
+          <div style={{ ...S.source, marginTop: 0, marginBottom: 10 }}>Free-text doses outside the regimen. Regimen doses log from the checklist above.</div>
+          <QuickAdd kind="medication" onAdded={onChanged}
+            fields={[{ key: 'what', placeholder: 'Medication' }, { key: 'note', placeholder: 'Note (optional)' }]} />
+        </Panel>
+        <Panel title="Last 14 days"><LogTable14 cols={cols} rows={rows} blank="No medication logged in the last 14 days." /></Panel>
+      </Collapsed>
     </>
   )
 }
@@ -610,6 +632,7 @@ export default function MaintenancePage() {
   const [logs, setLogs] = useState([])
   const [workouts, setWorkouts] = useState([])
   const [scans, setScans] = useState([])
+  const [overrides, setOverrides] = useState([])
   const [loadErr, setLoadErr] = useState(null)
   const [tick, setTick] = useState(0)
   const refresh = () => setTick(t => t + 1)
@@ -623,13 +646,16 @@ export default function MaintenancePage() {
       // workouts and body_scans may not exist yet; any error reads as empty.
       supabase.from('workouts').select('*').gte('day', since).order('day', { ascending: false }).limit(200),
       supabase.from('body_scans').select('*').order('day', { ascending: true }).limit(500),
-    ]).then(([it, lg, wo, sc]) => {
+      // medication_overrides may not exist yet (9/26 SQL); any error reads as empty.
+      supabase.from('medication_overrides').select('day,key,due,note').gte('day', since).limit(500),
+    ]).then(([it, lg, wo, sc, ov]) => {
       if (!alive) return
       const errs = []
       if (it.error) errs.push(friendly(it.error, 'maintenance_items')); else setItems(it.data || [])
       if (lg.error) errs.push(friendly(lg.error, 'daily_logs')); else setLogs(lg.data || [])
       setWorkouts(wo.error ? [] : (wo.data || []))
       setScans(sc.error ? [] : (sc.data || []))
+      setOverrides(ov.error ? [] : (ov.data || []))
       setLoadErr(errs.length ? errs.join(' ') : null)
     }).catch(e => { if (alive) setLoadErr(friendly(e, 'maintenance_items')) })
     return () => { alive = false }
@@ -642,9 +668,9 @@ export default function MaintenancePage() {
     switch (hpill) {
       case 'sleep': return <SleepView rows={rows} onChanged={refresh} />
       case 'exercise': return <ExerciseView rows={rows} workouts={workouts} onChanged={refresh} />
-      case 'medication': return <MedicationView rows={rows} onChanged={refresh} />
+      case 'medication': return <MedicationView rows={rows} logs={logs} overrides={overrides} onChanged={refresh} />
       case 'diet': return <DietView rows={rows} onChanged={refresh} />
-      default: return <HealthOverview rows={rows} logs={logs} items={items} scans={scans} onChanged={refresh} />
+      default: return <HealthOverview rows={rows} logs={logs} overrides={overrides} items={items} scans={scans} onChanged={refresh} />
     }
   }
 

@@ -36,10 +36,11 @@ create table if not exists medication_overrides (
   id bigserial primary key,
   day date not null,
   key text not null,
-  due boolean not null,
+  due boolean,
   note text,
   created_at timestamptz default now(),
   unique (day, key)
 );
 alter table medication_overrides enable row level security;
 create policy "owner all" on medication_overrides for all to authenticated using (true) with check (true);
+alter table medication_overrides alter column due drop not null;

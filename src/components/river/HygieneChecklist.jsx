@@ -1,4 +1,4 @@
-// Today's hygiene checklist: the eight HYGIENE_ITEMS as rows, state read from
+// Today's hygiene checklist: the six HYGIENE_ITEMS as rows, state read from
 // daily_logs (kind 'hygiene', `what` = item key). Clicking an unchecked row
 // opens an inline prompt; saving inserts the log. Checked rows show the time,
 // the note, and an undo for rows this HUD wrote. A 14-day strip sits under it.
@@ -68,7 +68,7 @@ export default function HygieneChecklist({ logs, days, keyOf, friendly, onChange
     <Panel title="Hygiene · today">
       <div style={{ fontSize: 13, color: INK2, marginBottom: 12 }}>
         <span style={{ color: n === TOTAL ? GOLD : '#EAF1F8', fontWeight: 600 }}>{n} of {TOTAL} today</span>
-        <span style={{ color: GRAY }}> · 0.25 mi each · all eight strike Hygiene (3 mi)</span>
+        <span style={{ color: GRAY }}> · 0.25 mi each · all six strike Hygiene (3 mi)</span>
       </div>
       {err && <div style={{ color: RED, fontFamily: MONO, fontSize: 11, margin: '0 0 8px' }}>{err}</div>}
 
@@ -136,7 +136,7 @@ export default function HygieneChecklist({ logs, days, keyOf, friendly, onChange
             )
           })}
         </div>
-        <div style={S.source}>Or tell Lumen: showered, brushed, shaved. Peptide items count with none today.</div>
+        <div style={S.source}>Or tell Lumen: showered, brushed, shaved. </div>
       </div>
     </Panel>
   )
