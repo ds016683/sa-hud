@@ -4,7 +4,7 @@
 //   MintingOverlay: after Close the Day. The day becomes canon: badges one by
 //   one, then the miles poured into the river and the new total.
 import { useEffect, useState } from 'react'
-import { BADGES, RIVER_TOTAL_MILES } from '../../constants/collection'
+import { BADGES, RIVER_TOTAL_MILES, crossed, whereOnRiver } from '../../constants/collection'
 import BadgeMedallion from '../BadgeArt'
 import { GOLD_BRIGHT, PERIWINKLE, INK2, MONO, SERIF } from './canon'
 
@@ -52,7 +52,10 @@ export function HaulOverlay({ haul, onClose }) {
             </div>
           ))}
         <div style={{ fontFamily: MONO, textAlign: 'center', marginTop: 24, color: 'rgba(234,241,248,0.55)', fontSize: 10, letterSpacing: '1.8px', animation: `haulDrop 460ms ${240 + drops.length * 260}ms both` }}>
-          {haul.milesDelta > 0 ? `+${fmt(haul.milesDelta)} MILES THIS RUN · ` : ''}{fmt(haul.milesToday)} MILES TODAY · {fmt(haul.total)} BANKED
+          {haul.milesDelta > 0 ? `+${fmt(haul.milesDelta)} MILES THIS RUN · ` : ''}{fmt(haul.milesToday)} MILES TODAY · {fmt(haul.total)} BANKED · {fmt(whereOnRiver(haul.total).toNext)} TO {whereOnRiver(haul.total).next.short.toUpperCase()}
+          {crossed((Number(haul.total) || 0) - (Number(haul.milesDelta) || 0), haul.total).map(c => (
+            <span key={c.label} style={{ display: 'block', marginTop: 10, color: GOLD_BRIGHT, letterSpacing: '2px' }}>YOU REACHED {c.label.toUpperCase()}</span>
+          ))}
           <span style={{ display: 'block', marginTop: 10, color: 'rgba(234,241,248,0.35)' }}>CLICK ANYWHERE TO BANK IT</span>
         </div>
       </div>
@@ -87,7 +90,14 @@ export function MintingOverlay({ mint, onDone }) {
             <div style={{ margin: '18px auto 0', maxWidth: 380, height: 6, borderRadius: 3, background: 'rgba(255,255,255,0.10)', overflow: 'hidden' }}>
               <div style={{ width: `${pct}%`, height: '100%', background: 'linear-gradient(90deg, #E6B54F, #F8C761)', transition: 'width 1.2s ease-out' }} />
             </div>
-            <div style={{ fontFamily: MONO, color: 'rgba(234,241,248,0.5)', letterSpacing: '1.6px', fontSize: 9.5, marginTop: 8 }}>{fmt(mint.total)} OF {RIVER_TOTAL_MILES.toLocaleString()} · {fmt(RIVER_TOTAL_MILES - (Number(mint.total) || 0))} TO CALM WATER</div>
+            <div style={{ fontFamily: MONO, color: 'rgba(234,241,248,0.5)', letterSpacing: '1.6px', fontSize: 9.5, marginTop: 8 }}>{fmt(mint.total)} OF {RIVER_TOTAL_MILES.toLocaleString()} · {fmt(whereOnRiver(mint.total).toNext)} TO {whereOnRiver(mint.total).next.label.toUpperCase()}</div>
+            {crossed((Number(mint.total) || 0) - (Number(mint.miles) || 0), mint.total).map(c => (
+              <div key={c.label} style={{ marginTop: 16, animation: 'haulDrop 700ms both' }}>
+                <div style={{ fontFamily: MONO, color: PERIWINKLE, letterSpacing: '2.4px', fontSize: 10 }}>YOU REACHED</div>
+                <div style={{ fontFamily: SERIF, fontSize: 30, fontWeight: 500, color: '#fff', letterSpacing: '-0.01em', marginTop: 4 }}>{c.label}</div>
+                <div style={{ fontFamily: MONO, color: 'rgba(234,241,248,0.5)', letterSpacing: '1.4px', fontSize: 9.5, marginTop: 4 }}>MILE {c.at.toLocaleString()}</div>
+              </div>
+            ))}
           </div>
         )}
         {stage >= finalStage && (

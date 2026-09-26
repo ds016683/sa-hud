@@ -13,7 +13,7 @@ import { AlertTriangle, Compass, Map as MapIcon } from 'lucide-react'
 import { buildHaulItems } from '../lib/haul'
 import { HaulOverlay, MintingOverlay } from './river/RiverOverlays'
 import { supabase } from '../lib/supabase'
-import { BADGES, RIVER_TOTAL_MILES, RIVER_START_DAY, WAYPOINTS } from '../constants/collection'
+import { BADGES, RIVER_TOTAL_MILES, RIVER_START_DAY, WAYPOINTS, whereOnRiver } from '../constants/collection'
 import {
   INK, INK2, GRAY, PANEL_BORDER, GOLD, GOLD_BRIGHT, BLUE, GREEN, RED, MONO, SERIF,
   S, Eyebrow, Label, Stat, Panel, chiToday,
@@ -102,7 +102,7 @@ function RiverGraphic({ miles, awards }) {
         return (
           <g key={w.label}>
             <circle cx={w.x} cy={w.y} r={end ? 5 : 3.5} fill={passed ? GOLD : '#0E2336'} stroke={passed ? GOLD_BRIGHT : 'rgba(255,255,255,0.35)'} strokeWidth="1.5" />
-            <text x={w.x} y={w.y + 22} textAnchor={anchor} fill={end ? INK2 : GRAY} fontFamily={MONO} fontSize={end ? 11 : 9} letterSpacing="1">{w.label.toUpperCase()}</text>
+            <text x={w.x} y={w.y + 22} textAnchor={anchor} fill={end ? INK2 : GRAY} fontFamily={MONO} fontSize={end ? 11 : 9} letterSpacing="1">{(w.short || w.label).toUpperCase()}</text>
           </g>
         )
       }) : null}
@@ -235,7 +235,7 @@ export default function LandingPage({ onNavigate }) {
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
         <div>
           <h1 style={S.h1}>{greeting()}, David. {longDate()}.</h1>
-          <p style={S.sub}>{RIVER_TOTAL_MILES.toLocaleString()} miles to Calm Water</p>
+          <p style={S.sub}>{RIVER_TOTAL_MILES.toLocaleString()} miles · Provo to Western Springs · past {whereOnRiver(total).last.label}</p>
         </div>
         <div style={{ textAlign: 'right', paddingTop: 6 }}>
           <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '1.6px', color: GRAY, textTransform: 'uppercase' }}>
@@ -253,7 +253,8 @@ export default function LandingPage({ onNavigate }) {
         <Stat v={fmtMiles(todayMiles)} l="Today" />
         <Stat v={fmtMiles(yMiles)} l="Yesterday" />
         <Stat v={daysOn} l={daysOn === 1 ? 'Day on the river' : 'Days on the river'} />
-        <Stat v={fmtMiles(remaining)} l="Remaining to Calm Water" />
+        <Stat v={fmtMiles(remaining)} l="Remaining to Western Springs" />
+        <Stat v={fmtMiles(whereOnRiver(total).toNext)} l={`To ${whereOnRiver(total).next.short}`} color={GOLD_BRIGHT} />
       </div>
       )}
 

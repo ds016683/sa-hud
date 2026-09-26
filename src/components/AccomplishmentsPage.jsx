@@ -4,7 +4,7 @@
 import { Fragment, useEffect, useMemo, useState } from 'react'
 import { ChevronLeft, ChevronRight, X as XIcon } from 'lucide-react'
 import { supabase } from '../lib/supabase'
-import { BADGES, RIVER_TOTAL_MILES, RIVER_START_DAY } from '../constants/collection'
+import { BADGES, RIVER_TOTAL_MILES, RIVER_START_DAY, WAYPOINTS, whereOnRiver } from '../constants/collection'
 import BadgeMedallion from './BadgeArt'
 import {
   INK, INK2, GRAY, PANEL_BORDER, GOLD, GOLD_BRIGHT, BLUE, MONO, SERIF,
@@ -152,6 +152,40 @@ function DayGrid({ history }) {
   )
 }
 
+// The route as a bar: gold for the miles traveled, a tick per city with its
+// name below, the current position marked, and where you are in words.
+function RouteBar({ miles }) {
+  const pct = Math.min(100, (Number(miles) || 0) / RIVER_TOTAL_MILES * 100)
+  const w = whereOnRiver(miles)
+  return (
+    <div style={{ marginTop: 18 }}>
+      <div style={{ position: 'relative', height: 44 }}>
+        <div style={{ position: 'absolute', left: 0, right: 0, top: 10, height: 3, borderRadius: 2, background: 'rgba(255,255,255,0.06)' }} />
+        <div style={{ position: 'absolute', left: 0, top: 10, height: 3, borderRadius: 2, width: `${pct}%`, background: GOLD, transition: 'width 600ms ease-out' }} />
+        {WAYPOINTS.map((wp, i) => {
+          const x = wp.at / RIVER_TOTAL_MILES * 100
+          const reached = (Number(miles) || 0) >= wp.at
+          const align = i === 0 ? 'left' : i === WAYPOINTS.length - 1 ? 'right' : 'center'
+          const tx = align === 'left' ? '0' : align === 'right' ? '-100%' : '-50%'
+          return (
+            <div key={wp.label} style={{ position: 'absolute', left: `${x}%`, top: 6 }}>
+              <div style={{ width: 9, height: 9, borderRadius: '50%', marginLeft: -4.5, background: reached ? GOLD_BRIGHT : '#10273B', border: `1.5px solid ${reached ? GOLD_BRIGHT : 'rgba(255,255,255,0.28)'}`, boxShadow: reached ? '0 0 8px rgba(248,199,97,0.5)' : 'none' }} />
+              <div title={`${wp.label} · mile ${wp.at.toLocaleString()}`} style={{ position: 'absolute', top: 14, left: 0, transform: `translateX(${tx})`, whiteSpace: 'nowrap', fontFamily: MONO, fontSize: 9, letterSpacing: '0.6px', color: reached ? GOLD_BRIGHT : GRAY, textTransform: 'uppercase' }}>
+                {wp.short}
+              </div>
+            </div>
+          )
+        })}
+        <div style={{ position: 'absolute', left: `${pct}%`, top: 4, width: 13, height: 13, marginLeft: -6.5, borderRadius: '50%', background: GOLD_BRIGHT, boxShadow: '0 0 12px rgba(248,199,97,0.7)', border: '2px solid #10273B' }} />
+      </div>
+      <div style={{ ...S.source, marginTop: 24, display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
+        <span>RIVER · {pct.toFixed(pct < 1 ? 2 : 1)}% of the way · past {w.last.label.toUpperCase()}</span>
+        <span>{fmtMiles(w.toNext)} MI TO {w.next.label.toUpperCase()}</span>
+      </div>
+    </div>
+  )
+}
+
 function HistoryModal({ badgeId, history, onClose }) {
   const b = BADGES[badgeId]
   useEffect(() => {
@@ -259,10 +293,7 @@ export default function AccomplishmentsPage() {
           <Stat v={loading ? '·' : fmtMiles(totals.today)} l="Today" color={totals.today > 0 ? GOLD_BRIGHT : '#fff'} />
           <Stat v={loading ? '·' : totals.struck} l="Badges struck" />
         </div>
-        <div style={{ marginTop: 14, height: 3, borderRadius: 2, background: 'rgba(255,255,255,0.06)', overflow: 'hidden' }}>
-          <div style={{ width: `${pct}%`, height: '100%', background: GOLD, transition: 'width 400ms' }} />
-        </div>
-        <div style={S.source}>RIVER · {pct.toFixed(pct < 1 ? 2 : 1)}% of the way</div>
+        <RouteBar miles={totals.all} />
       </Panel>
 
       <Panel>

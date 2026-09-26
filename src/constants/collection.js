@@ -67,13 +67,25 @@ export const signalTier = (s) => {
   return { id: 'dark', label: 'Dark Water', ring: 'dotted', opacity: 0.35 }
 }
 
-// River waypoints: where badges and activity "come to points" along the way.
+// River waypoints: the real drive, city to city, that adds up to 10,535 miles.
+// Provo is The Rock; Western Springs is Calm Water. Cumulative miles.
 export const WAYPOINTS = [
-  { at: 0,     label: 'The Rock' },
-  { at: 500,   label: 'First Bend' },
-  { at: 1500,  label: 'The Narrows' },
-  { at: 3000,  label: 'Confluence' },
-  { at: 5000,  label: 'Halfway Water' },
-  { at: 7500,  label: 'The Delta' },
-  { at: 10535, label: 'Calm Water' },
+  { at: 0,     label: 'Provo, UT',            short: 'Provo',           leg: null },
+  { at: 1650,  label: 'Dayton, OH',           short: 'Dayton',          leg: 1650 },
+  { at: 3320,  label: 'Sandy, UT',            short: 'Sandy',           leg: 1670 },
+  { at: 4405,  label: 'Overland Park, KS',    short: 'Overland Park',   leg: 1085 },
+  { at: 6205,  label: 'Pleasanton, CA',       short: 'Pleasanton',      leg: 1800 },
+  { at: 8005,  label: 'Lenexa, KS',           short: 'Lenexa',          leg: 1800 },
+  { at: 9095,  label: 'Orem, UT',             short: 'Orem',            leg: 1090 },
+  { at: 9135,  label: 'Salt Lake City, UT',   short: 'Salt Lake City',  leg: 40 },
+  { at: 10535, label: 'Western Springs, IL',  short: 'Western Springs', leg: 1400 },
 ]
+// Where a mile count sits on the route: the last city reached, the next one, miles to go.
+export const whereOnRiver = (miles) => {
+  const m = Number(miles) || 0
+  let last = WAYPOINTS[0], next = WAYPOINTS[WAYPOINTS.length - 1]
+  for (const w of WAYPOINTS) { if (w.at <= m) last = w; else { next = w; break } }
+  return { last, next, toNext: Math.max(0, next.at - m), legDone: next.at > last.at ? (m - last.at) / (next.at - last.at) : 1 }
+}
+// Cities crossed when miles move from `before` to `after` (exclusive, inclusive).
+export const crossed = (before, after) => WAYPOINTS.filter(w => w.at > 0 && w.at > (Number(before) || 0) && w.at <= (Number(after) || 0))
