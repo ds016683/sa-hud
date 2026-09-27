@@ -270,6 +270,18 @@ export async function syncWorkouts() {
     const logs = await get(`daily_logs?select=id&day=eq.${e.spent_date}&kind=eq.exercise&source=eq.harvest:${e.id}&limit=1`).catch(() => [])
     if (!logs.length) await fetch(`${URL_BASE}/rest/v1/daily_logs`, { method: 'POST', headers: { ...sbHeaders(), Prefer: 'return=minimal' }, body: JSON.stringify({ day: e.spent_date, kind: 'exercise', what: 'LT', value: minutes, note: summary, source: `harvest:${e.id}` }) })
     parsed++
+    // David's rule (9/27): once the workout is in the Ledger, the Harvest entry
+    // that carried the detail comes down. The workouts row keeps the minutes.
+    if (exercises.length) {
+      try {
+        const HH = { Authorization: `Bearer ${process.env.HARVEST_ACCESS_TOKEN}`, 'Harvest-Account-Id': process.env.HARVEST_ACCOUNT_ID, 'User-Agent': 'sa-hud' }
+        const live = await fetch(`https://api.harvestapp.com/v2/time_entries/${e.id}`, { headers: HH }).then(r => r.ok ? r.json() : null).catch(() => null)
+        if (live && live.is_running) { console.warn('workout: timer still running, leaving the entry'); continue }
+        const del = await fetch(`https://api.harvestapp.com/v2/time_entries/${e.id}`, { method: 'DELETE', headers: HH })
+        if (del.ok) await fetch(`${URL_BASE}/rest/v1/time_entries?id=eq.${e.id}`, { method: 'DELETE', headers: { ...sbHeaders(), Prefer: 'return=minimal' } })
+        else console.error('workout: harvest delete', del.status)
+      } catch (err) { console.error('workout: harvest delete', err.message) }
+    }
   }
   return { parsed, seen: entries.length }
 }
