@@ -5,6 +5,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { ChevronLeft, ChevronRight, Check, X as XIcon } from 'lucide-react'
 import { supabase } from '../lib/supabase'
+import { matchNotes } from '../lib/meetings'
 import {
   INK, INK2, GRAY, PANEL_BORDER, GOLD, GOLD_BRIGHT, BLUE, PERIWINKLE, PURPLE, GREEN, RED, MONO, SERIF,
   S, Eyebrow, Label, Stat, Panel, chiToday, chiDayOf, fmtTime, fmtDay,
@@ -45,17 +46,8 @@ const KindChip = ({ kind }) => {
   )
 }
 
-// Meeting <-> Granola note match: same title, or two or more shared words.
-const STOP = new Set(['the', 'and', 'with', 'for', 'of', 'a', 'an', 'to', 'on', 'in', 'at', 'call', 'meeting', 'sync', 're', 'w', 'x', 'vs'])
-const words = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9 ]+/g, ' ').split(/\s+/).filter(w => w.length > 1 && !STOP.has(w))
-const titlesMatch = (a, b) => {
-  const A = String(a || '').trim().toLowerCase(), B = String(b || '').trim().toLowerCase()
-  if (!A || !B) return false
-  if (A === B) return true
-  const wb = new Set(words(B))
-  return words(A).filter(w => wb.has(w)).length >= 2
-}
-
+// Meeting <-> Granola note match lives in lib/meetings (matchNotes), the same
+// matcher the Board, Notes, and the River use, so "documented" agrees everywhere.
 const truncate = (s, n) => { const t = String(s || '').replace(/\s+/g, ' ').trim(); return t.length > n ? t.slice(0, n - 1).trimEnd() + '…' : t }
 
 async function fetchDay(day) {
@@ -94,7 +86,8 @@ function build(raw, day, nowMs) {
   let documented = 0
   const docRows = []
   for (const c of held) {
-    const notes = raw.granola.filter(g => titlesMatch(g.title, c.subject))
+    const best = matchNotes(c, raw.granola)
+    const notes = best ? [best] : []
     const doc = notes.length > 0
     if (doc) documented += 1
     const n = Array.isArray(c.attendees) ? c.attendees.length : 0
