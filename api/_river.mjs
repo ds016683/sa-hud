@@ -48,7 +48,7 @@ export async function computeRegimen(day) {
 }
 
 export const MILES = {
-  'main-mission': 10, 'mission-task': 1, 'side-mission': 4, 'impromptu': 1, 'maintenance-bundle': 1, 'cartographer': 2, 'exercise': 5, 'sleep': 4,
+  'main-mission': 10, 'mission-task': 1, 'side-mission': 4, 'impromptu': 1, 'maintenance-bundle': 1, 'cartographer': 2, 'exercise': 5, 'lift': 1, 'sleep': 4,
   'toastmaster': 4, 'full-day': 4, 'work-horse': 10, 'clean-close': 2, 'discomforter': 5, 'hygiene': 3, 'hygiene-item': 0.25, 'devotional': 2, 'dose': 0.5, 'regimen': 2,
 }
 
@@ -67,7 +67,7 @@ function documented(subject, meetings) {
 // Compute the day's awards from the Ledger. Returns [{badge, key, miles, evidence}].
 export async function computeAwards(day, { closing = false } = {}) {
   const from = `${day}T00:00:00-05:00`, to = `${day}T23:59:59-05:00`
-  const [doneTasks, released, taskObjIds, maint, logs, calendar, meetings, time, emails, inboxObjs, doneProjects, sessions] = await Promise.all([
+  const [doneTasks, released, taskObjIds, maint, logs, calendar, meetings, time, emails, inboxObjs, doneProjects, sessions, workouts] = await Promise.all([
     sb(`project_tasks?select=id,text,project_id,released_at&status=eq.done&released_at=gte.${from}&released_at=lte.${to}`),
     sb(`objectives?select=id,title,released_at,released_kind,who,state,tags&released_at=gte.${from}&released_at=lte.${to}&deleted_at=is.null`),
     sb(`project_tasks?select=objective_id&objective_id=not.is.null`),
@@ -80,6 +80,7 @@ export async function computeAwards(day, { closing = false } = {}) {
     sb(`objectives?select=id&state=eq.inbox&deleted_at=is.null`),
     sb(`projects?select=id,name,status,archived_at,last_activity_at&status=in.(completed,complete,done)`),
     sb(`meeting_sessions?select=event_id,attended_at,started_at,closed_at,notes_meeting_id&day=eq.${day}`).catch(() => []),
+    sb(`workouts?select=harvest_entry_id,exercises&day=eq.${day}`).catch(() => []),
   ])
   const linked = new Set(taskObjIds.map(t => t.objective_id))
   const awards = []
@@ -100,7 +101,11 @@ export async function computeAwards(day, { closing = false } = {}) {
 
   const by = (k) => logs.filter(l => l.kind === k)
   const exMin = by('exercise').reduce((s, l) => s + (Number(l.value) || 0), 0)
-  if (exMin >= 60) add('exercise', '', `${Math.round(exMin)} minutes of exercise logged: ${by('exercise').map(l => l.what).filter(Boolean).join(', ') || 'exercise'}`)
+  if (exMin >= 45) add('exercise', '', `${Math.round(exMin)} minutes of exercise logged: ${by('exercise').map(l => l.what).filter(Boolean).join(', ') || 'exercise'}`)
+  // Lift (9/27): each exercise of three or more sets pays 1 mile, silent.
+  for (const w of workouts) for (const [i, x] of (Array.isArray(w.exercises) ? w.exercises : []).entries()) {
+    if ((x.sets || []).length >= 3) add('lift', `${w.harvest_entry_id}:${i}`, `Lift: ${x.name}${x.weight_lbs ? ` ${x.weight_lbs} lb` : ''} x ${x.sets.length} sets`)
+  }
   const sleepH = Math.max(0, ...by('sleep').map(l => Number(l.value) || 0))
   if (sleepH >= 6) add('sleep', '', `${sleepH} hours of sleep`)
   const disc = by('discomfort')
