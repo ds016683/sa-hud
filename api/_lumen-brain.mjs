@@ -87,7 +87,13 @@ export async function think({ channel = 'whatsapp', text, spoken = false }) {
   const tools = TOOLS.map(t => ({ name: t.name, description: t.description, input_schema: t.inputSchema }))
   const messages = [{ role: 'user', content: text || '(empty message)' }]
   let reply = ''
-  for (let step = 0; step < 20; step++) {
+  // Tool trace for this turn (persisted as a kind:'system' row so it never
+  // enters the thread), plus a loop guard: the same call with the same input
+  // three times is a loop, not work.
+  const trace = [], seen = new Map()
+  const MAX_STEPS = 20, NUDGE_AT = 14
+  let step = 0
+  for (step = 0; step < MAX_STEPS; step++) {
     const res = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: { 'x-api-key': process.env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
@@ -102,9 +108,20 @@ export async function think({ channel = 'whatsapp', text, spoken = false }) {
     const results = []
     for (const tu of toolUses) {
       let content, isError = false
-      try { content = await callTool(tu.name, tu.input || {}) } catch (e) { content = `Tool error: ${e.message}`; isError = true }
+      const key = `${tu.name}:${JSON.stringify(tu.input || {})}`
+      const n = (seen.get(key) || 0) + 1
+      seen.set(key, n)
+      const t0 = Date.now()
+      if (n >= 3) {
+        content = `Loop guard: you have already called ${tu.name} with these exact inputs ${n - 1} times this turn. Do not call it again. Use the earlier result and reply to David now.`
+        isError = true
+      } else {
+        try { content = await callTool(tu.name, tu.input || {}) } catch (e) { content = `Tool error: ${e.message}`; isError = true }
+      }
+      trace.push({ step: step + 1, tool: tu.name, input: JSON.stringify(tu.input || {}).slice(0, 240), ok: !isError, ms: Date.now() - t0, out: String(content).replace(/\s+/g, ' ').slice(0, 160) })
       results.push({ type: 'tool_result', tool_use_id: tu.id, content: String(content).slice(0, 60000), is_error: isError })
     }
+    if (step + 1 === NUDGE_AT) results.push({ type: 'text', text: `(system: ${MAX_STEPS - NUDGE_AT} tool steps remain in this turn. Finish the one write that matters and reply to David; tell him plainly if something is still undone.)` })
     messages.push({ role: 'user', content: results })
     reply = textParts.join('\n').trim() || reply
   }
@@ -122,6 +139,11 @@ export async function think({ channel = 'whatsapp', text, spoken = false }) {
     } catch (e) { console.error('lumen: wrap-up failed', e.message) }
   }
   if (!reply) reply = 'I ran out of room working on that and lost the thread. Say it again, one thing at a time?'
+  if (trace.length) {
+    const exhausted = step >= MAX_STEPS
+    sbWrite('POST', 'lumen_messages', { channel, direction: 'out', kind: 'system', body: JSON.stringify({ steps: step, exhausted, trace }), meta: { kind: 'trace', steps: step, exhausted, tools: trace.map(t => t.tool) } }, 'return=minimal')
+      .catch(e => console.error('lumen: trace failed', e.message))
+  }
   foldMemory(ctx).catch(e => console.error('lumen: fold failed', e.message))
   return reply
 }
@@ -130,11 +152,11 @@ export async function think({ channel = 'whatsapp', text, spoken = false }) {
 // part into lumen_memory so the persona keeps continuity without the tokens.
 async function foldMemory(ctx) {
   const since = ctx.memory?.through_id || 0
-  const count = await sb(`lumen_messages?select=id&id=gt.${since}&order=id.asc&limit=${FOLD_AT + 1}`)
+  const count = await sb(`lumen_messages?select=id&id=gt.${since}&kind=neq.system&order=id.asc&limit=${FOLD_AT + 1}`)
   if (count.length <= FOLD_AT) return
   const cutoff = count[count.length - RECENT - 1]?.id
   if (!cutoff) return
-  const older = await sb(`lumen_messages?select=id,at,direction,body&id=gt.${since}&id=lte.${cutoff}&order=id.asc`)
+  const older = await sb(`lumen_messages?select=id,at,direction,body&id=gt.${since}&id=lte.${cutoff}&kind=neq.system&order=id.asc`)
   const text = older.map(m => `[${m.at.slice(0, 10)} ${m.direction === 'in' ? 'David' : 'Lumen'}] ${m.body}`).join('\n')
   const res = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
