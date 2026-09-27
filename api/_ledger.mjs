@@ -314,6 +314,7 @@ export const TOOLS = [
       state: { type: 'string', enum: OBJ_STATES },
       follow_up_date: { type: 'string', description: 'YYYY-MM-DD, for follow_up' },
       due_date: { type: 'string', description: 'YYYY-MM-DD, to (re)set a due date' },
+      minutes: { type: 'number', description: "On release only: the actual time of activity in minutes when David states it (\"took about an hour and a half\"). Otherwise the clock runs from activation to release." },
     }, required: ['title', 'state'] },
   },
   {
@@ -793,9 +794,9 @@ export async function callTool(name, args = {}) {
         // only; a Side Mission tagged personal is personal time. Both count as time
         // on pursuits.
         if (o.activated_at && o.state === 'active') {
-          const minutes = Math.max(1, Math.round((Date.now() - new Date(o.activated_at).getTime()) / 60000))
+          const minutes = Number(args.minutes) > 0 ? Math.round(Number(args.minutes)) : Math.max(1, Math.round((Date.now() - new Date(o.activated_at).getTime()) / 60000))
           const personal = (o.tags || []).includes('personal')
-          clock = { minutes, started_at: o.activated_at, personal, harvest: personal ? 'not logged: personal time stays out of Harvest' : 'not logged: the clock is kept in the Ledger' }
+          clock = { minutes, stated_by_david: Number(args.minutes) > 0, started_at: o.activated_at, personal, harvest: personal ? 'not logged: personal time stays out of Harvest' : 'not logged: the clock is kept in the Ledger' }
           await sbWrite('POST', 'daily_logs', { day: chiToday(), kind: 'activity', what: o.title, value: minutes, note: `${personal ? 'personal' : 'work'} · Side Mission clock ${o.activated_at.slice(11, 16)}Z to ${new Date().toISOString().slice(11, 16)}Z`, source: `objective:${o.id}` }, 'return=minimal').catch(() => {})
         }
       }
