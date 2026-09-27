@@ -102,10 +102,17 @@ export default async function handler(req, res) {
     if (kind === 'sweep' || kind === 'nudge') {
       const horizon = plusDays(2)
       const due = await sb(`objectives?select=title,follow_up_date&state=eq.follow_up&deleted_at=is.null&follow_up_date=lte.${horizon}&order=follow_up_date.asc`)
+      // Backoff: once when it comes due, again after 2 days, then 4, then weekly.
+      // The same overdue item must not knock every single morning.
       for (const o of due) {
-        if (!dry && await alreadySent('nudge', TODAY, o.title)) continue
+        const prior = await sb(`lumen_messages?select=meta&channel=eq.pulse&direction=eq.out&meta->>kind=eq.nudge&meta->>item=eq.${encodeURIComponent(o.title)}&order=id.desc&limit=20`).catch(() => [])
+        const lastDay = prior.length ? String(prior[0].meta?.day || '') : null
+        const gap = lastDay ? Math.round((new Date(TODAY) - new Date(lastDay)) / 86400e3) : 99
+        const wait = prior.length === 0 ? 0 : Math.min(7, 2 ** prior.length)
+        if (!dry && (gap < wait || await alreadySent('nudge', TODAY, o.title))) continue
+        const nth = prior.length + 1
         out.push(await say({ kind: 'nudge', day: TODAY, item: o.title, dry, instruction:
-          `[PULSE] A follow-up is coming due: "${o.title}" on ${o.follow_up_date} (today is ${TODAY}). Nudge David in one or two sentences, the way a friend would, and ask what he wants done with it: do it now, push the date, or drop it. If he answers, you can move it with move_objective.` }))
+          `[PULSE] A follow-up is ${o.follow_up_date < TODAY ? 'overdue' : 'coming due'}: "${o.title}" (date ${o.follow_up_date}, today ${TODAY}). This is nudge number ${nth}${nth >= 3 ? ', so keep it to one line and ask him plainly to re-date it or drop it; do not sell it' : ''}. One or two sentences, the way a friend would, and ask what he wants: do it now, push the date, or drop it. If he answers, move it with move_objective or set_due.` }))
       }
     }
     // ---- meeting close-outs: a meeting ended 20+ minutes ago and is not
