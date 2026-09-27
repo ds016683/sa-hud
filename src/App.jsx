@@ -35,7 +35,7 @@ const NAV_ITEMS = [
   { id: 'main-missions',    label: 'Main Missions',         icon: LayoutGrid,     group: 'MISSION BOARD' },
   { id: 'side-missions',    label: 'Side Missions',         icon: Target,         group: 'MISSION BOARD' },
   { id: 'maintenance',      label: 'Maintenance',           icon: Wrench,         group: 'MISSION BOARD' },
-  { id: 'session-boards',   label: 'Session Boards',        icon: ListChecks,     group: 'WORK BOARD' },
+  { id: 'session-boards',   label: 'Work Board',            icon: ListChecks,     group: 'WORK BOARD' },
   { id: 'company-finance',  label: 'Third Horizon Finance', icon: Wallet,         group: 'RESOURCES' },
   { id: 'personal-finance', label: 'Personal Finance',      icon: CreditCard,     group: 'RESOURCES' },
   { id: 'network',          label: 'Network',               icon: Users,          group: 'RESOURCES' },

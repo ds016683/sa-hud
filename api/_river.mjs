@@ -48,7 +48,7 @@ export async function computeRegimen(day) {
 }
 
 export const MILES = {
-  'main-mission': 10, 'mission-task': 1, 'side-mission': 4, 'maintenance-bundle': 1, 'cartographer': 2, 'exercise': 5, 'sleep': 4,
+  'main-mission': 10, 'mission-task': 1, 'side-mission': 4, 'impromptu': 1, 'maintenance-bundle': 1, 'cartographer': 2, 'exercise': 5, 'sleep': 4,
   'toastmaster': 4, 'full-day': 4, 'work-horse': 10, 'clean-close': 2, 'discomforter': 5, 'hygiene': 3, 'hygiene-item': 0.25, 'devotional': 2, 'dose': 0.5, 'regimen': 2,
 }
 
@@ -89,7 +89,10 @@ export async function computeAwards(day, { closing = false } = {}) {
   for (const p of doneProjects) if (onDay(p.archived_at) || onDay(p.last_activity_at)) add('main-mission', p.id, `Main Mission complete: ${p.name}`)
   for (const t of doneTasks) add('mission-task', t.id, `Mission task closed: ${t.text}`)
   for (const o of released) {
-    if (o.state === 'released' && o.released_kind === 'done' && !linked.has(o.id) && !(o.tags || []).includes('session')) add('side-mission', o.id, `Side Mission released: ${o.title}`)
+    if (o.state === 'released' && o.released_kind === 'done' && !linked.has(o.id) && !(o.tags || []).includes('session')) {
+      if ((o.tags || []).includes('impromptu')) add('impromptu', o.id, `Impromptu done: ${o.title}`)
+      else add('side-mission', o.id, `Side Mission released: ${o.title}`)
+    }
     if (o.released_kind === 'foreman' || o.state === 'foreman') add('cartographer', o.id, `Handed off: ${o.title}${o.who ? ` (${o.who})` : ''}`)
   }
   const bundles = Math.floor(maint.length / 5)

@@ -290,6 +290,7 @@ export const TOOLS = [
     inputSchema: { type: 'object', properties: {
       title: { type: 'string' },
       state: { type: 'string', enum: ['inbox', 'parked', 'active', 'follow_up', 'waiting'] },
+      impromptu: { type: 'boolean', description: 'true when David posts something to the board on the fly to do now; pays 1 mile on release instead of 4. Default true when state is active and he did not plan it.' },
       due_date: { type: 'string', description: 'YYYY-MM-DD' },
       follow_up_date: { type: 'string', description: 'YYYY-MM-DD; required when state is follow_up' },
       description: { type: 'string' },
@@ -743,6 +744,7 @@ export async function callTool(name, args = {}) {
       const row = {
         user_id: DAVID, title, state, captured_at: new Date().toISOString(),
         kind: 'execution', effort: 1, importance: 2, needs_sizing: state === 'inbox',
+        tags: args.impromptu ? ['impromptu'] : [],
         due_date: args.due_date || null,
         follow_up_date: state === 'follow_up' ? (args.follow_up_date || plusDays(7)) : (args.follow_up_date || null),
         description: args.description || null,
