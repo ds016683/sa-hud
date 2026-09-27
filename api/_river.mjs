@@ -69,7 +69,7 @@ export async function computeAwards(day, { closing = false } = {}) {
   const from = `${day}T00:00:00-05:00`, to = `${day}T23:59:59-05:00`
   const [doneTasks, released, taskObjIds, maint, logs, calendar, meetings, time, emails, inboxObjs, doneProjects, sessions, workouts] = await Promise.all([
     sb(`project_tasks?select=id,text,project_id,released_at&status=eq.done&released_at=gte.${from}&released_at=lte.${to}`),
-    sb(`objectives?select=id,title,released_at,released_kind,who,state,tags&released_at=gte.${from}&released_at=lte.${to}&deleted_at=is.null`),
+    sb(`objectives?select=id,title,released_at,released_kind,who,state,tags,captured_at&released_at=gte.${from}&released_at=lte.${to}&deleted_at=is.null`),
     sb(`project_tasks?select=objective_id&objective_id=not.is.null`),
     sb(`maintenance_items?select=id,title&status=eq.done&day=eq.${day}`).catch(() => []),
     sb(`daily_logs?select=kind,what,value,note,at&day=eq.${day}`).catch(() => []),
@@ -91,7 +91,11 @@ export async function computeAwards(day, { closing = false } = {}) {
   for (const t of doneTasks) add('mission-task', t.id, `Mission task closed: ${t.text}`)
   for (const o of released) {
     if (o.state === 'released' && o.released_kind === 'done' && !linked.has(o.id) && !(o.tags || []).includes('session')) {
-      if ((o.tags || []).includes('impromptu')) add('impromptu', o.id, `Impromptu done: ${o.title}`)
+      // Planning rule (David, 9/27): a Side Mission is planned before the day it
+      // is done. Captured and released on the same day is impromptu, whatever it
+      // was called: 1 mile. The 3-mile difference is the incentive to plan.
+      const sameDay = !o.captured_at || o.captured_at >= from
+      if ((o.tags || []).includes('impromptu') || sameDay) add('impromptu', o.id, `Impromptu done: ${o.title}${sameDay && !(o.tags || []).includes('impromptu') ? ' (captured and released the same day)' : ''}`)
       else add('side-mission', o.id, `Side Mission released: ${o.title}`)
     }
     if (o.released_kind === 'foreman' || o.state === 'foreman') add('cartographer', o.id, `Handed off: ${o.title}${o.who ? ` (${o.who})` : ''}`)
