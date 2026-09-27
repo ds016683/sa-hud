@@ -6,10 +6,10 @@ export const MEDICATIONS = [
   { key: 'vyvanse-am',   label: 'Vyvanse (morning)',                dose: 'per prescription', route: 'oral',   when: 'morning',         schedule: { type: 'daily' } },
   { key: 'vyvanse-pm',   label: 'Vyvanse (early afternoon)',        dose: 'per prescription', route: 'oral',   when: 'early afternoon', schedule: { type: 'daily' } },
   { key: 'testosterone', label: 'Testosterone injection (clinic)',  dose: 'weekly',           route: 'clinic', when: 'Friday',          schedule: { type: 'weekly', days: [5], movable: true } },
-  { key: 'nad',          label: 'NAD+ (Nicotinamide) 25 units',     dose: '25 units sub-Q',   route: 'sub-Q',  when: 'morning',         schedule: { type: 'weekly', days: [1, 2, 4, 5] } },
+  { key: 'nad',          label: 'NAD+ 25 units',                    dose: '25 units sub-Q',   route: 'sub-Q',  when: 'morning',         schedule: { type: 'every_n_days', n: 2, anchor: '2026-09-26' } },
   { key: 'cjc-blend',    label: 'CJC-1295 / Ipamorelin blend 10 units', dose: '10 units sub-Q', route: 'sub-Q', when: 'before bed',    schedule: { type: 'cycle', on: 2, off: 2, anchor: '2026-09-25' } },
   { key: 'selank',       label: 'Selank 8 units',                   dose: '8 units sub-Q',    route: 'sub-Q',  when: 'before bed',      schedule: { type: 'daily', asNeeded: true } },
-  { key: 'biweekly-5mg', label: 'Bi-weekly 5 mg injection (name to confirm)', dose: '5 mg', route: 'sub-Q', when: 'any',             schedule: { type: 'every_n_days', n: 14, anchor: '2026-09-26' } },
+  { key: 'zepbound',     label: 'Zepbound 5 mg',                    dose: '5 mg sub-Q',       route: 'sub-Q',  when: 'any',             schedule: { type: 'every_n_days', n: 14, anchor: '2026-09-26' } },
 ]
 
 const dayIndex = (day) => new Date(day + 'T12:00:00Z').getUTCDay()   // 0 Sun .. 6 Sat

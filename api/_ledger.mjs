@@ -271,7 +271,7 @@ export const TOOLS = [
   {
     name: 'regimen',
     description: "The medication regimen for a day: what is due, what is taken, what is moved. Also moves a dose: action 'skip' (not due that day) or 'add' (due that day instead), with a note, when David and you reassign one (e.g. testosterone deferred from Friday to Monday).",
-    inputSchema: { type: 'object', properties: { day: { type: 'string' }, action: { type: 'string', enum: ['status', 'skip', 'add', 'clear'] }, key: { type: 'string', enum: ['vyvanse-am', 'vyvanse-pm', 'testosterone', 'nad', 'cjc-blend', 'selank', 'biweekly-5mg'] }, note: { type: 'string' } }, required: [] },
+    inputSchema: { type: 'object', properties: { day: { type: 'string' }, action: { type: 'string', enum: ['status', 'skip', 'add', 'clear'] }, key: { type: 'string', enum: ['vyvanse-am', 'vyvanse-pm', 'testosterone', 'nad', 'cjc-blend', 'selank', 'zepbound'] }, note: { type: 'string' } }, required: [] },
   },
   {
     name: 'get_day',

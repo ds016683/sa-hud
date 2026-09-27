@@ -16,13 +16,13 @@ async function sb(path) {
 // overrides from medication_overrides {day, key, due}.
 const MEDS = [
   ['vyvanse-am', { type: 'daily' }], ['vyvanse-pm', { type: 'daily' }],
-  ['testosterone', { type: 'weekly', days: [5] }], ['nad', { type: 'weekly', days: [1, 2, 4, 5] }],
+  ['testosterone', { type: 'weekly', days: [5] }], ['nad', { type: 'every_n_days', n: 2, anchor: '2026-09-26' }],
   ['cjc-blend', { type: 'cycle', on: 2, off: 2, anchor: '2026-09-25' }], ['selank', { type: 'daily', asNeeded: true }],
-  ['biweekly-5mg', { type: 'every_n_days', n: 14, anchor: '2026-09-26' }],
+  ['zepbound', { type: 'every_n_days', n: 14, anchor: '2026-09-26' }],
 ]
 const MED_ALIAS = [
   ['vyvanse-am', /vyvanse.*(am|morning)/], ['vyvanse-pm', /vyvanse.*(pm|afternoon)/], ['testosterone', /testo|trt|clinic/],
-  ['nad', /nad|nicotinamide/], ['cjc-blend', /cjc|ipamorelin|blend|build/], ['selank', /selank|semarlak/], ['biweekly-5mg', /5 ?mg|biweekly|bi-weekly/],
+  ['nad', /nad|nicotinamide/], ['cjc-blend', /cjc|ipamorelin|blend|build/], ['selank', /selank|semarlak/], ['zepbound', /zepbound|tirzepatide|5 ?mg|biweekly|bi-weekly/],
 ]
 const dayIdx = (day) => new Date(day + 'T12:00:00Z').getUTCDay()
 const between = (a, b) => Math.round((new Date(b + 'T12:00:00Z') - new Date(a + 'T12:00:00Z')) / 86400000)
