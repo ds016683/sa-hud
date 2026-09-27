@@ -3,7 +3,7 @@
 // Side and Main Missions closed, daily logs, words said to Lumen), sorted by
 // time, with a vertical TODAY dashboard beside it. Refreshes every 60s.
 import { useEffect, useMemo, useState } from 'react'
-import { ChevronLeft, ChevronRight, Check } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Check, X as XIcon } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import {
   INK, INK2, GRAY, PANEL_BORDER, GOLD, GOLD_BRIGHT, BLUE, PERIWINKLE, PURPLE, GREEN, RED, MONO, SERIF,
@@ -85,17 +85,22 @@ function build(raw, day, nowMs) {
   // Emails sent
   for (const e of raw.emails) {
     const to = Array.isArray(e.to_names) ? e.to_names.filter(Boolean).join(', ') : ''
-    rows.push({ at: e.received_at || noonOf(day), kind: 'Email', text: `Sent: ${e.subject || '(no subject)'}${to ? ` → ${to}` : ''}` })
+    rows.push({ at: e.received_at || noonOf(day), kind: 'Email', text: `Sent: ${e.subject || '(no subject)'}${to ? ` → ${to}` : ''}`, src: 'emails (sent)', fields: { subject: e.subject, to: to || null, received_at: e.received_at } })
   }
 
-  // Meetings held (started so far), with a Granola match as "documented"
-  const held = raw.calendar.filter(c => c.start_at && (isPast || new Date(c.start_at).getTime() <= nowMs))
+  // Meetings held (started so far), with a Granola match as "documented".
+  // All-day calendar items (birthdays, holds) are not meetings; the River skips them too.
+  const held = raw.calendar.filter(c => !c.is_all_day && c.start_at && (isPast || new Date(c.start_at).getTime() <= nowMs))
   let documented = 0
+  const docRows = []
   for (const c of held) {
-    const doc = raw.granola.some(g => titlesMatch(g.title, c.subject))
+    const notes = raw.granola.filter(g => titlesMatch(g.title, c.subject))
+    const doc = notes.length > 0
     if (doc) documented += 1
     const n = Array.isArray(c.attendees) ? c.attendees.length : 0
-    rows.push({ at: c.start_at, kind: 'Meeting', text: c.subject || '(untitled)', meta: n ? `${n} attendee${n === 1 ? '' : 's'}` : null, documented: doc })
+    const who = Array.isArray(c.attendees) ? c.attendees.map(a => (a && (a.name || a.email || a)) || '').filter(Boolean).slice(0, 8).join(', ') : ''
+    rows.push({ at: c.start_at, kind: 'Meeting', text: c.subject || '(untitled)', meta: n ? `${n} attendee${n === 1 ? '' : 's'}` : null, documented: doc, src: 'calendar_events', fields: { start_at: c.start_at, end_at: c.end_at, organizer: c.organizer, attendees: who || null, granola_match: notes.map(g => g.title).join(' | ') || 'none' } })
+    for (const g of notes) docRows.push({ at: c.start_at, kind: 'Meeting', text: g.title, meta: `matches calendar: ${c.subject}`, documented: true, src: 'granola_meetings', fields: { meeting_date: g.meeting_date, attendees: Array.isArray(g.attendees) ? g.attendees.join(', ') : null, summary: truncate(g.summary, 240) || null } })
   }
 
   // Work logged (Harvest, David's entries)
@@ -104,50 +109,61 @@ function build(raw, day, nowMs) {
     const h = Number(t.hours) || 0
     hours += h
     const parts = [t.project, t.task].filter(Boolean)
-    rows.push({ at: noonOf(day), kind: 'Work', text: `${parts.join(' · ')}${parts.length ? ' · ' : ''}${h}h`, meta: t.notes ? truncate(t.notes, 160) : (t.client || null) })
+    rows.push({ at: noonOf(day), kind: 'Work', text: `${parts.join(' · ')}${parts.length ? ' · ' : ''}${h}h`, meta: t.notes ? truncate(t.notes, 160) : (t.client || null), src: 'time_entries (Harvest)', fields: { client: t.client, project: t.project, task: t.task, hours: h, notes: t.notes || null } })
   }
 
   // Side Missions released today
   for (const o of raw.objectives) {
-    if (onDay(o.released_at, day)) rows.push({ at: o.released_at, kind: 'Side Mission', text: `Released: ${o.title}`, meta: o.released_kind && o.released_kind !== 'done' ? o.released_kind : null })
+    if (onDay(o.released_at, day)) rows.push({ at: o.released_at, kind: 'Side Mission', text: `Released: ${o.title}`, meta: o.released_kind && o.released_kind !== 'done' ? o.released_kind : null, src: 'objectives', fields: { id: o.id, released_at: o.released_at, released_kind: o.released_kind || 'done' } })
   }
 
   // Main Mission tasks done today
   const touched = new Set()
+  const touchedWhy = new Map()
+  const why = (pid, reason) => { if (!pid) return; touched.add(pid); touchedWhy.set(pid, [...(touchedWhy.get(pid) || []), reason]) }
   const projName = new Map(raw.projects.map(p => [p.id, p.name]))
   for (const t of raw.doneTasks) {
     if (!onDay(t.released_at, day)) continue
     const pname = projName.get(t.project_id) || 'Project'
-    if (t.project_id) touched.add(t.project_id)
-    rows.push({ at: t.released_at, kind: 'Main Mission', text: `${pname}: ${t.text}` })
+    why(t.project_id, `task closed: ${t.text}`)
+    rows.push({ at: t.released_at, kind: 'Main Mission', text: `${pname}: ${t.text}`, src: 'project_tasks', fields: { id: t.id, project: pname, status: t.status, released_at: t.released_at } })
   }
   // Promotions and activations today, via objectives linked from project_tasks
   const objById = new Map(raw.objectives.map(o => [o.id, o]))
   for (const t of raw.promotedTasks) {
     const o = objById.get(t.objective_id)
     if (!o || !t.project_id) continue
-    if (onDay(o.activated_at, day) || onDay(o.captured_at, day)) touched.add(t.project_id)
+    if (onDay(o.activated_at, day)) why(t.project_id, `task activated: ${o.title}`)
+    else if (onDay(o.captured_at, day)) why(t.project_id, `task promoted to the board: ${o.title}`)
   }
 
   // Thoughts and logs
   for (const l of raw.logs) {
     const kind = LOG_KIND_LABEL[l.kind] || 'Activity'
     const text = [l.what, l.note].filter(Boolean).join(' · ') || (l.value != null ? String(l.value) : '')
-    rows.push({ at: l.at || noonOf(day), kind, text, meta: l.value != null && (l.what || l.note) ? String(l.value) : null })
+    rows.push({ at: l.at || noonOf(day), kind, text, meta: l.value != null && (l.what || l.note) ? String(l.value) : null, src: 'daily_logs', fields: { kind: l.kind, what: l.what, value: l.value, note: l.note, at: l.at } })
   }
 
   // Said to Lumen
   for (const m of raw.lumen) {
     if (!onDay(m.at, day)) continue
-    rows.push({ at: m.at, kind: 'Said to Lumen', text: truncate(m.body, 140), meta: m.channel })
+    rows.push({ at: m.at, kind: 'Said to Lumen', text: truncate(m.body, 140), meta: m.channel, src: 'lumen_messages (in)', fields: { channel: m.channel, kind: m.kind, at: m.at, body: truncate(m.body, 400) } })
   }
 
   rows.sort((a, b) => new Date(a.at) - new Date(b.at))
   const byKind = {}
   for (const r of rows) byKind[r.kind] = (byKind[r.kind] || 0) + 1
 
+  // Drill-downs for the Today panel: what each number is made of.
+  const drills = {
+    held: rows.filter(r => r.kind === 'Meeting'),
+    documented: docRows,
+    hours: rows.filter(r => r.kind === 'Work'),
+    touched: [...touched].map(pid => ({ at: noonOf(day), kind: 'Main Mission', text: projName.get(pid) || 'Project', meta: (touchedWhy.get(pid) || []).join(' · '), src: 'projects + project_tasks', fields: { project_id: pid } })),
+  }
+
   return {
-    rows, byKind,
+    rows, byKind, drills,
     stats: { held: held.length, documented, hours: Math.round(hours * 100) / 100, touched: touched.size },
     isToday,
   }
@@ -193,10 +209,81 @@ function TimelineRow({ r, last }) {
   )
 }
 
+// What a number is made of: the rows behind a stat or a kind, with the table
+// each one came from and the fields that fed it. Info and QC in one place.
+function RecordModal({ title, subtitle, items, onClose }) {
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === 'Escape') onClose() }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [onClose])
+  return (
+    <div onClick={onClose} style={{
+      position: 'fixed', inset: 0, zIndex: 250, cursor: 'pointer',
+      background: 'rgba(8,20,32,0.88)', backdropFilter: 'blur(4px)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24,
+    }}>
+      <div onClick={e => e.stopPropagation()} style={{
+        maxWidth: 640, width: '100%', maxHeight: '82vh', overflowY: 'auto', cursor: 'default',
+        background: '#10273B', border: `1px solid ${PANEL_BORDER}`, borderRadius: 14, padding: '24px 26px 22px',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14 }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <Eyebrow style={{ marginBottom: 6 }}>What feeds this</Eyebrow>
+            <div style={{ fontFamily: SERIF, fontSize: 22, fontWeight: 500, color: '#fff', letterSpacing: '-0.01em' }}>{title}</div>
+            {subtitle && <div style={{ fontSize: 12, color: GRAY, marginTop: 4 }}>{subtitle}</div>}
+          </div>
+          <button onClick={onClose} aria-label="Close" style={{ width: 28, height: 28, borderRadius: 8, border: `1px solid ${PANEL_BORDER}`, background: 'transparent', color: INK2, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <XIcon size={14} />
+          </button>
+        </div>
+
+        <div style={{ marginTop: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {items.length === 0 && <div style={{ fontSize: 12.5, color: GRAY }}>No records behind this yet.</div>}
+          {items.map((r, i) => (
+            <div key={i} style={{ border: `1px solid ${PANEL_BORDER}`, borderRadius: 10, padding: '12px 14px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                <span style={{ fontFamily: MONO, fontSize: 10.5, color: GRAY, letterSpacing: '0.6px' }}>{fmtTime(r.at)}</span>
+                <KindChip kind={r.kind} />
+                {r.documented && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontFamily: MONO, fontSize: 9, letterSpacing: '1px', color: GREEN, textTransform: 'uppercase' }}><Check size={11} /> documented</span>}
+                <span style={{ marginLeft: 'auto', fontFamily: MONO, fontSize: 9.5, letterSpacing: '1px', color: GRAY, textTransform: 'uppercase' }}>{r.src || 'derived'}</span>
+              </div>
+              <div style={{ fontSize: 13.5, lineHeight: 1.5, color: INK, marginTop: 6 }}>{r.text}</div>
+              {r.meta && <div style={{ fontSize: 11.5, lineHeight: 1.5, color: GRAY, marginTop: 2 }}>{r.meta}</div>}
+              {r.fields && (
+                <div style={{ marginTop: 8, display: 'grid', gridTemplateColumns: 'max-content 1fr', columnGap: 12, rowGap: 3 }}>
+                  {Object.entries(r.fields).filter(([, v]) => v !== undefined && v !== null && v !== '').map(([k, v]) => (
+                    <div key={k} style={{ display: 'contents' }}>
+                      <span style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '0.8px', color: GRAY }}>{k}</span>
+                      <span style={{ fontSize: 11.5, color: INK2, lineHeight: 1.45, wordBreak: 'break-word' }}>{String(v)}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+        <div style={{ marginTop: 14 }}>
+          <Label style={{ marginBottom: 0 }}>{items.length} record{items.length === 1 ? '' : 's'}</Label>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+const Clickable = ({ onClick, children, title }) => (
+  <div role="button" tabIndex={0} title={title || 'Show the records behind this'} onClick={onClick} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') onClick() }}
+    style={{ cursor: 'pointer', borderRadius: 8, margin: '-4px -6px', padding: '4px 6px', transition: 'background 120ms' }}
+    onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.04)' }} onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}>
+    {children}
+  </div>
+)
+
 export default function ActivityPage() {
   const [day, setDay] = useState(chiToday)
   const [raw, setRaw] = useState(null)
   const [tick, setTick] = useState(0)
+  const [open, setOpen] = useState(null) // { title, subtitle, items }
   // Loading is derived: the raw we hold is stamped with the day it was fetched for.
   const loading = !raw || raw.forDay !== day
 
@@ -246,20 +333,30 @@ export default function ActivityPage() {
         <div>
           <Panel title="Today" style={{ marginBottom: 12 }}>
             <div style={{ display: 'grid', gap: 18 }}>
-              <Stat v={view ? view.stats.held : '·'} l="Meetings held" />
-              <Stat v={view ? view.stats.documented : '·'} l="Meetings documented" color={view && view.stats.documented > 0 ? GREEN : '#fff'} />
-              <Stat v={view ? `${view.stats.hours}h` : '·'} l="Hours logged" color={GOLD} />
-              <Stat v={view ? view.stats.touched : '·'} l="Main Missions touched" color={GOLD_BRIGHT} />
+              <Clickable onClick={() => view && setOpen({ title: 'Meetings held', subtitle: 'Calendar events that have started, all-day items excluded', items: view.drills.held })}>
+                <Stat v={view ? view.stats.held : '·'} l="Meetings held" />
+              </Clickable>
+              <Clickable onClick={() => view && setOpen({ title: 'Meetings documented', subtitle: 'Granola notes matched to a held meeting by title', items: view.drills.documented })}>
+                <Stat v={view ? view.stats.documented : '·'} l="Meetings documented" color={view && view.stats.documented > 0 ? GREEN : '#fff'} />
+              </Clickable>
+              <Clickable onClick={() => view && setOpen({ title: 'Hours logged', subtitle: "David's Harvest entries for the day", items: view.drills.hours })}>
+                <Stat v={view ? `${view.stats.hours}h` : '·'} l="Hours logged" color={GOLD} />
+              </Clickable>
+              <Clickable onClick={() => view && setOpen({ title: 'Main Missions touched', subtitle: 'Projects with a task closed, activated, or promoted today', items: view.drills.touched })}>
+                <Stat v={view ? view.stats.touched : '·'} l="Main Missions touched" color={GOLD_BRIGHT} />
+              </Clickable>
             </div>
           </Panel>
           <Panel title="By kind" style={{ marginBottom: 0 }}>
             {view && Object.keys(view.byKind).length > 0 ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {Object.keys(KINDS).filter(k => view.byKind[k]).map(k => (
-                  <div key={k} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
-                    <KindChip kind={k} />
-                    <span style={{ fontFamily: SERIF, fontSize: 16, fontWeight: 500, color: '#fff' }}>{view.byKind[k]}</span>
-                  </div>
+                  <Clickable key={k} onClick={() => setOpen({ title: k, subtitle: 'Every record of this kind in the day', items: view.rows.filter(r => r.kind === k) })}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+                      <KindChip kind={k} />
+                      <span style={{ fontFamily: SERIF, fontSize: 16, fontWeight: 500, color: '#fff' }}>{view.byKind[k]}</span>
+                    </div>
+                  </Clickable>
                 ))}
               </div>
             ) : (
@@ -268,6 +365,7 @@ export default function ActivityPage() {
           </Panel>
         </div>
       </div>
+      {open && <RecordModal title={open.title} subtitle={open.subtitle} items={open.items} onClose={() => setOpen(null)} />}
     </div>
   )
 }
