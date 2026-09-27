@@ -280,8 +280,8 @@ export const TOOLS = [
   },
   {
     name: 'get_volume',
-    description: "Full Sovereign Architect texts. volume='operating-manual' (Volume II, the functional frameworks) may be pulled whenever mechanics depth helps. volume='psyche-map' (Volume I) and volume='somatic' (Volume III) are deeply personal: retrieve ONLY when David explicitly asks for them by name in this conversation, never proactively.",
-    inputSchema: { type: 'object', properties: { volume: { type: 'string', enum: ['operating-manual', 'psyche-map', 'somatic'] } }, required: ['volume'] },
+    description: "Full Sovereign Architect texts. volume='operating-manual' (Volume II, the functional frameworks) may be pulled whenever mechanics depth helps. volume='psyche-map' (Volume I) and volume='somatic' (Volume III) are deeply personal: retrieve ONLY when David explicitly asks for them by name in this conversation, never proactively. volume='psyche-codex' is the compact distillation of the psyche map (the rapids, the steel cable, the five requirements, the shadows) plus durable facts about David and his family; the fastest way to depth when a moment needs the exact framing.",
+    inputSchema: { type: 'object', properties: { volume: { type: 'string', enum: ['operating-manual', 'psyche-map', 'somatic', 'psyche-codex'] } }, required: ['volume'] },
   },
   // ---- writes (the hands)
   {
@@ -728,7 +728,7 @@ export async function callTool(name, args = {}) {
       return JSON.stringify({ ...report, scorecard: scored?.scorecard || report.scorecard }, null, 2)
     }
     case 'get_volume': {
-      const map = { 'operating-manual': 'operating-manual.txt', 'psyche-map': 'psyche-map-and-manual.txt', 'somatic': 'somatic-manual.txt' }
+      const map = { 'operating-manual': 'operating-manual.txt', 'psyche-map': 'psyche-map-and-manual.txt', 'somatic': 'somatic-manual.txt', 'psyche-codex': 'psyche-codex.md' }
       const file = map[args.volume]
       if (!file) throw new Error('unknown volume')
       return identityDoc(file)
