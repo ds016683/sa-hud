@@ -257,33 +257,42 @@ export async function syncWorkouts() {
   const entries = await get(`time_entries?select=id,spent_date,hours,notes,task&person=ilike.David*&notes=ilike.LT*&spent_date=gte.${since}&order=spent_date.asc`)
   if (!entries.length) return { parsed: 0 }
   const have = new Set((await get(`workouts?select=harvest_entry_id&harvest_entry_id=in.(${entries.map(e => e.id).join(',')})`).catch(() => [])).map(w => w.harvest_entry_id))
-  let parsed = 0
+  // Entries dated before the rule keep their Harvest hours (9/19 was a reading block).
+  const RULE_FROM = '2026-09-27'
+  let parsed = 0, removed = 0
   for (const e of entries) {
-    if (have.has(e.id)) continue
+    // A five-hour "LT" block is a reading block with a stray exercise line, not a workout.
+    if ((Number(e.hours) || 0) > 3) continue
     const exercises = parseWorkout(e.notes)
-    const minutes = Math.round((Number(e.hours) || 0) * 60)
-    const summary = exercises.length ? `${exercises.length} exercises: ${exercises.map(x => x.name).join(', ')}` : String(e.notes || '').replace(/^LT\s*/i, '').slice(0, 160)
-    const row = { day: e.spent_date, harvest_entry_id: e.id, minutes, raw: e.notes, exercises, summary }
-    const r = await fetch(`${URL_BASE}/rest/v1/workouts?on_conflict=harvest_entry_id`, { method: 'POST', headers: { ...sbHeaders(), Prefer: 'resolution=merge-duplicates,return=minimal' }, body: JSON.stringify(row) })
-    if (!r.ok) throw new Error(`workouts upsert -> ${r.status}: ${(await r.text()).slice(0, 160)}`)
-    // one exercise log per entry; the badge sums minutes for the day
-    const logs = await get(`daily_logs?select=id&day=eq.${e.spent_date}&kind=eq.exercise&source=eq.harvest:${e.id}&limit=1`).catch(() => [])
-    if (!logs.length) await fetch(`${URL_BASE}/rest/v1/daily_logs`, { method: 'POST', headers: { ...sbHeaders(), Prefer: 'return=minimal' }, body: JSON.stringify({ day: e.spent_date, kind: 'exercise', what: 'LT', value: minutes, note: summary, source: `harvest:${e.id}` }) })
-    parsed++
+    if (!have.has(e.id)) {
+      const minutes = Math.round((Number(e.hours) || 0) * 60)
+      const summary = exercises.length ? `${exercises.length} exercises: ${exercises.map(x => x.name).join(', ')}` : String(e.notes || '').replace(/^LT\s*/i, '').slice(0, 160)
+      const row = { day: e.spent_date, harvest_entry_id: e.id, minutes, raw: e.notes, exercises, summary }
+      const r = await fetch(`${URL_BASE}/rest/v1/workouts?on_conflict=harvest_entry_id`, { method: 'POST', headers: { ...sbHeaders(), Prefer: 'resolution=merge-duplicates,return=minimal' }, body: JSON.stringify(row) })
+      if (!r.ok) throw new Error(`workouts upsert -> ${r.status}: ${(await r.text()).slice(0, 160)}`)
+      // one exercise log per entry; the badge sums minutes for the day
+      const logs = await get(`daily_logs?select=id&day=eq.${e.spent_date}&kind=eq.exercise&source=eq.harvest:${e.id}&limit=1`).catch(() => [])
+      if (!logs.length) await fetch(`${URL_BASE}/rest/v1/daily_logs`, { method: 'POST', headers: { ...sbHeaders(), Prefer: 'return=minimal' }, body: JSON.stringify({ day: e.spent_date, kind: 'exercise', what: 'LT', value: minutes, note: summary, source: `harvest:${e.id}` }) })
+      parsed++
+    }
     // David's rule (9/27): once the workout is in the Ledger, the Harvest entry
     // that carried the detail comes down. The workouts row keeps the minutes.
-    if (exercises.length) {
+    // Runs for already-captured entries too, so a capture that landed before
+    // this rule deployed still gets cleaned up on the next sync.
+    if (exercises.length && e.spent_date >= RULE_FROM) {
       try {
         const HH = { Authorization: `Bearer ${process.env.HARVEST_ACCESS_TOKEN}`, 'Harvest-Account-Id': process.env.HARVEST_ACCOUNT_ID, 'User-Agent': 'sa-hud' }
         const live = await fetch(`https://api.harvestapp.com/v2/time_entries/${e.id}`, { headers: HH }).then(r => r.ok ? r.json() : null).catch(() => null)
         if (live && live.is_running) { console.warn('workout: timer still running, leaving the entry'); continue }
         const del = await fetch(`https://api.harvestapp.com/v2/time_entries/${e.id}`, { method: 'DELETE', headers: HH })
-        if (del.ok) await fetch(`${URL_BASE}/rest/v1/time_entries?id=eq.${e.id}`, { method: 'DELETE', headers: { ...sbHeaders(), Prefer: 'return=minimal' } })
-        else console.error('workout: harvest delete', del.status)
+        if (del.ok || del.status === 404) {
+          await fetch(`${URL_BASE}/rest/v1/time_entries?id=eq.${e.id}`, { method: 'DELETE', headers: { ...sbHeaders(), Prefer: 'return=minimal' } })
+          removed++
+        } else console.error('workout: harvest delete', del.status)
       } catch (err) { console.error('workout: harvest delete', err.message) }
     }
   }
-  return { parsed, seen: entries.length }
+  return { parsed, removed, seen: entries.length }
 }
 
 export async function syncAll() {
