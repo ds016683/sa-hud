@@ -9,6 +9,7 @@ import { waSendDocument, davidNumber } from './_wa.mjs'
 import { extractText, clip } from './_docs.mjs'
 import { logHours, setHours } from './time.mjs'
 import { sendMail } from './_mail.mjs'
+import { loadout, checkFit, equip, holster, extract, effortOf, sizeOf, SIZES } from './_loadout.mjs'
 
 const URL_BASE = 'https://cmuvomnmaoseccxpeuxq.supabase.co'
 export const DAVID = '9d28e8cf-3e35-48d9-a029-1327bd37fdd4'
@@ -56,9 +57,9 @@ const OBJ_STATES = ['active', 'parked', 'waiting', 'follow_up', 'foreman', 'rele
 async function findObjective(title) {
   const q = esc(title || '')
   if (!q) throw new Error('title required')
-  const exact = await sb(`objectives?select=id,title,state,due_date,follow_up_date,activated_at,tags&deleted_at=is.null&title=ilike.${encodeURIComponent(q)}&limit=5`)
+  const exact = await sb(`objectives?select=id,title,state,due_date,follow_up_date,activated_at,tags,effort&deleted_at=is.null&title=ilike.${encodeURIComponent(q)}&limit=5`)
   if (exact.length === 1) return exact[0]
-  const like = await sb(`objectives?select=id,title,state,due_date,follow_up_date,activated_at,tags&deleted_at=is.null&title=ilike.*${encodeURIComponent(q)}*&order=captured_at.desc&limit=5`)
+  const like = await sb(`objectives?select=id,title,state,due_date,follow_up_date,activated_at,tags,effort&deleted_at=is.null&title=ilike.*${encodeURIComponent(q)}*&order=captured_at.desc&limit=5`)
   if (like.length === 1) return like[0]
   if (!like.length) throw new Error(`no objective matches "${title}"`)
   throw new Error(`"${title}" is ambiguous: ${like.map(o => `${o.title} (${o.state})`).join(' | ')}`)
@@ -300,6 +301,8 @@ export const TOOLS = [
       title: { type: 'string' },
       state: { type: 'string', enum: ['inbox', 'parked', 'active', 'follow_up', 'waiting'] },
       impromptu: { type: 'boolean', description: 'true when David posts something to the board on the fly to do now; pays 1 mile on release instead of 4. Default true when state is active and he did not plan it.' },
+      size: { type: 'string', enum: ['light', 'medium', 'heavy'], description: 'Light = an hour or less, Medium = a half day, Heavy = a full day. Bigger than Heavy is a Main Mission, not a Side Mission. Default light. Ask David when it is not obvious.' },
+      force: { type: 'boolean', description: 'Only when David explicitly overrides a full loadout. Otherwise the Loadout rules refuse and you ask him what to stash.' },
       due_date: { type: 'string', description: 'YYYY-MM-DD' },
       follow_up_date: { type: 'string', description: 'YYYY-MM-DD; required when state is follow_up' },
       description: { type: 'string' },
@@ -314,7 +317,8 @@ export const TOOLS = [
       state: { type: 'string', enum: OBJ_STATES },
       follow_up_date: { type: 'string', description: 'YYYY-MM-DD, for follow_up' },
       due_date: { type: 'string', description: 'YYYY-MM-DD, to (re)set a due date' },
-      minutes: { type: 'number', description: "On release only: the actual time of activity in minutes when David states it (\"took about an hour and a half\"). Otherwise the clock runs from activation to release." },
+      minutes: { type: 'number', description: "On release only: the actual time of activity in minutes when David states it (\"took about an hour and a half\"). Otherwise the clocked minutes are used." },
+      force: { type: 'boolean', description: 'Only when David explicitly overrides a full loadout on activation.' },
     }, required: ['title', 'state'] },
   },
   {
@@ -325,7 +329,27 @@ export const TOOLS = [
   {
     name: 'activate_project_task',
     description: "Play a project task onto David's Objectives board: creates the linked objective (the same bridge the Projects page uses, so releasing the objective closes the task) and, by default, makes it active with the board clock running. state 'parked' queues it instead. To de-activate, use move_objective on the objective (parked keeps the link; released closes the task).",
-    inputSchema: { type: 'object', properties: { project: { type: 'string', description: 'project key or name' }, text: { type: 'string', description: 'task text, exact-then-contains' }, state: { type: 'string', enum: ['active', 'parked'] } }, required: ['project', 'text'] },
+    inputSchema: { type: 'object', properties: { project: { type: 'string', description: 'project key or name' }, text: { type: 'string', description: 'task text, exact-then-contains' }, state: { type: 'string', enum: ['active', 'parked'] }, size: { type: 'string', enum: ['light', 'medium', 'heavy'], description: 'Light (an hour or less), Medium (half day), Heavy (full day). Default light.' }, force: { type: 'boolean', description: 'Only when David explicitly overrides a full loadout.' } }, required: ['project', 'text'] },
+  },
+  {
+    name: 'get_loadout',
+    description: "The Loadout: what David carries right now. Slots used of 3, Heavy used of 1, the equipped item (the one clock running) with minutes so far, every item on the board with its size and clocked minutes, and stamina (free hours before 6 PM Chicago after remaining meetings vs hours loaded). Read it before activating anything and whenever he asks what he is on or how much room he has.",
+    inputSchema: { type: 'object', properties: {} },
+  },
+  {
+    name: 'equip',
+    description: "Run the clock on an item already on the board (by title) and holster every other clock. Exactly one clock runs at a time. Use it when David says he is starting on something, switching to something, or 'back on' something.",
+    inputSchema: { type: 'object', properties: { title: { type: 'string' } }, required: ['title'] },
+  },
+  {
+    name: 'holster',
+    description: "Stop the clock on an item without releasing it (it stays loaded). Use it when David steps away, breaks, or says he is done for now but not finished.",
+    inputSchema: { type: 'object', properties: { title: { type: 'string' } }, required: ['title'] },
+  },
+  {
+    name: 'set_size',
+    description: "Set an item's size by title: light (an hour or less), medium (a half day), heavy (a full day). Something bigger than heavy belongs in a Main Mission as tasks.",
+    inputSchema: { type: 'object', properties: { title: { type: 'string' }, size: { type: 'string', enum: ['light', 'medium', 'heavy'] } }, required: ['title', 'size'] },
   },
   {
     name: 'complete_project_task',
@@ -761,24 +785,37 @@ export async function callTool(name, args = {}) {
       const state = OBJ_STATES.includes(args.state) && args.state !== 'released' && args.state !== 'foreman' ? args.state : 'inbox'
       const dupes = await sb(`objectives?select=title,state&deleted_at=is.null&title=ilike.${encodeURIComponent(esc(title))}&limit=3`)
       if (dupes.length) return JSON.stringify({ ok: false, note: 'already on the board', existing: dupes })
+      const size = String(args.size || 'light').toLowerCase()
+      const tags = [...new Set([...(Array.isArray(args.tags) ? args.tags : []), ...(args.impromptu ? ['impromptu'] : [])])]
+      let fit = null
+      if (state === 'active') {
+        fit = await checkFit({ size }, { force: !!args.force })
+        if (!fit.ok) return JSON.stringify({ ok: false, refused: 'loadout', reasons: fit.reasons, loadout: fit.loadout, note: 'Ask David what to stash (park), or whether to force it.' })
+      }
       const row = {
         user_id: DAVID, title, state, captured_at: new Date().toISOString(),
-        kind: 'execution', effort: 1, importance: 2, needs_sizing: state === 'inbox',
-        tags: args.impromptu ? ['impromptu'] : [],
+        kind: 'execution', effort: effortOf(size), importance: 2, needs_sizing: false,
         due_date: args.due_date || null,
         follow_up_date: state === 'follow_up' ? (args.follow_up_date || plusDays(7)) : (args.follow_up_date || null),
         description: args.description || null,
-        tags: Array.isArray(args.tags) ? args.tags : [],
+        tags,
         activated_at: state === 'active' ? new Date().toISOString() : null,
       }
       const out = await sbWrite('POST', 'objectives', row)
-      return JSON.stringify({ ok: true, objective: { title, state, due_date: row.due_date, follow_up_date: row.follow_up_date, id: out?.[0]?.id } })
+      let clock = null
+      if (state === 'active' && out?.[0]?.id) clock = await equip(out[0].id, 'equipped on add').catch(e => ({ error: String(e.message || e) }))
+      return JSON.stringify({ ok: true, objective: { title, state, size, due_date: row.due_date, follow_up_date: row.follow_up_date, id: out?.[0]?.id, tags }, ...(clock ? { equipped: clock } : {}), ...(fit?.forced ? { forced_over: fit.reasons } : {}) })
     }
     case 'move_objective': {
       const o = await findObjective(args.title)
       const state = args.state
       if (!OBJ_STATES.includes(state)) throw new Error('bad state')
       if (o.state === state) return JSON.stringify({ ok: true, note: `already ${state}`, title: o.title })
+      let fit = null
+      if (state === 'active') {
+        fit = await checkFit({ id: o.id, effort: o.effort }, { force: !!args.force })
+        if (!fit.ok) return JSON.stringify({ ok: false, refused: 'loadout', reasons: fit.reasons, loadout: fit.loadout, note: 'Ask David what to stash (park), or whether to force it.' })
+      }
       const patch = { state }
       if (state === 'released' || state === 'foreman') { patch.released_kind = state === 'foreman' ? 'foreman' : 'done'; patch.released_at = new Date().toISOString() }
       else { patch.released_kind = null; patch.released_at = null }
@@ -786,21 +823,25 @@ export async function callTool(name, args = {}) {
       if (state === 'follow_up') patch.follow_up_date = args.follow_up_date || o.follow_up_date || plusDays(7)
       if (args.due_date) patch.due_date = args.due_date
       await sbWrite('PATCH', `objectives?id=eq.${o.id}`, patch, 'return=minimal')
-      let clock = null
+      let clock = null, equipped = null
+      if (state === 'active') equipped = await equip(o.id, 'equipped on activate').catch(e => ({ error: String(e.message || e) }))
+      else if (state !== 'released') await holster(o.id).catch(() => null)
       if (state === 'released') {
         await sbWrite('PATCH', `project_tasks?objective_id=eq.${o.id}&status=neq.done`, { status: 'done', done: true, released_at: new Date().toISOString() }, 'return=minimal').catch(() => {})
         // Time rule (9/27): the item's clock (activated -> released) is kept in the
         // Ledger as an activity log, never in Harvest. Harvest is Third Horizon work
         // only; a Side Mission tagged personal is personal time. Both count as time
         // on pursuits.
-        if (o.activated_at && o.state === 'active') {
-          const minutes = Number(args.minutes) > 0 ? Math.round(Number(args.minutes)) : Math.max(1, Math.round((Date.now() - new Date(o.activated_at).getTime()) / 60000))
+        if (o.state === 'active') {
+          const clocked = await extract(o.id).catch(() => ({ minutes: 0, segments: 0 }))
+          const fallback = o.activated_at ? Math.max(1, Math.round((Date.now() - new Date(o.activated_at).getTime()) / 60000)) : 0
+          const minutes = Number(args.minutes) > 0 ? Math.round(Number(args.minutes)) : (clocked.minutes || fallback)
           const personal = (o.tags || []).includes('personal')
-          clock = { minutes, stated_by_david: Number(args.minutes) > 0, started_at: o.activated_at, personal, harvest: personal ? 'not logged: personal time stays out of Harvest' : 'not logged: the clock is kept in the Ledger' }
+          clock = { minutes, clocked_minutes: clocked.minutes, segments: clocked.segments, stated_by_david: Number(args.minutes) > 0, started_at: o.activated_at, personal, harvest: personal ? 'not logged: personal time stays out of Harvest' : 'not logged: the clock is kept in the Ledger' }
           await sbWrite('POST', 'daily_logs', { day: chiToday(), kind: 'activity', what: o.title, value: minutes, note: `${personal ? 'personal' : 'work'} · Side Mission clock ${o.activated_at.slice(11, 16)}Z to ${new Date().toISOString().slice(11, 16)}Z`, source: `objective:${o.id}` }, 'return=minimal').catch(() => {})
         }
       }
-      return JSON.stringify({ ok: true, title: o.title, from: o.state, to: state, follow_up_date: patch.follow_up_date || null, ...(clock ? { clock, close_out: 'Tell David the time of activity. Ask once whether there is anything to file against it: a receipt, a photo, a conversation, a note. A photo he sends is filed automatically; a note goes in log_day activity with the same what.' } : {}) })
+      return JSON.stringify({ ok: true, title: o.title, from: o.state, to: state, follow_up_date: patch.follow_up_date || null, ...(equipped ? { equipped } : {}), ...(fit?.forced ? { forced_over: fit.reasons } : {}), ...(clock ? { clock, close_out: 'Tell David the time of activity. Ask once whether there is anything to file against it: a receipt, a photo, a conversation, a note. A photo he sends is filed automatically; a note goes in log_day activity with the same what.' } : {}) })
     }
     case 'add_project_task': {
       const q = esc(args.project || '')
@@ -819,17 +860,48 @@ export async function callTool(name, args = {}) {
       if (ts.length !== 1) throw new Error(ts.length ? `task ambiguous: ${ts.map(t => t.text).join(' | ')}` : `no open task matches "${args.text}"`)
       const task = ts[0]
       const state = args.state === 'parked' ? 'parked' : 'active'
+      const size = String(args.size || 'light').toLowerCase()
       const now = new Date().toISOString()
+      let fit = null
+      if (state === 'active') {
+        fit = await checkFit({ id: task.objective_id, size }, { force: !!args.force })
+        if (!fit.ok) return JSON.stringify({ ok: false, refused: 'loadout', reasons: fit.reasons, loadout: fit.loadout, note: 'Ask David what to stash (park), or whether to force it.' })
+      }
       if (task.objective_id) {
-        await sbWrite('PATCH', `objectives?id=eq.${task.objective_id}`, { state, activated_at: state === 'active' ? now : null, released_at: null, released_kind: null }, 'return=minimal')
-        return JSON.stringify({ ok: true, task: task.text, objective: 'existing', state })
+        await sbWrite('PATCH', `objectives?id=eq.${task.objective_id}`, { state, effort: effortOf(size), activated_at: state === 'active' ? now : null, released_at: null, released_kind: null }, 'return=minimal')
+        const equipped = state === 'active' ? await equip(task.objective_id, 'equipped on activate').catch(e => ({ error: String(e.message || e) })) : null
+        return JSON.stringify({ ok: true, task: task.text, objective: 'existing', state, size, ...(equipped ? { equipped } : {}), ...(fit?.forced ? { forced_over: fit.reasons } : {}) })
       }
       const obj = await sbWrite('POST', 'objectives', {
-        user_id: DAVID, title: task.text.slice(0, 120), state, kind: 'execution', effort: 2, importance: 2, needs_sizing: false,
+        user_id: DAVID, title: task.text.slice(0, 120), state, kind: 'execution', effort: effortOf(size), importance: 2, needs_sizing: false, tags: ['mission-task'],
         description: `Promoted from project: ${ps[0].name}`, captured_at: now, activated_at: state === 'active' ? now : null,
       })
       await sbWrite('PATCH', `project_tasks?id=eq.${task.id}`, { objective_id: obj[0].id, status: task.status === 'blocked' ? 'blocked' : 'promoted' }, 'return=minimal')
-      return JSON.stringify({ ok: true, task: task.text, objective: obj[0].title, state })
+      const equipped = state === 'active' ? await equip(obj[0].id, 'equipped on activate').catch(e => ({ error: String(e.message || e) })) : null
+      return JSON.stringify({ ok: true, task: task.text, objective: obj[0].title, state, size, project: ps[0].name, ...(equipped ? { equipped } : {}), ...(fit?.forced ? { forced_over: fit.reasons } : {}) })
+    }
+    case 'get_loadout': return JSON.stringify(await loadout())
+    case 'equip': {
+      const o = await findObjective(args.title)
+      if (o.state !== 'active') {
+        const fit = await checkFit({ id: o.id, effort: o.effort })
+        if (!fit.ok) return JSON.stringify({ ok: false, refused: 'loadout', reasons: fit.reasons, note: `${o.title} is ${o.state}; the loadout has no room to activate it. Ask David what to stash.` })
+        await sbWrite('PATCH', `objectives?id=eq.${o.id}`, { state: 'active', activated_at: new Date().toISOString(), released_at: null, released_kind: null }, 'return=minimal')
+      }
+      const r = await equip(o.id, 'equipped')
+      return JSON.stringify({ ok: true, equipped: o.title, size: sizeOf(o), ...r })
+    }
+    case 'holster': {
+      const o = await findObjective(args.title)
+      const r = await holster(o.id)
+      return JSON.stringify({ ok: true, holstered: o.title, ...r })
+    }
+    case 'set_size': {
+      const o = await findObjective(args.title)
+      const size = String(args.size || '').toLowerCase()
+      if (!SIZES[size]) throw new Error('size must be light, medium, or heavy')
+      await sbWrite('PATCH', `objectives?id=eq.${o.id}`, { effort: effortOf(size), needs_sizing: false }, 'return=minimal')
+      return JSON.stringify({ ok: true, title: o.title, size, hours: SIZES[size].hours })
     }
     case 'complete_project_task': {
       const q = esc(args.text || '')

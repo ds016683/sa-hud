@@ -2,6 +2,7 @@ import { useState, useMemo, useRef, useEffect } from 'react'
 import { Plus, Play, Pause, Star, Flame, ChevronDown, ChevronUp, X, Trash2, ArrowUpRight, Check, Send, Anchor, Calendar, Edit3, Table as TableIcon, List as ListIcon, AlertTriangle, AlertCircle, BarChart3, Lock, Zap, RotateCcw, Archive, Inbox as InboxIcon, Hand, MoveRight, Hourglass, Bell } from 'lucide-react'
 import useObjectives from '../hooks/useObjectives'
 import { supabase } from '../lib/supabase'
+import { sizeOf as loadoutSizeOf, SIZES as LOADOUT_SIZES } from '../lib/loadout'
 
 // =============================================================================
 // CUSTOM ROUTE ICONS — lucide-style inline SVGs (24×24 viewBox, strokeWidth 2)
@@ -790,8 +791,7 @@ function ObjectiveCard({ o, onRoute, onToggleAnchor, onDelete, onEdit }) {
 
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 10, alignItems: 'center' }}>
         <span style={S.chip(sColor + '20', sColor)}>{size}</span>
-        <span style={S.chip('rgba(255,255,255,0.10)', NAVY)}>E{o.effort}</span>
-        <span style={S.chip('rgba(255,255,255,0.10)', NAVY)}>I{o.importance}</span>
+        <span style={S.chip('rgba(255,255,255,0.10)', NAVY)}>{LOADOUT_SIZES[loadoutSizeOf(o)].label} · {LOADOUT_SIZES[loadoutSizeOf(o)].hours}h</span>
         <span style={S.chip(o.kind === 'design' ? 'rgba(248,199,97,0.14)' : 'rgba(169,201,232,0.14)', o.kind === 'design' ? '#E6B54F' : '#A9C9E8')}>{o.kind}</span>
         {(o.start_date || o.due_date) && (
           <span style={S.chip(dueC.bg, dueC.fg)}>
@@ -1082,7 +1082,7 @@ function TableView({ items, onRoute, onEdit }) {
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 4px', borderTop: `1px solid ${PANEL_BORDER}`, fontSize: 12 }}>
         {o.is_anchor && <Star size={11} fill={GOLD} color={GOLD} />}
         <div style={{ flex: 1, color: NAVY, fontWeight: 500, lineHeight: 1.3 }}>{o.title}</div>
-        <span style={{ ...S.chip('rgba(255,255,255,0.10)', NAVY), fontSize: 9 }}>E{o.effort}·I{o.importance}</span>
+        <span style={{ ...S.chip('rgba(255,255,255,0.10)', NAVY), fontSize: 9 }}>{LOADOUT_SIZES[loadoutSizeOf(o)].label}</span>
         {o.kind === 'design' && <span style={{ ...S.chip('rgba(248,199,97,0.14)', '#E6B54F'), fontSize: 9 }}>D</span>}
         {o.needs_sizing && <span style={{ ...S.chip('rgba(248,199,97,0.14)', '#F2D592'), fontSize: 9 }}>⚠</span>}
         {o.stakeholder && <span style={{ ...S.chip('rgba(169,201,232,0.14)', '#A9C9E8'), fontSize: 9 }} title={`Waiting on me: ${o.stakeholder}`}>← {o.stakeholder}</span>}

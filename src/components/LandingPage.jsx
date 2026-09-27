@@ -11,6 +11,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { AlertTriangle, Compass, Map as MapIcon } from 'lucide-react'
 import { buildHaulItems } from '../lib/haul'
+import { fetchLoadout, fmtClock } from '../lib/loadout'
 import { HaulOverlay, MintingOverlay } from './river/RiverOverlays'
 import { supabase } from '../lib/supabase'
 import { BADGES, RIVER_TOTAL_MILES, RIVER_START_DAY, WAYPOINTS, whereOnRiver } from '../constants/collection'
@@ -127,6 +128,7 @@ function RiverGraphic({ miles, awards }) {
 export default function LandingPage({ onNavigate }) {
   const [ledger, setLedger] = useState(null)       // ascending by awarded_at
   const [board, setBoard] = useState([])           // active objectives
+  const [lo, setLo] = useState(null)               // the Loadout (equipped item, slots, stamina)
   const [projectByObj, setProjectByObj] = useState({})
   const [now, setNow] = useState(() => Date.now())
   const nav = (id) => { if (typeof onNavigate === 'function') onNavigate(id) }
@@ -227,7 +229,15 @@ export default function LandingPage({ onNavigate }) {
   const remaining = Math.max(0, RIVER_TOTAL_MILES - total)
   const recent = rows.slice(-8).reverse()
 
-  // Activity Monitor math.
+  useEffect(() => {
+    let alive = true
+    const pull = () => fetchLoadout().then(l => { if (alive) setLo(l) }).catch(() => {})
+    pull()
+    const t = setInterval(pull, 30_000)
+    return () => { alive = false; clearInterval(t) }
+  }, [])
+
+  // Activity Monitor math (kept for the greeting).
   const oldest = board.find(o => o.activated_at)
   const emergencies = board.filter(o => o.is_emergency).length
 
@@ -290,38 +300,36 @@ export default function LandingPage({ onNavigate }) {
           )}
         </div>
 
-        {/* RIGHT: Activity Monitor */}
-        <Panel title="Activity Monitor" style={{ marginTop: 0 }}>
-          {board.length === 0 ? (
-            <div style={{ fontSize: 12.5, color: INK2 }}>Nothing on the board. Put something on it from Side Missions.</div>
-          ) : board.map((o, i) => {
-            const clock = elapsed(o.activated_at, now)
-            const proj = projectByObj[o.id]
-            return (
-              <div key={o.id} style={{ padding: '8px 0', borderTop: i === 0 ? 'none' : `1px solid ${PANEL_BORDER}` }}>
-                <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
-                  {o.is_emergency ? <AlertTriangle size={13} color={RED} style={{ flexShrink: 0, marginTop: 2 }} /> : null}
-                  <div style={{ fontSize: 13, color: INK, lineHeight: 1.4, flex: 1, minWidth: 0 }}>{o.title}</div>
-                </div>
-                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 5 }}>
-                  {clock ? <span style={{ ...S.chip('rgba(255,255,255,0.06)', GREEN), textTransform: 'none', fontFamily: MONO }}>{clock}</span> : null}
-                  {proj ? <span style={S.chip(`${BLUE}22`, BLUE)}>{proj}</span> : null}
-                  {o.is_emergency ? <span style={S.chip(`${RED}22`, RED)}>Emergency</span> : null}
-                </div>
+        {/* RIGHT: Now (the Loadout lives on the Board page) */}
+        <Panel title="Now" style={{ marginTop: 0 }}>
+          {lo === null ? (
+            <div style={{ fontSize: 12.5, color: INK2 }}>Reading the loadout…</div>
+          ) : lo.equipped ? (
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ width: 8, height: 8, borderRadius: 99, background: GREEN, boxShadow: `0 0 0 3px ${GREEN}33`, flexShrink: 0 }} />
+                <div style={{ fontSize: 14, color: INK, lineHeight: 1.4, flex: 1, minWidth: 0 }}>{lo.equipped.title}</div>
               </div>
-            )
-          })}
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
+                <span style={{ ...S.chip('rgba(255,255,255,0.06)', GREEN), textTransform: 'none', fontFamily: MONO }}>{fmtClock(lo.equipped.minutes_today)} today</span>
+                <span style={S.chip('rgba(255,255,255,0.06)', INK2)}>{lo.equipped.kind}</span>
+                {lo.equipped.project ? <span style={S.chip(`${BLUE}22`, BLUE)}>{lo.equipped.project}</span> : null}
+              </div>
+            </div>
+          ) : (
+            <div style={{ fontSize: 12.5, color: INK2 }}>Nothing equipped. {lo.board.length ? `${lo.board.length} loaded, all holstered.` : 'The loadout is empty.'}</div>
+          )}
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginTop: 18, paddingTop: 14, borderTop: `1px solid ${PANEL_BORDER}` }}>
-            <Stat v={board.length} l="On the board" />
-            <Stat v={oldest ? elapsed(oldest.activated_at, now) : '0m'} l="Longest running" />
-            <Stat v={emergencies} l="Emergencies" color={emergencies > 0 ? RED : '#fff'} />
+            <Stat v={lo ? `${lo.slots.used}/${lo.slots.max}` : '·'} l="Slots loaded" />
+            <Stat v={lo ? `${lo.stamina.loaded}h` : '·'} l={lo ? `Loaded · ${lo.stamina.free}h free` : 'Loaded'} color={lo && lo.stamina.loaded > lo.stamina.free ? RED : GOLD_BRIGHT} />
+            <Stat v={lo ? lo.board.filter(i => !i.equipped).length : '·'} l="Holstered" />
           </div>
 
           <Label style={{ marginTop: 18 }}>Go to</Label>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            <button className="river-btn" onClick={() => nav('side-missions')}><Compass size={12} /> Open Side Missions</button>
-            <button className="river-btn" onClick={() => nav('main-missions')}><MapIcon size={12} /> Main Missions</button>
+            <button className="river-btn" onClick={() => nav('agenda')}><Compass size={12} /> Open the Board</button>
+            <button className="river-btn" onClick={() => nav('side-missions')}><MapIcon size={12} /> Side Missions</button>
           </div>
         </Panel>
       </div>

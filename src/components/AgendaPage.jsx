@@ -10,6 +10,7 @@ import { ChevronLeft, ChevronRight, CalendarDays, Circle, Wrench, Check, HelpCir
 import { supabase } from '../lib/supabase'
 import { matchNotes, hoursBetween, upsertSession, logToHarvest } from '../lib/meetings'
 import MeetingCloseout, { renderMarkdown, CloseoutBlock, friendlyError, fmtHours } from './river/MeetingCloseout'
+import LoadoutPanel from './river/LoadoutPanel'
 import {
   INK, INK2, GRAY, NAVY_DEEP, PANEL_BORDER, GOLD, GOLD_BRIGHT, BLUE, PERIWINKLE, GREEN, RED, MONO, SERIF,
   S, Eyebrow, Panel, chiToday, fmtTime, weekday,
@@ -456,6 +457,8 @@ export default function AgendaPage() {
         </div>
       </div>
 
+      {day === today && <LoadoutPanel onChange={refresh} />}
+
       <div className="agenda-grid">
         <div className="agenda-cal">
           <CalendarPanel events={calEvents} loading={loading} now={now} day={day} refresh={refresh} />
@@ -467,7 +470,7 @@ export default function AgendaPage() {
         </div>
       </div>
       <div style={{ ...S.source, marginTop: 14 }}>
-        SOURCES · calendar_events · granola_meetings · meeting_sessions · project_tasks + projects · objectives · maintenance_items
+        SOURCES · clocks · calendar_events · granola_meetings · meeting_sessions · project_tasks + projects · objectives · maintenance_items
       </div>
     </div>
   )
