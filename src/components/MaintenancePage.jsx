@@ -316,7 +316,7 @@ function DevotionalPanel({ logs, onChanged }) {
         <Stat v={streakText} l="day streak" color={streak > 0 ? GOLD : '#fff'} />
       </div>
       {todays
-        ? (todays.note && <div style={{ fontSize: 13, color: GRAY, marginBottom: 12 }}>{todays.note}</div>)
+        ? (todays.note && <div style={{ fontSize: 13.5, lineHeight: 1.7, color: INK2, marginBottom: 12, whiteSpace: 'pre-wrap', maxWidth: '76ch' }}>{todays.note}</div>)
         : (
           <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginBottom: 12 }}>
             <span style={{ fontSize: 13, color: INK2, flex: '1 1 260px' }}>Not yet today. Tell Lumen when you've done it; that opens the day.</span>
@@ -324,10 +324,15 @@ function DevotionalPanel({ logs, onChanged }) {
           </div>
         )}
       {open && !todays && (
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
-          <input autoFocus value={note} onChange={e => setNote(e.target.value)} onKeyDown={e => e.key === 'Enter' && save()} placeholder="Note (optional)" style={{ ...CTRL, flex: '1 1 220px' }} />
-          <button onClick={save} disabled={busy} style={{ ...BTN, borderColor: 'rgba(67,211,146,0.5)', color: GREEN, opacity: busy ? 0.6 : 1 }}><Check size={14} /> Save</button>
-          <button onClick={() => setOpen(false)} style={{ ...BTN, color: GRAY }}><X size={14} /></button>
+        <div style={{ marginBottom: 12 }}>
+          <textarea autoFocus value={note} onChange={e => setNote(e.target.value)} placeholder="Write the morning here, as long as it wants to be. Or talk it into WhatsApp and Lumen logs it."
+            rows={Math.max(30, note.split('\n').length + 2)}
+            style={{ ...CTRL, width: '100%', boxSizing: 'border-box', resize: 'vertical', lineHeight: 1.7, fontSize: 13.5, fontFamily: 'inherit', padding: '12px 14px', minHeight: 520 }} />
+          <div style={{ display: 'flex', gap: 8, marginTop: 8, alignItems: 'center' }}>
+            <button onClick={save} disabled={busy} style={{ ...BTN, borderColor: 'rgba(67,211,146,0.5)', color: GREEN, opacity: busy ? 0.6 : 1 }}><Check size={14} /> Save</button>
+            <button onClick={() => setOpen(false)} style={{ ...BTN, color: GRAY }}><X size={14} /></button>
+            <span style={{ fontFamily: MONO, fontSize: 10, color: GRAY, letterSpacing: '0.6px' }}>{note.trim() ? `${note.trim().split(/\s+/).length} words` : ''}</span>
+          </div>
         </div>
       )}
       <ErrLine msg={err} />
