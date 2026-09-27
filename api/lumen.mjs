@@ -11,7 +11,7 @@
 
 export const config = { maxDuration: 300 }
 
-import { think, remember, alreadySeen } from './_lumen-brain.mjs'
+import { think, remember, alreadySeen, claimInbound, fillInbound } from './_lumen-brain.mjs'
 import { flushPending } from './pulse.mjs'
 import { sbWrite, chiToday as chiTodayStr } from './_ledger.mjs'
 
@@ -224,7 +224,7 @@ export default async function handler(req, res) {
     try {
       const from = String(m.from || '').replace(/\D/g, '')
       if (!allowed().includes(from)) { console.warn('lumen: ignoring unknown sender', from); continue }
-      if (await alreadySeen('whatsapp', m.id)) continue
+      if (!(await claimInbound('whatsapp', m.id, { from, type: m.type }))) continue
       await waMarkRead(m.id)
 
       let text = ''
@@ -249,7 +249,7 @@ export default async function handler(req, res) {
       } else {
         text = `[${m.type} message]`
       }
-      await remember({ channel: 'whatsapp', direction: 'in', kind, body: text, external_id: m.id, meta: { from, type: m.type } })
+      await fillInbound('whatsapp', m.id, { kind, body: text, meta: { from, type: m.type } })
 
       // His reply opened the window: deliver anything Lumen knocked about first.
       let flushed = []

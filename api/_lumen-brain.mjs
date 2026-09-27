@@ -17,6 +17,21 @@ export async function alreadySeen(channel, externalId) {
 export async function remember(row) {
   try { await sbWrite('POST', 'lumen_messages', row, 'return=minimal') } catch (e) { console.error('lumen: remember failed', e.message) }
 }
+// Atomic claim of an inbound message: the unique (channel, external_id) index
+// makes the second delivery of the same message lose the race, so Meta's
+// webhook retries can never produce two replies.
+export async function claimInbound(channel, externalId, meta = {}) {
+  try {
+    await sbWrite('POST', 'lumen_messages', { channel, direction: 'in', kind: 'text', body: '[receiving]', external_id: externalId, meta }, 'return=minimal')
+    return true
+  } catch (e) {
+    if (/409|duplicate|23505/.test(String(e.message || e))) return false
+    console.error('lumen: claim failed', e.message); return true
+  }
+}
+export async function fillInbound(channel, externalId, patch) {
+  try { await sbWrite('PATCH', `lumen_messages?channel=eq.${channel}&external_id=eq.${encodeURIComponent(externalId)}`, patch, 'return=minimal') } catch (e) { console.error('lumen: fill failed', e.message) }
+}
 
 async function threadContext() {
   const [memory, recent] = await Promise.all([
@@ -71,7 +86,7 @@ export async function think({ channel = 'whatsapp', text, spoken = false }) {
   const tools = TOOLS.map(t => ({ name: t.name, description: t.description, input_schema: t.inputSchema }))
   const messages = [{ role: 'user', content: text || '(empty message)' }]
   let reply = ''
-  for (let step = 0; step < 12; step++) {
+  for (let step = 0; step < 20; step++) {
     const res = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: { 'x-api-key': process.env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
