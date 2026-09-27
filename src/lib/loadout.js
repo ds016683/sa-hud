@@ -67,7 +67,7 @@ export async function fetchLoadout() {
     day, items, board, sessions: items.filter(i => i.session),
     equipped: items.find(i => i.equipped) || null,
     slots: { used: board.length, max: SLOTS }, heavy: { used: board.filter(i => i.size === 'heavy').length, max: HEAVY_MAX },
-    stamina: { free, loaded, meetingsLeft: Math.round(meetingsLeft * 10) / 10 },
+    stamina: { free, loaded, meetingsLeft: Math.round(meetingsLeft * 10) / 10, afterHours: hoursToDayEnd() === 0 },
     clocksTable: true,
   }
 }

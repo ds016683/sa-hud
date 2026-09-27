@@ -63,7 +63,7 @@ export async function loadout() {
   const loaded = Math.round(board.reduce((s, i) => s + i.hours, 0) * 10) / 10
   return {
     day, slots: { used: board.length, max: SLOTS }, heavy: { used: board.filter(i => i.size === 'heavy').length, max: HEAVY_MAX },
-    stamina: { free_hours: stamina, loaded_hours: loaded, meetings_left_hours: Math.round(meetingsLeft * 10) / 10, day_end: `${DAY_END_HOUR}:00 CT` },
+    stamina: { free_hours: stamina, loaded_hours: loaded, meetings_left_hours: Math.round(meetingsLeft * 10) / 10, day_end: `${DAY_END_HOUR}:00 CT`, after_hours: hoursToDayEnd() === 0, note: hoursToDayEnd() === 0 ? 'After 6 PM: stamina is not enforced, slots and Heavy still are.' : 'Loaded hours must fit within free hours before 6 PM.' },
     equipped: items.find(i => i.equipped) || null,
     items, sessions: items.filter(i => i.session),
     rules: `${SLOTS} slots, at most ${HEAVY_MAX} Heavy, one clock running, loaded hours within stamina. Over the limit: stash (park) something first.`,
@@ -80,7 +80,8 @@ export async function checkFit(candidate, { force = false } = {}) {
   if (!already) {
     if (L.slots.used >= SLOTS) reasons.push(`the loadout is full (${L.slots.used}/${SLOTS} slots): ${L.items.filter(i => !i.session).map(i => i.title).join(' | ')}`)
     if (size === 'heavy' && L.heavy.used >= HEAVY_MAX) reasons.push(`a Heavy item is already loaded (${L.items.find(i => i.size === 'heavy')?.title})`)
-    if (L.stamina.loaded_hours + hours > L.stamina.free_hours) reasons.push(`stamina: ${L.stamina.loaded_hours}h loaded + ${hours}h for this vs ${L.stamina.free_hours}h free before ${L.stamina.day_end}`)
+    // Stamina is a working-day rule. After 6 PM the day is his; slots and Heavy still hold.
+    if (hoursToDayEnd() > 0 && L.stamina.loaded_hours + hours > L.stamina.free_hours) reasons.push(`stamina: ${L.stamina.loaded_hours}h loaded + ${hours}h for this vs ${L.stamina.free_hours}h free before ${L.stamina.day_end}`)
   }
   return { ok: force || reasons.length === 0, forced: force && reasons.length > 0, reasons, loadout: L }
 }

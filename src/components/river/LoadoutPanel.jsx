@@ -86,7 +86,7 @@ export default function LoadoutPanel({ onChange }) {
   }
 
   const stamina = L ? L.stamina : null
-  const over = stamina && stamina.loaded > stamina.free
+  const over = stamina && !stamina.afterHours && stamina.loaded > stamina.free
   const pct = stamina && stamina.free > 0 ? Math.min(100, Math.round(stamina.loaded / stamina.free * 100)) : (stamina && stamina.loaded > 0 ? 100 : 0)
 
   return (
@@ -107,7 +107,7 @@ export default function LoadoutPanel({ onChange }) {
             </div>
             <div style={{ borderLeft: `2px solid ${BLUE}55`, paddingLeft: 12 }}>
               <div style={{ fontFamily: SERIF, fontSize: 24, fontWeight: 500, color: over ? RED : GOLD, lineHeight: 1.1 }}>{stamina.loaded}h / {stamina.free}h</div>
-              <div style={{ fontSize: 11, color: GRAY, marginTop: 3 }}>Stamina · loaded vs free before 6 PM{stamina.meetingsLeft ? ` · ${stamina.meetingsLeft}h of meetings left` : ''}</div>
+              <div style={{ fontSize: 11, color: GRAY, marginTop: 3 }}>{stamina.afterHours ? 'Stamina · after 6 PM, not enforced' : `Stamina · loaded vs free before 6 PM${stamina.meetingsLeft ? ` · ${stamina.meetingsLeft}h of meetings left` : ''}`}</div>
               <div style={{ height: 4, borderRadius: 99, background: 'rgba(255,255,255,0.08)', marginTop: 8, overflow: 'hidden' }}><div style={{ width: `${pct}%`, height: '100%', background: over ? RED : GOLD }} /></div>
             </div>
           </div>
