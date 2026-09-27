@@ -22,6 +22,15 @@ export async function sb(path) {
   if (!res.ok) throw new Error(`${path.split('?')[0]} -> ${res.status}`)
   return res.json()
 }
+// Put a binary into the `files` bucket (receipts, photos David sends). Returns the path.
+export async function putFile(path, bytes, mime) {
+  const res = await fetch(`${URL_BASE}/storage/v1/object/files/${path.split('/').map(encodeURIComponent).join('/')}`, {
+    method: 'POST', headers: { ...sbHeaders(), 'Content-Type': mime || 'application/octet-stream', 'x-upsert': 'true' }, body: bytes,
+  })
+  if (!res.ok) throw new Error(`storage put -> ${res.status}: ${(await res.text()).slice(0, 160)}`)
+  return path
+}
+
 export async function sbWrite(method, path, body, prefer = 'return=representation') {
   const res = await fetch(`${URL_BASE}/rest/v1/${path}`, {
     method, headers: { ...sbHeaders(), 'Content-Type': 'application/json', Prefer: prefer },
@@ -47,9 +56,9 @@ const OBJ_STATES = ['active', 'parked', 'waiting', 'follow_up', 'foreman', 'rele
 async function findObjective(title) {
   const q = esc(title || '')
   if (!q) throw new Error('title required')
-  const exact = await sb(`objectives?select=id,title,state,due_date,follow_up_date,activated_at&deleted_at=is.null&title=ilike.${encodeURIComponent(q)}&limit=5`)
+  const exact = await sb(`objectives?select=id,title,state,due_date,follow_up_date,activated_at,tags&deleted_at=is.null&title=ilike.${encodeURIComponent(q)}&limit=5`)
   if (exact.length === 1) return exact[0]
-  const like = await sb(`objectives?select=id,title,state,due_date,follow_up_date,activated_at&deleted_at=is.null&title=ilike.*${encodeURIComponent(q)}*&order=captured_at.desc&limit=5`)
+  const like = await sb(`objectives?select=id,title,state,due_date,follow_up_date,activated_at,tags&deleted_at=is.null&title=ilike.*${encodeURIComponent(q)}*&order=captured_at.desc&limit=5`)
   if (like.length === 1) return like[0]
   if (!like.length) throw new Error(`no objective matches "${title}"`)
   throw new Error(`"${title}" is ambiguous: ${like.map(o => `${o.title} (${o.state})`).join(' | ')}`)
@@ -514,14 +523,24 @@ export async function callTool(name, args = {}) {
     }
     case 'get_river': {
       const day = String(args.day || chiToday()).slice(0, 10)
-      const [all, today, logs] = await Promise.all([
-        sb(`miles_ledger?select=miles`), sb(`miles_ledger?select=badge,miles,evidence&day=eq.${day}&order=id.asc`), sb(`daily_logs?select=kind,what,value,at&day=eq.${day}&order=at.asc`),
+      const [all, today, logs, harvest, workouts] = await Promise.all([
+        sb(`miles_ledger?select=miles`), sb(`miles_ledger?select=badge,miles,evidence&day=eq.${day}&order=id.asc`), sb(`daily_logs?select=kind,what,value,at,note,source&day=eq.${day}&order=at.asc`),
+        sb(`time_entries?select=hours&spent_date=eq.${day}&person=ilike.David*`).catch(() => []), sb(`workouts?select=minutes&day=eq.${day}`).catch(() => []),
       ])
+      // Time on pursuits: Third Horizon hours (Harvest) + personal Side Mission clocks + exercise.
+      const h2 = (x) => Math.round(x * 100) / 100
+      const thsH = harvest.reduce((s, r) => s + (Number(r.hours) || 0), 0)
+      const clocks = logs.filter(l => l.kind === 'activity' && String(l.source || '').startsWith('objective:'))
+      const personalH = clocks.filter(l => /^personal/.test(l.note || '')).reduce((s, l) => s + (Number(l.value) || 0), 0) / 60
+      const workClockH = clocks.filter(l => !/^personal/.test(l.note || '')).reduce((s, l) => s + (Number(l.value) || 0), 0) / 60
+      const exerciseH = workouts.reduce((s, r) => s + (Number(r.minutes) || 0), 0) / 60
+      const pursuitsH = thsH + personalH + workClockH + exerciseH
+      const time_today = { pursuits_hours: h2(pursuitsH), third_horizon_hours: h2(thsH), third_horizon_share: pursuitsH ? Math.round(thsH / pursuitsH * 100) : 0, personal_hours: h2(personalH), side_mission_work_hours: h2(workClockH), exercise_hours: h2(exerciseH), rule: 'Harvest = Third Horizon work only. Personal Side Missions keep their clock in the Ledger (activity log), never Harvest.' }
       const total = Math.round(all.reduce((s, r) => s + Number(r.miles || 0), 0) * 100) / 100
       const byKind = (k) => logs.filter(l => l.kind === k)
       return JSON.stringify({
         day, miles_total: total, miles_remaining: Math.round((10535 - total) * 100) / 100, miles_today: Math.round(today.reduce((s, r) => s + Number(r.miles || 0), 0) * 100) / 100,
-        badges_today: today, open_today: {
+        time_today, badges_today: today, open_today: {
           discomforts_logged: byKind('discomfort').length, discomforts_needed: 3,
           hygiene_logged: byKind('hygiene').map(l => l.what), hygiene_needed: ['brush x3', 'shower', 'whiten'],
           exercise_minutes: byKind('exercise').reduce((s, l) => s + (Number(l.value) || 0), 0), exercise_needed: 45,
@@ -766,10 +785,21 @@ export async function callTool(name, args = {}) {
       if (state === 'follow_up') patch.follow_up_date = args.follow_up_date || o.follow_up_date || plusDays(7)
       if (args.due_date) patch.due_date = args.due_date
       await sbWrite('PATCH', `objectives?id=eq.${o.id}`, patch, 'return=minimal')
+      let clock = null
       if (state === 'released') {
         await sbWrite('PATCH', `project_tasks?objective_id=eq.${o.id}&status=neq.done`, { status: 'done', done: true, released_at: new Date().toISOString() }, 'return=minimal').catch(() => {})
+        // Time rule (9/27): the item's clock (activated -> released) is kept in the
+        // Ledger as an activity log, never in Harvest. Harvest is Third Horizon work
+        // only; a Side Mission tagged personal is personal time. Both count as time
+        // on pursuits.
+        if (o.activated_at && o.state === 'active') {
+          const minutes = Math.max(1, Math.round((Date.now() - new Date(o.activated_at).getTime()) / 60000))
+          const personal = (o.tags || []).includes('personal')
+          clock = { minutes, started_at: o.activated_at, personal, harvest: personal ? 'not logged: personal time stays out of Harvest' : 'not logged: the clock is kept in the Ledger' }
+          await sbWrite('POST', 'daily_logs', { day: chiToday(), kind: 'activity', what: o.title, value: minutes, note: `${personal ? 'personal' : 'work'} · Side Mission clock ${o.activated_at.slice(11, 16)}Z to ${new Date().toISOString().slice(11, 16)}Z`, source: `objective:${o.id}` }, 'return=minimal').catch(() => {})
+        }
       }
-      return JSON.stringify({ ok: true, title: o.title, from: o.state, to: state, follow_up_date: patch.follow_up_date || null })
+      return JSON.stringify({ ok: true, title: o.title, from: o.state, to: state, follow_up_date: patch.follow_up_date || null, ...(clock ? { clock, close_out: 'Tell David the time of activity. Ask once whether there is anything to file against it: a receipt, a photo, a conversation, a note. A photo he sends is filed automatically; a note goes in log_day activity with the same what.' } : {}) })
     }
     case 'add_project_task': {
       const q = esc(args.project || '')

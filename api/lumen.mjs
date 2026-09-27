@@ -13,7 +13,7 @@ export const config = { maxDuration: 300 }
 
 import { think, remember, alreadySeen, claimInbound, fillInbound } from './_lumen-brain.mjs'
 import { flushPending } from './pulse.mjs'
-import { sbWrite, chiToday as chiTodayStr } from './_ledger.mjs'
+import { sbWrite, putFile, chiToday as chiTodayStr } from './_ledger.mjs'
 
 // Look at a photo. If it is an InBody results screen, pull the four numbers;
 // otherwise describe it in a sentence so the brain can respond to it.
@@ -245,6 +245,16 @@ export default async function handler(req, res) {
             await sbWrite('POST', 'body_scans?on_conflict=day,source', { day, ...seen.scan, source: 'whatsapp', image_ref: m.image.id, note: m.image.caption || null }, 'resolution=merge-duplicates,return=minimal')
             text = `[InBody scan photo, logged for ${day}: weight ${seen.scan.weight_lbs} lbs, skeletal muscle ${seen.scan.smm_lbs} lbs, body fat ${seen.scan.pbf_pct}%, ECW/TBW ${seen.scan.ecw_tbw}]${m.image.caption ? ' ' + m.image.caption : ''}`
           } catch (e) { text = `[InBody scan photo read but not saved: ${String(e.message || e).slice(0, 120)}] ${seen.text}` }
+        } else {
+          // Any other photo (a receipt, a document, a moment) is filed in the
+          // files bucket under inbox/<day>/ so it can be attached to whatever
+          // David is closing out.
+          try {
+            const ext = (mime || 'image/jpeg').split('/')[1].replace('jpeg', 'jpg').split(';')[0]
+            const path = `inbox/${chiTodayStr()}/${new Date().toISOString().slice(11, 19).replace(/:/g, '')}-${m.image.id.slice(-6)}.${ext}`
+            await putFile(path, bytes, mime)
+            text = `[photo filed at files/${path}] ${seen.text}`
+          } catch (e) { text = `[photo not filed: ${String(e.message || e).slice(0, 100)}] ${seen.text}` }
         }
       } else {
         text = `[${m.type} message]`

@@ -53,7 +53,7 @@ const truncate = (s, n) => { const t = String(s || '').replace(/\s+/g, ' ').trim
 async function fetchDay(day) {
   const { lo, hi } = windowFor(day)
   const q = (p) => p.then(r => { if (r.error) console.warn('activity fetch', r.error.message); return Array.isArray(r.data) ? r.data : [] })
-  const [emails, calendar, granola, time, objectives, doneTasks, promotedTasks, projects, logs, lumen] = await Promise.all([
+  const [emails, calendar, granola, time, objectives, doneTasks, promotedTasks, projects, logs, workouts, lumen] = await Promise.all([
     q(supabase.from('emails').select('subject,to_names,received_at,day').eq('folder', 'sent').eq('day', day).order('received_at', { ascending: true })),
     q(supabase.from('calendar_events').select('subject,start_at,end_at,attendees,day,is_cancelled').eq('day', day).eq('is_cancelled', false).order('start_at', { ascending: true })),
     q(supabase.from('granola_meetings').select('title,meeting_date,attendees,summary').eq('meeting_date', day)),
@@ -62,10 +62,11 @@ async function fetchDay(day) {
     q(supabase.from('project_tasks').select('id,text,status,released_at,project_id').eq('status', 'done').gte('released_at', lo).lt('released_at', hi)),
     q(supabase.from('project_tasks').select('id,project_id,objective_id').not('objective_id', 'is', null)),
     q(supabase.from('projects').select('id,name')),
-    q(supabase.from('daily_logs').select('day,kind,what,value,note,at').eq('day', day)),
+    q(supabase.from('daily_logs').select('day,kind,what,value,note,at,source').eq('day', day)),
+    q(supabase.from('workouts').select('day,minutes,summary,harvest_entry_id').eq('day', day)),
     q(supabase.from('lumen_messages').select('at,channel,direction,kind,body').eq('direction', 'in').in('channel', ['whatsapp', 'voice']).gte('at', lo).lt('at', hi)),
   ])
-  return { emails, calendar, granola, time, objectives, doneTasks, promotedTasks, projects, logs, lumen }
+  return { emails, calendar, granola, time, objectives, doneTasks, promotedTasks, projects, logs, workouts, lumen }
 }
 
 function build(raw, day, nowMs) {
@@ -134,7 +135,7 @@ function build(raw, day, nowMs) {
   for (const l of raw.logs) {
     const kind = LOG_KIND_LABEL[l.kind] || 'Activity'
     const text = [l.what, l.note].filter(Boolean).join(' · ') || (l.value != null ? String(l.value) : '')
-    rows.push({ at: l.at || noonOf(day), kind, text, meta: l.value != null && (l.what || l.note) ? String(l.value) : null, src: 'daily_logs', fields: { kind: l.kind, what: l.what, value: l.value, note: l.note, at: l.at } })
+    rows.push({ at: l.at || noonOf(day), kind, text, meta: l.value != null && (l.what || l.note) ? String(l.value) : null, src: 'daily_logs', fields: { kind: l.kind, what: l.what, value: l.value, note: l.note, at: l.at, source: l.source } })
   }
 
   // Said to Lumen
@@ -147,8 +148,25 @@ function build(raw, day, nowMs) {
   const byKind = {}
   for (const r of rows) byKind[r.kind] = (byKind[r.kind] || 0) + 1
 
+  // Time on pursuits (9/27 rule): Harvest = Third Horizon work only. Personal
+  // Side Missions keep their clock in the Ledger (activity logs with source
+  // objective:*), never Harvest. Exercise lives in the workouts record.
+  const clocks = raw.logs.filter(l => l.kind === 'activity' && String(l.source || '').startsWith('objective:'))
+  const clockRow = (l) => ({ at: l.at || noonOf(day), kind: 'Side Mission', text: `${l.what || 'Side Mission'} · ${Math.round((Number(l.value) || 0) / 6) / 10}h`, meta: l.note, src: 'daily_logs (Side Mission clock)', fields: { minutes: l.value, note: l.note, source: l.source } })
+  const personalH = clocks.filter(l => /^personal/.test(l.note || '')).reduce((s, l) => s + (Number(l.value) || 0), 0) / 60
+  const workClockH = clocks.filter(l => !/^personal/.test(l.note || '')).reduce((s, l) => s + (Number(l.value) || 0), 0) / 60
+  const exerciseH = (raw.workouts || []).reduce((s, w) => s + (Number(w.minutes) || 0), 0) / 60
+  const pursuitsH = hours + personalH + workClockH + exerciseH
+  const pursuitRows = [
+    ...rows.filter(r => r.kind === 'Work'),
+    ...clocks.map(clockRow),
+    ...(raw.workouts || []).map(w => ({ at: noonOf(day), kind: 'Exercise', text: `Workout · ${Math.round((Number(w.minutes) || 0) / 6) / 10}h`, meta: w.summary, src: 'workouts', fields: { minutes: w.minutes, harvest_entry_id: w.harvest_entry_id } })),
+  ]
+
   // Drill-downs for the Today panel: what each number is made of.
   const drills = {
+    pursuits: pursuitRows,
+    thirdHorizon: rows.filter(r => r.kind === 'Work'),
     held: rows.filter(r => r.kind === 'Meeting'),
     documented: docRows,
     hours: rows.filter(r => r.kind === 'Work'),
@@ -157,7 +175,7 @@ function build(raw, day, nowMs) {
 
   return {
     rows, byKind, drills,
-    stats: { held: held.length, documented, hours: Math.round(hours * 100) / 100, touched: touched.size },
+    stats: { held: held.length, documented, hours: Math.round(hours * 100) / 100, touched: touched.size, pursuits: Math.round(pursuitsH * 100) / 100, share: pursuitsH ? Math.round(hours / pursuitsH * 100) : 0, personal: Math.round(personalH * 100) / 100, exercise: Math.round(exerciseH * 100) / 100 },
     isToday,
   }
 }
@@ -332,8 +350,11 @@ export default function ActivityPage() {
               <Clickable onClick={() => view && setOpen({ title: 'Meetings documented', subtitle: 'Granola notes matched to a held meeting by title', items: view.drills.documented })}>
                 <Stat v={view ? view.stats.documented : '·'} l="Meetings documented" color={view && view.stats.documented > 0 ? GREEN : '#fff'} />
               </Clickable>
-              <Clickable onClick={() => view && setOpen({ title: 'Hours logged', subtitle: "David's Harvest entries for the day", items: view.drills.hours })}>
-                <Stat v={view ? `${view.stats.hours}h` : '·'} l="Hours logged" color={GOLD} />
+              <Clickable onClick={() => view && setOpen({ title: 'Hours on pursuits', subtitle: 'Third Horizon work (Harvest) + personal Side Mission clocks + exercise', items: view.drills.pursuits })}>
+                <Stat v={view ? `${view.stats.pursuits}h` : '·'} l="Hours on pursuits" color={GOLD} />
+              </Clickable>
+              <Clickable onClick={() => view && setOpen({ title: 'Third Horizon hours', subtitle: `David's Harvest entries for the day · ${view ? view.stats.share : 0}% of pursuit time`, items: view.drills.thirdHorizon })}>
+                <Stat v={view ? `${view.stats.hours}h` : '·'} l={view ? `Third Horizon · ${view.stats.share}% of pursuits` : 'Third Horizon'} color={GOLD} />
               </Clickable>
               <Clickable onClick={() => view && setOpen({ title: 'Main Missions touched', subtitle: 'Projects with a task closed, activated, or promoted today', items: view.drills.touched })}>
                 <Stat v={view ? view.stats.touched : '·'} l="Main Missions touched" color={GOLD_BRIGHT} />
