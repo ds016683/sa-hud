@@ -86,6 +86,24 @@ async function writeArtifact(projectId, slug, doc) {
   if (!res.ok) throw new Error(`artifact write -> ${res.status}: ${(await res.text()).slice(0, 160)}`)
   return artifactPath(projectId, slug)
 }
+function mergeArtifact(base, patch) {
+  const out = { ...base }
+  for (const [k, v] of Object.entries(patch || {})) {
+    if (Array.isArray(v) && Array.isArray(base[k])) {
+      const key = (x) => x?.id ?? x?.name
+      const list = base[k].map(x => ({ ...x }))
+      for (const item of v) {
+        const i = list.findIndex(x => key(x) === key(item))
+        if (i >= 0) list[i] = { ...list[i], ...item }
+        else list.push(item)
+      }
+      out[k] = list
+    } else if (v && typeof v === 'object' && !Array.isArray(v) && base[k] && typeof base[k] === 'object' && !Array.isArray(base[k])) {
+      out[k] = mergeArtifact(base[k], v)
+    } else out[k] = v
+  }
+  return out
+}
 async function listArtifacts(projectId) {
   const res = await fetch(`${URL_BASE}/storage/v1/object/list/project-files`, { method: 'POST', headers: { ...sbHeaders(), 'Content-Type': 'application/json' }, body: JSON.stringify({ prefix: `${projectId}/artifacts`, limit: 200 }) })
   if (!res.ok) return []
@@ -277,6 +295,11 @@ export const TOOLS = [
     name: 'write_artifact',
     description: "Write a project artifact (whole document). To draft into an existing one, read_artifact first, change the fields you are filling (proposed answers, presentation notes, a competency rating you are suggesting), keep everything else, and write it back. To start a new scorecard for another candidate, copy the structure of an existing one with the new candidate and empty answers. The HUD shows the result on the project page under Artifacts.",
     inputSchema: { type: 'object', properties: { project: { type: 'string' }, slug: { type: 'string' }, doc: { type: 'object', description: 'the full artifact JSON' } }, required: ['project', 'slug', 'doc'] },
+  },
+  {
+    name: 'patch_artifact',
+    description: "Update part of a project artifact without rewriting the whole document. patch is deep-merged into the stored JSON: top-level keys merge, questions and competencies are matched by id / name and merged item by item. Use it for one question at a time, e.g. { questions: [{ id: 'Q3', lumen_read: '...' }] } or { presentation: { lumen_read: '...' } }. Prefer this over write_artifact for drafting: several small patches in one turn beat one giant write.",
+    inputSchema: { type: 'object', properties: { project: { type: 'string' }, slug: { type: 'string' }, patch: { type: 'object' } }, required: ['project', 'slug', 'patch'] },
   },
   {
     name: 'write_file',
@@ -645,6 +668,16 @@ export async function callTool(name, args = {}) {
       if (!args.doc || typeof args.doc !== 'object') throw new Error('doc (object) required')
       const path = await writeArtifact(pr.id, args.slug, { ...args.doc, updated_by: 'lumen' })
       return JSON.stringify({ ok: true, project: pr.name, slug: args.slug, path, note: 'David sees it on the project page under Artifacts.' })
+    }
+    case 'patch_artifact': {
+      const pr = await findProject(args.project)
+      const cur = await readArtifact(pr.id, args.slug)
+      if (!cur) return JSON.stringify({ ok: false, error: `no artifact ${args.slug} on ${pr.name}` })
+      if (!args.patch || typeof args.patch !== 'object') throw new Error('patch (object) required')
+      const merged = mergeArtifact(cur, args.patch)
+      const path = await writeArtifact(pr.id, args.slug, { ...merged, updated_by: 'lumen' })
+      const touched = Object.keys(args.patch).map(k => Array.isArray(args.patch[k]) ? `${k}[${args.patch[k].map(x => x.id || x.name).join(',')}]` : k)
+      return JSON.stringify({ ok: true, project: pr.name, slug: args.slug, path, touched })
     }
     case 'write_file': {
       const path = String(args.path || '').replace(/^\/+/, '').trim()

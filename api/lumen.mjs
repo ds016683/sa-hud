@@ -81,8 +81,8 @@ export default async function handler(req, res) {
   if (req.method === 'GET' && (req.query || {}).admin === 'think') {
     const token = String(req.headers.authorization || '').replace(/^Bearer\s+/i, '')
     if (!process.env.CRON_SECRET || token !== process.env.CRON_SECRET) return res.status(401).json({ error: 'unauthorized' })
-    const reply = await think({ channel: 'probe', text: String(req.query.text || '') })
-    const rows = await sbRead(`lumen_messages?select=body&channel=eq.probe&kind=eq.system&order=id.desc&limit=1`).catch(() => [])
+    const reply = await think({ channel: 'pulse', text: String(req.query.text || '') })
+    const rows = await sbRead(`lumen_messages?select=body&channel=eq.pulse&kind=eq.system&order=id.desc&limit=1`).catch(() => [])
     return res.status(200).json({ reply, trace: rows[0] ? JSON.parse(rows[0].body) : null })
   }
   // ?admin=transcript&id=<granola note id>  (Bearer CRON_SECRET): can we get a transcript?
