@@ -123,6 +123,7 @@ export async function think({ channel = 'whatsapp', text, spoken = false }) {
       reply = textParts.join('\n').trim()
       if (out.stop_reason === 'max_tokens' && toolUses.length) {
         // A tool call too big for the window: tell him and let him split it.
+        trace.push({ step: step + 1, tool: '(too-large)', input: `${toolUses.map(t => t.name).join(',')} truncated at max_tokens`, ok: false, ms: 0, out: 'asked to split the write' })
         messages.push({ role: 'assistant', content: out.content.filter(c => c.type === 'text') })
         messages.push({ role: 'user', content: '(system: that tool call was too large for one message. Split the write into smaller pieces, or shorten the content, and continue now.)' })
         continue
