@@ -13,6 +13,7 @@ import MeetingCloseout, { renderMarkdown, CloseoutBlock, friendlyError, fmtHours
 import LoadoutPanel from './river/LoadoutPanel'
 import RecurringPanel from './river/RecurringPanel'
 import ReleasePanel from './river/ReleasePanel'
+import AmbushPanel from './river/AmbushPanel'
 import { equipTask, equipObjective } from '../lib/loadout'
 import {
   INK, INK2, GRAY, NAVY_DEEP, PANEL_BORDER, GOLD, GOLD_BRIGHT, BLUE, PERIWINKLE, GREEN, RED, MONO, SERIF,
@@ -563,6 +564,7 @@ export default function AgendaPage() {
       </div>
 
       {day === today && <LoadoutPanel onChange={refresh} />}
+      {day === today && <AmbushPanel onChange={refresh} />}
       {day === today && <RecurringPanel onChange={refresh} />}
       {day === today && <ReleasePanel onChange={refresh} />}
 

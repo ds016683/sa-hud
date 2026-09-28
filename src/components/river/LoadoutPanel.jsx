@@ -3,8 +3,8 @@
 // active item, whatever its origin (Side Mission, Main Mission task,
 // impromptu), gets the same Equip / Holster / Extract hands.
 import { useEffect, useState, useCallback } from 'react'
-import { Play, Pause, PackageCheck, Archive, Zap, X as XIcon } from 'lucide-react'
-import { fetchLoadout, equip, holster, stash, extract, addImpromptu, fmtClock, SIZES, SLOTS, HEAVY_MAX } from '../../lib/loadout'
+import { Play, Pause, PackageCheck, Archive, X as XIcon } from 'lucide-react'
+import { fetchLoadout, equip, holster, stash, extract, fmtClock, SIZES, SLOTS, HEAVY_MAX } from '../../lib/loadout'
 import { INK, INK2, GRAY, PANEL_BORDER, GOLD, GOLD_BRIGHT, BLUE, GREEN, RED, MONO, SERIF, S, Eyebrow, Label, Panel } from './canon'
 
 const btn = (color = INK2, filled = false) => ({
@@ -76,9 +76,6 @@ export default function LoadoutPanel({ onChange }) {
   const [tick, setTick] = useState(0)
   const [open, setOpen] = useState(null)
   const [msg, setMsg] = useState(null)
-  const [imp, setImp] = useState('')
-  const [impPersonal, setImpPersonal] = useState(false)
-  const [impBusy, setImpBusy] = useState(false)
   const refresh = useCallback(() => fetchLoadout().then(setL).catch(e => console.warn('loadout', e.message)), [])
   useEffect(() => { refresh() }, [refresh, tick])
   useEffect(() => { const t = setInterval(() => setTick(x => x + 1), 30_000); return () => clearInterval(t) }, [])
@@ -86,17 +83,6 @@ export default function LoadoutPanel({ onChange }) {
   const act = async (fn, after) => {
     try { await fn(); if (after) setMsg(after); setTick(x => x + 1); onChange && onChange() }
     catch (e) { setMsg(`Could not do that: ${e.message}`) }
-  }
-
-  const startImpromptu = async () => {
-    if (!imp.trim()) return
-    setImpBusy(true)
-    try {
-      const r = await addImpromptu(imp, { personal: impPersonal })
-      if (r.ok) { setMsg(`Impromptu on the board, timer on: ${r.title}`); setImp(''); setImpPersonal(false); setTick(x => x + 1); onChange && onChange() }
-      else setMsg(`No room on the loadout: ${r.reasons.join('; ')}`)
-    } catch (e) { setMsg(`Could not add it: ${e.message}`) }
-    setImpBusy(false)
   }
 
   const stamina = L ? L.stamina : null
@@ -152,15 +138,6 @@ export default function LoadoutPanel({ onChange }) {
               </div>
             </div>
           ))}
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginTop: 14, paddingTop: 12, borderTop: `1px solid ${PANEL_BORDER}` }}>
-            <Zap size={13} color={GOLD} style={{ flexShrink: 0 }} />
-            <input value={imp} onChange={e => setImp(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') startImpromptu() }} placeholder="Impromptu: what are you doing right now? Enter starts the timer." disabled={impBusy}
-              style={{ flex: 1, minWidth: 220, background: 'rgba(255,255,255,0.04)', border: `1px solid ${PANEL_BORDER}`, borderRadius: 8, color: INK, padding: '7px 10px', fontSize: 13, fontFamily: 'inherit' }} />
-            <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: MONO, fontSize: 9.5, letterSpacing: '1px', textTransform: 'uppercase', color: impPersonal ? INK : GRAY, cursor: 'pointer' }}>
-              <input type="checkbox" checked={impPersonal} onChange={e => setImpPersonal(e.target.checked)} /> personal
-            </label>
-            <button onClick={startImpromptu} disabled={impBusy || !imp.trim()} style={{ ...btn(GOLD, !!imp.trim()), opacity: imp.trim() ? 1 : 0.5 }}><Play size={11} /> Start</button>
-          </div>
           {msg && <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '1px', color: GOLD_BRIGHT, marginTop: 10, textTransform: 'uppercase' }}>{msg}</div>}
           <div style={{ fontSize: 11, color: GRAY, marginTop: 12, lineHeight: 1.6 }}>
             <span style={{ color: INK2 }}>Timer</span> runs one clock at a time (turning one on holsters the rest) ·{' '}

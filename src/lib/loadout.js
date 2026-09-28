@@ -132,7 +132,7 @@ export async function extract(item, { minutes, note } = {}) {
 }
 
 // ---- Putting things on the board from the Board page itself -------------------
-const DAVID = '9d28e8cf-3e35-48d9-a029-1327bd37fdd4'
+export const DAVID = '9d28e8cf-3e35-48d9-a029-1327bd37fdd4'
 
 // Same rules as the server: slots, one Heavy, stamina during the working day.
 export function fitReasons(L, size = 'light', { alreadyLoadedId } = {}) {
@@ -182,7 +182,7 @@ export async function equipTask(task, projectName) {
 
 // Impromptu: something David is doing right now that was never planned. Goes on
 // the board tagged impromptu (1 mile on extract), Light, timer running.
-export async function addImpromptu(title, { personal = false } = {}) {
+export async function addImpromptu(title, { personal = false, tags = [] } = {}) {
   const text = String(title || '').trim()
   if (!text) throw new Error('say what you are doing')
   const L = await fetchLoadout()
@@ -191,7 +191,7 @@ export async function addImpromptu(title, { personal = false } = {}) {
   const now = new Date().toISOString()
   const { data, error } = await supabase.from('objectives').insert({
     user_id: DAVID, title: text.slice(0, 160), state: 'active', kind: 'execution', effort: 1, importance: 2, needs_sizing: false,
-    tags: personal ? ['impromptu', 'personal'] : ['impromptu'], captured_at: now, activated_at: now,
+    tags: [...new Set(['impromptu', ...(personal ? ['personal'] : []), ...tags])], captured_at: now, activated_at: now,
   }).select().single()
   if (error) throw new Error(error.message)
   await equip(data.id)
