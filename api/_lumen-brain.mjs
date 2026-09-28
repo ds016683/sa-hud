@@ -108,8 +108,20 @@ export async function think({ channel = 'whatsapp', text, spoken = false }) {
   // the turn continues instead of ending: up to two pushes per turn.
   const DEFER_RE = /(ran out of (tool )?(steps|calls|room)|out of (tool )?steps|next turn|give me (the )?next turn|next message i('ll| will)|i('ll| will) (draft|write|do|add|log|finish|build)[^.]*\b(next|when you|once you)\b|haven'?t (actually )?(written|logged|added|built|drafted)[^.]*yet)/i
   let autoContinues = 0
+  // Watchdog: the function has a hard ceiling (maxDuration). A turn that runs
+  // past the budget stops taking steps and wraps up honestly, instead of being
+  // killed mid-work with no reply, no trace, and an inbound already claimed.
+  const t0 = Date.now()
+  const BUDGET_MS = Number(process.env.LUMEN_TURN_BUDGET_MS) || 700_000
+  let watchdog = false
   let step = 0
   for (step = 0; step < MAX_STEPS; step++) {
+    if (Date.now() - t0 > BUDGET_MS) {
+      watchdog = true
+      trace.push({ step: step + 1, tool: '(watchdog)', input: `${Math.round((Date.now() - t0) / 1000)}s elapsed`, ok: false, ms: 0, out: 'turn budget spent; wrapping up' })
+      reply = ''
+      break
+    }
     const res = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: { 'x-api-key': process.env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
@@ -165,7 +177,7 @@ export async function think({ channel = 'whatsapp', text, spoken = false }) {
   // to say what got done and what did not.
   if (!reply) {
     try {
-      messages.push({ role: 'user', content: 'You are out of tool steps. In two or three plain sentences tell David what you completed, what failed and why, and what you still need from him. No tools.' })
+      messages.push({ role: 'user', content: watchdog ? 'The turn ran out of time (not steps). In two or three plain sentences tell David exactly what landed and what did not, and that he should say "continue" to pick up where you stopped. No tools.' : 'You are out of tool steps. In two or three plain sentences tell David what you completed, what failed and why, and what you still need from him. No tools.' })
       const r2 = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST', headers: { 'x-api-key': process.env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
         body: JSON.stringify({ model: MODEL(), max_tokens: 600, system, messages }),
@@ -176,7 +188,7 @@ export async function think({ channel = 'whatsapp', text, spoken = false }) {
   }
   if (!reply) reply = 'I ran out of room working on that and lost the thread. Say it again, one thing at a time?'
   if (trace.length) {
-    const exhausted = step >= MAX_STEPS
+    const exhausted = step >= MAX_STEPS || watchdog
     sbWrite('POST', 'lumen_messages', { channel, direction: 'out', kind: 'system', body: JSON.stringify({ steps: step, exhausted, trace }), meta: { kind: 'trace', steps: step, exhausted, tools: trace.map(t => t.tool) } }, 'return=minimal')
       .catch(e => console.error('lumen: trace failed', e.message))
   }
