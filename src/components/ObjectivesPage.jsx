@@ -2,7 +2,7 @@ import { useState, useMemo, useRef, useEffect } from 'react'
 import { Plus, Play, Pause, Star, Flame, ChevronDown, ChevronUp, X, Trash2, ArrowUpRight, Check, Send, Anchor, Calendar, Edit3, Table as TableIcon, List as ListIcon, AlertTriangle, AlertCircle, BarChart3, Lock, Zap, RotateCcw, Archive, Inbox as InboxIcon, Hand, MoveRight, Hourglass, Bell } from 'lucide-react'
 import useObjectives from '../hooks/useObjectives'
 import { supabase } from '../lib/supabase'
-import { sizeOf as loadoutSizeOf, SIZES as LOADOUT_SIZES } from '../lib/loadout'
+import { sizeOf as loadoutSizeOf, SIZES as LOADOUT_SIZES, fetchLoadout as fetchLoadoutLive, fmtClock as fmtLoadClock } from '../lib/loadout'
 
 // =============================================================================
 // CUSTOM ROUTE ICONS — lucide-style inline SVGs (24×24 viewBox, strokeWidth 2)
@@ -721,38 +721,28 @@ function MetricsDetail({ breakdown, history, pressure }) {
 // ActiveRow — one line per active item: dot, title, due, done. Nothing else.
 // =============================================================================
 
-function ActiveRow({ o, onDone, onPark, onEdit, onToggleClock, bankedHours }) {
+function ActiveRow({ o, onDone, onPark, onEdit, onToggleClock, load }) {
   const dueC = dueColor(o.due_date, o.hard_deadline)
-  // Board clock: rerender each minute so the elapsed chip ticks.
-  const [, setTick] = useState(0)
-  useEffect(() => {
-    if (!o.activated_at) return undefined
-    const t = setInterval(() => setTick(x => x + 1), 60000)
-    return () => clearInterval(t)
-  }, [o.activated_at])
-  const mins = o.activated_at ? Math.max(0, Math.floor((Date.now() - new Date(o.activated_at).getTime()) / 60000)) : null
-  const clock = mins !== null ? (mins >= 60 ? `${Math.floor(mins / 60)}H ${String(mins % 60).padStart(2, '0')}M` : `${mins}M`) : null
+  // The clock lives on the Board (Loadout); this chip reads it.
+  const running = !!(load && load.equipped && load.equipped.id === o.id)
+  const item = load && load.items.find(i => i.id === o.id)
+  const clock = item ? fmtLoadClock(item.minutes_today) : '0m'
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 0', borderTop: `1px solid ${PANEL_BORDER}`, whiteSpace: 'nowrap', minWidth: 0 }}>
       {o.is_anchor && <Star size={12} fill={GOLD} color={GOLD} style={{ flexShrink: 0 }} />}
       <SizeDot weight={o.weight} />
       <span onClick={() => onEdit(o)} title={o.title} style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', fontSize: 14, color: NAVY, cursor: 'pointer' }}>{o.title}</span>
       <button onClick={() => onToggleClock(o.id)}
-        title={o.activated_at ? 'Clock running · click to pause (logs the span to Harvest)' : 'Clock off · click to start recording'}
+        title={running ? 'Timer on · click to holster (pause)' : 'Timer off · click to equip (runs this clock, holsters the rest)'}
         style={{
           fontFamily: 'var(--font-mono, monospace)', fontSize: 9, letterSpacing: '0.8px',
           flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 3, cursor: 'pointer',
           padding: '3px 8px', borderRadius: 999,
-          border: o.activated_at ? '1px solid rgba(67,211,146,0.45)' : `1px solid ${PANEL_BORDER}`,
-          background: o.activated_at ? 'rgba(67,211,146,0.10)' : 'transparent',
-          color: o.activated_at ? '#43D392' : GRAY,
+          border: running ? '1px solid rgba(67,211,146,0.45)' : `1px solid ${PANEL_BORDER}`,
+          background: running ? 'rgba(67,211,146,0.10)' : 'transparent',
+          color: running ? '#43D392' : GRAY,
         }}>
-        {o.activated_at ? <>⏱ {clock}</> : <>⏸ OFF</>}
-        {bankedHours > 0 && (
-          <span style={{ color: o.activated_at ? 'rgba(67,211,146,0.65)' : GRAY, marginLeft: 2 }}>
-            · {bankedHours >= 1 ? `${Math.floor(bankedHours)}H ${String(Math.round((bankedHours % 1) * 60)).padStart(2, '0')}M` : `${Math.round(bankedHours * 60)}M`} TODAY
-          </span>
-        )}
+        {running ? <>⏱ {clock}</> : <>⏸ {clock}</>}
       </button>
       {o.due_date && <span style={{ ...S.chip(dueC.bg, dueC.fg), fontSize: 9, flexShrink: 0 }}>{o.hard_deadline ? '🔒 ' : ''}{fmtShort(o.due_date)}</span>}
       <button onClick={() => onPark(o.id)} title="Back to queue" style={{ ...S.btnGhost, fontSize: 10, padding: '5px 8px', flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 4 }}><RaceTrack size={12} /></button>
@@ -2065,7 +2055,7 @@ function BinView({ items, onRestore, onPurge }) {
 // MAIN PAGE
 // =============================================================================
 
-export default function ObjectivesPage() {
+export default function ObjectivesPage({ onNavigate } = {}) {
   const {
     loading, objectives, sov, sovHistory, habit, habitGrid, meditation,
     addObjective, releaseObjective, reopenObjective, parkObjective, reactivateObjective, activateObjective, waitObjective, inboxObjective, moveObjective, toggleClock,
@@ -2103,6 +2093,8 @@ export default function ObjectivesPage() {
   const [container, setContainer] = useState(() => localStorage.getItem('objectives-container') || 'queue') // 'queue' | 'waiting' | 'delegated' | 'released' | 'inbox'
   const [editing, setEditing] = useState(null) // objective being edited
   const [tcmManual, setTcmManual] = useState(null) // null = auto (open when anything is active)
+  const [loadLive, setLoadLive] = useState(null)
+  useEffect(() => { let alive = true; const pull = () => fetchLoadoutLive().then(l => { if (alive) setLoadLive(l) }).catch(() => {}); pull(); const t = setInterval(pull, 30_000); return () => { alive = false; clearInterval(t) } }, [objectives])
 
   useEffect(() => { localStorage.setItem('objectives-view', viewMode) }, [viewMode])
   useEffect(() => { localStorage.setItem('objectives-tab', tab) }, [tab])
@@ -2219,7 +2211,7 @@ export default function ObjectivesPage() {
     <div style={{ ...S.page, background: PAGE_BG }}>
       <div style={{ marginBottom: 16 }}>
         <h1 style={S.h1}>Side Missions</h1>
-        <div style={S.sub}>The infinite game · capacity 15 · sovereignty is what's left after pressure</div>
+        <div style={S.sub}>The plan · what's loaded runs on the Board · three slots, one clock</div>
       </div>
 
       <PillTabs tab={tab} setTab={setTab} binCount={binItems.length} />
@@ -2232,59 +2224,41 @@ export default function ObjectivesPage() {
             onForeman={(id) => releaseObjective(id, 'foreman')}
           />
 
-          <div
-            onClick={() => setTcmManual(o => (o === null ? !(loadItems.length > 0) : !o))}
-            style={{ ...S.panel, padding: '12px 16px', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 16, cursor: 'pointer', flexWrap: 'wrap' }}>
-            <span style={{ ...S.panelTitle, marginBottom: 0 }}>Task and Capacity Management</span>
-            {[['SOVEREIGNTY', sovLevelOf(score)], ['CAPACITY', capLevelOf(ramUsed, ramCap)]].map(([lbl, lvl]) => (
-              <span key={lbl} style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-                <span style={{ fontSize: 9, fontFamily: 'var(--font-mono, monospace)', letterSpacing: '1.2px', color: TEXT_DIM }}>{lbl}</span>
-                <span style={{ fontSize: 9, fontFamily: 'var(--font-mono, monospace)', letterSpacing: '1px', fontWeight: 600, color: lvl[1], background: lvl[1] + '1f', border: `1px solid ${lvl[1]}55`, borderRadius: 999, padding: '2px 10px' }}>{lvl[0]}</span>
-              </span>
-            ))}
-            <span style={{ flex: 1 }} />
-            {tcmOpen ? <ChevronUp size={14} style={{ color: GRAY }} /> : <ChevronDown size={14} style={{ color: GRAY }} />}
-          </div>
-
-          {tcmOpen && (
-          <div style={{ display: 'grid', gridTemplateColumns: '246px 172px 1fr', gap: 12, marginBottom: 12, alignItems: 'stretch' }}>
-            <GameLegend />
-            <MetersRail score={score} used={ramUsed} capacity={ramCap} />
-          <div style={{ ...S.panel, marginBottom: 0, height: '100%', boxSizing: 'border-box', minWidth: 0, boxShadow: 'none' }}>
+          <div style={{ ...S.panel, marginBottom: 12 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, gap: 8, flexWrap: 'wrap' }}>
               <div style={{ display: 'inline-flex', alignItems: 'center', gap: 10 }}>
                 <span style={{ width: 8, height: 8, borderRadius: 4, background: '#43D392', display: 'inline-block' }} />
-                <span style={{ fontFamily: "'Lora', Georgia, serif", fontWeight: 500, fontSize: 17, letterSpacing: '-0.01em', color: '#EAF1F8' }}>Active · {sortedActive.length}</span>
-                <span style={{ fontSize: 10, color: GRAY, fontFamily: 'var(--font-mono, monospace)', letterSpacing: '0.5px', marginLeft: 4 }}>work this. nothing else.</span>
+                <span style={{ fontFamily: "'Lora', Georgia, serif", fontWeight: 500, fontSize: 17, letterSpacing: '-0.01em', color: '#EAF1F8' }}>On the Board · {sortedActive.length}</span>
+                <span style={{ fontSize: 10, color: GRAY, fontFamily: 'var(--font-mono, monospace)', letterSpacing: '0.5px', marginLeft: 4 }}>
+                  {loadLive ? `${loadLive.slots.used}/${loadLive.slots.max} slots · ${loadLive.equipped ? `running: ${loadLive.equipped.title.slice(0, 40)}` : 'nothing running'}` : 'the Loadout'}
+                </span>
               </div>
-              <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+              <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
                 <button style={{ ...S.btnGhost, fontSize: 11, padding: '4px 10px' }} onClick={() => setCoax(true)}>stuck?</button>
+                {onNavigate && <button style={{ ...S.btnGhost, fontSize: 11, padding: '4px 10px' }} onClick={() => onNavigate('agenda')}>Open the Board →</button>}
               </div>
             </div>
 
             {coaxAutoTrigger && !coax && (
               <div style={{ background: 'rgba(248,199,97,0.14)', border: `1px solid rgba(248,199,97,0.45)`, borderRadius: 8, padding: 10, marginBottom: 10, fontSize: 12, color: '#F2D592' }}>
-                Queue is heavy and Sovereignty is low. Try <button style={{ ...S.btnGhost, fontSize: 11, padding: '2px 8px', marginLeft: 4 }} onClick={() => setCoax(true)}>Coax Mode →</button>
+                Queue is heavy. Try <button style={{ ...S.btnGhost, fontSize: 11, padding: '2px 8px', marginLeft: 4 }} onClick={() => setCoax(true)}>Coax Mode →</button>
               </div>
             )}
 
             {sortedActive.length === 0 ? (
               <div style={{ padding: '20px 0', color: GRAY, fontSize: 13, textAlign: 'center' }}>
-                Nothing active. {meditation ? 'The Rock answer became your anchor — start there.' : 'Tap "Add objective" to begin.'}
+                Nothing loaded. Press play on a Side Mission to put it on the Board.
               </div>
             ) : sortedActive.map(o => (
               <ActiveRow key={o.id} o={o}
                 onDone={(id) => releaseObjective(id, 'done')}
                 onPark={(id) => moveObjective(id, 'parked')}
                 onEdit={setEditing}
-                onToggleClock={toggleClock}
-                bankedHours={banked[o.title]}
+                onToggleClock={async (id) => { await toggleClock(id); fetchLoadoutLive().then(setLoadLive).catch(() => {}) }}
+                load={loadLive}
               />
             ))}
           </div>
-          </div>
-          )}
-
 
           {anchorActive && (
             <div style={S.panel}>

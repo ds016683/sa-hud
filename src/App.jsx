@@ -228,7 +228,7 @@ export default function App() {
           {active === 'accomplishments'  && <AccomplishmentsPage />}
           {active === 'notes'            && <MeetingNotesPage />}
           {active === 'main-missions'    && <ProjectsPage />}
-          {active === 'side-missions'    && <ObjectivesPage />}
+          {active === 'side-missions'    && <ObjectivesPage onNavigate={setActive} />}
           {active === 'maintenance'      && <MaintenancePage />}
           {active === 'session-boards'   && <SessionBoardsPage />}
           {active === 'company-finance'  && <CompanyFinancePage />}

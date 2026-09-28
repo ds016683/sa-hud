@@ -115,7 +115,7 @@ function DispatchModal({ item, projects, onClose, onDone }) {
   )
 }
 
-export default function AmbushPanel({ onChange }) {
+export default function AmbushPanel({ onChange, refreshKey = 0 }) {
   const [L, setL] = useState(null)
   const [projects, setProjects] = useState([])
   const [imp, setImp] = useState('')
@@ -124,7 +124,7 @@ export default function AmbushPanel({ onChange }) {
   const [msg, setMsg] = useState(null)
   const [tick, setTick] = useState(0)
   const refresh = useCallback(() => fetchLoadout().then(setL).catch(e => console.warn('ambush', e.message)), [])
-  useEffect(() => { refresh() }, [refresh, tick])
+  useEffect(() => { refresh() }, [refresh, tick, refreshKey])
   useEffect(() => { const t = setInterval(() => setTick(x => x + 1), 30_000); return () => clearInterval(t) }, [])
   useEffect(() => { supabase.from('projects').select('id,name').eq('status', 'active').order('name').then(({ data }) => setProjects(Array.isArray(data) ? data : [])) }, [])
 

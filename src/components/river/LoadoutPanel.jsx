@@ -71,13 +71,13 @@ function ExtractModal({ item, onClose, onDone }) {
   )
 }
 
-export default function LoadoutPanel({ onChange }) {
+export default function LoadoutPanel({ onChange, refreshKey = 0 }) {
   const [L, setL] = useState(null)
   const [tick, setTick] = useState(0)
   const [open, setOpen] = useState(null)
   const [msg, setMsg] = useState(null)
   const refresh = useCallback(() => fetchLoadout().then(setL).catch(e => console.warn('loadout', e.message)), [])
-  useEffect(() => { refresh() }, [refresh, tick])
+  useEffect(() => { refresh() }, [refresh, tick, refreshKey])
   useEffect(() => { const t = setInterval(() => setTick(x => x + 1), 30_000); return () => clearInterval(t) }, [])
 
   const act = async (fn, after) => {
