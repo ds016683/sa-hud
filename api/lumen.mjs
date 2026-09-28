@@ -259,7 +259,9 @@ export default async function handler(req, res) {
       } else {
         text = `[${m.type} message]`
       }
-      await fillInbound('whatsapp', m.id, { kind, body: text, meta: { from, type: m.type } })
+      // lumen_messages.kind has a check constraint that does not include 'image';
+      // the message type lives in meta.type, so photos are stored as text rows.
+      await fillInbound('whatsapp', m.id, { kind: kind === 'image' ? 'text' : kind, body: text, meta: { from, type: m.type } })
 
       // His reply opened the window: deliver anything Lumen knocked about first.
       let flushed = []
