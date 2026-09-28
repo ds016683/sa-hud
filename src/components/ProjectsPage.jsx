@@ -4,6 +4,7 @@ import {
   Upload, Download, Archive, ChevronRight, Hand, RefreshCw,
 } from 'lucide-react'
 import useProjects, { freshnessOf } from '../hooks/useProjects'
+import ArtifactsTab from './river/ArtifactsTab'
 
 // =============================================================================
 // STYLE TOKENS (CIP canon, matches ObjectivesPage dark stage)
@@ -352,6 +353,7 @@ function ProjectDetail({ project, board, api, onBack }) {
         <div style={{ display: 'flex', gap: 6, paddingTop: 6 }}>
           <Pill active={tab === 'tasks'} onClick={() => setTab('tasks')}>Tasks</Pill>
           <Pill active={tab === 'board'} onClick={() => setTab('board')}>Session Board</Pill>
+          <Pill active={tab === 'artifacts'} onClick={() => setTab('artifacts')}>Artifacts</Pill>
           <Pill active={tab === 'files'} onClick={() => setTab('files')}>Files</Pill>
         </div>
       </div>
@@ -396,6 +398,7 @@ function ProjectDetail({ project, board, api, onBack }) {
           </div>
         )}
         {tab === 'board' && <BoardTab board={board} />}
+        {tab === 'artifacts' && <ArtifactsTab project={project} />}
         {tab === 'files' && (
           <FilesTab project={project}
             listFiles={api.listFiles} uploadFile={api.uploadFile} createFolder={api.createFolder}

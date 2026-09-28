@@ -24,6 +24,35 @@ export async function sb(path) {
   if (!res.ok) throw new Error(`${path.split('?')[0]} -> ${res.status}`)
   return res.json()
 }
+// Artifacts: structured work products a project carries (a scorecard, a
+// memo in progress), kept as JSON in the project-files bucket under
+// <project id>/artifacts/<slug>.json. The HUD renders and edits them on the
+// project page; Lumen drafts into them and ports them out with write_file.
+async function findProject(q) {
+  const pq = esc(String(q || ''))
+  const ps = await sb(`projects?select=id,key,name&or=(key.ilike.${encodeURIComponent(pq)},name.ilike.*${encodeURIComponent(pq)}*)&limit=5`)
+  if (ps.length !== 1) throw new Error(ps.length ? `project ambiguous: ${ps.map(p => p.name).join(' | ')}` : `no project matches "${q}"`)
+  return ps[0]
+}
+const artifactPath = (projectId, slug) => `${projectId}/artifacts/${String(slug).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}.json`
+async function readArtifact(projectId, slug) {
+  const res = await fetch(`${URL_BASE}/storage/v1/object/project-files/${artifactPath(projectId, slug)}`, { headers: sbHeaders() })
+  if (!res.ok) return null
+  return res.json()
+}
+async function writeArtifact(projectId, slug, doc) {
+  const body = JSON.stringify({ ...doc, updated_at: new Date().toISOString() }, null, 1)
+  const res = await fetch(`${URL_BASE}/storage/v1/object/project-files/${artifactPath(projectId, slug)}`, { method: 'POST', headers: { ...sbHeaders(), 'Content-Type': 'application/json', 'x-upsert': 'true' }, body })
+  if (!res.ok) throw new Error(`artifact write -> ${res.status}: ${(await res.text()).slice(0, 160)}`)
+  return artifactPath(projectId, slug)
+}
+async function listArtifacts(projectId) {
+  const res = await fetch(`${URL_BASE}/storage/v1/object/list/project-files`, { method: 'POST', headers: { ...sbHeaders(), 'Content-Type': 'application/json' }, body: JSON.stringify({ prefix: `${projectId}/artifacts`, limit: 200 }) })
+  if (!res.ok) return []
+  const rows = await res.json()
+  return (Array.isArray(rows) ? rows : []).filter(r => r.name.endsWith('.json')).map(r => ({ slug: r.name.replace(/\.json$/, ''), updated_at: r.updated_at }))
+}
+
 // Put a binary into the `files` bucket (receipts, photos David sends). Returns the path.
 export async function putFile(path, bytes, mime) {
   const res = await fetch(`${URL_BASE}/storage/v1/object/files/${path.split('/').map(encodeURIComponent).join('/')}`, {
@@ -188,6 +217,21 @@ export const TOOLS = [
     name: 'send_file',
     description: "Post a document from David's file store into his WhatsApp chat so he can open it. path from search_files (exact). Say what you sent in one line after.",
     inputSchema: { type: 'object', properties: { path: { type: 'string' }, caption: { type: 'string' } }, required: ['path'] },
+  },
+  {
+    name: 'list_artifacts',
+    description: "Artifacts a project carries in the HUD: structured work products (kind 'scorecard' today) that David reads and edits on the project page. Returns slugs; read_artifact for the content.",
+    inputSchema: { type: 'object', properties: { project: { type: 'string', description: 'project key or name' } }, required: ['project'] },
+  },
+  {
+    name: 'read_artifact',
+    description: "Read a project artifact (JSON). A scorecard has candidate, interview_date, presentation {topic, notes, qa_notes, ratings, overall}, questions [{id, text, competency, panelist, mine, proposed, notes, rating}], competencies [{name, rating}], overall {recommendation, notes}. 'mine' marks the questions David is assigned; 'proposed' is the draft answer you write for him; 'notes' and ratings are his.",
+    inputSchema: { type: 'object', properties: { project: { type: 'string' }, slug: { type: 'string', description: "e.g. 'scorecard-jeanne-alongi'" } }, required: ['project', 'slug'] },
+  },
+  {
+    name: 'write_artifact',
+    description: "Write a project artifact (whole document). To draft into an existing one, read_artifact first, change the fields you are filling (proposed answers, presentation notes, a competency rating you are suggesting), keep everything else, and write it back. To start a new scorecard for another candidate, copy the structure of an existing one with the new candidate and empty answers. The HUD shows the result on the project page under Artifacts.",
+    inputSchema: { type: 'object', properties: { project: { type: 'string' }, slug: { type: 'string' }, doc: { type: 'object', description: 'the full artifact JSON' } }, required: ['project', 'slug', 'doc'] },
   },
   {
     name: 'write_file',
@@ -522,6 +566,22 @@ export async function callTool(name, args = {}) {
       const filename = path.split('/').pop()
       const id = await waSendDocument(davidNumber(), bytes, { filename, mime, caption: args.caption || '' })
       return JSON.stringify({ ok: true, sent: filename, size: bytes.length, wa_message_id: id || null })
+    }
+    case 'list_artifacts': {
+      const pr = await findProject(args.project)
+      return JSON.stringify({ project: pr.name, artifacts: await listArtifacts(pr.id) })
+    }
+    case 'read_artifact': {
+      const pr = await findProject(args.project)
+      const doc = await readArtifact(pr.id, args.slug)
+      if (!doc) return JSON.stringify({ ok: false, error: `no artifact ${args.slug} on ${pr.name}`, artifacts: await listArtifacts(pr.id) })
+      return JSON.stringify({ ok: true, project: pr.name, slug: args.slug, doc })
+    }
+    case 'write_artifact': {
+      const pr = await findProject(args.project)
+      if (!args.doc || typeof args.doc !== 'object') throw new Error('doc (object) required')
+      const path = await writeArtifact(pr.id, args.slug, { ...args.doc, updated_by: 'lumen' })
+      return JSON.stringify({ ok: true, project: pr.name, slug: args.slug, path, note: 'David sees it on the project page under Artifacts.' })
     }
     case 'write_file': {
       const path = String(args.path || '').replace(/^\/+/, '').trim()
