@@ -34,7 +34,7 @@ export async function granolaTranscript(noteId, { fromMin = null, toMin = null }
   const utt = []
   let cursor = null, status = null
   for (let page = 0; page < 80; page++) {
-    const qs = new URLSearchParams({ page_size: '500' })
+    const qs = new URLSearchParams({ page_size: '100' })
     if (cursor) qs.set('cursor', cursor)
     const res = await fetch(`https://public-api.granola.ai/v1/notes/${noteId}/transcript?${qs}`, { headers: gh })
     status = res.status
