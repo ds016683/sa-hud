@@ -49,7 +49,7 @@ export async function computeRegimen(day) {
 
 export const MILES = {
   'main-mission': 10, 'mission-task': 1, 'side-mission': 4, 'impromptu': 1, 'maintenance-bundle': 1, 'cartographer': 2, 'exercise': 5, 'lift': 1, 'sleep': 4,
-  'toastmaster': 4, 'full-day': 4, 'work-horse': 10, 'clean-close': 2, 'discomforter': 5, 'hygiene': 3, 'hygiene-item': 0.25, 'devotional': 2, 'dose': 0.5, 'regimen': 2,
+  'toastmaster': 4, 'full-day': 4, 'work-horse': 10, 'clean-close': 2, 'clean-slack': 10, 'discomforter': 5, 'hygiene': 3, 'hygiene-item': 0.25, 'devotional': 2, 'dose': 0.5, 'regimen': 2,
 }
 
 const words = (s) => new Set(String(s || '').toLowerCase().replace(/[^a-z0-9 ]/g, ' ').split(/\s+/).filter(w => w.length > 1 && !['the', 'and', 'with', 'for', 'call', 'meeting', 'sync', 'weekly'].includes(w)))
@@ -156,6 +156,11 @@ export async function computeAwards(day, { closing = false } = {}) {
   if (closing && emails.length && emails.every(e => e.is_read) && inboxObjs.length === 0) {
     add('clean-close', '', `Closed clean: ${emails.length} inbox emails all read, agent inbox at zero, tomorrow reviewed`)
   }
+  // Clean Slack (David, 9/28): 10 miles at the close for a Slack fully caught up.
+  // Attested by David (the HUD's Slack clean mark or telling Lumen) until the
+  // Slack pipe (R11) can verify it. Set deliberately high to move the habit.
+  const slackClean = logs.find(l => l.kind === 'activity' && String(l.what || '').toLowerCase() === 'slack-clean')
+  if (closing && slackClean) add('clean-slack', '', `Slack clean at the close${slackClean.note ? `: ${slackClean.note}` : ''}`)
   return awards
 }
 

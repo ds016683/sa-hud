@@ -3,7 +3,7 @@
 // Business Administration (the HUD's time door does that mapping). No miles:
 // email and Slack are caught upstream by Clean Close and Full Day.
 import { useEffect, useState, useCallback } from 'react'
-import { Play, Square } from 'lucide-react'
+import { Play, Square, Check } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { upsertSession, logToHarvest, hoursBetween } from '../../lib/meetings'
 import { chiToday, fmtClock } from '../../lib/loadout'
@@ -23,10 +23,13 @@ export default function RecurringPanel({ onChange }) {
   const [sessions, setSessions] = useState([])
   const [now, setNow] = useState(() => Date.now())
   const [msg, setMsg] = useState(null)
+  const [slackClean, setSlackClean] = useState(null) // daily_logs row id when marked
   const day = chiToday()
   const refresh = useCallback(async () => {
     const { data } = await supabase.from('meeting_sessions').select('event_id,subject,started_at,stopped_at,hours,harvest_logged').eq('day', day).like('event_id', 'adhoc:%')
     setSessions(Array.isArray(data) ? data : [])
+    const { data: sc } = await supabase.from('daily_logs').select('id').eq('day', day).eq('kind', 'activity').eq('what', 'slack-clean').limit(1)
+    setSlackClean(Array.isArray(sc) && sc.length ? sc[0].id : null)
   }, [day])
   useEffect(() => { refresh() }, [refresh])
   useEffect(() => { const t = setInterval(() => setNow(Date.now()), 30_000); return () => clearInterval(t) }, [])
@@ -56,6 +59,14 @@ export default function RecurringPanel({ onChange }) {
     } catch (e) { setMsg(`Could not stop: ${e.message}`) }
   }
 
+  const markSlack = async () => {
+    try {
+      if (slackClean) { await supabase.from('daily_logs').delete().eq('id', slackClean); setMsg('Slack clean mark removed') }
+      else { const { error } = await supabase.from('daily_logs').insert({ day, kind: 'activity', what: 'slack-clean', value: 1, note: 'marked on the Board', source: 'hud' }); if (error) throw new Error(error.message); setMsg('Slack clean today · Clean Slack strikes at the close') }
+      await refresh(); onChange && onChange()
+    } catch (e) { setMsg(`Could not mark it: ${e.message}`) }
+  }
+
   return (
     <Panel title="Recurring Missions" style={{ marginBottom: 12 }}>
       <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'stretch' }}>
@@ -79,9 +90,18 @@ export default function RecurringPanel({ onChange }) {
             </button>
           )
         })}
+        <button onClick={markSlack} title="Clean Slack: 10 miles at the close" style={{
+          display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 6, minWidth: 170, padding: '10px 14px', borderRadius: 10, cursor: 'pointer', textAlign: 'left',
+          border: `1px solid ${slackClean ? GOLD : PANEL_BORDER}`, background: slackClean ? 'rgba(230,181,79,0.10)' : 'rgba(255,255,255,0.03)', color: INK,
+        }}>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 13.5 }}>
+            <Check size={12} color={slackClean ? GOLD : INK2} /> Slack clean
+          </span>
+          <span style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '0.6px', color: slackClean ? GOLD : GRAY }}>{slackClean ? 'marked · 10 mi at the close' : 'mark when fully caught up'}</span>
+        </button>
       </div>
       <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, marginTop: 10, flexWrap: 'wrap' }}>
-        <span style={{ fontSize: 11, color: GRAY }}>Tap to start, tap again to stop. Time logs to Harvest under Business Administration. No miles; these are caught upstream.</span>
+        <span style={{ fontSize: 11, color: GRAY }}>Tap to start, tap again to stop. Time logs to Harvest under Business Administration. No miles for the timers; Slack clean is the one that pays (Clean Slack, 10, at the close).</span>
         {msg && <span style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '1px', color: msg.startsWith('Could not') || msg.includes('did not') ? RED : GOLD, textTransform: 'uppercase' }}>{msg}</span>}
       </div>
     </Panel>
