@@ -89,13 +89,23 @@ export async function think({ channel = 'whatsapp', text, spoken = false }) {
     sb('lumen_rules?select=id,text,kind,created_at&active=eq.true&order=id.asc&limit=200').catch(() => []),
   ])
   const transcript = ctx.recent.map(m => `[${m.at.slice(0, 16).replace('T', ' ')} ${m.direction === 'in' ? 'David' : 'Lumen'}${m.kind === 'audio' ? ' (voice)' : ''}] ${m.body}`).join('\n')
-  const system = (constitution ? `${constitution}\n\n` : '')
+  const systemText = (constitution ? `${constitution}\n\n` : '')
     + (rules.length ? `## Rules David has added (newest wins)\n${rules.map(r => `${r.id}. [${r.kind}] ${r.text}`).join('\n')}\n\n` : '')
     + persona(doc, spoken, channel)
     + (ctx.memory ? `\n\n## Longer memory (summary of the thread before the recent messages)\n${ctx.memory.summary}` : '')
     + (transcript ? `\n\n## Recent thread\n${transcript}` : '')
+  // Stable prefix (everything before the memory + thread) gets the cache marker.
+  const cut = systemText.indexOf('\n\n## Longer memory')
+  const cut2 = cut >= 0 ? cut : systemText.indexOf('\n\n## Recent thread')
+  const system = cut2 > 0
+    ? [{ type: 'text', text: systemText.slice(0, cut2), cache_control: { type: 'ephemeral' } }, { type: 'text', text: systemText.slice(cut2) }]
+    : [{ type: 'text', text: systemText, cache_control: { type: 'ephemeral' } }]
 
   const tools = TOOLS.map(t => ({ name: t.name, description: t.description, input_schema: t.inputSchema }))
+  // Prompt caching: the tool list and the system prompt are identical on every
+  // step of a turn and nearly identical across turns; cached reads bill at a
+  // tenth of the price. The thread tail changes, so it sits after the marker.
+  if (tools.length) tools[tools.length - 1] = { ...tools[tools.length - 1], cache_control: { type: 'ephemeral' } }
   const messages = [{ role: 'user', content: text || '(empty message)' }]
   let reply = ''
   // Tool trace for this turn (persisted as a kind:'system' row so it never
