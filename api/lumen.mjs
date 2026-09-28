@@ -13,7 +13,7 @@ export const config = { maxDuration: 300 }
 
 import { think, remember, alreadySeen, claimInbound, fillInbound } from './_lumen-brain.mjs'
 import { flushPending } from './pulse.mjs'
-import { sbWrite, putFile, chiToday as chiTodayStr } from './_ledger.mjs'
+import { sbWrite, putFile, granolaTranscript, chiToday as chiTodayStr } from './_ledger.mjs'
 
 // Look at a photo. If it is an InBody results screen, pull the four numbers;
 // otherwise describe it in a sentence so the brain can respond to it.
@@ -77,6 +77,13 @@ export default async function handler(req, res) {
 
   // ?admin=mailbox&key=MCP_TOKEN[&user=lumen@thirdhorizon.com][&sendtest=1]: can the Graph app
   // read that mailbox (and send from it)? Probing Lumen's own address.
+  // ?admin=transcript&id=<granola note id>  (Bearer CRON_SECRET): can we get a transcript?
+  if (req.method === 'GET' && (req.query || {}).admin === 'transcript') {
+    const token = String(req.headers.authorization || '').replace(/^Bearer\s+/i, '')
+    if (!process.env.CRON_SECRET || token !== process.env.CRON_SECRET) return res.status(401).json({ error: 'unauthorized' })
+    const t = await granolaTranscript(String(req.query.id || ''))
+    return res.status(200).json(t.ok ? { ok: true, chars: t.text.length, head: t.text.slice(0, 600) } : t)
+  }
   if (req.method === 'GET' && (req.query || {}).admin === 'mailbox') {
     const q = req.query || {}
     if (q.key !== process.env.MCP_TOKEN) return res.status(401).json({ error: 'unauthorized' })

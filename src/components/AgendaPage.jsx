@@ -12,6 +12,7 @@ import { matchNotes, hoursBetween, upsertSession, logToHarvest } from '../lib/me
 import MeetingCloseout, { renderMarkdown, CloseoutBlock, friendlyError, fmtHours } from './river/MeetingCloseout'
 import LoadoutPanel from './river/LoadoutPanel'
 import RecurringPanel from './river/RecurringPanel'
+import ReleasePanel from './river/ReleasePanel'
 import { equipTask, equipObjective } from '../lib/loadout'
 import {
   INK, INK2, GRAY, NAVY_DEEP, PANEL_BORDER, GOLD, GOLD_BRIGHT, BLUE, PERIWINKLE, GREEN, RED, MONO, SERIF,
@@ -563,6 +564,7 @@ export default function AgendaPage() {
 
       {day === today && <LoadoutPanel onChange={refresh} />}
       {day === today && <RecurringPanel onChange={refresh} />}
+      {day === today && <ReleasePanel onChange={refresh} />}
 
       <div className="agenda-grid">
         <div className="agenda-cal">

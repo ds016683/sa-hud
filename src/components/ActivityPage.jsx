@@ -151,8 +151,8 @@ function build(raw, day, nowMs) {
   // Time on pursuits (9/27 rule): Harvest = Third Horizon work only. Personal
   // Side Missions keep their clock in the Ledger (activity logs with source
   // objective:*), never Harvest. Exercise lives in the workouts record.
-  const clocks = raw.logs.filter(l => l.kind === 'activity' && String(l.source || '').startsWith('objective:'))
-  const clockRow = (l) => ({ at: l.at || noonOf(day), kind: 'Side Mission', text: `${l.what || 'Side Mission'} · ${Math.round((Number(l.value) || 0) / 6) / 10}h`, meta: l.note, src: 'daily_logs (Side Mission clock)', fields: { minutes: l.value, note: l.note, source: l.source } })
+  const clocks = raw.logs.filter(l => l.kind === 'activity' && (String(l.source || '').startsWith('objective:') || String(l.source || '').startsWith('timer:')))
+  const clockRow = (l) => ({ at: l.at || noonOf(day), kind: String(l.source || '').startsWith('timer:') ? 'Activity' : 'Side Mission', text: `${l.what || 'Side Mission'} · ${Math.round((Number(l.value) || 0) / 6) / 10}h`, meta: l.note, src: String(l.source || '').startsWith('timer:') ? 'daily_logs (personal timer)' : 'daily_logs (Side Mission clock)', fields: { minutes: l.value, note: l.note, source: l.source } })
   const personalH = clocks.filter(l => /^personal/.test(l.note || '')).reduce((s, l) => s + (Number(l.value) || 0), 0) / 60
   const workClockH = clocks.filter(l => !/^personal/.test(l.note || '')).reduce((s, l) => s + (Number(l.value) || 0), 0) / 60
   const exerciseH = (raw.workouts || []).reduce((s, w) => s + (Number(w.minutes) || 0), 0) / 60

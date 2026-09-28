@@ -24,6 +24,33 @@ export async function sb(path) {
   if (!res.ok) throw new Error(`${path.split('?')[0]} -> ${res.status}`)
   return res.json()
 }
+// Granola transcript for a note id (public API). Tries the transcript route,
+// then the note itself for an embedded transcript. Speaker turns joined by newline.
+export async function granolaTranscript(noteId) {
+  const key = process.env.GRANOLA_API_KEY
+  if (!key) return { ok: false, error: 'GRANOLA_API_KEY not set' }
+  const gh = { Authorization: `Bearer ${key}`, Accept: 'application/json' }
+  const shape = (d) => {
+    const arr = Array.isArray(d) ? d : (d?.transcript || d?.utterances || d?.segments || d?.turns || null)
+    if (Array.isArray(arr) && arr.length) return arr.map(u => `${u.speaker || u.source || u.role || ''}${u.speaker || u.source || u.role ? ': ' : ''}${u.text || u.content || ''}`.trim()).filter(Boolean).join('\n')
+    if (typeof d?.transcript === 'string') return d.transcript
+    if (typeof d?.transcript_text === 'string') return d.transcript_text
+    if (typeof d?.transcript_markdown === 'string') return d.transcript_markdown
+    return null
+  }
+  const tried = []
+  for (const url of [`https://public-api.granola.ai/v1/notes/${noteId}/transcript`, `https://public-api.granola.ai/v1/notes/${noteId}?include=transcript`, `https://public-api.granola.ai/v1/notes/${noteId}`]) {
+    try {
+      const res = await fetch(url, { headers: gh })
+      tried.push(`${url.replace('https://public-api.granola.ai', '')} -> ${res.status}`)
+      if (!res.ok) continue
+      const text = shape(await res.json())
+      if (text && text.length > 50) return { ok: true, text }
+    } catch (e) { tried.push(`${url} -> ${e.message}`) }
+  }
+  return { ok: false, error: `no transcript available (${tried.join('; ')})` }
+}
+
 // Artifacts: structured work products a project carries (a scorecard, a
 // memo in progress), kept as JSON in the project-files bucket under
 // <project id>/artifacts/<slug>.json. The HUD renders and edits them on the
@@ -217,6 +244,11 @@ export const TOOLS = [
     name: 'send_file',
     description: "Post a document from David's file store into his WhatsApp chat so he can open it. path from search_files (exact). Say what you sent in one line after.",
     inputSchema: { type: 'object', properties: { path: { type: 'string' }, caption: { type: 'string' } }, required: ['path'] },
+  },
+  {
+    name: 'get_transcript',
+    description: "The full Granola transcript of a meeting (what was actually said, speaker turns), not the summary. Use it when the summary does not carry what David needs: a candidate's answer to a specific question, exact wording, a number someone quoted. title matches the meeting like search_meetings; from/to (minutes) narrow the window; max_chars defaults to 30000. Say when the transcript is not available.",
+    inputSchema: { type: 'object', properties: { title: { type: 'string' }, day: { type: 'string', description: 'YYYY-MM-DD, optional' }, max_chars: { type: 'integer' }, find: { type: 'string', description: 'optional: return only turns containing this text, with a little context' } }, required: ['title'] },
   },
   {
     name: 'list_artifacts',
@@ -567,6 +599,24 @@ export async function callTool(name, args = {}) {
       const id = await waSendDocument(davidNumber(), bytes, { filename, mime, caption: args.caption || '' })
       return JSON.stringify({ ok: true, sent: filename, size: bytes.length, wa_message_id: id || null })
     }
+    case 'get_transcript': {
+      const q = esc(args.title || '')
+      let ms = await sb(`granola_meetings?select=id,title,meeting_date&title=ilike.*${encodeURIComponent(q)}*${args.day ? `&meeting_date=eq.${args.day}` : ''}&order=meeting_date.desc&limit=5`)
+      if (!ms.length) return JSON.stringify({ ok: false, error: `no meeting matches "${args.title}"` })
+      const m = ms[0]
+      const t = await granolaTranscript(m.id)
+      if (!t.ok) return JSON.stringify({ ok: false, meeting: m.title, day: m.meeting_date, error: t.error })
+      let text = t.text
+      if (args.find) {
+        const needle = String(args.find).toLowerCase()
+        const turns = text.split('\n').filter(Boolean)
+        const hits = []
+        turns.forEach((line, i) => { if (line.toLowerCase().includes(needle)) hits.push(turns.slice(Math.max(0, i - 2), i + 4).join('\n')) })
+        text = hits.length ? hits.join('\n...\n') : `(no turn contains "${args.find}")`
+      }
+      const max = Number(args.max_chars) || 30000
+      return JSON.stringify({ ok: true, meeting: m.title, day: m.meeting_date, chars: t.text.length, truncated: text.length > max, transcript: text.slice(0, max) })
+    }
     case 'list_artifacts': {
       const pr = await findProject(args.project)
       return JSON.stringify({ project: pr.name, artifacts: await listArtifacts(pr.id) })
@@ -634,7 +684,7 @@ export async function callTool(name, args = {}) {
       // Time on pursuits: Third Horizon hours (Harvest) + personal Side Mission clocks + exercise.
       const h2 = (x) => Math.round(x * 100) / 100
       const thsH = harvest.reduce((s, r) => s + (Number(r.hours) || 0), 0)
-      const clocks = logs.filter(l => l.kind === 'activity' && String(l.source || '').startsWith('objective:'))
+      const clocks = logs.filter(l => l.kind === 'activity' && (String(l.source || '').startsWith('objective:') || String(l.source || '').startsWith('timer:')))
       const personalH = clocks.filter(l => /^personal/.test(l.note || '')).reduce((s, l) => s + (Number(l.value) || 0), 0) / 60
       const workClockH = clocks.filter(l => !/^personal/.test(l.note || '')).reduce((s, l) => s + (Number(l.value) || 0), 0) / 60
       const exerciseH = workouts.reduce((s, r) => s + (Number(r.minutes) || 0), 0) / 60
