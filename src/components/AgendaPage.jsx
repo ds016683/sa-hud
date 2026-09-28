@@ -567,10 +567,10 @@ export default function AgendaPage() {
       {day === today && (
         <>
           <RailSection title="Loadout">
-            <LoadoutPanel onChange={refresh} refreshKey={refreshKey} />
+            <LoadoutPanel onChange={refresh} />
           </RailSection>
           <RailSection title="Ambush">
-            <AmbushPanel onChange={refresh} refreshKey={refreshKey} />
+            <AmbushPanel onChange={refresh} />
           </RailSection>
           <RailSection title="Recurring">
             <RecurringPanel onChange={refresh} />

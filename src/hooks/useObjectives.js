@@ -133,38 +133,31 @@ export default function useObjectives() {
   }, [])
 
   const releaseObjective = useCallback(async (id, kind = 'done') => {
-    const o = objectives.find(x => x.id === id)
-    if (kind === 'done' && o) {
-      // Extract: clock summed into the Ledger, linked task closed, miles on the next update.
-      const tags = o.tags || []
-      await extractItem({ id: o.id, title: o.title, activated_at: o.activated_at, personal: tags.includes('personal'), kind: tags.includes('impromptu') ? 'Impromptu' : 'Side Mission' })
-      const now = new Date().toISOString()
-      setObjectives(prev => prev.map(x => x.id === id ? { ...x, state: 'released', released_kind: 'done', released_at: now, activated_at: null } : x))
-      return { ...o, state: 'released' }
-    }
-    await holster(id).catch(() => {})
+    logBoardTime(objectives.find(o => o.id === id))
     const data = await updateObjective(id, { state: kind === 'foreman' ? 'foreman' : 'released', released_kind: kind, released_at: new Date().toISOString(), activated_at: null })
     if (kind === 'done') await closeBridgedTask(data)
     return data
-  }, [updateObjective, closeBridgedTask, objectives])
+  }, [updateObjective, closeBridgedTask, logBoardTime, objectives])
 
-  const reopenObjective = useCallback(async (id) => { await updateObjective(id, { state: 'parked', released_kind: null, released_at: null, activated_at: null }); return loadOnBoard(id) }, [updateObjective, loadOnBoard])
+  const reopenObjective = useCallback((id) => updateObjective(id, { state: 'active', released_kind: null, released_at: null, activated_at: new Date().toISOString() }), [updateObjective])
 
   const parkObjective = useCallback(async (id) => {
-    await holster(id).catch(() => {})
+    logBoardTime(objectives.find(o => o.id === id))
     return updateObjective(id, { state: 'parked', released_kind: null, released_at: null, activated_at: null })
+  }, [updateObjective, logBoardTime, objectives])
+  const reactivateObjective = useCallback(async (id) => {
+    return updateObjective(id, { state: 'active', released_kind: null, released_at: null, activated_at: new Date().toISOString() })
   }, [updateObjective])
-  const reactivateObjective = useCallback(async (id) => loadOnBoard(id), [loadOnBoard])
   const activateObjective = reactivateObjective // alias — eligible→active
   // v1.11 — Waiting / Inbox containers. Same single mutation surface.
   const waitObjective = useCallback(async (id) => {
-    await holster(id).catch(() => {})
+    logBoardTime(objectives.find(o => o.id === id))
     return updateObjective(id, { state: 'waiting', released_kind: null, released_at: null, activated_at: null })
-  }, [updateObjective])
+  }, [updateObjective, logBoardTime, objectives])
   const inboxObjective = useCallback(async (id) => {
-    await holster(id).catch(() => {})
+    logBoardTime(objectives.find(o => o.id === id))
     return updateObjective(id, { state: 'inbox', released_kind: null, released_at: null, activated_at: null })
-  }, [updateObjective])
+  }, [updateObjective, logBoardTime, objectives])
   // Generic "move to container" — every cross-container action flows through this.
   const moveObjective = useCallback(async (id, targetState) => {
     const patch = { state: targetState }
@@ -178,10 +171,11 @@ export default function useObjectives() {
       patch.released_at = new Date().toISOString()
     }
     const prev = objectives.find(o => o.id === id)
-    if (targetState === 'active') return loadOnBoard(id)
-    if (targetState === 'released') return releaseObjective(id, 'done')
-    await holster(id).catch(() => {})
-    patch.activated_at = null
+    if (targetState === 'active') patch.activated_at = new Date().toISOString()
+    else {
+      logBoardTime(prev)
+      patch.activated_at = null
+    }
     // Follow-ups need a target date to nudge against; default to +1 week when
     // routed in without one (editable afterward in the Follow Up view).
     if (targetState === 'follow_up' && !prev?.follow_up_date) {
@@ -191,11 +185,12 @@ export default function useObjectives() {
     const data = await updateObjective(id, patch)
     if (targetState === 'released') await closeBridgedTask(data)
     return data
-  }, [updateObjective, closeBridgedTask, objectives, loadOnBoard, releaseObjective])
+  }, [updateObjective, closeBridgedTask, logBoardTime, objectives])
   const deleteObjective = useCallback(async (id) => {
-    await holster(id).catch(() => {})
+    const prev = objectives.find(o => o.id === id)
+    logBoardTime(prev)
     return updateObjective(id, { deleted_at: new Date().toISOString(), activated_at: null })
-  }, [updateObjective])
+  }, [updateObjective, logBoardTime, objectives])
   const restoreObjective = useCallback((id) => updateObjective(id, { deleted_at: null }), [updateObjective])
   const purgeObjective = useCallback(async (id) => {
     await supabase.from('objectives').delete().eq('id', id)
