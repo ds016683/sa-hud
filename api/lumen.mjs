@@ -13,7 +13,7 @@ export const config = { maxDuration: 300 }
 
 import { think, remember, alreadySeen, claimInbound, fillInbound } from './_lumen-brain.mjs'
 import { flushPending } from './pulse.mjs'
-import { sbWrite, putFile, granolaTranscript, chiToday as chiTodayStr } from './_ledger.mjs'
+import { sbWrite, sb as sbRead, putFile, granolaTranscript, chiToday as chiTodayStr } from './_ledger.mjs'
 
 // Look at a photo. If it is an InBody results screen, pull the four numbers;
 // otherwise describe it in a sentence so the brain can respond to it.
@@ -77,6 +77,14 @@ export default async function handler(req, res) {
 
   // ?admin=mailbox&key=MCP_TOKEN[&user=lumen@thirdhorizon.com][&sendtest=1]: can the Graph app
   // read that mailbox (and send from it)? Probing Lumen's own address.
+  // ?admin=think&text=...  (Bearer CRON_SECRET): run one brain turn and return reply + trace, nothing sent.
+  if (req.method === 'GET' && (req.query || {}).admin === 'think') {
+    const token = String(req.headers.authorization || '').replace(/^Bearer\s+/i, '')
+    if (!process.env.CRON_SECRET || token !== process.env.CRON_SECRET) return res.status(401).json({ error: 'unauthorized' })
+    const reply = await think({ channel: 'probe', text: String(req.query.text || '') })
+    const rows = await sbRead(`lumen_messages?select=body&channel=eq.probe&kind=eq.system&order=id.desc&limit=1`).catch(() => [])
+    return res.status(200).json({ reply, trace: rows[0] ? JSON.parse(rows[0].body) : null })
+  }
   // ?admin=transcript&id=<granola note id>  (Bearer CRON_SECRET): can we get a transcript?
   if (req.method === 'GET' && (req.query || {}).admin === 'transcript') {
     const token = String(req.headers.authorization || '').replace(/^Bearer\s+/i, '')

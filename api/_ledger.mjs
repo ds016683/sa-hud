@@ -270,7 +270,7 @@ export const TOOLS = [
   },
   {
     name: 'read_artifact',
-    description: "Read a project artifact (JSON). A scorecard has candidate, interview_date, presentation {topic, notes, qa_notes, ratings, overall}, questions [{id, text, competency, panelist, mine, proposed, notes, rating}], competencies [{name, rating}], overall {recommendation, notes}. 'mine' marks the questions David is assigned; 'proposed' is the draft answer you write for him; 'notes' and ratings are his.",
+    description: "Read a project artifact (JSON). A scorecard has candidate, interview_date, presentation {topic, notes, qa_notes, ratings, overall}, questions [{id, text, competency, panelist, mine, proposed, lumen_read, notes, rating}], competencies [{name, lumen_read, rating}], overall {recommendation, notes}. Yours to write: 'proposed' (his answer draft, mine questions only), 'lumen_read' on every question and competency (how the candidate's answer lines up with the competency being assessed, 3-6 sentences quoting what she said), presentation.lumen_read and presentation.notes. His language only, never yours: every 'notes', every 'rating', and 'overall'.",
     inputSchema: { type: 'object', properties: { project: { type: 'string' }, slug: { type: 'string', description: "e.g. 'scorecard-jeanne-alongi'" } }, required: ['project', 'slug'] },
   },
   {

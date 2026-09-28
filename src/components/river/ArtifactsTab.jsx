@@ -2,7 +2,7 @@
 // edits in place. Lumen drafts into them, David finishes them here, Lumen
 // ports them out as a Word file. First kind: the interview scorecard.
 import { useCallback, useEffect, useState } from 'react'
-import { Save, RefreshCw, User } from 'lucide-react'
+import { Save, RefreshCw, User, Eye, X as XIcon } from 'lucide-react'
 import { listArtifacts, readArtifact, writeArtifact } from '../../lib/artifacts'
 import { INK, INK2, GRAY, PANEL_BORDER, GOLD, GOLD_BRIGHT, BLUE, GREEN, RED, MONO, SERIF, S, Eyebrow, Label } from './canon'
 
@@ -12,6 +12,44 @@ const pill = (active, color = BLUE) => ({
   border: `1px solid ${active ? color : 'rgba(255,255,255,0.16)'}`, background: active ? `${color}22` : 'transparent', color: active ? color : 'rgba(234,241,248,0.7)',
 })
 const RATING_COLOR = { 'Exceeds': GREEN, 'Meets': BLUE, 'Below': GOLD, 'Does Not Meet': RED }
+const Req = ({ done }) => <span style={{ ...S.chip('transparent', done ? GREEN : RED), border: `1px solid ${done ? GREEN : RED}55`, fontFamily: MONO, fontSize: 8.5, letterSpacing: '1px', padding: '1px 6px', marginLeft: 8 }}>{done ? 'yours · done' : 'your language · required'}</span>
+const Opt = () => <span style={{ ...S.chip('transparent', GRAY), border: `1px solid ${GRAY}55`, fontFamily: MONO, fontSize: 8.5, letterSpacing: '1px', padding: '1px 6px', marginLeft: 8 }}>optional</span>
+const Lum = () => <span style={{ ...S.chip('transparent', GOLD), border: `1px solid ${GOLD}55`, fontFamily: MONO, fontSize: 8.5, letterSpacing: '1px', padding: '1px 6px', marginLeft: 8 }}>Lumen's draft</span>
+
+// Lumen's read: his interpretation of how the answer lines up with what is
+// being assessed. A side drawer, read-only, clearly his and not David's.
+function ReadDrawer({ title, sub, read, quote, onClose }) {
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === 'Escape') onClose() }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [onClose])
+  return (
+    <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 250, background: 'rgba(8,20,32,0.6)', display: 'flex', justifyContent: 'flex-end' }}>
+      <div onClick={e => e.stopPropagation()} style={{ width: 'min(520px, 92vw)', height: '100%', overflowY: 'auto', background: '#10273B', borderLeft: `1px solid ${PANEL_BORDER}`, padding: '24px 26px', boxSizing: 'border-box' }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <Eyebrow style={{ marginBottom: 6 }}>Lumen's read</Eyebrow>
+            <div style={{ fontFamily: SERIF, fontSize: 20, fontWeight: 500, color: '#fff', letterSpacing: '-0.01em', lineHeight: 1.3 }}>{title}</div>
+            {sub && <div style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '0.8px', color: GRAY, marginTop: 6 }}>{sub}</div>}
+          </div>
+          <button onClick={onClose} aria-label="Close" style={{ width: 28, height: 28, borderRadius: 8, border: `1px solid ${PANEL_BORDER}`, background: 'transparent', color: INK2, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><XIcon size={14} /></button>
+        </div>
+        <div style={{ marginTop: 18 }}>
+          <Label>How the answer lines up with the competency</Label>
+          {read ? <div style={{ fontSize: 13.5, lineHeight: 1.65, color: INK, whiteSpace: 'pre-wrap' }}>{read}</div> : <div style={{ fontSize: 12.5, color: GRAY }}>Not written yet. Ask Lumen for his read on this one.</div>}
+        </div>
+        {quote && (
+          <div style={{ marginTop: 18 }}>
+            <Label>What she said, as drafted</Label>
+            <div style={{ fontSize: 12.5, lineHeight: 1.6, color: INK2, whiteSpace: 'pre-wrap', borderLeft: `2px solid ${GOLD}55`, paddingLeft: 12 }}>{quote}</div>
+          </div>
+        )}
+        <div style={{ fontSize: 11, color: GRAY, marginTop: 20 }}>This is Lumen's interpretation. The rating and the notes on the card are yours to write.</div>
+      </div>
+    </div>
+  )
+}
 
 function RatingPills({ scale, value, onChange }) {
   return (
@@ -23,12 +61,38 @@ function RatingPills({ scale, value, onChange }) {
   )
 }
 
+function requiredFields(doc) {
+  const req = []
+  const has = (v) => v != null && String(v).trim() !== ''
+  for (const k of Object.keys(doc.presentation?.ratings || {})) req.push([`Presentation · ${k}`, has(doc.presentation.ratings[k])])
+  req.push(['Presentation · overall', has(doc.presentation?.overall)])
+  req.push(['Presentation · notes', has(doc.presentation?.notes)])
+  for (const q of doc.questions || []) {
+    req.push([`${q.id} · rating`, has(q.rating)])
+    if (q.mine) req.push([`${q.id} · your notes`, has(q.notes)])
+  }
+  for (const c of doc.competencies || []) req.push([`Competency · ${c.name}`, has(c.rating)])
+  req.push(['Overall · recommendation', has(doc.overall?.recommendation)])
+  return req
+}
+
 function Scorecard({ doc, onChange }) {
   const set = (fn) => onChange(fn(structuredClone(doc)))
   const scale = doc.scale || ['Exceeds', 'Meets', 'Below', 'Does Not Meet']
   const mine = (doc.questions || []).filter(q => q.mine)
+  const [drawer, setDrawer] = useState(null)
+  const req = requiredFields(doc)
+  const done = req.filter(([, ok]) => ok).length
+  const has = (v) => v != null && String(v).trim() !== ''
   return (
     <div>
+      {drawer && <ReadDrawer {...drawer} onClose={() => setDrawer(null)} />}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 16, padding: '10px 14px', border: `1px solid ${PANEL_BORDER}`, borderRadius: 10, background: 'rgba(255,255,255,0.03)' }}>
+        <span style={{ fontFamily: SERIF, fontSize: 18, fontWeight: 500, color: done === req.length ? GREEN : '#fff' }}>{done} / {req.length}</span>
+        <span style={{ fontSize: 12, color: INK2 }}>required fields in your language</span>
+        <span style={{ flex: 1 }} />
+        <span style={{ fontSize: 11, color: GRAY }}><span style={{ color: RED }}>red</span> = yours, required · <span style={{ color: GOLD }}>gold</span> = Lumen's draft, edit freely · <span style={{ color: GRAY }}>gray</span> = optional</span>
+      </div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12, marginBottom: 18 }}>
         {[['Candidate', 'candidate'], ['Interview date', 'interview_date'], ['Interviewer', 'interviewer'], ['Title', 'interviewer_title']].map(([l, k]) => (
           <div key={k}>
@@ -38,7 +102,10 @@ function Scorecard({ doc, onChange }) {
         ))}
       </div>
 
-      <Eyebrow style={{ marginBottom: 8 }}>Presentation · {doc.presentation?.topic}</Eyebrow>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
+        <Eyebrow style={{ marginBottom: 0 }}>Presentation · {doc.presentation?.topic}</Eyebrow>
+        <button onClick={() => setDrawer({ title: 'Presentation', sub: doc.presentation?.topic, read: doc.presentation?.lumen_read, quote: doc.presentation?.notes })} style={pill(false, GOLD)}><Eye size={10} style={{ verticalAlign: '-1px', marginRight: 5 }} />Lumen's read</button>
+      </div>
       <div style={{ ...S.panel, padding: '14px 16px', marginBottom: 16 }}>
         <div style={{ display: 'grid', gap: 10 }}>
           {Object.keys(doc.presentation?.ratings || {}).map(k => (
@@ -48,13 +115,13 @@ function Scorecard({ doc, onChange }) {
             </div>
           ))}
           <div style={{ display: 'grid', gridTemplateColumns: 'minmax(200px, 1fr) auto', gap: 12, alignItems: 'center', paddingTop: 8, borderTop: `1px solid ${PANEL_BORDER}` }}>
-            <span style={{ fontSize: 13, color: '#fff', fontWeight: 600 }}>Overall presentation</span>
+            <span style={{ fontSize: 13, color: '#fff', fontWeight: 600 }}>Overall presentation<Req done={has(doc.presentation.overall)} /></span>
             <RatingPills scale={scale} value={doc.presentation.overall} onChange={v => set(d => { d.presentation.overall = v; return d })} />
           </div>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 12 }}>
-          <div><Label>Presentation notes</Label><textarea rows={5} value={doc.presentation?.notes || ''} onChange={e => set(d => { d.presentation.notes = e.target.value; return d })} placeholder="structure, clarity, strategic thinking, NACDD-specific insight, command of the room" style={field} /></div>
-          <div><Label>Q&amp;A notes</Label><textarea rows={5} value={doc.presentation?.qa_notes || ''} onChange={e => set(d => { d.presentation.qa_notes = e.target.value; return d })} placeholder="how the candidate responded to probing questions, depth of thinking, composure under pressure" style={field} /></div>
+          <div><Label>Presentation notes<Lum /><Req done={has(doc.presentation?.notes)} /></Label><textarea rows={5} value={doc.presentation?.notes || ''} onChange={e => set(d => { d.presentation.notes = e.target.value; return d })} placeholder="structure, clarity, strategic thinking, NACDD-specific insight, command of the room" style={field} /></div>
+          <div><Label>Q&amp;A notes<Opt /></Label><textarea rows={5} value={doc.presentation?.qa_notes || ''} onChange={e => set(d => { d.presentation.qa_notes = e.target.value; return d })} placeholder="how the candidate responded to probing questions, depth of thinking, composure under pressure" style={field} /></div>
         </div>
       </div>
 
@@ -65,22 +132,24 @@ function Scorecard({ doc, onChange }) {
             <span style={{ fontFamily: SERIF, fontSize: 17, fontWeight: 500, color: q.mine ? GOLD_BRIGHT : '#fff' }}>{q.id}</span>
             <span style={{ fontFamily: MONO, fontSize: 9, letterSpacing: '1.2px', color: q.mine ? GOLD : GRAY, textTransform: 'uppercase' }}>{q.panelist}{q.mine ? ' · yours' : ''}</span>
             <span style={{ fontFamily: MONO, fontSize: 9, letterSpacing: '0.8px', color: GRAY }}>{q.competency}</span>
+            <span style={{ flex: 1 }} />
+            <button onClick={() => setDrawer({ title: `${q.id} · ${q.competency}`, sub: q.text, read: q.lumen_read, quote: q.proposed })} style={pill(!!q.lumen_read, GOLD)}><Eye size={10} style={{ verticalAlign: '-1px', marginRight: 5 }} />Lumen's read{q.lumen_read ? '' : ' · pending'}</button>
           </div>
           <div style={{ fontSize: 13.5, lineHeight: 1.6, color: INK, marginTop: 8 }}>{q.text}</div>
           <div style={{ display: 'grid', gridTemplateColumns: q.mine ? '1fr 1fr' : '1fr', gap: 12, marginTop: 12 }}>
             {q.mine && (
               <div>
-                <Label>Proposed answer · Lumen's draft from the interview notes</Label>
+                <Label>Proposed answer<Lum /></Label>
                 <textarea rows={7} value={q.proposed || ''} onChange={e => set(d => { d.questions[i].proposed = e.target.value; return d })} placeholder="Lumen drafts this from what the candidate said. Edit freely." style={{ ...field, borderColor: `${GOLD}55` }} />
               </div>
             )}
             <div>
-              <Label>{q.mine ? 'Your notes' : 'Notes'}</Label>
+              <Label>{q.mine ? 'Your notes' : 'Notes'}{q.mine ? <Req done={has(q.notes)} /> : <Opt />}</Label>
               <textarea rows={q.mine ? 7 : 3} value={q.notes || ''} onChange={e => set(d => { d.questions[i].notes = e.target.value; return d })} style={field} />
             </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 10, flexWrap: 'wrap' }}>
-            <span style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '1px', color: GRAY, textTransform: 'uppercase' }}>{q.id} rating</span>
+            <span style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '1px', color: GRAY, textTransform: 'uppercase' }}>{q.id} rating<Req done={has(q.rating)} /></span>
             <RatingPills scale={scale} value={q.rating} onChange={v => set(d => { d.questions[i].rating = v; return d })} />
           </div>
         </div>
@@ -90,8 +159,9 @@ function Scorecard({ doc, onChange }) {
       <div style={{ ...S.panel, padding: '14px 16px', marginBottom: 16 }}>
         <div style={{ display: 'grid', gap: 10 }}>
           {(doc.competencies || []).map((c, i) => (
-            <div key={c.name} style={{ display: 'grid', gridTemplateColumns: 'minmax(220px, 1fr) auto', gap: 12, alignItems: 'center' }}>
-              <span style={{ fontSize: 13, color: INK }}>{c.name}</span>
+            <div key={c.name} style={{ display: 'grid', gridTemplateColumns: 'minmax(220px, 1fr) auto auto', gap: 12, alignItems: 'center' }}>
+              <span style={{ fontSize: 13, color: INK }}>{c.name}<Req done={has(c.rating)} /></span>
+              <button onClick={() => setDrawer({ title: c.name, sub: 'competency summary', read: c.lumen_read, quote: null })} style={pill(!!c.lumen_read, GOLD)}><Eye size={10} style={{ verticalAlign: '-1px', marginRight: 5 }} />read</button>
               <RatingPills scale={[...scale.slice(0, 3), 'N/A']} value={c.rating} onChange={v => set(d => { d.competencies[i].rating = v; return d })} />
             </div>
           ))}
@@ -100,8 +170,8 @@ function Scorecard({ doc, onChange }) {
 
       <Eyebrow style={{ marginBottom: 8 }}>Overall</Eyebrow>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-        <div><Label>Recommendation</Label><textarea rows={4} value={doc.overall?.recommendation || ''} onChange={e => set(d => { d.overall = d.overall || {}; d.overall.recommendation = e.target.value; return d })} style={field} /></div>
-        <div><Label>Closing notes</Label><textarea rows={4} value={doc.overall?.notes || ''} onChange={e => set(d => { d.overall = d.overall || {}; d.overall.notes = e.target.value; return d })} style={field} /></div>
+        <div><Label>Recommendation<Req done={has(doc.overall?.recommendation)} /></Label><textarea rows={4} value={doc.overall?.recommendation || ''} onChange={e => set(d => { d.overall = d.overall || {}; d.overall.recommendation = e.target.value; return d })} style={field} /></div>
+        <div><Label>Closing notes<Opt /></Label><textarea rows={4} value={doc.overall?.notes || ''} onChange={e => set(d => { d.overall = d.overall || {}; d.overall.notes = e.target.value; return d })} style={field} /></div>
       </div>
     </div>
   )

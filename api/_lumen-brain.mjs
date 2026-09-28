@@ -68,7 +68,7 @@ How to be:
 - Closing a Side Mission (move_objective released): the result carries clock.minutes (activation to release). If he tells you how long it really took, pass minutes on the release so the record carries his number. Tell him the time of activity in one line, then ask once whether there is anything to file against it: a receipt, a photo, a conversation, a note. If he sends a photo it is filed automatically under files/inbox/<day>/ and you are told the path; add a log_day activity with the same what and the path in note so the record points at it. If he says nothing to file, move on. Never ask twice.
 - Planning rule (9/27): a Side Mission is something planned before the day it is done. If David did something on the fly and wants it on the record, it is impromptu: add_objective with impromptu true and state active, then release it. It pays 1 mile, and the River pays 1 to anything captured and released the same day whatever it was called. Never build and close a Side Mission in one breath to get him the 4; say plainly that it went on as impromptu (1 mile) and that the 3-mile difference is the incentive to plan. He set this rule himself: the point of Side Missions is calm, and calm means planning.
 - Transcripts: search_meetings returns Granola's summary. When the summary does not hold what David asked for (a specific answer, exact words, a number), get_transcript before saying it is not there; a summary of a 90-minute interview leaves most of it out. Say plainly if the transcript is unavailable.
-- Artifacts (9/28): a project can carry structured work products in the HUD (list_artifacts / read_artifact / write_artifact). A scorecard artifact holds the interview questions; the ones marked mine are David's to answer. Drafting flow: read the interview notes (search_meetings), read_artifact, write proposed answers for his questions and the presentation notes from what the candidate actually said (no invention), write_artifact back. He edits and rates on the project page. When he says it is final, read_artifact and write_file it as .docx in the template's section order, then send it to him.
+- Artifacts (9/28): a project can carry structured work products in the HUD (list_artifacts / read_artifact / write_artifact). A scorecard artifact holds the interview questions; the ones marked mine are David's to answer. Drafting flow: get_transcript (windows), read_artifact, then write_artifact with: lumen_read on all eight questions and each competency (your interpretation of how her answer lines up with the competency, quoting her), proposed on his questions, presentation.notes and presentation.lumen_read. Never write into notes, rating, or overall: those are his language, the HUD marks them required. He edits and rates on the project page. When he says it is final, read_artifact and write_file it as .docx in the template's section order, then send it to him.
 - Documents: when a piece of work ends in a document (a scorecard, a memo, a filled-in form), draft it with David in the thread first, then write_file it as .docx next to its source in the file store and send it to him on WhatsApp (send true). He forwards it himself. Read the source form with read_file and keep its section names and order so the filled version matches what the recipient expects.
 - Sleep and steps arrive through the health feed (/api/health, fed by his watch), not through you: get_river shows sleep_hours for the day once the feed has posted. If he tells you his sleep directly, log_day sleep with hours. Never guess a sleep number.
 - Never say you ran out of tool steps, hit a limit, or could not do something unless a tool result or a system note in this turn said so. There is no 'next turn': if you have the material, write it now, in this turn, then reply with what landed. A read is not progress until the write follows it.
@@ -102,7 +102,7 @@ export async function think({ channel = 'whatsapp', text, spoken = false }) {
   // enters the thread), plus a loop guard: the same call with the same input
   // three times is a loop, not work.
   const trace = [], seen = new Map()
-  const MAX_STEPS = 20, NUDGE_AT = 14
+  const MAX_STEPS = 100, NUDGE_AT = 90
   // He has learned to stop early and blame a limit ("ran out of steps", "next
   // turn I'll write it"). When a text-only reply defers work he could do now,
   // the turn continues instead of ending: up to two pushes per turn.
@@ -127,7 +127,9 @@ export async function think({ channel = 'whatsapp', text, spoken = false }) {
         messages.push({ role: 'user', content: '(system: that tool call was too large for one message. Split the write into smaller pieces, or shorten the content, and continue now.)' })
         continue
       }
-      if (DEFER_RE.test(reply) && step < MAX_STEPS - 2 && autoContinues < 2) {
+      const deferred = DEFER_RE.test(reply)
+      trace.push({ step: step + 1, tool: '(reply)', input: `stop_reason=${out.stop_reason} chars=${reply.length}`, ok: true, ms: 0, out: `defer=${deferred} autoContinues=${autoContinues}` })
+      if (deferred && step < MAX_STEPS - 2 && autoContinues < 3) {
         autoContinues++
         trace.push({ step: step + 1, tool: '(auto-continue)', input: reply.slice(0, 200), ok: true, ms: 0, out: `deferred work pushed back: ${MAX_STEPS - step - 1} steps remain` })
         messages.push({ role: 'assistant', content: out.content })
