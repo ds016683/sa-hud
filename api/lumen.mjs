@@ -81,6 +81,13 @@ export default async function handler(req, res) {
   if (req.method === 'GET' && (req.query || {}).admin === 'transcript') {
     const token = String(req.headers.authorization || '').replace(/^Bearer\s+/i, '')
     if (!process.env.CRON_SECRET || token !== process.env.CRON_SECRET) return res.status(401).json({ error: 'unauthorized' })
+    if (req.query.raw) {
+      const gh = { Authorization: `Bearer ${process.env.GRANOLA_API_KEY}`, Accept: 'application/json' }
+      const r = await fetch(`https://public-api.granola.ai/v1/notes/${String(req.query.id || '')}/transcript${req.query.qs ? `?${req.query.qs}` : ''}`, { headers: gh })
+      const d = await r.json().catch(() => null)
+      const arr = Array.isArray(d) ? d : (d?.transcript || d?.utterances || d?.segments || d?.turns || null)
+      return res.status(200).json({ status: r.status, keys: d && !Array.isArray(d) ? Object.keys(d) : 'array', count: Array.isArray(arr) ? arr.length : null, first: Array.isArray(arr) ? arr[0] : null, last: Array.isArray(arr) ? arr[arr.length - 1] : null, meta: d && !Array.isArray(d) ? Object.fromEntries(Object.entries(d).filter(([k]) => !['transcript', 'utterances', 'segments', 'turns'].includes(k))) : null })
+    }
     const t = await granolaTranscript(String(req.query.id || ''))
     return res.status(200).json(t.ok ? { ok: true, chars: t.text.length, head: t.text.slice(0, 600) } : t)
   }
