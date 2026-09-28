@@ -47,12 +47,9 @@ export const Stat = ({ v, l, color = '#fff' }) => (
 // A section labelled in a rail to the left of its box: the name in serif, a
 // short line under it. The box itself carries only controls. Collapses to
 // label-above on narrow screens (see .rail-section in the page CSS).
-export const RailSection = ({ title, sub, children, style }) => (
-  <div className="rail-section" style={{ display: 'grid', gridTemplateColumns: '172px minmax(0, 1fr)', gap: 20, alignItems: 'start', marginBottom: 14, ...style }}>
-    <div className="rail-label" style={{ paddingTop: 14 }}>
-      <div style={{ fontFamily: SERIF, fontSize: 22, fontWeight: 500, color: '#fff', letterSpacing: '-0.01em', lineHeight: 1.15 }}>{title}</div>
-      {sub && <div style={{ fontSize: 11, color: GRAY, lineHeight: 1.5, marginTop: 7 }}>{sub}</div>}
-    </div>
+export const RailSection = ({ title, children, style }) => (
+  <div className="rail-section" style={{ display: 'grid', gridTemplateColumns: '172px minmax(0, 1fr)', gap: 20, alignItems: 'center', marginBottom: 14, ...style }}>
+    <div className="rail-label" style={{ fontFamily: SERIF, fontSize: 22, fontWeight: 500, color: '#fff', letterSpacing: '-0.01em', lineHeight: 1.15 }}>{title}</div>
     <div style={{ minWidth: 0 }}>{children}</div>
   </div>
 )

@@ -545,7 +545,7 @@ export default function AgendaPage() {
         .agenda-grid { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 12px; align-items: start; }
         .agenda-side { display: flex; flex-direction: column; gap: 12px; }
         @media (max-width: 1000px) { .agenda-grid { grid-template-columns: 1fr; } }
-        @media (max-width: 900px) { .rail-section { grid-template-columns: 1fr !important; gap: 8px !important; } .rail-label { padding-top: 0 !important; } }
+        @media (max-width: 900px) { .rail-section { grid-template-columns: 1fr !important; gap: 8px !important; } }
       `}</style>
 
       <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap', marginBottom: 18 }}>
@@ -566,16 +566,16 @@ export default function AgendaPage() {
 
       {day === today && (
         <>
-          <RailSection title="Loadout" sub="Three slots, one Heavy, one clock. Timer runs one clock and holsters the rest. Stash sends it back to the plan. Extract closes it out for miles.">
+          <RailSection title="Loadout">
             <LoadoutPanel onChange={refresh} />
           </RailSection>
-          <RailSection title="Ambush" sub="Stop, focus, dispatch, move on. Unplanned things and calls out of nowhere. Dispatch logs it and ports what's left. One mile each.">
+          <RailSection title="Ambush">
             <AmbushPanel onChange={refresh} />
           </RailSection>
-          <RailSection title="Recurring" sub="The standing chores. Tap to start, tap to stop. Third Horizon time, logged to Harvest. Slack clean pays at the close.">
+          <RailSection title="Recurring">
             <RecurringPanel onChange={refresh} />
           </RailSection>
-          <RailSection title="Release" sub="Letting go, surrendering outcomes. Personal time, stamped in the HUD only, never Harvest.">
+          <RailSection title="Release">
             <ReleasePanel onChange={refresh} />
           </RailSection>
         </>
