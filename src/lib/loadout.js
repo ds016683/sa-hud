@@ -179,3 +179,21 @@ export async function equipTask(task, projectName) {
   await equip(data.id)
   return { ok: true, title: data.title }
 }
+
+// Impromptu: something David is doing right now that was never planned. Goes on
+// the board tagged impromptu (1 mile on extract), Light, timer running.
+export async function addImpromptu(title, { personal = false } = {}) {
+  const text = String(title || '').trim()
+  if (!text) throw new Error('say what you are doing')
+  const L = await fetchLoadout()
+  const reasons = fitReasons(L, 'light')
+  if (reasons.length) return { ok: false, reasons }
+  const now = new Date().toISOString()
+  const { data, error } = await supabase.from('objectives').insert({
+    user_id: DAVID, title: text.slice(0, 160), state: 'active', kind: 'execution', effort: 1, importance: 2, needs_sizing: false,
+    tags: personal ? ['impromptu', 'personal'] : ['impromptu'], captured_at: now, activated_at: now,
+  }).select().single()
+  if (error) throw new Error(error.message)
+  await equip(data.id)
+  return { ok: true, id: data.id, title: data.title }
+}
