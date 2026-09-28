@@ -72,7 +72,10 @@ function requiredFields(doc) {
     if (q.mine) req.push([`${q.id} · your notes`, has(q.notes)])
   }
   for (const c of doc.competencies || []) req.push([`Competency · ${c.name}`, has(c.rating)])
-  req.push(['Overall · recommendation', has(doc.overall?.recommendation)])
+  req.push(['Overall · rating', has(doc.overall?.rating)])
+  req.push(['Overall · key strengths', has(doc.overall?.strengths)])
+  req.push(['Overall · key concerns', has(doc.overall?.concerns)])
+  req.push(['Recommendation', has(doc.overall?.recommendation)])
   return req
 }
 
@@ -168,10 +171,34 @@ function Scorecard({ doc, onChange }) {
         </div>
       </div>
 
-      <Eyebrow style={{ marginBottom: 8 }}>Overall</Eyebrow>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-        <div><Label>Recommendation<Req done={has(doc.overall?.recommendation)} /></Label><textarea rows={4} value={doc.overall?.recommendation || ''} onChange={e => set(d => { d.overall = d.overall || {}; d.overall.recommendation = e.target.value; return d })} style={field} /></div>
-        <div><Label>Closing notes<Opt /></Label><textarea rows={4} value={doc.overall?.notes || ''} onChange={e => set(d => { d.overall = d.overall || {}; d.overall.notes = e.target.value; return d })} style={field} /></div>
+      <Eyebrow style={{ marginBottom: 8 }}>Overall evaluation</Eyebrow>
+      <div style={{ ...S.panel, padding: '14px 16px', marginBottom: 16 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(200px, 1fr) auto', gap: 12, alignItems: 'center', marginBottom: 12 }}>
+          <span style={{ fontSize: 13, color: '#fff', fontWeight: 600 }}>Overall rating<Req done={has(doc.overall?.rating)} /></span>
+          <RatingPills scale={scale} value={doc.overall?.rating} onChange={v => set(d => { d.overall = d.overall || {}; d.overall.rating = v; return d })} />
+        </div>
+        <div style={{ fontSize: 11.5, color: GRAY, fontStyle: 'italic', marginBottom: 12 }}>Template note to panelists: subject-matter expertise is developable after hire; organizational leadership, clear prioritization, and a functioning executive structure are not. Weigh that heavily here.</div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <div><Label>Key strengths observed<Req done={has(doc.overall?.strengths)} /></Label><textarea rows={4} value={doc.overall?.strengths || ''} onChange={e => set(d => { d.overall = d.overall || {}; d.overall.strengths = e.target.value; return d })} style={field} /></div>
+          <div><Label>Key concerns or gaps<Req done={has(doc.overall?.concerns)} /></Label><textarea rows={4} value={doc.overall?.concerns || ''} onChange={e => set(d => { d.overall = d.overall || {}; d.overall.concerns = e.target.value; return d })} style={field} /></div>
+          <div><Label>Questions or topics to probe in the next round<Opt /></Label><textarea rows={3} value={doc.overall?.probe || ''} onChange={e => set(d => { d.overall = d.overall || {}; d.overall.probe = e.target.value; return d })} style={field} /></div>
+          <div><Label>Additional comments<Opt /></Label><textarea rows={3} value={doc.overall?.comments || ''} onChange={e => set(d => { d.overall = d.overall || {}; d.overall.comments = e.target.value; return d })} style={field} /></div>
+        </div>
+      </div>
+
+      <Eyebrow style={{ marginBottom: 8 }}>Recommendation<Req done={has(doc.overall?.recommendation)} /></Eyebrow>
+      <div style={{ ...S.panel, padding: '14px 16px', marginBottom: 16 }}>
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+          {(doc.recommendation_options || ['Strong Yes', 'Yes', 'No', 'Strong No']).map(r => (
+            <button key={r} onClick={() => set(d => { d.overall = d.overall || {}; d.overall.recommendation = d.overall.recommendation === r ? null : r; return d })} style={pill(doc.overall?.recommendation === r, r.includes('Yes') ? GREEN : RED)}>
+              {r}{r.includes('Yes') ? ' · advance to meet & greets' : ' · do not advance'}
+            </button>
+          ))}
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '200px 1fr', gap: 12, marginTop: 12, alignItems: 'end' }}>
+          <div><Label>Date completed<Opt /></Label><input value={doc.overall?.date_completed || ''} onChange={e => set(d => { d.overall = d.overall || {}; d.overall.date_completed = e.target.value; return d })} placeholder="today if blank" style={{ ...field, resize: 'none' }} /></div>
+          <div style={{ fontSize: 11.5, color: GRAY, paddingBottom: 10 }}>When every red chip is green, tell Lumen it's final. He fills Stephanie's Word template from this page and sends it to you.</div>
+        </div>
       </div>
     </div>
   )

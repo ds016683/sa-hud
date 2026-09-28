@@ -11,6 +11,7 @@ import { logHours, setHours } from './time.mjs'
 import { sendMail } from './_mail.mjs'
 import { loadout, checkFit, equip, holster, extract, effortOf, sizeOf, SIZES } from './_loadout.mjs'
 import { markdownToDocx, DOCX_MIME } from './_docx.mjs'
+import { fillScorecard } from './_scorecard.mjs'
 
 const URL_BASE = 'https://cmuvomnmaoseccxpeuxq.supabase.co'
 export const DAVID = '9d28e8cf-3e35-48d9-a029-1327bd37fdd4'
@@ -290,7 +291,7 @@ export const TOOLS = [
   },
   {
     name: 'read_artifact',
-    description: "Read a project artifact (JSON). A scorecard has candidate, interview_date, presentation {topic, notes, qa_notes, ratings, overall}, questions [{id, text, competency, panelist, mine, proposed, lumen_read, notes, rating}], competencies [{name, lumen_read, rating}], overall {recommendation, notes}. Yours to write: 'proposed' (his answer draft, mine questions only), 'lumen_read' on every question and competency (how the candidate's answer lines up with the competency being assessed, 3-6 sentences quoting what she said), presentation.lumen_read and presentation.notes. His language only, never yours: every 'notes', every 'rating', and 'overall'.",
+    description: "Read a project artifact (JSON). A scorecard has candidate, interview_date, presentation {topic, notes, qa_notes, ratings, overall}, questions [{id, text, competency, panelist, mine, proposed, lumen_read, notes, rating}], competencies [{name, lumen_read, rating}], overall {recommendation, notes}. overall is { rating, strengths, concerns, probe, comments, recommendation (Strong Yes|Yes|No|Strong No), date_completed }. Yours to write: 'proposed' (his answer draft, mine questions only), 'lumen_read' on every question and competency (how the candidate's answer lines up with the competency being assessed, 3-6 sentences quoting what she said), presentation.lumen_read and presentation.notes. His language only, never yours: every 'notes', every 'rating', and 'overall'.",
     inputSchema: { type: 'object', properties: { project: { type: 'string' }, slug: { type: 'string', description: "e.g. 'scorecard-jeanne-alongi'" } }, required: ['project', 'slug'] },
   },
   {
@@ -302,6 +303,11 @@ export const TOOLS = [
     name: 'patch_artifact',
     description: "Update part of a project artifact without rewriting the whole document. patch is deep-merged into the stored JSON: top-level keys merge, questions and competencies are matched by id / name and merged item by item. Use it for one question at a time, e.g. { questions: [{ id: 'Q3', lumen_read: '...' }] } or { presentation: { lumen_read: '...' } }. Prefer this over write_artifact for drafting: several small patches in one turn beat one giant write.",
     inputSchema: { type: 'object', properties: { project: { type: 'string' }, slug: { type: 'string' }, patch: { type: 'object' } }, required: ['project', 'slug', 'patch'] },
+  },
+  {
+    name: 'fill_scorecard',
+    description: "Port a finished scorecard artifact into Stephanie's actual Word template: boxes ticked, notes typed into the notes cells, competency grid marked, overall evaluation and recommendation filled, date completed. Saves next to the source (NACDD CEO Search/Round 2/Completed/) and sends it to David on WhatsApp when send is true. Returns the list of required fields still missing; if any are missing, tell David and do not call it final.",
+    inputSchema: { type: 'object', properties: { project: { type: 'string' }, slug: { type: 'string' }, send: { type: 'boolean' } }, required: ['project', 'slug'] },
   },
   {
     name: 'write_file',
@@ -680,6 +686,21 @@ export async function callTool(name, args = {}) {
       const path = await writeArtifact(pr.id, args.slug, { ...merged, updated_by: 'lumen' })
       const touched = Object.keys(args.patch).map(k => Array.isArray(args.patch[k]) ? `${k}[${args.patch[k].map(x => x.id || x.name).join(',')}]` : k)
       return JSON.stringify({ ok: true, project: pr.name, slug: args.slug, path, touched })
+    }
+    case 'fill_scorecard': {
+      const pr = await findProject(args.project)
+      const doc = await readArtifact(pr.id, args.slug)
+      if (!doc) return JSON.stringify({ ok: false, error: `no artifact ${args.slug} on ${pr.name}` })
+      const tplPath = String(doc.template_path || 'NACDD CEO Search/Round 2/NACDD_CEO_Round2_Scorecard_Template_09.15.26.docx')
+      const tres = await fetch(`${URL_BASE}/storage/v1/object/files/${tplPath.split('/').map(encodeURIComponent).join('/')}`, { headers: sbHeaders() })
+      if (!tres.ok) return JSON.stringify({ ok: false, error: `template not found in the file store: ${tplPath}` })
+      const { bytes, missing } = await fillScorecard(new Uint8Array(await tres.arrayBuffer()), doc)
+      const who = String(doc.candidate || args.slug).replace(/^Dr\.?\s*/i, '').replace(/[^A-Za-z0-9 .-]+/g, '').trim()
+      const outPath = `${tplPath.split('/').slice(0, -1).join('/')}/Completed/Scorecard - ${who} - ${doc.interviewer || 'David Smith'}${missing.length ? ' (DRAFT)' : ''}.docx`
+      await putFile(outPath, bytes, DOCX_MIME)
+      let wa = null
+      if (args.send) { try { wa = await waSendDocument(davidNumber(), bytes, { filename: outPath.split('/').pop(), mime: DOCX_MIME, caption: missing.length ? `Draft: ${missing.length} required field${missing.length === 1 ? '' : 's'} still empty` : 'Final scorecard, ready to forward' }) } catch (e) { wa = `send failed: ${e.message}` } }
+      return JSON.stringify({ ok: true, path: outPath, bytes: bytes.length, missing, final: missing.length === 0, ...(args.send ? { sent: wa } : {}) })
     }
     case 'write_file': {
       const path = String(args.path || '').replace(/^\/+/, '').trim()
