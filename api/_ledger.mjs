@@ -10,6 +10,7 @@ import { extractText, clip } from './_docs.mjs'
 import { logHours, setHours } from './time.mjs'
 import { sendMail } from './_mail.mjs'
 import { loadout, checkFit, equip, holster, extract, effortOf, sizeOf, SIZES } from './_loadout.mjs'
+import { markdownToDocx, DOCX_MIME } from './_docx.mjs'
 
 const URL_BASE = 'https://cmuvomnmaoseccxpeuxq.supabase.co'
 export const DAVID = '9d28e8cf-3e35-48d9-a029-1327bd37fdd4'
@@ -187,6 +188,11 @@ export const TOOLS = [
     name: 'send_file',
     description: "Post a document from David's file store into his WhatsApp chat so he can open it. path from search_files (exact). Say what you sent in one line after.",
     inputSchema: { type: 'object', properties: { path: { type: 'string' }, caption: { type: 'string' } }, required: ['path'] },
+  },
+  {
+    name: 'write_file',
+    description: "Write a document into David's file store and, if asked, hand it to him on WhatsApp. content is markdown-ish text (# headings, - bullets, **bold**, 'Label: value' lines). path ends in .docx (a Word file, the default for anything he will forward), .md, or .txt. Put finished work next to its source, e.g. 'NACDD CEO Search/Round 2/Scorecard - Jeanne Alongi - David Smith.docx'. Drafts go under 'drafts/<day>/'. Overwrites a file of the same name.",
+    inputSchema: { type: 'object', properties: { path: { type: 'string' }, content: { type: 'string' }, send: { type: 'boolean', description: 'true to also send it to David on WhatsApp now' }, caption: { type: 'string' } }, required: ['path', 'content'] },
   },
   {
     name: 'read_file',
@@ -516,6 +522,19 @@ export async function callTool(name, args = {}) {
       const filename = path.split('/').pop()
       const id = await waSendDocument(davidNumber(), bytes, { filename, mime, caption: args.caption || '' })
       return JSON.stringify({ ok: true, sent: filename, size: bytes.length, wa_message_id: id || null })
+    }
+    case 'write_file': {
+      const path = String(args.path || '').replace(/^\/+/, '').trim()
+      if (!path || !args.content) throw new Error('path and content required')
+      const ext = (path.split('.').pop() || '').toLowerCase()
+      let bytes, mime
+      if (ext === 'docx') { bytes = await markdownToDocx(args.content); mime = DOCX_MIME }
+      else if (ext === 'md' || ext === 'txt') { bytes = new TextEncoder().encode(String(args.content)); mime = ext === 'md' ? 'text/markdown' : 'text/plain' }
+      else throw new Error('path must end in .docx, .md, or .txt')
+      await putFile(path, bytes, mime)
+      let wa = null
+      if (args.send) { try { wa = await waSendDocument(davidNumber(), bytes, { filename: path.split('/').pop(), mime, caption: args.caption || '' }) } catch (e) { wa = `send failed: ${e.message}` } }
+      return JSON.stringify({ ok: true, path, bytes: bytes.length, format: ext, ...(args.send ? { sent: wa } : {}), note: 'David forwards finished documents himself; you can send_file it again any time.' })
     }
     case 'read_file': {
       const path = String(args.path || '').replace(/^\/+/, '')
