@@ -105,7 +105,8 @@ export function fillScorecardXml(xml, doc) {
         if (t.startsWith('Q&amp;A Notes') || t.startsWith('Q&A Notes')) return mapCells(row, c => fillCell(c, P.qa_notes))
         if (t.startsWith('Overall Presentation Rating')) { const r = ratingLabel(P.overall); need(!!r, 'presentation overall rating'); return r ? tick(row, r) : row }
         for (const [k, v] of Object.entries(P.ratings || {})) {
-          if (t.replace(/&amp;/g, '&').startsWith(k.replace(/&amp;/g, '&').slice(0, 24))) { const r = ratingLabel(v); need(!!r, `presentation rating: ${k}`); return r ? tick(row, r) : row }
+          // Compare with punctuation stripped: the template's "Board-CEO" uses a non-breaking hyphen.
+          if (norm(t.replace(/&amp;/g, '&')).startsWith(norm(k).slice(0, 22))) { const r = ratingLabel(v); need(!!r, `presentation rating: ${k}`); return r ? tick(row, r) : row }
         }
       })
     } else if (/^Q\d\./.test(head) || head.startsWith('INTERVIEW QUESTIONS')) {
