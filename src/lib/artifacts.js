@@ -13,9 +13,13 @@ export async function listArtifacts(projectId) {
 }
 
 export async function readArtifact(projectId, slug) {
-  const { data, error } = await supabase.storage.from(BUCKET).download(`${dir(projectId)}/${slug}.json`)
-  if (error) throw new Error(error.message)
-  return JSON.parse(await data.text())
+  // A signed URL is unique per call, so the CDN cannot hand back a stale copy
+  // after Lumen or the HUD has just written the file.
+  const { data: signed, error: e1 } = await supabase.storage.from(BUCKET).createSignedUrl(`${dir(projectId)}/${slug}.json`, 60)
+  if (e1) throw new Error(e1.message)
+  const res = await fetch(`${signed.signedUrl}&cb=${Date.now()}`, { cache: 'no-store' })
+  if (!res.ok) throw new Error(`read ${res.status}`)
+  return res.json()
 }
 
 export async function writeArtifact(projectId, slug, doc) {

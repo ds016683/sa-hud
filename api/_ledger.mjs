@@ -76,7 +76,9 @@ async function findProject(q) {
 }
 const artifactPath = (projectId, slug) => `${projectId}/artifacts/${String(slug).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}.json`
 async function readArtifact(projectId, slug) {
-  const res = await fetch(`${URL_BASE}/storage/v1/object/project-files/${artifactPath(projectId, slug)}`, { headers: sbHeaders() })
+  // Storage objects sit behind a CDN; a read right after a write can come back
+  // stale, which made per-question patches overwrite each other. Bust it.
+  const res = await fetch(`${URL_BASE}/storage/v1/object/project-files/${artifactPath(projectId, slug)}?cb=${Date.now()}`, { headers: { ...sbHeaders(), 'Cache-Control': 'no-cache', Pragma: 'no-cache' }, cache: 'no-store' })
   if (!res.ok) return null
   return res.json()
 }
