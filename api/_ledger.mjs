@@ -26,29 +26,42 @@ export async function sb(path) {
 }
 // Granola transcript for a note id (public API). Tries the transcript route,
 // then the note itself for an embedded transcript. Speaker turns joined by newline.
-export async function granolaTranscript(noteId) {
+export async function granolaTranscript(noteId, { fromMin = null, toMin = null } = {}) {
   const key = process.env.GRANOLA_API_KEY
   if (!key) return { ok: false, error: 'GRANOLA_API_KEY not set' }
   const gh = { Authorization: `Bearer ${key}`, Accept: 'application/json' }
-  const shape = (d) => {
-    const arr = Array.isArray(d) ? d : (d?.transcript || d?.utterances || d?.segments || d?.turns || null)
-    if (Array.isArray(arr) && arr.length) return arr.map(u => `${u.speaker || u.source || u.role || ''}${u.speaker || u.source || u.role ? ': ' : ''}${u.text || u.content || ''}`.trim()).filter(Boolean).join('\n')
-    if (typeof d?.transcript === 'string') return d.transcript
-    if (typeof d?.transcript_text === 'string') return d.transcript_text
-    if (typeof d?.transcript_markdown === 'string') return d.transcript_markdown
-    return null
+  // Paged: { transcript: [{ text, start_time, end_time, speaker: { source, attribution } }], hasMore, cursor }
+  const utt = []
+  let cursor = null, status = null
+  for (let page = 0; page < 80; page++) {
+    const qs = new URLSearchParams({ page_size: '500' })
+    if (cursor) qs.set('cursor', cursor)
+    const res = await fetch(`https://public-api.granola.ai/v1/notes/${noteId}/transcript?${qs}`, { headers: gh })
+    status = res.status
+    if (!res.ok) break
+    const d = await res.json()
+    const arr = Array.isArray(d) ? d : (d?.transcript || [])
+    utt.push(...arr)
+    if (!d?.hasMore || !d?.cursor || !arr.length) break
+    cursor = d.cursor
   }
-  const tried = []
-  for (const url of [`https://public-api.granola.ai/v1/notes/${noteId}/transcript`, `https://public-api.granola.ai/v1/notes/${noteId}?include=transcript`, `https://public-api.granola.ai/v1/notes/${noteId}`]) {
-    try {
-      const res = await fetch(url, { headers: gh })
-      tried.push(`${url.replace('https://public-api.granola.ai', '')} -> ${res.status}`)
-      if (!res.ok) continue
-      const text = shape(await res.json())
-      if (text && text.length > 50) return { ok: true, text }
-    } catch (e) { tried.push(`${url} -> ${e.message}`) }
+  if (!utt.length) return { ok: false, error: `no transcript available (transcript route -> ${status})` }
+  const t0 = new Date(utt[0].start_time || 0).getTime()
+  const who = (u) => (u.speaker?.attribution === 'me' || u.speaker?.source === 'microphone') ? 'David' : 'Them'
+  const mmss = (iso) => { const s = Math.max(0, Math.round((new Date(iso).getTime() - t0) / 1000)); return `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}` }
+  // Merge consecutive utterances from the same speaker into turns.
+  const turns = []
+  for (const u of utt) {
+    const min = (new Date(u.start_time).getTime() - t0) / 60000
+    if (fromMin != null && min < fromMin) continue
+    if (toMin != null && min > toMin) continue
+    const w = who(u)
+    const last = turns[turns.length - 1]
+    if (last && last.who === w && (new Date(u.start_time).getTime() - last.end) < 20000) { last.text += ' ' + (u.text || '').trim(); last.end = new Date(u.end_time || u.start_time).getTime() }
+    else turns.push({ who: w, at: mmss(u.start_time), text: (u.text || '').trim(), end: new Date(u.end_time || u.start_time).getTime() })
   }
-  return { ok: false, error: `no transcript available (${tried.join('; ')})` }
+  const text = turns.map(t => `[${t.at}] ${t.who}: ${t.text}`).join('\n')
+  return { ok: true, text, utterances: utt.length, turns: turns.length, minutes: Math.round((new Date(utt[utt.length - 1].end_time || utt[utt.length - 1].start_time).getTime() - t0) / 60000) }
 }
 
 // Artifacts: structured work products a project carries (a scorecard, a
@@ -247,8 +260,8 @@ export const TOOLS = [
   },
   {
     name: 'get_transcript',
-    description: "The full Granola transcript of a meeting (what was actually said, speaker turns), not the summary. Use it when the summary does not carry what David needs: a candidate's answer to a specific question, exact wording, a number someone quoted. title matches the meeting like search_meetings; from/to (minutes) narrow the window; max_chars defaults to 30000. Say when the transcript is not available.",
-    inputSchema: { type: 'object', properties: { title: { type: 'string' }, day: { type: 'string', description: 'YYYY-MM-DD, optional' }, max_chars: { type: 'integer' }, find: { type: 'string', description: 'optional: return only turns containing this text, with a little context' } }, required: ['title'] },
+    description: "The full Granola transcript of a meeting (what was actually said, as [mm:ss] David/Them turns), not the summary. A 90-minute meeting is ~60-90k characters: read it in windows (from_minute/to_minute, 20-30 minutes at a time) or use find to jump to a phrase. Use it when the summary does not carry what David needs: a candidate's answer to a specific question, exact wording, a number someone quoted. title matches the meeting like search_meetings; from/to (minutes) narrow the window; max_chars defaults to 30000. Say when the transcript is not available.",
+    inputSchema: { type: 'object', properties: { title: { type: 'string' }, day: { type: 'string', description: 'YYYY-MM-DD, optional' }, from_minute: { type: 'number' }, to_minute: { type: 'number' }, max_chars: { type: 'integer' }, find: { type: 'string', description: 'optional: return only turns containing this text, with a little context' } }, required: ['title'] },
   },
   {
     name: 'list_artifacts',
@@ -604,7 +617,7 @@ export async function callTool(name, args = {}) {
       let ms = await sb(`granola_meetings?select=id,title,meeting_date&title=ilike.*${encodeURIComponent(q)}*${args.day ? `&meeting_date=eq.${args.day}` : ''}&order=meeting_date.desc&limit=5`)
       if (!ms.length) return JSON.stringify({ ok: false, error: `no meeting matches "${args.title}"` })
       const m = ms[0]
-      const t = await granolaTranscript(m.id)
+      const t = await granolaTranscript(m.id, { fromMin: args.from_minute != null ? Number(args.from_minute) : null, toMin: args.to_minute != null ? Number(args.to_minute) : null })
       if (!t.ok) return JSON.stringify({ ok: false, meeting: m.title, day: m.meeting_date, error: t.error })
       let text = t.text
       if (args.find) {
@@ -615,7 +628,7 @@ export async function callTool(name, args = {}) {
         text = hits.length ? hits.join('\n...\n') : `(no turn contains "${args.find}")`
       }
       const max = Number(args.max_chars) || 30000
-      return JSON.stringify({ ok: true, meeting: m.title, day: m.meeting_date, chars: t.text.length, truncated: text.length > max, transcript: text.slice(0, max) })
+      return JSON.stringify({ ok: true, meeting: m.title, day: m.meeting_date, minutes: t.minutes, turns: t.turns, chars: t.text.length, truncated: text.length > max, note: text.length > max ? 'Truncated: narrow with from_minute/to_minute or find.' : undefined, transcript: text.slice(0, max) })
     }
     case 'list_artifacts': {
       const pr = await findProject(args.project)
