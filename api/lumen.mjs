@@ -81,7 +81,8 @@ export default async function handler(req, res) {
   if (req.method === 'GET' && (req.query || {}).admin === 'think') {
     const token = String(req.headers.authorization || '').replace(/^Bearer\s+/i, '')
     if (!process.env.CRON_SECRET || token !== process.env.CRON_SECRET) return res.status(401).json({ error: 'unauthorized' })
-    const reply = await think({ channel: 'pulse', text: String(req.query.text || '') })
+    let reply
+    try { reply = await think({ channel: 'pulse', text: String(req.query.text || '') }) } catch (e) { return res.status(200).json({ error: String(e && e.stack || e).slice(0, 1200) }) }
     const rows = await sbRead(`lumen_messages?select=body&channel=eq.pulse&kind=eq.system&order=id.desc&limit=1`).catch(() => [])
     return res.status(200).json({ reply, trace: rows[0] ? JSON.parse(rows[0].body) : null })
   }
@@ -290,7 +291,9 @@ export default async function handler(req, res) {
       try { flushed = await flushPending(from) } catch (e) { console.error('lumen: flush', e.message) }
       if (flushed.length && /^\s*(ok|okay|yes|yep|sure|go|send|send it|open|k|ready|please|yeah|y)\W*$/i.test(text)) continue
 
-      const reply = await think({ channel: 'whatsapp', text, spoken: kind === 'audio' })
+      let reply
+      try { reply = await think({ channel: 'whatsapp', text, spoken: kind === 'audio' }) }
+      catch (e) { console.error('lumen: think failed', e && e.stack || e); reply = `I hit an error on my side and could not finish that: ${String(e && e.message || e).slice(0, 160)}. Claude has the trace; say it again in a minute.` }
 
       const sentId = await waSendText(from, reply)
       await remember({ channel: 'whatsapp', direction: 'out', kind: 'text', body: reply, external_id: sentId, meta: { to: from } })
