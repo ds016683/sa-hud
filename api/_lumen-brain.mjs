@@ -71,7 +71,7 @@ How to be:
 - Artifacts (9/28): a project can carry structured work products in the HUD (list_artifacts / read_artifact / write_artifact). A scorecard artifact holds the interview questions; the ones marked mine are David's to answer. Drafting flow: read the interview notes (search_meetings), read_artifact, write proposed answers for his questions and the presentation notes from what the candidate actually said (no invention), write_artifact back. He edits and rates on the project page. When he says it is final, read_artifact and write_file it as .docx in the template's section order, then send it to him.
 - Documents: when a piece of work ends in a document (a scorecard, a memo, a filled-in form), draft it with David in the thread first, then write_file it as .docx next to its source in the file store and send it to him on WhatsApp (send true). He forwards it himself. Read the source form with read_file and keep its section names and order so the filled version matches what the recipient expects.
 - Sleep and steps arrive through the health feed (/api/health, fed by his watch), not through you: get_river shows sleep_hours for the day once the feed has posted. If he tells you his sleep directly, log_day sleep with hours. Never guess a sleep number.
-- Never say you ran out of tool steps, hit a limit, or could not do something unless a tool result or a system note in this turn said so. If you stopped early, say what you chose to do first and do the rest now or next turn. Excuses that are not true cost more trust than an honest 'I did A, B is next'.
+- Never say you ran out of tool steps, hit a limit, or could not do something unless a tool result or a system note in this turn said so. There is no 'next turn': if you have the material, write it now, in this turn, then reply with what landed. A read is not progress until the write follows it.
 - The Loadout (9/27) is the Activity Board, and it lives on the Board page. What David carries into the day: three slots, at most one Heavy, one clock running, loaded hours within stamina. Sizes: Light (an hour or less), Medium (a half day), Heavy (a full day); bigger than Heavy is a Main Mission split into tasks. Read get_loadout before activating anything. If activation is refused, say what is loaded and ask what to stash (move_objective parked) or whether he wants to force it; never force on your own. When he says he is starting, switching, or back on something: equip. When he steps away: holster. When he is done: move_objective released (that is extract: the clock stops, the segments sum, the miles bank). Words that fit here: loadout, slots, equipped, holstered, stash, stamina, extract, haul.
 - The Activity Board holds three kinds of thing: Side Missions (planned, 4 miles on release), tasks from a Main Mission (activate_project_task; the task pays 1 when closed), and impromptu items he posts on the fly (add_objective with impromptu true and state active; 1 mile on release). If an impromptu item grows into a day's work, he will tell you to make it a Side Mission or a project task.
 - The deep material (Volume I psyche map, Volume III somatic manual, the CIM) is yours to reach for with get_volume whenever a moment calls for depth or exact language, not only when he names it. Never recite it at him.
@@ -102,18 +102,40 @@ export async function think({ channel = 'whatsapp', text, spoken = false }) {
   // three times is a loop, not work.
   const trace = [], seen = new Map()
   const MAX_STEPS = 20, NUDGE_AT = 14
+  // He has learned to stop early and blame a limit ("ran out of steps", "next
+  // turn I'll write it"). When a text-only reply defers work he could do now,
+  // the turn continues instead of ending: up to two pushes per turn.
+  const DEFER_RE = /(ran out of (tool )?(steps|calls|room)|out of (tool )?steps|next turn|give me (the )?next turn|next message i('ll| will)|i('ll| will) (draft|write|do|add|log|finish|build)[^.]*\b(next|when you|once you)\b|haven'?t (actually )?(written|logged|added|built|drafted)[^.]*yet)/i
+  let autoContinues = 0
   let step = 0
   for (step = 0; step < MAX_STEPS; step++) {
     const res = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: { 'x-api-key': process.env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
-      body: JSON.stringify({ model: MODEL(), max_tokens: 1500, system, tools, messages }),
+      body: JSON.stringify({ model: MODEL(), max_tokens: 8192, system, tools, messages }),
     })
     if (!res.ok) throw new Error(`anthropic -> ${res.status}: ${(await res.text()).slice(0, 300)}`)
     const out = await res.json()
     const textParts = out.content.filter(c => c.type === 'text').map(c => c.text)
     const toolUses = out.content.filter(c => c.type === 'tool_use')
-    if (!toolUses.length || out.stop_reason !== 'tool_use') { reply = textParts.join('\n').trim(); break }
+    if (!toolUses.length || out.stop_reason !== 'tool_use') {
+      reply = textParts.join('\n').trim()
+      if (out.stop_reason === 'max_tokens' && toolUses.length) {
+        // A tool call too big for the window: tell him and let him split it.
+        messages.push({ role: 'assistant', content: out.content.filter(c => c.type === 'text') })
+        messages.push({ role: 'user', content: '(system: that tool call was too large for one message. Split the write into smaller pieces, or shorten the content, and continue now.)' })
+        continue
+      }
+      if (DEFER_RE.test(reply) && step < MAX_STEPS - 2 && autoContinues < 2) {
+        autoContinues++
+        trace.push({ step: step + 1, tool: '(auto-continue)', input: reply.slice(0, 200), ok: true, ms: 0, out: `deferred work pushed back: ${MAX_STEPS - step - 1} steps remain` })
+        messages.push({ role: 'assistant', content: out.content })
+        messages.push({ role: 'user', content: `(system: you have used ${step + 1} of ${MAX_STEPS} tool steps this turn; ${MAX_STEPS - step - 1} remain. Nothing ran out. Do the work you just described now, in this turn, with the tools. Then reply with what landed.)` })
+        reply = ''
+        continue
+      }
+      break
+    }
     messages.push({ role: 'assistant', content: out.content })
     const results = []
     for (const tu of toolUses) {
