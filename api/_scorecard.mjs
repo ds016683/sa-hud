@@ -23,15 +23,22 @@ const lines = (s) => String(s ?? '').replace(/\r\n/g, '\n').split('\n')
 // Tick the box that sits right before `label` in this xml (first match).
 function tick(xml, label) {
   // Walk every empty box; tick the one whose following text starts with the label.
-  let idx = -1
-  while ((idx = xml.indexOf('[ ]', idx + 1)) >= 0) {
+  // A box is "[ ]" with a plain or non-breaking space, or split across runs ("[" ... " ]").
+  const BOX = /\[(?:[ \u00a0]|<\/w:t><\/w:r>(?:(?!<w:t)[\s\S])*?<w:t[^>]*>[ \u00a0]?)\]/g
+  let m
+  while ((m = BOX.exec(xml))) {
+    const idx = m.index, len = m[0].length
     // The box sits inside a text node: take the rest of that node directly,
     // then the text of every node after it (labels can be split across runs).
-    const tail = xml.slice(idx + 3)
+    const tail = xml.slice(idx + len)
     const lt = tail.indexOf('<')
     const direct = lt >= 0 ? tail.slice(0, lt) : tail
-    const following = (direct + textOf(tail.slice(direct.length))).replace(/^\s+/, '')
-    if (following.startsWith(label)) return xml.slice(0, idx) + '[X]' + xml.slice(idx + 3)
+    const following = (direct + textOf(tail.slice(direct.length))).replace(/^[\s\u00a0]+/, '')
+    if (following.startsWith(label)) {
+      // Keep any run boundary inside the box; just turn the space into an X.
+      const ticked = m[0].replace(/[ \u00a0]\]$/, 'X]').replace(/^\[[ \u00a0]\]$/, '[X]')
+      return xml.slice(0, idx) + ticked + xml.slice(idx + len)
+    }
   }
   return xml
 }
@@ -128,7 +135,7 @@ export function fillScorecardXml(xml, doc) {
         const r = ratingLabel(c.rating); need(!!r, `competency: ${name}`)
         if (!r) return row
         const col = { 'Exceeds': 1, 'Meets': 2, 'Below': 3, 'N/A': 4 }[r]
-        return mapCells(row, (cell, ci) => ci === col ? cell.replace('[ ]', '[X]') : cell)
+        return mapCells(row, (cell, ci) => ci === col ? cell.replace(/\[[ \u00a0]\]/, '[X]') : cell)
       })
     } else if (head.startsWith('OVERALL EVALUATION')) {
       const O = doc.overall || {}
