@@ -17,7 +17,7 @@ import AmbushPanel from './river/AmbushPanel'
 import { equipTask, equipObjective } from '../lib/loadout'
 import {
   INK, INK2, GRAY, NAVY_DEEP, PANEL_BORDER, GOLD, GOLD_BRIGHT, BLUE, PERIWINKLE, GREEN, RED, MONO, SERIF,
-  S, Eyebrow, Label, Panel, chiToday, fmtTime, weekday,
+  S, Eyebrow, Label, Panel, RailSection, chiToday, fmtTime, weekday,
 } from './river/canon'
 
 const fmtFullDay = (day) => day ? new Date(day + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }) : ''
@@ -545,6 +545,7 @@ export default function AgendaPage() {
         .agenda-grid { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 12px; align-items: start; }
         .agenda-side { display: flex; flex-direction: column; gap: 12px; }
         @media (max-width: 1000px) { .agenda-grid { grid-template-columns: 1fr; } }
+        @media (max-width: 900px) { .rail-section { grid-template-columns: 1fr !important; gap: 8px !important; } .rail-label { padding-top: 0 !important; } }
       `}</style>
 
       <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap', marginBottom: 18 }}>
@@ -563,10 +564,22 @@ export default function AgendaPage() {
         </div>
       </div>
 
-      {day === today && <LoadoutPanel onChange={refresh} />}
-      {day === today && <AmbushPanel onChange={refresh} />}
-      {day === today && <RecurringPanel onChange={refresh} />}
-      {day === today && <ReleasePanel onChange={refresh} />}
+      {day === today && (
+        <>
+          <RailSection title="Loadout" sub="Three slots, one Heavy, one clock. Timer runs one clock and holsters the rest. Stash sends it back to the plan. Extract closes it out for miles.">
+            <LoadoutPanel onChange={refresh} />
+          </RailSection>
+          <RailSection title="Ambush" sub="Stop, focus, dispatch, move on. Unplanned things and calls out of nowhere. Dispatch logs it and ports what's left. One mile each.">
+            <AmbushPanel onChange={refresh} />
+          </RailSection>
+          <RailSection title="Recurring" sub="The standing chores. Tap to start, tap to stop. Third Horizon time, logged to Harvest. Slack clean pays at the close.">
+            <RecurringPanel onChange={refresh} />
+          </RailSection>
+          <RailSection title="Release" sub="Letting go, surrendering outcomes. Personal time, stamped in the HUD only, never Harvest.">
+            <ReleasePanel onChange={refresh} />
+          </RailSection>
+        </>
+      )}
 
       <div className="agenda-grid">
         <div className="agenda-cal">

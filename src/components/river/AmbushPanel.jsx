@@ -146,7 +146,7 @@ export default function AmbushPanel({ onChange }) {
   }
 
   return (
-    <Panel title="Ambush · stop, focus, dispatch, move on" style={{ marginBottom: 12 }}>
+    <Panel style={{ marginBottom: 0 }}>
       {open && <DispatchModal item={open} projects={projects} onClose={() => setOpen(null)} onDone={(r) => { setOpen(null); setMsg(`Dispatched: ${open.title} · ${fmtClock(r.minutes)}${r.ported.length ? ` · ported ${r.ported.length}` : ' · nothing left'} · 1 mile on the next update`); setTick(x => x + 1); onChange && onChange() }} />}
       <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
         <Zap size={13} color={RED_ORANGE} style={{ flexShrink: 0 }} />
@@ -168,10 +168,7 @@ export default function AmbushPanel({ onChange }) {
           ))}
         </div>
       )}
-      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, marginTop: 10, flexWrap: 'wrap' }}>
-        <span style={{ fontSize: 11, color: GRAY }}>Unplanned things, and calls that come out of nowhere. Start puts it on the board with the clock running. Dispatch logs what happened and ports anything left to a Main Mission task, a Side Mission, or a new Main Mission. 1 mile each, started and dispatched.</span>
-        {msg && <span style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '1px', color: msg.startsWith('Could') || msg.startsWith('No room') ? RED : GOLD_BRIGHT, textTransform: 'uppercase' }}>{msg}</span>}
-      </div>
+      {msg && <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '1px', color: msg.startsWith('Could') || msg.startsWith('No room') ? RED : GOLD_BRIGHT, textTransform: 'uppercase', marginTop: 10 }}>{msg}</div>}
     </Panel>
   )
 }

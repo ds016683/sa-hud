@@ -68,7 +68,7 @@ export default function ReleasePanel({ onChange }) {
   }
 
   return (
-    <Panel title="Release · letting go, surrendering outcomes" style={{ marginBottom: 12 }}>
+    <Panel style={{ marginBottom: 0 }}>
       <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'stretch' }}>
         {RELEASE_TIMERS.map(t => {
           const r = runningFor(t.slug)
@@ -91,10 +91,7 @@ export default function ReleasePanel({ onChange }) {
           )
         })}
       </div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, marginTop: 10, flexWrap: 'wrap' }}>
-        <span style={{ fontSize: 11, color: GRAY }}>Personal time. Stamped in the HUD only, never Harvest, so the pattern can be studied later. No miles.</span>
-        {msg && <span style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '1px', color: msg.startsWith('Could not') ? RED : GOLD, textTransform: 'uppercase' }}>{msg}</span>}
-      </div>
+      {msg && <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '1px', color: msg.startsWith('Could not') ? RED : GOLD, textTransform: 'uppercase', marginTop: 10 }}>{msg}</div>}
     </Panel>
   )
 }

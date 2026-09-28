@@ -68,7 +68,7 @@ export default function RecurringPanel({ onChange }) {
   }
 
   return (
-    <Panel title="Recurring Missions" style={{ marginBottom: 12 }}>
+    <Panel style={{ marginBottom: 0 }}>
       <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'stretch' }}>
         {RECURRING.map(r => {
           const s = byId.get(eid(day, r.slug))
@@ -100,10 +100,7 @@ export default function RecurringPanel({ onChange }) {
           <span style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '0.6px', color: slackClean ? GOLD : GRAY }}>{slackClean ? 'marked · 10 mi at the close' : 'mark when fully caught up'}</span>
         </button>
       </div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, marginTop: 10, flexWrap: 'wrap' }}>
-        <span style={{ fontSize: 11, color: GRAY }}>Tap to start, tap again to stop. Time logs to Harvest under Business Administration. No miles for the timers; Slack clean is the one that pays (Clean Slack, 10, at the close).</span>
-        {msg && <span style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '1px', color: msg.startsWith('Could not') || msg.includes('did not') ? RED : GOLD, textTransform: 'uppercase' }}>{msg}</span>}
-      </div>
+      {msg && <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '1px', color: msg.startsWith('Could not') || msg.includes('did not') ? RED : GOLD, textTransform: 'uppercase', marginTop: 10 }}>{msg}</div>}
     </Panel>
   )
 }

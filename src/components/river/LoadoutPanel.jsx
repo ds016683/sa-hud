@@ -90,7 +90,7 @@ export default function LoadoutPanel({ onChange }) {
   const pct = stamina && stamina.free > 0 ? Math.min(100, Math.round(stamina.loaded / stamina.free * 100)) : (stamina && stamina.loaded > 0 ? 100 : 0)
 
   return (
-    <Panel title="Loadout" style={{ marginBottom: 12 }}>
+    <Panel style={{ marginBottom: 0 }}>
       {open && <ExtractModal item={open} onClose={() => setOpen(null)} onDone={(r) => { setOpen(null); setMsg(`Extracted: ${open.title} · ${fmtClock(r.minutes)}${r.personal ? ' · personal' : ''}`); setTick(x => x + 1); onChange && onChange() }} />}
       {!L ? (
         <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '1.4px', textTransform: 'uppercase', color: GRAY, padding: '12px 0' }}>Reading the loadout</div>
@@ -139,12 +139,7 @@ export default function LoadoutPanel({ onChange }) {
             </div>
           ))}
           {msg && <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '1px', color: GOLD_BRIGHT, marginTop: 10, textTransform: 'uppercase' }}>{msg}</div>}
-          <div style={{ fontSize: 11, color: GRAY, marginTop: 12, lineHeight: 1.6 }}>
-            <span style={{ color: INK2 }}>Timer</span> runs one clock at a time (turning one on holsters the rest) ·{' '}
-            <span style={{ color: INK2 }}>Stash</span> takes it off the board and back to the plan, clock kept ·{' '}
-            <span style={{ color: INK2 }}>Extract</span> is done: time of activity, anything to file, miles on the next update.
-            <br />Three slots, one Heavy at most. Over the limit, stash something first. Bigger than Heavy is a Main Mission.
-          </div>
+
         </>
       )}
     </Panel>
