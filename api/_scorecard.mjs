@@ -89,7 +89,18 @@ const RATING_LABELS = { exceeds: 'Exceeds', meets: 'Meets', below: 'Below', 'doe
 const ratingLabel = (r) => RATING_LABELS[norm(r)] || null
 const REC = [['strong yes', 'Strong Yes'], ['yes', 'Yes'], ['no', 'No'], ['strong no', 'Strong No']]
 
+// Word sometimes splits a box into runs: "[" | " " | "] Exceeds". Pull the
+// bracket and the space forward into the run that holds the closing bracket
+// so every box reads "[ ]" inside one text node.
+function mergeBoxes(xml) {
+  const RUN_OPEN = '(<w:r(?: [^>]*)?>(?:<w:rPr>(?:(?!<\\/w:rPr>)[\\s\\S])*<\\/w:rPr>)?<w:t(?: [^>]*)?>)'
+  const three = new RegExp(`\\[(<\\/w:t><\\/w:r>)${RUN_OPEN}[ \\u00a0]?<\\/w:t><\\/w:r>${RUN_OPEN}\\]`, 'g')
+  const two = new RegExp(`\\[(<\\/w:t><\\/w:r>)${RUN_OPEN}[ \\u00a0]?\\]`, 'g')
+  return xml.replace(three, '$1$3[ ]').replace(two, '$1$2[ ]')
+}
+
 export function fillScorecardXml(xml, doc) {
+  xml = mergeBoxes(xml)
   const missing = []
   const need = (ok, what) => { if (!ok) missing.push(what) }
   const bodyStart = xml.indexOf('<w:body>') + 8, bodyEnd = xml.indexOf('<w:sectPr')
