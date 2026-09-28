@@ -130,3 +130,52 @@ export async function extract(item, { minutes, note } = {}) {
   })
   return { minutes: mins, clocked, personal }
 }
+
+// ---- Putting things on the board from the Board page itself -------------------
+const DAVID = '9d28e8cf-3e35-48d9-a029-1327bd37fdd4'
+
+// Same rules as the server: slots, one Heavy, stamina during the working day.
+export function fitReasons(L, size = 'light', { alreadyLoadedId } = {}) {
+  const reasons = []
+  const already = alreadyLoadedId && L.items.some(i => i.id === alreadyLoadedId)
+  if (already) return reasons
+  const hours = (SIZES[size] || SIZES.light).hours
+  if (L.slots.used >= SLOTS) reasons.push(`the loadout is full (${L.slots.used}/${SLOTS}): ${L.board.map(i => i.title).join(' | ')}`)
+  if (size === 'heavy' && L.heavy.used >= HEAVY_MAX) reasons.push('a Heavy item is already loaded')
+  if (!L.stamina.afterHours && L.stamina.loaded + hours > L.stamina.free) reasons.push(`stamina: ${L.stamina.loaded}h loaded + ${hours}h vs ${L.stamina.free}h free before 6 PM`)
+  return reasons
+}
+
+// Activate an objective (if it is not already) and run its clock.
+export async function equipObjective(objectiveId, { size } = {}) {
+  const L = await fetchLoadout()
+  const o = (await q(supabase.from('objectives').select('id,title,state,effort,tags').eq('id', objectiveId).limit(1)))[0]
+  if (!o) throw new Error('objective not found')
+  const sz = size || sizeOf(o)
+  if (o.state !== 'active') {
+    const reasons = fitReasons(L, sz, { alreadyLoadedId: o.id })
+    if (reasons.length) return { ok: false, reasons }
+    const { error } = await supabase.from('objectives').update({ state: 'active', activated_at: new Date().toISOString(), released_at: null, released_kind: null, ...(size ? { effort: effortOf(size) } : {}) }).eq('id', o.id)
+    if (error) throw new Error(error.message)
+  }
+  await equip(o.id)
+  return { ok: true, title: o.title }
+}
+
+// A Main Mission task onto the board: reuse its linked objective or create the
+// bridge (the same one Lumen's activate_project_task creates), then equip.
+export async function equipTask(task, projectName) {
+  if (task.objective_id) return equipObjective(task.objective_id)
+  const L = await fetchLoadout()
+  const reasons = fitReasons(L, 'light')
+  if (reasons.length) return { ok: false, reasons }
+  const now = new Date().toISOString()
+  const { data, error } = await supabase.from('objectives').insert({
+    user_id: DAVID, title: String(task.text || '').slice(0, 120), state: 'active', kind: 'execution', effort: 1, importance: 2, needs_sizing: false,
+    tags: ['mission-task'], description: `Promoted from project: ${projectName || 'Project'}`, captured_at: now, activated_at: now,
+  }).select().single()
+  if (error) throw new Error(error.message)
+  await supabase.from('project_tasks').update({ objective_id: data.id, status: task.status === 'blocked' ? 'blocked' : 'promoted' }).eq('id', task.id)
+  await equip(data.id)
+  return { ok: true, title: data.title }
+}

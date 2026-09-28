@@ -132,8 +132,8 @@ export default function LoadoutPanel({ onChange }) {
               {!it.session && (
                 <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
                   {it.equipped
-                    ? <button onClick={() => act(() => holster(it.id), `Holstered: ${it.title}`)} style={btn(INK2)}><Pause size={11} /> Holster</button>
-                    : <button onClick={() => act(() => equip(it.id), `Equipped: ${it.title}`)} style={btn(GREEN)}><Play size={11} /> Equip</button>}
+                    ? <button onClick={() => act(() => holster(it.id), `Timer off (holstered): ${it.title}`)} title="Holster: pause the clock, stays loaded" style={btn(GREEN, true)}><Pause size={11} /> Timer on</button>
+                    : <button onClick={() => act(() => equip(it.id), `Timer on (equipped): ${it.title}`)} title="Equip: run the clock on this, pause the rest" style={btn(INK2)}><Play size={11} /> Timer off</button>}
                   <button onClick={() => act(() => stash(it.id), `Stashed: ${it.title}`)} title="Park it; it stays planned" style={btn(INK2)}><Archive size={11} /> Stash</button>
                   <button onClick={() => setOpen(it)} style={btn(GOLD)}><PackageCheck size={11} /> Extract</button>
                 </div>
@@ -141,7 +141,12 @@ export default function LoadoutPanel({ onChange }) {
             </div>
           ))}
           {msg && <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '1px', color: GOLD_BRIGHT, marginTop: 10, textTransform: 'uppercase' }}>{msg}</div>}
-          <div style={{ fontSize: 11, color: GRAY, marginTop: 12 }}>Three slots, one Heavy at most, one clock running. Over the limit, stash something first. Bigger than Heavy is a Main Mission.</div>
+          <div style={{ fontSize: 11, color: GRAY, marginTop: 12, lineHeight: 1.6 }}>
+            <span style={{ color: INK2 }}>Timer</span> runs one clock at a time (turning one on holsters the rest) ·{' '}
+            <span style={{ color: INK2 }}>Stash</span> takes it off the board and back to the plan, clock kept ·{' '}
+            <span style={{ color: INK2 }}>Extract</span> is done: time of activity, anything to file, miles on the next update.
+            <br />Three slots, one Heavy at most. Over the limit, stash something first. Bigger than Heavy is a Main Mission.
+          </div>
         </>
       )}
     </Panel>
