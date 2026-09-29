@@ -227,7 +227,12 @@ export default function LandingPage({ onNavigate }) {
   }, [rows, today, yesterday])
   const daysOn = Math.max(1, Math.floor((new Date(today + 'T12:00:00') - new Date(RIVER_START_DAY + 'T12:00:00')) / DAY_MS) + 1)
   const remaining = Math.max(0, RIVER_TOTAL_MILES - total)
-  const recent = rows.slice(-8).reverse()
+  // Today's miles, newest first; yesterday's shown when today has none yet.
+  const todayRows = rows.filter(r => r.day === today).sort((a, b) => String(b.awarded_at).localeCompare(String(a.awarded_at)))
+  const yRows = rows.filter(r => r.day === yesterday).sort((a, b) => String(b.awarded_at).localeCompare(String(a.awarded_at)))
+  const milesRows = todayRows.length ? todayRows : yRows
+  const milesTitle = todayRows.length ? `Today's miles · ${fmtMiles(todayMiles)}` : `Yesterday's miles · ${fmtMiles(yMiles)} · nothing minted today yet`
+  const fmtAt = (iso) => iso ? new Date(iso).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'America/Chicago' }) : ''
 
   useEffect(() => {
     let alive = true
@@ -282,15 +287,15 @@ export default function LandingPage({ onNavigate }) {
                 <RiverGraphic miles={total} awards={awards} />
               </Panel>
 
-              <Panel title="Recent miles">
-                {recent.length === 0 ? (
-                  <div style={{ fontSize: 12.5, color: INK2 }}>No miles on the board yet. The river starts today.</div>
-                ) : recent.map((r, i) => (
-                  <div key={r.key || `${r.awarded_at}-${i}`} style={{ display: 'grid', gridTemplateColumns: '56px 1fr auto', gap: 12, alignItems: 'baseline', padding: '6px 0', borderTop: i === 0 ? 'none' : `1px solid ${PANEL_BORDER}` }}>
-                    <span style={{ fontFamily: MONO, fontSize: 10, color: GRAY, letterSpacing: '0.6px' }}>{shortDay(r.day)}</span>
-                    <span style={{ fontSize: 12.5, color: INK, minWidth: 0 }}>
-                      {badgeLabel(r.badge)}
-                      {r.evidence ? <span style={{ color: GRAY, marginLeft: 8, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'inline-block', maxWidth: '60%', verticalAlign: 'bottom' }}>{r.evidence}</span> : null}
+              <Panel title={milesTitle}>
+                {milesRows.length === 0 ? (
+                  <div style={{ fontSize: 12.5, color: INK2 }}>No miles yet. They mint when Lumen runs the update.</div>
+                ) : milesRows.map((r, i) => (
+                  <div key={r.id || `${r.badge}-${r.key}-${i}`} style={{ display: 'grid', gridTemplateColumns: '64px 1fr auto', gap: 12, alignItems: 'start', padding: '8px 0', borderTop: i === 0 ? 'none' : `1px solid ${PANEL_BORDER}` }}>
+                    <span style={{ fontFamily: MONO, fontSize: 10, color: GRAY, letterSpacing: '0.6px', paddingTop: 2 }}>{fmtAt(r.awarded_at)}</span>
+                    <span style={{ minWidth: 0 }}>
+                      <span style={{ fontSize: 13, color: INK }}>{badgeLabel(r.badge)}</span>
+                      {r.evidence ? <span style={{ display: 'block', fontSize: 11.5, lineHeight: 1.5, color: GRAY, marginTop: 2 }}>{r.evidence}</span> : null}
                     </span>
                     <span style={{ fontFamily: SERIF, fontSize: 15, fontWeight: 500, color: GOLD_BRIGHT, letterSpacing: '-0.01em' }}>+{fmtMiles(Number(r.miles) || 0)}</span>
                   </div>

@@ -169,10 +169,24 @@ export async function strikeDay(day, opts = {}) {
   const awards = await computeAwards(day, opts)
   if (awards.length) {
     const rows = awards.map(a => ({ day, badge: a.badge, key: a.key, miles: a.miles, evidence: a.evidence, source: opts.closing ? 'close' : 'refresh' }))
-    const r = await fetch(`${URL_BASE}/rest/v1/miles_ledger?on_conflict=day,badge,key`, {
-      method: 'POST', headers: { ...hdr(), 'Content-Type': 'application/json', Prefer: 'resolution=merge-duplicates,return=minimal' }, body: JSON.stringify(rows),
-    })
-    if (!r.ok) throw new Error(`miles_ledger upsert -> ${r.status}: ${(await r.text()).slice(0, 200)}`)
+    // awarded_at is the moment the mile was first earned. A re-strike must not
+    // move it, so existing rows are patched (miles, evidence) and only new
+    // rows are inserted.
+    const existing = await sb(`miles_ledger?select=id,badge,key,miles,evidence&day=eq.${day}`)
+    const seen = new Map(existing.map(e => [`${e.badge}|${e.key}`, e]))
+    const fresh = rows.filter(r => !seen.has(`${r.badge}|${r.key}`))
+    if (fresh.length) {
+      const r = await fetch(`${URL_BASE}/rest/v1/miles_ledger?on_conflict=day,badge,key`, {
+        method: 'POST', headers: { ...hdr(), 'Content-Type': 'application/json', Prefer: 'resolution=ignore-duplicates,return=minimal' }, body: JSON.stringify(fresh),
+      })
+      if (!r.ok) throw new Error(`miles_ledger insert -> ${r.status}: ${(await r.text()).slice(0, 200)}`)
+    }
+    for (const r of rows) {
+      const e = seen.get(`${r.badge}|${r.key}`)
+      if (e && (Number(e.miles) !== Number(r.miles) || e.evidence !== r.evidence)) {
+        await fetch(`${URL_BASE}/rest/v1/miles_ledger?id=eq.${e.id}`, { method: 'PATCH', headers: { ...hdr(), 'Content-Type': 'application/json', Prefer: 'return=minimal' }, body: JSON.stringify({ miles: r.miles, evidence: r.evidence, source: r.source }) }).catch(() => {})
+      }
+    }
   }
   const ledger = await sb(`miles_ledger?select=badge,miles,evidence&day=eq.${day}&order=id.asc`)
   const dayMiles = Math.round(ledger.reduce((s, r) => s + Number(r.miles || 0), 0) * 100) / 100
