@@ -14,7 +14,6 @@ import ObjectivesPage from './components/ObjectivesPage'
 import RelationshipsPage from './components/RelationshipsPage'
 import CompanyFinancePage from './components/CompanyFinancePage'
 import PersonalFinancePage from './components/PersonalFinancePage'
-import SessionBoardsPage from './components/SessionBoardsPage'
 import MHPIPage from './components/MHPIPage'
 import LandingPage from './components/LandingPage'
 import AgendaPage from './components/AgendaPage'
@@ -35,7 +34,6 @@ const NAV_ITEMS = [
   { id: 'main-missions',    label: 'Main Missions',         icon: LayoutGrid,     group: 'MISSION BOARD' },
   { id: 'side-missions',    label: 'Side Missions',         icon: Target,         group: 'MISSION BOARD' },
   { id: 'maintenance',      label: 'Maintenance',           icon: Wrench,         group: 'MISSION BOARD' },
-  { id: 'session-boards',   label: 'Work Board',            icon: ListChecks,     group: 'WORK BOARD' },
   { id: 'company-finance',  label: 'Third Horizon Finance', icon: Wallet,         group: 'RESOURCES' },
   { id: 'personal-finance', label: 'Personal Finance',      icon: CreditCard,     group: 'RESOURCES' },
   { id: 'network',          label: 'Network',               icon: Users,          group: 'RESOURCES' },
@@ -245,7 +243,6 @@ export default function App() {
           {active === 'main-missions'    && <ProjectsPage deepLink={params} onNavigate={setRoute} />}
           {active === 'side-missions'    && <ObjectivesPage />}
           {active === 'maintenance'      && <MaintenancePage />}
-          {active === 'session-boards'   && <SessionBoardsPage deepLink={params} />}
           {active === 'company-finance'  && <CompanyFinancePage />}
           {active === 'personal-finance' && <PersonalFinancePage />}
           {active === 'network'          && <RelationshipsPage />}

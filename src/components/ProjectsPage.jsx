@@ -6,6 +6,7 @@ import {
 import useProjects, { freshnessOf } from '../hooks/useProjects'
 import ArtifactsTab from './river/ArtifactsTab'
 import ItemDetail from './river/ItemDetail'
+import SessionBoard from './river/SessionBoard'
 
 // =============================================================================
 // STYLE TOKENS (CIP canon, matches ObjectivesPage dark stage)
@@ -271,36 +272,10 @@ function FilesTab({ project, listFiles, uploadFile, createFolder, fileUrl, delet
 function BoardTab({ board }) {
   if (!board) {
     return <div style={{ fontSize: 13, color: GRAY, padding: '12px 0' }}>
-      No session board for this project. One appears when a Claude session runs /hud-board under this project's key.
+      No session board for this mission yet. One appears when a Claude session opens a board under this mission's key.
     </div>
   }
-  const stColor = { done: GREEN, inmotion: GOLD, blocked: RED, open: GRAY }
-  return (
-    <div>
-      <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '1.2px', color: GRAY, marginBottom: 12, textTransform: 'uppercase' }}>
-        {board.title} · updated {new Date(board.updated_at).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
-      </div>
-      {(board.phases || []).map((ph, i) => (
-        <div key={i} style={{ marginBottom: 14 }}>
-          <div style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 14.5, letterSpacing: '-0.01em', color: BLUE, marginBottom: 6 }}>{ph.title}</div>
-          {(ph.tasks || []).map(t => (
-            <div key={t.id} style={{ display: 'flex', gap: 10, padding: '5px 0', alignItems: 'flex-start' }}>
-              <span style={{ fontFamily: MONO, fontSize: 10, color: stColor[t.status] || GRAY, flexShrink: 0, paddingTop: 2 }}>{t.id}</span>
-              <span style={{
-                fontSize: 13, lineHeight: 1.45, flex: 1,
-                color: t.status === 'done' ? GRAY : INK,
-                textDecoration: t.status === 'done' ? 'line-through' : 'none',
-              }}>
-                {t.label}
-                {t.status === 'blocked' && t.note && <span style={{ color: RED, fontSize: 11.5 }}> · {t.note}</span>}
-              </span>
-              <span style={{ fontFamily: MONO, fontSize: 8.5, letterSpacing: '1px', textTransform: 'uppercase', color: stColor[t.status] || GRAY, paddingTop: 3 }}>{t.status}</span>
-            </div>
-          ))}
-        </div>
-      ))}
-    </div>
-  )
+  return <SessionBoard key={board.id} board={board} compact />
 }
 
 // =============================================================================

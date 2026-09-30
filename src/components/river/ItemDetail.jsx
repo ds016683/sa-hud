@@ -10,6 +10,7 @@ import { supabase } from '../../lib/supabase'
 import { listArtifacts, readArtifact, writeArtifact } from '../../lib/artifacts'
 import { fetchLoadout, equip, holster, stash, equipObjective, equipTask, fmtClock, SIZES } from '../../lib/loadout'
 import { renderMarkdown } from './MeetingCloseout'
+import SessionBoard from './SessionBoard'
 import { INK, INK2, GRAY, PANEL_BORDER, GOLD, GOLD_BRIGHT, BLUE, GREEN, RED, MONO, SERIF, S, Label } from './canon'
 
 const NAVY_DEEP = '#0A1B2B'
@@ -57,7 +58,7 @@ async function loadRelated(item) {
     } catch { out.artifacts = [] }
     if (p) {
       const { data: sb } = await supabase.from('session_boards').select('id,project,title,updated_at,phases').or(`project.eq.${p.key || p.name},project.eq.${p.name}`).order('updated_at', { ascending: false }).limit(8)
-      out.boards = (sb || []).map(b => { const ts = (b.phases || []).flatMap(ph => ph.tasks || []); return { id: b.id, project: b.project, title: b.title, updated_at: b.updated_at, linked: !!task && (ts.some(t => t.task_id === task.id) || task.session_ref === b.id || task.session_ref === b.title), done: ts.filter(t => t.status === 'done').length, total: ts.length } })
+      out.boards = (sb || []).map(b => { const ts = (b.phases || []).flatMap(ph => ph.tasks || []); return { id: b.id, project: b.project, title: b.title, updated_at: b.updated_at, phases: b.phases || [], linked: !!task && (ts.some(t => t.task_id === task.id) || task.session_ref === b.id || task.session_ref === b.title), done: ts.filter(t => t.status === 'done').length, total: ts.length } })
       const { data: pf } = await supabase.storage.from('project-files').list(pid, { limit: 100 })
       out.projectFiles = (pf || []).filter(f => f.id !== null && !f.name.endsWith('.json')).map(f => ({ name: f.name, path: `${pid}/${f.name}`, bucket: 'project-files' }))
       const { data: sf } = await supabase.storage.from('files').list(p.name, { limit: 100 })
@@ -80,6 +81,7 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
   const [rel, setRel] = useState(null)
   const [msg, setMsg] = useState(null)
   const [openNote, setOpenNote] = useState(null)
+  const [boardId, setBoardId] = useState(null)
   const load = useCallback(() => loadRelated(item).then(setRel).catch(e => { console.warn('item detail', e.message); setRel({ project: null, task: null, artifacts: [], boards: [], projectFiles: [], storeFiles: [], meetings: [], loadout: null }) }), [item])
   useEffect(() => { load() }, [load])
   useEffect(() => {
@@ -203,31 +205,32 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
             </div>
           )}
 
-          {rel && tab === 'sessions' && (
-            <div>
-              {linkedBoards.map(b => (
-                <div key={b.id} style={rowStyle}>
-                  <ListChecks size={14} color={BLUE} /><span style={{ flex: 1, fontSize: 13.5, color: INK }}>{b.title}</span>
-                  <span style={{ fontFamily: MONO, fontSize: 9.5, color: GRAY }}>{b.done}/{b.total} · {String(b.updated_at).slice(0, 10)}</span>
-                  <button onClick={() => { onClose(); onNavigate && onNavigate('session-boards', [b.project]) }} style={btn(BLUE, true)}>Open</button>
-                </div>
-              ))}
-              {!linkedBoards.length && <None what={{ ...what, thing: 'a session' }} />}
-              {otherBoards.length > 0 && (
-                <div style={{ marginTop: 10 }}>
-                  <Label>Claude's boards on the mission</Label>
-                  {otherBoards.map(b => (
-                    <div key={b.id} style={rowStyle}>
-                      <ListChecks size={14} color={GRAY} /><span style={{ flex: 1, fontSize: 13, color: INK2 }}>{b.title}</span>
-                      <span style={{ fontFamily: MONO, fontSize: 9.5, color: GRAY }}>{b.done}/{b.total} · {String(b.updated_at).slice(0, 10)}</span>
-                      <button onClick={() => { onClose(); onNavigate && onNavigate('session-boards', [b.project]) }} style={btn(INK2)}>Open</button>
-                      {taskId && <button onClick={() => attachBoard(b)} style={btn(BLUE)}>Attach</button>}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
+          {rel && tab === 'sessions' && (() => {
+            const boards = [...linkedBoards, ...otherBoards]
+            const shown = boards.find(b => b.id === boardId) || linkedBoards[0] || boards[0] || null
+            return (
+              <div>
+                {!shown && <None what={{ ...what, thing: 'a session' }} />}
+                {!shown && !rel.project && <div style={{ fontSize: 12, color: GRAY }}>Sessions attach through a mission. Promote this to a Main Mission task and Claude's boards on that mission show here.</div>}
+                {shown && (
+                  <>
+                    {boards.length > 1 && (
+                      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 16 }}>
+                        {boards.map(b => <button key={b.id} onClick={() => setBoardId(b.id)} style={btn(b.linked ? BLUE : INK2, shown.id === b.id)}>{b.title} · {b.done}/{b.total}</button>)}
+                      </div>
+                    )}
+                    {!shown.linked && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 14, fontSize: 12.5, color: GRAY }}>
+                        <span>This {what.item} doesn't call for a session of its own. Showing Claude's latest board on the mission.</span>
+                        {taskId && <button onClick={() => attachBoard(shown)} style={btn(BLUE)}>Attach to this {what.item}</button>}
+                      </div>
+                    )}
+                    <SessionBoard key={shown.id} board={shown} onChange={() => onChange && onChange()} />
+                  </>
+                )}
+              </div>
+            )
+          })()}
 
           {rel && tab === 'files' && (
             <div>
