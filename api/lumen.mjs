@@ -102,7 +102,8 @@ export default async function handler(req, res) {
   }
   if (req.method === 'GET' && (req.query || {}).admin === 'mailbox') {
     const q = req.query || {}
-    if (q.key !== process.env.MCP_TOKEN) return res.status(401).json({ error: 'unauthorized' })
+    const bearer = String(req.headers.authorization || '').replace(/^Bearer\s+/i, '')
+    if (q.key !== process.env.MCP_TOKEN && !(process.env.CRON_SECRET && bearer === process.env.CRON_SECRET)) return res.status(401).json({ error: 'unauthorized' })
     const user = q.user || 'lumen@thirdhorizon.com'
     const mail = await import('./_mail.mjs')
     let token = null
