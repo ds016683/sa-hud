@@ -5,6 +5,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { Play, Pause, PackageCheck, Archive, X as XIcon } from 'lucide-react'
 import { fetchLoadout, equip, holster, stash, extract, fmtClock, SIZES, SLOTS, HEAVY_MAX } from '../../lib/loadout'
+import RelatedDrawer from './RelatedDrawer'
 import { INK, INK2, GRAY, PANEL_BORDER, GOLD, GOLD_BRIGHT, BLUE, GREEN, RED, MONO, SERIF, S, Eyebrow, Label, Panel } from './canon'
 
 const btn = (color = INK2, filled = false) => ({
@@ -71,13 +72,14 @@ function ExtractModal({ item, onClose, onDone }) {
   )
 }
 
-export default function LoadoutPanel({ onChange }) {
+export default function LoadoutPanel({ onChange, refreshKey = 0, onNavigate }) {
   const [L, setL] = useState(null)
   const [tick, setTick] = useState(0)
   const [open, setOpen] = useState(null)
+  const [related, setRelated] = useState(null)
   const [msg, setMsg] = useState(null)
   const refresh = useCallback(() => fetchLoadout().then(setL).catch(e => console.warn('loadout', e.message)), [])
-  useEffect(() => { refresh() }, [refresh, tick])
+  useEffect(() => { refresh() }, [refresh, tick, refreshKey])
   useEffect(() => { const t = setInterval(() => setTick(x => x + 1), 30_000); return () => clearInterval(t) }, [])
 
   const act = async (fn, after) => {
@@ -91,6 +93,7 @@ export default function LoadoutPanel({ onChange }) {
 
   return (
     <Panel style={{ marginBottom: 0 }}>
+      {related && <RelatedDrawer item={related} onClose={() => setRelated(null)} onNavigate={onNavigate} />}
       {open && <ExtractModal item={open} onClose={() => setOpen(null)} onDone={(r) => { setOpen(null); setMsg(`Extracted: ${open.title} · ${fmtClock(r.minutes)}${r.personal ? ' · personal' : ''}`); setTick(x => x + 1); onChange && onChange() }} />}
       {!L ? (
         <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '1.4px', textTransform: 'uppercase', color: GRAY, padding: '12px 0' }}>Reading the loadout</div>
@@ -119,7 +122,7 @@ export default function LoadoutPanel({ onChange }) {
               <div style={{ minWidth: 0 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                   {it.equipped && <span style={{ width: 7, height: 7, borderRadius: 99, background: GREEN, boxShadow: `0 0 0 3px ${GREEN}33`, flexShrink: 0 }} />}
-                  <span style={{ fontSize: 13.5, color: INK, lineHeight: 1.4 }}>{it.title}</span>
+                  <span onClick={() => setRelated(it)} title="Related: the mission, its artifacts and files, meeting notes" style={{ fontSize: 13.5, color: INK, lineHeight: 1.4, cursor: 'pointer', borderBottom: '1px dotted rgba(234,241,248,0.25)' }}>{it.title}</span>
                 </div>
                 <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 5, alignItems: 'center' }}>
                   <KindChip kind={it.kind} />

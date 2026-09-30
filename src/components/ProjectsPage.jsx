@@ -301,8 +301,8 @@ function BoardTab({ board }) {
 // =============================================================================
 // Detail view
 // =============================================================================
-function ProjectDetail({ project, board, api, onBack }) {
-  const [tab, setTab] = useState('tasks')
+function ProjectDetail({ project, board, api, onBack, initialTab, initialSlug }) {
+  const [tab, setTab] = useState(initialTab && ['tasks', 'board', 'artifacts', 'files'].includes(initialTab) ? initialTab : 'tasks')
   const [newTask, setNewTask] = useState('')
   const [showDone, setShowDone] = useState(false)
 
@@ -398,7 +398,7 @@ function ProjectDetail({ project, board, api, onBack }) {
           </div>
         )}
         {tab === 'board' && <BoardTab board={board} />}
-        {tab === 'artifacts' && <ArtifactsTab project={project} />}
+        {tab === 'artifacts' && <ArtifactsTab project={project} initialSlug={initialSlug} />}
         {tab === 'files' && (
           <FilesTab project={project}
             listFiles={api.listFiles} uploadFile={api.uploadFile} createFolder={api.createFolder}
@@ -412,10 +412,11 @@ function ProjectDetail({ project, board, api, onBack }) {
 // =============================================================================
 // Page
 // =============================================================================
-export default function ProjectsPage() {
+export default function ProjectsPage({ deepLink = [] } = {}) {
   const api = useProjects()
   const { loading, projects, boards } = api
-  const [detailId, setDetailId] = useState(null)
+  const [detailId, setDetailId] = useState(deepLink[0] || null)
+  useEffect(() => { if (deepLink[0]) setDetailId(deepLink[0]) }, [deepLink])
   const [catFilter, setCatFilter] = useState('all')
   const [showArchived, setShowArchived] = useState(false)
   const [adding, setAdding] = useState(false)
@@ -432,7 +433,7 @@ export default function ProjectsPage() {
   const detail = detailId ? projects.find(p => p.id === detailId) : null
   if (detail) {
     const board = boards.find(b => b.project === detail.key) || null
-    return <ProjectDetail project={detail} board={board} api={api} onBack={() => setDetailId(null)} />
+    return <ProjectDetail key={detail.id + (deepLink[1] || '') + (deepLink[2] || '')} project={detail} board={board} api={api} onBack={() => setDetailId(null)} initialTab={deepLink[0] === detail.id ? deepLink[1] : undefined} initialSlug={deepLink[0] === detail.id ? deepLink[2] : undefined} />
   }
 
   const cats = CATEGORY_ORDER.filter(c => active.some(p => p.category === c))

@@ -204,9 +204,9 @@ function Scorecard({ doc, onChange }) {
   )
 }
 
-export default function ArtifactsTab({ project }) {
+export default function ArtifactsTab({ project, initialSlug }) {
   const [list, setList] = useState(undefined)
-  const [slug, setSlug] = useState(null)
+  const [slug, setSlug] = useState(initialSlug || null)
   const [doc, setDoc] = useState(null)
   const [dirty, setDirty] = useState(false)
   const [msg, setMsg] = useState(null)

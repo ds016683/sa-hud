@@ -469,7 +469,7 @@ function MaintenancePanel({ items, loading }) {
 }
 
 // =============================================================================
-export default function AgendaPage() {
+export default function AgendaPage({ onNavigate } = {}) {
   const [day, setDay] = useState(chiToday)
   const [events, setEvents] = useState(null)
   const [tasks, setTasks] = useState(null)
@@ -567,7 +567,7 @@ export default function AgendaPage() {
       {day === today && (
         <>
           <RailSection title="Loadout">
-            <LoadoutPanel onChange={refresh} />
+            <LoadoutPanel onChange={refresh} refreshKey={refreshKey} onNavigate={onNavigate} />
           </RailSection>
           <RailSection title="Ambush">
             <AmbushPanel onChange={refresh} />

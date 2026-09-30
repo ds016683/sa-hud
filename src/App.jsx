@@ -170,11 +170,26 @@ function Topbar({ active, now, sov, onBack }) {
 export default function App() {
   const [session, setSession] = useState(undefined)
   // Hash routing so the browser's back and forward work between pages.
-  const readHash = () => { const h = (window.location.hash || '').replace(/^#\/?/, ''); return NAV_ITEMS.some(n => n.id === h) ? h : 'river' }
+  // #/page or #/page/segment/segment: the page id first, deep-link params after
+  // (main-missions/<projectId>/<tab>/<slug> opens a mission on a tab, on an artifact).
+  const parseHash = () => {
+    const parts = (window.location.hash || '').replace(/^#\/?/, '').split('/').filter(Boolean)
+    const page = NAV_ITEMS.some(n => n.id === parts[0]) ? parts[0] : 'river'
+    return { page, params: page === parts[0] ? parts.slice(1).map(decodeURIComponent) : [] }
+  }
+  const readHash = () => parseHash().page
   const [active, setActiveState] = useState(readHash)
+  const [params, setParams] = useState(() => parseHash().params)
   const setActive = (id) => {
-    if (id === active) return
+    if (id === active && !params.length) return
     try { window.history.pushState({ page: id }, '', `#/${id}`) } catch { /* no-op */ }
+    setParams([])
+    setActiveState(id)
+  }
+  // Route with segments, e.g. setRoute('main-missions', [projectId, 'artifacts', slug]).
+  const setRoute = (id, segs = []) => {
+    try { window.history.pushState({ page: id }, '', `#/${[id, ...segs.map(encodeURIComponent)].join('/')}`) } catch { /* no-op */ }
+    setParams(segs)
     setActiveState(id)
   }
   const goBack = () => {
@@ -182,7 +197,7 @@ export default function App() {
     else setActive('river')
   }
   useEffect(() => {
-    const onPop = () => setActiveState(readHash())
+    const onPop = () => { const h = parseHash(); setParams(h.params); setActiveState(h.page) }
     window.addEventListener('popstate', onPop)
     return () => window.removeEventListener('popstate', onPop)
   }, [])
@@ -222,12 +237,12 @@ export default function App() {
         <Topbar active={active} now={now} sov={gameState.sovereigntyLevel} onBack={goBack} />
         <div className="sa-content">
           {active === 'river'            && <LandingPage onNavigate={setActive} />}
-          {active === 'agenda'           && <AgendaPage />}
+          {active === 'agenda'           && <AgendaPage onNavigate={setRoute} />}
           {active === 'narrative'        && <NarrativePage />}
           {active === 'activity'         && <ActivityPage />}
           {active === 'accomplishments'  && <AccomplishmentsPage />}
           {active === 'notes'            && <MeetingNotesPage />}
-          {active === 'main-missions'    && <ProjectsPage />}
+          {active === 'main-missions'    && <ProjectsPage deepLink={params} onNavigate={setRoute} />}
           {active === 'side-missions'    && <ObjectivesPage />}
           {active === 'maintenance'      && <MaintenancePage />}
           {active === 'session-boards'   && <SessionBoardsPage />}

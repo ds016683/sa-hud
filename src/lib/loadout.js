@@ -36,7 +36,7 @@ export async function fetchLoadout() {
   const day = chiToday()
   const nowIso = new Date().toISOString()
   const [active, clocks, events, links, projects] = await Promise.all([
-    q(supabase.from('objectives').select('id,title,state,tags,effort,due_date,activated_at,captured_at').eq('state', 'active').is('deleted_at', null).order('activated_at', { ascending: true })),
+    q(supabase.from('objectives').select('id,title,state,tags,effort,due_date,activated_at,captured_at,description').eq('state', 'active').is('deleted_at', null).order('activated_at', { ascending: true })),
     q(supabase.from('clocks').select('id,objective_id,day,started_at,stopped_at,minutes').or(`stopped_at.is.null,day.eq.${day}`)),
     q(supabase.from('calendar_events').select('subject,start_at,end_at,is_all_day').eq('day', day).eq('is_cancelled', false)),
     q(supabase.from('project_tasks').select('objective_id,project_id').not('objective_id', 'is', null)),
@@ -44,6 +44,7 @@ export async function fetchLoadout() {
   ])
   const projName = new Map(projects.map(p => [p.id, p.name]))
   const projByObj = new Map(links.map(l => [l.objective_id, projName.get(l.project_id)]))
+  const projIdByObj = new Map(links.map(l => [l.objective_id, l.project_id]))
   const running = clocks.find(c => !c.stopped_at) || null
   const now = Date.now()
   const minutesFor = (id) => clocks.filter(c => c.objective_id === id).reduce((s, c) => s + (c.stopped_at ? (Number(c.minutes) || 0) : (now - new Date(c.started_at).getTime()) / 60000), 0)
@@ -54,7 +55,7 @@ export async function fetchLoadout() {
       equipped: !!running && running.objective_id === o.id, running_since: running && running.objective_id === o.id ? running.started_at : null,
       minutes_today: minutesFor(o.id),
       session: tags.includes('session'),
-      project: projByObj.get(o.id) || null,
+      project: projByObj.get(o.id) || null, project_id: projIdByObj.get(o.id) || null, description: o.description || null,
       kind: tags.includes('impromptu') ? 'Impromptu' : (projByObj.has(o.id) || tags.includes('mission-task')) ? 'Main Mission' : tags.includes('session') ? 'Session' : 'Side Mission',
       personal: tags.includes('personal'),
     }
