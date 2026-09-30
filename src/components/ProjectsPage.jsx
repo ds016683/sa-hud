@@ -5,8 +5,7 @@ import {
 } from 'lucide-react'
 import useProjects, { freshnessOf } from '../hooks/useProjects'
 import ArtifactsTab from './river/ArtifactsTab'
-import { listArtifacts, readArtifact, writeArtifact } from '../lib/artifacts'
-import { supabase as sbClient } from '../lib/supabase'
+import ItemDetail from './river/ItemDetail'
 
 // =============================================================================
 // STYLE TOKENS (CIP canon, matches ObjectivesPage dark stage)
@@ -119,74 +118,7 @@ function ProjectCard({ project, onOpen }) {
 // =============================================================================
 // Detail: task row
 // =============================================================================
-// What a task carries: an artifact, a session, files. Each is a pill; a pill
-// with nothing behind it says so and offers to attach one from the mission.
-function TaskDetail({ project, task, onOpenArtifact, onOpenBoard, onOpenFiles, updateTask }) {
-  const [state, setState] = useState(null)
-  const load = useCallback(async () => {
-    const out = { artifacts: [], boards: [], files: 0 }
-    try {
-      const list = await listArtifacts(project.id)
-      const docs = await Promise.all(list.map(async a => { try { const d = await readArtifact(project.id, a.slug); return { slug: a.slug, title: d.title || a.slug, task_id: d.task_id || null } } catch { return { slug: a.slug, title: a.slug, task_id: null } } }))
-      out.artifacts = docs
-    } catch { /* none */ }
-    try {
-      const { data } = await sbClient.from('session_boards').select('id,project,title,updated_at,phases').or(`project.eq.${project.key || project.name},project.eq.${project.name}`).order('updated_at', { ascending: false }).limit(8)
-      out.boards = (data || []).map(bd => { const tasks = (bd.phases || []).flatMap(ph => ph.tasks || []); return { id: bd.id, title: bd.title, updated_at: bd.updated_at, linked: tasks.some(t => t.task_id === task.id), done: tasks.filter(t => t.status === 'done').length, total: tasks.length } })
-    } catch { /* none */ }
-    try { const { data } = await sbClient.storage.from('project-files').list(project.id, { limit: 100 }); out.files = (data || []).filter(f => f.id !== null && !f.name.endsWith('.json')).length } catch { /* none */ }
-    setState(out)
-  }, [project.id, project.key, project.name, task.id])
-  useEffect(() => { load() }, [load])
-
-  const linkedArtifacts = (state?.artifacts || []).filter(a => a.task_id === task.id)
-  const otherArtifacts = (state?.artifacts || []).filter(a => a.task_id !== task.id)
-  const linkedBoards = (state?.boards || []).filter(bd => bd.linked || bd.id === task.session_ref || bd.title === task.session_ref)
-  const otherBoards = (state?.boards || []).filter(bd => !linkedBoards.includes(bd))
-
-  const attachArtifact = async (slug) => {
-    const doc = await readArtifact(project.id, slug)
-    await writeArtifact(project.id, slug, { ...doc, task_id: task.id })
-    load()
-  }
-  const attachBoard = async (bd) => { await updateTask(project.id, task.id, { session_ref: bd.id }); load() }
-
-  const pill = (color, filled) => ({ fontFamily: MONO, fontSize: 9.5, letterSpacing: '1px', textTransform: 'uppercase', padding: '5px 10px', borderRadius: 9999, cursor: 'pointer', border: `1px solid ${filled ? color : 'rgba(255,255,255,0.16)'}`, background: filled ? `${color}22` : 'transparent', color: filled ? color : 'rgba(234,241,248,0.6)' })
-  const none = (what) => <span style={{ fontSize: 12, color: GRAY }}>This task doesn't call for {what}.</span>
-  const Section = ({ label, children }) => (
-    <div style={{ display: 'grid', gridTemplateColumns: '84px 1fr', gap: 12, alignItems: 'start', padding: '7px 0' }}>
-      <span style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '1.2px', textTransform: 'uppercase', color: GRAY, paddingTop: 6 }}>{label}</span>
-      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>{children}</div>
-    </div>
-  )
-  return (
-    <div style={{ margin: '4px 0 6px 28px', padding: '8px 14px', borderLeft: `2px solid ${PANEL_BORDER}` }}>
-      {!state && <div style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '1.2px', textTransform: 'uppercase', color: GRAY }}>Looking</div>}
-      {state && (
-        <>
-          <Section label="Artifact">
-            {linkedArtifacts.map(a => <button key={a.slug} onClick={() => onOpenArtifact(a.slug)} style={pill(GOLD, true)}>{a.title}</button>)}
-            {!linkedArtifacts.length && none('an artifact')}
-            {otherArtifacts.length > 0 && <span style={{ fontSize: 11, color: GRAY }}>· attach:</span>}
-            {otherArtifacts.map(a => <button key={a.slug} onClick={() => attachArtifact(a.slug)} title="Attach this artifact to the task" style={pill(GOLD, false)}>{a.title}</button>)}
-          </Section>
-          <Section label="Session">
-            {linkedBoards.map(bd => <button key={bd.id} onClick={() => onOpenBoard(bd)} style={pill(BLUE, true)}>{bd.title} · {bd.done}/{bd.total}</button>)}
-            {!linkedBoards.length && none('a session')}
-            {otherBoards.length > 0 && <span style={{ fontSize: 11, color: GRAY }}>· attach:</span>}
-            {otherBoards.map(bd => <button key={bd.id} onClick={() => attachBoard(bd)} title="Attach this session board to the task" style={pill(BLUE, false)}>{bd.title}</button>)}
-          </Section>
-          <Section label="Files">
-            {state.files > 0 ? <button onClick={onOpenFiles} style={pill(TEXT_DIM, true)}>{state.files} mission file{state.files === 1 ? '' : 's'}</button> : none('files')}
-          </Section>
-          {task.notes && <div style={{ fontSize: 12.5, color: TEXT_DIM, lineHeight: 1.55, marginTop: 6, whiteSpace: 'pre-wrap' }}>{task.notes}</div>}
-        </>
-      )}
-    </div>
-  )
-}
-
-function TaskRow({ project, task, onToggle, onPromote, onDelete, onOpenArtifact, onOpenBoard, onOpenFiles, updateTask }) {
+function TaskRow({ project, task, onToggle, onPromote, onDelete, onNavigate }) {
   const open = isOpen(task)
   const blocked = isBlocked(task)
   const promoted = !!task.objective_id
@@ -224,7 +156,7 @@ function TaskRow({ project, task, onToggle, onPromote, onDelete, onOpenArtifact,
         background: 'transparent', border: 'none', color: 'rgba(234,241,248,0.25)', cursor: 'pointer', padding: 4,
       }}><Trash2 size={13} /></button>
     </div>
-    {expanded && <TaskDetail project={project} task={task} onOpenArtifact={onOpenArtifact} onOpenBoard={onOpenBoard} onOpenFiles={onOpenFiles} updateTask={updateTask} />}
+    {expanded && <ItemDetail item={{ id: task.objective_id || task.id, objective_id: task.objective_id || null, task_id: task.id, kind: 'Main Mission', title: task.text, project: project.name, project_id: project.id, description: task.notes || null }} onClose={() => setExpanded(false)} onNavigate={onNavigate} />}
     </div>
   )
 }
@@ -374,12 +306,10 @@ function BoardTab({ board }) {
 // =============================================================================
 // Detail view
 // =============================================================================
-function ProjectDetail({ project, board, api, onBack, initialTab, initialSlug }) {
+function ProjectDetail({ project, board, api, onBack, initialTab, initialSlug, onNavigate }) {
   const [tab, setTab] = useState(initialTab && ['tasks', 'board', 'artifacts', 'files'].includes(initialTab) ? initialTab : 'tasks')
   const [artifactSlug, setArtifactSlug] = useState(initialSlug || null)
   const openArtifact = (slug) => { setArtifactSlug(slug); setTab('artifacts') }
-  const openBoard = () => setTab('board')
-  const openFiles = () => setTab('files')
   const [newTask, setNewTask] = useState('')
   const [showDone, setShowDone] = useState(false)
 
@@ -455,7 +385,7 @@ function ProjectDetail({ project, board, api, onBack, initialTab, initialSlug })
             {!blockedFirst.length && <div style={{ fontSize: 13, color: GRAY, padding: '10px 0' }}>No open tasks.</div>}
             {blockedFirst.map(t => (
               <TaskRow key={t.id} project={project} task={t}
-                onToggle={api.toggleTask} onPromote={promote} onDelete={api.deleteTask} onOpenArtifact={openArtifact} onOpenBoard={openBoard} onOpenFiles={openFiles} updateTask={api.updateTask} />
+                onToggle={api.toggleTask} onPromote={promote} onDelete={api.deleteTask} onNavigate={onNavigate} />
             ))}
 
             {doneTasks.length > 0 && (
@@ -468,7 +398,7 @@ function ProjectDetail({ project, board, api, onBack, initialTab, initialSlug })
                 </button>
                 {showDone && doneTasks.map(t => (
                   <TaskRow key={t.id} project={project} task={t}
-                    onToggle={api.toggleTask} onPromote={promote} onDelete={api.deleteTask} onOpenArtifact={openArtifact} onOpenBoard={openBoard} onOpenFiles={openFiles} updateTask={api.updateTask} />
+                    onToggle={api.toggleTask} onPromote={promote} onDelete={api.deleteTask} onNavigate={onNavigate} />
                 ))}
               </div>
             )}
@@ -489,7 +419,7 @@ function ProjectDetail({ project, board, api, onBack, initialTab, initialSlug })
 // =============================================================================
 // Page
 // =============================================================================
-export default function ProjectsPage({ deepLink = [] } = {}) {
+export default function ProjectsPage({ deepLink = [], onNavigate } = {}) {
   const api = useProjects()
   const { loading, projects, boards } = api
   const [detailId, setDetailId] = useState(deepLink[0] || null)
@@ -510,7 +440,7 @@ export default function ProjectsPage({ deepLink = [] } = {}) {
   const detail = detailId ? projects.find(p => p.id === detailId) : null
   if (detail) {
     const board = boards.find(b => b.project === detail.key) || null
-    return <ProjectDetail key={detail.id + (deepLink[1] || '') + (deepLink[2] || '')} project={detail} board={board} api={api} onBack={() => setDetailId(null)} initialTab={deepLink[0] === detail.id ? deepLink[1] : undefined} initialSlug={deepLink[0] === detail.id ? deepLink[2] : undefined} />
+    return <ProjectDetail key={detail.id + (deepLink[1] || '') + (deepLink[2] || '')} project={detail} board={board} api={api} onBack={() => setDetailId(null)} initialTab={deepLink[0] === detail.id ? deepLink[1] : undefined} initialSlug={deepLink[0] === detail.id ? deepLink[2] : undefined} onNavigate={onNavigate} />
   }
 
   const cats = CATEGORY_ORDER.filter(c => active.some(p => p.category === c))
