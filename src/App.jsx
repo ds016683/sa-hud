@@ -245,7 +245,7 @@ export default function App() {
           {active === 'main-missions'    && <ProjectsPage deepLink={params} onNavigate={setRoute} />}
           {active === 'side-missions'    && <ObjectivesPage />}
           {active === 'maintenance'      && <MaintenancePage />}
-          {active === 'session-boards'   && <SessionBoardsPage />}
+          {active === 'session-boards'   && <SessionBoardsPage deepLink={params} />}
           {active === 'company-finance'  && <CompanyFinancePage />}
           {active === 'personal-finance' && <PersonalFinancePage />}
           {active === 'network'          && <RelationshipsPage />}

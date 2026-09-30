@@ -58,9 +58,10 @@ function Glyph({ status }) {
   return <span style={base} />
 }
 
-export default function SessionBoardsPage() {
+export default function SessionBoardsPage({ deepLink = [] } = {}) {
   const [rows, setRows] = useState(null)
-  const [selProject, setSelProject] = useState(null)
+  const [selProject, setSelProject] = useState(deepLink[0] || null)
+  useEffect(() => { if (deepLink[0]) setSelProject(deepLink[0]) }, [deepLink])
   const savingRef = useRef(false)
 
   const load = useCallback(async () => {

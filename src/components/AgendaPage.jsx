@@ -15,6 +15,7 @@ import RecurringPanel from './river/RecurringPanel'
 import ReleasePanel from './river/ReleasePanel'
 import AmbushPanel from './river/AmbushPanel'
 import { equipTask, equipObjective } from '../lib/loadout'
+import RelatedDrawer from './river/RelatedDrawer'
 import {
   INK, INK2, GRAY, NAVY_DEEP, PANEL_BORDER, GOLD, GOLD_BRIGHT, BLUE, PERIWINKLE, GREEN, RED, MONO, SERIF,
   S, Eyebrow, Label, Panel, RailSection, chiToday, fmtTime, weekday,
@@ -274,7 +275,7 @@ function fmtStamp(iso) {
   return d.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZone: 'America/Chicago' })
 }
 
-function TaskBackstory({ t, objective, day, onClose, onEquip, busy, note }) {
+function TaskBackstory({ t, objective, day, onClose, onEquip, onRelated, busy, note }) {
   useEffect(() => {
     const onKey = (e) => { if (e.key === 'Escape') onClose() }
     window.addEventListener('keydown', onKey)
@@ -320,6 +321,7 @@ function TaskBackstory({ t, objective, day, onClose, onEquip, busy, note }) {
         {!t.notes && !objective?.description && <div style={{ fontSize: 12, color: GRAY, marginTop: 14 }}>No back story on this task yet. Notes added on the project page or by Lumen show here.</div>}
         {note && <div style={{ fontSize: 12, color: note.startsWith('Could') || note.startsWith('No room') ? RED : GREEN, marginTop: 12 }}>{note}</div>}
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 16 }}>
+          <button onClick={onRelated} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: MONO, fontSize: 9.5, letterSpacing: '1px', textTransform: 'uppercase', padding: '6px 10px', borderRadius: 8, border: `1px solid ${PANEL_BORDER}`, background: 'transparent', color: INK2, cursor: 'pointer' }}>Related: artifacts · sessions · files</button>
           <button onClick={onEquip} disabled={busy} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: MONO, fontSize: 9.5, letterSpacing: '1px', textTransform: 'uppercase', padding: '6px 10px', borderRadius: 8, border: `1px solid ${GREEN}`, background: GREEN, color: '#0A1B2B', cursor: 'pointer' }}>
             <Play size={11} /> {objective?.state === 'active' ? 'Timer on' : 'Load and start timer'}
           </button>
@@ -329,8 +331,9 @@ function TaskBackstory({ t, objective, day, onClose, onEquip, busy, note }) {
   )
 }
 
-function MainMissionPanel({ tasks, projects, objectives, loading, day, refresh }) {
+function MainMissionPanel({ tasks, projects, objectives, loading, day, refresh, onNavigate }) {
   const [open, setOpen] = useState(null)
+  const [related, setRelated] = useState(null)
   const [busy, setBusy] = useState(false)
   const [note, setNote] = useState(null)
   if (loading && !tasks) return <Panel title="Main Mission tasks" style={{ marginBottom: 0 }}><Empty>Loading…</Empty></Panel>
@@ -357,7 +360,8 @@ function MainMissionPanel({ tasks, projects, objectives, loading, day, refresh }
   }
   return (
     <Panel title="Main Mission tasks" style={{ marginBottom: 0 }}>
-      {open && <TaskBackstory t={open} objective={objById.get(open.objective_id)} day={day} onClose={() => { setOpen(null); setNote(null) }} onEquip={() => doEquip(open)} busy={busy} note={note} />}
+      {open && <TaskBackstory t={open} objective={objById.get(open.objective_id)} day={day} onClose={() => { setOpen(null); setNote(null) }} onEquip={() => doEquip(open)} onRelated={() => { setRelated({ id: open.objective_id || open.id, title: open.text, kind: 'Main Mission', project: open.project?.name || null, project_id: open.project_id, description: open.notes || null }); setOpen(null) }} busy={busy} note={note} />}
+      {related && <RelatedDrawer item={related} onClose={() => setRelated(null)} onNavigate={onNavigate} />}
       {rows.length > 0 && (
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
           {[1, 2, 3, 4].filter(p => counts[p]).map(p => (
@@ -586,7 +590,7 @@ export default function AgendaPage({ onNavigate } = {}) {
           <CalendarPanel events={calEvents} loading={loading} now={now} day={day} refresh={refresh} />
         </div>
         <div className="agenda-side">
-          <MainMissionPanel tasks={tasks} projects={projects} objectives={allObjectives} loading={loading} day={day} refresh={refresh} />
+          <MainMissionPanel tasks={tasks} projects={projects} objectives={allObjectives} loading={loading} day={day} refresh={refresh} onNavigate={onNavigate} />
           <SideMissionPanel objectives={objectives} loading={loading} day={day} refresh={refresh} />
           <MaintenancePanel items={maintenance} loading={loading} />
         </div>
