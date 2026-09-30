@@ -33,7 +33,12 @@ export default function RelatedDrawer({ item, onClose, onNavigate }) {
       // The mission and the linked task
       const { data: links } = await supabase.from('project_tasks').select('id,text,notes,status,due_date,project_id').eq('objective_id', item.id).limit(1)
       const task = links && links[0]
-      const pid = item.project_id || task?.project_id || null
+      let pid = item.project_id || task?.project_id || null
+      // A Claude session item carries its mission key at the end of the title: "Session · ... · Client.MMA"
+      if (!pid && (item.tags || []).includes('session')) {
+        const key = String(item.title || '').split('·').pop().trim()
+        if (key) { const { data: pk } = await supabase.from('projects').select('id').or(`key.eq.${key},name.eq.${key}`).limit(1); pid = pk?.[0]?.id || null }
+      }
       if (task) out.task = task
       if (pid) {
         const { data: p } = await supabase.from('projects').select('id,name,key,description').eq('id', pid).single()

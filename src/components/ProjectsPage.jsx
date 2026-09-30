@@ -5,6 +5,8 @@ import {
 } from 'lucide-react'
 import useProjects, { freshnessOf } from '../hooks/useProjects'
 import ArtifactsTab from './river/ArtifactsTab'
+import { listArtifacts, readArtifact, writeArtifact } from '../lib/artifacts'
+import { supabase as sbClient } from '../lib/supabase'
 
 // =============================================================================
 // STYLE TOKENS (CIP canon, matches ObjectivesPage dark stage)
@@ -117,12 +119,81 @@ function ProjectCard({ project, onOpen }) {
 // =============================================================================
 // Detail: task row
 // =============================================================================
-function TaskRow({ project, task, onToggle, onPromote, onDelete }) {
+// What a task carries: an artifact, a session, files. Each is a pill; a pill
+// with nothing behind it says so and offers to attach one from the mission.
+function TaskDetail({ project, task, onOpenArtifact, onOpenBoard, onOpenFiles, updateTask }) {
+  const [state, setState] = useState(null)
+  const load = useCallback(async () => {
+    const out = { artifacts: [], boards: [], files: 0 }
+    try {
+      const list = await listArtifacts(project.id)
+      const docs = await Promise.all(list.map(async a => { try { const d = await readArtifact(project.id, a.slug); return { slug: a.slug, title: d.title || a.slug, task_id: d.task_id || null } } catch { return { slug: a.slug, title: a.slug, task_id: null } } }))
+      out.artifacts = docs
+    } catch { /* none */ }
+    try {
+      const { data } = await sbClient.from('session_boards').select('id,project,title,updated_at,phases').or(`project.eq.${project.key || project.name},project.eq.${project.name}`).order('updated_at', { ascending: false }).limit(8)
+      out.boards = (data || []).map(bd => { const tasks = (bd.phases || []).flatMap(ph => ph.tasks || []); return { id: bd.id, title: bd.title, updated_at: bd.updated_at, linked: tasks.some(t => t.task_id === task.id), done: tasks.filter(t => t.status === 'done').length, total: tasks.length } })
+    } catch { /* none */ }
+    try { const { data } = await sbClient.storage.from('project-files').list(project.id, { limit: 100 }); out.files = (data || []).filter(f => f.id !== null && !f.name.endsWith('.json')).length } catch { /* none */ }
+    setState(out)
+  }, [project.id, project.key, project.name, task.id])
+  useEffect(() => { load() }, [load])
+
+  const linkedArtifacts = (state?.artifacts || []).filter(a => a.task_id === task.id)
+  const otherArtifacts = (state?.artifacts || []).filter(a => a.task_id !== task.id)
+  const linkedBoards = (state?.boards || []).filter(bd => bd.linked || bd.id === task.session_ref || bd.title === task.session_ref)
+  const otherBoards = (state?.boards || []).filter(bd => !linkedBoards.includes(bd))
+
+  const attachArtifact = async (slug) => {
+    const doc = await readArtifact(project.id, slug)
+    await writeArtifact(project.id, slug, { ...doc, task_id: task.id })
+    load()
+  }
+  const attachBoard = async (bd) => { await updateTask(project.id, task.id, { session_ref: bd.id }); load() }
+
+  const pill = (color, filled) => ({ fontFamily: MONO, fontSize: 9.5, letterSpacing: '1px', textTransform: 'uppercase', padding: '5px 10px', borderRadius: 9999, cursor: 'pointer', border: `1px solid ${filled ? color : 'rgba(255,255,255,0.16)'}`, background: filled ? `${color}22` : 'transparent', color: filled ? color : 'rgba(234,241,248,0.6)' })
+  const none = (what) => <span style={{ fontSize: 12, color: GRAY }}>This task doesn't call for {what}.</span>
+  const Section = ({ label, children }) => (
+    <div style={{ display: 'grid', gridTemplateColumns: '84px 1fr', gap: 12, alignItems: 'start', padding: '7px 0' }}>
+      <span style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '1.2px', textTransform: 'uppercase', color: GRAY, paddingTop: 6 }}>{label}</span>
+      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>{children}</div>
+    </div>
+  )
+  return (
+    <div style={{ margin: '4px 0 6px 28px', padding: '8px 14px', borderLeft: `2px solid ${PANEL_BORDER}` }}>
+      {!state && <div style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '1.2px', textTransform: 'uppercase', color: GRAY }}>Looking</div>}
+      {state && (
+        <>
+          <Section label="Artifact">
+            {linkedArtifacts.map(a => <button key={a.slug} onClick={() => onOpenArtifact(a.slug)} style={pill(GOLD, true)}>{a.title}</button>)}
+            {!linkedArtifacts.length && none('an artifact')}
+            {otherArtifacts.length > 0 && <span style={{ fontSize: 11, color: GRAY }}>· attach:</span>}
+            {otherArtifacts.map(a => <button key={a.slug} onClick={() => attachArtifact(a.slug)} title="Attach this artifact to the task" style={pill(GOLD, false)}>{a.title}</button>)}
+          </Section>
+          <Section label="Session">
+            {linkedBoards.map(bd => <button key={bd.id} onClick={() => onOpenBoard(bd)} style={pill(BLUE, true)}>{bd.title} · {bd.done}/{bd.total}</button>)}
+            {!linkedBoards.length && none('a session')}
+            {otherBoards.length > 0 && <span style={{ fontSize: 11, color: GRAY }}>· attach:</span>}
+            {otherBoards.map(bd => <button key={bd.id} onClick={() => attachBoard(bd)} title="Attach this session board to the task" style={pill(BLUE, false)}>{bd.title}</button>)}
+          </Section>
+          <Section label="Files">
+            {state.files > 0 ? <button onClick={onOpenFiles} style={pill(TEXT_DIM, true)}>{state.files} mission file{state.files === 1 ? '' : 's'}</button> : none('files')}
+          </Section>
+          {task.notes && <div style={{ fontSize: 12.5, color: TEXT_DIM, lineHeight: 1.55, marginTop: 6, whiteSpace: 'pre-wrap' }}>{task.notes}</div>}
+        </>
+      )}
+    </div>
+  )
+}
+
+function TaskRow({ project, task, onToggle, onPromote, onDelete, onOpenArtifact, onOpenBoard, onOpenFiles, updateTask }) {
   const open = isOpen(task)
   const blocked = isBlocked(task)
   const promoted = !!task.objective_id
+  const [expanded, setExpanded] = useState(false)
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 0', borderTop: `1px solid ${PANEL_BORDER}` }}>
+    <div style={{ borderTop: `1px solid ${PANEL_BORDER}` }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 0' }}>
       <button onClick={() => onToggle(project.id, task)} title={open ? 'Mark done' : 'Reopen'} style={{
         width: 18, height: 18, borderRadius: 5, flexShrink: 0, cursor: 'pointer',
         border: open ? `1.5px solid ${blocked ? RED : 'rgba(234,241,248,0.35)'}` : `1.5px solid ${GREEN}`,
@@ -131,9 +202,9 @@ function TaskRow({ project, task, onToggle, onPromote, onDelete }) {
       }}>
         {!open && <Check size={12} />}
       </button>
-      <div style={{ flex: 1, minWidth: 0 }}>
+      <div style={{ flex: 1, minWidth: 0 }} onClick={() => setExpanded(x => !x)} title="Artifact · session · files for this task">
         <div style={{
-          fontSize: 13.5, lineHeight: 1.45, color: open ? INK : GRAY,
+          fontSize: 13.5, lineHeight: 1.45, color: open ? INK : GRAY, cursor: 'pointer',
           textDecoration: open ? 'none' : 'line-through',
         }}>{task.text}</div>
         {(blocked || promoted || task.source === 'session') && open && (
@@ -152,6 +223,8 @@ function TaskRow({ project, task, onToggle, onPromote, onDelete }) {
       <button onClick={() => { if (window.confirm('Delete this task?')) onDelete(project.id, task.id) }} title="Delete task" style={{
         background: 'transparent', border: 'none', color: 'rgba(234,241,248,0.25)', cursor: 'pointer', padding: 4,
       }}><Trash2 size={13} /></button>
+    </div>
+    {expanded && <TaskDetail project={project} task={task} onOpenArtifact={onOpenArtifact} onOpenBoard={onOpenBoard} onOpenFiles={onOpenFiles} updateTask={updateTask} />}
     </div>
   )
 }
@@ -303,6 +376,10 @@ function BoardTab({ board }) {
 // =============================================================================
 function ProjectDetail({ project, board, api, onBack, initialTab, initialSlug }) {
   const [tab, setTab] = useState(initialTab && ['tasks', 'board', 'artifacts', 'files'].includes(initialTab) ? initialTab : 'tasks')
+  const [artifactSlug, setArtifactSlug] = useState(initialSlug || null)
+  const openArtifact = (slug) => { setArtifactSlug(slug); setTab('artifacts') }
+  const openBoard = () => setTab('board')
+  const openFiles = () => setTab('files')
   const [newTask, setNewTask] = useState('')
   const [showDone, setShowDone] = useState(false)
 
@@ -378,7 +455,7 @@ function ProjectDetail({ project, board, api, onBack, initialTab, initialSlug })
             {!blockedFirst.length && <div style={{ fontSize: 13, color: GRAY, padding: '10px 0' }}>No open tasks.</div>}
             {blockedFirst.map(t => (
               <TaskRow key={t.id} project={project} task={t}
-                onToggle={api.toggleTask} onPromote={promote} onDelete={api.deleteTask} />
+                onToggle={api.toggleTask} onPromote={promote} onDelete={api.deleteTask} onOpenArtifact={openArtifact} onOpenBoard={openBoard} onOpenFiles={openFiles} updateTask={api.updateTask} />
             ))}
 
             {doneTasks.length > 0 && (
@@ -391,14 +468,14 @@ function ProjectDetail({ project, board, api, onBack, initialTab, initialSlug })
                 </button>
                 {showDone && doneTasks.map(t => (
                   <TaskRow key={t.id} project={project} task={t}
-                    onToggle={api.toggleTask} onPromote={promote} onDelete={api.deleteTask} />
+                    onToggle={api.toggleTask} onPromote={promote} onDelete={api.deleteTask} onOpenArtifact={openArtifact} onOpenBoard={openBoard} onOpenFiles={openFiles} updateTask={api.updateTask} />
                 ))}
               </div>
             )}
           </div>
         )}
         {tab === 'board' && <BoardTab board={board} />}
-        {tab === 'artifacts' && <ArtifactsTab project={project} initialSlug={initialSlug} />}
+        {tab === 'artifacts' && <ArtifactsTab key={artifactSlug || 'first'} project={project} initialSlug={artifactSlug} />}
         {tab === 'files' && (
           <FilesTab project={project}
             listFiles={api.listFiles} uploadFile={api.uploadFile} createFolder={api.createFolder}
