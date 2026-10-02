@@ -21,6 +21,7 @@ export const RECURRING = [
   { slug: 'calendar-sweep', label: 'Calendar Sweep' },
   { slug: 'daily-planning', label: 'Daily Planning',  light: 'planning' },
   { slug: 'bill-pay',       label: 'Bill Pay',        light: 'bill' },
+  { slug: 'thinking',       label: 'Thinking' },
 ]
 
 // Light rules (David, 10/1). Each returns { level, blink, text }.
