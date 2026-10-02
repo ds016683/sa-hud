@@ -136,8 +136,8 @@ export default function LoadoutPanel({ onChange, refreshKey = 0, onNavigate }) {
                 {it.equipped
                   ? <button onClick={() => act(() => holster(it.id), `Timer off (holstered): ${it.title}`)} title="Holster: pause the clock, stays loaded" style={btn(GREEN, true)}><Pause size={11} /> Timer on</button>
                   : <button onClick={() => act(() => equip(it.id), `Timer on (equipped): ${it.title}`)} title="Equip: run the clock on this, pause the rest" style={btn(INK2)}><Play size={11} /> Timer off</button>}
-                {!it.session && <button onClick={() => act(() => stash(it.id), `Stashed: ${it.title}`)} title="Park it; it stays planned" style={btn(INK2)}><Archive size={11} /> Stash</button>}
-                {!it.session && <button onClick={() => setOpen(it)} style={btn(GOLD)}><PackageCheck size={11} /> Extract</button>}
+                <button onClick={() => act(() => stash(it.id), `Stashed: ${it.title}`)} title={it.session ? 'Suspend the session item; its clock is kept' : 'Park it; it stays planned'} style={btn(INK2)}><Archive size={11} /> {it.session ? 'Suspend' : 'Stash'}</button>
+                <button onClick={() => setOpen(it)} style={btn(GOLD)}><PackageCheck size={11} /> Extract</button>
               </div>
             </div>
           ))}
