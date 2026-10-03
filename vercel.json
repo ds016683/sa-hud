@@ -12,5 +12,11 @@
       "path": "/api/pulse",
       "schedule": "12,42 * * * *"
     }
+  ],
+  "rewrites": [
+    {
+      "source": "/s/:slug",
+      "destination": "/api/share?s=:slug"
+    }
   ]
 }

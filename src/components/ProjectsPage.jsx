@@ -7,6 +7,7 @@ import useProjects, { freshnessOf } from '../hooks/useProjects'
 import ArtifactsTab from './river/ArtifactsTab'
 import ItemDetail from './river/ItemDetail'
 import SessionBoard from './river/SessionBoard'
+import { listShares, archiveShare, archiveSharesFor, shareUrl } from '../lib/shares'
 
 // =============================================================================
 // STYLE TOKENS (CIP canon, matches ObjectivesPage dark stage)
@@ -281,8 +282,40 @@ function BoardTab({ board }) {
 // =============================================================================
 // Detail view
 // =============================================================================
+
+// Private shares owned by this mission: a page on the HUD's domain behind an
+// access code. Archiving retires the code; completing the mission archives all.
+function SharesTab({ project }) {
+  const [recs, setRecs] = useState(undefined)
+  const [msg, setMsg] = useState(null)
+  const load = useCallback(() => listShares(project.id).then(setRecs).catch(e => { setRecs([]); setMsg(e.message) }), [project.id])
+  useEffect(() => { load() }, [load])
+  const copy = async (text, what) => { try { await navigator.clipboard.writeText(text); setMsg(`${what} copied`) } catch { setMsg(`Copy failed; ${what}: ${text}`) } }
+  if (recs === undefined) return <div style={{ fontSize: 13, color: GRAY, padding: '12px 0' }}>Loading…</div>
+  if (!recs.length) return <div style={{ fontSize: 13, color: GRAY, padding: '12px 0' }}>No private pages shared from this mission. Claude publishes them here; each carries its own access code and is archived with the mission.</div>
+  return (
+    <div>
+      {recs.map(r => (
+        <div key={r.slug} style={{ borderTop: `1px solid ${PANEL_BORDER}`, padding: '12px 0', display: 'grid', gridTemplateColumns: '1fr auto', gap: 12, alignItems: 'start' }}>
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontSize: 14, color: r.active ? INK : GRAY }}>{r.title || r.slug}{!r.active && <span style={{ fontFamily: MONO, fontSize: 9, letterSpacing: '1px', color: GRAY, marginLeft: 8, textTransform: 'uppercase' }}>archived{r.archived_at ? ` · ${String(r.archived_at).slice(0, 10)}` : ''}</span>}</div>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 6, alignItems: 'center' }}>
+              <button onClick={() => copy(shareUrl(r.slug), 'Link')} style={{ ...S.btnGhost, fontSize: 11, padding: '4px 10px', fontFamily: MONO }}>{shareUrl(r.slug).replace(/^https?:\/\//, '')}</button>
+              <button onClick={() => copy(r.code, 'Code')} style={{ ...S.btnGhost, fontSize: 11, padding: '4px 10px', fontFamily: MONO, letterSpacing: '2px', color: r.active ? GOLD : GRAY, borderColor: r.active ? 'rgba(230,181,79,0.4)' : PANEL_BORDER }}>{r.code}</button>
+              <span style={{ fontSize: 11, color: GRAY }}>click to copy · created {String(r.created_at || '').slice(0, 10)}</span>
+            </div>
+            {r.note && <div style={{ fontSize: 12.5, color: TEXT_DIM, marginTop: 6 }}>{r.note}</div>}
+          </div>
+          <button onClick={async () => { await archiveShare(r, r.active); setMsg(r.active ? `Archived ${r.title || r.slug}; the code no longer opens it.` : `Reactivated ${r.title || r.slug}.`); load() }} style={{ ...S.btnGhost, fontSize: 10, padding: '5px 10px', color: r.active ? RED : GREEN, borderColor: r.active ? 'rgba(232,131,111,0.4)' : 'rgba(67,211,146,0.4)' }}>{r.active ? 'Archive' : 'Reactivate'}</button>
+        </div>
+      ))}
+      {msg && <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '1px', color: GOLD, marginTop: 10, textTransform: 'uppercase' }}>{msg}</div>}
+    </div>
+  )
+}
+
 function ProjectDetail({ project, board, api, onBack, initialTab, initialSlug, onNavigate }) {
-  const [tab, setTab] = useState(initialTab && ['tasks', 'board', 'artifacts', 'files'].includes(initialTab) ? initialTab : 'tasks')
+  const [tab, setTab] = useState(initialTab && ['tasks', 'board', 'artifacts', 'files', 'shares'].includes(initialTab) ? initialTab : 'tasks')
   const [artifactSlug, setArtifactSlug] = useState(initialSlug || null)
   const openArtifact = (slug) => { setArtifactSlug(slug); setTab('artifacts') }
   const [newTask, setNewTask] = useState('')
@@ -315,6 +348,7 @@ function ProjectDetail({ project, board, api, onBack, initialTab, initialSlug, o
             onClick={async () => {
               if (!window.confirm(`Mark "${project.name}" complete? The River strikes 10 miles on the next update.`)) return
               const ok = await api.updateProject(project.id, { status: 'completed', archived_at: new Date().toISOString() })
+              try { await archiveSharesFor(project.id) } catch (e) { console.warn('shares archive', e.message) }
               if (ok) onBack()
             }}
             title="Whole mission complete: 10 miles on the River"
@@ -337,6 +371,7 @@ function ProjectDetail({ project, board, api, onBack, initialTab, initialSlug, o
           <Pill active={tab === 'board'} onClick={() => setTab('board')}>Session Board</Pill>
           <Pill active={tab === 'artifacts'} onClick={() => setTab('artifacts')}>Artifacts</Pill>
           <Pill active={tab === 'files'} onClick={() => setTab('files')}>Files</Pill>
+          <Pill active={tab === 'shares'} onClick={() => setTab('shares')}>Shares</Pill>
         </div>
       </div>
 
@@ -381,6 +416,7 @@ function ProjectDetail({ project, board, api, onBack, initialTab, initialSlug, o
         )}
         {tab === 'board' && <BoardTab board={board} />}
         {tab === 'artifacts' && <ArtifactsTab key={artifactSlug || 'first'} project={project} initialSlug={artifactSlug} />}
+        {tab === 'shares' && <SharesTab project={project} />}
         {tab === 'files' && (
           <FilesTab project={project}
             listFiles={api.listFiles} uploadFile={api.uploadFile} createFolder={api.createFolder}
