@@ -61,6 +61,85 @@ function RatingPills({ scale, value, onChange }) {
   )
 }
 
+
+// A decision worked with Lumen: the question, the options and their numbers,
+// an economics table, Lumen's read (his, labelled), and David's notes and
+// verdict (his, required). Lumen writes the analysis; David decides here.
+function Decision({ doc, onChange }) {
+  const set = (fn) => onChange(fn(structuredClone(doc)))
+  const has = (v) => v != null && String(v).trim() !== ''
+  const options = doc.options || []
+  const econ = doc.economics || []
+  const optNames = options.map(o => o.name)
+  const cell = { padding: '8px 10px', borderTop: `1px solid ${PANEL_BORDER}`, fontSize: 13, color: INK, verticalAlign: 'top' }
+  return (
+    <div>
+      {doc.question && <div style={{ fontFamily: SERIF, fontSize: 18, fontWeight: 500, color: '#fff', lineHeight: 1.4, marginBottom: 8 }}>{doc.question}</div>}
+      {doc.context && <div style={{ fontSize: 13, lineHeight: 1.6, color: INK2, marginBottom: 16, whiteSpace: 'pre-wrap' }}>{doc.context}</div>}
+
+      {options.length > 0 && (
+        <>
+          <Eyebrow style={{ marginBottom: 8 }}>Options</Eyebrow>
+          <div style={{ display: 'grid', gridTemplateColumns: `repeat(auto-fit, minmax(${options.length > 2 ? 220 : 280}px, 1fr))`, gap: 12, marginBottom: 16 }}>
+            {options.map((o, i) => (
+              <div key={o.name || i} style={{ ...S.panel, padding: '14px 16px', marginBottom: 0, border: `1px solid ${doc.verdict === o.name ? GOLD : PANEL_BORDER}` }}>
+                <div style={{ fontFamily: SERIF, fontSize: 16, fontWeight: 500, color: doc.verdict === o.name ? GOLD_BRIGHT : '#fff' }}>{o.name}</div>
+                {o.summary && <div style={{ fontSize: 12.5, color: INK2, lineHeight: 1.55, marginTop: 4 }}>{o.summary}</div>}
+                {(o.numbers || []).length > 0 && (
+                  <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', columnGap: 12, rowGap: 4, marginTop: 10 }}>
+                    {o.numbers.map((n, j) => (
+                      <div key={j} style={{ display: 'contents' }}>
+                        <span style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '0.6px', color: GRAY, paddingTop: 2 }}>{n.label}</span>
+                        <span style={{ fontSize: 13, color: INK }}>{n.value}{n.note ? <span style={{ color: GRAY, fontSize: 11.5 }}> · {n.note}</span> : null}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {(o.pros || []).length > 0 && <div style={{ marginTop: 10 }}><Label>For</Label>{o.pros.map((x, j) => <div key={j} style={{ fontSize: 12.5, color: GREEN, lineHeight: 1.5 }}>+ {x}</div>)}</div>}
+                {(o.cons || []).length > 0 && <div style={{ marginTop: 8 }}><Label>Against</Label>{o.cons.map((x, j) => <div key={j} style={{ fontSize: 12.5, color: RED, lineHeight: 1.5 }}>− {x}</div>)}</div>}
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+
+      {econ.length > 0 && (
+        <>
+          <Eyebrow style={{ marginBottom: 8 }}>Economics</Eyebrow>
+          <div style={{ ...S.panel, padding: '6px 6px 2px', marginBottom: 16, overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead><tr><th style={{ ...cell, borderTop: 'none', fontFamily: MONO, fontSize: 9.5, letterSpacing: '1px', color: GRAY, textAlign: 'left', textTransform: 'uppercase' }}>Line</th>{optNames.map(n => <th key={n} style={{ ...cell, borderTop: 'none', fontFamily: MONO, fontSize: 9.5, letterSpacing: '1px', color: GRAY, textAlign: 'right', textTransform: 'uppercase' }}>{n}</th>)}</tr></thead>
+              <tbody>{econ.map((r, i) => (
+                <tr key={i}><td style={{ ...cell, color: INK2 }}>{r.label}</td>{optNames.map(n => <td key={n} style={{ ...cell, textAlign: 'right', fontFamily: MONO, fontSize: 12.5 }}>{(r.values || {})[n] ?? ''}</td>)}</tr>
+              ))}</tbody>
+            </table>
+          </div>
+        </>
+      )}
+
+      {(doc.assumptions || []).length > 0 && <div style={{ marginBottom: 16 }}><Label>Assumptions</Label>{doc.assumptions.map((x, i) => <div key={i} style={{ fontSize: 12.5, color: INK2, lineHeight: 1.55 }}>· {x}</div>)}</div>}
+
+      <Eyebrow style={{ marginBottom: 8 }}>Lumen's read<Lum /></Eyebrow>
+      <div style={{ ...S.panel, padding: '14px 16px', marginBottom: 16, borderLeft: `2px solid ${GOLD}66` }}>
+        {doc.lumen_read ? <div style={{ fontSize: 13.5, lineHeight: 1.65, color: INK, whiteSpace: 'pre-wrap' }}>{doc.lumen_read}</div> : <div style={{ fontSize: 12.5, color: GRAY }}>Not written yet.</div>}
+        {(doc.risks || []).length > 0 && <div style={{ marginTop: 12 }}><Label>Risks</Label>{doc.risks.map((x, i) => <div key={i} style={{ fontSize: 12.5, color: RED, lineHeight: 1.5 }}>· {x}</div>)}</div>}
+        {(doc.questions_for_david || []).length > 0 && <div style={{ marginTop: 12 }}><Label>Questions for you</Label>{doc.questions_for_david.map((x, i) => <div key={i} style={{ fontSize: 12.5, color: INK2, lineHeight: 1.5 }}>{i + 1}. {x}</div>)}</div>}
+        {doc.recommendation && <div style={{ marginTop: 12 }}><Label>Lumen's recommendation</Label><div style={{ fontSize: 13.5, color: GOLD_BRIGHT, lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{doc.recommendation}</div></div>}
+      </div>
+
+      <Eyebrow style={{ marginBottom: 8 }}>Your call</Eyebrow>
+      <div style={{ ...S.panel, padding: '14px 16px' }}>
+        <Label>Your notes<Req done={has(doc.david_notes)} /></Label>
+        <textarea rows={5} value={doc.david_notes || ''} onChange={e => set(d => { d.david_notes = e.target.value; return d })} placeholder="What you see, what you want to push on, what you need before deciding." style={field} />
+        <Label style={{ marginTop: 12 }}>Verdict<Req done={has(doc.verdict)} /></Label>
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+          {[...optNames, 'Not yet', 'Walk away'].map(v => <button key={v} onClick={() => set(d => { d.verdict = d.verdict === v ? null : v; d.decided_at = d.verdict ? new Date().toISOString() : null; return d })} style={pill(doc.verdict === v, v === 'Walk away' ? RED : v === 'Not yet' ? GRAY : GOLD)}>{v}</button>)}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function requiredFields(doc) {
   const req = []
   const has = (v) => v != null && String(v).trim() !== ''
@@ -248,7 +327,7 @@ export default function ArtifactsTab({ project, initialSlug }) {
                 <User size={10} style={{ verticalAlign: '-1px', marginRight: 5 }} />{a.slug.replace(/^scorecard-/, '').replace(/-/g, ' ')}
               </button>
             ))}
-            {others.map(a => <button key={a.slug} onClick={() => setSlug(a.slug)} style={pill(slug === a.slug)}>{a.slug}</button>)}
+            {others.map(a => <button key={a.slug} onClick={() => { if (dirty && !window.confirm('Unsaved edits. Switch anyway?')) return; setSlug(a.slug) }} style={pill(slug === a.slug)}>{a.slug.replace(/^decision-/, '').replace(/-/g, ' ')}</button>)}
             <span style={{ flex: 1 }} />
             <button onClick={reload} title="Reload from the file store" style={pill(false)}><RefreshCw size={10} style={{ verticalAlign: '-1px', marginRight: 5 }} />Reload</button>
             <button onClick={save} disabled={!dirty || busy} style={{ ...pill(dirty, GREEN), opacity: dirty ? 1 : 0.5 }}><Save size={10} style={{ verticalAlign: '-1px', marginRight: 5 }} />{busy ? 'Saving' : dirty ? 'Save' : 'Saved'}</button>
@@ -261,11 +340,13 @@ export default function ArtifactsTab({ project, initialSlug }) {
               </div>
               {doc.kind === 'scorecard'
                 ? <Scorecard doc={doc} onChange={(d) => { setDoc(d); setDirty(true) }} />
-                : <pre style={{ fontSize: 12, color: INK2, whiteSpace: 'pre-wrap' }}>{JSON.stringify(doc, null, 2)}</pre>}
+                : doc.kind === 'decision'
+                  ? <Decision doc={doc} onChange={(d) => { setDoc(d); setDirty(true) }} />
+                  : <pre style={{ fontSize: 12, color: INK2, whiteSpace: 'pre-wrap' }}>{JSON.stringify(doc, null, 2)}</pre>}
             </>
           )}
           {msg && <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '1px', color: msg.startsWith('Could') ? RED : GOLD_BRIGHT, marginTop: 12, textTransform: 'uppercase' }}>{msg}</div>}
-          <div style={{ fontSize: 11, color: GRAY, marginTop: 14 }}>Lumen drafts the proposed answers from the interview notes. You edit and rate here, save, then tell Lumen it's final and he ports it to Stephanie's Word template.</div>
+          <div style={{ fontSize: 11, color: GRAY, marginTop: 14 }}>{doc?.kind === 'decision' ? "Lumen writes the options, the numbers, and his read. Your notes and the verdict are yours; save, and he sees it." : "Lumen drafts the proposed answers from the interview notes. You edit and rate here, save, then tell Lumen it's final and he ports it to Stephanie's Word template."}</div>
         </>
       )}
     </div>

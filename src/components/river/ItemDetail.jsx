@@ -65,6 +65,18 @@ async function loadRelated(item) {
       out.storeFiles = (sf || []).map(f => ({ name: f.name, folder: f.id === null, path: `${p.name}/${f.name}`, bucket: 'files' }))
     }
   }
+  // Decisions live on the standing mission "Decisions" and point at the board item they serve.
+  try {
+    const { data: dp } = await supabase.from('projects').select('id,name').eq('key', 'Decisions').limit(1)
+    const dproj = dp?.[0]
+    if (dproj && dproj.id !== pid) {
+      const list = await listArtifacts(dproj.id)
+      const docs = await Promise.all(list.map(async a => { try { const d = await readArtifact(dproj.id, a.slug); return { slug: a.slug, title: d.title || a.slug, task_id: d.task_id || null, objective_id: d.objective_id || null, project_id: dproj.id, decision: true } } catch { return null } }))
+      const mine = docs.filter(d => d && ((item.objective_id && d.objective_id === item.objective_id) || (item.task_id && d.task_id === item.task_id) || d.objective_id === item.id))
+      out.artifacts = [...out.artifacts, ...mine]
+      out.decisionsProject = dproj
+    }
+  } catch { /* no decisions */ }
   const ws = [...new Set([...words(item.title), ...words(out.project?.name)])].slice(0, 6)
   if (ws.length) {
     const since = new Date(Date.now() - 60 * 86400e3).toISOString().slice(0, 10)
@@ -92,8 +104,8 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
 
   const task = rel?.task
   const taskId = item.task_id || task?.id || null
-  const linkedArtifacts = (rel?.artifacts || []).filter(a => taskId && a.task_id === taskId)
-  const otherArtifacts = (rel?.artifacts || []).filter(a => !(taskId && a.task_id === taskId))
+  const linkedArtifacts = (rel?.artifacts || []).filter(a => a.decision || (taskId && a.task_id === taskId))
+  const otherArtifacts = (rel?.artifacts || []).filter(a => !a.decision && !(taskId && a.task_id === taskId))
   const linkedBoards = (rel?.boards || []).filter(b => b.linked)
   const otherBoards = (rel?.boards || []).filter(b => !b.linked)
   const loaded = rel?.loadout?.items.find(i => i.id === (item.objective_id || item.id)) || null
@@ -184,8 +196,8 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
             <div>
               {linkedArtifacts.map(a => (
                 <div key={a.slug} style={rowStyle}>
-                  <FileText size={14} color={GOLD_BRIGHT} /><span style={{ flex: 1, fontSize: 13.5, color: INK }}>{a.title}</span>
-                  <button onClick={() => go([rel.project.id, 'artifacts', a.slug])} style={btn(GOLD, true)}>Open</button>
+                  <FileText size={14} color={GOLD_BRIGHT} /><span style={{ flex: 1, fontSize: 13.5, color: INK }}>{a.title}{a.decision ? <span style={{ fontFamily: MONO, fontSize: 9, letterSpacing: '1px', color: GOLD, marginLeft: 8, textTransform: 'uppercase' }}>decision</span> : null}</span>
+                  <button onClick={() => go([a.project_id || rel.project.id, 'artifacts', a.slug])} style={btn(GOLD, true)}>Open</button>
                 </div>
               ))}
               {!linkedArtifacts.length && <None what={{ ...what, thing: 'an artifact' }} />}
@@ -201,7 +213,7 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
                   ))}
                 </div>
               )}
-              {!rel.project && <div style={{ fontSize: 12, color: GRAY }}>Artifacts live on a mission. Promote this to a Main Mission task and the mission's artifacts show here.</div>}
+              {!rel.project && !linkedArtifacts.length && <div style={{ fontSize: 12, color: GRAY }}>Artifacts live on a mission. Ask Lumen to work a decision on this and it shows here, or promote it to a Main Mission task for the mission's artifacts.</div>}
             </div>
           )}
 

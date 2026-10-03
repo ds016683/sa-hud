@@ -15,22 +15,28 @@ import { think, remember, alreadySeen, claimInbound, fillInbound } from './_lume
 import { flushPending } from './pulse.mjs'
 import { sbWrite, sb as sbRead, putFile, granolaTranscript, chiToday as chiTodayStr } from './_ledger.mjs'
 
-// Look at a photo. If it is an InBody results screen, pull the four numbers;
-// otherwise describe it in a sentence so the brain can respond to it.
-async function readImage(bytes, mime, caption) {
+// Look at a photo. An InBody results screen yields its four numbers. A
+// document (a worksheet, an offer, a receipt, a form, a screen of figures)
+// yields a full transcription so the brain can reason over the numbers.
+// Anything else gets a sentence.
+export async function readImage(bytes, mime, caption) {
   const b64 = Buffer.from(bytes).toString('base64')
   const r = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST', headers: { 'x-api-key': process.env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
-    body: JSON.stringify({ model: process.env.LUMEN_MODEL || 'claude-sonnet-5', max_tokens: 400, messages: [{ role: 'user', content: [
+    body: JSON.stringify({ model: process.env.LUMEN_MODEL || 'claude-sonnet-5', max_tokens: 3000, messages: [{ role: 'user', content: [
       { type: 'image', source: { type: 'base64', media_type: mime || 'image/jpeg', data: b64 } },
-      { type: 'text', text: `If this is an InBody body-composition results screen, reply with ONLY JSON: {"scan":{"weight_lbs":number,"smm_lbs":number,"pbf_pct":number,"ecw_tbw":number}} using Weight, Skeletal Muscle Mass, Percent Body Fat, ECW/TBW (leave a field null if unreadable). Otherwise reply with ONLY JSON: {"text":"one plain sentence describing what the photo shows"}.${caption ? ` Caption from David: ${caption}` : ''}` },
+      { type: 'text', text: `Classify this photo and reply with ONLY JSON, no prose.
+1. InBody body-composition screen: {"kind":"inbody","scan":{"weight_lbs":number,"smm_lbs":number,"pbf_pct":number,"ecw_tbw":number}} (null for an unreadable field).
+2. A document: a worksheet, quote, offer, invoice, receipt, statement, form, contract page, spreadsheet, or any screen of figures: {"kind":"document","title":"what the document is, in a few words","text":"a faithful transcription of everything legible, in reading order, every label with its number, one line per row; keep currency and signs exactly","key_numbers":[{"label":"...","value":"..."}]}. Transcribe completely; do not summarize.
+3. Anything else: {"kind":"photo","text":"one plain sentence describing what the photo shows"}.${caption ? ` Caption from David: ${caption}` : ''}` },
     ] }] }),
   })
   const j = await r.json().catch(() => ({}))
   const raw = ((j.content || []).find(c => c.type === 'text') || {}).text || ''
   try {
-    const parsed = JSON.parse(raw.replace(/^```json|```$/g, '').trim())
-    if (parsed.scan && parsed.scan.weight_lbs) return { scan: parsed.scan, text: '[InBody scan photo]' }
+    const parsed = JSON.parse(raw.replace(/^```json\s*|```\s*$/g, '').trim())
+    if (parsed.kind === 'inbody' && parsed.scan && parsed.scan.weight_lbs) return { scan: parsed.scan, text: '[InBody scan photo]' }
+    if (parsed.kind === 'document' && parsed.text) return { scan: null, document: parsed, text: `[document photo: ${parsed.title || 'document'}]${caption ? ' ' + caption : ''}` }
     return { scan: null, text: `[photo: ${parsed.text || 'an image'}]${caption ? ' ' + caption : ''}` }
   } catch { return { scan: null, text: `[photo]${caption ? ' ' + caption : ''}` } }
 }
@@ -77,6 +83,23 @@ export default async function handler(req, res) {
 
   // ?admin=mailbox&key=MCP_TOKEN[&user=lumen@thirdhorizon.com][&sendtest=1]: can the Graph app
   // read that mailbox (and send from it)? Probing Lumen's own address.
+  // ?admin=readimage&path=inbox/<day>/<file>  (Bearer CRON_SECRET): re-read a filed photo, save its transcription, return it.
+  if (req.method === 'GET' && (req.query || {}).admin === 'readimage') {
+    const token = String(req.headers.authorization || '').replace(/^Bearer\s+/i, '')
+    if (!process.env.CRON_SECRET || token !== process.env.CRON_SECRET) return res.status(401).json({ error: 'unauthorized' })
+    const path = String(req.query.path || '').replace(/^\/+/, '')
+    const f = await fetch(`https://cmuvomnmaoseccxpeuxq.supabase.co/storage/v1/object/files/${path.split('/').map(encodeURIComponent).join('/')}`, { headers: { apikey: process.env.SUPABASE_SERVICE_KEY, Authorization: `Bearer ${process.env.SUPABASE_SERVICE_KEY}` } })
+    if (!f.ok) return res.status(200).json({ ok: false, error: `no such file: ${path}` })
+    const bytes = new Uint8Array(await f.arrayBuffer())
+    const seen = await readImage(bytes, f.headers.get('content-type') || 'image/jpeg', '')
+    let txtPath = null
+    if (seen.document) {
+      txtPath = path.replace(/\.[a-z0-9]+$/i, '') + '.txt'
+      const body = `${seen.document.title || 'Document'}\n\n${seen.document.text}${(seen.document.key_numbers || []).length ? `\n\nKey numbers:\n${seen.document.key_numbers.map(k => `${k.label}: ${k.value}`).join('\n')}` : ''}`
+      await putFile(txtPath, new TextEncoder().encode(body), 'text/plain').catch(() => {})
+    }
+    return res.status(200).json({ ok: true, kind: seen.scan ? 'inbody' : seen.document ? 'document' : 'photo', title: seen.document?.title || null, transcription: txtPath, text: seen.document ? seen.document.text : seen.text, key_numbers: seen.document?.key_numbers || null })
+  }
   // ?admin=think&text=...  (Bearer CRON_SECRET): run one brain turn and return reply + trace, nothing sent.
   if (req.method === 'GET' && (req.query || {}).admin === 'think') {
     const token = String(req.headers.authorization || '').replace(/^Bearer\s+/i, '')
@@ -277,7 +300,14 @@ export default async function handler(req, res) {
             const ext = (mime || 'image/jpeg').split('/')[1].replace('jpeg', 'jpg').split(';')[0]
             const path = `inbox/${chiTodayStr()}/${new Date().toISOString().slice(11, 19).replace(/:/g, '')}-${m.image.id.slice(-6)}.${ext}`
             await putFile(path, bytes, mime)
-            text = `[photo filed at files/${path}] ${seen.text}`
+            if (seen.document) {
+              const txtPath = path.replace(/\.[a-z0-9]+$/i, '') + '.txt'
+              const body = `${seen.document.title || 'Document'}\n\n${seen.document.text}${(seen.document.key_numbers || []).length ? `\n\nKey numbers:\n${seen.document.key_numbers.map(k => `${k.label}: ${k.value}`).join('\n')}` : ''}`
+              await putFile(txtPath, new TextEncoder().encode(body), 'text/plain').catch(() => {})
+              text = `[document photo filed at files/${path}; transcription at files/${txtPath}] ${seen.document.title || 'Document'}:\n${String(seen.document.text).slice(0, 6000)}${m.image.caption ? `\n\nCaption from David: ${m.image.caption}` : ''}`
+            } else {
+              text = `[photo filed at files/${path}] ${seen.text}`
+            }
           } catch (e) { text = `[photo not filed: ${String(e.message || e).slice(0, 100)}] ${seen.text}` }
         }
       } else {

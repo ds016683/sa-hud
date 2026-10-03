@@ -296,7 +296,7 @@ export const TOOLS = [
   },
   {
     name: 'write_artifact',
-    description: "Write a project artifact (whole document). To draft into an existing one, read_artifact first, change the fields you are filling (proposed answers, presentation notes, a competency rating you are suggesting), keep everything else, and write it back. To start a new scorecard for another candidate, copy the structure of an existing one with the new candidate and empty answers. The HUD shows the result on the project page under Artifacts.",
+    description: "Write a project artifact (whole document). Kinds the HUD renders: 'scorecard' (interview scorecards) and 'decision' (a decision worked with David: question, options with numbers, an economics table, your read, his notes and verdict; lives on the standing mission 'Decisions'). To draft into an existing one, read_artifact first, change the fields you are filling (proposed answers, presentation notes, a competency rating you are suggesting), keep everything else, and write it back. To start a new scorecard for another candidate, copy the structure of an existing one with the new candidate and empty answers. The HUD shows the result on the project page under Artifacts.",
     inputSchema: { type: 'object', properties: { project: { type: 'string' }, slug: { type: 'string' }, doc: { type: 'object', description: 'the full artifact JSON' } }, required: ['project', 'slug', 'doc'] },
   },
   {
