@@ -9,7 +9,9 @@
 // David's last message; outside that window a template is used if one is
 // configured, otherwise the pulse records a skip and stays quiet.
 // GET with Authorization: Bearer CRON_SECRET (cron) or ?key=MCP_TOKEN (manual).
-// ?kind=morning|close|nudge|orders|sweep (default sweep = everything due)
+// ?kind=morning|close|nudge|meetings|notes|mail|signals|orders|sweep
+// (default sweep = everything due; close and nudge are manual only since 10/6,
+// their content rides in the morning read)
 // ?dry=1 composes and reports without sending or recording.
 
 export const config = { maxDuration: 120 }
@@ -42,9 +44,19 @@ function knockLabel(kind, day) {
 // Compose through the brain so the pulse has Lumen's voice, then deliver.
 // Window open: send the text. Window closed: send the knock template and park
 // the text as pending; the WhatsApp door flushes pending pulses when he replies.
+// Quiet hours (David 10/6: the proactive stream had become noise): nothing
+// leaves before 7 AM or after 9 PM Chicago, and a composition that comes back
+// as SILENT is recorded but never sent.
+const QUIET_START = 21, QUIET_END = 7
+const quiet = () => chiHour() >= QUIET_START || chiHour() < QUIET_END
 async function say({ kind, day, item, instruction, dry }) {
+  if (!dry && quiet()) return { kind, item, sent: false, skipped: 'quiet hours' }
   const text = await think({ channel: 'pulse', text: instruction, spoken: false })
   if (dry) return { kind, item, would_send: text }
+  if (/^\s*\[?SILENT\]?\s*$/i.test(text || '')) {
+    await remember({ channel: 'pulse', direction: 'out', kind: 'system', body: text, meta: { kind, day, item: item || null, via: 'silent', skipped: 'silent' } })
+    return { kind, item, sent: false, skipped: 'silent' }
+  }
   const open = await windowOpen()
   let via = 'text', id = null, skipped = null
   try {
@@ -85,11 +97,11 @@ export default async function handler(req, res) {
     if ((kind === 'sweep' && chiHour() >= 7 && chiHour() < 11) || kind === 'morning') {
       if (dry || !(await alreadySent('morning', TODAY))) {
         out.push(await say({ kind: 'morning', day: TODAY, dry, instruction:
-          `[PULSE] It is morning in Chicago and David has not messaged yet. Give him the day's read in your own words: use get_today for the calendar and must-dos, get_objectives for anything active or in follow_up, and get_day for yesterday's close (miles, grade, badges) if it exists. Four to six short sentences, no lists, no headers. Lead with what matters most. End with one question only if there is a real decision for him today.` }))
+          `[PULSE] It is morning in Chicago and David has not messaged yet. This is the ONE proactive message of the morning, so it carries everything: use get_day for yesterday's close (miles, badges, signal) and say how the day landed in one sentence; use get_today for the calendar and must-dos; use get_objectives and fold the follow-ups that are overdue or due within two days into ONE sentence as a digest (how many, and the two most pressing by name). Never list them one by one and never send them as separate messages later. Four to six short sentences, no lists, no headers. Lead with what matters most. End with one question only if there is a real decision for him today.` }))
       }
     }
-    // ---- close summary (after the Daily Report for yesterday exists)
-    if (kind === 'sweep' || kind === 'close') {
+    // ---- close summary: folded into the morning read (10/6); manual only.
+    if (kind === 'close') {
       const y = plusDays(-1)
       const closed = await sb(`daily_performance?select=day,scorecard&day=eq.${y}&model=eq.Daily%20Report&order=generated_at.desc&limit=1`)
       if (closed.length && closed[0].scorecard?.closed_at && (dry || !(await alreadySent('close', y)))) {
@@ -98,8 +110,9 @@ export default async function handler(req, res) {
           `[PULSE] Yesterday (${y}) is closed and canon: ${sc.miles} miles, badges ${JSON.stringify(sc.badges || [])}, signal ${sc.signal?.score ?? 'n/a'}%. Use get_day for ${y} to see what actually happened. Tell David how the day landed in two to four sentences, in your voice, no lists. Name one thing that was genuinely good and, only if true, one thing that slipped. No cheerleading.` }))
       }
     }
-    // ---- follow-up nudges (two days out, once per item per day)
-    if (kind === 'sweep' || kind === 'nudge') {
+    // ---- follow-up nudges: folded into the morning digest (10/6); manual only.
+    // Per-item nudges were 44 messages in 8 days and David stopped answering.
+    if (kind === 'nudge') {
       const horizon = plusDays(2)
       const due = await sb(`objectives?select=title,follow_up_date&state=eq.follow_up&deleted_at=is.null&follow_up_date=lte.${horizon}&order=follow_up_date.asc`)
       // Backoff: once when it comes due, again after 2 days, then 4, then weekly.
@@ -115,23 +128,22 @@ export default async function handler(req, res) {
           `[PULSE] A follow-up is ${o.follow_up_date < TODAY ? 'overdue' : 'coming due'}: "${o.title}" (date ${o.follow_up_date}, today ${TODAY}). This is nudge number ${nth}${nth >= 3 ? ', so keep it to one line and ask him plainly to re-date it or drop it; do not sell it' : ''}. One or two sentences, the way a friend would, and ask what he wants: do it now, push the date, or drop it. If he answers, move it with move_objective or set_due.` }))
       }
     }
-    // ---- meeting close-outs: a meeting ended 20+ minutes ago and is not
-    // closed out; ask once per meeting what happened (waking hours only).
-    if ((kind === 'sweep' && chiHour() >= 8 && chiHour() < 21) || kind === 'meetings') {
+    // ---- meeting close-outs: ONE evening message for the day's unclosed
+    // meetings (10/6; the per-meeting ask 20 minutes after each one was 32
+    // messages in 8 days, 5 answered). First sweep at or after 7 PM Chicago.
+    // This goes away once the Evening Protocol in the HUD does the close-out.
+    if ((kind === 'sweep' && chiHour() >= 19 && chiHour() < 21) || kind === 'meetings') {
       const cutoff = new Date(Date.now() - 20 * 60e3).toISOString()
       const [events, sessions] = await Promise.all([
         sb(`calendar_events?select=id,subject,start_at,end_at,attendees&day=eq.${TODAY}&is_cancelled=eq.false&is_all_day=eq.false&end_at=lte.${cutoff}&order=start_at.asc`),
         sb(`meeting_sessions?select=event_id,closed_at,attended_at,started_at,hours,notes_meeting_id&day=eq.${TODAY}`).catch(() => []),
       ])
       const byEvent = new Map(sessions.map(x => [x.event_id, x]))
-      for (const e of events) {
-        const ses = byEvent.get(e.id)
-        if (ses?.closed_at) continue
-        if (!dry && await alreadySent('meeting', TODAY, e.id)) continue
-        const attended = !!(ses?.attended_at || ses?.started_at || ses?.notes_meeting_id)
-        const endT = new Date(e.end_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'America/Chicago' })
-        out.push(await say({ kind: 'meeting', day: TODAY, item: e.id, dry, instruction:
-          `[PULSE] "${e.subject}" ended at ${endT} today and is not closed out yet${attended ? ' (attended; notes ' + (ses?.notes_meeting_id ? 'captured' : 'not captured yet') + ')' : ' (no sign he attended)'}. Ask David in one or two sentences, the way a friend would, what happened: any follow-ups, anything worth keeping, or whether he skipped it. When he answers, use close_meeting with the subject "${e.subject}" (follow-ups as a list, notes as special_notes); if he skipped it, say so and leave it. Do not stack questions.` }))
+      const open = events.filter(e => !byEvent.get(e.id)?.closed_at)
+      if (open.length && (dry || !(await alreadySent('meetings', TODAY)))) {
+        const lines = open.map(e => { const s = byEvent.get(e.id); const attended = !!(s?.attended_at || s?.started_at || s?.notes_meeting_id); return `"${e.subject}"${attended ? (s?.notes_meeting_id ? ' (attended, notes captured)' : ' (attended)') : ' (no sign he attended)'}` })
+        out.push(await say({ kind: 'meetings', day: TODAY, dry, instruction:
+          `[PULSE] Evening. ${open.length} of today's meetings ${open.length === 1 ? 'is' : 'are'} not closed out: ${lines.join('; ')}. In ONE short message, name them and ask David to reply once with anything worth keeping (follow-ups, notes) or "none" to close them all as attended. When he answers, use close_meeting per meeting (follow-ups as a list, notes as special_notes); meetings he says he skipped, leave open and say so. Do not ask separate questions per meeting.` }))
       }
     }
     // ---- agenda from notes: when a meeting's Granola notes land, Lumen reads
@@ -141,7 +153,7 @@ export default async function handler(req, res) {
       for (const ses of sessions) {
         if (!dry) await sbWrite('PATCH', `meeting_sessions?event_id=eq.${encodeURIComponent(ses.event_id)}`, { agenda_touched_at: new Date().toISOString() }, 'return=minimal')
         out.push(await say({ kind: 'notes', day: TODAY, item: ses.event_id, dry, instruction:
-          `[PULSE] Granola notes just landed for today's meeting "${ses.subject}". Here they are:\n\n${String(ses.notes_summary || '').slice(0, 6000)}\n\nWork the board from them: for each action item that is David's (not someone else's), add_objective in state follow_up with a sensible follow_up_date (a week out unless the notes name a date) and description "From ${ses.subject} notes"; if the notes move a deadline on something already on his board (check get_objectives), use set_due. Skip anything already on the board. Then message David two or three plain sentences: what you put on the board from this meeting, any date you moved, and nothing else. If there was nothing for him to do, say that in one line.` }))
+          `[PULSE] Granola notes just landed for today's meeting "${ses.subject}". Here they are:\n\n${String(ses.notes_summary || '').slice(0, 6000)}\n\nWork the board from them: for each action item that is David's (not someone else's), add_objective in state follow_up with a sensible follow_up_date (a week out unless the notes name a date) and description "From ${ses.subject} notes"; if the notes move a deadline on something already on his board (check get_objectives), use set_due. Skip anything already on the board. Then, ONLY if you added or moved something, message David two or three plain sentences: what you put on the board from this meeting, any date you moved, and nothing else. If there was nothing for him to do, reply with exactly the single word SILENT and nothing else; it will not be sent.` }))
       }
     }
     // ---- mail: unread messages in lumen@ from David are conversation turns;
