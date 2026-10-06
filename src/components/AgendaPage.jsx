@@ -573,7 +573,7 @@ export default function AgendaPage({ onNavigate } = {}) {
       {day === today && (
         <>
           <RailSection title="Protocols">
-            <ProtocolsPanel onChange={refresh} />
+            <ProtocolsPanel onChange={refresh} onNavigate={onNavigate} />
           </RailSection>
           <RailSection title="Loadout">
             <LoadoutPanel onChange={refresh} refreshKey={refreshKey} onNavigate={onNavigate} />

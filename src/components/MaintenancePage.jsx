@@ -627,11 +627,16 @@ function DietView({ rows, onChanged }) {
 }
 
 // ---------- page ----------
-export default function MaintenancePage() {
-  const [pill, setPill] = useState(() => readLS('maint-pill', 'health'))
-  const [hpill, setHpill] = useState(() => readLS('maint-health', 'overview'))
+// deepLink: #/maintenance/<pill>[/<health pill>] opens that pill (the Morning
+// Protocol sends Devotional here as #/maintenance/spiritual).
+export default function MaintenancePage({ deepLink = [] }) {
+  const linked = TOP_PILLS.some(p => p.id === deepLink[0]) ? deepLink[0] : null
+  const linkedH = linked === 'health' && HEALTH_PILLS.some(p => p.id === deepLink[1]) ? deepLink[1] : null
+  const [pill, setPill] = useState(() => linked || readLS('maint-pill', 'health'))
+  const [hpill, setHpill] = useState(() => linkedH || readLS('maint-health', 'overview'))
   const pickPill = (id) => { setPill(id); writeLS('maint-pill', id) }
   const pickH = (id) => { setHpill(id); writeLS('maint-health', id) }
+  useEffect(() => { if (linked) Promise.resolve().then(() => { pickPill(linked); if (linkedH) pickH(linkedH) }) }, [linked, linkedH]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const [items, setItems] = useState([])
   const [logs, setLogs] = useState([])

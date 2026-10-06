@@ -13,8 +13,8 @@
 // as Business Administration when he launches (same door as Recurring). The
 // finish also writes daily_logs what 'morning-protocol' (minutes) so the
 // planning light and the River can see it ran. No miles for the timer.
-import { useState, useEffect, useCallback, useMemo } from 'react'
-import { ArrowLeft, ArrowRight, Check, Sunrise, Moon, Play, Rocket } from 'lucide-react'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
+import { ArrowLeft, ArrowRight, Check, Sunrise, Moon, Play, Rocket, Send, ExternalLink, SkipForward, RotateCcw } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { upsertSession, logToHarvest, hoursBetween } from '../../lib/meetings'
 import { fetchLoadout, equipObjective, equipTask, equip, fmtClock, chiToday, SIZES, SLOTS, HEAVY_MAX } from '../../lib/loadout'
@@ -56,10 +56,63 @@ const lightRule = (kind, L) => {
   return { level: 'gray', text: '' }
 }
 
+const stepKey = (day) => `mp-step:${day}`
+const readStep = (day) => { try { const v = Number(localStorage.getItem(stepKey(day))); return Number.isFinite(v) ? Math.max(0, Math.min(STEPS.length - 1, v)) : 0 } catch { return 0 } }
+const writeStep = (day, n) => { try { localStorage.setItem(stepKey(day), String(n)) } catch { /* no-op */ } }
+
+// ---- Lumen in the protocol -------------------------------------------------------
+// A text strip pinned under every step: David answers Lumen's question or
+// asks for something while he clicks; Lumen acts with his tools (same thread
+// as WhatsApp, channel 'hud') and the step data reloads after each reply.
+function LumenStrip({ day, where, onReplied }) {
+  const [thread, setThread] = useState([])
+  const [text, setText] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [err, setErr] = useState(null)
+  const pull = useCallback(async () => {
+    const since = new Date(day + 'T05:00:00Z').toISOString()
+    setThread(await rows(supabase.from('lumen_messages').select('id,at,direction,body').eq('channel', 'hud').neq('kind', 'system').gte('at', since).order('id', { ascending: true }).limit(40)))
+  }, [day])
+  useEffect(() => { Promise.resolve().then(pull) }, [pull])
+  const send = async () => {
+    const t = text.trim(); if (!t || busy) return
+    setBusy(true); setErr(null); setText('')
+    setThread(th => [...th, { id: `tmp-${Date.now()}`, at: new Date().toISOString(), direction: 'in', body: t }])
+    try {
+      const { data: { session: auth } } = await supabase.auth.getSession()
+      if (!auth) throw new Error('not signed in')
+      const r = await fetch('/api/lumen-hud', { method: 'POST', headers: { Authorization: `Bearer ${auth.access_token}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ text: t, where }) })
+      const j = await r.json().catch(() => ({}))
+      if (!r.ok) throw new Error(j.error || `lumen ${r.status}`)
+      await pull(); onReplied && onReplied()
+    } catch (e) { setErr(`Lumen did not answer: ${e.message}`) } finally { setBusy(false) }
+  }
+  const last = thread.slice(-4)
+  return (
+    <Panel style={{ marginBottom: 0, marginTop: 26, borderColor: 'rgba(169,201,232,0.25)' }}>
+      <Label style={{ color: BLUE }}>Lumen · same thread as WhatsApp</Label>
+      {last.length > 0 && (
+        <div style={{ display: 'grid', gap: 6, margin: '10px 0 4px' }}>
+          {last.map(m => <div key={m.id} style={{ fontSize: 13.5, lineHeight: 1.55, color: m.direction === 'in' ? INK2 : INK, fontFamily: m.direction === 'in' ? 'inherit' : SERIF, paddingLeft: m.direction === 'in' ? 0 : 12, borderLeft: m.direction === 'in' ? 'none' : `2px solid ${BLUE}66` }}><span style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '1px', color: GRAY, marginRight: 8 }}>{m.direction === 'in' ? 'YOU' : 'LUMEN'} · {fmtTime(m.at)}</span>{m.body}</div>)}
+        </div>
+      )}
+      {busy && <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '1px', color: BLUE, textTransform: 'uppercase', margin: '8px 0 4px' }} className="mp-blink">Lumen is working…</div>}
+      <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+        <input value={text} onChange={e => setText(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') send() }} placeholder="Answer him, or ask for something. Enter sends." disabled={busy}
+          style={{ flex: 1, fontSize: 13.5, padding: '10px 12px', borderRadius: 10, border: `1px solid ${PANEL_BORDER}`, background: 'rgba(255,255,255,0.05)', color: INK }} />
+        <button onClick={send} disabled={busy || !text.trim()} style={btn(BLUE, false, { opacity: busy || !text.trim() ? 0.5 : 1 })}><Send size={12} /> Send</button>
+      </div>
+      {err && <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '1px', color: RED, textTransform: 'uppercase', marginTop: 8 }}>{err}</div>}
+    </Panel>
+  )
+}
+
 // ---- the overlay ------------------------------------------------------------
-function Protocol({ day, session, onClose, onFinished, onChange }) {
-  const [step, setStep] = useState(0)
+function Protocol({ day, session, onClose, onFinished, onChange, onNavigate }) {
+  const [step, setStep] = useState(() => readStep(day))
   const [dir, setDir] = useState(1)
+  const [skipped, setSkipped] = useState(() => new Set())
+  const advanceRef = useRef(false)
   const [now, setNow] = useState(() => Date.now())
   const [msg, setMsg] = useState(null)
   const [busy, setBusy] = useState(false)
@@ -110,19 +163,36 @@ function Protocol({ day, session, onClose, onFinished, onChange }) {
   }, [day, yd, first, emailDecided])
   useEffect(() => { loadAll() }, [loadAll])
 
-  const go = (n) => { setDir(n > step ? 1 : -1); setStep(Math.max(0, Math.min(STEPS.length - 1, n))); setMsg(null) }
+  const go = useCallback((n) => { const to = Math.max(0, Math.min(STEPS.length - 1, n)); setDir(to > step ? 1 : -1); setStep(to); writeStep(day, to); setMsg(null) }, [step, day])
 
-  // Body: tap toggles a daily_logs row.
+  // Body: a funnel. One item at a time; Done logs the daily_logs row and the
+  // next item slides up; Skip leaves it for later. When the last one is
+  // logged the step advances on its own.
   const logged = (kind, what) => logs.find(l => l.kind === kind && l.what === what)
   const toggleLog = async (kind, what) => {
     const row = logged(kind, what)
     try {
       if (row) await supabase.from('daily_logs').delete().eq('id', row.id)
-      else { const { error } = await supabase.from('daily_logs').insert({ day, kind, what, note: 'Morning Protocol', source: 'hud', at: new Date().toISOString() }); if (error) throw new Error(error.message) }
+      else { const { error } = await supabase.from('daily_logs').insert({ day, kind, what, note: 'Morning Protocol', source: 'hud', at: new Date().toISOString() }); if (error) throw new Error(error.message); advanceRef.current = true }
       setLogs(await rows(supabase.from('daily_logs').select('id,kind,what,at').eq('day', day).in('kind', ['hygiene', 'medication', 'devotional'])))
       onChange && onChange()
     } catch (e) { setMsg(`Could not log: ${e.message}`) }
   }
+  const meds = useMemo(() => MORNING_MEDS(day), [day])
+  const bodyQueue = useMemo(() => [
+    ...HYGIENE_ITEMS.filter(h => MORNING_HYGIENE.includes(h.key)).map(h => ({ kind: 'hygiene', key: h.key, label: h.label, color: GREEN, sub: '0.25 mi when logged' })),
+    ...meds.map(m => ({ kind: 'medication', key: m.key, label: m.label, color: GOLD, sub: `${m.dose} · 0.5 mi when logged` })),
+    { kind: 'devotional', key: 'devotional', label: 'Devotional', color: BLUE, sub: 'read and log it on the Devotional page, or mark it here', page: true },
+  ], [meds])
+  const bodyLeft = bodyQueue.filter(i => !logged(i.kind, i.key) && !skipped.has(i.key))
+  const bodyCurrent = bodyLeft[0] || null
+  useEffect(() => {
+    if (STEPS[step]?.id !== 'body' || !advanceRef.current || bodyLeft.length) return
+    advanceRef.current = false
+    const t = setTimeout(() => go(step + 1), 650)
+    return () => clearTimeout(t)
+  }, [bodyLeft.length, step, go])
+  const openDevotional = () => { writeStep(day, step); onClose(); onNavigate && onNavigate('maintenance', ['spiritual']) }
 
   // Follow-ups: today (becomes a Load out candidate), push, drop.
   const pushFollow = async (o, n) => {
@@ -184,7 +254,6 @@ function Protocol({ day, session, onClose, onFinished, onChange }) {
 
   const board = L?.board || []
   const firstMeeting = events.find(e => !e.is_all_day)
-  const meds = useMemo(() => MORNING_MEDS(day), [day])
   const cur = STEPS[step]
 
   const content = () => {
@@ -201,20 +270,43 @@ function Protocol({ day, session, onClose, onFinished, onChange }) {
         </Panel>
       </div>
     )
-    if (cur.id === 'body') return (
-      <div style={{ display: 'grid', gap: 16 }}>
-        <div><Label>Hygiene</Label><div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 8 }}>
-          {HYGIENE_ITEMS.filter(h => MORNING_HYGIENE.includes(h.key)).map(h => { const on = !!logged('hygiene', h.key); return <button key={h.key} onClick={() => toggleLog('hygiene', h.key)} style={tile(on)}><span style={{ display: 'inline-flex', gap: 8, alignItems: 'center', fontSize: 13.5 }}>{on ? <Check size={13} color={GREEN} /> : <span style={{ width: 13, height: 13, borderRadius: 99, border: '1px solid rgba(255,255,255,0.3)' }} />}{h.label}</span><span style={{ fontFamily: MONO, fontSize: 10, color: on ? GREEN : GRAY, letterSpacing: '0.6px' }}>{on ? `logged ${fmtTime(logged('hygiene', h.key).at)} · 0.25 mi` : 'tap when done'}</span></button> })}
-        </div></div>
-        <div><Label>Doses due this morning</Label><div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 8 }}>
-          {meds.length === 0 && <div style={{ fontSize: 13, color: GRAY }}>Nothing due this morning.</div>}
-          {meds.map(m => { const on = !!logged('medication', m.key); return <button key={m.key} onClick={() => toggleLog('medication', m.key)} style={tile(on, GOLD)}><span style={{ display: 'inline-flex', gap: 8, alignItems: 'center', fontSize: 13.5 }}>{on ? <Check size={13} color={GOLD} /> : <span style={{ width: 13, height: 13, borderRadius: 99, border: '1px solid rgba(255,255,255,0.3)' }} />}{m.label}</span><span style={{ fontFamily: MONO, fontSize: 10, color: on ? GOLD : GRAY, letterSpacing: '0.6px' }}>{on ? `logged ${fmtTime(logged('medication', m.key).at)} · 0.5 mi` : m.dose}</span></button> })}
-        </div></div>
-        <div><Label>Spiritual</Label><div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 8 }}>
-          {(() => { const on = !!logged('devotional', 'devotional'); return <button onClick={() => toggleLog('devotional', 'devotional')} style={tile(on, BLUE)}><span style={{ display: 'inline-flex', gap: 8, alignItems: 'center', fontSize: 13.5 }}>{on ? <Check size={13} color={BLUE} /> : <span style={{ width: 13, height: 13, borderRadius: 99, border: '1px solid rgba(255,255,255,0.3)' }} />}Devotional</span><span style={{ fontFamily: MONO, fontSize: 10, color: on ? BLUE : GRAY, letterSpacing: '0.6px' }}>{on ? `logged ${fmtTime(logged('devotional', 'devotional').at)}` : 'tap when done'}</span></button> })()}
-        </div></div>
-      </div>
-    )
+    if (cur.id === 'body') {
+      const doneItems = bodyQueue.filter(i => logged(i.kind, i.key))
+      const upcoming = bodyLeft.slice(1)
+      const skippedItems = bodyQueue.filter(i => skipped.has(i.key) && !logged(i.kind, i.key))
+      return (
+        <div style={{ display: 'grid', gap: 18 }}>
+          {doneItems.length > 0 && (
+            <div style={{ display: 'grid', gap: 4 }}>
+              {doneItems.map(i => <button key={i.key} onClick={() => toggleLog(i.kind, i.key)} title="Tap to undo" style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'transparent', border: 'none', padding: '4px 0', cursor: 'pointer', textAlign: 'left', color: INK2 }}><Check size={13} color={i.color} /><span style={{ fontSize: 13, flex: 1 }}>{i.label}</span><span style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '0.8px', color: GRAY }}>logged {fmtTime(logged(i.kind, i.key).at)}</span><RotateCcw size={11} color={GRAY} /></button>)}
+            </div>
+          )}
+          {bodyCurrent ? (
+            <div key={bodyCurrent.key} className="mp-step-r" style={{ padding: '22px 24px', borderRadius: 14, border: `1px solid ${bodyCurrent.color}88`, background: `${bodyCurrent.color}10` }}>
+              <Label style={{ color: bodyCurrent.color }}>{bodyCurrent.kind === 'hygiene' ? 'Hygiene' : bodyCurrent.kind === 'medication' ? 'Dose due this morning' : 'Spiritual'} · {doneItems.length + 1} of {bodyQueue.length}</Label>
+              <div style={{ fontFamily: SERIF, fontSize: 28, color: '#fff', margin: '6px 0 4px', letterSpacing: '-0.01em' }}>{bodyCurrent.label}</div>
+              <div style={{ fontSize: 12.5, color: GRAY, marginBottom: 16 }}>{bodyCurrent.sub}</div>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                {bodyCurrent.page && <button onClick={openDevotional} style={btn(BLUE, true)}><ExternalLink size={12} /> Open the Devotional page</button>}
+                <button onClick={() => toggleLog(bodyCurrent.kind, bodyCurrent.key)} style={btn(bodyCurrent.color, !bodyCurrent.page)}><Check size={12} /> {bodyCurrent.page ? 'Mark done here' : 'Done'}</button>
+                <button onClick={() => setSkipped(s => new Set([...s, bodyCurrent.key]))} style={btn(INK2)}><SkipForward size={12} /> Skip</button>
+              </div>
+            </div>
+          ) : (
+            <div className="mp-step-r" style={{ padding: '22px 24px', borderRadius: 14, border: `1px solid ${GREEN}66`, background: `${GREEN}10` }}>
+              <div style={{ fontFamily: SERIF, fontSize: 24, color: '#fff' }}>{skippedItems.length ? `Body done, ${skippedItems.length} skipped for later.` : 'Body done.'}</div>
+              <div style={{ fontSize: 12.5, color: GRAY, marginTop: 4 }}>{skippedItems.length ? skippedItems.map(i => i.label).join(' · ') : 'Everything logged. Moving on.'}</div>
+            </div>
+          )}
+          {(upcoming.length > 0 || skippedItems.length > 0) && (
+            <div style={{ display: 'grid', gap: 4, opacity: 0.55 }}>
+              {upcoming.map(i => <div key={i.key} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '4px 0', color: INK2 }}><span style={{ width: 13, height: 13, borderRadius: 99, border: '1px solid rgba(255,255,255,0.3)', flex: '0 0 13px' }} /><span style={{ fontSize: 13, flex: 1 }}>{i.label}</span><span style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '0.8px', color: GRAY }}>up next</span></div>)}
+              {skippedItems.map(i => <button key={i.key} onClick={() => setSkipped(s => { const n = new Set(s); n.delete(i.key); return n })} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '4px 0', color: INK2, background: 'transparent', border: 'none', cursor: 'pointer', textAlign: 'left', width: '100%' }}><SkipForward size={12} color={GRAY} /><span style={{ fontSize: 13, flex: 1 }}>{i.label}</span><span style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '0.8px', color: GRAY }}>skipped · tap to bring back</span></button>)}
+            </div>
+          )}
+        </div>
+      )
+    }
     if (cur.id === 'lights') return (
       <div style={{ display: 'grid', gap: 14 }}>
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
@@ -319,7 +411,8 @@ function Protocol({ day, session, onClose, onFinished, onChange }) {
           {content()}
         </div>
         {msg && <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '1px', color: msg.startsWith('Could not') || msg.startsWith('Will not') || msg.startsWith('Launch failed') || msg.startsWith('Harvest') ? RED : GOLD, textTransform: 'uppercase', marginTop: 16 }}>{msg}</div>}
-        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, marginTop: 30 }}>
+        <LumenStrip day={day} where={`Morning Protocol · step ${step + 1} ${cur.title}`} onReplied={loadAll} />
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, marginTop: 24 }}>
           <button onClick={() => go(step - 1)} disabled={step === 0} style={btn(INK2, false, { opacity: step === 0 ? 0.35 : 1 })}><ArrowLeft size={13} /> Back</button>
           {step < STEPS.length - 1
             ? <button onClick={() => go(step + 1)} style={btn(GOLD_BRIGHT, true)}>Next <ArrowRight size={13} /></button>
@@ -331,7 +424,7 @@ function Protocol({ day, session, onClose, onFinished, onChange }) {
 }
 
 // ---- the Board row ----------------------------------------------------------
-export default function ProtocolsPanel({ onChange }) {
+export default function ProtocolsPanel({ onChange, onNavigate }) {
   const day = chiToday()
   const [session, setSession] = useState(null)
   const [open, setOpen] = useState(false)
@@ -363,7 +456,7 @@ export default function ProtocolsPanel({ onChange }) {
   const liveMin = running ? (now - new Date(session.started_at).getTime()) / 60000 + (Number(session.hours) || 0) * 60 : (Number(session?.hours) || 0) * 60
   return (
     <Panel style={{ marginBottom: 0 }}>
-      {open && <Protocol day={day} session={session} onClose={() => { setOpen(false); refresh() }} onFinished={finished} onChange={onChange} />}
+      {open && <Protocol day={day} session={session} onClose={() => { setOpen(false); refresh() }} onFinished={finished} onChange={onChange} onNavigate={onNavigate} />}
       <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
         <button onClick={start} style={{ ...tile(running || done, running ? GOLD : GREEN), minWidth: 230, flex: '0 1 300px' }}>
           <span style={{ display: 'inline-flex', gap: 8, alignItems: 'center', fontSize: 13.5 }}><Sunrise size={14} color={done ? GREEN : GOLD} />Morning Protocol</span>
