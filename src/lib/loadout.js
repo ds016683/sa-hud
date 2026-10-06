@@ -147,8 +147,10 @@ export function fitReasons(L, size = 'light', { alreadyLoadedId } = {}) {
   return reasons
 }
 
-// Activate an objective (if it is not already) and run its clock.
-export async function equipObjective(objectiveId, { size } = {}) {
+// Activate an objective (if it is not already) and run its clock. The Morning
+// Protocol loads items without starting a clock (clock: false); Launch picks
+// the one that runs.
+export async function equipObjective(objectiveId, { size, clock = true } = {}) {
   const L = await fetchLoadout()
   const o = (await q(supabase.from('objectives').select('id,title,state,effort,tags').eq('id', objectiveId).limit(1)))[0]
   if (!o) throw new Error('objective not found')
@@ -159,14 +161,14 @@ export async function equipObjective(objectiveId, { size } = {}) {
     const { error } = await supabase.from('objectives').update({ state: 'active', activated_at: new Date().toISOString(), released_at: null, released_kind: null, ...(size ? { effort: effortOf(size) } : {}) }).eq('id', o.id)
     if (error) throw new Error(error.message)
   }
-  await equip(o.id)
-  return { ok: true, title: o.title }
+  if (clock) await equip(o.id)
+  return { ok: true, title: o.title, id: o.id }
 }
 
 // A Main Mission task onto the board: reuse its linked objective or create the
 // bridge (the same one Lumen's activate_project_task creates), then equip.
-export async function equipTask(task, projectName) {
-  if (task.objective_id) return equipObjective(task.objective_id)
+export async function equipTask(task, projectName, { clock = true } = {}) {
+  if (task.objective_id) return equipObjective(task.objective_id, { clock })
   const L = await fetchLoadout()
   const reasons = fitReasons(L, 'light')
   if (reasons.length) return { ok: false, reasons }
@@ -177,8 +179,8 @@ export async function equipTask(task, projectName) {
   }).select().single()
   if (error) throw new Error(error.message)
   await supabase.from('project_tasks').update({ objective_id: data.id, status: task.status === 'blocked' ? 'blocked' : 'promoted' }).eq('id', task.id)
-  await equip(data.id)
-  return { ok: true, title: data.title }
+  if (clock) await equip(data.id)
+  return { ok: true, title: data.title, id: data.id }
 }
 
 // Impromptu: something David is doing right now that was never planned. Goes on

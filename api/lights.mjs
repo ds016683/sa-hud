@@ -58,8 +58,9 @@ async function billPay() {
 
 async function planning() {
   const day = chiToday()
-  const rows = await sb(`meeting_sessions?select=started_at,stopped_at,hours&day=eq.${day}&event_id=like.adhoc:*:daily-planning&limit=1`)
-  return { done: rows.length > 0 && !!rows[0].stopped_at, running: rows.length > 0 && !rows[0].stopped_at }
+  // Planning is the Morning Protocol since 10/6; the old Daily Planning timer still counts.
+  const rows = await sb(`meeting_sessions?select=event_id,started_at,stopped_at,hours&day=eq.${day}&or=(event_id.eq.adhoc:${day}:morning-protocol,event_id.eq.adhoc:${day}:daily-planning)`)
+  return { done: rows.some(r => !!r.stopped_at), running: rows.some(r => r.started_at && !r.stopped_at) }
 }
 
 export default async function handler(req, res) {

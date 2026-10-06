@@ -19,7 +19,7 @@ export const RECURRING = [
   { slug: 'email-refresh',  label: 'E-mail Refresh',  light: 'email' },
   { slug: 'slack-review',   label: 'Slack Review',    light: 'slack', clean: true },
   { slug: 'calendar-sweep', label: 'Calendar Sweep' },
-  { slug: 'daily-planning', label: 'Daily Planning',  light: 'planning' },
+  // Daily Planning folded into the Morning Protocol (10/6).
   { slug: 'bill-pay',       label: 'Bill Pay',        light: 'bill' },
   { slug: 'thinking',       label: 'Thinking' },
 ]

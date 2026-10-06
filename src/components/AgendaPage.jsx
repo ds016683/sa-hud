@@ -14,6 +14,7 @@ import LoadoutPanel from './river/LoadoutPanel'
 import RecurringPanel from './river/RecurringPanel'
 import ReleasePanel from './river/ReleasePanel'
 import AmbushPanel from './river/AmbushPanel'
+import ProtocolsPanel from './river/MorningProtocol'
 import { equipTask, equipObjective } from '../lib/loadout'
 import ItemDetail from './river/ItemDetail'
 import {
@@ -571,6 +572,9 @@ export default function AgendaPage({ onNavigate } = {}) {
 
       {day === today && (
         <>
+          <RailSection title="Protocols">
+            <ProtocolsPanel onChange={refresh} />
+          </RailSection>
           <RailSection title="Loadout">
             <LoadoutPanel onChange={refresh} refreshKey={refreshKey} onNavigate={onNavigate} />
           </RailSection>
