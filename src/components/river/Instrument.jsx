@@ -11,7 +11,7 @@ export function Instrument({ label, sub, reading, unit, icon, light, running, cl
   const anim = lc ? (light.blink ? 'inst-breathe-fast' : 'inst-breathe') : ''
   const border = running ? GREEN : lc ? `${lc}99` : PANEL_BORDER
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width, gap: 6, opacity: disabled ? 0.45 : 1 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width, gap: 6, opacity: disabled && !lc ? 0.45 : 1 }}>
       <button onClick={disabled ? undefined : onClick} title={title || label} className={running ? '' : anim} style={{
         position: 'relative', width: 70, height: 70, borderRadius: 16, cursor: disabled ? 'default' : 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 2, padding: 0,
         border: `1px solid ${border}`, background: running ? 'rgba(67,211,146,0.10)' : 'rgba(255,255,255,0.035)', color: INK,

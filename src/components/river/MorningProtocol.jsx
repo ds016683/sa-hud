@@ -57,6 +57,25 @@ const lightRule = (kind, L) => {
   return { level: 'gray', text: '' }
 }
 
+// Protocol lights (David, 10/7), Chicago time. The outline breathes while
+// the protocol is still owed: Morning green 5:00 to 6:30, gold to 8:00, red
+// after; Evening green 6:00 PM to 10:00, gold to 11:30, red after (through
+// the night until the close). Done, the light goes out.
+const chiMinutes = (ms) => { const p = Object.fromEntries(new Intl.DateTimeFormat('en-US', { timeZone: 'America/Chicago', hour12: false, hour: '2-digit', minute: '2-digit' }).formatToParts(new Date(ms)).map(x => [x.type, x.value])); return (Number(p.hour) % 24) * 60 + Number(p.minute) }
+export function protocolLight(which, ms = Date.now()) {
+  const m = chiMinutes(ms)
+  if (which === 'morning') {
+    if (m < 5 * 60) return null
+    if (m < 6 * 60 + 30) return { level: 'green', text: 'Morning Protocol · the window is open (5:00 to 6:30)' }
+    if (m < 8 * 60) return { level: 'gold', text: 'Morning Protocol · running late (6:30 to 8:00)' }
+    return { level: 'red', blink: m >= 10 * 60, text: 'Morning Protocol · overdue (after 8:00)' }
+  }
+  if (m >= 18 * 60 && m < 22 * 60) return { level: 'green', text: 'Evening Protocol · the window is open (6:00 to 10:00 PM)' }
+  if (m >= 22 * 60 && m < 23 * 60 + 30) return { level: 'gold', text: 'Evening Protocol · running late (10:00 to 11:30 PM)' }
+  if (m >= 23 * 60 + 30 || m < 5 * 60) return { level: 'red', blink: m < 5 * 60, text: 'Evening Protocol · overdue (after 11:30 PM)' }
+  return null
+}
+
 const stepKey = (day) => `mp-step:${day}`
 const readStep = (day) => { try { const v = Number(localStorage.getItem(stepKey(day))); return Number.isFinite(v) ? Math.max(0, Math.min(STEPS.length - 1, v)) : 0 } catch { return 0 } }
 const writeStep = (day, n) => { try { localStorage.setItem(stepKey(day), String(n)) } catch { /* no-op */ } }
@@ -458,8 +477,8 @@ export default function ProtocolsPanel({ onChange, onNavigate }) {
   return (
     <InstrumentGroup label="Protocols" footer={groupMsg(msg, msg && msg.startsWith('Could not'))}>
       {open && <Protocol day={day} session={session} onClose={() => { setOpen(false); refresh() }} onFinished={finished} onChange={onChange} onNavigate={onNavigate} />}
-      <Instrument label="Morning" sub={running ? 'tap to resume' : done ? `${fmtTime(session.stopped_at)} · ${fmtClock(liveMin)}` : 'begin the day'} icon={done ? <Check size={20} /> : <Sunrise size={20} />} running={running} clock={fmtClock(liveMin)} tone={done ? GREEN : GOLD} onClick={start} />
-      <Instrument label="Evening" sub="next" icon={<Moon size={20} />} tone={BLUE} disabled />
+      <Instrument label="Morning" sub={running ? 'tap to resume' : done ? `${fmtTime(session.stopped_at)} · ${fmtClock(liveMin)}` : (protocolLight('morning', now) ? { green: 'begin the day', gold: 'running late', red: 'overdue' }[protocolLight('morning', now).level] : 'from 5:00 AM')} icon={done ? <Check size={20} /> : <Sunrise size={20} />} running={running} clock={fmtClock(liveMin)} tone={done ? GREEN : GOLD} onClick={start} light={!done && !running ? protocolLight('morning', now) : null} />
+      <Instrument label="Evening" sub={protocolLight('evening', now) ? { green: 'close the day', gold: 'running late', red: 'overdue' }[protocolLight('evening', now).level] : 'from 6:00 PM'} icon={<Moon size={20} />} tone={BLUE} disabled light={protocolLight('evening', now)} />
     </InstrumentGroup>
   )
 }
