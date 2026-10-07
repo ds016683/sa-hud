@@ -41,10 +41,10 @@ export default function ArchivePage() {
         {rows === undefined && <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '1.4px', textTransform: 'uppercase', color: GRAY, padding: '10px 0' }}>Reading the Archive</div>}
         {rows === null && <div style={{ fontSize: 13, color: INK2, lineHeight: 1.6 }}>The Archive is not set up yet. Run <span style={{ fontFamily: MONO, fontSize: 12 }}>sql/2026-10-07-side-missions-archive.sql</span> in the Ledger; the first close-out that carries content files the first entry.</div>}
         {Array.isArray(rows) && rows.length === 0 && <div style={{ fontSize: 13, color: GRAY }}>Nothing filed{q || realm || kind ? ' that matches' : ' yet'}. The first Side Mission or Main Mission close-out that carries content lands here.</div>}
-        {Array.isArray(rows) && rows.map(r => { const [, , Icon, c] = KIND[r.kind] || KIND.summary; const isOpen = open === r.id; return (
+        {Array.isArray(rows) && rows.map(r => { const kd = KIND[r.kind] || KIND.summary; const KindIcon = kd[2]; const c = kd[3]; const isOpen = open === r.id; return (
           <div key={r.id} style={{ borderTop: `1px solid ${PANEL_BORDER}`, padding: '10px 0' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer', flexWrap: 'wrap' }} onClick={() => setOpen(isOpen ? null : r.id)}>
-              <Icon size={14} color={c} />
+              <KindIcon size={14} color={c} />
               <div style={{ flex: 1, minWidth: 240 }}>
                 <div style={{ fontSize: 14, color: INK }}>{r.title}</div>
                 <div style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '0.6px', color: GRAY, marginTop: 3 }}>{r.kind} · {r.realm === 'personal' ? 'Personal' : 'Third Horizon'} · from {r.source_kind || 'unknown'}{r.source_title ? ` “${r.source_title}”` : ''} · filed {fmt(r.filed_at)}</div>
