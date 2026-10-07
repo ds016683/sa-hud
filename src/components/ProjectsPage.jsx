@@ -8,6 +8,9 @@ import ArtifactsTab from './river/ArtifactsTab'
 import ItemDetail from './river/ItemDetail'
 import SessionBoard from './river/SessionBoard'
 import { listShares, archiveShare, archiveSharesFor, shareUrl } from '../lib/shares'
+import { fileProject } from '../lib/archive'
+import { listArtifacts as listProjArtifacts, readArtifact as readProjArtifact } from '../lib/artifacts'
+import { supabase as sbClient } from '../lib/supabase'
 
 // =============================================================================
 // STYLE TOKENS (CIP canon, matches ObjectivesPage dark stage)
@@ -349,6 +352,14 @@ function ProjectDetail({ project, board, api, onBack, initialTab, initialSlug, o
               if (!window.confirm(`Mark "${project.name}" complete? The River strikes 10 miles on the next update.`)) return
               const ok = await api.updateProject(project.id, { status: 'completed', archived_at: new Date().toISOString() })
               try { await archiveSharesFor(project.id) } catch (e) { console.warn('shares archive', e.message) }
+              // File the mission's artifacts and its latest session board in the Archive.
+              try {
+                const list = await listProjArtifacts(project.id)
+                const artifacts = await Promise.all(list.map(async a => { const d = await readProjArtifact(project.id, a.slug).catch(() => null); return { slug: a.slug, title: d?.title || a.slug, kind: d?.kind, doc: d } }))
+                const { data: sbs } = await sbClient.from('session_boards').select('id,title,phases').or(`project.eq.${project.key || project.name},project.eq.${project.name}`).order('updated_at', { ascending: false }).limit(1)
+                const boards = (sbs || []).map(b => { const ts = (b.phases || []).flatMap(ph => ph.tasks || []); return { id: b.id, title: b.title, phases: b.phases || [], done: ts.filter(t => t.status === 'done').length, total: ts.length } })
+                await fileProject(project, { artifacts, boards, realm: project.category === 'personal' ? 'personal' : 'third-horizon' })
+              } catch (e) { console.warn('archive', e.message) }
               if (ok) onBack()
             }}
             title="Whole mission complete: 10 miles on the River"

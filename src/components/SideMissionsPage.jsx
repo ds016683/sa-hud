@@ -6,6 +6,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Target, Play, Plus, Bell, Hourglass, ArrowUpRight, Inbox as InboxIcon, Flag, Trash2, RotateCcw, ExternalLink, Check } from 'lucide-react'
 import ItemDetail from './river/ItemDetail'
+import FileAway from './river/FileAway'
 import { fetchObjectives, addObjective, route, binObjective, restoreObjective, purgeObjective, reopenObjective, closeOut, pockets, provenance, realmOf, STATE, TAGS, sizeOf } from '../lib/objectives'
 import { fetchLoadout, SIZES } from '../lib/loadout'
 import { INK, INK2, GRAY, PANEL_BORDER, GOLD, GOLD_BRIGHT, BLUE, GREEN, RED, PURPLE, MONO, S, Panel, Label, chiToday } from './river/canon'
@@ -114,6 +115,7 @@ export default function SideMissionsPage({ onNavigate }) {
   const [L, setL] = useState(null)
   const [container, setContainer] = useState(() => { try { return localStorage.getItem('sm-container') || 'parked' } catch { return 'parked' } })
   const [open, setOpen] = useState(null)
+  const [filing, setFiling] = useState(null)
   const [msg, setMsg] = useState(null)
   const [filter, setFilter] = useState('')
   const [range, setRange] = useState(7)
@@ -136,7 +138,7 @@ export default function SideMissionsPage({ onNavigate }) {
   const onDone = async (o) => {
     try {
       const p = await pockets(o.id)
-      if (p.carrying) { setMsg(`${o.title} is carrying ${p.artifacts.length} artifact(s), ${p.files.length} file(s), ${p.boards.length} board(s). Open it to file them away before closing.`); setOpen(o); return }
+      if (p.carrying) { setFiling({ o, p }); return }
       if (p.openSteps.length && !window.confirm(`${p.openSteps.length} step(s) still open. Close it out anyway?`)) return
       const r = await closeOut(o)
       setMsg(`Released: ${o.title} · ${r.minutes}m${r.personal ? ' · personal' : ''} · miles on the next update`); await refresh()
@@ -148,6 +150,7 @@ export default function SideMissionsPage({ onNavigate }) {
   return (
     <div style={S.page}>
       {open && <ItemDetail item={toItem(open)} onClose={() => { setOpen(null); refresh() }} onNavigate={onNavigate} onChange={refresh} />}
+      {filing && <FileAway objective={filing.o} pockets={filing.p} onClose={() => setFiling(null)} onDone={({ filed, released }) => { setFiling(null); setMsg(`Filed ${filed.length} to the Archive and released ${filing.o.title} · ${released.minutes}m`); refresh() }} />}
       <div style={{ marginBottom: 18 }}>
         <h1 style={S.h1}><Target size={22} color={BLUE} style={{ verticalAlign: '-3px', marginRight: 8 }} />Side Missions</h1>
         <div style={S.sub}>the queue · what is loaded runs on the Board</div>

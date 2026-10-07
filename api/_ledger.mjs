@@ -285,6 +285,16 @@ export const TOOLS = [
     inputSchema: { type: 'object', properties: { title: { type: 'string' }, day: { type: 'string', description: 'YYYY-MM-DD, optional' }, from_minute: { type: 'number' }, to_minute: { type: 'number' }, max_chars: { type: 'integer' }, find: { type: 'string', description: 'optional: return only turns containing this text, with a little context' } }, required: ['title'] },
   },
   {
+    name: 'search_archive',
+    description: "The Archive is David's master knowledge system: what Side Missions and Main Missions left behind when they closed (artifacts, decisions, session boards, files, summaries), plus things filed directly. Search it by text; optional realm ('personal' | 'third-horizon') and kind. Use it when David asks what was decided, what a past mission produced, or where something is.",
+    inputSchema: { type: 'object', properties: { q: { type: 'string' }, realm: { type: 'string' }, kind: { type: 'string' }, limit: { type: 'number' } }, required: [] },
+  },
+  {
+    name: 'file_to_archive',
+    description: "File something into the Archive directly: a summary, a decision, a note. Give a title, the summary text, the realm ('personal' | 'third-horizon'), optional tags and an optional body (JSON). Use when David says to keep or file something, or at a close-out he asks you to write up.",
+    inputSchema: { type: 'object', properties: { title: { type: 'string' }, summary: { type: 'string' }, realm: { type: 'string' }, kind: { type: 'string', description: "summary | decision | note (default summary)" }, tags: { type: 'array', items: { type: 'string' } }, body: { type: 'object' }, source_title: { type: 'string' } }, required: ['title', 'summary'] },
+  },
+  {
     name: 'list_artifacts',
     description: "Artifacts a project carries in the HUD: structured work products (kind 'scorecard' today) that David reads and edits on the project page. Returns slugs; read_artifact for the content.",
     inputSchema: { type: 'object', properties: { project: { type: 'string', description: 'project key or name' } }, required: ['project'] },
@@ -660,6 +670,18 @@ export async function callTool(name, args = {}) {
       }
       const max = Number(args.max_chars) || 30000
       return JSON.stringify({ ok: true, meeting: m.title, day: m.meeting_date, minutes: t.minutes, turns: t.turns, chars: t.text.length, truncated: text.length > max, note: text.length > max ? 'Truncated: narrow with from_minute/to_minute or find.' : undefined, transcript: text.slice(0, max) })
+    }
+    case 'search_archive': {
+      const q = String(args.q || '').trim()
+      let path = `archive_entries?select=id,kind,title,summary,realm,tags,source_kind,source_title,filed_at,path&order=filed_at.desc&limit=${Math.min(50, Number(args.limit) || 20)}`
+      if (args.realm) path += `&realm=eq.${encodeURIComponent(args.realm)}`
+      if (args.kind) path += `&kind=eq.${encodeURIComponent(args.kind)}`
+      if (q) path += `&or=(title.ilike.*${encodeURIComponent(q)}*,summary.ilike.*${encodeURIComponent(q)}*,source_title.ilike.*${encodeURIComponent(q)}*)`
+      try { return JSON.stringify({ ok: true, entries: await sb(path) }) } catch (e) { return JSON.stringify({ ok: false, error: `the Archive is not set up yet (${String(e.message).slice(0, 80)})` }) }
+    }
+    case 'file_to_archive': {
+      const row = { kind: ['summary', 'decision', 'note'].includes(args.kind) ? args.kind : 'summary', title: String(args.title).slice(0, 200), summary: String(args.summary).slice(0, 4000), realm: args.realm === 'personal' ? 'personal' : 'third-horizon', tags: Array.isArray(args.tags) ? args.tags.slice(0, 12) : [], source_kind: 'lumen', source_title: args.source_title || null, body: args.body || null, filed_by: 'lumen' }
+      try { const out = await sbWrite('POST', 'archive_entries', row); return JSON.stringify({ ok: true, entry: out?.[0] || row }) } catch (e) { return JSON.stringify({ ok: false, error: `the Archive is not set up yet (${String(e.message).slice(0, 80)})` }) }
     }
     case 'list_artifacts': {
       const pr = await findProject(args.project)

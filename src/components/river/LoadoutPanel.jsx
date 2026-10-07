@@ -9,6 +9,7 @@ import { Play, Pause, PackageCheck, Archive, X as XIcon, Zap, Phone, Swords } fr
 import { supabase } from '../../lib/supabase'
 import { DispatchModal } from './AmbushPanel'
 import { pockets } from '../../lib/objectives'
+import FileAway from './FileAway'
 import { fetchLoadout, equip, holster, stash, extract, addImpromptu, fmtClock, SIZES, SLOTS, HEAVY_MAX } from '../../lib/loadout'
 import ItemDetail from './ItemDetail'
 import { INK, INK2, GRAY, PANEL_BORDER, GOLD, GOLD_BRIGHT, BLUE, GREEN, RED, MONO, SERIF, S, Eyebrow, Label, Panel } from './canon'
@@ -175,6 +176,7 @@ export default function LoadoutPanel({ onChange, refreshKey = 0, onNavigate, bar
   const [tick, setTick] = useState(0)
   const [open, setOpen] = useState(null)
   const [dispatch, setDispatch] = useState(null)
+  const [filing, setFiling] = useState(null)
   const [related, setRelated] = useState(null)
   const [projects, setProjects] = useState([])
   const [msg, setMsg] = useState(null)
@@ -192,7 +194,7 @@ export default function LoadoutPanel({ onChange, refreshKey = 0, onNavigate, bar
   // opened instead so its content is filed away first (the Archive).
   const extractGate = async (it) => {
     if (it.kind === 'Side Mission' || it.kind === 'Impromptu') {
-      try { const p = await pockets(it.id); if (p.carrying) { setMsg(`${it.title} is carrying ${p.artifacts.length} artifact(s), ${p.files.length} file(s), ${p.boards.length} board(s). File them away first.`); setRelated(it); return } } catch { /* fall through */ }
+      try { const p = await pockets(it.id); if (p.carrying) { const { data } = await supabase.from('objectives').select('*').eq('id', it.id).limit(1); if (data?.[0]) { setFiling({ o: data[0], p }); return } } } catch { /* fall through */ }
     }
     setOpen(it)
   }
@@ -205,6 +207,7 @@ export default function LoadoutPanel({ onChange, refreshKey = 0, onNavigate, bar
       <style>{`.board-slots { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px } @media (max-width: 980px) { .board-slots { grid-template-columns: repeat(2, minmax(0, 1fr)) } }`}</style>
       {related && <ItemDetail item={{ id: related.id, objective_id: related.id, kind: related.kind, title: related.title, project: related.project, project_id: related.project_id, description: related.description, tags: related.tags, size: related.size }} onClose={() => setRelated(null)} onNavigate={onNavigate} onChange={bump} />}
       {open && <ExtractModal item={open} onClose={() => setOpen(null)} onDone={(r) => { setOpen(null); setMsg(`Extracted: ${open.title} · ${fmtClock(r.minutes)}${r.personal ? ' · personal' : ''}`); bump() }} />}
+      {filing && <FileAway objective={filing.o} pockets={filing.p} onClose={() => setFiling(null)} onDone={({ filed, released }) => { setFiling(null); setMsg(`Filed ${filed.length} to the Archive · extracted ${filing.o.title} · ${released.minutes}m`); bump() }} />}
       {dispatch && <DispatchModal item={dispatch} projects={projects} onClose={() => setDispatch(null)} onDone={(r) => { setDispatch(null); setMsg(`Dispatched: ${dispatch.title} · ${fmtClock(r.minutes)}${r.ported.length ? ` · ported ${r.ported.length}` : ' · nothing left'} · 1 mile on the next update`); bump() }} />}
       {!L ? (
         <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '1.4px', textTransform: 'uppercase', color: GRAY, padding: '12px 0' }}>Reading the board</div>
