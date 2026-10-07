@@ -150,7 +150,7 @@ export default function AmbushPanel({ onChange }) {
       {open && <DispatchModal item={open} projects={projects} onClose={() => setOpen(null)} onDone={(r) => { setOpen(null); setMsg(`Dispatched: ${open.title} · ${fmtClock(r.minutes)}${r.ported.length ? ` · ported ${r.ported.length}` : ' · nothing left'} · 1 mile on the next update`); setTick(x => x + 1); onChange && onChange() }} />}
       <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
         <Zap size={13} color={RED_ORANGE} style={{ flexShrink: 0 }} />
-        <input value={imp} onChange={e => setImp(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && imp.trim()) start(imp) }} placeholder="Impromptu: what just landed on you? Enter starts the timer." disabled={busy}
+        <input value={imp} onChange={e => setImp(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && imp.trim()) start(imp) }} placeholder="Ad Hoc: what just landed on you? Enter starts the timer." disabled={busy}
           style={{ ...field, flex: 1, minWidth: 220, width: 'auto' }} />
         <button onClick={() => imp.trim() && start(imp)} disabled={busy || !imp.trim()} style={{ ...btn(RED_ORANGE, !!imp.trim()), opacity: imp.trim() ? 1 : 0.5 }}><Play size={11} /> Start</button>
         <button onClick={startCall} disabled={busy} style={btn(BLUE)}><Phone size={11} /> Call</button>

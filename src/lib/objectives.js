@@ -122,6 +122,6 @@ export async function pockets(id) {
 // front of this in the HUD when the mission is carrying content.
 export async function closeOut(o, { minutes, note } = {}) {
   const tags = o.tags || []
-  const r = await extractItem({ id: o.id, title: o.title, activated_at: o.activated_at, personal: tags.includes('personal'), kind: tags.includes('impromptu') ? 'Impromptu' : 'Side Mission' }, { minutes, note })
+  const r = await extractItem({ id: o.id, title: o.title, activated_at: o.activated_at, personal: tags.includes('personal'), kind: tags.includes('impromptu') ? 'Ad Hoc' : 'Side Mission' }, { minutes, note })
   return r
 }

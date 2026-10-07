@@ -145,7 +145,7 @@ export default function SideMissionsPage({ onNavigate }) {
     } catch (e) { setMsg(`Could not close it out: ${e.message}`) }
   }
 
-  const toItem = (o) => ({ id: o.id, objective_id: o.id, kind: (o.tags || []).includes('impromptu') ? 'Impromptu' : 'Side Mission', title: o.title, description: o.description, tags: o.tags, size: sizeOf(o), objective: o })
+  const toItem = (o) => ({ id: o.id, objective_id: o.id, kind: (o.tags || []).includes('impromptu') ? 'Ad Hoc' : 'Side Mission', title: o.title, description: o.description, tags: o.tags, size: sizeOf(o), objective: o })
 
   return (
     <div style={S.page}>

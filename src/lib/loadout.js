@@ -59,7 +59,7 @@ export async function fetchLoadout() {
       minutes_today: minutesFor(o.id),
       session: tags.includes('session'),
       project: projByObj.get(o.id) || null, project_id: projIdByObj.get(o.id) || null, description: o.description || null,
-      kind: tags.includes('impromptu') ? 'Impromptu' : (projByObj.has(o.id) || tags.includes('mission-task')) ? 'Main Mission' : tags.includes('session') ? 'Session' : 'Side Mission',
+      kind: tags.includes('impromptu') ? 'Ad Hoc' : (projByObj.has(o.id) || tags.includes('mission-task')) ? 'Main Mission' : tags.includes('session') ? 'Session' : 'Side Mission',
       personal: tags.includes('personal'), adhoc: tags.includes('impromptu'), call: tags.includes('call'),
     }
   })

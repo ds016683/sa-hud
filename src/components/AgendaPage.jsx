@@ -415,7 +415,7 @@ function SideMissionPanel({ objectives, loading, day, refresh, onNavigate }) {
   })
   return (
     <Panel heading="Side Missions" style={{ marginBottom: 0 }}>
-      {openItem && <ItemDetail item={{ id: openItem.id, objective_id: openItem.id, kind: (openItem.tags || []).includes('impromptu') ? 'Impromptu' : (openItem.tags || []).includes('session') ? 'Session' : 'Side Mission', title: openItem.title, description: openItem.description || null, tags: openItem.tags || [] }} onClose={() => setOpenItem(null)} onNavigate={onNavigate} onChange={refresh} />}
+      {openItem && <ItemDetail item={{ id: openItem.id, objective_id: openItem.id, kind: (openItem.tags || []).includes('impromptu') ? 'Ad Hoc' : (openItem.tags || []).includes('session') ? 'Session' : 'Side Mission', title: openItem.title, description: openItem.description || null, tags: openItem.tags || [] }} onClose={() => setOpenItem(null)} onNavigate={onNavigate} onChange={refresh} />}
       {rows.length === 0 && <Empty>No objectives calling today.</Empty>}
       {rows.map((o) => {
         const active = o.state === 'active'

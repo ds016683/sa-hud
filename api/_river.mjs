@@ -95,7 +95,7 @@ export async function computeAwards(day, { closing = false } = {}) {
       // is done. Captured and released on the same day is impromptu, whatever it
       // was called: 1 mile. The 3-mile difference is the incentive to plan.
       const sameDay = !o.captured_at || o.captured_at >= from
-      if ((o.tags || []).includes('impromptu') || sameDay) add('impromptu', o.id, `Impromptu done: ${o.title}${sameDay && !(o.tags || []).includes('impromptu') ? ' (captured and released the same day)' : ''}`)
+      if ((o.tags || []).includes('impromptu') || sameDay) add('impromptu', o.id, `Ad Hoc done: ${o.title}${sameDay && !(o.tags || []).includes('impromptu') ? ' (captured and released the same day)' : ''}`)
       else add('side-mission', o.id, `Side Mission released: ${o.title}`)
     }
     if (o.released_kind === 'foreman' || o.state === 'foreman') add('cartographer', o.id, `Handed off: ${o.title}${o.who ? ` (${o.who})` : ''}`)

@@ -25,7 +25,7 @@ const SizeChip = ({ size }) => {
   return <span style={{ ...S.chip('rgba(255,255,255,0.06)', s.color), border: `1px solid ${s.color}55`, fontFamily: MONO, fontSize: 9, letterSpacing: '1px', padding: '2px 7px' }}>{s.label} · {s.slots} slot{s.slots === 1 ? '' : 's'}</span>
 }
 
-const KIND_COLOR = { 'Side Mission': GREEN, 'Main Mission': GOLD_BRIGHT, 'Impromptu': INK2, 'Session': BLUE }
+const KIND_COLOR = { 'Side Mission': GREEN, 'Main Mission': GOLD_BRIGHT, 'Ad Hoc': INK2, 'Session': BLUE }
 const KindChip = ({ kind }) => <span style={{ ...S.chip('transparent', KIND_COLOR[kind] || INK2), border: `1px solid ${(KIND_COLOR[kind] || INK2)}55`, fontFamily: MONO, fontSize: 9, letterSpacing: '1px', padding: '2px 7px' }}>{kind}</span>
 
 function ExtractModal({ item, onClose, onDone }) {
@@ -147,7 +147,7 @@ function AdHocSlot({ item, act, onDispatch, onOpen, onChanged }) {
     <div style={slotBox(item.equipped ? GREEN : `${CORAL}99`, item.equipped ? 'rgba(67,211,146,0.07)' : 'rgba(232,131,111,0.06)')}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
         <Label style={{ marginBottom: 0, color: CORAL }}>Ad Hoc Slot</Label><span style={{ flex: 1 }} />
-        <span style={{ ...S.chip('transparent', CORAL), border: `1px solid ${CORAL}55`, fontFamily: MONO, fontSize: 9, letterSpacing: '1px', padding: '2px 7px' }}>{item.call ? 'Call' : 'Impromptu'}</span>
+        <span style={{ ...S.chip('transparent', CORAL), border: `1px solid ${CORAL}55`, fontFamily: MONO, fontSize: 9, letterSpacing: '1px', padding: '2px 7px' }}>{item.call ? 'Call' : 'Ad Hoc'}</span>
       </div>
       <div onClick={() => onOpen(item)} style={{ display: 'flex', gap: 8, alignItems: 'flex-start', fontFamily: SERIF, fontSize: 16, fontWeight: 500, color: '#fff', lineHeight: 1.3, cursor: 'pointer', flex: 1 }}>
         {item.call ? <Phone size={14} color={CORAL} style={{ marginTop: 3, flexShrink: 0 }} /> : <Zap size={14} color={CORAL} style={{ marginTop: 3, flexShrink: 0 }} />}{item.title}
@@ -201,7 +201,7 @@ export default function LoadoutPanel({ onChange, refreshKey = 0, onNavigate, bar
   // Extract gate: a Side Mission carrying artifacts, files, or a board is
   // opened instead so its content is filed away first (the Archive).
   const extractGate = async (it) => {
-    if (it.kind === 'Side Mission' || it.kind === 'Impromptu') {
+    if (it.kind === 'Side Mission' || it.kind === 'Ad Hoc') {
       try { const p = await pockets(it.id); if (p.carrying) { const { data } = await supabase.from('objectives').select('*').eq('id', it.id).limit(1); if (data?.[0]) { setFiling({ o: data[0], p }); return } } } catch { /* fall through */ }
     }
     setOpen(it)

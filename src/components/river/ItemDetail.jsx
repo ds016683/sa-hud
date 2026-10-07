@@ -17,7 +17,7 @@ import { INK, INK2, GRAY, PANEL_BORDER, GOLD, GOLD_BRIGHT, BLUE, GREEN, RED, MON
 const NAVY_DEEP = '#0A1B2B'
 const TABS = ['overview', 'artifacts', 'sessions', 'files', 'notes']
 const TAB_LABEL = { overview: 'Overview', artifacts: 'Artifacts', sessions: 'Sessions', files: 'Files', notes: 'Notes' }
-const KIND_COLOR = { 'Main Mission': GOLD_BRIGHT, 'Side Mission': GREEN, 'Impromptu': INK2, 'Session': BLUE, 'Event': BLUE }
+const KIND_COLOR = { 'Main Mission': GOLD_BRIGHT, 'Side Mission': GREEN, 'Ad Hoc': INK2, 'Session': BLUE, 'Event': BLUE }
 const STOP = new Set(['the', 'and', 'with', 'for', 'from', 'about', 'notes', 'upload', 'interview', 'call', 'meeting', 'review', 'investigate', 'weekly', 'monthly', 'david', 'smith'])
 const words = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9 ]/g, ' ').split(/\s+/).filter(w => w.length > 2 && !STOP.has(w))
 const chiTime = (iso) => iso ? new Date(iso).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'America/Chicago' }) : ''
