@@ -31,21 +31,10 @@ async function emailUnread() {
 }
 
 async function slackUnread() {
-  const tok = process.env.SLACK_USER_TOKEN
-  if (tok) {
-    // Sum unread across the channels and DMs David is in. One call per
-    // conversation; fine for a small workspace, cached by the HUD's 60s poll.
-    const list = await fetch('https://slack.com/api/users.conversations?types=public_channel,private_channel,mpim,im&exclude_archived=true&limit=200', { headers: { Authorization: `Bearer ${tok}` } }).then(r => r.json())
-    if (!list.ok) throw new Error(`slack: ${list.error}`)
-    let unread = 0
-    for (const c of list.channels || []) {
-      const info = await fetch(`https://slack.com/api/conversations.info?channel=${c.id}`, { headers: { Authorization: `Bearer ${tok}` } }).then(r => r.json())
-      unread += Number(info.channel?.unread_count_display || 0)
-    }
-    return { unread, source: 'slack', channels: (list.channels || []).length }
-  }
-  const rows = await sb(`daily_logs?select=value,at,note&what=eq.slack-unread&order=at.desc&limit=1`)
-  return rows.length ? { unread: Number(rows[0].value), source: 'ledger', as_of: rows[0].at } : { unread: null, source: 'none' }
+  // The Slack pipe (api/slack-sync.mjs, every 5 minutes) writes the unread
+  // total to daily_logs with source 'slack'; a hand-set value has source 'hud'.
+  const rows = await sb(`daily_logs?select=value,at,source&what=eq.slack-unread&order=at.desc&limit=1`)
+  return rows.length ? { unread: Number(rows[0].value), source: rows[0].source === 'slack' ? 'slack' : 'ledger', as_of: rows[0].at } : { unread: null, source: 'none' }
 }
 
 async function billPay() {
