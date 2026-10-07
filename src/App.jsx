@@ -10,7 +10,7 @@ import LoginPage from './components/LoginPage'
 import ProjectsPage from './components/ProjectsPage'
 import EcosystemPage from './components/EcosystemPage'
 import MeetingNotesPage from './components/MeetingNotesPage'
-import ObjectivesPage from './components/ObjectivesPage'
+import SideMissionsPage from './components/SideMissionsPage'
 import RelationshipsPage from './components/RelationshipsPage'
 import CompanyFinancePage from './components/CompanyFinancePage'
 import PersonalFinancePage from './components/PersonalFinancePage'
@@ -241,7 +241,7 @@ export default function App() {
           {active === 'accomplishments'  && <AccomplishmentsPage />}
           {active === 'notes'            && <MeetingNotesPage />}
           {active === 'main-missions'    && <ProjectsPage deepLink={params} onNavigate={setRoute} />}
-          {active === 'side-missions'    && <ObjectivesPage />}
+          {active === 'side-missions'    && <SideMissionsPage onNavigate={setRoute} />}
           {active === 'maintenance'      && <MaintenancePage deepLink={params} />}
           {active === 'company-finance'  && <CompanyFinancePage />}
           {active === 'personal-finance' && <PersonalFinancePage />}

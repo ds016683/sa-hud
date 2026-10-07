@@ -5,10 +5,11 @@
 // what is linked or says plainly that the item doesn't call for it, and
 // offers to attach one from the mission.
 import { useCallback, useEffect, useState } from 'react'
-import { ArrowLeft, Play, Pause, Archive, ExternalLink, FolderOpen, FileText, ListChecks, Mic, Map as MapIcon } from 'lucide-react'
+import { ArrowLeft, Play, Pause, Archive, ExternalLink, FolderOpen, FileText, ListChecks, Mic, Map as MapIcon, Check, Plus, Trash2, Upload } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { listArtifacts, readArtifact, writeArtifact } from '../../lib/artifacts'
 import { fetchLoadout, equip, holster, stash, equipObjective, equipTask, fmtClock, SIZES } from '../../lib/loadout'
+import { fetchSteps, addStep, toggleStep, removeStep, listObjectiveArtifacts, listObjectiveFiles, uploadObjectiveFile, listObjectiveBoards, provenance, realmOf, setSize, updateObjective } from '../../lib/objectives'
 import { renderMarkdown } from './MeetingCloseout'
 import SessionBoard from './SessionBoard'
 import { INK, INK2, GRAY, PANEL_BORDER, GOLD, GOLD_BRIGHT, BLUE, GREEN, RED, MONO, SERIF, S, Label } from './canon'
@@ -39,8 +40,16 @@ const None = ({ what }) => <div style={{ fontSize: 13, color: GRAY, padding: '14
 
 // Everything the item connects to, loaded once.
 async function loadRelated(item) {
-  const out = { project: null, task: null, artifacts: [], boards: [], projectFiles: [], storeFiles: [], meetings: [], loadout: null }
+  const out = { project: null, task: null, artifacts: [], boards: [], projectFiles: [], storeFiles: [], meetings: [], loadout: null, objective: null, steps: [], objArtifacts: [], objFiles: [], objBoards: [] }
   let task = null
+  // A Side Mission is an object of its own: the row, its steps, and its pockets.
+  if (item.objective_id) {
+    const [{ data: orow }, steps, oa, of, ob] = await Promise.all([
+      supabase.from('objectives').select('*').eq('id', item.objective_id).limit(1),
+      fetchSteps(item.objective_id), listObjectiveArtifacts(item.objective_id), listObjectiveFiles(item.objective_id), listObjectiveBoards(item.objective_id),
+    ])
+    out.objective = orow?.[0] || null; out.steps = steps; out.objArtifacts = oa; out.objFiles = of; out.objBoards = ob
+  }
   if (item.task_id) { const { data } = await supabase.from('project_tasks').select('id,text,notes,status,due_date,project_id,session_ref,objective_id').eq('id', item.task_id).limit(1); task = data?.[0] || null }
   else if (item.objective_id) { const { data } = await supabase.from('project_tasks').select('id,text,notes,status,due_date,project_id,session_ref,objective_id').eq('objective_id', item.objective_id).limit(1); task = data?.[0] || null }
   out.task = task
@@ -104,9 +113,9 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
 
   const task = rel?.task
   const taskId = item.task_id || task?.id || null
-  const linkedArtifacts = (rel?.artifacts || []).filter(a => a.decision || (taskId && a.task_id === taskId))
+  const linkedArtifacts = [...(rel?.objArtifacts || []).map(a => ({ ...a, obj: true })), ...(rel?.artifacts || []).filter(a => a.decision || (taskId && a.task_id === taskId))]
   const otherArtifacts = (rel?.artifacts || []).filter(a => !a.decision && !(taskId && a.task_id === taskId))
-  const linkedBoards = (rel?.boards || []).filter(b => b.linked)
+  const linkedBoards = [...(rel?.objBoards || []), ...(rel?.boards || []).filter(b => b.linked)]
   const otherBoards = (rel?.boards || []).filter(b => !b.linked)
   const loaded = rel?.loadout?.items.find(i => i.id === (item.objective_id || item.id)) || null
   const what = { item: item.kind === 'Event' ? 'meeting' : item.kind === 'Main Mission' ? 'task' : item.kind === 'Session' ? 'session' : 'mission' }
@@ -123,7 +132,13 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
     throw new Error('nothing to load')
   }, 'Timer on')
 
-  const counts = { artifacts: linkedArtifacts.length, sessions: linkedBoards.length, files: (rel?.projectFiles.length || 0) + (rel?.storeFiles.filter(f => !f.folder).length || 0), notes: rel?.meetings.length || 0 }
+  const counts = { artifacts: linkedArtifacts.length, sessions: linkedBoards.length, files: (rel?.objFiles?.length || 0) + (rel?.projectFiles.length || 0) + (rel?.storeFiles.filter(f => !f.folder).length || 0), notes: rel?.meetings.length || 0 }
+  const obj = rel?.objective || null
+  const [stepText, setStepText] = useState('')
+  const [objBusy, setObjBusy] = useState(false)
+  const patchObj = async (patch) => { try { await updateObjective(obj.id, patch); await load(); onChange && onChange() } catch (e) { setMsg(`Could not save: ${e.message}`) } }
+  const addStepNow = async () => { const t = stepText.trim(); if (!t || !obj) return; setObjBusy(true); try { const r = await addStep(obj.id, t, (rel.steps || []).length); if (r === null) setMsg('Steps are not set up yet: run sql/2026-10-07-side-missions-archive.sql'); setStepText(''); await load() } catch (e) { setMsg(`Could not add: ${e.message}`) } finally { setObjBusy(false) } }
+  const uploadNow = async (file) => { if (!file || !obj) return; setObjBusy(true); try { await uploadObjectiveFile(obj.id, file); setMsg(`Filed ${file.name}`); await load() } catch (e) { setMsg(`Could not upload: ${e.message}`) } finally { setObjBusy(false) } }
 
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 240, overflowY: 'auto', background: 'linear-gradient(180deg, #0F2A40 0%, #0A1B2B 100%)' }}>
@@ -157,6 +172,38 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
 
           {rel && tab === 'overview' && (
             <div style={{ display: 'grid', gap: 16 }}>
+              {obj && (() => { const prov = provenance(obj); const sz = SIZES[item.size] ? item.size : 'light'; const realm = realmOf(obj); return (
+                <>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 14 }}>
+                    <div><Label>Where it came from</Label><div style={{ fontSize: 13.5, color: INK }}>{prov.label}</div><div style={{ fontSize: 11.5, color: GRAY, marginTop: 2 }}>{prov.detail}</div></div>
+                    <div><Label>Captured</Label><div style={{ fontSize: 13.5, color: INK }}>{obj.captured_at ? new Date(obj.captured_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'unknown'}</div><div style={{ fontSize: 11.5, color: GRAY, marginTop: 2 }}>{obj.state === 'released' ? `released ${obj.released_at ? obj.released_at.slice(0, 10) : ''}` : obj.state === 'active' ? 'on the Board' : (obj.state || '').replace('_', ' ')}</div></div>
+                    <div><Label>Realm</Label><div style={{ display: 'flex', gap: 4 }}>{[['third-horizon', 'Third Horizon'], ['personal', 'Personal']].map(([k, l]) => <button key={k} onClick={() => patchObj({ tags: [...new Set([...(obj.tags || []).filter(t => t !== 'personal'), ...(k === 'personal' ? ['personal'] : [])])] })} style={{ ...btn(realm === k ? (k === 'personal' ? GOLD : BLUE) : INK2, realm === k), padding: '4px 8px' }}>{l}</button>)}</div></div>
+                    <div><Label>Size</Label><div style={{ display: 'flex', gap: 4 }}>{Object.entries(SIZES).map(([k, s]) => <button key={k} onClick={() => setSize(obj.id, k).then(load)} style={{ ...btn(sz === k ? s.color : INK2, sz === k), padding: '4px 8px' }}>{s.label} · {s.hours}h</button>)}</div></div>
+                    <div><Label>Due</Label><input type="date" value={obj.due_date || ''} onChange={e => patchObj({ due_date: e.target.value || null })} style={{ background: 'rgba(255,255,255,0.05)', border: `1px solid ${PANEL_BORDER}`, borderRadius: 8, color: INK, padding: '5px 8px', fontFamily: MONO, fontSize: 12 }} /></div>
+                    <div><Label>Follow up</Label><input type="date" value={obj.follow_up_date || ''} onChange={e => patchObj({ follow_up_date: e.target.value || null })} style={{ background: 'rgba(255,255,255,0.05)', border: `1px solid ${PANEL_BORDER}`, borderRadius: 8, color: INK, padding: '5px 8px', fontFamily: MONO, fontSize: 12 }} /></div>
+                    <div><Label>Who</Label><input defaultValue={obj.stakeholder || ''} onBlur={e => { if ((e.target.value || '') !== (obj.stakeholder || '')) patchObj({ stakeholder: e.target.value || null }) }} placeholder="stakeholder" style={{ background: 'rgba(255,255,255,0.05)', border: `1px solid ${PANEL_BORDER}`, borderRadius: 8, color: INK, padding: '5px 8px', fontSize: 12.5, width: '100%', boxSizing: 'border-box' }} /></div>
+                  </div>
+                  {(obj.tags || []).filter(t => !['personal', 'third-horizon'].includes(t)).length > 0 && <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>{(obj.tags || []).filter(t => !['personal', 'third-horizon'].includes(t)).map(t => <span key={t} style={{ ...S.chip('rgba(255,255,255,0.06)', INK2), fontFamily: MONO, fontSize: 9, letterSpacing: '1px' }}>{t}</span>)}</div>}
+                  <div>
+                    <Label>What needs to happen to close this out</Label>
+                    {rel.steps === null && <div style={{ fontSize: 12.5, color: GRAY }}>Steps are not set up yet. Run sql/2026-10-07-side-missions-archive.sql in the Ledger and they appear here.</div>}
+                    {Array.isArray(rel.steps) && rel.steps.map(st => (
+                      <div key={st.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 0', borderTop: `1px solid ${PANEL_BORDER}` }}>
+                        <button onClick={() => toggleStep(st.id, !st.done).then(load)} aria-label={st.done ? 'Undo' : 'Done'} style={{ width: 18, height: 18, borderRadius: 999, border: `1px solid ${st.done ? GREEN : 'rgba(255,255,255,0.3)'}`, background: st.done ? `${GREEN}22` : 'transparent', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>{st.done && <Check size={11} color={GREEN} />}</button>
+                        <span style={{ flex: 1, fontSize: 13.5, color: st.done ? GRAY : INK, textDecoration: st.done ? 'line-through' : 'none' }}>{st.text}</span>
+                        {st.done_at && <span style={{ fontFamily: MONO, fontSize: 9.5, color: GRAY }}>{chiTime(st.done_at)}</span>}
+                        <button onClick={() => removeStep(st.id).then(load)} aria-label="Remove" style={{ background: 'transparent', border: 'none', color: GRAY, cursor: 'pointer', padding: 2 }}><Trash2 size={11} /></button>
+                      </div>
+                    ))}
+                    {Array.isArray(rel.steps) && (
+                      <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                        <input value={stepText} onChange={e => setStepText(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') addStepNow() }} placeholder={rel.steps.length ? 'another step' : 'the first thing that has to happen'} disabled={objBusy} style={{ flex: 1, background: 'rgba(255,255,255,0.05)', border: `1px solid ${PANEL_BORDER}`, borderRadius: 8, color: INK, padding: '7px 10px', fontSize: 13 }} />
+                        <button onClick={addStepNow} disabled={objBusy || !stepText.trim()} style={btn(BLUE, false)}><Plus size={11} /> Add</button>
+                      </div>
+                    )}
+                  </div>
+                </>
+              ) })()}
               {(item.description || task?.notes) && <div><Label>Back story</Label><div style={{ fontSize: 13.5, lineHeight: 1.65, color: INK, whiteSpace: 'pre-wrap' }}>{item.description || task.notes}</div></div>}
               {item.event && (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 14 }}>
@@ -185,7 +232,7 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
                   <div><Label>State</Label><div style={{ fontFamily: SERIF, fontSize: 22, color: INK }}>{loaded.equipped ? 'Equipped' : 'Holstered'}</div></div>
                 </div>
               )}
-              {!item.description && !task?.notes && !rel.project && !item.event && !loaded && <div style={{ fontSize: 13, color: GRAY }}>No back story on this one yet.</div>}
+              {!item.description && !task?.notes && !rel.project && !item.event && !loaded && !obj && <div style={{ fontSize: 13, color: GRAY }}>No back story on this one yet.</div>}
               <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', fontFamily: MONO, fontSize: 9.5, letterSpacing: '1px', textTransform: 'uppercase', color: GRAY }}>
                 <span>{counts.artifacts} artifact{counts.artifacts === 1 ? '' : 's'}</span><span>{counts.sessions} session{counts.sessions === 1 ? '' : 's'}</span><span>{counts.files} file{counts.files === 1 ? '' : 's'}</span><span>{counts.notes} note{counts.notes === 1 ? '' : 's'}</span>
               </div>
@@ -197,10 +244,13 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
               {linkedArtifacts.map(a => (
                 <div key={a.slug} style={rowStyle}>
                   <FileText size={14} color={GOLD_BRIGHT} /><span style={{ flex: 1, fontSize: 13.5, color: INK }}>{a.title}{a.decision ? <span style={{ fontFamily: MONO, fontSize: 9, letterSpacing: '1px', color: GOLD, marginLeft: 8, textTransform: 'uppercase' }}>decision</span> : null}</span>
-                  <button onClick={() => go([a.project_id || rel.project.id, 'artifacts', a.slug])} style={btn(GOLD, true)}>Open</button>
+                  {a.obj
+                    ? <button onClick={() => open('project-files', `${a.root}/artifacts/${a.slug}.json`)} style={btn(GOLD, true)}>Open</button>
+                    : <button onClick={() => go([a.project_id || rel.project.id, 'artifacts', a.slug])} style={btn(GOLD, true)}>Open</button>}
                 </div>
               ))}
               {!linkedArtifacts.length && <None what={{ ...what, thing: 'an artifact' }} />}
+              {obj && <div style={{ fontSize: 12, color: GRAY, marginTop: 8 }}>Artifacts for this Side Mission live at project-files/objectives/{obj.id.slice(0, 8)}…/artifacts. Ask Lumen to draft one here (a decision, a scorecard, a brief) and it shows up.</div>}
               {otherArtifacts.length > 0 && (
                 <div style={{ marginTop: 10 }}>
                   <Label>On the mission, not attached to this {what.item}</Label>
@@ -223,7 +273,7 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
             return (
               <div>
                 {!shown && <None what={{ ...what, thing: 'a session' }} />}
-                {!shown && !rel.project && <div style={{ fontSize: 12, color: GRAY }}>Sessions attach through a mission. Promote this to a Main Mission task and Claude's boards on that mission show here.</div>}
+                {!shown && !rel.project && <div style={{ fontSize: 12, color: GRAY }}>{obj ? 'A Claude session board that carries this Side Mission (objective_id on its items) shows here.' : "Sessions attach through a mission. Promote this to a Main Mission task and Claude's boards on that mission show here."}</div>}
                 {shown && (
                   <>
                     {boards.length > 1 && (
@@ -246,6 +296,15 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
 
           {rel && tab === 'files' && (
             <div>
+              {obj && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
+                  <Label style={{ marginBottom: 0 }}>File cabinet · this Side Mission</Label><span style={{ flex: 1 }} />
+                  <label style={{ ...btn(BLUE), cursor: objBusy ? 'wait' : 'pointer' }}><Upload size={11} /> Upload<input type="file" style={{ display: 'none' }} onChange={e => { uploadNow(e.target.files?.[0]); e.target.value = '' }} /></label>
+                </div>
+              )}
+              {(rel.objFiles || []).map(f => (
+                <div key={f.path} style={rowStyle}><FileText size={14} color={BLUE} /><span style={{ flex: 1, fontSize: 13, color: INK, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.name}</span><button onClick={() => open(f.bucket, f.path)} style={btn(INK2)}>Open</button></div>
+              ))}
               {rel.projectFiles.map(f => (
                 <div key={f.path} style={rowStyle}><ExternalLink size={14} color={BLUE} /><span style={{ flex: 1, fontSize: 13, color: INK, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.name}</span><button onClick={() => open(f.bucket, f.path)} style={btn(INK2)}>Open</button></div>
               ))}
@@ -253,7 +312,7 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
               {rel.storeFiles.map(f => (
                 <div key={f.path} style={rowStyle}>{f.folder ? <FolderOpen size={14} color={GRAY} /> : <ExternalLink size={14} color={BLUE} />}<span style={{ flex: 1, fontSize: 13, color: f.folder ? INK2 : INK, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.name}{f.folder ? '/' : ''}</span>{!f.folder && <button onClick={() => open(f.bucket, f.path)} style={btn(INK2)}>Open</button>}</div>
               ))}
-              {!rel.projectFiles.length && !rel.storeFiles.length && <None what={{ ...what, thing: 'files' }} />}
+              {!rel.projectFiles.length && !rel.storeFiles.length && !(rel.objFiles || []).length && <None what={{ ...what, thing: 'files' }} />}
               {rel.project && <div style={{ marginTop: 12 }}><button onClick={() => go([rel.project.id, 'files'])} style={btn(INK2)}><FolderOpen size={12} /> All mission files</button></div>}
             </div>
           )}

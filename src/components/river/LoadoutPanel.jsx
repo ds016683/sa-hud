@@ -8,6 +8,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { Play, Pause, PackageCheck, Archive, X as XIcon, Zap, Phone, Swords } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { DispatchModal } from './AmbushPanel'
+import { pockets } from '../../lib/objectives'
 import { fetchLoadout, equip, holster, stash, extract, addImpromptu, fmtClock, SIZES, SLOTS, HEAVY_MAX } from '../../lib/loadout'
 import ItemDetail from './ItemDetail'
 import { INK, INK2, GRAY, PANEL_BORDER, GOLD, GOLD_BRIGHT, BLUE, GREEN, RED, MONO, SERIF, S, Eyebrow, Label, Panel } from './canon'
@@ -187,6 +188,14 @@ export default function LoadoutPanel({ onChange, refreshKey = 0, onNavigate, bar
     try { await fn(); if (after) setMsg(after); bump() }
     catch (e) { setMsg(`Could not do that: ${e.message}`) }
   }
+  // Extract gate: a Side Mission carrying artifacts, files, or a board is
+  // opened instead so its content is filed away first (the Archive).
+  const extractGate = async (it) => {
+    if (it.kind === 'Side Mission' || it.kind === 'Impromptu') {
+      try { const p = await pockets(it.id); if (p.carrying) { setMsg(`${it.title} is carrying ${p.artifacts.length} artifact(s), ${p.files.length} file(s), ${p.boards.length} board(s). File them away first.`); setRelated(it); return } } catch { /* fall through */ }
+    }
+    setOpen(it)
+  }
 
   const Wrap = bare ? 'div' : Panel
   const wrapStyle = bare ? {} : { marginBottom: 0 }
@@ -202,7 +211,7 @@ export default function LoadoutPanel({ onChange, refreshKey = 0, onNavigate, bar
       ) : (
         <>
           <div className="board-slots">
-            {[0, 1, 2].map(i => L.board[i] ? <FilledSlot key={L.board[i].id} it={L.board[i]} n={i + 1} act={act} onOpen={setRelated} onExtract={setOpen} /> : <EmptySlot key={`empty-${i}`} n={i + 1} />)}
+            {[0, 1, 2].map(i => L.board[i] ? <FilledSlot key={L.board[i].id} it={L.board[i]} n={i + 1} act={act} onOpen={setRelated} onExtract={extractGate} /> : <EmptySlot key={`empty-${i}`} n={i + 1} />)}
             <AdHocSlot item={L.adhoc[0] || null} act={act} onDispatch={setDispatch} onOpen={setRelated} onChanged={bump} />
           </div>
           {L.board.length > SLOTS && <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '0.8px', color: RED, textTransform: 'uppercase', marginTop: 8 }}>Over capacity: {L.board.slice(SLOTS).map(i => i.title).join(' · ')} have no slot. Stash something.</div>}
