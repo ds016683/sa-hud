@@ -1,8 +1,10 @@
 // The Loadout (David, 9/27): what he carries into the day.
 //
-//   Slots     three items active at once, one of them Heavy at most
-//   Size      Light (an hour or less), Medium (a half day), Heavy (a full day);
-//             bigger than Heavy is a Main Mission, split into tasks
+//   Slots     three slots of planned work; an item takes 1, 2, or 3 of them
+//             (the slot economy, David 10/7)
+//   Size      Sidearm (1 slot, an hour), Primary (2 slots, a half day),
+//             Ordnance (3 slots, the whole day); bigger than that is a Main
+//             Mission, split into tasks
 //   Equipped  exactly one item's clock runs at a time; equipping another
 //             holsters the rest
 //   Stamina   free hours left before 6 PM Chicago after the meetings still to
@@ -18,9 +20,9 @@ export const SLOTS = 3
 export const HEAVY_MAX = 1
 export const DAY_END_HOUR = 18
 export const SIZES = {
-  light:  { label: 'Light',  hours: 1, effort: 1 },
-  medium: { label: 'Medium', hours: 4, effort: 3 },
-  heavy:  { label: 'Heavy',  hours: 8, effort: 5 },
+  light:  { label: 'Sidearm',  slots: 1, hours: 1, effort: 1 },
+  medium: { label: 'Primary',  slots: 2, hours: 4, effort: 3 },
+  heavy:  { label: 'Ordnance', slots: 3, hours: 8, effort: 5 },
 }
 export const sizeOf = (o) => { const e = Number(o?.effort) || 1; return e >= 4 ? 'heavy' : e === 3 ? 'medium' : 'light' }
 export const effortOf = (size) => (SIZES[String(size || '').toLowerCase()] || SIZES.light).effort
@@ -51,7 +53,7 @@ export async function loadout() {
   const running = clocks.find(c => !c.stopped_at) || null
   const minutesFor = (id) => clocks.filter(c => c.objective_id === id).reduce((s, c) => s + (c.stopped_at ? (Number(c.minutes) || 0) : (Date.now() - new Date(c.started_at).getTime()) / 60000), 0)
   const items = active.map(o => ({
-    id: o.id, title: o.title, tags: o.tags || [], size: sizeOf(o), hours: hoursOf(o), due_date: o.due_date,
+    id: o.id, title: o.title, tags: o.tags || [], size: sizeOf(o), size_label: SIZES[sizeOf(o)].label, slots: SIZES[sizeOf(o)].slots, hours: hoursOf(o), due_date: o.due_date,
     equipped: !!running && running.objective_id === o.id,
     minutes_today: Math.round(minutesFor(o.id)),
     session: !isBoardItem(o),
@@ -66,11 +68,11 @@ export async function loadout() {
   const stamina = Math.max(0, Math.round((hoursToDayEnd() - meetingsLeft) * 10) / 10)
   const loaded = Math.round(board.reduce((s, i) => s + i.hours, 0) * 10) / 10
   return {
-    day, slots: { used: board.length, max: SLOTS }, heavy: { used: board.filter(i => i.size === 'heavy').length, max: HEAVY_MAX },
+    day, slots: { used: board.reduce((n, i) => n + i.slots, 0), max: SLOTS, items: board.length }, heavy: { used: board.filter(i => i.size === 'heavy').length, max: HEAVY_MAX },
     stamina: { free_hours: stamina, loaded_hours: loaded, meetings_left_hours: Math.round(meetingsLeft * 10) / 10, day_end: `${DAY_END_HOUR}:00 CT`, after_hours: hoursToDayEnd() === 0, note: hoursToDayEnd() === 0 ? 'After 6 PM: stamina is not enforced, slots and Heavy still are.' : 'Loaded hours must fit within free hours before 6 PM.' },
     equipped: items.find(i => i.equipped) || null,
     items, sessions: items.filter(i => i.session), adhoc,
-    rules: `${SLOTS} slots for planned work, at most ${HEAVY_MAX} Heavy, one clock running, loaded hours within stamina; one Ad Hoc slot for the unplanned (impromptu items, calls), which must be dispatched before another lands. Over the limit: stash (park) something first.`,
+    rules: `${SLOTS} slots of planned work; a Sidearm takes 1, a Primary 2, an Ordnance all 3. One clock running, loaded hours within stamina. One Ad Hoc slot for the unplanned (impromptu items, calls), which must be dispatched before another lands. Over the limit: stash (park) something first.`,
   }
 }
 
@@ -87,8 +89,8 @@ export async function checkFit(candidate, { force = false } = {}) {
     return { ok: force || reasons.length === 0, forced: force && reasons.length > 0, reasons, loadout: L }
   }
   if (!already) {
-    if (L.slots.used >= SLOTS) reasons.push(`the loadout is full (${L.slots.used}/${SLOTS} slots): ${L.items.filter(i => !i.session).map(i => i.title).join(' | ')}`)
-    if (size === 'heavy' && L.heavy.used >= HEAVY_MAX) reasons.push(`a Heavy item is already loaded (${L.items.find(i => i.size === 'heavy')?.title})`)
+    const need = (SIZES[size] || SIZES.light).slots, free = SLOTS - L.slots.used
+    if (need > free) reasons.push(`${(SIZES[size] || SIZES.light).label} takes ${need} slot${need === 1 ? '' : 's'} and the Board has ${free} free: ${L.items.filter(i => !i.session && !i.adhoc).map(i => `${i.title} (${i.slots})`).join(' | ') || 'empty'}`)
     // Stamina is a working-day rule. After 6 PM the day is his; slots and Heavy still hold.
     if (hoursToDayEnd() > 0 && L.stamina.loaded_hours + hours > L.stamina.free_hours) reasons.push(`stamina: ${L.stamina.loaded_hours}h loaded + ${hours}h for this vs ${L.stamina.free_hours}h free before ${L.stamina.day_end}`)
   }

@@ -17,7 +17,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { ArrowLeft, ArrowRight, Check, Sunrise, Moon, Play, Rocket, Send, ExternalLink, SkipForward, RotateCcw } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { upsertSession, logToHarvest, hoursBetween } from '../../lib/meetings'
-import { fetchLoadout, equipObjective, equipTask, equip, fmtClock, chiToday, SIZES, SLOTS, HEAVY_MAX } from '../../lib/loadout'
+import { fetchLoadout, equipObjective, equipTask, equip, fmtClock, chiToday, SIZES, SLOTS } from '../../lib/loadout'
 import { HYGIENE_ITEMS } from '../../constants/hygiene'
 import { MEDICATIONS, dueOn } from '../../constants/medications'
 import { INK, INK2, GRAY, PANEL_BORDER, GOLD, GOLD_BRIGHT, GREEN, RED, BLUE, MONO, SERIF, S, Label, Panel, fmtTime } from './canon'
@@ -370,7 +370,7 @@ function Protocol({ day, session, onClose, onFinished, onChange, onNavigate }) {
         <div style={{ display: 'grid', gap: 14 }}>
           <div style={{ display: 'flex', gap: 28, flexWrap: 'wrap' }}>
             <div><Label>Slots</Label><div style={{ fontFamily: SERIF, fontSize: 26, color: '#fff' }}>{L ? `${L.slots.used} / ${SLOTS}` : '…'}</div></div>
-            <div><Label>Heavy</Label><div style={{ fontFamily: SERIF, fontSize: 26, color: '#fff' }}>{L ? `${L.heavy.used} / ${HEAVY_MAX}` : '…'}</div></div>
+            <div><Label>Carrying</Label><div style={{ fontFamily: SERIF, fontSize: 26, color: '#fff' }}>{L ? `${L.slots.items} item${L.slots.items === 1 ? '' : 's'}` : '…'}</div></div>
             <div><Label>Stamina</Label><div style={{ fontFamily: SERIF, fontSize: 26, color: L && L.stamina.loaded > L.stamina.free && !L.stamina.afterHours ? RED : '#fff' }}>{L ? `${L.stamina.loaded}h / ${L.stamina.free}h` : '…'}</div></div>
           </div>
           <div><Label>Loaded</Label>

@@ -10,7 +10,7 @@ import { supabase } from '../../lib/supabase'
 import { DispatchModal } from './AmbushPanel'
 import { pockets } from '../../lib/objectives'
 import FileAway from './FileAway'
-import { fetchLoadout, equip, holster, stash, extract, addImpromptu, fmtClock, SIZES, SLOTS, HEAVY_MAX } from '../../lib/loadout'
+import { fetchLoadout, equip, holster, stash, extract, addImpromptu, fmtClock, SIZES, SLOTS } from '../../lib/loadout'
 import ItemDetail from './ItemDetail'
 import { INK, INK2, GRAY, PANEL_BORDER, GOLD, GOLD_BRIGHT, BLUE, GREEN, RED, MONO, SERIF, S, Eyebrow, Label, Panel } from './canon'
 
@@ -22,7 +22,7 @@ const btn = (color = INK2, filled = false) => ({
 
 const SizeChip = ({ size }) => {
   const s = SIZES[size] || SIZES.light
-  return <span style={{ ...S.chip('rgba(255,255,255,0.06)', s.color), border: `1px solid ${s.color}55`, fontFamily: MONO, fontSize: 9, letterSpacing: '1px', padding: '2px 7px' }}>{s.label} · {s.hours}h</span>
+  return <span style={{ ...S.chip('rgba(255,255,255,0.06)', s.color), border: `1px solid ${s.color}55`, fontFamily: MONO, fontSize: 9, letterSpacing: '1px', padding: '2px 7px' }}>{s.label} · {s.slots} slot{s.slots === 1 ? '' : 's'}</span>
 }
 
 const KIND_COLOR = { 'Side Mission': GREEN, 'Main Mission': GOLD_BRIGHT, 'Impromptu': INK2, 'Session': BLUE }
@@ -85,11 +85,18 @@ const slotBox = (border, bg = 'rgba(255,255,255,0.03)', dashed = false) => ({
   border: `1px ${dashed ? 'dashed' : 'solid'} ${border}`, background: bg, minWidth: 0,
 })
 
+// Slot notches: three cells, the ones this item occupies lit.
+function Notches({ from, span, color }) {
+  return <span style={{ display: 'inline-flex', gap: 3 }}>{[0, 1, 2].map(i => <span key={i} style={{ width: 14, height: 5, borderRadius: 2, background: i >= from && i < from + span ? color : 'rgba(255,255,255,0.10)' }} />)}</span>
+}
+
 function FilledSlot({ it, n, act, onOpen, onExtract }) {
+  const span = it.slots || 1
   return (
-    <div style={slotBox(it.equipped ? GREEN : PANEL_BORDER, it.equipped ? 'rgba(67,211,146,0.07)' : 'rgba(255,255,255,0.03)')}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-        <Label style={{ marginBottom: 0 }}>Slot {n}</Label>
+    <div style={{ ...slotBox(it.equipped ? GREEN : PANEL_BORDER, it.equipped ? 'rgba(67,211,146,0.07)' : 'rgba(255,255,255,0.03)'), gridColumn: `span ${span}` }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+        <Notches from={n - 1} span={span} color={SIZES[it.size]?.color || INK2} />
+        <Label style={{ marginBottom: 0 }}>{span === 1 ? `Slot ${n}` : `Slots ${n} to ${n + span - 1}`}</Label>
         <span style={{ flex: 1 }} />
         <KindChip kind={it.kind} /><SizeChip size={it.size} />
       </div>
@@ -113,6 +120,7 @@ function FilledSlot({ it, n, act, onOpen, onExtract }) {
 function EmptySlot({ n }) {
   return (
     <div style={{ ...slotBox('rgba(255,255,255,0.14)', 'transparent', true), justifyContent: 'center', alignItems: 'center', textAlign: 'center' }}>
+      <Notches from={n - 1} span={1} color="rgba(255,255,255,0.28)" />
       <Label style={{ marginBottom: 0 }}>Slot {n} · empty</Label>
       <div style={{ fontFamily: SERIF, fontSize: 15, color: 'rgba(234,241,248,0.4)' }}>Load from what is due</div>
       <div style={{ fontSize: 11, color: GRAY, lineHeight: 1.5 }}>a Side Mission, a Main Mission task, or tell Lumen</div>
@@ -199,6 +207,13 @@ export default function LoadoutPanel({ onChange, refreshKey = 0, onNavigate, bar
     setOpen(it)
   }
 
+  // Lay the items into the three slots by the slots they take; what does not fit is over capacity.
+  const layout = (() => {
+    const placed = [], overflow = [], empties = []; let pos = 0
+    for (const it of (L?.board || [])) { const w = it.slots || 1; if (pos + w <= SLOTS) { placed.push({ it, n: pos + 1 }); pos += w } else overflow.push(it) }
+    while (pos < SLOTS) { empties.push(pos + 1); pos++ }
+    return { placed, overflow, empties }
+  })()
   const Wrap = bare ? 'div' : Panel
   const wrapStyle = bare ? {} : { marginBottom: 0 }
 
@@ -214,10 +229,11 @@ export default function LoadoutPanel({ onChange, refreshKey = 0, onNavigate, bar
       ) : (
         <>
           <div className="board-slots">
-            {[0, 1, 2].map(i => L.board[i] ? <FilledSlot key={L.board[i].id} it={L.board[i]} n={i + 1} act={act} onOpen={setRelated} onExtract={extractGate} /> : <EmptySlot key={`empty-${i}`} n={i + 1} />)}
+            {layout.placed.map(({ it, n }) => <FilledSlot key={it.id} it={it} n={n} act={act} onOpen={setRelated} onExtract={extractGate} />)}
+            {layout.empties.map(n => <EmptySlot key={`empty-${n}`} n={n} />)}
             <AdHocSlot item={L.adhoc[0] || null} act={act} onDispatch={setDispatch} onOpen={setRelated} onChanged={bump} />
           </div>
-          {L.board.length > SLOTS && <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '0.8px', color: RED, textTransform: 'uppercase', marginTop: 8 }}>Over capacity: {L.board.slice(SLOTS).map(i => i.title).join(' · ')} have no slot. Stash something.</div>}
+          {layout.overflow.length > 0 && <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '0.8px', color: RED, textTransform: 'uppercase', marginTop: 8 }}>Over capacity ({L.slots.used}/{SLOTS} slots): {layout.overflow.map(i => `${i.title} · ${SIZES[i.size]?.label}`).join(' · ')}. Stash something.</div>}
           {L.adhoc.length > 1 && <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '0.8px', color: GRAY, textTransform: 'uppercase', marginTop: 8 }}>Also unplanned: {L.adhoc.slice(1).map(i => i.title).join(' · ')} · dispatch the slot to reach them</div>}
 
           {L.sessions.length > 0 && (

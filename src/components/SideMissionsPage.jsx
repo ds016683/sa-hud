@@ -24,7 +24,7 @@ const ICON = { inbox: InboxIcon, follow_up: Bell, waiting: Hourglass, foreman: A
 function SizePills({ value, onChange, small = false }) {
   return (
     <div style={{ display: 'inline-flex', gap: 4 }}>
-      {Object.entries(SIZES).map(([k, s]) => <button key={k} onClick={() => onChange(k)} style={{ ...btn(value === k ? s.color : INK2, value === k), padding: small ? '3px 7px' : '5px 9px' }}>{s.label}{small ? '' : ` · ${s.hours}h`}</button>)}
+      {Object.entries(SIZES).map(([k, s]) => <button key={k} onClick={() => onChange(k)} title={s.sub} style={{ ...btn(value === k ? s.color : INK2, value === k), padding: small ? '3px 7px' : '5px 9px' }}>{s.label}{small ? '' : ` · ${s.slots}`}</button>)}
     </div>
   )
 }

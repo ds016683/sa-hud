@@ -1,8 +1,10 @@
 // The Loadout (David, 9/27): what he carries into the day. Mirror of
 // api/_loadout.mjs for the HUD's own hands (the Board page and the River).
 //
-//   Slots     three items active at once, one of them Heavy at most
-//   Size      Light (an hour or less), Medium (a half day), Heavy (a full day)
+//   Slots     three slots of planned work; an item takes 1, 2, or 3 of them
+//             (the slot economy, David 10/7: manage the bag, not a count)
+//   Size      Sidearm (1 slot, an hour), Primary (2 slots, a half day),
+//             Ordnance (3 slots, the whole day)
 //   Equipped  exactly one clock runs at a time
 //   Stamina   free hours before 6 PM Chicago after remaining meetings
 //   Extract   release: stop the clock, sum the segments, bank the miles
@@ -12,10 +14,11 @@ export const SLOTS = 3
 export const HEAVY_MAX = 1
 export const DAY_END_HOUR = 18
 export const SIZES = {
-  light:  { label: 'Light',  hours: 1, effort: 1, color: '#9DB0C1' },
-  medium: { label: 'Medium', hours: 4, effort: 3, color: '#A9C9E8' },
-  heavy:  { label: 'Heavy',  hours: 8, effort: 5, color: '#E6B54F' },
+  light:  { label: 'Sidearm',  slots: 1, hours: 1, effort: 1, color: '#9DB0C1', sub: 'one slot · about an hour' },
+  medium: { label: 'Primary',  slots: 2, hours: 4, effort: 3, color: '#A9C9E8', sub: 'two slots · a half day' },
+  heavy:  { label: 'Ordnance', slots: 3, hours: 8, effort: 5, color: '#E6B54F', sub: 'the whole bag · a full day' },
 }
+export const slotsOf = (o) => SIZES[sizeOf(o)].slots
 export const sizeOf = (o) => { const e = Number(o?.effort) || 1; return e >= 4 ? 'heavy' : e === 3 ? 'medium' : 'light' }
 export const effortOf = (size) => (SIZES[size] || SIZES.light).effort
 export const hoursOf = (o) => SIZES[sizeOf(o)].hours
@@ -51,7 +54,7 @@ export async function fetchLoadout() {
   const items = active.map(o => {
     const tags = o.tags || []
     return {
-      id: o.id, title: o.title, tags, size: sizeOf(o), hours: hoursOf(o), due_date: o.due_date, activated_at: o.activated_at,
+      id: o.id, title: o.title, tags, size: sizeOf(o), slots: slotsOf(o), hours: hoursOf(o), due_date: o.due_date, activated_at: o.activated_at,
       equipped: !!running && running.objective_id === o.id, running_since: running && running.objective_id === o.id ? running.started_at : null,
       minutes_today: minutesFor(o.id),
       session: tags.includes('session'),
@@ -70,7 +73,7 @@ export async function fetchLoadout() {
   return {
     day, items, board, adhoc, sessions: items.filter(i => i.session),
     equipped: items.find(i => i.equipped) || null,
-    slots: { used: board.length, max: SLOTS }, heavy: { used: board.filter(i => i.size === 'heavy').length, max: HEAVY_MAX },
+    slots: { used: board.reduce((n, i) => n + i.slots, 0), max: SLOTS, items: board.length }, heavy: { used: board.filter(i => i.size === 'heavy').length, max: HEAVY_MAX },
     stamina: { free, loaded, meetingsLeft: Math.round(meetingsLeft * 10) / 10, afterHours: hoursToDayEnd() === 0 },
     clocksTable: true,
   }
@@ -144,9 +147,10 @@ export function fitReasons(L, size = 'light', { alreadyLoadedId, adhoc = false }
   const already = alreadyLoadedId && L.items.some(i => i.id === alreadyLoadedId)
   if (already) return reasons
   if (adhoc) { if (L.adhoc.length) reasons.push(`the Ad Hoc slot is taken: ${L.adhoc[0].title}. Dispatch it first.`); return reasons }
-  const hours = (SIZES[size] || SIZES.light).hours
-  if (L.slots.used >= SLOTS) reasons.push(`the loadout is full (${L.slots.used}/${SLOTS}): ${L.board.map(i => i.title).join(' | ')}`)
-  if (size === 'heavy' && L.heavy.used >= HEAVY_MAX) reasons.push('a Heavy item is already loaded')
+  const sz = SIZES[size] || SIZES.light
+  const hours = sz.hours
+  const free = SLOTS - L.slots.used
+  if (sz.slots > free) reasons.push(`${sz.label} takes ${sz.slots} slot${sz.slots === 1 ? '' : 's'} and the Board has ${free} free (${L.board.map(i => `${i.title} · ${i.slots}`).join(' | ') || 'empty'})`)
   if (!L.stamina.afterHours && L.stamina.loaded + hours > L.stamina.free) reasons.push(`stamina: ${L.stamina.loaded}h loaded + ${hours}h vs ${L.stamina.free}h free before 6 PM`)
   return reasons
 }
