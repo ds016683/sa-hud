@@ -443,7 +443,7 @@ export default function ProtocolsPanel({ onChange, onNavigate }) {
     try {
       if (!running) {
         const { data } = await supabase.from('meeting_sessions').select('event_id,started_at,stopped_at').eq('day', day).like('event_id', 'adhoc:%').is('stopped_at', null).not('started_at', 'is', null)
-        const other = (data || []).find(s => s.event_id !== eid(day))
+        const other = (data || []).find(s => s.event_id !== eid(day) && !s.event_id.endsWith(':travel'))
         if (other) { setMsg(`${other.event_id.split(':').pop()} is running. Stop it first.`); return }
         await upsertSession({ event_id: eid(day), day, subject: 'Morning Protocol', started_at: new Date().toISOString(), stopped_at: null, hours: session?.hours || 0 })
         await refresh()
