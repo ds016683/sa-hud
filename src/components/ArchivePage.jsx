@@ -34,7 +34,7 @@ export default function ArchivePage() {
           <input value={q} onChange={e => setQ(e.target.value)} placeholder="search titles and summaries" style={{ flex: 1, minWidth: 240, background: 'rgba(255,255,255,0.05)', border: `1px solid ${PANEL_BORDER}`, borderRadius: 8, color: INK, padding: '8px 10px', fontSize: 13 }} />
           {[[null, 'All'], ['third-horizon', 'Third Horizon'], ['personal', 'Personal']].map(([k, l]) => <button key={String(k)} onClick={() => setRealm(k)} style={btn(realm === k ? (k === 'personal' ? GOLD : k ? PURPLE : BLUE) : INK2, realm === k)}>{l}</button>)}
           <span style={{ width: 1, height: 18, background: PANEL_BORDER }} />
-          {KINDS.map(([k, l, Icon, c]) => <button key={k} onClick={() => setKind(kind === k ? null : k)} style={btn(kind === k ? c : INK2, kind === k)}><Icon size={10} /> {l}</button>)}
+          {KINDS.map(kd => { const FilterIcon = kd[2]; return <button key={kd[0]} onClick={() => setKind(kind === kd[0] ? null : kd[0])} style={btn(kind === kd[0] ? kd[3] : INK2, kind === kd[0])}><FilterIcon size={10} /> {kd[1]}</button> })}
         </div>
       </Panel>
       <Panel>
