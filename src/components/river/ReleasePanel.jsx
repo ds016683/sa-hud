@@ -68,14 +68,14 @@ export default function ReleasePanel({ onChange }) {
   }
 
   return (
-    <InstrumentGroup label="Release · personal, never Harvest" divider footer={groupMsg(msg, msg && msg.startsWith('Could not'))}>
+    <InstrumentGroup label="Release" divider footer={groupMsg(msg, msg && msg.startsWith('Could not'))}>
       {RELEASE_TIMERS.map(t => {
         const r = runningFor(t.slug)
         const running = !!r
         const liveMin = running ? (now - new Date(r.started_at).getTime()) / 60000 : 0
         const todayMin = runsFor(t.slug).filter(x => x.stopped_at).reduce((s, x) => s + (Number(x.hours) || 0) * 60, 0) + liveMin
         const Icon = running ? Square : (t.icon || Play)
-        return <Instrument key={t.slug} label={running ? r.subject : t.label} sub={running ? 'tap to stop' : todayMin > 0 ? `${fmtClock(todayMin)} today` : 'tap to start'} icon={<Icon size={20} />} running={running} clock={fmtClock(liveMin)} tone={TEAL} onClick={() => running ? stop(t) : start(t)} />
+        return <Instrument key={t.slug} label={running ? r.subject : t.label} sub={running ? 'tap to stop' : todayMin > 0 ? `${fmtClock(todayMin)} today` : ''} icon={<Icon size={20} />} running={running} clock={fmtClock(liveMin)} tone={TEAL} onClick={() => running ? stop(t) : start(t)} />
       })}
     </InstrumentGroup>
   )

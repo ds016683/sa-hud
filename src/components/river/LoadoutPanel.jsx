@@ -188,9 +188,6 @@ export default function LoadoutPanel({ onChange, refreshKey = 0, onNavigate, bar
     catch (e) { setMsg(`Could not do that: ${e.message}`) }
   }
 
-  const stamina = L ? L.stamina : null
-  const over = stamina && !stamina.afterHours && stamina.loaded > stamina.free
-  const pct = stamina && stamina.free > 0 ? Math.min(100, Math.round(stamina.loaded / stamina.free * 100)) : (stamina && stamina.loaded > 0 ? 100 : 0)
   const Wrap = bare ? 'div' : Panel
   const wrapStyle = bare ? {} : { marginBottom: 0 }
 
@@ -204,22 +201,6 @@ export default function LoadoutPanel({ onChange, refreshKey = 0, onNavigate, bar
         <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '1.4px', textTransform: 'uppercase', color: GRAY, padding: '12px 0' }}>Reading the board</div>
       ) : (
         <>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 14, marginBottom: 14 }}>
-            <div style={{ borderLeft: `2px solid ${BLUE}55`, paddingLeft: 12 }}>
-              <div style={{ fontFamily: SERIF, fontSize: 22, fontWeight: 500, color: L.slots.used > SLOTS ? RED : '#fff', lineHeight: 1.1 }}>{L.slots.used} / {SLOTS}</div>
-              <div style={{ fontSize: 11, color: GRAY, marginTop: 3 }}>Slots loaded · {L.heavy.used}/{HEAVY_MAX} Heavy{L.adhoc.length ? ' · Ad Hoc in use' : ''}</div>
-            </div>
-            <div style={{ borderLeft: `2px solid ${BLUE}55`, paddingLeft: 12 }}>
-              <div style={{ fontFamily: SERIF, fontSize: 22, fontWeight: 500, color: L.equipped ? GREEN : '#fff', lineHeight: 1.1 }}>{L.equipped ? fmtClock(L.equipped.minutes_today) : 'None'}</div>
-              <div style={{ fontSize: 11, color: GRAY, marginTop: 3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{L.equipped ? `Equipped · ${L.equipped.title}` : 'Nothing equipped'}</div>
-            </div>
-            <div style={{ borderLeft: `2px solid ${BLUE}55`, paddingLeft: 12 }}>
-              <div style={{ fontFamily: SERIF, fontSize: 22, fontWeight: 500, color: over ? RED : GOLD, lineHeight: 1.1 }}>{stamina.loaded}h / {stamina.free}h</div>
-              <div style={{ fontSize: 11, color: GRAY, marginTop: 3 }}>{stamina.afterHours ? 'Stamina · after 6 PM, not enforced' : `Stamina · loaded vs free before 6 PM${stamina.meetingsLeft ? ` · ${stamina.meetingsLeft}h of meetings left` : ''}`}</div>
-              <div style={{ height: 4, borderRadius: 99, background: 'rgba(255,255,255,0.08)', marginTop: 8, overflow: 'hidden' }}><div style={{ width: `${pct}%`, height: '100%', background: over ? RED : GOLD }} /></div>
-            </div>
-          </div>
-
           <div className="board-slots">
             {[0, 1, 2].map(i => L.board[i] ? <FilledSlot key={L.board[i].id} it={L.board[i]} n={i + 1} act={act} onOpen={setRelated} onExtract={setOpen} /> : <EmptySlot key={`empty-${i}`} n={i + 1} />)}
             <AdHocSlot item={L.adhoc[0] || null} act={act} onDispatch={setDispatch} onOpen={setRelated} onChanged={bump} />

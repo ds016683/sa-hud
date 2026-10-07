@@ -53,9 +53,16 @@ export const RailSection = ({ title, children, style }) => (
     <div style={{ minWidth: 0 }}>{children}</div>
   </div>
 )
-export const Panel = ({ title, children, style }) => (
+// Panel headings on the Board page (David, 10/7): the serif, baby blue,
+// bigger than the mono eyebrow. heading="..." renders that; title keeps the
+// old mono label for pages not yet moved over.
+export const PanelHeading = ({ children, style }) => (
+  <div style={{ fontFamily: SERIF, fontSize: 21, fontWeight: 500, color: BLUE, letterSpacing: '-0.01em', lineHeight: 1.2, marginBottom: 14, ...style }}>{children}</div>
+)
+export const Panel = ({ title, heading, children, style }) => (
   <div style={{ ...S.panel, ...style }}>
-    {title && <div style={S.panelTitle}>{title}</div>}
+    {heading && <PanelHeading>{heading}</PanelHeading>}
+    {title && !heading && <div style={S.panelTitle}>{title}</div>}
     {children}
   </div>
 )

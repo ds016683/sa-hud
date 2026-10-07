@@ -458,8 +458,8 @@ export default function ProtocolsPanel({ onChange, onNavigate }) {
   return (
     <InstrumentGroup label="Protocols" footer={groupMsg(msg, msg && msg.startsWith('Could not'))}>
       {open && <Protocol day={day} session={session} onClose={() => { setOpen(false); refresh() }} onFinished={finished} onChange={onChange} onNavigate={onNavigate} />}
-      <Instrument label="Morning" sub={running ? 'tap to resume' : done ? `launched ${fmtTime(session.stopped_at)} · ${fmtClock(liveMin)}` : 'tap to begin the day'} icon={done ? <Check size={20} /> : <Sunrise size={20} />} running={running} clock={fmtClock(liveMin)} tone={done ? GREEN : GOLD} onClick={start} />
-      <Instrument label="Evening" sub="next · the real close" icon={<Moon size={20} />} tone={BLUE} disabled />
+      <Instrument label="Morning" sub={running ? 'tap to resume' : done ? `${fmtTime(session.stopped_at)} · ${fmtClock(liveMin)}` : 'begin the day'} icon={done ? <Check size={20} /> : <Sunrise size={20} />} running={running} clock={fmtClock(liveMin)} tone={done ? GREEN : GOLD} onClick={start} />
+      <Instrument label="Evening" sub="next" icon={<Moon size={20} />} tone={BLUE} disabled />
     </InstrumentGroup>
   )
 }

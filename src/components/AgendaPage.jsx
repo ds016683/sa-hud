@@ -157,7 +157,7 @@ function CalendarPanel({events, loading, now, day, refresh, onOpenEvent }) {
 
   const closingEvent = closing ? (events || []).find(e => e.id === closing) : null
   return (
-    <Panel title="Full daily calendar" style={{ marginBottom: 0, height: '100%' }}>
+    <Panel heading="Full daily calendar" style={{ marginBottom: 0, height: '100%' }}>
       {loading && !events && <Empty>Loading…</Empty>}
       {events && events.length === 0 && <Empty>Open day. Nothing on the calendar.</Empty>}
       {events && events.map((e, i) => {
@@ -335,7 +335,7 @@ function MainMissionPanel({ tasks, projects, objectives, loading, day, refresh, 
   const [open, setOpen] = useState(null)
   const [busy, setBusy] = useState(false)
   const [note, setNote] = useState(null)
-  if (loading && !tasks) return <Panel title="Main Mission tasks" style={{ marginBottom: 0 }}><Empty>Loading…</Empty></Panel>
+  if (loading && !tasks) return <Panel heading="Main Mission tasks" style={{ marginBottom: 0 }}><Empty>Loading…</Empty></Panel>
   const byId = new Map((projects || []).map(p => [p.id, p]))
   const objById = new Map((objectives || []).map(o => [o.id, o]))
   const rows = (tasks || []).map(t => ({ ...t, project: byId.get(t.project_id), pr: priorityOf(t, day) }))
@@ -358,7 +358,7 @@ function MainMissionPanel({ tasks, projects, objectives, loading, day, refresh, 
     setBusy(false)
   }
   return (
-    <Panel title="Main Mission tasks" style={{ marginBottom: 0 }}>
+    <Panel heading="Main Mission tasks" style={{ marginBottom: 0 }}>
       {open && <ItemDetail item={{ id: open.objective_id || open.id, objective_id: open.objective_id || null, task_id: open.id, kind: 'Main Mission', title: open.text, project: open.project?.name || null, project_id: open.project_id, description: open.notes || null }} onClose={() => { setOpen(null); setNote(null) }} onNavigate={onNavigate} onChange={refresh} />}
       {rows.length > 0 && (
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
@@ -401,7 +401,7 @@ function MainMissionPanel({ tasks, projects, objectives, loading, day, refresh, 
 function SideMissionPanel({ objectives, loading, day, refresh, onNavigate }) {
   const [note, setNote] = useState(null)
   const [openItem, setOpenItem] = useState(null)
-  if (loading && !objectives) return <Panel title="Side Missions" style={{ marginBottom: 0 }}><Empty>Loading…</Empty></Panel>
+  if (loading && !objectives) return <Panel heading="Side Missions" style={{ marginBottom: 0 }}><Empty>Loading…</Empty></Panel>
   const doEquip = async (o) => {
     setNote(null)
     try { const r = await equipObjective(o.id); setNote(r.ok ? `Timer on: ${r.title}` : `No room on the loadout: ${r.reasons.join('; ')}`); if (r.ok && refresh) refresh() }
@@ -414,7 +414,7 @@ function SideMissionPanel({ objectives, loading, day, refresh, onNavigate }) {
     return String(a.due_date || a.follow_up_date || '9999').localeCompare(String(b.due_date || b.follow_up_date || '9999'))
   })
   return (
-    <Panel title="Side Missions" style={{ marginBottom: 0 }}>
+    <Panel heading="Side Missions" style={{ marginBottom: 0 }}>
       {openItem && <ItemDetail item={{ id: openItem.id, objective_id: openItem.id, kind: (openItem.tags || []).includes('impromptu') ? 'Impromptu' : (openItem.tags || []).includes('session') ? 'Session' : 'Side Mission', title: openItem.title, description: openItem.description || null, tags: openItem.tags || [] }} onClose={() => setOpenItem(null)} onNavigate={onNavigate} onChange={refresh} />}
       {rows.length === 0 && <Empty>No objectives calling today.</Empty>}
       {rows.map((o) => {
@@ -451,9 +451,9 @@ function SideMissionPanel({ objectives, loading, day, refresh, onNavigate }) {
 
 // ---- Maintenance ------------------------------------------------------------
 function MaintenancePanel({ items, loading }) {
-  if (loading && !items) return <Panel title="Open Maintenance" style={{ marginBottom: 0 }}><Empty>Loading…</Empty></Panel>
+  if (loading && !items) return <Panel heading="Open Maintenance" style={{ marginBottom: 0 }}><Empty>Loading…</Empty></Panel>
   return (
-    <Panel title="Open Maintenance" style={{ marginBottom: 0 }}>
+    <Panel heading="Open Maintenance" style={{ marginBottom: 0 }}>
       {(!items || items.length === 0) && <Empty>No maintenance items yet. They arrive downstream.</Empty>}
       {(items || []).map((m) => {
         const [bg, fg] = CATEGORY_TONE[m.category] || CATEGORY_TONE.other
@@ -571,17 +571,15 @@ export default function AgendaPage({ onNavigate } = {}) {
 
       {day === today && (
         <>
-          <Panel style={{ marginBottom: 12 }}>
-            <Eyebrow style={{ marginBottom: 12 }}>Console</Eyebrow>
-            <div style={{ display: 'flex', gap: 22, flexWrap: 'wrap', alignItems: 'flex-start' }}>
+          <Panel heading="Loadout" style={{ marginBottom: 12 }}>
+            <LoadoutPanel bare onChange={refresh} refreshKey={refreshKey} onNavigate={onNavigate} />
+          </Panel>
+          <Panel heading="Console" style={{ marginBottom: 12 }}>
+            <div className="console-row" style={{ display: 'flex', gap: 0, flexWrap: 'wrap', alignItems: 'flex-start', justifyContent: 'space-between' }}>
               <ProtocolsPanel onChange={refresh} onNavigate={onNavigate} />
               <RecurringPanel onChange={refresh} />
               <ReleasePanel onChange={refresh} />
             </div>
-          </Panel>
-          <Panel style={{ marginBottom: 12 }}>
-            <Eyebrow style={{ marginBottom: 12 }}>The Board</Eyebrow>
-            <LoadoutPanel bare onChange={refresh} refreshKey={refreshKey} onNavigate={onNavigate} />
           </Panel>
         </>
       )}

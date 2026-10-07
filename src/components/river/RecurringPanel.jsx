@@ -38,7 +38,7 @@ export const CONCURRENT = RECURRING.filter(r => r.concurrent).map(r => r.slug)
 
 // Light rules (David, 10/1). Each returns { level, blink, reading, unit, text }.
 const LEVEL = { green: GREEN, gold: GOLD, red: RED, gray: 'rgba(234,241,248,0.25)' }
-const WORD = { green: 'clear', gold: 'maintenance required', red: 'critical', gray: 'no reading' }
+const WORD = { green: 'clear', gold: 'maintenance', red: 'critical', gray: 'no reading' }
 const RULES = {
   email: (L) => {
     const n = L?.email?.unread
@@ -48,14 +48,14 @@ const RULES = {
   },
   slack: (L) => {
     const n = L?.slack?.unread
-    if (n == null) return { level: 'gray', reading: '—', unit: 'unread', text: 'no count yet · click the light to set it, or tell Lumen' }
+    if (n == null) return { level: 'gray', reading: '—', unit: 'unread', text: 'no count yet · tap the box edge to set it' }
     const asOf = L.slack.as_of ? ` · as of ${fmtTime(L.slack.as_of)}` : ''
     const level = n >= 20 ? 'red' : n >= 5 ? 'gold' : 'green'
     return { level, blink: n >= 35, reading: n, unit: 'unread', text: (n >= 35 ? 'something is being overlooked' : WORD[level]) + asOf }
   },
   bill: (L) => {
     const d = L?.bill_pay?.days
-    if (d == null) return { level: 'gold', reading: '—', unit: 'days', text: 'no Bill Pay on record yet · the clock starts with the first one' }
+    if (d == null) return { level: 'gold', reading: '—', unit: 'days', text: 'no record yet' }
     const level = d >= 12 ? 'red' : d >= 8 ? 'gold' : 'green'
     return { level, blink: d >= 15, reading: d, unit: d === 1 ? 'day since' : 'days since', text: d >= 15 ? 'overlooked?' : d >= 8 && d < 12 ? 'due' : WORD[level] }
   },
@@ -194,7 +194,8 @@ export default function RecurringPanel({ onChange }) {
   const minutesOf = (s) => ((Number(s?.hours) || 0) * 60) + (isRunning(s) ? (now - new Date(s.started_at).getTime()) / 60000 : 0)
   const bad = msg && (msg.startsWith('Could not') || msg.includes('did not'))
   const travelRunning = isRunning(travelSession); const travelMin = minutesOf(travelSession)
-  const travelSub = travelRunning ? 'tap to stop' : legState === 'past' ? `log ${fmtClock(hoursBetween(nextLeg.start_at, nextLeg.end_at) * 60)} · ${nextLeg.subject}` : legState === 'live' ? `in the air · start from ${fmtTime(nextLeg.start_at)}` : nextLeg ? `${fmtTime(nextLeg.start_at)} · ${nextLeg.subject}` : travelMin > 0 ? `${fmtClock(travelMin)} today` : 'tap to start · edit to log a span'
+  const travelSub = travelRunning ? 'tap to stop' : legState === 'past' ? `log ${fmtClock(hoursBetween(nextLeg.start_at, nextLeg.end_at) * 60)}` : legState === 'live' ? `in the air` : nextLeg ? `${fmtTime(nextLeg.start_at)} leg` : travelMin > 0 ? `${fmtClock(travelMin)} today` : ''
+  const travelTitle = nextLeg ? `${nextLeg.subject} · ${fmtTime(nextLeg.start_at)} to ${fmtTime(nextLeg.end_at)}` : 'Travel · tap to start, or edit a span'
   const travelTap = () => {
     if (travelRunning) return stop(RECURRING.find(x => x.slug === 'travel'))
     if (legState === 'past') return logTravelSpan({ label: nextLeg.subject, start: chiHHMM(nextLeg.start_at), end: chiHHMM(nextLeg.end_at), personal: false })
@@ -208,7 +209,7 @@ export default function RecurringPanel({ onChange }) {
         {RECURRING.filter(r => r.group === 'tend').map(r => {
           const s = byId.get(eid(day, r.slug)); const running = isRunning(s); const mins = minutesOf(s)
           const rule = RULES[r.light](lights)
-          const sub = running ? 'tap to stop' : lights ? (rule.level === 'gray' ? 'no reading' : rule.text) : 'reading…'
+          const sub = running ? 'tap to stop' : lights ? (rule.level === 'gray' ? 'no reading' : rule.text.split(' · ')[0]) : 'reading…'
           return (
             <Instrument key={r.slug} label={r.label} sub={sub} title={rule.text} reading={lights ? rule.reading : '…'} unit={rule.unit} light={lights ? rule : { level: 'gray', text: 'reading…' }} running={running} clock={fmtClock(mins)}
               onClick={() => running ? stop(r) : start(r)} onLightClick={r.light === 'slack' && lights?.slack?.source !== 'slack' ? setSlackCount : undefined}
@@ -220,10 +221,10 @@ export default function RecurringPanel({ onChange }) {
         {RECURRING.filter(r => r.group === 'timer' && !r.travel).map(r => {
           const s = byId.get(eid(day, r.slug)); const running = isRunning(s); const mins = minutesOf(s)
           const Icon = running ? Square : (r.icon || Play)
-          return <Instrument key={r.slug} label={r.label} sub={running ? 'tap to stop' : mins > 0 ? `${fmtClock(mins)} today` : 'tap to start'} icon={<Icon size={20} />} running={running} clock={fmtClock(mins)} onClick={() => running ? stop(r) : start(r)} />
+          return <Instrument key={r.slug} label={r.label} sub={running ? 'tap to stop' : mins > 0 ? `${fmtClock(mins)} today` : ''} icon={<Icon size={20} />} running={running} clock={fmtClock(mins)} onClick={() => running ? stop(r) : start(r)} />
         })}
-        <Instrument label="Travel" sub={travelSub} title={travelSub} icon={travelRunning ? <Square size={20} /> : <Plane size={20} />} running={travelRunning} clock={fmtClock(travelMin)} tone={BLUE} onClick={travelTap}
-          light={nextLeg && !travelRunning ? { level: legState === 'live' ? 'green' : 'gold', text: `${nextLeg.subject} · ${fmtTime(nextLeg.start_at)} to ${fmtTime(nextLeg.end_at)}` } : null}
+        <Instrument label="Travel" sub={travelSub} title={travelTitle} icon={travelRunning ? <Square size={20} /> : <Plane size={20} />} running={travelRunning} clock={fmtClock(travelMin)} tone={BLUE} onClick={travelTap}
+          light={nextLeg && !travelRunning ? { level: legState === 'live' ? 'green' : 'gold', text: travelTitle } : null}
           extra={<span onClick={openTravelEdit} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontFamily: MONO, fontSize: 9, letterSpacing: '1px', textTransform: 'uppercase', color: GRAY, cursor: 'pointer' }}><Pencil size={9} /> edit span</span>} />
       </InstrumentGroup>
       {travelEdit && (
