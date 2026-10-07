@@ -57,15 +57,18 @@ export async function fetchLoadout() {
       session: tags.includes('session'),
       project: projByObj.get(o.id) || null, project_id: projIdByObj.get(o.id) || null, description: o.description || null,
       kind: tags.includes('impromptu') ? 'Impromptu' : (projByObj.has(o.id) || tags.includes('mission-task')) ? 'Main Mission' : tags.includes('session') ? 'Session' : 'Side Mission',
-      personal: tags.includes('personal'),
+      personal: tags.includes('personal'), adhoc: tags.includes('impromptu'), call: tags.includes('call'),
     }
   })
-  const board = items.filter(i => !i.session)
+  // Three slots for planned work; the Ad Hoc slot carries impromptu items
+  // (one at a time) and never counts against the three (David, 10/7).
+  const board = items.filter(i => !i.session && !i.adhoc)
+  const adhoc = items.filter(i => !i.session && i.adhoc)
   const meetingsLeft = events.filter(e => !e.is_all_day && e.end_at > nowIso).reduce((s, e) => s + Math.max(0, (new Date(e.end_at) - Math.max(now, new Date(e.start_at))) / 3600e3), 0)
   const free = Math.max(0, Math.round((hoursToDayEnd() - meetingsLeft) * 10) / 10)
   const loaded = Math.round(board.reduce((s, i) => s + i.hours, 0) * 10) / 10
   return {
-    day, items, board, sessions: items.filter(i => i.session),
+    day, items, board, adhoc, sessions: items.filter(i => i.session),
     equipped: items.find(i => i.equipped) || null,
     slots: { used: board.length, max: SLOTS }, heavy: { used: board.filter(i => i.size === 'heavy').length, max: HEAVY_MAX },
     stamina: { free, loaded, meetingsLeft: Math.round(meetingsLeft * 10) / 10, afterHours: hoursToDayEnd() === 0 },
@@ -136,10 +139,11 @@ export async function extract(item, { minutes, note } = {}) {
 export const DAVID = '9d28e8cf-3e35-48d9-a029-1327bd37fdd4'
 
 // Same rules as the server: slots, one Heavy, stamina during the working day.
-export function fitReasons(L, size = 'light', { alreadyLoadedId } = {}) {
+export function fitReasons(L, size = 'light', { alreadyLoadedId, adhoc = false } = {}) {
   const reasons = []
   const already = alreadyLoadedId && L.items.some(i => i.id === alreadyLoadedId)
   if (already) return reasons
+  if (adhoc) { if (L.adhoc.length) reasons.push(`the Ad Hoc slot is taken: ${L.adhoc[0].title}. Dispatch it first.`); return reasons }
   const hours = (SIZES[size] || SIZES.light).hours
   if (L.slots.used >= SLOTS) reasons.push(`the loadout is full (${L.slots.used}/${SLOTS}): ${L.board.map(i => i.title).join(' | ')}`)
   if (size === 'heavy' && L.heavy.used >= HEAVY_MAX) reasons.push('a Heavy item is already loaded')
@@ -189,7 +193,7 @@ export async function addImpromptu(title, { personal = false, tags = [] } = {}) 
   const text = String(title || '').trim()
   if (!text) throw new Error('say what you are doing')
   const L = await fetchLoadout()
-  const reasons = fitReasons(L, 'light')
+  const reasons = fitReasons(L, 'light', { adhoc: true })
   if (reasons.length) return { ok: false, reasons }
   const now = new Date().toISOString()
   const { data, error } = await supabase.from('objectives').insert({

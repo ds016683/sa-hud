@@ -2,15 +2,15 @@
 // timers, tracked only in the HUD (never Harvest), with start and stop stamps
 // so David's time can be studied later. Gaming asks which game.
 import { useEffect, useState, useCallback } from 'react'
-import { Play, Square } from 'lucide-react'
+import { Play, Square, Gamepad2, Moon, Car } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { chiToday, fmtClock } from '../../lib/loadout'
-import { INK, INK2, GRAY, PANEL_BORDER, GOLD, RED, MONO, Panel } from './canon'
+import { Instrument, InstrumentGroup, groupMsg } from './Instrument'
 
 export const RELEASE_TIMERS = [
-  { slug: 'gaming', label: 'Gaming', ask: 'Which game?' },
-  { slug: 'nap',    label: 'Nap' },
-  { slug: 'drive',  label: 'Drive' },
+  { slug: 'gaming', label: 'Gaming', ask: 'Which game?', icon: Gamepad2 },
+  { slug: 'nap',    label: 'Nap', icon: Moon },
+  { slug: 'drive',  label: 'Drive', icon: Car },
 ]
 const TEAL = '#5FC9C0'
 
@@ -29,7 +29,7 @@ export default function ReleasePanel({ onChange }) {
     const { data } = await supabase.from('meeting_sessions').select('event_id,subject,started_at,stopped_at,hours').eq('day', day).like('event_id', 'personal:%')
     setRows(Array.isArray(data) ? data : [])
   }, [day])
-  useEffect(() => { refresh() }, [refresh])
+  useEffect(() => { Promise.resolve().then(refresh) }, [refresh])
   useEffect(() => { const t = setInterval(() => setNow(Date.now()), 30_000); return () => clearInterval(t) }, [])
 
   const runsFor = (slug) => rows.filter(r => r.event_id.startsWith(prefix(day, slug)))
@@ -68,30 +68,15 @@ export default function ReleasePanel({ onChange }) {
   }
 
   return (
-    <Panel style={{ marginBottom: 0 }}>
-      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'stretch' }}>
-        {RELEASE_TIMERS.map(t => {
-          const r = runningFor(t.slug)
-          const running = !!r
-          const liveMin = running ? (now - new Date(r.started_at).getTime()) / 60000 : 0
-          const todayMin = runsFor(t.slug).filter(x => x.stopped_at).reduce((s, x) => s + (Number(x.hours) || 0) * 60, 0) + liveMin
-          return (
-            <button key={t.slug} onClick={() => running ? stop(t) : start(t)} style={{
-              display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 6, minWidth: 170, padding: '10px 14px', borderRadius: 10, cursor: 'pointer', textAlign: 'left',
-              border: `1px solid ${running ? TEAL : PANEL_BORDER}`, background: running ? 'rgba(95,201,192,0.08)' : 'rgba(255,255,255,0.03)', color: INK,
-            }}>
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 13.5 }}>
-                {running ? <Square size={12} color={TEAL} fill={TEAL} /> : <Play size={12} color={INK2} />}
-                {running ? r.subject : t.label}
-              </span>
-              <span style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '0.6px', color: running ? TEAL : GRAY }}>
-                {running ? `running · ${fmtClock(liveMin)}` : todayMin > 0 ? `${fmtClock(todayMin)} today` : 'tap to start'}
-              </span>
-            </button>
-          )
-        })}
-      </div>
-      {msg && <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '1px', color: msg.startsWith('Could not') ? RED : GOLD, textTransform: 'uppercase', marginTop: 10 }}>{msg}</div>}
-    </Panel>
+    <InstrumentGroup label="Release · personal, never Harvest" divider footer={groupMsg(msg, msg && msg.startsWith('Could not'))}>
+      {RELEASE_TIMERS.map(t => {
+        const r = runningFor(t.slug)
+        const running = !!r
+        const liveMin = running ? (now - new Date(r.started_at).getTime()) / 60000 : 0
+        const todayMin = runsFor(t.slug).filter(x => x.stopped_at).reduce((s, x) => s + (Number(x.hours) || 0) * 60, 0) + liveMin
+        const Icon = running ? Square : (t.icon || Play)
+        return <Instrument key={t.slug} label={running ? r.subject : t.label} sub={running ? 'tap to stop' : todayMin > 0 ? `${fmtClock(todayMin)} today` : 'tap to start'} icon={<Icon size={20} />} running={running} clock={fmtClock(liveMin)} tone={TEAL} onClick={() => running ? stop(t) : start(t)} />
+      })}
+    </InstrumentGroup>
   )
 }

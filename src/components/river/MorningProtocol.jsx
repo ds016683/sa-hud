@@ -21,6 +21,7 @@ import { fetchLoadout, equipObjective, equipTask, equip, fmtClock, chiToday, SIZ
 import { HYGIENE_ITEMS } from '../../constants/hygiene'
 import { MEDICATIONS, dueOn } from '../../constants/medications'
 import { INK, INK2, GRAY, PANEL_BORDER, GOLD, GOLD_BRIGHT, GREEN, RED, BLUE, MONO, SERIF, S, Label, Panel, fmtTime } from './canon'
+import { Instrument, InstrumentGroup, groupMsg } from './Instrument'
 
 export const MORNING_SLUG = 'morning-protocol'
 const eid = (day) => `adhoc:${day}:${MORNING_SLUG}`
@@ -455,21 +456,10 @@ export default function ProtocolsPanel({ onChange, onNavigate }) {
 
   const liveMin = running ? (now - new Date(session.started_at).getTime()) / 60000 + (Number(session.hours) || 0) * 60 : (Number(session?.hours) || 0) * 60
   return (
-    <Panel style={{ marginBottom: 0 }}>
+    <InstrumentGroup label="Protocols" footer={groupMsg(msg, msg && msg.startsWith('Could not'))}>
       {open && <Protocol day={day} session={session} onClose={() => { setOpen(false); refresh() }} onFinished={finished} onChange={onChange} onNavigate={onNavigate} />}
-      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-        <button onClick={start} style={{ ...tile(running || done, running ? GOLD : GREEN), minWidth: 230, flex: '0 1 300px' }}>
-          <span style={{ display: 'inline-flex', gap: 8, alignItems: 'center', fontSize: 13.5 }}><Sunrise size={14} color={done ? GREEN : GOLD} />Morning Protocol</span>
-          <span style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '0.6px', color: running ? GOLD : done ? GREEN : GRAY }}>
-            {running ? `running · ${fmtClock(liveMin)} · tap to resume` : done ? `launched ${fmtTime(session.stopped_at)} · ${fmtClock(liveMin)}` : 'tap to begin the day'}
-          </span>
-        </button>
-        <div style={{ ...tile(false), minWidth: 230, flex: '0 1 300px', cursor: 'default', opacity: 0.6 }}>
-          <span style={{ display: 'inline-flex', gap: 8, alignItems: 'center', fontSize: 13.5 }}><Moon size={14} color={BLUE} />Evening Protocol</span>
-          <span style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '0.6px', color: GRAY }}>next · the real close of the day</span>
-        </div>
-      </div>
-      {msg && <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '1px', color: msg.startsWith('Could not') ? RED : GOLD, textTransform: 'uppercase', marginTop: 10 }}>{msg}</div>}
-    </Panel>
+      <Instrument label="Morning" sub={running ? 'tap to resume' : done ? `launched ${fmtTime(session.stopped_at)} · ${fmtClock(liveMin)}` : 'tap to begin the day'} icon={done ? <Check size={20} /> : <Sunrise size={20} />} running={running} clock={fmtClock(liveMin)} tone={done ? GREEN : GOLD} onClick={start} />
+      <Instrument label="Evening" sub="next · the real close" icon={<Moon size={20} />} tone={BLUE} disabled />
+    </InstrumentGroup>
   )
 }

@@ -15,21 +15,22 @@
 // necessary or critical, blinking red something serious may be overlooked.
 // The thresholds are David's (10/1).
 import { useEffect, useState, useCallback } from 'react'
-import { Play, Square, Check, Plane, Pencil } from 'lucide-react'
+import { Play, Square, Check, Plane, Pencil, CalendarCheck, Brain, Mail, Hash, Receipt, X as XIcon } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { upsertSession, logToHarvest, hoursBetween } from '../../lib/meetings'
 import { chiToday, fmtClock } from '../../lib/loadout'
-import { INK, INK2, GRAY, PANEL_BORDER, GOLD, GREEN, RED, BLUE, MONO, SERIF, Label, Panel, fmtTime } from './canon'
+import { INK, INK2, GRAY, PANEL_BORDER, GOLD, GREEN, RED, BLUE, MONO, Label, fmtTime } from './canon'
+import { Instrument, InstrumentGroup, groupMsg } from './Instrument'
 
 // Add a chore here and it appears as a card. slug is the Harvest note and
 // the session key; label is what David sees. light picks the rule below;
 // group places it (tend = lit dashboard card, timer = plain button).
 export const RECURRING = [
-  { slug: 'email-refresh',  label: 'E-mail Refresh',  light: 'email', group: 'tend' },
-  { slug: 'slack-review',   label: 'Slack Review',    light: 'slack', group: 'tend', clean: true },
-  { slug: 'bill-pay',       label: 'Bill Pay',        light: 'bill',  group: 'tend' },
-  { slug: 'calendar-sweep', label: 'Calendar Sweep',  group: 'timer' },
-  { slug: 'thinking',       label: 'Thinking',        group: 'timer' },
+  { slug: 'email-refresh',  label: 'E-mail Refresh',  light: 'email', group: 'tend', icon: Mail },
+  { slug: 'slack-review',   label: 'Slack Review',    light: 'slack', group: 'tend', clean: true, icon: Hash },
+  { slug: 'bill-pay',       label: 'Bill Pay',        light: 'bill',  group: 'tend', icon: Receipt },
+  { slug: 'calendar-sweep', label: 'Calendar Sweep',  group: 'timer', icon: CalendarCheck },
+  { slug: 'thinking',       label: 'Thinking',        group: 'timer', icon: Brain },
   // Daily Planning folded into the Morning Protocol (10/6).
   { slug: 'travel',         label: 'Travel',          group: 'timer', travel: true, concurrent: true },
 ]
@@ -78,17 +79,6 @@ const btn = (color = INK2, filled = false, extra = {}) => ({
   color: filled ? '#0A1B2B' : color, cursor: 'pointer', ...extra,
 })
 const CTRL = { fontFamily: MONO, fontSize: 12, padding: '6px 8px', borderRadius: 8, border: `1px solid ${PANEL_BORDER}`, background: 'rgba(255,255,255,0.05)', color: INK }
-
-function Light({ rule, onClick, size = 9 }) {
-  if (!rule) return null
-  const color = LEVEL[rule.level] || LEVEL.gray
-  return (
-    <span onClick={onClick ? (e) => { e.stopPropagation(); onClick() } : undefined} title={rule.text} className={rule.blink ? 'rc-blink' : ''} style={{
-      display: 'inline-block', width: size, height: size, borderRadius: 99, background: color, flex: `0 0 ${size}px`,
-      boxShadow: rule.level === 'gray' ? 'none' : `0 0 0 3px ${color}33, 0 0 10px ${color}66`, cursor: onClick ? 'pointer' : 'default',
-    }} />
-  )
-}
 
 export default function RecurringPanel({ onChange }) {
   const [sessions, setSessions] = useState([])
@@ -202,85 +192,60 @@ export default function RecurringPanel({ onChange }) {
   }
 
   const minutesOf = (s) => ((Number(s?.hours) || 0) * 60) + (isRunning(s) ? (now - new Date(s.started_at).getTime()) / 60000 : 0)
+  const bad = msg && (msg.startsWith('Could not') || msg.includes('did not'))
+  const travelRunning = isRunning(travelSession); const travelMin = minutesOf(travelSession)
+  const travelSub = travelRunning ? 'tap to stop' : legState === 'past' ? `log ${fmtClock(hoursBetween(nextLeg.start_at, nextLeg.end_at) * 60)} · ${nextLeg.subject}` : legState === 'live' ? `in the air · start from ${fmtTime(nextLeg.start_at)}` : nextLeg ? `${fmtTime(nextLeg.start_at)} · ${nextLeg.subject}` : travelMin > 0 ? `${fmtClock(travelMin)} today` : 'tap to start · edit to log a span'
+  const travelTap = () => {
+    if (travelRunning) return stop(RECURRING.find(x => x.slug === 'travel'))
+    if (legState === 'past') return logTravelSpan({ label: nextLeg.subject, start: chiHHMM(nextLeg.start_at), end: chiHHMM(nextLeg.end_at), personal: false })
+    if (legState === 'live' || legState === 'ahead' || !nextLeg) return startTravelNow()
+  }
 
   return (
-    <Panel style={{ marginBottom: 0 }}>
+    <>
       <style>{`@keyframes rcblink { 0%,100% { opacity: 1 } 50% { opacity: .15 } } .rc-blink { animation: rcblink 1s ease-in-out infinite }`}</style>
-      {/* Tending: lit cards with their reading */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: 10 }}>
+      <InstrumentGroup label="Tending" divider footer={groupMsg(msg, bad)}>
         {RECURRING.filter(r => r.group === 'tend').map(r => {
           const s = byId.get(eid(day, r.slug)); const running = isRunning(s); const mins = minutesOf(s)
-          const rule = RULES[r.light](lights); const c = LEVEL[rule.level]
+          const rule = RULES[r.light](lights)
+          const sub = running ? 'tap to stop' : lights ? (rule.level === 'gray' ? 'no reading' : rule.text) : 'reading…'
           return (
-            <div key={r.slug} onClick={() => running ? stop(r) : start(r)} style={{ position: 'relative', display: 'flex', flexDirection: 'column', gap: 8, padding: '12px 14px 12px 16px', borderRadius: 12, cursor: 'pointer', borderLeft: `3px solid ${c}`, border: `1px solid ${running ? GREEN : PANEL_BORDER}`, borderLeftWidth: 3, borderLeftColor: c, background: running ? 'rgba(67,211,146,0.08)' : 'rgba(255,255,255,0.03)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <Light rule={rule} onClick={r.light === 'slack' && lights?.slack?.source !== 'slack' ? setSlackCount : undefined} />
-                <span style={{ fontSize: 13, color: INK, flex: 1 }}>{r.label}</span>
-                {running ? <Square size={11} color={GREEN} fill={GREEN} /> : <Play size={11} color={GRAY} />}
-              </div>
-              <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
-                <span style={{ fontFamily: SERIF, fontSize: 28, lineHeight: 1, color: lights ? '#fff' : GRAY }}>{lights ? rule.reading : '…'}</span>
-                <span style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '1px', textTransform: 'uppercase', color: GRAY }}>{rule.unit}</span>
-              </div>
-              <div style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '0.8px', color: rule.level === 'green' ? GREEN : rule.level === 'gray' ? GRAY : c, textTransform: 'uppercase' }} title={rule.text}>{lights ? rule.text : 'reading…'}</div>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginTop: 2 }}>
-                <span style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '0.6px', color: running ? GREEN : GRAY }}>{running ? `running · ${fmtClock(mins)}` : mins > 0 ? `${fmtClock(mins)} today` : 'tap to start'}</span>
-                {r.clean && (
-                  <span onClick={(e) => { e.stopPropagation(); markSlack() }} title="Clean Slack: 10 miles at the close" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontFamily: MONO, fontSize: 9, letterSpacing: '1px', textTransform: 'uppercase', color: slackClean ? GOLD : GRAY }}>
-                    <Check size={10} /> {slackClean ? 'clean · 10 mi' : 'mark clean'}
-                  </span>
-                )}
-              </div>
-            </div>
+            <Instrument key={r.slug} label={r.label} sub={sub} title={rule.text} reading={lights ? rule.reading : '…'} unit={rule.unit} light={lights ? rule : { level: 'gray', text: 'reading…' }} running={running} clock={fmtClock(mins)}
+              onClick={() => running ? stop(r) : start(r)} onLightClick={r.light === 'slack' && lights?.slack?.source !== 'slack' ? setSlackCount : undefined}
+              extra={r.clean ? <span onClick={markSlack} title="Clean Slack: 10 miles at the close" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontFamily: MONO, fontSize: 9, letterSpacing: '1px', textTransform: 'uppercase', color: slackClean ? GOLD : GRAY, cursor: 'pointer' }}><Check size={10} /> {slackClean ? 'clean · 10 mi' : 'mark clean'}</span> : (mins > 0 ? <span style={{ fontFamily: MONO, fontSize: 9, letterSpacing: '0.8px', color: GRAY }}>{fmtClock(mins)} today</span> : null)} />
           )
         })}
-      </div>
-      {/* Timers: plain buttons */}
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginTop: 12 }}>
-        <Label style={{ marginRight: 4 }}>Timers</Label>
+      </InstrumentGroup>
+      <InstrumentGroup label="Timers" divider>
         {RECURRING.filter(r => r.group === 'timer' && !r.travel).map(r => {
           const s = byId.get(eid(day, r.slug)); const running = isRunning(s); const mins = minutesOf(s)
-          return (
-            <button key={r.slug} onClick={() => running ? stop(r) : start(r)} style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '8px 12px', borderRadius: 999, cursor: 'pointer', border: `1px solid ${running ? GREEN : PANEL_BORDER}`, background: running ? 'rgba(67,211,146,0.08)' : 'rgba(255,255,255,0.03)', color: INK, fontSize: 13 }}>
-              {running ? <Square size={11} color={GREEN} fill={GREEN} /> : <Play size={11} color={INK2} />}{r.label}
-              <span style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '0.6px', color: running ? GREEN : GRAY }}>{running ? fmtClock(mins) : mins > 0 ? `${fmtClock(mins)} today` : ''}</span>
-            </button>
-          )
+          const Icon = running ? Square : (r.icon || Play)
+          return <Instrument key={r.slug} label={r.label} sub={running ? 'tap to stop' : mins > 0 ? `${fmtClock(mins)} today` : 'tap to start'} icon={<Icon size={20} />} running={running} clock={fmtClock(mins)} onClick={() => running ? stop(r) : start(r)} />
         })}
-        {/* Travel: concurrent, calendar-aware */}
-        {(() => {
-          const running = isRunning(travelSession); const mins = minutesOf(travelSession)
-          const hint = running ? `running · ${fmtClock(mins)}` : nextLeg ? `${nextLeg.subject} · ${fmtTime(nextLeg.start_at)} to ${fmtTime(nextLeg.end_at)}` : mins > 0 ? `${fmtClock(mins)} today` : 'nothing on the calendar · edit to log a span'
-          return (
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 8px 6px 12px', borderRadius: 999, border: `1px solid ${running ? GREEN : nextLeg ? `${BLUE}88` : PANEL_BORDER}`, background: running ? 'rgba(67,211,146,0.08)' : nextLeg ? 'rgba(169,201,232,0.07)' : 'rgba(255,255,255,0.03)', color: INK, fontSize: 13 }}>
-              <Plane size={12} color={running ? GREEN : BLUE} /> Travel
-              <span style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '0.6px', color: running ? GREEN : GRAY, maxWidth: 360, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={hint}>{hint}</span>
-              {running
-                ? <button onClick={() => stop(RECURRING.find(x => x.slug === 'travel'))} style={btn(GREEN)}><Square size={10} fill={GREEN} /> Stop</button>
-                : <>
-                  {legState === 'past' && <button onClick={() => logTravelSpan({ label: nextLeg.subject, start: chiHHMM(nextLeg.start_at), end: chiHHMM(nextLeg.end_at), personal: false })} style={btn(BLUE, true)}><Check size={10} /> Log {fmtClock(hoursBetween(nextLeg.start_at, nextLeg.end_at) * 60)}</button>}
-                  {(legState === 'live' || legState === 'ahead' || !nextLeg) && <button onClick={startTravelNow} style={btn(BLUE, legState === 'live')}><Play size={10} /> {legState === 'live' ? `Start from ${fmtTime(nextLeg.start_at)}` : 'Start'}</button>}
-                  <button onClick={openTravelEdit} title="Edit the span before logging" style={btn(INK2)}><Pencil size={10} /> Edit</button>
-                </>}
-            </span>
-          )
-        })()}
-      </div>
+        <Instrument label="Travel" sub={travelSub} title={travelSub} icon={travelRunning ? <Square size={20} /> : <Plane size={20} />} running={travelRunning} clock={fmtClock(travelMin)} tone={BLUE} onClick={travelTap}
+          light={nextLeg && !travelRunning ? { level: legState === 'live' ? 'green' : 'gold', text: `${nextLeg.subject} · ${fmtTime(nextLeg.start_at)} to ${fmtTime(nextLeg.end_at)}` } : null}
+          extra={<span onClick={openTravelEdit} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontFamily: MONO, fontSize: 9, letterSpacing: '1px', textTransform: 'uppercase', color: GRAY, cursor: 'pointer' }}><Pencil size={9} /> edit span</span>} />
+      </InstrumentGroup>
       {travelEdit && (
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginTop: 10, padding: '10px 12px', borderRadius: 10, border: `1px solid ${BLUE}55`, background: 'rgba(169,201,232,0.05)' }}>
-          <Label style={{ color: BLUE }}>Travel · log a span</Label>
-          <input value={travelEdit.label} onChange={e => setTravelEdit(t => ({ ...t, label: e.target.value }))} placeholder="What (flight, drive)" style={{ ...CTRL, fontFamily: 'inherit', minWidth: 220, flex: 1 }} />
-          <input type="time" value={travelEdit.start} onChange={e => setTravelEdit(t => ({ ...t, start: e.target.value }))} style={CTRL} />
-          <span style={{ color: GRAY, fontSize: 12 }}>to</span>
-          <input type="time" value={travelEdit.end} onChange={e => setTravelEdit(t => ({ ...t, end: e.target.value }))} style={CTRL} />
-          <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: MONO, fontSize: 9.5, letterSpacing: '1px', textTransform: 'uppercase', color: travelEdit.personal ? GOLD : GRAY, cursor: 'pointer' }}>
-            <input type="checkbox" checked={travelEdit.personal} onChange={e => setTravelEdit(t => ({ ...t, personal: e.target.checked }))} /> personal · not Harvest
-          </label>
-          <button onClick={() => logTravelSpan(travelEdit)} style={btn(BLUE, true)}><Check size={10} /> Log</button>
-          <button onClick={() => setTravelEdit(null)} style={btn(INK2)}>Cancel</button>
+        <div onClick={() => setTravelEdit(null)} style={{ position: 'fixed', inset: 0, zIndex: 250, background: 'rgba(8,20,32,0.88)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+          <div onClick={e => e.stopPropagation()} style={{ maxWidth: 520, width: '100%', background: '#10273B', border: `1px solid ${PANEL_BORDER}`, borderRadius: 14, padding: '22px 24px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}><Plane size={14} color={BLUE} /><Label style={{ marginBottom: 0, color: BLUE }}>Travel · log a span</Label><span style={{ flex: 1 }} /><button onClick={() => setTravelEdit(null)} aria-label="Close" style={{ ...btn(INK2), padding: '4px 6px' }}><XIcon size={12} /></button></div>
+            <input value={travelEdit.label} onChange={e => setTravelEdit(t => ({ ...t, label: e.target.value }))} placeholder="What (flight, drive)" style={{ ...CTRL, fontFamily: 'inherit', width: '100%', boxSizing: 'border-box', marginTop: 14 }} />
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 10, flexWrap: 'wrap' }}>
+              <input type="time" value={travelEdit.start} onChange={e => setTravelEdit(t => ({ ...t, start: e.target.value }))} style={CTRL} />
+              <span style={{ color: GRAY, fontSize: 12 }}>to</span>
+              <input type="time" value={travelEdit.end} onChange={e => setTravelEdit(t => ({ ...t, end: e.target.value }))} style={CTRL} />
+              <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: MONO, fontSize: 9.5, letterSpacing: '1px', textTransform: 'uppercase', color: travelEdit.personal ? GOLD : GRAY, cursor: 'pointer', marginLeft: 'auto' }}>
+                <input type="checkbox" checked={travelEdit.personal} onChange={e => setTravelEdit(t => ({ ...t, personal: e.target.checked }))} /> personal · not Harvest
+              </label>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 16 }}>
+              <button onClick={() => setTravelEdit(null)} style={btn(INK2)}>Cancel</button>
+              <button onClick={() => logTravelSpan(travelEdit)} style={btn(BLUE, true)}><Check size={10} /> Log</button>
+            </div>
+          </div>
         </div>
       )}
-      {msg && <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '1px', color: msg.startsWith('Could not') || msg.includes('did not') ? RED : GOLD, textTransform: 'uppercase', marginTop: 10 }}>{msg}</div>}
-    </Panel>
+    </>
   )
 }

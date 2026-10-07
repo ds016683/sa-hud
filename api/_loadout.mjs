@@ -56,8 +56,12 @@ export async function loadout() {
     minutes_today: Math.round(minutesFor(o.id)),
     session: !isBoardItem(o),
     kind: (o.tags || []).includes('impromptu') ? 'impromptu' : (o.tags || []).includes('mission-task') ? 'mission-task' : 'side-mission',
+    adhoc: (o.tags || []).includes('impromptu'),
   }))
-  const board = items.filter(i => !i.session)
+  // The three slots hold planned work. Impromptu items ride the Ad Hoc slot
+  // (one at a time) and never count against the three (David, 10/7).
+  const board = items.filter(i => !i.session && !i.adhoc)
+  const adhoc = items.filter(i => !i.session && i.adhoc)
   const meetingsLeft = events.filter(e => !e.is_all_day && e.end_at > nowIso).reduce((s, e) => s + Math.max(0, (new Date(e.end_at) - Math.max(Date.now(), new Date(e.start_at))) / 3600e3), 0)
   const stamina = Math.max(0, Math.round((hoursToDayEnd() - meetingsLeft) * 10) / 10)
   const loaded = Math.round(board.reduce((s, i) => s + i.hours, 0) * 10) / 10
@@ -65,8 +69,8 @@ export async function loadout() {
     day, slots: { used: board.length, max: SLOTS }, heavy: { used: board.filter(i => i.size === 'heavy').length, max: HEAVY_MAX },
     stamina: { free_hours: stamina, loaded_hours: loaded, meetings_left_hours: Math.round(meetingsLeft * 10) / 10, day_end: `${DAY_END_HOUR}:00 CT`, after_hours: hoursToDayEnd() === 0, note: hoursToDayEnd() === 0 ? 'After 6 PM: stamina is not enforced, slots and Heavy still are.' : 'Loaded hours must fit within free hours before 6 PM.' },
     equipped: items.find(i => i.equipped) || null,
-    items, sessions: items.filter(i => i.session),
-    rules: `${SLOTS} slots, at most ${HEAVY_MAX} Heavy, one clock running, loaded hours within stamina. Over the limit: stash (park) something first.`,
+    items, sessions: items.filter(i => i.session), adhoc,
+    rules: `${SLOTS} slots for planned work, at most ${HEAVY_MAX} Heavy, one clock running, loaded hours within stamina; one Ad Hoc slot for the unplanned (impromptu items, calls), which must be dispatched before another lands. Over the limit: stash (park) something first.`,
   }
 }
 
@@ -77,6 +81,11 @@ export async function checkFit(candidate, { force = false } = {}) {
   const hours = (SIZES[size] || SIZES.light).hours
   const already = candidate.id && L.items.some(i => i.id === candidate.id)
   const reasons = []
+  const impromptu = candidate.impromptu || (Array.isArray(candidate.tags) && candidate.tags.includes('impromptu'))
+  if (impromptu && !already) {
+    if (L.adhoc.length) reasons.push(`the Ad Hoc slot is taken: "${L.adhoc[0].title}" (${L.adhoc[0].minutes_today}m on the clock). Dispatch it first.`)
+    return { ok: force || reasons.length === 0, forced: force && reasons.length > 0, reasons, loadout: L }
+  }
   if (!already) {
     if (L.slots.used >= SLOTS) reasons.push(`the loadout is full (${L.slots.used}/${SLOTS} slots): ${L.items.filter(i => !i.session).map(i => i.title).join(' | ')}`)
     if (size === 'heavy' && L.heavy.used >= HEAVY_MAX) reasons.push(`a Heavy item is already loaded (${L.items.find(i => i.size === 'heavy')?.title})`)

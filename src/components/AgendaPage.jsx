@@ -13,13 +13,12 @@ import MeetingCloseout, { renderMarkdown, CloseoutBlock, friendlyError, fmtHours
 import LoadoutPanel from './river/LoadoutPanel'
 import RecurringPanel from './river/RecurringPanel'
 import ReleasePanel from './river/ReleasePanel'
-import AmbushPanel from './river/AmbushPanel'
 import ProtocolsPanel from './river/MorningProtocol'
 import { equipTask, equipObjective } from '../lib/loadout'
 import ItemDetail from './river/ItemDetail'
 import {
   INK, INK2, GRAY, NAVY_DEEP, PANEL_BORDER, GOLD, GOLD_BRIGHT, BLUE, PERIWINKLE, GREEN, RED, MONO, SERIF,
-  S, Eyebrow, Label, Panel, RailSection, chiToday, fmtTime, weekday,
+  S, Eyebrow, Label, Panel, chiToday, fmtTime, weekday,
 } from './river/canon'
 
 const fmtFullDay = (day) => day ? new Date(day + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }) : ''
@@ -572,21 +571,18 @@ export default function AgendaPage({ onNavigate } = {}) {
 
       {day === today && (
         <>
-          <RailSection title="Protocols">
-            <ProtocolsPanel onChange={refresh} onNavigate={onNavigate} />
-          </RailSection>
-          <RailSection title="Loadout">
-            <LoadoutPanel onChange={refresh} refreshKey={refreshKey} onNavigate={onNavigate} />
-          </RailSection>
-          <RailSection title="Ambush">
-            <AmbushPanel onChange={refresh} />
-          </RailSection>
-          <RailSection title="Recurring">
-            <RecurringPanel onChange={refresh} />
-          </RailSection>
-          <RailSection title="Release">
-            <ReleasePanel onChange={refresh} />
-          </RailSection>
+          <Panel style={{ marginBottom: 12 }}>
+            <Eyebrow style={{ marginBottom: 12 }}>Console</Eyebrow>
+            <div style={{ display: 'flex', gap: 22, flexWrap: 'wrap', alignItems: 'flex-start' }}>
+              <ProtocolsPanel onChange={refresh} onNavigate={onNavigate} />
+              <RecurringPanel onChange={refresh} />
+              <ReleasePanel onChange={refresh} />
+            </div>
+          </Panel>
+          <Panel style={{ marginBottom: 12 }}>
+            <Eyebrow style={{ marginBottom: 12 }}>The Board</Eyebrow>
+            <LoadoutPanel bare onChange={refresh} refreshKey={refreshKey} onNavigate={onNavigate} />
+          </Panel>
         </>
       )}
 

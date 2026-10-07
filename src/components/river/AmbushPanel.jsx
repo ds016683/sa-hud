@@ -18,7 +18,7 @@ const btn = (color = INK2, filled = false) => ({
 const field = { width: '100%', background: 'rgba(255,255,255,0.05)', border: `1px solid ${PANEL_BORDER}`, borderRadius: 8, color: INK, padding: '8px 10px', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }
 const RED_ORANGE = '#E8836F'
 
-function DispatchModal({ item, projects, onClose, onDone }) {
+export function DispatchModal({ item, projects, onClose, onDone }) {
   const [note, setNote] = useState('')
   const [minutes, setMinutes] = useState(Math.round(item.minutes_today) || '')
   const [left, setLeft] = useState('none') // none | task | side | mission

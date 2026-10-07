@@ -987,7 +987,7 @@ export async function callTool(name, args = {}) {
       const tags = [...new Set([...(Array.isArray(args.tags) ? args.tags : []), ...(args.impromptu ? ['impromptu'] : [])])]
       let fit = null
       if (state === 'active') {
-        fit = await checkFit({ size }, { force: !!args.force })
+        fit = await checkFit({ size, tags }, { force: !!args.force })
         if (!fit.ok) return JSON.stringify({ ok: false, refused: 'loadout', reasons: fit.reasons, loadout: fit.loadout, note: 'Ask David what to stash (park), or whether to force it.' })
       }
       const row = {
