@@ -171,15 +171,15 @@ function GatewayPlayer({ index, onIndex, onPlayed }) {
   const [playing, setPlaying] = useState(false)
   const [list, setList] = useState(false)
   const [err, setErr] = useState(null)
-  const playable = GATEWAY_PLAYLIST.map((t, i) => ({ ...t, i })).filter(t => t.file)
+  const playable = GATEWAY_PLAYLIST.map((t, i) => ({ ...t, i })).filter(t => t.file || t.preview)
   const track = GATEWAY_PLAYLIST[index] || null
   useEffect(() => {
     let alive = true
     Promise.resolve().then(() => { if (alive) { setSrc(null); setErr(null) } })
-    if (!track?.file) return
-    supabase.storage.from('project-files').createSignedUrl(`gateway/${track.file}`, 3600).then(({ data, error }) => { if (!alive) return; if (error || !data?.signedUrl) setErr('track not found in the bucket'); else setSrc(data.signedUrl) })
+    if (track?.file) supabase.storage.from('project-files').createSignedUrl(`gateway/${track.file}`, 3600).then(({ data, error }) => { if (!alive) return; if (error || !data?.signedUrl) setErr('track not found in the bucket'); else setSrc(data.signedUrl) })
+    else if (track?.preview) Promise.resolve().then(() => { if (alive) setSrc(track.preview) })
     return () => { alive = false }
-  }, [track?.file])
+  }, [track?.file, track?.preview])
   useEffect(() => { if (src && audio.current) { audio.current.play().then(() => { setPlaying(true); onPlayed && onPlayed(track) }).catch(() => setPlaying(false)) } }, [src]) // eslint-disable-line react-hooks/exhaustive-deps
   if (!track) return null
   const step = (d) => { if (!playable.length) return; const pos = playable.findIndex(t => t.i === index); const next = playable[(pos + d + playable.length) % playable.length]; onIndex(next.i) }
@@ -191,15 +191,16 @@ function GatewayPlayer({ index, onIndex, onPlayed }) {
         <Music size={14} color={GOLD} />
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 14, color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{track.title}</div>
-          <div style={{ fontFamily: MONO, fontSize: 9.5, color: GRAY, letterSpacing: '0.6px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{track.artist}{err ? ` · ${err}` : !track.file ? ' · opens in Apple Music' : playing ? ' · playing' : ' · paused'}</div>
+          <div style={{ fontFamily: MONO, fontSize: 9.5, color: GRAY, letterSpacing: '0.6px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{track.artist}{err ? ` · ${err}` : track.file ? (playing ? ' · playing' : ' · paused') : track.preview ? (playing ? ' · 30s preview' : ' · preview paused') : ' · opens in Apple Music'}</div>
         </div>
         <button onClick={() => setList(l => !l)} title="Tracks" style={{ ...btn(INK2), padding: '5px 7px' }}><ListMusic size={12} /></button>
       </div>
       <div style={{ display: 'flex', justifyContent: 'center', gap: 8, marginTop: 10 }}>
         <button onClick={() => step(-1)} disabled={playable.length < 2} style={{ ...btn(INK2), padding: '6px 9px' }}><SkipBack size={12} /></button>
-        {track.file
+        {(track.file || track.preview)
           ? <button onClick={toggle} style={{ ...btn(GOLD, true), padding: '6px 14px' }}>{playing ? <Pause size={12} /> : <Play size={12} />}</button>
-          : <button onClick={() => track.url && window.open(track.url, '_blank', 'noopener')} style={{ ...btn(GOLD, true), padding: '6px 14px' }}><ExternalLink size={12} /></button>}
+          : null}
+        {track.url && <button onClick={() => window.open(track.url, '_blank', 'noopener')} title="Open in Apple Music" style={{ ...btn(INK2), padding: '6px 9px' }}><ExternalLink size={12} /></button>}
         <button onClick={() => step(1)} disabled={playable.length < 2} style={{ ...btn(INK2), padding: '6px 9px' }}><SkipForward size={12} /></button>
       </div>
       {list && (
@@ -207,7 +208,7 @@ function GatewayPlayer({ index, onIndex, onPlayed }) {
           {GATEWAY_PLAYLIST.map((t, i) => (
             <button key={`${t.title}-${i}`} onClick={() => { onIndex(i); setList(false) }} style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '6px 2px', background: 'transparent', border: 'none', borderBottom: `1px solid ${PANEL_BORDER}`, color: i === index ? GOLD : INK, cursor: 'pointer', textAlign: 'left' }}>
               <span style={{ fontSize: 12.5, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.title}</span>
-              <span style={{ fontFamily: MONO, fontSize: 9, color: GRAY }}>{t.file ? 'plays here' : 'link'}</span>
+              <span style={{ fontFamily: MONO, fontSize: 9, color: GRAY }}>{t.file ? 'plays here' : t.preview ? 'preview' : 'link'}</span>
             </button>
           ))}
         </div>
@@ -392,9 +393,9 @@ function Protocol({ day, session, onClose, onFinished, onChange, onNavigate }) {
         {GATEWAY_PLAYLIST.length > 0 ? (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 10 }}>
             {GATEWAY_PLAYLIST.map(t => { const on = gatewayLog?.what === `${t.title} · ${t.artist}`; return (
-              <button key={t.title} onClick={() => { setTrackIndex(GATEWAY_PLAYLIST.indexOf(t)); if (t.file) logSong(`${t.title} · ${t.artist}`, true); else { logSong(`${t.title} · ${t.artist}`); if (t.url) window.open(t.url, '_blank', 'noopener') } }} style={{ ...tile(on, GOLD), minWidth: 0 }}>
+              <button key={t.title} onClick={() => { setTrackIndex(GATEWAY_PLAYLIST.indexOf(t)); if (t.file || t.preview) logSong(`${t.title} · ${t.artist}`, true); else { logSong(`${t.title} · ${t.artist}`); if (t.url) window.open(t.url, '_blank', 'noopener') } }} style={{ ...tile(on, GOLD), minWidth: 0 }}>
                 <span style={{ display: 'inline-flex', gap: 8, alignItems: 'center', fontSize: 14, fontFamily: SERIF, fontWeight: 500 }}><Music size={13} color={on ? GOLD : INK2} />{t.title}</span>
-                <span style={{ fontFamily: MONO, fontSize: 10, color: GRAY, letterSpacing: '0.6px' }}>{t.artist}{t.file ? ' · plays here' : ' · Apple Music'}</span>
+                <span style={{ fontFamily: MONO, fontSize: 10, color: GRAY, letterSpacing: '0.6px' }}>{t.artist}{t.file ? ' · plays here' : t.preview ? ' · preview here, full track in Apple Music' : ' · Apple Music'}</span>
               </button>) })}
           </div>
         ) : (
