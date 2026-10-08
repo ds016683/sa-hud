@@ -3,8 +3,8 @@
 //
 //   Slots     three slots of planned work; an item takes 1, 2, or 3 of them
 //             (the slot economy, David 10/7: manage the bag, not a count)
-//   Size      Sidearm (1 slot, an hour), Primary (2 slots, a half day),
-//             Ordnance (3 slots, the whole day)
+//   Type      Bounty (1 slot, a quick hit), Contract (2 slots, a standard job),
+//             Mythic (3 slots, several steps, the only type with a steps module)
 //   Equipped  exactly one clock runs at a time
 //   Stamina   free hours before 6 PM Chicago after remaining meetings
 //   Extract   release: stop the clock, sum the segments, bank the miles
@@ -14,9 +14,9 @@ export const SLOTS = 3
 export const HEAVY_MAX = 1
 export const DAY_END_HOUR = 18
 export const SIZES = {
-  light:  { label: 'Sidearm',  slots: 1, hours: 1, effort: 1, color: '#9DB0C1', sub: 'one slot · about an hour' },
-  medium: { label: 'Primary',  slots: 2, hours: 4, effort: 3, color: '#A9C9E8', sub: 'two slots · a half day' },
-  heavy:  { label: 'Ordnance', slots: 3, hours: 8, effort: 5, color: '#E6B54F', sub: 'the whole bag · a full day' },
+  light:  { label: 'Bounty',  slots: 1, hours: 1, effort: 1, color: '#9DB0C1', sub: 'a quick hit · one slot · about an hour' },
+  medium: { label: 'Contract',  slots: 2, hours: 4, effort: 3, color: '#A9C9E8', sub: 'a standard job · two slots · a couple of hours' },
+  heavy:  { label: 'Mythic', slots: 3, hours: 8, effort: 5, color: '#E6B54F', sub: 'several steps · the whole bag · a full day' },
 }
 export const slotsOf = (o) => SIZES[sizeOf(o)].slots
 export const sizeOf = (o) => { const e = Number(o?.effort) || 1; return e >= 4 ? 'heavy' : e === 3 ? 'medium' : 'light' }

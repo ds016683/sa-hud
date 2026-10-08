@@ -2,8 +2,8 @@
 //
 //   Slots     three slots of planned work; an item takes 1, 2, or 3 of them
 //             (the slot economy, David 10/7)
-//   Size      Sidearm (1 slot, an hour), Primary (2 slots, a half day),
-//             Ordnance (3 slots, the whole day); bigger than that is a Main
+//   Type      Bounty (1 slot, a quick hit), Contract (2 slots, a standard job),
+//             Mythic (3 slots, several steps, the only type with a steps module); bigger than that is a Main
 //             Mission, split into tasks
 //   Equipped  exactly one item's clock runs at a time; equipping another
 //             holsters the rest
@@ -20,9 +20,9 @@ export const SLOTS = 3
 export const HEAVY_MAX = 1
 export const DAY_END_HOUR = 18
 export const SIZES = {
-  light:  { label: 'Sidearm',  slots: 1, hours: 1, effort: 1 },
-  medium: { label: 'Primary',  slots: 2, hours: 4, effort: 3 },
-  heavy:  { label: 'Ordnance', slots: 3, hours: 8, effort: 5 },
+  light:  { label: 'Bounty',  slots: 1, hours: 1, effort: 1 },
+  medium: { label: 'Contract',  slots: 2, hours: 4, effort: 3 },
+  heavy:  { label: 'Mythic', slots: 3, hours: 8, effort: 5 },
 }
 export const sizeOf = (o) => { const e = Number(o?.effort) || 1; return e >= 4 ? 'heavy' : e === 3 ? 'medium' : 'light' }
 export const effortOf = (size) => (SIZES[String(size || '').toLowerCase()] || SIZES.light).effort
@@ -72,7 +72,7 @@ export async function loadout() {
     stamina: { free_hours: stamina, loaded_hours: loaded, meetings_left_hours: Math.round(meetingsLeft * 10) / 10, day_end: `${DAY_END_HOUR}:00 CT`, after_hours: hoursToDayEnd() === 0, note: hoursToDayEnd() === 0 ? 'After 6 PM: stamina is not enforced, slots and Heavy still are.' : 'Loaded hours must fit within free hours before 6 PM.' },
     equipped: items.find(i => i.equipped) || null,
     items, sessions: items.filter(i => i.session), adhoc,
-    rules: `${SLOTS} slots of planned work; a Sidearm takes 1, a Primary 2, an Ordnance all 3. One clock running, loaded hours within stamina. One Ad Hoc slot for the unplanned (impromptu items, calls), which must be dispatched before another lands. Over the limit: stash (park) something first.`,
+    rules: `${SLOTS} slots of planned work; a Bounty takes 1, a Contract 2, a Mythic all 3. One clock running, loaded hours within stamina. One Ad Hoc slot for the unplanned (impromptu items, calls), which must be dispatched before another lands. Over the limit: stash (park) something first.`,
   }
 }
 

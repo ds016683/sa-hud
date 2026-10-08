@@ -437,7 +437,7 @@ export const TOOLS = [
       title: { type: 'string' },
       state: { type: 'string', enum: ['inbox', 'parked', 'active', 'follow_up', 'waiting'] },
       impromptu: { type: 'boolean', description: 'true when David posts something to the board on the fly to do now; pays 1 mile on release instead of 4. Default true when state is active and he did not plan it.' },
-      size: { type: 'string', enum: ['light', 'medium', 'heavy'], description: 'light = Sidearm (1 slot, an hour or less), medium = Primary (2 slots, a half day), heavy = Ordnance (3 slots, a full day). Bigger than that is a Main Mission, not a Side Mission. Default light. Ask David when it is not obvious.' },
+      size: { type: 'string', enum: ['light', 'medium', 'heavy'], description: 'light = Bounty (1 slot: a quick hit, an email, a call), medium = Contract (2 slots: a standard job, a couple of hours), heavy = Mythic (3 slots: several steps, up to five, the only type with steps). Bigger than that is a Main Mission, not a Side Mission. Default light. Ask David when it is not obvious.' },
       force: { type: 'boolean', description: 'Only when David explicitly overrides a full loadout. Otherwise the Loadout rules refuse and you ask him what to stash.' },
       due_date: { type: 'string', description: 'YYYY-MM-DD' },
       follow_up_date: { type: 'string', description: 'YYYY-MM-DD; required when state is follow_up' },
@@ -469,7 +469,7 @@ export const TOOLS = [
   },
   {
     name: 'get_loadout',
-    description: "The Loadout: what David carries right now. Slots used of 3 (a Sidearm takes 1, a Primary 2, an Ordnance 3), the equipped item (the one clock running) with minutes so far, every item on the board with its size and clocked minutes, and stamina (free hours before 6 PM Chicago after remaining meetings vs hours loaded). Read it before activating anything and whenever he asks what he is on or how much room he has.",
+    description: "The Loadout: what David carries right now. Slots used of 3 (a Bounty takes 1, a Contract 2, a Mythic 3), the equipped item (the one clock running) with minutes so far, every item on the board with its size and clocked minutes, and stamina (free hours before 6 PM Chicago after remaining meetings vs hours loaded). Read it before activating anything and whenever he asks what he is on or how much room he has.",
     inputSchema: { type: 'object', properties: {} },
   },
   {

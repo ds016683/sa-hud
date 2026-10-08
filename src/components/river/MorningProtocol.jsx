@@ -15,7 +15,7 @@
 // finish also writes daily_logs what 'morning-protocol' (minutes) so the
 // planning light and the River can see it ran. No miles for the timer.
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
-import { ArrowLeft, ArrowRight, Check, Sunrise, Moon, Play, Square, Rocket, Send, ExternalLink, SkipForward, RotateCcw, Mic, Music, Sparkles, RefreshCw } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Check, Sunrise, Moon, Play, Pause, Square, Rocket, Send, ExternalLink, SkipForward, SkipBack, RotateCcw, Mic, Music, Sparkles, RefreshCw, ListMusic, X as XIcon } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { upsertSession, logToHarvest, hoursBetween } from '../../lib/meetings'
 import { fetchLoadout, equipObjective, equipTask, equip, fmtClock, chiToday, SIZES, SLOTS } from '../../lib/loadout'
@@ -160,6 +160,62 @@ function LumenStrip({ day, where, onReplied, prompt }) {
   )
 }
 
+// ---- the Gateway player -----------------------------------------------------------
+// A small player pinned to the corner of the protocol: the curated tracks
+// that David owns play here (signed URLs from the project-files bucket), so
+// the music follows him from Gateway through Launch. Links-only tracks open
+// in Apple Music instead.
+function GatewayPlayer({ index, onIndex, onPlayed }) {
+  const audio = useRef(null)
+  const [src, setSrc] = useState(null)
+  const [playing, setPlaying] = useState(false)
+  const [list, setList] = useState(false)
+  const [err, setErr] = useState(null)
+  const playable = GATEWAY_PLAYLIST.map((t, i) => ({ ...t, i })).filter(t => t.file)
+  const track = GATEWAY_PLAYLIST[index] || null
+  useEffect(() => {
+    let alive = true
+    Promise.resolve().then(() => { if (alive) { setSrc(null); setErr(null) } })
+    if (!track?.file) return
+    supabase.storage.from('project-files').createSignedUrl(`gateway/${track.file}`, 3600).then(({ data, error }) => { if (!alive) return; if (error || !data?.signedUrl) setErr('track not found in the bucket'); else setSrc(data.signedUrl) })
+    return () => { alive = false }
+  }, [track?.file])
+  useEffect(() => { if (src && audio.current) { audio.current.play().then(() => { setPlaying(true); onPlayed && onPlayed(track) }).catch(() => setPlaying(false)) } }, [src]) // eslint-disable-line react-hooks/exhaustive-deps
+  if (!track) return null
+  const step = (d) => { if (!playable.length) return; const pos = playable.findIndex(t => t.i === index); const next = playable[(pos + d + playable.length) % playable.length]; onIndex(next.i) }
+  const toggle = () => { const a = audio.current; if (!a) return; if (a.paused) a.play().then(() => setPlaying(true)).catch(() => {}); else { a.pause(); setPlaying(false) } }
+  return (
+    <div style={{ position: 'fixed', right: 18, bottom: 18, zIndex: 260, width: 300, borderRadius: 14, border: `1px solid ${GOLD}55`, background: 'rgba(16,39,59,0.96)', boxShadow: '0 12px 40px rgba(0,0,0,0.45)', padding: '12px 14px' }}>
+      {src && <audio ref={audio} src={src} onEnded={() => step(1)} onPause={() => setPlaying(false)} onPlay={() => setPlaying(true)} />}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <Music size={14} color={GOLD} />
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 14, color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{track.title}</div>
+          <div style={{ fontFamily: MONO, fontSize: 9.5, color: GRAY, letterSpacing: '0.6px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{track.artist}{err ? ` · ${err}` : !track.file ? ' · opens in Apple Music' : playing ? ' · playing' : ' · paused'}</div>
+        </div>
+        <button onClick={() => setList(l => !l)} title="Tracks" style={{ ...btn(INK2), padding: '5px 7px' }}><ListMusic size={12} /></button>
+      </div>
+      <div style={{ display: 'flex', justifyContent: 'center', gap: 8, marginTop: 10 }}>
+        <button onClick={() => step(-1)} disabled={playable.length < 2} style={{ ...btn(INK2), padding: '6px 9px' }}><SkipBack size={12} /></button>
+        {track.file
+          ? <button onClick={toggle} style={{ ...btn(GOLD, true), padding: '6px 14px' }}>{playing ? <Pause size={12} /> : <Play size={12} />}</button>
+          : <button onClick={() => track.url && window.open(track.url, '_blank', 'noopener')} style={{ ...btn(GOLD, true), padding: '6px 14px' }}><ExternalLink size={12} /></button>}
+        <button onClick={() => step(1)} disabled={playable.length < 2} style={{ ...btn(INK2), padding: '6px 9px' }}><SkipForward size={12} /></button>
+      </div>
+      {list && (
+        <div style={{ marginTop: 10, maxHeight: 220, overflowY: 'auto', borderTop: `1px solid ${PANEL_BORDER}` }}>
+          {GATEWAY_PLAYLIST.map((t, i) => (
+            <button key={`${t.title}-${i}`} onClick={() => { onIndex(i); setList(false) }} style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '6px 2px', background: 'transparent', border: 'none', borderBottom: `1px solid ${PANEL_BORDER}`, color: i === index ? GOLD : INK, cursor: 'pointer', textAlign: 'left' }}>
+              <span style={{ fontSize: 12.5, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.title}</span>
+              <span style={{ fontFamily: MONO, fontSize: 9, color: GRAY }}>{t.file ? 'plays here' : 'link'}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ---- the overlay ------------------------------------------------------------
 function Protocol({ day, session, onClose, onFinished, onChange, onNavigate }) {
   const [step, setStep] = useState(() => readStep(day))
@@ -188,6 +244,7 @@ function Protocol({ day, session, onClose, onFinished, onChange, onNavigate }) {
   const [sysChoice, setSysChoice] = useState(null) // 'now' | 'later'
   const [sessions, setSessions] = useState([])     // adhoc timers today
   const [reconcile, setReconcile] = useState(null)
+  const [trackIndex, setTrackIndex] = useState(null)  // the Gateway player
 
   useEffect(() => { const t = setInterval(() => setNow(Date.now()), 30_000); return () => clearInterval(t) }, [])
   const elapsed = session?.started_at ? (now - new Date(session.started_at).getTime()) / 60000 + ((Number(session.hours) || 0) * 60) : 0
@@ -245,7 +302,7 @@ function Protocol({ day, session, onClose, onFinished, onChange, onNavigate }) {
   }, [bodyLeft.length, step, go])
   const gatewayLog = logs.find(l => l.kind === 'gateway')
   const reflectionLog = logged('devotional', 'devotional')
-  const logSong = async (title) => { const t = String(title || song).trim(); if (!t) return; if (gatewayLog) await supabase.from('daily_logs').delete().eq('id', gatewayLog.id); const { error } = await supabase.from('daily_logs').insert({ day, kind: 'gateway', what: t.slice(0, 160), note: 'Gateway · Morning Protocol', source: 'hud', at: new Date().toISOString() }); if (error) { setMsg(`Could not log: ${error.message}`); return } await reloadLogs(); setSong(''); setTimeout(() => go(step + 1), 500) }
+  const logSong = async (title, stay = false) => { const t = String(title || song).trim(); if (!t) return; if (gatewayLog) await supabase.from('daily_logs').delete().eq('id', gatewayLog.id); const { error } = await supabase.from('daily_logs').insert({ day, kind: 'gateway', what: t.slice(0, 160), note: 'Gateway · Morning Protocol', source: 'hud', at: new Date().toISOString() }); if (error) { setMsg(`Could not log: ${error.message}`); return } await reloadLogs(); setSong(''); if (!stay) setTimeout(() => go(step + 1), 500) }
   const logReflection = async () => { const { error } = await supabase.from('daily_logs').insert({ day, kind: 'devotional', what: 'devotional', note: reflection.trim() || 'Morning Reflection', source: 'hud', at: new Date().toISOString() }); if (error) { setMsg(`Could not log: ${error.message}`); return } await reloadLogs(); onChange && onChange() }
   const openDevotional = () => { writeStep(day, step); onClose(); onNavigate && onNavigate('maintenance', ['spiritual']) }
 
@@ -335,9 +392,9 @@ function Protocol({ day, session, onClose, onFinished, onChange, onNavigate }) {
         {GATEWAY_PLAYLIST.length > 0 ? (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 10 }}>
             {GATEWAY_PLAYLIST.map(t => { const on = gatewayLog?.what === `${t.title} · ${t.artist}`; return (
-              <button key={t.title} onClick={() => { logSong(`${t.title} · ${t.artist}`); if (t.url) window.open(t.url, '_blank', 'noopener') }} style={{ ...tile(on, GOLD), minWidth: 0 }}>
+              <button key={t.title} onClick={() => { setTrackIndex(GATEWAY_PLAYLIST.indexOf(t)); if (t.file) logSong(`${t.title} · ${t.artist}`, true); else { logSong(`${t.title} · ${t.artist}`); if (t.url) window.open(t.url, '_blank', 'noopener') } }} style={{ ...tile(on, GOLD), minWidth: 0 }}>
                 <span style={{ display: 'inline-flex', gap: 8, alignItems: 'center', fontSize: 14, fontFamily: SERIF, fontWeight: 500 }}><Music size={13} color={on ? GOLD : INK2} />{t.title}</span>
-                <span style={{ fontFamily: MONO, fontSize: 10, color: GRAY, letterSpacing: '0.6px' }}>{t.artist}</span>
+                <span style={{ fontFamily: MONO, fontSize: 10, color: GRAY, letterSpacing: '0.6px' }}>{t.artist}{t.file ? ' · plays here' : ' · Apple Music'}</span>
               </button>) })}
           </div>
         ) : (
@@ -584,6 +641,7 @@ function Protocol({ day, session, onClose, onFinished, onChange, onNavigate }) {
         </div>
         {msg && <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '1px', color: /^(Could not|Will not|Launch failed|Harvest|Timer stopped)/.test(msg) ? RED : GOLD, textTransform: 'uppercase', marginTop: 16 }}>{msg}</div>}
         <LumenStrip day={day} where={`Morning Protocol · step ${step + 1} ${cur.title}`} onReplied={loadAll} prompt={stripPrompt} />
+        {trackIndex != null && <GatewayPlayer index={trackIndex} onIndex={setTrackIndex} />}
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, marginTop: 24 }}>
           <button onClick={() => go(step - 1)} disabled={step === 0} style={btn(INK2, false, { opacity: step === 0 ? 0.35 : 1 })}><ArrowLeft size={13} /> Back</button>
           {step < STEPS.length - 1

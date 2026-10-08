@@ -184,8 +184,9 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
                     <div><Label>Who</Label><input defaultValue={obj.stakeholder || ''} onBlur={e => { if ((e.target.value || '') !== (obj.stakeholder || '')) patchObj({ stakeholder: e.target.value || null }) }} placeholder="stakeholder" style={{ background: 'rgba(255,255,255,0.05)', border: `1px solid ${PANEL_BORDER}`, borderRadius: 8, color: INK, padding: '5px 8px', fontSize: 12.5, width: '100%', boxSizing: 'border-box' }} /></div>
                   </div>
                   {(obj.tags || []).filter(t => !['personal', 'third-horizon'].includes(t)).length > 0 && <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>{(obj.tags || []).filter(t => !['personal', 'third-horizon'].includes(t)).map(t => <span key={t} style={{ ...S.chip('rgba(255,255,255,0.06)', INK2), fontFamily: MONO, fontSize: 9, letterSpacing: '1px' }}>{t}</span>)}</div>}
-                  <div>
-                    <Label>What needs to happen to close this out</Label>
+                  {sz !== 'heavy' && (Array.isArray(rel.steps) && rel.steps.length > 0) && <div style={{ fontSize: 12.5, color: GRAY }}>This {SIZES[sz].label} carries {rel.steps.length} step{rel.steps.length === 1 ? '' : 's'} from when it was a Mythic; make it a Mythic again to work them.</div>}
+                  {sz === 'heavy' && <div>
+                    <Label>What needs to happen to close this out · Mythic tasks, 10 miles each, five at most</Label>
                     {rel.steps === null && <div style={{ fontSize: 12.5, color: GRAY }}>Steps are not set up yet. Run sql/2026-10-07-side-missions-archive.sql in the Ledger and they appear here.</div>}
                     {Array.isArray(rel.steps) && rel.steps.map(st => (
                       <div key={st.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 0', borderTop: `1px solid ${PANEL_BORDER}` }}>
@@ -195,13 +196,14 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
                         <button onClick={() => removeStep(st.id).then(load)} aria-label="Remove" style={{ background: 'transparent', border: 'none', color: GRAY, cursor: 'pointer', padding: 2 }}><Trash2 size={11} /></button>
                       </div>
                     ))}
-                    {Array.isArray(rel.steps) && (
+                    {Array.isArray(rel.steps) && rel.steps.length < 5 && (
                       <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-                        <input value={stepText} onChange={e => setStepText(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') addStepNow() }} placeholder={rel.steps.length ? 'another step' : 'the first thing that has to happen'} disabled={objBusy} style={{ flex: 1, background: 'rgba(255,255,255,0.05)', border: `1px solid ${PANEL_BORDER}`, borderRadius: 8, color: INK, padding: '7px 10px', fontSize: 13 }} />
+                        <input value={stepText} onChange={e => setStepText(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') addStepNow() }} placeholder={rel.steps.length ? `step ${rel.steps.length + 1} of 5` : 'the first thing that has to happen (1 of 5)'} disabled={objBusy} style={{ flex: 1, background: 'rgba(255,255,255,0.05)', border: `1px solid ${PANEL_BORDER}`, borderRadius: 8, color: INK, padding: '7px 10px', fontSize: 13 }} />
                         <button onClick={addStepNow} disabled={objBusy || !stepText.trim()} style={btn(BLUE, false)}><Plus size={11} /> Add</button>
                       </div>
                     )}
-                  </div>
+                    {Array.isArray(rel.steps) && rel.steps.length >= 5 && <div style={{ fontSize: 12, color: GRAY, marginTop: 8 }}>Five steps is the Mythic's limit. A sixth means this is a Main Mission: promote it.</div>}
+                  </div>}
                 </>
               ) })()}
               {(item.description || task?.notes) && <div><Label>Back story</Label><div style={{ fontSize: 13.5, lineHeight: 1.65, color: INK, whiteSpace: 'pre-wrap' }}>{item.description || task.notes}</div></div>}

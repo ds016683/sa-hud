@@ -47,10 +47,21 @@ export async function computeRegimen(day) {
   return { day, due, taken, missing: due.filter(k => !takenKeys.has(k)), moved: ov, all: MEDS.map(([k]) => k) }
 }
 
+// Rates (David, 10/8): 100 miles is a balanced, good, productive day. North of
+// that is extra effort; south means a conscious decoupling or a distraction.
+// Nerf and buff as we go. Days before RATES_FROM keep the rates they were
+// struck under.
+export const RATES_FROM = '2026-10-08'
 export const MILES = {
+  'main-mission': 100, 'mission-task': 10, 'bounty': 4, 'contract': 15, 'mythic': 50, 'mythic-task': 10, 'side-mission': 4, 'impromptu': 1,
+  'maintenance-bundle': 1, 'cartographer': 2, 'exercise': 5, 'lift': 1, 'sleep': 4,
+  'toastmaster': 4, 'full-day': 4, 'work-horse': 10, 'clean-close': 2, 'clean-slack': 10, 'discomforter': 5, 'hygiene': 3, 'hygiene-item': 0.25, 'devotional': 2, 'dose': 0.5, 'regimen': 2,
+}
+export const MILES_V1 = {
   'main-mission': 10, 'mission-task': 1, 'side-mission': 4, 'impromptu': 1, 'maintenance-bundle': 1, 'cartographer': 2, 'exercise': 5, 'lift': 1, 'sleep': 4,
   'toastmaster': 4, 'full-day': 4, 'work-horse': 10, 'clean-close': 2, 'clean-slack': 10, 'discomforter': 5, 'hygiene': 3, 'hygiene-item': 0.25, 'devotional': 2, 'dose': 0.5, 'regimen': 2,
 }
+export const MYTHIC_STEPS_MAX = 5
 
 const words = (s) => new Set(String(s || '').toLowerCase().replace(/[^a-z0-9 ]/g, ' ').split(/\s+/).filter(w => w.length > 1 && !['the', 'and', 'with', 'for', 'call', 'meeting', 'sync', 'weekly'].includes(w)))
 function documented(subject, meetings) {
@@ -67,9 +78,10 @@ function documented(subject, meetings) {
 // Compute the day's awards from the Ledger. Returns [{badge, key, miles, evidence}].
 export async function computeAwards(day, { closing = false } = {}) {
   const from = `${day}T00:00:00-05:00`, to = `${day}T23:59:59-05:00`
-  const [doneTasks, released, taskObjIds, maint, logs, calendar, meetings, time, emails, inboxObjs, doneProjects, sessions, workouts] = await Promise.all([
+  const [doneTasks, released, stepsDone, taskObjIds, maint, logs, calendar, meetings, time, emails, inboxObjs, doneProjects, sessions, workouts] = await Promise.all([
     sb(`project_tasks?select=id,text,project_id,released_at&status=eq.done&released_at=gte.${from}&released_at=lte.${to}`),
-    sb(`objectives?select=id,title,released_at,released_kind,who,state,tags,captured_at&released_at=gte.${from}&released_at=lte.${to}&deleted_at=is.null`),
+    sb(`objectives?select=id,title,released_at,released_kind,who,state,tags,captured_at,effort&released_at=gte.${from}&released_at=lte.${to}&deleted_at=is.null`),
+    sb(`objective_steps?select=id,text,objective_id,done_at&done=eq.true&done_at=gte.${from}&done_at=lte.${to}`).catch(() => []),
     sb(`project_tasks?select=objective_id&objective_id=not.is.null`),
     sb(`maintenance_items?select=id,title&status=eq.done&day=eq.${day}`).catch(() => []),
     sb(`daily_logs?select=kind,what,value,note,at&day=eq.${day}`).catch(() => []),
@@ -84,21 +96,45 @@ export async function computeAwards(day, { closing = false } = {}) {
   ])
   const linked = new Set(taskObjIds.map(t => t.objective_id))
   const awards = []
-  const add = (badge, key, evidence) => awards.push({ badge, key: String(key ?? ''), miles: MILES[badge], evidence })
+  const rates = day >= RATES_FROM ? MILES : MILES_V1
+  const v2 = day >= RATES_FROM
+  const add = (badge, key, evidence) => { if (rates[badge] == null) return; awards.push({ badge, key: String(key ?? ''), miles: rates[badge], evidence }) }
 
   const onDay = (ts) => ts && ts >= from && ts <= to
   for (const p of doneProjects) if (onDay(p.archived_at) || onDay(p.last_activity_at)) add('main-mission', p.id, `Main Mission complete: ${p.name}`)
   for (const t of doneTasks) add('mission-task', t.id, `Mission task closed: ${t.text}`)
   for (const o of released) {
     if (o.state === 'released' && o.released_kind === 'done' && !linked.has(o.id) && !(o.tags || []).includes('session')) {
-      // Planning rule (David, 9/27): a Side Mission is planned before the day it
-      // is done. Captured and released on the same day is impromptu, whatever it
-      // was called: 1 mile. The 3-mile difference is the incentive to plan.
-      const sameDay = !o.captured_at || o.captured_at >= from
-      if ((o.tags || []).includes('impromptu') || sameDay) add('impromptu', o.id, `Ad Hoc done: ${o.title}${sameDay && !(o.tags || []).includes('impromptu') ? ' (captured and released the same day)' : ''}`)
-      else add('side-mission', o.id, `Side Mission released: ${o.title}`)
+      if ((o.tags || []).includes('impromptu')) add('impromptu', o.id, `Ad Hoc done: ${o.title}`)
+      else if (!v2) {
+        // Planning rule (9/27, retired 10/8): captured and released the same day paid as impromptu.
+        const sameDay = !o.captured_at || o.captured_at >= from
+        if (sameDay) add('impromptu', o.id, `Ad Hoc done: ${o.title} (captured and released the same day)`)
+        else add('side-mission', o.id, `Side Mission released: ${o.title}`)
+      } else {
+        // Side Mission types (10/8): Bounty 4, Contract 15, Mythic 50, by the slots it took.
+        const e = Number(o.effort) || 1
+        const type = e >= 4 ? 'mythic' : e === 3 ? 'contract' : 'bounty'
+        add(type, o.id, `${type[0].toUpperCase()}${type.slice(1)} released: ${o.title}`)
+      }
     }
     if (o.released_kind === 'foreman' || o.state === 'foreman') add('cartographer', o.id, `Handed off: ${o.title}${o.who ? ` (${o.who})` : ''}`)
+  }
+  // Mythic tasks (10/8): each step of a Mythic closed today pays like a Main
+  // Mission task, the first five steps of that Mythic only.
+  if (v2 && stepsDone.length) {
+    const objIds = [...new Set(stepsDone.map(st => st.objective_id))]
+    const [objs, allSteps] = await Promise.all([
+      sb(`objectives?select=id,title,effort&id=in.(${objIds.join(',')})`).catch(() => []),
+      sb(`objective_steps?select=id,objective_id,done_at&done=eq.true&objective_id=in.(${objIds.join(',')})&order=done_at.asc`).catch(() => []),
+    ])
+    const mythics = new Map(objs.filter(o => (Number(o.effort) || 1) >= 4).map(o => [o.id, o]))
+    const rank = new Map(); for (const st of allSteps) { const n = (rank.get(st.objective_id) || 0) + 1; rank.set(st.objective_id, n); rank.set(`step:${st.id}`, n) }
+    for (const st of stepsDone) {
+      const o = mythics.get(st.objective_id); if (!o) continue
+      const n = rank.get(`step:${st.id}`) || 99
+      if (n <= MYTHIC_STEPS_MAX) add('mythic-task', st.id, `Mythic task ${n} of ${MYTHIC_STEPS_MAX} closed on ${o.title}: ${st.text}`)
+    }
   }
   const bundles = Math.floor(maint.length / 5)
   for (let i = 1; i <= bundles; i++) add('maintenance-bundle', i, `Bundle ${i}: ${maint.slice((i - 1) * 5, i * 5).map(m => m.title).join(', ')}`)
