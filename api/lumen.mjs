@@ -136,12 +136,15 @@ export default async function handler(req, res) {
     const whoBody = await who.json().catch(() => null)
     const inbox = await fetch(`https://graph.microsoft.com/v1.0/users/${encodeURIComponent(user)}/mailFolders/inbox/messages?$top=3&$select=subject,from,receivedDateTime,isRead&$orderby=receivedDateTime desc`, { headers: H })
     const inboxBody = await inbox.json().catch(() => null)
+    // What the pulse's mail sweep would actually see (readUnread) and who may write to Lumen.
+    let unread = null
+    try { unread = (await mail.readUnread(25)).map(m => ({ subject: m.subject, from: m.from?.emailAddress?.address, sender: m.sender?.emailAddress?.address, at: m.receivedDateTime, id: String(m.id).slice(-12) })) } catch (e) { unread = { error: String(e.message || e).slice(0, 200) } }
     let send = null
     if (q.sendtest === '1') {
       const r = await fetch(`https://graph.microsoft.com/v1.0/users/${encodeURIComponent(user)}/sendMail`, { method: 'POST', headers: { ...H, 'Content-Type': 'application/json' }, body: JSON.stringify({ message: { subject: 'Lumen mail door test', body: { contentType: 'Text', content: 'This is Lumen. If you are reading this, the mail door is open.' }, toRecipients: [{ emailAddress: { address: q.to || 'david.smith@thirdhorizon.com' } }] }, saveToSentItems: true }) })
       send = { status: r.status, body: r.status === 202 ? 'accepted' : (await r.text()).slice(0, 300) }
     }
-    return res.status(200).json({ ok: who.ok, user: { status: who.status, ...(whoBody || {}) }, inbox: { status: inbox.status, messages: (inboxBody?.value || []).map(m => ({ subject: m.subject, from: m.from?.emailAddress?.address, at: m.receivedDateTime, read: m.isRead })), error: inboxBody?.error?.message }, send })
+    return res.status(200).json({ ok: who.ok, allowed: mail.mailAllowed(), unread, user: { status: who.status, ...(whoBody || {}) }, inbox: { status: inbox.status, messages: (inboxBody?.value || []).map(m => ({ subject: m.subject, from: m.from?.emailAddress?.address, at: m.receivedDateTime, read: m.isRead })), error: inboxBody?.error?.message }, send })
   }
 
   if (req.method === 'GET' && (req.query || {}).admin === 'waba') {
