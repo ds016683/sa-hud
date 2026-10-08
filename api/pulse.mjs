@@ -169,8 +169,10 @@ export default async function handler(req, res) {
       let answered = 0, swept = 0
       for (const m of msgs) {
         const from = String(m.from?.emailAddress?.address || '').toLowerCase()
-        if (!mailAllowed().includes(from)) continue
-        if (String(m.receivedDateTime || '') < MAIL_FROM || RECEIPT_RE.test(m.subject || '')) { if (!dry) await markRead(m.id).catch(() => null); swept++; continue }
+        const old = String(m.receivedDateTime || '') < MAIL_FROM
+        // Not David: old mail is swept (marked read); fresh mail from someone else is left unread for David to see.
+        if (!mailAllowed().includes(from)) { if (old && !dry) await markRead(m.id).catch(() => null); if (old) swept++; continue }
+        if (old || RECEIPT_RE.test(m.subject || '')) { if (!dry) await markRead(m.id).catch(() => null); swept++; continue }
         if (answered >= 3) break
         if (await alreadySeen('email', m.id)) continue
         answered++

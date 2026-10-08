@@ -26,7 +26,7 @@ const box = () => `${G}/users/${encodeURIComponent(LUMEN_MAILBOX)}`
 
 export async function readUnread(limit = 10) {
   const token = await graphToken()
-  const r = await fetch(`${box()}/mailFolders/inbox/messages?$filter=isRead eq false&$top=${limit}&$select=id,subject,from,toRecipients,receivedDateTime,bodyPreview,body,conversationId,internetMessageId&$orderby=receivedDateTime asc`, { headers: { Authorization: `Bearer ${token}`, Prefer: 'outlook.body-content-type="text"' } })
+  const r = await fetch(`${box()}/mailFolders/inbox/messages?$filter=isRead eq false&$top=${limit}&$select=id,subject,from,toRecipients,receivedDateTime,bodyPreview,body,conversationId,internetMessageId&$orderby=receivedDateTime desc`, { headers: { Authorization: `Bearer ${token}`, Prefer: 'outlook.body-content-type="text"' } })
   if (!r.ok) throw new Error(`lumen inbox -> ${r.status}: ${(await r.text()).slice(0, 200)}`)
   return (await r.json()).value || []
 }
