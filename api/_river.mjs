@@ -134,7 +134,7 @@ export async function computeAwards(day, { closing = false } = {}) {
   const dosesTaken = new Set(by('medication').map(l => String(l.what || '').toLowerCase()).map(w => MED_ALIAS.find(([k, re]) => k === w || re.test(w))?.[0]).filter(Boolean))
   for (const k of dosesTaken) add('dose', k, `Dose: ${k}`)
   if (meds.due.length && meds.due.every(k => dosesTaken.has(k))) add('regimen', '', `All ${meds.due.length} doses due today taken: ${meds.due.join(', ')}`)
-  if (by('devotional').length) add('devotional', '', `Morning devotional: ${(by('devotional')[0].note || by('devotional')[0].what || 'done').slice(0, 120)}`)
+  if (by('devotional').length) add('devotional', '', `Morning reflection: ${(by('devotional')[0].note || by('devotional')[0].what || 'done').slice(0, 120)}`)
 
   // Toastmaster: every real meeting of the day attended, and each one either
   // documented (notes) or closed out. Sessions carry the stamps.

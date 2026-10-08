@@ -394,7 +394,7 @@ function Protocol({ day, session, onClose, onFinished, onChange, onNavigate }) {
       <div style={{ display: 'grid', gap: 14 }}>
         {reflectionLog ? (
           <div className="mp-step-r" style={{ padding: '22px 24px', borderRadius: 14, border: `1px solid ${BLUE}66`, background: `${BLUE}10` }}>
-            <Label>Logged {fmtTime(reflectionLog.at)} · Morning Devotional strikes at the close</Label>
+            <Label>Logged {fmtTime(reflectionLog.at)} · Morning Reflection strikes at the close</Label>
             <div style={{ ...READ, whiteSpace: 'pre-wrap', marginTop: 6 }}>{reflectionLog.note && reflectionLog.note !== 'Morning Reflection' ? reflectionLog.note : 'Reflection done.'}</div>
             <div style={{ display: 'flex', gap: 8, marginTop: 14 }}><button onClick={() => toggleLog('devotional', 'devotional')} style={btn(INK2)}><RotateCcw size={11} /> Undo</button><button onClick={openDevotional} style={btn(INK2)}><ExternalLink size={11} /> Devotional page</button></div>
           </div>

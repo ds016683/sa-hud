@@ -28,7 +28,7 @@ export const BADGES = {
   'hygiene-item':       { label: 'Hygiene Item',          miles: 0.25, Icon: Droplets,  repeatable: true,  silent: true, desc: 'One item of the daily hygiene list logged', lore: 'Small water, every day.' },
   'dose':               { label: 'Dose',                  miles: 0.5, Icon: Droplets,   repeatable: true,  silent: true, desc: 'One dose of the regimen logged', lore: 'On time, on plan.' },
   'regimen':            { label: 'On Regimen',            miles: 2,   Icon: Droplets,   repeatable: false, desc: 'Every dose due that day, taken', lore: 'The body kept its appointments.' },
-  'devotional':         { label: 'Morning Devotional',    miles: 2,   Icon: Moon,       repeatable: false, desc: 'The day opened with the devotional, told to Lumen', lore: 'Before the river, the spring.' },
+  'devotional':         { label: 'Morning Reflection',    miles: 2,   Icon: Moon,       repeatable: false, desc: 'The day opened with the morning reflection, logged in the protocol or told to Lumen', lore: 'Before the river, the spring.' },
   'hygiene':            { label: 'Hygiene',               miles: 3,   Icon: Droplets,   repeatable: false, desc: 'All six hygiene items in one day', lore: 'Bright teeth, clear head.' },
 }
 
