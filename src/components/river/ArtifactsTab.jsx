@@ -4,6 +4,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Save, RefreshCw, User, Eye, X as XIcon } from 'lucide-react'
 import { listArtifacts, readArtifact, writeArtifact } from '../../lib/artifacts'
+import { renderMarkdown } from './MeetingCloseout'
 import { INK, INK2, GRAY, PANEL_BORDER, GOLD, GOLD_BRIGHT, BLUE, GREEN, RED, MONO, SERIF, S, Eyebrow, Label } from './canon'
 
 const field = { width: '100%', background: 'rgba(255,255,255,0.04)', border: `1px solid ${PANEL_BORDER}`, borderRadius: 8, color: INK, padding: '9px 11px', fontSize: 13, lineHeight: 1.55, fontFamily: 'inherit', resize: 'vertical', boxSizing: 'border-box' }
@@ -65,6 +66,20 @@ function RatingPills({ scale, value, onChange }) {
 // A decision worked with Lumen: the question, the options and their numbers,
 // an economics table, Lumen's read (his, labelled), and David's notes and
 // verdict (his, required). Lumen writes the analysis; David decides here.
+// A brief: Lumen's design or work brief, read by David, built by Claude.
+function Brief({ doc }) {
+  return (
+    <div style={{ display: 'grid', gap: 16 }}>
+      {doc.summary && <div style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 16, lineHeight: 1.6, color: INK }}>{doc.summary}</div>}
+      {(doc.sections || []).map((sec, i) => (
+        <div key={i}><Label>{sec.heading}</Label><div style={{ fontSize: 13.5, lineHeight: 1.65, color: INK2 }}>{renderMarkdown(String(sec.body || ''))}</div></div>
+      ))}
+      {(doc.open_questions || []).length > 0 && <div><Label>Open questions for David</Label>{doc.open_questions.map((q, i) => <div key={i} style={{ fontSize: 13.5, color: INK, padding: '3px 0' }}>· {q}</div>)}</div>}
+      {(doc.for_claude || []).length > 0 && <div><Label>For Claude · build notes</Label>{doc.for_claude.map((q, i) => <div key={i} style={{ fontSize: 13, color: INK2, padding: '3px 0', fontFamily: MONO }}>· {q}</div>)}</div>}
+    </div>
+  )
+}
+
 function Decision({ doc, onChange }) {
   const set = (fn) => onChange(fn(structuredClone(doc)))
   const has = (v) => v != null && String(v).trim() !== ''
@@ -342,7 +357,9 @@ export default function ArtifactsTab({ project, initialSlug }) {
                 ? <Scorecard doc={doc} onChange={(d) => { setDoc(d); setDirty(true) }} />
                 : doc.kind === 'decision'
                   ? <Decision doc={doc} onChange={(d) => { setDoc(d); setDirty(true) }} />
-                  : <pre style={{ fontSize: 12, color: INK2, whiteSpace: 'pre-wrap' }}>{JSON.stringify(doc, null, 2)}</pre>}
+                  : doc.kind === 'brief'
+                    ? <Brief doc={doc} />
+                    : <pre style={{ fontSize: 12, color: INK2, whiteSpace: 'pre-wrap' }}>{JSON.stringify(doc, null, 2)}</pre>}
             </>
           )}
           {msg && <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '1px', color: msg.startsWith('Could') ? RED : GOLD_BRIGHT, marginTop: 12, textTransform: 'uppercase' }}>{msg}</div>}

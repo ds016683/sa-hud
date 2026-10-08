@@ -75,6 +75,13 @@ async function findProject(q) {
   if (ps.length !== 1) throw new Error(ps.length ? `project ambiguous: ${ps.map(p => p.name).join(' | ')}` : `no project matches "${q}"`)
   return ps[0]
 }
+// Artifacts live on a Main Mission (project-files/<project id>/artifacts) or on a
+// Side Mission (project-files/objectives/<objective id>/artifacts). Tools take
+// either `project` or `side_mission` (an objective title).
+async function resolveRoot(args) {
+  if (args.side_mission) { const o = await findObjective(args.side_mission); return { id: `objectives/${o.id}`, name: o.title, objective: o } }
+  return findProject(args.project)
+}
 const artifactPath = (projectId, slug) => `${projectId}/artifacts/${String(slug).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}.json`
 async function readArtifact(projectId, slug) {
   // Storage objects sit behind a CDN; a read right after a write can come back
@@ -285,6 +292,36 @@ export const TOOLS = [
     inputSchema: { type: 'object', properties: { title: { type: 'string' }, day: { type: 'string', description: 'YYYY-MM-DD, optional' }, from_minute: { type: 'number' }, to_minute: { type: 'number' }, max_chars: { type: 'integer' }, find: { type: 'string', description: 'optional: return only turns containing this text, with a little context' } }, required: ['title'] },
   },
   {
+    name: 'list_steps',
+    description: "The steps of a Mythic Side Mission (what needs to happen to close this out), with done flags. Only a Mythic carries steps.",
+    inputSchema: { type: 'object', properties: { title: { type: 'string', description: 'the Side Mission title' } }, required: ['title'] },
+  },
+  {
+    name: 'add_step',
+    description: "Add a step to a Mythic Side Mission (five at most; a sixth means it is a Main Mission). Each step is a Mythic Task: 10 miles when completed. Refuses on a Bounty or Contract; set_size heavy first if David wants it to be a Mythic.",
+    inputSchema: { type: 'object', properties: { title: { type: 'string' }, text: { type: 'string' } }, required: ['title', 'text'] },
+  },
+  {
+    name: 'complete_step',
+    description: "Mark a step of a Mythic done (or undone with done false). Matches the step by text (exact-then-contains).",
+    inputSchema: { type: 'object', properties: { title: { type: 'string' }, step: { type: 'string' }, done: { type: 'boolean' } }, required: ['title', 'step'] },
+  },
+  {
+    name: 'remove_step',
+    description: 'Remove a step from a Mythic by text.',
+    inputSchema: { type: 'object', properties: { title: { type: 'string' }, step: { type: 'string' } }, required: ['title', 'step'] },
+  },
+  {
+    name: 'close_out',
+    description: "Close out a Side Mission the HUD's way. First call with just the title: it reports what the mission is carrying (artifacts, files, session boards, open steps). Carrying nothing: it releases at once (clock kept in the Ledger, linked task closed, miles on the next update). Carrying something: it stops and asks; call again with file_away true (realm 'personal' | 'third-horizon', a two-sentence summary) to file the content into the Archive and release, or discard true to release without filing. minutes and note as on move_objective.",
+    inputSchema: { type: 'object', properties: { title: { type: 'string' }, file_away: { type: 'boolean' }, discard: { type: 'boolean' }, realm: { type: 'string' }, summary: { type: 'string' }, minutes: { type: 'number' }, note: { type: 'string' } }, required: ['title'] },
+  },
+  {
+    name: 'update_project_task',
+    description: "Edit a Main Mission task matched by its text (exact-then-contains, refuses ambiguity): new_text to rewrite it as a milestone, due_date, notes (back story), status ('open' | 'blocked' | 'promoted'). Use when working through a mission's tasks with David.",
+    inputSchema: { type: 'object', properties: { text: { type: 'string' }, new_text: { type: 'string' }, due_date: { type: 'string' }, notes: { type: 'string' }, status: { type: 'string', enum: ['open', 'blocked', 'promoted'] } }, required: ['text'] },
+  },
+  {
     name: 'search_archive',
     description: "The Archive is David's master knowledge system: what Side Missions and Main Missions left behind when they closed (artifacts, decisions, session boards, files, summaries), plus things filed directly. Search it by text; optional realm ('personal' | 'third-horizon') and kind. Use it when David asks what was decided, what a past mission produced, or where something is.",
     inputSchema: { type: 'object', properties: { q: { type: 'string' }, realm: { type: 'string' }, kind: { type: 'string' }, limit: { type: 'number' } }, required: [] },
@@ -297,22 +334,22 @@ export const TOOLS = [
   {
     name: 'list_artifacts',
     description: "Artifacts a project carries in the HUD: structured work products (kind 'scorecard' today) that David reads and edits on the project page. Returns slugs; read_artifact for the content.",
-    inputSchema: { type: 'object', properties: { project: { type: 'string', description: 'project key or name' } }, required: ['project'] },
+    inputSchema: { type: 'object', properties: { project: { type: 'string', description: 'project key or name' }, side_mission: { type: 'string', description: 'or a Side Mission title: its own artifacts' } }, required: [] },
   },
   {
     name: 'read_artifact',
     description: "Read a project artifact (JSON). A scorecard has candidate, interview_date, presentation {topic, notes, qa_notes, ratings, overall}, questions [{id, text, competency, panelist, mine, proposed, lumen_read, notes, rating}], competencies [{name, lumen_read, rating}], overall {recommendation, notes}. overall is { rating, strengths, concerns, probe, comments, recommendation (Strong Yes|Yes|No|Strong No), date_completed }. Yours to write: 'proposed' (his answer draft, mine questions only), 'lumen_read' on every question and competency (how the candidate's answer lines up with the competency being assessed, 3-6 sentences quoting what she said), presentation.lumen_read and presentation.notes. His language only, never yours: every 'notes', every 'rating', and 'overall'.",
-    inputSchema: { type: 'object', properties: { project: { type: 'string' }, slug: { type: 'string', description: "e.g. 'scorecard-jeanne-alongi'" } }, required: ['project', 'slug'] },
+    inputSchema: { type: 'object', properties: { project: { type: 'string' }, side_mission: { type: 'string', description: 'or a Side Mission title' }, slug: { type: 'string', description: "e.g. 'scorecard-jeanne-alongi'" } }, required: ['slug'] },
   },
   {
     name: 'write_artifact',
-    description: "Write a project artifact (whole document). Kinds the HUD renders: 'scorecard' (interview scorecards) and 'decision' (a decision worked with David: question, options with numbers, an economics table, your read, his notes and verdict; lives on the standing mission 'Decisions'). To draft into an existing one, read_artifact first, change the fields you are filling (proposed answers, presentation notes, a competency rating you are suggesting), keep everything else, and write it back. To start a new scorecard for another candidate, copy the structure of an existing one with the new candidate and empty answers. The HUD shows the result on the project page under Artifacts.",
-    inputSchema: { type: 'object', properties: { project: { type: 'string' }, slug: { type: 'string' }, doc: { type: 'object', description: 'the full artifact JSON' } }, required: ['project', 'slug', 'doc'] },
+    description: "Write an artifact (whole document) on a Main Mission (project) or a Side Mission (side_mission). Kinds the HUD renders: 'scorecard' (interview scorecards), 'decision' (a decision worked with David: question, options with numbers, an economics table, your read, his notes and verdict; lives on the standing mission 'Decisions'), and 'brief' (a design or work brief: { kind:'brief', title, summary, sections:[{heading, body (markdown)}], open_questions:[], for_claude:[] }; HUD design work goes on the mission 'Sovereign Architect HUD' as a brief David reviews and Claude builds from). To draft into an existing one, read_artifact first, change the fields you are filling (proposed answers, presentation notes, a competency rating you are suggesting), keep everything else, and write it back. To start a new scorecard for another candidate, copy the structure of an existing one with the new candidate and empty answers. The HUD shows the result on the project page under Artifacts.",
+    inputSchema: { type: 'object', properties: { project: { type: 'string' }, side_mission: { type: 'string', description: 'or a Side Mission title: the artifact lives on that Side Mission and files to the Archive with it' }, slug: { type: 'string' }, doc: { type: 'object', description: 'the full artifact JSON' } }, required: ['slug', 'doc'] },
   },
   {
     name: 'patch_artifact',
     description: "Update part of a project artifact without rewriting the whole document. patch is deep-merged into the stored JSON: top-level keys merge, questions and competencies are matched by id / name and merged item by item. Use it for one question at a time, e.g. { questions: [{ id: 'Q3', lumen_read: '...' }] } or { presentation: { lumen_read: '...' } }. Prefer this over write_artifact for drafting: several small patches in one turn beat one giant write.",
-    inputSchema: { type: 'object', properties: { project: { type: 'string' }, slug: { type: 'string' }, patch: { type: 'object' } }, required: ['project', 'slug', 'patch'] },
+    inputSchema: { type: 'object', properties: { project: { type: 'string' }, side_mission: { type: 'string' }, slug: { type: 'string' }, patch: { type: 'object' } }, required: ['slug', 'patch'] },
   },
   {
     name: 'fill_scorecard',
@@ -484,7 +521,7 @@ export const TOOLS = [
   },
   {
     name: 'set_size',
-    description: "Set an item's size by title: light (an hour or less), medium (a half day), heavy (a full day). Something bigger than heavy belongs in a Main Mission as tasks.",
+    description: "Set a Side Mission's type by title: light = Bounty (1 slot, one discrete action under an hour, 4 miles), medium = Contract (2 slots, a standard piece of work with a deliverable, a couple of hours, 15 miles), heavy = Mythic (3 slots, several ordered steps done within days, the only type with steps, five at most, 50 miles plus 10 per step). Bigger than a Mythic is a Main Mission.",
     inputSchema: { type: 'object', properties: { title: { type: 'string' }, size: { type: 'string', enum: ['light', 'medium', 'heavy'] } }, required: ['title', 'size'] },
   },
   {
@@ -671,6 +708,70 @@ export async function callTool(name, args = {}) {
       const max = Number(args.max_chars) || 30000
       return JSON.stringify({ ok: true, meeting: m.title, day: m.meeting_date, minutes: t.minutes, turns: t.turns, chars: t.text.length, truncated: text.length > max, note: text.length > max ? 'Truncated: narrow with from_minute/to_minute or find.' : undefined, transcript: text.slice(0, max) })
     }
+    case 'list_steps': {
+      const o = await findObjective(args.title)
+      const steps = await sb(`objective_steps?select=id,text,done,done_at,position&objective_id=eq.${o.id}&order=position.asc,id.asc`).catch(() => [])
+      return JSON.stringify({ ok: true, title: o.title, type: sizeOf(o) === 'heavy' ? 'Mythic' : sizeOf(o) === 'medium' ? 'Contract' : 'Bounty', steps, max: 5 })
+    }
+    case 'add_step': {
+      const o = await findObjective(args.title)
+      if (sizeOf(o) !== 'heavy') return JSON.stringify({ ok: false, error: `"${o.title}" is a ${sizeOf(o) === 'medium' ? 'Contract' : 'Bounty'}; only a Mythic carries steps. Ask David whether to make it a Mythic (set_size heavy, 3 slots) first.` })
+      const steps = await sb(`objective_steps?select=id&objective_id=eq.${o.id}`).catch(() => [])
+      if (steps.length >= 5) return JSON.stringify({ ok: false, error: 'five steps is the limit for a Mythic; a sixth means this is a Main Mission (create_project and add_project_task).' })
+      const out = await sbWrite('POST', 'objective_steps', { objective_id: o.id, text: String(args.text || '').trim().slice(0, 300), position: steps.length })
+      return JSON.stringify({ ok: true, title: o.title, step: out?.[0], count: steps.length + 1, max: 5 })
+    }
+    case 'complete_step':
+    case 'remove_step': {
+      const o = await findObjective(args.title)
+      const q = esc(args.step || '')
+      let ms = await sb(`objective_steps?select=id,text,done&objective_id=eq.${o.id}&text=ilike.${encodeURIComponent(q)}`).catch(() => [])
+      if (ms.length !== 1) ms = await sb(`objective_steps?select=id,text,done&objective_id=eq.${o.id}&text=ilike.*${encodeURIComponent(q)}*`).catch(() => [])
+      if (ms.length !== 1) throw new Error(ms.length ? `step ambiguous: ${ms.map(m => m.text).join(' | ')}` : `no step matches "${args.step}" on ${o.title}`)
+      if (name === 'remove_step') { await sbWrite('DELETE', `objective_steps?id=eq.${ms[0].id}`, null, 'return=minimal'); return JSON.stringify({ ok: true, removed: ms[0].text }) }
+      const done = args.done !== false
+      await sbWrite('PATCH', `objective_steps?id=eq.${ms[0].id}`, { done, done_at: done ? new Date().toISOString() : null }, 'return=minimal')
+      return JSON.stringify({ ok: true, step: ms[0].text, done, note: done ? 'Mythic Task: 10 miles on the next update (first five steps).' : 'reopened' })
+    }
+    case 'close_out': {
+      const o = await findObjective(args.title)
+      const root = `objectives/${o.id}`
+      const listDir = async (prefix) => { const r = await fetch(`${URL_BASE}/storage/v1/object/list/project-files`, { method: 'POST', headers: { ...sbHeaders(), 'Content-Type': 'application/json' }, body: JSON.stringify({ prefix, limit: 200 }) }); return r.ok ? (await r.json()).filter(f => f.id) : [] }
+      const [arts, files, boards, steps] = await Promise.all([
+        listDir(`${root}/artifacts`), listDir(`${root}/files`),
+        sb(`session_boards?select=id,title,project,phases,board&order=updated_at.desc&limit=60`).catch(() => []),
+        sb(`objective_steps?select=id,text,done&objective_id=eq.${o.id}`).catch(() => []),
+      ])
+      const myBoards = boards.filter(b => (b.board && b.board.objective_id === o.id) || (b.phases || []).some(ph => (ph.tasks || []).some(t => t.objective_id === o.id)))
+      const inventory = { artifacts: arts.map(f => f.name.replace(/\.json$/, '')), files: files.map(f => f.name), boards: myBoards.map(b => b.title), open_steps: steps.filter(st => !st.done).map(st => st.text) }
+      const carrying = arts.length + files.length + myBoards.length > 0
+      if (carrying && !args.file_away && !args.discard) return JSON.stringify({ ok: false, carrying: true, inventory, note: 'This Side Mission is carrying content. Ask David: file it to the Archive (call again with file_away true, realm, and a two-sentence summary) or close without filing (discard true).' })
+      const filed = []
+      if (carrying && args.file_away) {
+        const realm = args.realm === 'personal' ? 'personal' : ((o.tags || []).includes('personal') ? 'personal' : 'third-horizon')
+        const base = { realm, source_kind: 'objective', source_id: o.id, source_title: o.title, tags: (o.tags || []).filter(t => !['personal', 'third-horizon'].includes(t)), filed_by: 'lumen' }
+        if (args.summary) filed.push(await sbWrite('POST', 'archive_entries', { ...base, kind: 'summary', title: o.title, summary: String(args.summary).slice(0, 4000), body: { steps: steps.map(st => ({ text: st.text, done: st.done })) } }))
+        for (const f of arts) { const d = await readArtifact(root, f.name.replace(/\.json$/, '')).catch(() => null); filed.push(await sbWrite('POST', 'archive_entries', { ...base, kind: d?.kind === 'decision' ? 'decision' : 'artifact', title: d?.title || f.name, summary: d?.question || d?.summary || null, body: d, bucket: 'project-files', path: `${root}/artifacts/${f.name}` })) }
+        for (const f of files) filed.push(await sbWrite('POST', 'archive_entries', { ...base, kind: 'file', title: f.name, bucket: 'project-files', path: `${root}/files/${f.name}` }))
+        for (const b of myBoards) { const ts = (b.phases || []).flatMap(ph => ph.tasks || []); filed.push(await sbWrite('POST', 'archive_entries', { ...base, kind: 'board', title: b.title, summary: `${ts.filter(t => t.status === 'done').length}/${ts.length} done · ${b.project}`, body: { phases: b.phases } })) }
+      }
+      const released = JSON.parse(await callTool('move_objective', { title: o.title, state: 'released', minutes: args.minutes, note: [args.note, filed.length ? `filed ${filed.length} to the Archive` : null].filter(Boolean).join(' · ') || undefined }))
+      return JSON.stringify({ ok: true, released, filed: filed.length, inventory, type: sizeOf(o) === 'heavy' ? 'Mythic (50 miles)' : sizeOf(o) === 'medium' ? 'Contract (15 miles)' : (o.tags || []).includes('impromptu') ? 'Ad Hoc (1 mile)' : 'Bounty (4 miles)' })
+    }
+    case 'update_project_task': {
+      const q = esc(args.text || '')
+      let ts = await sb(`project_tasks?select=id,text,status,project_id&status=neq.done&text=ilike.${encodeURIComponent(q)}&limit=5`)
+      if (ts.length !== 1) ts = await sb(`project_tasks?select=id,text,status,project_id&status=neq.done&text=ilike.*${encodeURIComponent(q)}*&limit=5`)
+      if (ts.length !== 1) throw new Error(ts.length ? `task ambiguous: ${ts.map(t => t.text).join(' | ')}` : `no open task matches "${args.text}"`)
+      const patch = {}
+      if (args.new_text) patch.text = String(args.new_text).slice(0, 400)
+      if (args.due_date !== undefined) patch.due_date = args.due_date || null
+      if (args.notes !== undefined) patch.notes = args.notes
+      if (args.status) patch.status = args.status
+      if (!Object.keys(patch).length) throw new Error('nothing to change')
+      await sbWrite('PATCH', `project_tasks?id=eq.${ts[0].id}`, patch, 'return=minimal')
+      return JSON.stringify({ ok: true, was: ts[0].text, now: { ...ts[0], ...patch } })
+    }
     case 'search_archive': {
       const q = String(args.q || '').trim()
       let path = `archive_entries?select=id,kind,title,summary,realm,tags,source_kind,source_title,filed_at,path&order=filed_at.desc&limit=${Math.min(50, Number(args.limit) || 20)}`
@@ -684,23 +785,23 @@ export async function callTool(name, args = {}) {
       try { const out = await sbWrite('POST', 'archive_entries', row); return JSON.stringify({ ok: true, entry: out?.[0] || row }) } catch (e) { return JSON.stringify({ ok: false, error: `the Archive is not set up yet (${String(e.message).slice(0, 80)})` }) }
     }
     case 'list_artifacts': {
-      const pr = await findProject(args.project)
+      const pr = await resolveRoot(args)
       return JSON.stringify({ project: pr.name, artifacts: await listArtifacts(pr.id) })
     }
     case 'read_artifact': {
-      const pr = await findProject(args.project)
+      const pr = await resolveRoot(args)
       const doc = await readArtifact(pr.id, args.slug)
       if (!doc) return JSON.stringify({ ok: false, error: `no artifact ${args.slug} on ${pr.name}`, artifacts: await listArtifacts(pr.id) })
       return JSON.stringify({ ok: true, project: pr.name, slug: args.slug, doc })
     }
     case 'write_artifact': {
-      const pr = await findProject(args.project)
+      const pr = await resolveRoot(args)
       if (!args.doc || typeof args.doc !== 'object') throw new Error('doc (object) required')
       const path = await writeArtifact(pr.id, args.slug, { ...args.doc, updated_by: 'lumen' })
       return JSON.stringify({ ok: true, project: pr.name, slug: args.slug, path, note: 'David sees it on the project page under Artifacts.' })
     }
     case 'patch_artifact': {
-      const pr = await findProject(args.project)
+      const pr = await resolveRoot(args)
       const cur = await readArtifact(pr.id, args.slug)
       if (!cur) return JSON.stringify({ ok: false, error: `no artifact ${args.slug} on ${pr.name}` })
       if (!args.patch || typeof args.patch !== 'object') throw new Error('patch (object) required')
