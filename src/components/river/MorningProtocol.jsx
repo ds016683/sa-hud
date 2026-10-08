@@ -2,35 +2,42 @@
 // a guided click-through of six steps under one timer. The Evening Protocol
 // card is the placeholder for the real close of the day (next).
 //
-//   1 Wake read    yesterday's landing, Lumen's morning read, today's calendar
-//   2 Body         morning hygiene, the doses due, devotional: tap to log
-//   3 Lights       E-mail, Slack, Bill Pay; queue E-mail Refresh for launch
-//   4 Follow-ups   due today or overdue: do today, push, or drop
-//   5 Load out     fill the three slots (one Heavy) from what is due
-//   6 Launch       pick the first clock; the protocol timer stops
+//   1 Gateway          a song from the curated library, over the coffee
+//   2 Body             morning hygiene and the doses due, one at a time
+//   3 Morning Reflection  the reflection, written and logged (the devotional badge)
+//   4 Today's Digest   yesterday landed, today's calendar, Lumen's read and his questions
+//   5 Today's Game Plan  Lumen builds the day as data from the answers; adjust it in words
+//   6 Systems Check    the lights, now or later, timers inside the protocol, then reconcile
+//   7 Launch           pick the first clock; the protocol timer stops
 //
 // One timer: meeting_sessions adhoc:<day>:morning-protocol, logged to Harvest
 // as Business Administration when he launches (same door as Recurring). The
 // finish also writes daily_logs what 'morning-protocol' (minutes) so the
 // planning light and the River can see it ran. No miles for the timer.
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
-import { ArrowLeft, ArrowRight, Check, Sunrise, Moon, Play, Rocket, Send, ExternalLink, SkipForward, RotateCcw } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Check, Sunrise, Moon, Play, Square, Rocket, Send, ExternalLink, SkipForward, RotateCcw, Mic, Music, Sparkles, RefreshCw } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { upsertSession, logToHarvest, hoursBetween } from '../../lib/meetings'
 import { fetchLoadout, equipObjective, equipTask, equip, fmtClock, chiToday, SIZES, SLOTS } from '../../lib/loadout'
 import { HYGIENE_ITEMS } from '../../constants/hygiene'
+import { GATEWAY_PLAYLIST } from '../../constants/gateway'
 import { MEDICATIONS, dueOn } from '../../constants/medications'
-import { INK, INK2, GRAY, PANEL_BORDER, GOLD, GOLD_BRIGHT, GREEN, RED, BLUE, MONO, SERIF, S, Label, Panel, fmtTime } from './canon'
+import { INK, INK2, GRAY, PANEL_BORDER, GOLD, GOLD_BRIGHT, GREEN, RED, BLUE, MONO, SERIF, S, Label as BaseLabel, Panel, fmtTime } from './canon'
+
+// Protocol labels read in the baby blue (David, 10/8).
+const Label = ({ children, style }) => <BaseLabel style={{ color: BLUE, ...style }}>{children}</BaseLabel>
+const READ = { fontFamily: SERIF, fontWeight: 500, fontSize: 16.5, lineHeight: 1.65, letterSpacing: '-0.01em', color: INK }
 import { Instrument, InstrumentGroup, groupMsg } from './Instrument'
 
 export const MORNING_SLUG = 'morning-protocol'
 const eid = (day) => `adhoc:${day}:${MORNING_SLUG}`
 const STEPS = [
-  { id: 'read', title: 'Wake read', sub: 'yesterday landed, today ahead' },
+  { id: 'gateway', title: 'Gateway', sub: 'a song for the coffee' },
   { id: 'body', title: 'Body', sub: 'log what is done' },
-  { id: 'lights', title: 'Lights', sub: 'what needs tending' },
-  { id: 'followups', title: 'Follow-ups', sub: 'due today: do, push, drop' },
-  { id: 'loadout', title: 'Load out', sub: 'three slots, one Heavy' },
+  { id: 'reflection', title: 'Morning Reflection', sub: 'before the day, the spring' },
+  { id: 'digest', title: "Today's Digest", sub: 'yesterday landed, today ahead, his questions' },
+  { id: 'plan', title: "Today's Game Plan", sub: 'the day as data, adjusted in words' },
+  { id: 'systems', title: 'Systems Check', sub: 'the lights, now or later, then reconcile' },
   { id: 'launch', title: 'Launch', sub: 'the first clock starts' },
 ]
 const MORNING_HYGIENE = ['shower', 'brush-am', 'shave']
@@ -57,6 +64,15 @@ const lightRule = (kind, L) => {
   return { level: 'gray', text: '' }
 }
 
+// Systems Check: rough minutes to bring each light back to green.
+const workToGreen = (kind, L) => {
+  if (kind === 'email') { const n = L?.email?.unread; if (n == null) return null; return n < 20 ? 0 : Math.round((n - 15) * 0.5) }
+  if (kind === 'slack') { const n = L?.slack?.unread; if (n == null) return null; return n < 5 ? 0 : Math.round((n - 3) * 0.7) }
+  if (kind === 'bill') { const d = L?.bill_pay?.days; if (d == null) return 20; return d < 8 ? 0 : 20 }
+  return null
+}
+const SYSTEMS = [{ key: 'email', slug: 'email-refresh', label: 'E-mail Refresh' }, { key: 'slack', slug: 'slack-review', label: 'Slack Review' }, { key: 'bill', slug: 'bill-pay', label: 'Bill Pay' }]
+
 // Protocol lights (David, 10/7), Chicago time. The outline breathes while
 // the protocol is still owed: Morning green 5:00 to 6:30, gold to 8:00, red
 // after; Evening green 6:00 PM to 10:00, gold to 11:30, red after (through
@@ -79,47 +95,64 @@ export function protocolLight(which, ms = Date.now()) {
 const stepKey = (day) => `mp-step:${day}`
 const readStep = (day) => { try { const v = Number(localStorage.getItem(stepKey(day))); return Number.isFinite(v) ? Math.max(0, Math.min(STEPS.length - 1, v)) : 0 } catch { return 0 } }
 const writeStep = (day, n) => { try { localStorage.setItem(stepKey(day), String(n)) } catch { /* no-op */ } }
+const authHeader = async () => { const { data: { session } } = await supabase.auth.getSession(); if (!session) throw new Error('not signed in'); return { Authorization: `Bearer ${session.access_token}` } }
 
 // ---- Lumen in the protocol -------------------------------------------------------
-// A text strip pinned under every step: David answers Lumen's question or
-// asks for something while he clicks; Lumen acts with his tools (same thread
-// as WhatsApp, channel 'hud') and the step data reloads after each reply.
-function LumenStrip({ day, where, onReplied }) {
+// Pinned under every step: David answers Lumen or asks for something, typed or
+// spoken (hold the mic; the clip goes to Whisper, then to the brain). Same
+// thread as WhatsApp (channel 'hud'), so what he says here is read in
+// everywhere; the step data reloads after each reply.
+function LumenStrip({ day, where, onReplied, prompt }) {
   const [thread, setThread] = useState([])
   const [text, setText] = useState('')
   const [busy, setBusy] = useState(false)
+  const [rec, setRec] = useState(null)
   const [err, setErr] = useState(null)
+  const chunks = useRef([])
   const pull = useCallback(async () => {
     const since = new Date(day + 'T05:00:00Z').toISOString()
-    setThread(await rows(supabase.from('lumen_messages').select('id,at,direction,body').eq('channel', 'hud').neq('kind', 'system').gte('at', since).order('id', { ascending: true }).limit(40)))
+    setThread(await rows(supabase.from('lumen_messages').select('id,at,direction,body,kind').eq('channel', 'hud').neq('kind', 'system').gte('at', since).order('id', { ascending: true }).limit(60)))
   }, [day])
   useEffect(() => { Promise.resolve().then(pull) }, [pull])
-  const send = async () => {
-    const t = text.trim(); if (!t || busy) return
-    setBusy(true); setErr(null); setText('')
-    setThread(th => [...th, { id: `tmp-${Date.now()}`, at: new Date().toISOString(), direction: 'in', body: t }])
+  const post = async (payload, headers) => {
+    setBusy(true); setErr(null)
     try {
-      const { data: { session: auth } } = await supabase.auth.getSession()
-      if (!auth) throw new Error('not signed in')
-      const r = await fetch('/api/lumen-hud', { method: 'POST', headers: { Authorization: `Bearer ${auth.access_token}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ text: t, where }) })
+      const h = await authHeader()
+      const r = await fetch(`/api/lumen-hud?where=${encodeURIComponent(where)}`, { method: 'POST', headers: { ...h, ...headers }, body: payload })
       const j = await r.json().catch(() => ({}))
-      if (!r.ok) throw new Error(j.error || `lumen ${r.status}`)
+      if (!r.ok || j.error) throw new Error(j.error || `lumen ${r.status}`)
       await pull(); onReplied && onReplied()
     } catch (e) { setErr(`Lumen did not answer: ${e.message}`) } finally { setBusy(false) }
   }
-  const last = thread.slice(-4)
+  const send = () => { const t = text.trim(); if (!t || busy) return; setText(''); setThread(th => [...th, { id: `tmp-${Date.now()}`, at: new Date().toISOString(), direction: 'in', body: t }]); post(JSON.stringify({ text: t, where }), { 'Content-Type': 'application/json' }) }
+  const startRec = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      const mime = MediaRecorder.isTypeSupported('audio/webm;codecs=opus') ? 'audio/webm;codecs=opus' : (MediaRecorder.isTypeSupported('audio/mp4') ? 'audio/mp4' : '')
+      const mr = new MediaRecorder(stream, mime ? { mimeType: mime } : undefined)
+      chunks.current = []
+      mr.ondataavailable = (e) => { if (e.data.size) chunks.current.push(e.data) }
+      mr.onstop = () => { stream.getTracks().forEach(t => t.stop()); const blob = new Blob(chunks.current, { type: mr.mimeType || 'audio/webm' }); setRec(null); if (blob.size < 2000) { setErr('Nothing heard'); return } setThread(th => [...th, { id: `tmp-${Date.now()}`, at: new Date().toISOString(), direction: 'in', body: '(voice note, transcribing…)', kind: 'audio' }]); post(blob, { 'Content-Type': blob.type }) }
+      mr.start(); setRec(mr)
+    } catch (e) { setErr(`Microphone: ${e.message}`) }
+  }
+  const stopRec = () => { try { rec && rec.stop() } catch { /* no-op */ } }
+  const last = thread.slice(-6)
   return (
     <Panel style={{ marginBottom: 0, marginTop: 26, borderColor: 'rgba(169,201,232,0.25)' }}>
-      <Label style={{ color: BLUE }}>Lumen · same thread as WhatsApp</Label>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}><Label style={{ marginBottom: 0 }}>Lumen · same thread as WhatsApp</Label>{prompt && <span style={{ fontSize: 11.5, color: GRAY }}>{prompt}</span>}</div>
       {last.length > 0 && (
         <div style={{ display: 'grid', gap: 6, margin: '10px 0 4px' }}>
-          {last.map(m => <div key={m.id} style={{ fontSize: 13.5, lineHeight: 1.55, color: m.direction === 'in' ? INK2 : INK, fontFamily: m.direction === 'in' ? 'inherit' : SERIF, paddingLeft: m.direction === 'in' ? 0 : 12, borderLeft: m.direction === 'in' ? 'none' : `2px solid ${BLUE}66` }}><span style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '1px', color: GRAY, marginRight: 8 }}>{m.direction === 'in' ? 'YOU' : 'LUMEN'} · {fmtTime(m.at)}</span>{m.body}</div>)}
+          {last.map(m => <div key={m.id} style={{ fontSize: 13.5, lineHeight: 1.6, color: m.direction === 'in' ? INK2 : INK, fontFamily: m.direction === 'in' ? 'inherit' : SERIF, fontWeight: m.direction === 'in' ? 400 : 500, paddingLeft: m.direction === 'in' ? 0 : 12, borderLeft: m.direction === 'in' ? 'none' : `2px solid ${BLUE}66`, whiteSpace: 'pre-wrap' }}><span style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '1px', color: GRAY, marginRight: 8 }}>{m.direction === 'in' ? (m.kind === 'audio' ? 'YOU · VOICE' : 'YOU') : 'LUMEN'} · {fmtTime(m.at)}</span>{m.body}</div>)}
         </div>
       )}
       {busy && <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '1px', color: BLUE, textTransform: 'uppercase', margin: '8px 0 4px' }} className="mp-blink">Lumen is working…</div>}
       <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
-        <input value={text} onChange={e => setText(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') send() }} placeholder="Answer him, or ask for something. Enter sends." disabled={busy}
+        <input value={text} onChange={e => setText(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') send() }} placeholder="Answer him, or ask for something. Enter sends." disabled={busy || !!rec}
           style={{ flex: 1, fontSize: 13.5, padding: '10px 12px', borderRadius: 10, border: `1px solid ${PANEL_BORDER}`, background: 'rgba(255,255,255,0.05)', color: INK }} />
+        {rec
+          ? <button onClick={stopRec} className="mp-blink" style={btn(RED, true)}><Square size={12} /> Stop</button>
+          : <button onClick={startRec} disabled={busy} title="Talk to him; tap again to send" style={btn(BLUE, false, { opacity: busy ? 0.5 : 1 })}><Mic size={12} /> Talk</button>}
         <button onClick={send} disabled={busy || !text.trim()} style={btn(BLUE, false, { opacity: busy || !text.trim() ? 0.5 : 1 })}><Send size={12} /> Send</button>
       </div>
       {err && <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '1px', color: RED, textTransform: 'uppercase', marginTop: 8 }}>{err}</div>}
@@ -142,67 +175,65 @@ function Protocol({ day, session, onClose, onFinished, onChange, onNavigate }) {
   const [events, setEvents] = useState([])
   const [logs, setLogs] = useState([])
   const [lights, setLights] = useState(null)
-  const [startEmail, setStartEmail] = useState(false)
-  const [emailDecided, setEmailDecided] = useState(false)
   const [followups, setFollowups] = useState([])
   const [queueCount, setQueueCount] = useState(0)
-  const [picks, setPicks] = useState([])          // follow-ups marked "today"
-  const [L, setL] = useState(null)                 // the loadout
-  const [tasks, setTasks] = useState([])           // Main Mission candidates
-  const [parked, setParked] = useState([])         // dated Side Mission candidates
+  const [L, setL] = useState(null)
   const [projects, setProjects] = useState(new Map())
-  const [first, setFirst] = useState(null)         // objective id to equip at launch, or 'email'
+  const [first, setFirst] = useState(null)
+  const [song, setSong] = useState('')
+  const [reflection, setReflection] = useState('')
+  const [plan, setPlan] = useState(undefined)      // undefined = not loaded, null = none yet
+  const [planBusy, setPlanBusy] = useState(false)
+  const [adjust, setAdjust] = useState('')
+  const [sysChoice, setSysChoice] = useState(null) // 'now' | 'later'
+  const [sessions, setSessions] = useState([])     // adhoc timers today
+  const [reconcile, setReconcile] = useState(null)
 
   useEffect(() => { const t = setInterval(() => setNow(Date.now()), 30_000); return () => clearInterval(t) }, [])
   const elapsed = session?.started_at ? (now - new Date(session.started_at).getTime()) / 60000 + ((Number(session.hours) || 0) * 60) : 0
 
   const yd = yesterdayOf(day)
   const loadAll = useCallback(async () => {
-    const [m, ml, ev, lg, fu, fuAll, pt, pj, pk, lo] = await Promise.all([
+    const [m, ml, ev, lg, fu, fuAll, pj, lo, ss] = await Promise.all([
       rows(supabase.from('lumen_messages').select('body,at,meta').eq('channel', 'pulse').eq('direction', 'out').eq('kind', 'text').contains('meta', { kind: 'morning', day }).order('at', { ascending: false }).limit(1)),
       rows(supabase.from('miles_ledger').select('miles,badge,key').eq('day', yd)),
       rows(supabase.from('calendar_events').select('id,subject,start_at,end_at,is_all_day').eq('day', day).eq('is_cancelled', false).order('start_at')),
-      rows(supabase.from('daily_logs').select('id,kind,what,at').eq('day', day).in('kind', ['hygiene', 'medication', 'devotional'])),
+      rows(supabase.from('daily_logs').select('id,kind,what,at,note').eq('day', day).in('kind', ['hygiene', 'medication', 'devotional', 'gateway'])),
       rows(supabase.from('objectives').select('id,title,follow_up_date,effort,tags,description').eq('state', 'follow_up').is('deleted_at', null).lte('follow_up_date', day).order('follow_up_date')),
       rows(supabase.from('objectives').select('id').eq('state', 'follow_up').is('deleted_at', null)),
-      rows(supabase.from('project_tasks').select('id,text,status,due_date,project_id,objective_id').in('status', ['open', 'promoted']).or(`due_date.lte.${plusDays(day, 1)},status.eq.promoted`).order('due_date')),
       rows(supabase.from('projects').select('id,name,status')),
-      rows(supabase.from('objectives').select('id,title,due_date,start_date,effort,tags').eq('state', 'parked').is('deleted_at', null).or(`due_date.lte.${plusDays(day, 1)},start_date.lte.${day}`).order('due_date')),
       fetchLoadout(),
+      rows(supabase.from('meeting_sessions').select('event_id,subject,started_at,stopped_at,hours').eq('day', day).like('event_id', 'adhoc:%')),
     ])
     setRead(m[0] || null); setYday({ miles: ml.reduce((s, r) => s + (Number(r.miles) || 0), 0), badges: [...new Set(ml.map(r => r.badge))] })
-    setEvents(ev); setLogs(lg); setFollowups(fu); setQueueCount(fuAll.length)
-    const pmap = new Map(pj.map(p => [p.id, p])); setProjects(pmap)
-    setTasks(pt.filter(t => (pmap.get(t.project_id)?.status || 'active') === 'active'))
-    setParked(pk); setL(lo)
+    setEvents(ev); setLogs(lg); setFollowups(fu); setQueueCount(fuAll.length); setProjects(new Map(pj.map(p => [p.id, p]))); setL(lo); setSessions(ss)
     if (!first && lo.equipped) setFirst(lo.equipped.id)
     try {
-      const { data: { session: auth } } = await supabase.auth.getSession()
-      if (auth) { const r = await fetch('/api/lights', { headers: { Authorization: `Bearer ${auth.access_token}` }, cache: 'no-store' }); if (r.ok) { const j = await r.json(); setLights(j); if (!emailDecided) { const lv = lightRule('email', j).level; setStartEmail(lv === 'gold' || lv === 'red') } } }
+      const h = await authHeader()
+      const r = await fetch('/api/lights', { headers: h, cache: 'no-store' }); if (r.ok) setLights(await r.json())
+      if (plan === undefined) { const pr = await fetch(`/api/lumen-plan?day=${day}`, { headers: h, cache: 'no-store' }); setPlan(pr.ok ? (await pr.json()).plan : null) }
     } catch { /* lights stay gray */ }
-  }, [day, yd, first, emailDecided])
+  }, [day, yd, first, plan])
   useEffect(() => { loadAll() }, [loadAll])
 
   const go = useCallback((n) => { const to = Math.max(0, Math.min(STEPS.length - 1, n)); setDir(to > step ? 1 : -1); setStep(to); writeStep(day, to); setMsg(null) }, [step, day])
+  const cur = STEPS[step]
 
-  // Body: a funnel. One item at a time; Done logs the daily_logs row and the
-  // next item slides up; Skip leaves it for later. When the last one is
-  // logged the step advances on its own.
+  // ---- logs (body, reflection, gateway)
   const logged = (kind, what) => logs.find(l => l.kind === kind && l.what === what)
-  const toggleLog = async (kind, what) => {
+  const reloadLogs = async () => setLogs(await rows(supabase.from('daily_logs').select('id,kind,what,at,note').eq('day', day).in('kind', ['hygiene', 'medication', 'devotional', 'gateway'])))
+  const toggleLog = async (kind, what, note = 'Morning Protocol') => {
     const row = logged(kind, what)
     try {
       if (row) await supabase.from('daily_logs').delete().eq('id', row.id)
-      else { const { error } = await supabase.from('daily_logs').insert({ day, kind, what, note: 'Morning Protocol', source: 'hud', at: new Date().toISOString() }); if (error) throw new Error(error.message); advanceRef.current = true }
-      setLogs(await rows(supabase.from('daily_logs').select('id,kind,what,at').eq('day', day).in('kind', ['hygiene', 'medication', 'devotional'])))
-      onChange && onChange()
+      else { const { error } = await supabase.from('daily_logs').insert({ day, kind, what, note, source: 'hud', at: new Date().toISOString() }); if (error) throw new Error(error.message); advanceRef.current = true }
+      await reloadLogs(); onChange && onChange()
     } catch (e) { setMsg(`Could not log: ${e.message}`) }
   }
   const meds = useMemo(() => MORNING_MEDS(day), [day])
   const bodyQueue = useMemo(() => [
     ...HYGIENE_ITEMS.filter(h => MORNING_HYGIENE.includes(h.key)).map(h => ({ kind: 'hygiene', key: h.key, label: h.label, color: GREEN, sub: '0.25 mi when logged' })),
     ...meds.map(m => ({ kind: 'medication', key: m.key, label: m.label, color: GOLD, sub: `${m.dose} · 0.5 mi when logged` })),
-    { kind: 'devotional', key: 'devotional', label: 'Devotional', color: BLUE, sub: 'read and log it on the Devotional page, or mark it here', page: true },
   ], [meds])
   const bodyLeft = bodyQueue.filter(i => !logged(i.kind, i.key) && !skipped.has(i.key))
   const bodyCurrent = bodyLeft[0] || null
@@ -212,84 +243,116 @@ function Protocol({ day, session, onClose, onFinished, onChange, onNavigate }) {
     const t = setTimeout(() => go(step + 1), 650)
     return () => clearTimeout(t)
   }, [bodyLeft.length, step, go])
+  const gatewayLog = logs.find(l => l.kind === 'gateway')
+  const reflectionLog = logged('devotional', 'devotional')
+  const logSong = async (title) => { const t = String(title || song).trim(); if (!t) return; if (gatewayLog) await supabase.from('daily_logs').delete().eq('id', gatewayLog.id); const { error } = await supabase.from('daily_logs').insert({ day, kind: 'gateway', what: t.slice(0, 160), note: 'Gateway · Morning Protocol', source: 'hud', at: new Date().toISOString() }); if (error) { setMsg(`Could not log: ${error.message}`); return } await reloadLogs(); setSong(''); setTimeout(() => go(step + 1), 500) }
+  const logReflection = async () => { const { error } = await supabase.from('daily_logs').insert({ day, kind: 'devotional', what: 'devotional', note: reflection.trim() || 'Morning Reflection', source: 'hud', at: new Date().toISOString() }); if (error) { setMsg(`Could not log: ${error.message}`); return } await reloadLogs(); onChange && onChange() }
   const openDevotional = () => { writeStep(day, step); onClose(); onNavigate && onNavigate('maintenance', ['spiritual']) }
 
-  // Follow-ups: today (becomes a Load out candidate), push, drop.
-  const pushFollow = async (o, n) => {
-    const { error } = await supabase.from('objectives').update({ follow_up_date: plusDays(day, n) }).eq('id', o.id)
-    if (error) { setMsg(`Could not push: ${error.message}`); return }
-    setFollowups(f => f.filter(x => x.id !== o.id)); setMsg(`${o.title}: pushed to ${plusDays(day, n)}`)
-  }
-  const dropFollow = async (o) => {
-    const { error } = await supabase.from('objectives').update({ deleted_at: new Date().toISOString() }).eq('id', o.id)
-    if (error) { setMsg(`Could not drop: ${error.message}`); return }
-    setFollowups(f => f.filter(x => x.id !== o.id)); setQueueCount(c => Math.max(0, c - 1)); setMsg(`${o.title}: dropped`)
-  }
-  const todayFollow = async (o) => {
-    const { error } = await supabase.from('objectives').update({ due_date: day, follow_up_date: day }).eq('id', o.id)
-    if (error) { setMsg(`Could not mark it: ${error.message}`); return }
-    setFollowups(f => f.filter(x => x.id !== o.id)); setPicks(p => [...p, o]); setMsg(`${o.title}: today · load it in the next step`)
-  }
-
-  // Load out: activate without a clock; Launch picks the clock.
-  const refreshLoadout = async () => { const lo = await fetchLoadout(); setL(lo); return lo }
-  const loadObjective = async (o) => {
+  // ---- follow-ups and loading (inside the Game Plan)
+  const pushFollow = async (o, n) => { const { error } = await supabase.from('objectives').update({ follow_up_date: plusDays(day, n) }).eq('id', o.id); if (error) { setMsg(`Could not push: ${error.message}`); return } setFollowups(f => f.filter(x => x.id !== o.id)); setMsg(`${o.title}: pushed to ${plusDays(day, n)}`) }
+  const dropFollow = async (o) => { const { error } = await supabase.from('objectives').update({ deleted_at: new Date().toISOString() }).eq('id', o.id); if (error) { setMsg(`Could not drop: ${error.message}`); return } setFollowups(f => f.filter(x => x.id !== o.id)); setQueueCount(c => Math.max(0, c - 1)); setMsg(`${o.title}: dropped`) }
+  const loadRef = async (ref, title) => {
     setBusy(true)
     try {
-      const r = await equipObjective(o.id, { clock: false })
+      let r
+      if (ref?.type === 'objective') r = await equipObjective(ref.id, { clock: false })
+      else if (ref?.type === 'task') { const { data } = await supabase.from('project_tasks').select('id,text,status,objective_id,project_id').eq('id', ref.id).limit(1); if (!data?.[0]) throw new Error('task not found'); r = await equipTask(data[0], projects.get(data[0].project_id)?.name, { clock: false }) }
+      else throw new Error('nothing to load')
       if (!r.ok) { setMsg(`Will not fit: ${r.reasons.join(' · ')}`); return }
-      setPicks(p => p.filter(x => x.id !== o.id)); setParked(p => p.filter(x => x.id !== o.id))
-      const lo = await refreshLoadout(); if (!first) setFirst(o.id); setMsg(`${r.title} loaded (${lo.slots.used}/${SLOTS})`)
+      const lo = await fetchLoadout(); setL(lo); if (!first) setFirst(r.id || ref.id); setMsg(`${title || r.title} loaded (${lo.slots.used}/${SLOTS} slots)`)
     } catch (e) { setMsg(`Could not load: ${e.message}`) } finally { setBusy(false) }
   }
-  const loadTask = async (t) => {
-    setBusy(true)
-    try {
-      const r = await equipTask(t, projects.get(t.project_id)?.name, { clock: false })
-      if (!r.ok) { setMsg(`Will not fit: ${r.reasons.join(' · ')}`); return }
-      setTasks(ts => ts.filter(x => x.id !== t.id))
-      const lo = await refreshLoadout(); if (!first && r.id) setFirst(r.id); setMsg(`${r.title} loaded (${lo.slots.used}/${SLOTS})`)
-    } catch (e) { setMsg(`Could not load: ${e.message}`) } finally { setBusy(false) }
-  }
+  const todayFollow = async (o) => { const { error } = await supabase.from('objectives').update({ due_date: day, follow_up_date: day }).eq('id', o.id); if (error) { setMsg(`Could not mark it: ${error.message}`); return } setFollowups(f => f.filter(x => x.id !== o.id)); await loadRef({ type: 'objective', id: o.id }, o.title) }
 
-  // Launch: stop the protocol timer, log it, start the first clock.
+  // ---- the plan
+  const runPlan = async (mode, instruction) => {
+    setPlanBusy(true); setMsg(null)
+    try {
+      const h = await authHeader()
+      const r = await fetch('/api/lumen-plan', { method: 'POST', headers: { ...h, 'Content-Type': 'application/json' }, body: JSON.stringify({ day, mode, instruction, plan: plan || undefined }) })
+      const j = await r.json().catch(() => ({}))
+      if (!r.ok || j.error) throw new Error(j.error || `plan ${r.status}`)
+      setPlan(j.plan); if (mode === 'reconcile') setReconcile(j.plan.summary || 'Reconciled.'); if (mode === 'adjust') setAdjust('')
+      if (j.warning) setMsg(`Plan built; not saved: ${j.warning}`)
+      const lo = await fetchLoadout(); setL(lo)
+    } catch (e) { setMsg(`Could not ${mode === 'build' ? 'build' : mode} the plan: ${e.message}`) } finally { setPlanBusy(false) }
+  }
+  const planAuto = useRef(false)
+  useEffect(() => { if (cur.id === 'plan' && plan === null && !planBusy && !planAuto.current) { planAuto.current = true; runPlan('build') } }, [cur.id, plan]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ---- systems check timers (same door as the Console)
+  const sysSession = (slug) => sessions.find(s => s.event_id === `adhoc:${day}:${slug}`)
+  const sysRunning = (slug) => { const s = sysSession(slug); return !!(s && s.started_at && !s.stopped_at) }
+  const sysStart = async (sys) => {
+    try {
+      const other = sessions.find(s => s.started_at && !s.stopped_at && !s.event_id.endsWith(':travel') && !s.event_id.endsWith(`:${MORNING_SLUG}`) && s.event_id !== `adhoc:${day}:${sys.slug}`)
+      if (other) { setMsg(`${other.subject} is running. Stop it first.`); return }
+      await upsertSession({ event_id: `adhoc:${day}:${sys.slug}`, day, subject: sys.label, started_at: new Date().toISOString(), stopped_at: null, hours: sysSession(sys.slug)?.hours || 0 })
+      await loadAll()
+    } catch (e) { setMsg(`Could not start: ${e.message}`) }
+  }
+  const sysStop = async (sys) => {
+    try {
+      const s = sysSession(sys.slug); if (!s?.started_at) return
+      const stopped = new Date().toISOString(); const span = Math.max(0.01, hoursBetween(s.started_at, stopped)); const hours = Math.round(((Number(s.hours) || 0) + span) * 100) / 100
+      let ok = false; try { await logToHarvest(sys.label, Math.round(span * 100) / 100); ok = true } catch (e) { setMsg(`Timer stopped; Harvest did not take it: ${e.message}`) }
+      await upsertSession({ event_id: `adhoc:${day}:${sys.slug}`, day, subject: sys.label, started_at: s.started_at, stopped_at: stopped, hours, harvest_logged: ok })
+      if (ok) setMsg(`${sys.label}: ${fmtClock(span * 60)} logged to Harvest`)
+      await loadAll()
+    } catch (e) { setMsg(`Could not stop: ${e.message}`) }
+  }
+  const markSlackClean = async () => { const { error } = await supabase.from('daily_logs').insert({ day, kind: 'activity', what: 'slack-clean', value: 1, note: 'marked in the Systems Check', source: 'hud' }); if (error) setMsg(`Could not mark it: ${error.message}`); else setMsg('Slack clean today · Clean Slack strikes at the close') }
+
+  // ---- launch
   const launch = async () => {
     setBusy(true)
     try {
       const stopped = new Date().toISOString()
       const span = session?.started_at ? Math.max(0.01, hoursBetween(session.started_at, stopped)) : 0.01
       const hours = Math.round(((Number(session?.hours) || 0) + span) * 100) / 100
-      let logged = false
-      try { await logToHarvest('Morning Protocol', Math.round(span * 100) / 100); logged = true } catch (e) { setMsg(`Harvest did not take the protocol time: ${e.message}`) }
-      await upsertSession({ event_id: eid(day), day, subject: 'Morning Protocol', started_at: session?.started_at || stopped, stopped_at: stopped, hours, harvest_logged: logged || !!session?.harvest_logged })
-      await supabase.from('daily_logs').insert({ day, kind: 'activity', what: MORNING_SLUG, value: Math.round(span * 60), note: `Morning Protocol · ${L?.slots?.used ?? 0} loaded${first === 'email' ? ' · E-mail Refresh first' : ''}`, source: 'hud', at: stopped })
-      if (first === 'email' || (startEmail && first == null)) {
-        await upsertSession({ event_id: `adhoc:${day}:email-refresh`, day, subject: 'E-mail Refresh', started_at: new Date().toISOString(), stopped_at: null })
-      } else if (first) {
-        await equip(first)
-      }
+      let ok = false
+      try { await logToHarvest('Morning Protocol', Math.round(span * 100) / 100); ok = true } catch (e) { setMsg(`Harvest did not take the protocol time: ${e.message}`) }
+      await upsertSession({ event_id: eid(day), day, subject: 'Morning Protocol', started_at: session?.started_at || stopped, stopped_at: stopped, hours, harvest_logged: ok || !!session?.harvest_logged })
+      await supabase.from('daily_logs').insert({ day, kind: 'activity', what: MORNING_SLUG, value: Math.round(span * 60), note: `Morning Protocol · ${L?.slots?.used ?? 0}/${SLOTS} slots loaded${plan ? ' · plan set' : ''}`, source: 'hud', at: stopped })
+      if (first === 'email') await upsertSession({ event_id: `adhoc:${day}:email-refresh`, day, subject: 'E-mail Refresh', started_at: new Date().toISOString(), stopped_at: null })
+      else if (first) await equip(first)
+      // Read Lumen in: the launch note lands in his thread so WhatsApp knows the day's shape.
+      try { const h = await authHeader(); const firstTitle = first === 'email' ? 'E-mail Refresh' : (L?.items.find(i => i.id === first)?.title || 'nothing'); await fetch('/api/lumen-plan', { method: 'POST', headers: { ...h, 'Content-Type': 'application/json' }, body: JSON.stringify({ day, mode: 'note', text: `Morning Protocol launched at ${fmtTime(stopped)} after ${Math.round(span * 60)} minutes. Loaded: ${(L?.board || []).map(i => `${i.title} (${SIZES[i.size]?.label})`).join('; ') || 'nothing'}. First clock: ${firstTitle}. ${plan?.summary ? `Plan: ${plan.summary}` : 'No plan was built.'}${reconcile ? ` Reconcile: ${reconcile}` : ''}` }) }) } catch { /* best effort */ }
       onFinished({ minutes: Math.round(span * 60) })
     } catch (e) { setMsg(`Launch failed: ${e.message}`); setBusy(false) }
   }
 
   const board = L?.board || []
   const firstMeeting = events.find(e => !e.is_all_day)
-  const cur = STEPS[step]
+  const chiHHMM = (iso) => new Intl.DateTimeFormat('en-GB', { timeZone: 'America/Chicago', hour: '2-digit', minute: '2-digit', hour12: false }).format(new Date(iso))
 
   const content = () => {
-    if (cur.id === 'read') return (
+    // 1 Gateway
+    if (cur.id === 'gateway') return (
       <div style={{ display: 'grid', gap: 14 }}>
-        <div style={{ display: 'flex', gap: 28, flexWrap: 'wrap' }}>
-          <div><Label>Yesterday</Label><div style={{ fontFamily: SERIF, fontSize: 30, color: '#fff', lineHeight: 1.1 }}>{yday ? `${yday.miles} mi` : '…'}</div><div style={{ fontSize: 11, color: GRAY, fontFamily: MONO, letterSpacing: '0.6px' }}>{yday?.badges?.length ? yday.badges.filter(b => b).slice(0, 6).join(' · ') : 'no badges'}</div></div>
-          <div><Label>Today</Label><div style={{ fontFamily: SERIF, fontSize: 30, color: '#fff', lineHeight: 1.1 }}>{events.filter(e => !e.is_all_day).length} meetings</div><div style={{ fontSize: 11, color: GRAY, fontFamily: MONO, letterSpacing: '0.6px' }}>{firstMeeting ? `first at ${fmtTime(firstMeeting.start_at)} · ${firstMeeting.subject}` : 'open calendar'}</div></div>
-          <div><Label>Stamina</Label><div style={{ fontFamily: SERIF, fontSize: 30, color: '#fff', lineHeight: 1.1 }}>{L ? `${L.stamina.free}h` : '…'}</div><div style={{ fontSize: 11, color: GRAY, fontFamily: MONO, letterSpacing: '0.6px' }}>free before 6 PM · {L ? `${L.stamina.meetingsLeft}h of meetings` : ''}</div></div>
-        </div>
-        <Panel style={{ marginBottom: 0 }}>
-          <Label>Lumen's morning read{read ? ` · ${fmtTime(read.at)}` : ''}</Label>
-          <div style={{ fontFamily: SERIF, fontSize: 17, lineHeight: 1.6, color: INK, marginTop: 6, whiteSpace: 'pre-wrap' }}>{read ? read.body : 'Lumen has not spoken yet this morning. His read lands at 7:12.'}</div>
-        </Panel>
+        {gatewayLog && <div className="mp-step-r" style={{ padding: '18px 22px', borderRadius: 14, border: `1px solid ${GREEN}66`, background: `${GREEN}10`, display: 'flex', alignItems: 'center', gap: 12 }}><Music size={18} color={GREEN} /><div><div style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 20, color: '#fff' }}>{gatewayLog.what}</div><div style={{ fontFamily: MONO, fontSize: 10, color: GRAY, letterSpacing: '0.6px' }}>chosen {fmtTime(gatewayLog.at)} · tap another to change it</div></div></div>}
+        {GATEWAY_PLAYLIST.length > 0 ? (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 10 }}>
+            {GATEWAY_PLAYLIST.map(t => { const on = gatewayLog?.what === `${t.title} · ${t.artist}`; return (
+              <button key={t.title} onClick={() => { logSong(`${t.title} · ${t.artist}`); if (t.url) window.open(t.url, '_blank', 'noopener') }} style={{ ...tile(on, GOLD), minWidth: 0 }}>
+                <span style={{ display: 'inline-flex', gap: 8, alignItems: 'center', fontSize: 14, fontFamily: SERIF, fontWeight: 500 }}><Music size={13} color={on ? GOLD : INK2} />{t.title}</span>
+                <span style={{ fontFamily: MONO, fontSize: 10, color: GRAY, letterSpacing: '0.6px' }}>{t.artist}</span>
+              </button>) })}
+          </div>
+        ) : (
+          <Panel style={{ marginBottom: 0 }}>
+            <Label>The library</Label>
+            <div style={{ fontSize: 13.5, color: INK2, lineHeight: 1.6 }}>The curated playlist is not up yet (src/constants/gateway.js). Until it lands, say what is playing and the day opens on it.</div>
+            <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+              <input value={song} onChange={e => setSong(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') logSong() }} placeholder="What's playing over the coffee?" style={{ flex: 1, fontSize: 13.5, padding: '10px 12px', borderRadius: 10, border: `1px solid ${PANEL_BORDER}`, background: 'rgba(255,255,255,0.05)', color: INK }} />
+              <button onClick={() => logSong()} disabled={!song.trim()} style={btn(GOLD, true, { opacity: song.trim() ? 1 : 0.5 })}><Music size={12} /> Open the day</button>
+            </div>
+          </Panel>
+        )}
       </div>
     )
+    // 2 Body
     if (cur.id === 'body') {
       const doneItems = bodyQueue.filter(i => logged(i.kind, i.key))
       const upcoming = bodyLeft.slice(1)
@@ -303,18 +366,17 @@ function Protocol({ day, session, onClose, onFinished, onChange, onNavigate }) {
           )}
           {bodyCurrent ? (
             <div key={bodyCurrent.key} className="mp-step-r" style={{ padding: '22px 24px', borderRadius: 14, border: `1px solid ${bodyCurrent.color}88`, background: `${bodyCurrent.color}10` }}>
-              <Label style={{ color: bodyCurrent.color }}>{bodyCurrent.kind === 'hygiene' ? 'Hygiene' : bodyCurrent.kind === 'medication' ? 'Dose due this morning' : 'Spiritual'} · {doneItems.length + 1} of {bodyQueue.length}</Label>
-              <div style={{ fontFamily: SERIF, fontSize: 28, color: '#fff', margin: '6px 0 4px', letterSpacing: '-0.01em' }}>{bodyCurrent.label}</div>
+              <Label style={{ color: bodyCurrent.color }}>{bodyCurrent.kind === 'hygiene' ? 'Hygiene' : 'Dose due this morning'} · {doneItems.length + 1} of {bodyQueue.length}</Label>
+              <div style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 28, color: '#fff', margin: '6px 0 4px', letterSpacing: '-0.01em' }}>{bodyCurrent.label}</div>
               <div style={{ fontSize: 12.5, color: GRAY, marginBottom: 16 }}>{bodyCurrent.sub}</div>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                {bodyCurrent.page && <button onClick={openDevotional} style={btn(BLUE, true)}><ExternalLink size={12} /> Open the Devotional page</button>}
-                <button onClick={() => toggleLog(bodyCurrent.kind, bodyCurrent.key)} style={btn(bodyCurrent.color, !bodyCurrent.page)}><Check size={12} /> {bodyCurrent.page ? 'Mark done here' : 'Done'}</button>
+                <button onClick={() => toggleLog(bodyCurrent.kind, bodyCurrent.key)} style={btn(bodyCurrent.color, true)}><Check size={12} /> Done</button>
                 <button onClick={() => setSkipped(s => new Set([...s, bodyCurrent.key]))} style={btn(INK2)}><SkipForward size={12} /> Skip</button>
               </div>
             </div>
           ) : (
             <div className="mp-step-r" style={{ padding: '22px 24px', borderRadius: 14, border: `1px solid ${GREEN}66`, background: `${GREEN}10` }}>
-              <div style={{ fontFamily: SERIF, fontSize: 24, color: '#fff' }}>{skippedItems.length ? `Body done, ${skippedItems.length} skipped for later.` : 'Body done.'}</div>
+              <div style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 24, color: '#fff' }}>{skippedItems.length ? `Body done, ${skippedItems.length} skipped for later.` : 'Body done.'}</div>
               <div style={{ fontSize: 12.5, color: GRAY, marginTop: 4 }}>{skippedItems.length ? skippedItems.map(i => i.label).join(' · ') : 'Everything logged. Moving on.'}</div>
             </div>
           )}
@@ -327,69 +389,158 @@ function Protocol({ day, session, onClose, onFinished, onChange, onNavigate }) {
         </div>
       )
     }
-    if (cur.id === 'lights') return (
+    // 3 Morning Reflection
+    if (cur.id === 'reflection') return (
       <div style={{ display: 'grid', gap: 14 }}>
-        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-          {[['email', 'E-mail'], ['slack', 'Slack'], ['bill', 'Bill Pay']].map(([k, label]) => { const r = lightRule(k, lights); const c = LEVEL[r.level]; return (
-            <div key={k} style={{ ...tile(false), cursor: 'default', borderColor: `${c}66` }}>
-              <span style={{ display: 'inline-flex', gap: 10, alignItems: 'center', fontSize: 13.5 }}><span className={r.blink ? 'mp-blink' : ''} style={{ width: 10, height: 10, borderRadius: 99, background: c, boxShadow: r.level === 'gray' ? 'none' : `0 0 0 3px ${c}33, 0 0 10px ${c}66` }} />{label}</span>
-              <span style={{ fontFamily: MONO, fontSize: 10, color: GRAY, letterSpacing: '0.6px' }}>{lights ? r.text : 'reading…'}</span>
-            </div>) })}
-        </div>
-        <button onClick={() => { setStartEmail(v => !v); setEmailDecided(true) }} style={{ ...tile(startEmail, GOLD), flex: '0 1 auto', minWidth: 0 }}>
-          <span style={{ display: 'inline-flex', gap: 8, alignItems: 'center', fontSize: 13.5 }}>{startEmail ? <Check size={13} color={GOLD} /> : <span style={{ width: 13, height: 13, borderRadius: 99, border: '1px solid rgba(255,255,255,0.3)' }} />}Start E-mail Refresh at launch</span>
-          <span style={{ fontFamily: MONO, fontSize: 10, color: GRAY, letterSpacing: '0.6px' }}>{startEmail ? 'the first clock of the day is the inbox' : 'go straight to the loadout instead'}</span>
-        </button>
-      </div>
-    )
-    if (cur.id === 'followups') return (
-      <div style={{ display: 'grid', gap: 10 }}>
-        <div style={{ fontSize: 12, color: GRAY, fontFamily: MONO, letterSpacing: '0.6px' }}>{followups.length} due today or overdue · {queueCount} in the follow-up queue in all</div>
-        {followups.length === 0 && <Panel style={{ marginBottom: 0 }}><div style={{ fontSize: 13.5, color: INK2 }}>Nothing due. {picks.length ? `${picks.length} marked for today, waiting in Load out.` : 'Clean slate.'}</div></Panel>}
-        {followups.map(o => (
-          <div key={o.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', borderRadius: 10, border: `1px solid ${PANEL_BORDER}`, background: 'rgba(255,255,255,0.03)', flexWrap: 'wrap' }}>
-            <div style={{ flex: 1, minWidth: 240 }}><div style={{ fontSize: 14, color: INK }}>{o.title}</div><div style={{ fontFamily: MONO, fontSize: 10, color: o.follow_up_date < day ? RED : GRAY, letterSpacing: '0.6px', marginTop: 2 }}>{o.follow_up_date < day ? `overdue since ${o.follow_up_date}` : 'due today'}</div></div>
-            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-              <button onClick={() => todayFollow(o)} style={btn(GREEN)}>Today</button>
-              <button onClick={() => pushFollow(o, 1)} style={btn(INK2)}>+1d</button>
-              <button onClick={() => pushFollow(o, 3)} style={btn(INK2)}>+3d</button>
-              <button onClick={() => pushFollow(o, 7)} style={btn(INK2)}>+1w</button>
-              <button onClick={() => dropFollow(o)} style={btn(RED)}>Drop</button>
+        {reflectionLog ? (
+          <div className="mp-step-r" style={{ padding: '22px 24px', borderRadius: 14, border: `1px solid ${BLUE}66`, background: `${BLUE}10` }}>
+            <Label>Logged {fmtTime(reflectionLog.at)} · Morning Devotional strikes at the close</Label>
+            <div style={{ ...READ, whiteSpace: 'pre-wrap', marginTop: 6 }}>{reflectionLog.note && reflectionLog.note !== 'Morning Reflection' ? reflectionLog.note : 'Reflection done.'}</div>
+            <div style={{ display: 'flex', gap: 8, marginTop: 14 }}><button onClick={() => toggleLog('devotional', 'devotional')} style={btn(INK2)}><RotateCcw size={11} /> Undo</button><button onClick={openDevotional} style={btn(INK2)}><ExternalLink size={11} /> Devotional page</button></div>
+          </div>
+        ) : (
+          <Panel style={{ marginBottom: 0 }}>
+            <Label>Before the day, the spring</Label>
+            <textarea rows={5} value={reflection} onChange={e => setReflection(e.target.value)} placeholder="The reading, the line that stayed, what you are carrying into the day. A sentence is enough." style={{ width: '100%', boxSizing: 'border-box', ...READ, fontSize: 15.5, padding: '12px 14px', borderRadius: 10, border: `1px solid ${PANEL_BORDER}`, background: 'rgba(255,255,255,0.05)', resize: 'vertical' }} />
+            <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
+              <button onClick={logReflection} style={btn(BLUE, true)}><Check size={12} /> Log the reflection</button>
+              <button onClick={openDevotional} style={btn(INK2)}><ExternalLink size={11} /> Open the Devotional page instead</button>
             </div>
-          </div>
-        ))}
+          </Panel>
+        )}
       </div>
     )
-    if (cur.id === 'loadout') {
-      const cands = [
-        ...picks.map(o => ({ key: `o:${o.id}`, title: o.title, kind: 'Side Mission · today', size: SIZES[(Number(o.effort) || 1) >= 4 ? 'heavy' : (Number(o.effort) || 1) === 3 ? 'medium' : 'light'].label, act: () => loadObjective(o) })),
-        ...tasks.filter(t => !board.some(b => b.id === t.objective_id)).map(t => ({ key: `t:${t.id}`, title: t.text, kind: `${projects.get(t.project_id)?.name || 'Main Mission'}${t.due_date ? ` · due ${t.due_date}` : ''}`, size: 'Light', act: () => loadTask(t) })),
-        ...parked.map(o => ({ key: `p:${o.id}`, title: o.title, kind: `Side Mission${o.due_date ? ` · due ${o.due_date}` : ''}`, size: SIZES[(Number(o.effort) || 1) >= 4 ? 'heavy' : (Number(o.effort) || 1) === 3 ? 'medium' : 'light'].label, act: () => loadObjective(o) })),
-      ]
+    // 4 Today's Digest
+    if (cur.id === 'digest') return (
+      <div style={{ display: 'grid', gap: 14 }}>
+        <div style={{ display: 'flex', gap: 28, flexWrap: 'wrap' }}>
+          <div><Label>Yesterday</Label><div style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 30, color: '#fff', lineHeight: 1.1 }}>{yday ? `${yday.miles} mi` : '…'}</div><div style={{ fontSize: 11, color: GRAY, fontFamily: MONO, letterSpacing: '0.6px' }}>{yday?.badges?.length ? yday.badges.filter(b => b).slice(0, 6).join(' · ') : 'no badges'}</div></div>
+          <div><Label>Today</Label><div style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 30, color: '#fff', lineHeight: 1.1 }}>{events.filter(e => !e.is_all_day).length} meetings</div><div style={{ fontSize: 11, color: GRAY, fontFamily: MONO, letterSpacing: '0.6px' }}>{firstMeeting ? `first at ${fmtTime(firstMeeting.start_at)} · ${firstMeeting.subject}` : 'open calendar'}</div></div>
+          <div><Label>Stamina</Label><div style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 30, color: '#fff', lineHeight: 1.1 }}>{L ? `${L.stamina.free}h` : '…'}</div><div style={{ fontSize: 11, color: GRAY, fontFamily: MONO, letterSpacing: '0.6px' }}>free before 6 PM · {L ? `${L.stamina.meetingsLeft}h of meetings` : ''}</div></div>
+          <div><Label>Follow-ups</Label><div style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 30, color: followups.length ? GOLD : '#fff', lineHeight: 1.1 }}>{followups.length}</div><div style={{ fontSize: 11, color: GRAY, fontFamily: MONO, letterSpacing: '0.6px' }}>due or overdue · {queueCount} in the queue</div></div>
+        </div>
+        <Panel style={{ marginBottom: 0 }}>
+          <Label>Lumen's read{read ? ` · ${fmtTime(read.at)}` : ''}</Label>
+          <div style={{ ...READ, marginTop: 6, whiteSpace: 'pre-wrap' }}>{read ? read.body : 'Lumen has not spoken yet this morning. His read lands at 7:12.'}</div>
+        </Panel>
+        <div style={{ fontSize: 12.5, color: GRAY }}>Answer his questions below, typed or spoken. Your answers are what the Game Plan is built from.</div>
+      </div>
+    )
+    // 5 Today's Game Plan
+    if (cur.id === 'plan') {
+      const blocks = [...(plan?.blocks || [])].sort((a, b) => String(a.start).localeCompare(String(b.start)))
+      const covered = new Set(blocks.filter(b => b.ref?.type === 'event').map(b => b.ref.id))
+      const extraMeetings = events.filter(e => !e.is_all_day && !covered.has(e.id)).map(e => ({ start: chiHHMM(e.start_at), end: chiHHMM(e.end_at), title: e.subject, kind: 'meeting', ref: { type: 'event', id: e.id }, fromCalendar: true }))
+      const timeline = [...blocks, ...extraMeetings].sort((a, b) => String(a.start).localeCompare(String(b.start)))
+      const KIND_C = { meeting: BLUE, work: GOLD, admin: INK2, travel: '#5FC9C0', break: GREEN }
+      const isLoaded = (ref) => ref && board.some(b => b.id === ref.id) || (ref?.type === 'task' && board.some(b => b.id === ref.id))
       return (
-        <div style={{ display: 'grid', gap: 14 }}>
-          <div style={{ display: 'flex', gap: 28, flexWrap: 'wrap' }}>
-            <div><Label>Slots</Label><div style={{ fontFamily: SERIF, fontSize: 26, color: '#fff' }}>{L ? `${L.slots.used} / ${SLOTS}` : '…'}</div></div>
-            <div><Label>Carrying</Label><div style={{ fontFamily: SERIF, fontSize: 26, color: '#fff' }}>{L ? `${L.slots.items} item${L.slots.items === 1 ? '' : 's'}` : '…'}</div></div>
-            <div><Label>Stamina</Label><div style={{ fontFamily: SERIF, fontSize: 26, color: L && L.stamina.loaded > L.stamina.free && !L.stamina.afterHours ? RED : '#fff' }}>{L ? `${L.stamina.loaded}h / ${L.stamina.free}h` : '…'}</div></div>
-          </div>
-          <div><Label>Loaded</Label>
-            {board.length === 0 && <div style={{ fontSize: 13, color: GRAY, marginTop: 6 }}>Nothing loaded yet.</div>}
-            {board.map(i => <div key={i.id} style={{ display: 'flex', gap: 10, alignItems: 'center', padding: '8px 0', borderBottom: `1px solid ${PANEL_BORDER}` }}><Check size={13} color={GREEN} /><span style={{ fontSize: 14, color: INK, flex: 1 }}>{i.title}</span><span style={{ fontFamily: MONO, fontSize: 9.5, color: GRAY, letterSpacing: '1px', textTransform: 'uppercase' }}>{i.kind} · {SIZES[i.size].label}</span></div>)}
-          </div>
-          <div><Label>Due and ready</Label>
-            {cands.length === 0 && <div style={{ fontSize: 13, color: GRAY, marginTop: 6 }}>Nothing else is dated for today. Pull from the Board below after launch if you want more.</div>}
-            {cands.map(c => <div key={c.key} style={{ display: 'flex', gap: 10, alignItems: 'center', padding: '8px 0', borderBottom: `1px solid ${PANEL_BORDER}` }}><span style={{ fontSize: 14, color: INK, flex: 1, minWidth: 200 }}>{c.title}</span><span style={{ fontFamily: MONO, fontSize: 9.5, color: GRAY, letterSpacing: '1px', textTransform: 'uppercase' }}>{c.kind} · {c.size}</span><button disabled={busy} onClick={c.act} style={btn(GOLD)}>Load</button></div>)}
-          </div>
+        <div style={{ display: 'grid', gap: 16 }}>
+          {plan === undefined && <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '1.4px', textTransform: 'uppercase', color: GRAY }}>Reading today's plan</div>}
+          {planBusy && <div className="mp-blink" style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '1.4px', textTransform: 'uppercase', color: GOLD }}><Sparkles size={11} style={{ verticalAlign: '-2px' }} /> Lumen is building the day from your answers, the calendar, and the queue…</div>}
+          {plan === null && !planBusy && <Panel style={{ marginBottom: 0 }}><div style={{ fontSize: 13.5, color: INK2 }}>No plan yet.</div><button onClick={() => runPlan('build')} style={{ ...btn(GOLD, true), marginTop: 10 }}><Sparkles size={12} /> Build the plan</button></Panel>}
+          {plan && (
+            <>
+              <div style={{ ...READ, fontSize: 15.5 }}>{plan.summary}</div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.1fr) minmax(0, 1fr)', gap: 14 }} className="mp-plan-grid">
+                <Panel style={{ marginBottom: 0 }}>
+                  <Label>Agenda · Chicago</Label>
+                  {timeline.map((b, i) => (
+                    <div key={`${b.start}-${i}`} style={{ display: 'grid', gridTemplateColumns: '86px 1fr auto', gap: 10, alignItems: 'start', padding: '7px 0', borderTop: i ? `1px solid ${PANEL_BORDER}` : 'none' }}>
+                      <div style={{ fontFamily: MONO, fontSize: 11, color: GRAY, letterSpacing: '0.4px', paddingTop: 2 }}>{b.start}{b.end ? `–${b.end}` : ''}</div>
+                      <div style={{ minWidth: 0 }}><div style={{ fontSize: 13.5, color: INK }}>{b.title}</div>{b.note && <div style={{ fontSize: 11.5, color: GRAY, marginTop: 2 }}>{b.note}</div>}</div>
+                      <span style={{ ...S.chip('transparent', KIND_C[b.kind] || INK2), border: `1px solid ${(KIND_C[b.kind] || INK2)}55`, fontFamily: MONO, fontSize: 8.5, letterSpacing: '1px' }}>{b.kind}{b.fromCalendar ? ' · calendar' : ''}</span>
+                    </div>
+                  ))}
+                  {!timeline.length && <div style={{ fontSize: 13, color: GRAY }}>Nothing on the agenda.</div>}
+                </Panel>
+                <div style={{ display: 'grid', gap: 14, alignContent: 'start' }}>
+                  <Panel style={{ marginBottom: 0 }}>
+                    <Label>Priorities · load onto the Board</Label>
+                    {(plan.priorities || []).map(p => { const loaded = isLoaded(p.ref); return (
+                      <div key={`${p.rank}-${p.title}`} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '8px 0', borderTop: `1px solid ${PANEL_BORDER}` }}>
+                        <span style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 18, color: GOLD, width: 18, flexShrink: 0 }}>{p.rank}</span>
+                        <div style={{ flex: 1, minWidth: 0 }}><div style={{ fontSize: 13.5, color: INK }}>{p.title}</div><div style={{ fontSize: 11.5, color: GRAY, marginTop: 2 }}>{p.why}{p.block ? ` · at ${p.block}` : ''}{p.size ? ` · ${SIZES[p.size]?.label || p.size}` : ''}</div></div>
+                        {p.ref && (loaded ? <span style={{ ...S.chip('transparent', GREEN), border: `1px solid ${GREEN}55`, fontFamily: MONO, fontSize: 8.5, letterSpacing: '1px' }}>loaded</span> : <button disabled={busy} onClick={() => loadRef(p.ref, p.title)} style={btn(GOLD)}>Load</button>)}
+                      </div>) })}
+                    {!(plan.priorities || []).length && <div style={{ fontSize: 13, color: GRAY }}>No priorities named.</div>}
+                    <div style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '0.8px', color: GRAY, marginTop: 8 }}>Board · {L ? `${L.slots.used}/${SLOTS} slots` : '…'}{(plan.parked || []).length ? ` · parked: ${plan.parked.join(', ')}` : ''}</div>
+                  </Panel>
+                  {(plan.watch || []).length > 0 && <Panel style={{ marginBottom: 0 }}><Label>Watch</Label>{plan.watch.map((w, i) => <div key={i} style={{ fontSize: 13, color: INK2, padding: '3px 0' }}>{w}</div>)}</Panel>}
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <input value={adjust} onChange={e => setAdjust(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && adjust.trim()) runPlan('adjust', adjust.trim()) }} placeholder='Change it in words: "move the Highmark work to 3 PM", "drop Tim until Monday", "make NN2 prep the first priority". Enter applies.' disabled={planBusy} style={{ flex: 1, fontSize: 13.5, padding: '10px 12px', borderRadius: 10, border: `1px solid ${GOLD}55`, background: 'rgba(230,181,79,0.05)', color: INK }} />
+                <button onClick={() => adjust.trim() && runPlan('adjust', adjust.trim())} disabled={planBusy || !adjust.trim()} style={btn(GOLD, true, { opacity: planBusy || !adjust.trim() ? 0.5 : 1 })}><RefreshCw size={12} /> Rewrite</button>
+                <button onClick={() => runPlan('build')} disabled={planBusy} title="Start the plan over from the calendar and your answers" style={btn(INK2)}>Rebuild</button>
+              </div>
+            </>
+          )}
+          {followups.length > 0 && (
+            <Panel style={{ marginBottom: 0 }}>
+              <Label>Follow-ups due · {followups.length} of {queueCount} in the queue</Label>
+              {followups.map(o => (
+                <div key={o.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 0', borderTop: `1px solid ${PANEL_BORDER}`, flexWrap: 'wrap' }}>
+                  <div style={{ flex: 1, minWidth: 240 }}><div style={{ fontSize: 13.5, color: INK }}>{o.title}</div><div style={{ fontFamily: MONO, fontSize: 9.5, color: o.follow_up_date < day ? RED : GRAY, letterSpacing: '0.6px', marginTop: 2 }}>{o.follow_up_date < day ? `overdue since ${o.follow_up_date}` : 'due today'}</div></div>
+                  <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
+                    <button onClick={() => todayFollow(o)} style={btn(GREEN)}>Today · load</button>
+                    <button onClick={() => pushFollow(o, 1)} style={btn(INK2)}>+1d</button><button onClick={() => pushFollow(o, 3)} style={btn(INK2)}>+3d</button><button onClick={() => pushFollow(o, 7)} style={btn(INK2)}>+1w</button>
+                    <button onClick={() => dropFollow(o)} style={btn(RED)}>Drop</button>
+                  </div>
+                </div>
+              ))}
+            </Panel>
+          )}
         </div>
       )
     }
-    // launch
-    const options = [...(startEmail ? [{ id: 'email', title: 'E-mail Refresh', sub: 'Recurring · Business Administration' }] : []), ...board.map(i => ({ id: i.id, title: i.title, sub: `${i.kind} · ${SIZES[i.size].label}` }))]
-    const sel = first ?? (startEmail ? 'email' : board[0]?.id) ?? null
+    // 6 Systems Check
+    if (cur.id === 'systems') {
+      const totalMin = SYSTEMS.reduce((s, x) => s + (workToGreen(x.key, lights) || 0), 0)
+      return (
+        <div style={{ display: 'grid', gap: 14 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: 10 }}>
+            {SYSTEMS.map(sys => { const r = lightRule(sys.key, lights); const c = LEVEL[r.level]; const mins = workToGreen(sys.key, lights); const running = sysRunning(sys.slug); const s = sysSession(sys.slug); const todayMin = ((Number(s?.hours) || 0) * 60) + (running ? (now - new Date(s.started_at).getTime()) / 60000 : 0); return (
+              <div key={sys.key} style={{ ...tile(running, running ? GREEN : c), cursor: 'default', borderColor: running ? GREEN : `${c}88`, minWidth: 0 }}>
+                <span style={{ display: 'inline-flex', gap: 10, alignItems: 'center', fontSize: 13.5 }}><span className={r.blink ? 'mp-blink' : ''} style={{ width: 10, height: 10, borderRadius: 99, background: c, boxShadow: r.level === 'gray' ? 'none' : `0 0 0 3px ${c}33` }} />{sys.label}</span>
+                <span style={{ fontFamily: MONO, fontSize: 10, color: GRAY, letterSpacing: '0.6px' }}>{lights ? r.text : 'reading…'}</span>
+                <span style={{ fontFamily: MONO, fontSize: 10, color: mins === 0 ? GREEN : c, letterSpacing: '0.6px' }}>{mins == null ? 'no estimate' : mins === 0 ? 'green' : `about ${mins} min to green`}</span>
+                {sysChoice === 'now' && (
+                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 4 }}>
+                    {running ? <button onClick={() => sysStop(sys)} style={btn(GREEN, true)}><Square size={10} fill="#0A1B2B" /> Stop · {fmtClock(todayMin)}</button> : <button onClick={() => sysStart(sys)} style={btn(INK2)}><Play size={10} /> Start{todayMin > 0 ? ` · ${fmtClock(todayMin)} today` : ''}</button>}
+                    {sys.key === 'slack' && <button onClick={markSlackClean} style={btn(GOLD)}><Check size={10} /> Mark clean</button>}
+                  </div>
+                )}
+              </div>) })}
+          </div>
+          <Panel style={{ marginBottom: 0 }}>
+            <div style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 20, color: '#fff' }}>Would you like to bring your lights to green now, or later?</div>
+            <div style={{ fontSize: 12.5, color: GRAY, marginTop: 4 }}>{totalMin ? `About ${totalMin} minutes of tending in all.` : 'Everything is green.'} Timers here log to Harvest the same way the Console does; miles follow the usual rules (Clean Slack pays at the close).</div>
+            <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+              <button onClick={() => setSysChoice('now')} style={btn(GREEN, sysChoice === 'now')}><Play size={11} /> Now</button>
+              <button onClick={() => { setSysChoice('later'); setReconcile(null) }} style={btn(INK2, sysChoice === 'later')}>Later</button>
+            </div>
+          </Panel>
+          {sysChoice === 'now' && (
+            <Panel style={{ marginBottom: 0 }}>
+              <Label>When you are done</Label>
+              <div style={{ fontSize: 13, color: INK2, lineHeight: 1.6 }}>Say so and Lumen checks whether anything that came in changed the shape of the day you planned.</div>
+              <div style={{ display: 'flex', gap: 8, marginTop: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+                <button onClick={() => runPlan('reconcile')} disabled={planBusy} style={btn(GOLD, true, { opacity: planBusy ? 0.6 : 1 })}><RefreshCw size={12} /> {planBusy ? 'Reconciling…' : "I'm done · reconcile the day"}</button>
+                {reconcile && <span style={{ ...READ, fontSize: 14 }}>{reconcile}</span>}
+              </div>
+            </Panel>
+          )}
+          {sysChoice === 'later' && <div style={{ fontSize: 13, color: GRAY }}>Noted. The lights stay on the Console; tend them when you have the window.</div>}
+        </div>
+      )
+    }
+    // 7 Launch
+    const options = [...(lights && lightRule('email', lights).level !== 'green' ? [{ id: 'email', title: 'E-mail Refresh', sub: 'Recurring · Business Administration' }] : []), ...board.map(i => ({ id: i.id, title: i.title, sub: `${i.kind} · ${SIZES[i.size].label}` }))]
+    const sel = first ?? board[0]?.id ?? null
     return (
       <div style={{ display: 'grid', gap: 14 }}>
-        <div style={{ fontSize: 13.5, color: INK2, lineHeight: 1.6 }}>{board.length} loaded · {logs.length} logged · protocol {fmtClock(elapsed)}. Pick the first clock and launch.</div>
+        <div style={{ ...READ, fontSize: 15 }}>{board.length} loaded in {L ? `${L.slots.used}/${SLOTS}` : '…'} slots · {logs.length} logged · protocol {fmtClock(elapsed)}{plan ? ' · plan set' : ''}. Pick the first clock and launch.</div>
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
           {options.length === 0 && <div style={{ fontSize: 13, color: GRAY }}>Nothing to equip. Launch stops the protocol timer and leaves the Board open.</div>}
           {options.map(o => <button key={o.id} onClick={() => setFirst(o.id)} style={tile(sel === o.id, GOLD)}><span style={{ display: 'inline-flex', gap: 8, alignItems: 'center', fontSize: 13.5 }}>{sel === o.id ? <Play size={13} color={GOLD} fill={GOLD} /> : <Play size={13} color={INK2} />}{o.title}</span><span style={{ fontFamily: MONO, fontSize: 10, color: GRAY, letterSpacing: '0.6px' }}>{o.sub}</span></button>)}
@@ -398,6 +549,7 @@ function Protocol({ day, session, onClose, onFinished, onChange, onNavigate }) {
     )
   }
 
+  const stripPrompt = cur.id === 'digest' ? 'answer his questions here' : cur.id === 'plan' ? 'or talk the day through with him' : null
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 250, overflowY: 'auto', background: 'linear-gradient(180deg, #0F2A40 0%, #0A1B2B 100%)' }}>
       <style>{`
@@ -407,31 +559,31 @@ function Protocol({ day, session, onClose, onFinished, onChange, onNavigate }) {
         @keyframes mp-blink { 0%,100% { opacity: 1 } 50% { opacity: .15 } }
         .mp-step-r { animation: mp-in-r .34s cubic-bezier(.2,.7,.2,1) both } .mp-step-l { animation: mp-in-l .34s cubic-bezier(.2,.7,.2,1) both }
         .mp-dot-now { animation: mp-pulse 1.6s ease-out infinite } .mp-blink { animation: mp-blink 1s ease-in-out infinite }
+        @media (max-width: 900px) { .mp-plan-grid { grid-template-columns: 1fr !important } }
       `}</style>
       <div style={{ ...S.page, padding: '18px 24px 80px' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 22 }}>
           <button onClick={onClose} style={btn(INK2)}><ArrowLeft size={13} /> Board</button>
           <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '1.4px', textTransform: 'uppercase', color: GOLD }}>Morning Protocol · running {fmtClock(elapsed)}</div>
         </div>
-        {/* progress rail */}
         <div style={{ display: 'grid', gridTemplateColumns: `repeat(${STEPS.length}, 1fr)`, gap: 6, marginBottom: 28 }}>
           {STEPS.map((s, i) => { const done = i < step, nowS = i === step; const c = done ? GREEN : nowS ? GOLD_BRIGHT : 'rgba(255,255,255,0.18)'; return (
             <button key={s.id} onClick={() => go(i)} style={{ background: 'transparent', border: 'none', padding: 0, cursor: 'pointer', textAlign: 'left' }}>
               <div style={{ height: 3, borderRadius: 2, background: c, transition: 'background .4s' }} />
               <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginTop: 9 }}>
                 <span className={nowS ? 'mp-dot-now' : ''} style={{ width: 9, height: 9, borderRadius: 99, background: c, flex: '0 0 9px' }} />
-                <span style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '1.2px', textTransform: 'uppercase', color: done || nowS ? INK : GRAY }}>{i + 1} · {s.title}</span>
+                <span style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '1.2px', textTransform: 'uppercase', color: done || nowS ? INK : GRAY, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{i + 1} · {s.title}</span>
               </div>
             </button>) })}
         </div>
         <div key={step} className={dir > 0 ? 'mp-step-r' : 'mp-step-l'}>
-          <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '1.6px', textTransform: 'uppercase', color: GRAY }}>Step {step + 1} of {STEPS.length}</div>
+          <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '1.6px', textTransform: 'uppercase', color: BLUE }}>Step {step + 1} of {STEPS.length}</div>
           <h2 style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 32, color: '#fff', margin: '6px 0 2px', letterSpacing: '-0.01em' }}>{cur.title}</h2>
           <div style={{ fontSize: 13, color: GRAY, marginBottom: 22 }}>{cur.sub}</div>
           {content()}
         </div>
-        {msg && <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '1px', color: msg.startsWith('Could not') || msg.startsWith('Will not') || msg.startsWith('Launch failed') || msg.startsWith('Harvest') ? RED : GOLD, textTransform: 'uppercase', marginTop: 16 }}>{msg}</div>}
-        <LumenStrip day={day} where={`Morning Protocol · step ${step + 1} ${cur.title}`} onReplied={loadAll} />
+        {msg && <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '1px', color: /^(Could not|Will not|Launch failed|Harvest|Timer stopped)/.test(msg) ? RED : GOLD, textTransform: 'uppercase', marginTop: 16 }}>{msg}</div>}
+        <LumenStrip day={day} where={`Morning Protocol · step ${step + 1} ${cur.title}`} onReplied={loadAll} prompt={stripPrompt} />
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, marginTop: 24 }}>
           <button onClick={() => go(step - 1)} disabled={step === 0} style={btn(INK2, false, { opacity: step === 0 ? 0.35 : 1 })}><ArrowLeft size={13} /> Back</button>
           {step < STEPS.length - 1

@@ -93,7 +93,8 @@ export async function speak(text, { format = 'mp3_44100_128', model = 'eleven_mu
 export async function transcribe(bytes, mime) {
   const form = new FormData()
   form.append('model', 'whisper-1')
-  form.append('file', new Blob([bytes], { type: mime }), mime.includes('ogg') ? 'note.ogg' : 'note.m4a')
+  const ext = mime.includes('ogg') ? 'ogg' : mime.includes('webm') ? 'webm' : mime.includes('wav') ? 'wav' : mime.includes('mpeg') || mime.includes('mp3') ? 'mp3' : 'm4a'
+  form.append('file', new Blob([bytes], { type: mime }), `note.${ext}`)
   const res = await fetch('https://api.openai.com/v1/audio/transcriptions', {
     method: 'POST', headers: { Authorization: `Bearer ${process.env.OPENAI_API_KEY}` }, body: form,
   })
