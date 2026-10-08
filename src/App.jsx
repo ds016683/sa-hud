@@ -4,7 +4,8 @@ import {
   FileText, Wallet, CreditCard, ListChecks, Compass, Waves, CalendarDays, BookOpen, Activity, Award, Wrench, GraduationCap, Sparkles, Archive as ArchiveIcon,
 } from 'lucide-react'
 import { getSession, onAuthStateChange, signOut } from './lib/auth'
-import { statusFor, greetingFor } from './constants/saDesign'
+import { statusFor } from './constants/saDesign'
+import { fetchProtocolState } from './lib/protocol'
 import useGameState from './hooks/useGameState'
 import LoginPage from './components/LoginPage'
 import ProjectsPage from './components/ProjectsPage'
@@ -125,8 +126,23 @@ function Sidebar({ active, onChange, onSignOut }) {
   )
 }
 
+// The protocol pill reads what David is doing from the Ledger every 30s.
+function useProtocol() {
+  const [p, setP] = useState(null)
+  useEffect(() => {
+    let alive = true
+    const pull = () => fetchProtocolState().then(x => { if (alive) setP(x) }).catch(() => {})
+    const t0 = setTimeout(pull, 50)
+    const t = setInterval(pull, 30_000)
+    const onFocus = () => pull()
+    window.addEventListener('focus', onFocus)
+    return () => { alive = false; clearTimeout(t0); clearInterval(t); window.removeEventListener('focus', onFocus) }
+  }, [])
+  return p
+}
+
 function Topbar({ active, now, sov, onBack }) {
-  const greet = greetingFor(now.getHours())
+  const proto = useProtocol()
   const navItem = NAV_ITEMS.find((n) => n.id === active) || {}
   const st = statusFor(sov)
   const ctx = navItem.group
@@ -149,10 +165,12 @@ function Topbar({ active, now, sov, onBack }) {
         <div className="ttl">{title}</div>
       </div>
       <div className="spacer"></div>
-      <div className="sa-protocol-pill">
-        <span className="dot"></span>
+      <div className="sa-protocol-pill" title={proto ? `${proto.title}${proto.detail ? ` · ${proto.detail}` : ''}` : 'reading the Ledger'} style={{ borderColor: proto ? `${proto.color}66` : undefined, maxWidth: 420 }}>
+        <span className="dot" style={{ background: proto?.color, boxShadow: proto && proto.id !== 'off' ? `0 0 0 3px ${proto.color}33` : 'none', animation: proto?.blink ? 'rcblink 1s ease-in-out infinite' : 'none' }}></span>
         <span className="sa-tele">PROTOCOL</span>
-        <b style={{ fontSize: '12px' }}>{greet.g}</b>
+        <b style={{ fontSize: '12px', whiteSpace: 'nowrap' }}>{proto ? proto.label : '…'}</b>
+        {proto && proto.id !== 'off' && <span style={{ fontSize: 11, color: 'rgba(234,241,248,0.6)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 200 }}>· {proto.title}</span>}
+        {proto?.pct != null && <span style={{ display: 'inline-block', width: 54, height: 4, borderRadius: 99, background: 'rgba(255,255,255,0.1)', overflow: 'hidden', marginLeft: 6 }}><span style={{ display: 'block', width: `${proto.pct}%`, height: '100%', background: proto.color }} /></span>}
       </div>
       <div className="sa-mini-sov" title="Sovereignty">
         <span className="sa-tele" style={{ color: 'var(--sa-ink-3)' }}>SOV</span>
