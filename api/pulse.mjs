@@ -14,7 +14,7 @@
 // their content rides in the morning read)
 // ?dry=1 composes and reports without sending or recording.
 
-export const config = { maxDuration: 120 }
+export const config = { maxDuration: 300 }
 
 import { sb, sbWrite, chiToday } from './_ledger.mjs'
 import { think, remember, alreadySeen } from './_lumen-brain.mjs'
@@ -159,12 +159,21 @@ export default async function handler(req, res) {
     // ---- mail: unread messages in lumen@ from David are conversation turns;
     // Lumen answers from its own address. Anything else is left unread.
     if (kind === 'sweep' || kind === 'mail') {
+      // The mailbox went live 10/8. Anything older than MAIL_FROM is backlog from
+      // the old receipt ingest: mark it read and move on. Forwarded receipts and
+      // invoices are never conversation turns either. Three answers per sweep.
+      const MAIL_FROM = '2026-10-07T00:00:00Z'
+      const RECEIPT_RE = /receipt|invoice|payment succeeded|statement|your order|subscription renewed/i
       let msgs = []
-      try { msgs = await readUnread(10) } catch (e) { out.push({ kind: 'mail', skipped: String(e.message || e).slice(0, 160) }) }
+      try { msgs = await readUnread(25) } catch (e) { out.push({ kind: 'mail', skipped: String(e.message || e).slice(0, 160) }) }
+      let answered = 0, swept = 0
       for (const m of msgs) {
         const from = String(m.from?.emailAddress?.address || '').toLowerCase()
         if (!mailAllowed().includes(from)) continue
+        if (String(m.receivedDateTime || '') < MAIL_FROM || RECEIPT_RE.test(m.subject || '')) { if (!dry) await markRead(m.id).catch(() => null); swept++; continue }
+        if (answered >= 3) break
         if (await alreadySeen('email', m.id)) continue
+        answered++
         const text = `Subject: ${m.subject || '(no subject)'}\n\n${String(m.body?.content || m.bodyPreview || '').trim().slice(0, 8000)}`
         if (dry) { out.push({ kind: 'mail', item: m.subject, would_answer: text.slice(0, 200) }); continue }
         await remember({ channel: 'email', direction: 'in', kind: 'text', body: text, external_id: m.id, meta: { from, subject: m.subject, conversation: m.conversationId } })
@@ -175,6 +184,7 @@ export default async function handler(req, res) {
         await remember({ channel: 'email', direction: 'out', kind: 'text', body: reply, meta: { to: from, subject: m.subject } })
         out.push({ kind: 'mail', item: m.subject, sent: true })
       }
+      if (swept) out.push({ kind: 'mail', swept, note: 'backlog and receipts marked read, not answered' })
     }
     // ---- meeting signals: email today that touches an upcoming meeting
     // (can't make it, running late, move it). Ask David once per meeting.
