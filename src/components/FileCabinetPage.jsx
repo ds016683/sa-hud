@@ -40,10 +40,10 @@ function IconTile({ Icon: TileIcon, label, sub, color, onOpen }) {
   )
 }
 // A car: its folder name is its name, cover.jpg in the folder is its picture.
-function CarCard({ folder, onOpen }) {
+function CarCard({ folder, onOpen, tick }) {
   const [img, setImg] = useState(null)
   const [count, setCount] = useState(null)
-  useEffect(() => { let alive = true; (async () => { try { const { files } = await list(folder.path); if (!alive) return; setCount(files.filter(f => f.name !== CARS.cover).length); if (files.some(f => f.name === CARS.cover)) setImg(await openUrl(`${folder.path}/${CARS.cover}`)) } catch { /* no cover */ } })(); return () => { alive = false } }, [folder.path])
+  useEffect(() => { let alive = true; (async () => { try { const { files } = await list(folder.path); if (!alive) return; setCount(files.filter(f => f.name !== CARS.cover).length); if (files.some(f => f.name === CARS.cover)) setImg(await openUrl(`${folder.path}/${CARS.cover}`)) } catch { /* no cover */ } })(); return () => { alive = false } }, [folder.path, tick])
   return (
     <button onClick={() => onOpen(folder.path)} style={{ display: 'flex', flexDirection: 'column', borderRadius: 16, overflow: 'hidden', cursor: 'pointer', border: `1px solid ${GOLD}55`, background: 'rgba(255,255,255,0.03)', color: INK, padding: 0, textAlign: 'left' }}>
       <div style={{ height: 190, background: img ? `url(${img}) center/cover no-repeat` : 'rgba(255,255,255,0.04)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -65,11 +65,14 @@ export default function FileCabinetPage() {
   const [hits, setHits] = useState(null)
   const [msg, setMsg] = useState(null)
   const [busy, setBusy] = useState(false)
+  const [tick, setTick] = useState(0)
   const go = (p) => { setPath(p); setHits(null); try { localStorage.setItem('cabinet-path', p) } catch { /* no-op */ } }
   const refresh = useCallback(async () => {
-    try { const [r, c] = await Promise.all([list(''), list(path)]); setRoot(r); setCur(c) } catch (e) { setMsg(`Could not read: ${e.message}`) }
+    try { const [r, c] = await Promise.all([list(''), list(path)]); setRoot(r); setCur(c); setTick(t => t + 1) } catch (e) { setMsg(`Could not read: ${e.message}`) }
   }, [path])
   useEffect(() => { Promise.resolve().then(refresh) }, [refresh])
+  // Lumen files things while the page is open: re-read on focus and every minute.
+  useEffect(() => { const onFocus = () => refresh(); window.addEventListener('focus', onFocus); const t = setInterval(refresh, 60_000); return () => { window.removeEventListener('focus', onFocus); clearInterval(t) } }, [refresh])
   const act = async (fn, after) => { setBusy(true); try { await fn(); if (after) setMsg(after); await refresh() } catch (e) { setMsg(`Could not do that: ${e.message}`) } finally { setBusy(false) } }
   const open = async (p) => { try { window.open(await openUrl(p), '_blank', 'noopener') } catch (e) { setMsg(`Could not open: ${e.message}`) } }
   const newFolder = () => { const name = window.prompt('New folder name', ''); if (!name?.trim()) return; act(() => makeFolder(`${path ? path + '/' : ''}${name.trim()}`), `Folder ${name.trim()} made`) }
@@ -136,7 +139,7 @@ export default function FileCabinetPage() {
             <div style={{ marginBottom: 18 }}>
               {cur.folders.length === 0 && <div style={{ fontSize: 13, color: GRAY, padding: '10px 0' }}>{path === CARS.past ? 'No cars archived yet.' : 'No cars yet. Make a folder named for the car.'}</div>}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 14 }}>
-                {cur.folders.map(f => <CarCard key={f.path} folder={f} onOpen={go} />)}
+                {cur.folders.map(f => <CarCard key={f.path} folder={f} onOpen={go} tick={tick} />)}
               </div>
             </div>
           )}
