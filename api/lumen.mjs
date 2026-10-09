@@ -14,6 +14,7 @@ export const config = { maxDuration: 800 }
 import { think, remember, alreadySeen, claimInbound, fillInbound } from './_lumen-brain.mjs'
 import { flushPending } from './pulse.mjs'
 import { sbWrite, sb as sbRead, putFile, granolaTranscript, chiToday as chiTodayStr } from './_ledger.mjs'
+import { extractText, clip } from './_docs.mjs'
 
 // Look at a photo. An InBody results screen yields its four numbers. A
 // document (a worksheet, an offer, a receipt, a form, a screen of figures)
@@ -313,12 +314,25 @@ export default async function handler(req, res) {
             }
           } catch (e) { text = `[photo not filed: ${String(e.message || e).slice(0, 100)}] ${seen.text}` }
         }
+      } else if (m.type === 'document') {
+        // A PDF, a Word file, a spreadsheet sent on WhatsApp: filed under
+        // inbox/<day>/ and read in full (text extracted) so Lumen can work it.
+        kind = 'document'
+        try {
+          const { bytes, mime } = await waDownloadMedia(m.document.id)
+          const name = String(m.document.filename || `document-${m.document.id.slice(-6)}`).replace(/[^A-Za-z0-9._ -]/g, '_')
+          const path = `inbox/${chiTodayStr()}/${new Date().toISOString().slice(11, 19).replace(/:/g, '')}-${name}`
+          await putFile(path, bytes, mime || m.document.mime_type || 'application/octet-stream')
+          let body = ''
+          try { body = clip(await extractText(bytes, name, mime || m.document.mime_type || ''), 20000) } catch (e) { body = `(could not extract text: ${String(e.message || e).slice(0, 120)})` }
+          text = `[document "${name}" filed at files/${path}${m.document.caption ? `; David's caption: ${m.document.caption}` : ''}]\n${body}`
+        } catch (e) { text = `[document message could not be fetched: ${String(e.message || e).slice(0, 140)}]` }
       } else {
         text = `[${m.type} message]`
       }
       // lumen_messages.kind has a check constraint that does not include 'image';
       // the message type lives in meta.type, so photos are stored as text rows.
-      await fillInbound('whatsapp', m.id, { kind: kind === 'image' ? 'text' : kind, body: text, meta: { from, type: m.type } })
+      await fillInbound('whatsapp', m.id, { kind: (kind === 'image' || kind === 'document') ? 'text' : kind, body: text, meta: { from, type: m.type } })
 
       // His reply opened the window: deliver anything Lumen knocked about first.
       let flushed = []

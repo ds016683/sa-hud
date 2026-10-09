@@ -146,14 +146,16 @@ export default async function handler(req, res) {
           `[PULSE] Evening. ${open.length} of today's meetings ${open.length === 1 ? 'is' : 'are'} not closed out: ${lines.join('; ')}. In ONE short message, name them and ask David to reply once with anything worth keeping (follow-ups, notes) or "none" to close them all as attended. When he answers, use close_meeting per meeting (follow-ups as a list, notes as special_notes); meetings he says he skipped, leave open and say so. Do not ask separate questions per meeting.` }))
       }
     }
-    // ---- agenda from notes: when a meeting's Granola notes land, Lumen reads
-    // them once and touches the board (follow-ups, dates), then tells David.
+    // ---- notes landing: when Granola notes for a meeting today reach the
+    // Ledger (the sync runs every 30 minutes, so 30 to 60 minutes after the
+    // meeting ends), Lumen reads them once, works the board, and sends David
+    // the specific things he said he would do. One message per note.
     if (kind === 'sweep' || kind === 'notes') {
-      const sessions = await sb(`meeting_sessions?select=event_id,subject,notes_meeting_id,notes_summary,closed_at,agenda_touched_at&day=eq.${TODAY}&notes_meeting_id=not.is.null&agenda_touched_at=is.null&limit=4`).catch(() => [])
-      for (const ses of sessions) {
-        if (!dry) await sbWrite('PATCH', `meeting_sessions?event_id=eq.${encodeURIComponent(ses.event_id)}`, { agenda_touched_at: new Date().toISOString() }, 'return=minimal')
-        out.push(await say({ kind: 'notes', day: TODAY, item: ses.event_id, dry, instruction:
-          `[PULSE] Granola notes just landed for today's meeting "${ses.subject}". Here they are:\n\n${String(ses.notes_summary || '').slice(0, 6000)}\n\nWork the board from them: for each action item that is David's (not someone else's), add_objective in state follow_up with a sensible follow_up_date (a week out unless the notes name a date) and description "From ${ses.subject} notes"; if the notes move a deadline on something already on his board (check get_objectives), use set_due. Skip anything already on the board. Then, ONLY if you added or moved something, message David two or three plain sentences: what you put on the board from this meeting, any date you moved, and nothing else. If there was nothing for him to do, reply with exactly the single word SILENT and nothing else; it will not be sent.` }))
+      const notes = await sb(`granola_meetings?select=id,title,summary,action_items,key_decisions,meeting_date&meeting_date=eq.${TODAY}&summary=not.is.null&order=granola_created_at.asc&limit=6`).catch(() => [])
+      for (const n of notes) {
+        if (!dry && await alreadySent('notes', TODAY, n.id)) continue
+        out.push(await say({ kind: 'notes', day: TODAY, item: n.id, dry, instruction:
+          `[PULSE] Granola notes just landed for today's meeting "${n.title}". Here they are:\n\n${String(n.summary || '').slice(0, 6000)}${n.action_items ? `\n\nAction items as Granola saw them: ${JSON.stringify(n.action_items).slice(0, 1500)}` : ''}\n\nDo two things. First, work the board: for each action item that is David's own (not someone else's), add_objective in state follow_up with a sensible follow_up_date (a week out unless the notes name a date) and description "From ${n.title} notes"; if the notes move a deadline on something already on his board (check get_objectives), use set_due; skip anything already on the board. Second, message David: a short list of the specific things HE said he would do in this meeting, in his words where the notes have them, each with the date if one was named, then one line on what you put on the board. If the notes show nothing he committed to, say so in one line.` }))
       }
     }
     // ---- mail: unread messages in lumen@ from David are conversation turns;
