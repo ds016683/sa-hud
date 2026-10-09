@@ -282,6 +282,26 @@ export const TOOLS = [
     inputSchema: { type: 'object', properties: { query: { type: 'string' }, limit: { type: 'integer', description: 'default 25' } }, required: [] },
   },
   {
+    name: 'list_folder',
+    description: "The File Cabinet (bucket 'files'): list one folder's subfolders and files. The structure: 'Personal/…', 'Third Horizon/…', and 'inbox/<day>/' where everything David sends you lands. Empty path = the top drawers.",
+    inputSchema: { type: 'object', properties: { path: { type: 'string' } }, required: [] },
+  },
+  {
+    name: 'move_file',
+    description: "Move or rename a file in the File Cabinet: from (exact path, e.g. from list_folder or the filed-at note on a document) to the new full path (folder/name). Use when David says where something belongs ('file the Porsche documents under Personal/Vehicles'). Make the folder first if it does not exist.",
+    inputSchema: { type: 'object', properties: { from: { type: 'string' }, to: { type: 'string' } }, required: ['from', 'to'] },
+  },
+  {
+    name: 'make_folder',
+    description: 'Make a folder in the File Cabinet (full path, e.g. Personal/Vehicles/GLS 450 trade).',
+    inputSchema: { type: 'object', properties: { path: { type: 'string' } }, required: ['path'] },
+  },
+  {
+    name: 'delete_file',
+    description: 'Remove a file from the File Cabinet. Only on David\'s explicit word, never on your own judgement.',
+    inputSchema: { type: 'object', properties: { path: { type: 'string' } }, required: ['path'] },
+  },
+  {
     name: 'send_file',
     description: "Post a document from David's file store into his WhatsApp chat so he can open it. path from search_files (exact). Say what you sent in one line after.",
     inputSchema: { type: 'object', properties: { path: { type: 'string' }, caption: { type: 'string' } }, required: ['path'] },
@@ -678,6 +698,31 @@ export async function callTool(name, args = {}) {
       const all = await listFiles('')
       const hits = all.filter(f => q.every(w => f.path.toLowerCase().includes(w))).slice(0, Math.min(Number(args.limit) || 25, 100))
       return JSON.stringify(hits, null, 2)
+    }
+    case 'list_folder': {
+      const pre = String(args.path || '').replace(/^\/+|\/+$/g, '')
+      const res = await fetch(`${URL_BASE}/storage/v1/object/list/files`, { method: 'POST', headers: { ...sbHeaders(), 'Content-Type': 'application/json' }, body: JSON.stringify({ prefix: pre, limit: 500, sortBy: { column: 'name', order: 'asc' } }) })
+      const rows = res.ok ? await res.json() : []
+      return JSON.stringify({ path: pre || '(top)', folders: rows.filter(r => r.id === null).map(r => `${pre ? pre + '/' : ''}${r.name}`), files: rows.filter(r => r.id !== null && r.name !== '.keep').map(r => ({ path: `${pre ? pre + '/' : ''}${r.name}`, size: r.metadata?.size || 0, updated_at: r.updated_at })) })
+    }
+    case 'move_file': {
+      const from = String(args.from || '').replace(/^\/+/, ''), to = String(args.to || '').replace(/^\/+/, '')
+      if (!from || !to) throw new Error('from and to required')
+      const res = await fetch(`${URL_BASE}/storage/v1/object/move`, { method: 'POST', headers: { ...sbHeaders(), 'Content-Type': 'application/json' }, body: JSON.stringify({ bucketId: 'files', sourceKey: from, destinationKey: to }) })
+      if (!res.ok) throw new Error(`move -> ${res.status}: ${(await res.text()).slice(0, 160)}`)
+      return JSON.stringify({ ok: true, from, to })
+    }
+    case 'make_folder': {
+      const p = String(args.path || '').replace(/^\/+|\/+$/g, '')
+      if (!p) throw new Error('path required')
+      await putFile(`${p}/.keep`, new TextEncoder().encode(''), 'text/plain')
+      return JSON.stringify({ ok: true, folder: p })
+    }
+    case 'delete_file': {
+      const p = String(args.path || '').replace(/^\/+/, '')
+      const res = await fetch(`${URL_BASE}/storage/v1/object/files/${p.split('/').map(encodeURIComponent).join('/')}`, { method: 'DELETE', headers: sbHeaders() })
+      if (!res.ok) throw new Error(`delete -> ${res.status}`)
+      return JSON.stringify({ ok: true, removed: p })
     }
     case 'send_file': {
       const path = String(args.path || '').replace(/^\/+/, '')

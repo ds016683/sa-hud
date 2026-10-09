@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import {
   LayoutGrid, Network, LogOut, Menu, X, Target, Users,
-  FileText, Wallet, CreditCard, ListChecks, Compass, Waves, CalendarDays, BookOpen, Activity, Award, Wrench, GraduationCap, Sparkles, Archive as ArchiveIcon,
+  FileText, Wallet, CreditCard, ListChecks, Compass, Waves, CalendarDays, BookOpen, Activity, Award, Wrench, GraduationCap, Sparkles, Archive as ArchiveIcon, FolderOpen,
 } from 'lucide-react'
 import { getSession, onAuthStateChange, signOut } from './lib/auth'
 import { statusFor } from './constants/saDesign'
@@ -13,6 +13,7 @@ import EcosystemPage from './components/EcosystemPage'
 import MeetingNotesPage from './components/MeetingNotesPage'
 import SideMissionsPage from './components/SideMissionsPage'
 import ArchivePage from './components/ArchivePage'
+import FileCabinetPage from './components/FileCabinetPage'
 import RelationshipsPage from './components/RelationshipsPage'
 import CompanyFinancePage from './components/CompanyFinancePage'
 import PersonalFinancePage from './components/PersonalFinancePage'
@@ -37,6 +38,7 @@ const NAV_ITEMS = [
   { id: 'side-missions',    label: 'Side Missions',         icon: Target,         group: 'MISSION BOARD' },
   { id: 'maintenance',      label: 'Maintenance',           icon: Wrench,         group: 'MISSION BOARD' },
   { id: 'archive',          label: 'Archive',               icon: ArchiveIcon,    group: 'MISSION BOARD' },
+  { id: 'cabinet',          label: 'File Cabinet',          icon: FolderOpen,     group: 'MISSION BOARD' },
   { id: 'company-finance',  label: 'Third Horizon Finance', icon: Wallet,         group: 'RESOURCES' },
   { id: 'personal-finance', label: 'Personal Finance',      icon: CreditCard,     group: 'RESOURCES' },
   { id: 'network',          label: 'Network',               icon: Users,          group: 'RESOURCES' },
@@ -264,6 +266,7 @@ export default function App() {
           {active === 'side-missions'    && <SideMissionsPage onNavigate={setRoute} />}
           {active === 'maintenance'      && <MaintenancePage deepLink={params} />}
           {active === 'archive'          && <ArchivePage />}
+          {active === 'cabinet'          && <FileCabinetPage />}
           {active === 'company-finance'  && <CompanyFinancePage />}
           {active === 'personal-finance' && <PersonalFinancePage />}
           {active === 'network'          && <RelationshipsPage />}
