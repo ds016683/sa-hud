@@ -39,7 +39,7 @@ export default function useProjects() {
           .select('*, tasks:project_tasks(id,text,status,done,source,session_ref,due_date,notes,objective_id,released_at,created_at)')
           .eq('user_id', session.user.id)
           .order('name', { ascending: true }),
-        supabase.from('session_boards').select('project,title,phases,updated_at'),
+        supabase.from('session_boards').select('id,project,title,phases,updated_at'),
       ])
       if (!p.error) setProjects(p.data || [])
       if (!b.error) setBoards(b.data || [])

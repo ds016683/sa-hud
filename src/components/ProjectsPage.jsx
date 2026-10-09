@@ -9,6 +9,8 @@ import ItemDetail from './river/ItemDetail'
 import SessionBoard from './river/SessionBoard'
 import { listShares, archiveShare, archiveSharesFor, shareUrl } from '../lib/shares'
 import { fileProject } from '../lib/archive'
+import { equipTask } from '../lib/loadout'
+import { supabase as sbClient2 } from '../lib/supabase'
 import { listArtifacts as listProjArtifacts, readArtifact as readProjArtifact } from '../lib/artifacts'
 import { supabase as sbClient } from '../lib/supabase'
 
@@ -67,101 +69,127 @@ const isBlocked = (t) => t.status === 'blocked'
 // =============================================================================
 // Baseball card
 // =============================================================================
+// Milestones are the mission's tasks in creation order; the page numbers
+// them by position (a leading "N · " typed into the text is stripped).
+const stripNum = (t) => String(t || '').replace(/^\s*\d+\s*[·.:)-]\s*/, '')
+const milestonesOf = (project) => [...(project.tasks || [])].sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
+const nowMilestone = (ms) => ms.find(t => isOpen(t) && t.objective_id) || ms.find(t => isOpen(t)) || null
+
 function ProjectCard({ project, onOpen }) {
-  const tasks = project.tasks || []
-  const open = tasks.filter(isOpen)
-  const blocked = open.filter(isBlocked)
-  const done = tasks.length - open.length
+  const ms = milestonesOf(project)
+  const closed = ms.filter(t => !isOpen(t)).length
+  const now = nowMilestone(ms)
+  const next = now ? ms.find(t => isOpen(t) && t.id !== now.id) : null
+  const blocked = ms.filter(t => isOpen(t) && isBlocked(t)).length
   const fresh = freshnessOf(project.last_activity_at)
   const freshColor = fresh === 'fresh' ? GREEN : fresh === 'warning' ? GOLD : GRAY
-  const lastTouch = project.last_activity_at
-    ? new Date(project.last_activity_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-    : 'never'
-
+  const lastTouch = project.last_activity_at ? new Date(project.last_activity_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'never'
+  const pct = ms.length ? Math.round(closed / ms.length * 100) : 0
   return (
-    <button onClick={() => onOpen(project.id)} style={{
-      ...S.panel, textAlign: 'left', cursor: 'pointer', fontFamily: 'inherit',
-      display: 'flex', flexDirection: 'column', gap: 10, minHeight: 128, width: '100%',
-      transition: 'border-color 120ms',
-    }}
-      onMouseEnter={e => e.currentTarget.style.borderColor = 'rgba(169,201,232,0.4)'}
-      onMouseLeave={e => e.currentTarget.style.borderColor = PANEL_BORDER}
-    >
+    <button onClick={() => onOpen(project.id)} style={{ ...S.panel, textAlign: 'left', cursor: 'pointer', fontFamily: 'inherit', display: 'flex', flexDirection: 'column', gap: 10, minHeight: 150, width: '100%', transition: 'border-color 120ms' }}
+      onMouseEnter={e => e.currentTarget.style.borderColor = 'rgba(169,201,232,0.4)'} onMouseLeave={e => e.currentTarget.style.borderColor = PANEL_BORDER}>
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 16.5, letterSpacing: '-0.01em', color: INK, lineHeight: 1.3 }}>
-            {project.name}
-          </div>
-          {project.key && (
-            <div style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '1.2px', color: GRAY, marginTop: 4, textTransform: 'uppercase' }}>
-              {project.key}
-            </div>
-          )}
+          <div style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 17, letterSpacing: '-0.01em', color: INK, lineHeight: 1.3 }}>{project.name}</div>
+          {project.description && <div style={{ fontSize: 12.5, lineHeight: 1.5, color: TEXT_DIM, marginTop: 3, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{project.description}</div>}
         </div>
-        <span style={{ width: 8, height: 8, borderRadius: '50%', background: freshColor, flexShrink: 0, marginTop: 5 }} title={`Last activity ${lastTouch}`} />
+        <span style={{ fontFamily: MONO, fontSize: 9, letterSpacing: '1px', textTransform: 'uppercase', color: BLUE, border: `1px solid ${BLUE}55`, borderRadius: 999, padding: '2px 7px', whiteSpace: 'nowrap', flexShrink: 0 }}>{CATEGORY_LABELS[project.category] || project.category}</span>
       </div>
-
-      {project.description ? (
-        <div style={{ fontSize: 12.5, lineHeight: 1.5, color: TEXT_DIM, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-          {project.description}
-        </div>
-      ) : <div style={{ flex: 1 }} />}
-
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 'auto', fontFamily: MONO, fontSize: 10, letterSpacing: '0.8px', color: GRAY }}>
-        <span style={{ color: open.length ? BLUE : GRAY }}>{open.length} OPEN</span>
-        {blocked.length > 0 && (
-          <span style={{ color: RED, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-            <Hand size={10} /> {blocked.length} ON DAVID
-          </span>
-        )}
-        <span style={{ marginLeft: 'auto' }}>{done}/{tasks.length || 0} DONE</span>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <span style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 14, color: INK }}>{closed} / {ms.length}</span>
+        <span style={{ flex: 1, height: 4, borderRadius: 99, background: 'rgba(255,255,255,0.08)', overflow: 'hidden' }}><span style={{ display: 'block', width: `${pct}%`, height: '100%', background: GOLD }} /></span>
+        <span style={{ fontFamily: MONO, fontSize: 9, letterSpacing: '1px', textTransform: 'uppercase', color: GRAY }}>milestones</span>
+      </div>
+      <div style={{ marginTop: 'auto' }}>
+        {now ? <div style={{ fontSize: 12.5, color: INK, lineHeight: 1.4 }}><span style={{ color: now.objective_id ? GREEN : GOLD, fontFamily: MONO, fontSize: 9.5, letterSpacing: '1px', textTransform: 'uppercase', marginRight: 6 }}>{now.objective_id ? 'on the board' : 'now'}</span>{stripNum(now.text)}</div>
+          : <div style={{ fontSize: 12.5, color: GRAY }}>{ms.length ? 'Every milestone closed.' : 'No milestones yet.'}</div>}
+        {next && <div style={{ fontSize: 11.5, color: GRAY, marginTop: 3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>next · {stripNum(next.text)}</div>}
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, fontFamily: MONO, fontSize: 9.5, letterSpacing: '0.8px', color: GRAY, textTransform: 'uppercase' }}>
+        {blocked > 0 && <span style={{ color: RED, display: 'inline-flex', alignItems: 'center', gap: 4 }}><Hand size={10} /> {blocked} on David</span>}
+        <span style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 6 }}><span style={{ width: 7, height: 7, borderRadius: 99, background: freshColor }} />touched {lastTouch}</span>
       </div>
     </button>
   )
 }
 
 // =============================================================================
-// Detail: task row
+// Detail: milestone row. The steps under it come from the mission's session
+// board: the phase whose items carry this task id. Ticking a step or adding
+// one writes that board, the same document the agent writes.
 // =============================================================================
-function TaskRow({ project, task, onToggle, onPromote, onDelete, onNavigate }) {
+const Chip = ({ color, children }) => <span style={{ fontFamily: MONO, fontSize: 9, letterSpacing: '1px', textTransform: 'uppercase', color, border: `1px solid ${color}55`, borderRadius: 999, padding: '2px 7px', whiteSpace: 'nowrap' }}>{children}</span>
+
+function MilestoneRow({ n, project, task, board, api, onNavigate, onBoardChange }) {
   const open = isOpen(task)
   const blocked = isBlocked(task)
-  const promoted = !!task.objective_id
+  const onBoard = !!task.objective_id && open
   const [expanded, setExpanded] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const [msg, setMsg] = useState(null)
+  const phases = board?.phases || []
+  const pi = phases.findIndex(ph => (ph.tasks || []).some(t => t.task_id === task.id))
+  const phase = pi >= 0 ? phases[pi] : null
+  const steps = phase ? (phase.tasks || []) : []
+  const stepsDone = steps.filter(t => t.status === 'done').length
+
+  const writeBoard = async (nextPhases) => {
+    if (!board?.id) { setMsg('No session board on this mission yet; steps live there.'); return }
+    const { error } = await sbClient2.from('session_boards').update({ phases: nextPhases, updated_at: new Date().toISOString() }).eq('id', board.id)
+    if (error) { setMsg(`Could not save: ${error.message}`); return }
+    onBoardChange && onBoardChange({ ...board, phases: nextPhases })
+  }
+  const toggleStep = (ti) => writeBoard(phases.map((ph, i) => i !== pi ? ph : { ...ph, tasks: ph.tasks.map((t, j) => j !== ti ? t : { ...t, status: t.status === 'done' ? 'open' : 'done' }) }))
+  const addStep = () => {
+    const label = window.prompt('The step', ''); if (!label?.trim()) return
+    const item = { id: `${n}.${steps.length + 1}`, label: label.trim(), status: 'open', task_id: task.id }
+    if (phase) writeBoard(phases.map((ph, i) => i !== pi ? ph : { ...ph, tasks: [...(ph.tasks || []), item] }))
+    else writeBoard([...phases, { title: stripNum(task.text), tasks: [item] }])
+  }
+  const load = async () => { setBusy(true); try { const r = await equipTask(task, project.name, { clock: false }); setMsg(r.ok ? 'On the Board' : `Will not fit: ${r.reasons.join(' · ')}`); if (r.ok) api.refresh() } catch (e) { setMsg(`Could not load: ${e.message}`) } finally { setBusy(false) } }
+  const rename = async () => { const t = window.prompt('Milestone', stripNum(task.text)); if (!t?.trim()) return; await api.updateTask(project.id, task.id, { text: t.trim() }) }
+  const doneWhen = async () => { const t = window.prompt('Done when…', task.notes || ''); if (t === null) return; await api.updateTask(project.id, task.id, { notes: t.trim() || null }) }
+
   return (
-    <div style={{ borderTop: `1px solid ${PANEL_BORDER}` }}>
-    <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 0' }}>
-      <button onClick={() => onToggle(project.id, task)} title={open ? 'Mark done' : 'Reopen'} style={{
-        width: 18, height: 18, borderRadius: 5, flexShrink: 0, cursor: 'pointer',
-        border: open ? `1.5px solid ${blocked ? RED : 'rgba(234,241,248,0.35)'}` : `1.5px solid ${GREEN}`,
-        background: open ? 'transparent' : 'rgba(67,211,146,0.18)',
-        display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: GREEN, padding: 0,
-      }}>
-        {!open && <Check size={12} />}
-      </button>
-      <div style={{ flex: 1, minWidth: 0 }} onClick={() => setExpanded(x => !x)} title="Artifact · session · files for this task">
-        <div style={{
-          fontSize: 13.5, lineHeight: 1.45, color: open ? INK : GRAY, cursor: 'pointer',
-          textDecoration: open ? 'none' : 'line-through',
-        }}>{task.text}</div>
-        {(blocked || promoted || task.source === 'session') && open && (
-          <div style={{ display: 'flex', gap: 8, marginTop: 3, fontFamily: MONO, fontSize: 9, letterSpacing: '1px', textTransform: 'uppercase' }}>
-            {blocked && <span style={{ color: RED }}>Blocked · needs David</span>}
-            {task.source === 'session' && <span style={{ color: GRAY }}>from session{task.session_ref ? ` · ${task.session_ref}` : ''}</span>}
-            {promoted && <span style={{ color: GOLD }}>In Objectives queue</span>}
+    <div style={{ borderTop: `1px solid ${PANEL_BORDER}`, padding: '12px 0', opacity: open ? 1 : 0.55 }}>
+      <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
+        <span style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 22, lineHeight: 1, color: open ? (onBoard ? GREEN : GOLD) : GREEN, width: 26, flexShrink: 0, paddingTop: 2 }}>{n}</span>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            <span onClick={() => setExpanded(x => !x)} title="Open this milestone" style={{ fontSize: 15, lineHeight: 1.4, color: open ? INK : GRAY, textDecoration: open ? 'none' : 'line-through', cursor: 'pointer', flex: 1, minWidth: 220 }}>{stripNum(task.text)}</span>
+            {!open && <Chip color={GREEN}>closed{task.released_at ? ` ${new Date(task.released_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}` : ''} · 10 mi</Chip>}
+            {open && onBoard && <Chip color={GREEN}>on the board</Chip>}
+            {open && blocked && <Chip color={RED}>blocked · needs David</Chip>}
+            {steps.length > 0 && <Chip color={stepsDone === steps.length ? GOLD : GRAY}>{stepsDone} / {steps.length} steps</Chip>}
           </div>
-        )}
+          {task.notes && <div style={{ fontSize: 12.5, color: TEXT_DIM, marginTop: 3, lineHeight: 1.5 }}>Done when: {task.notes}</div>}
+          {steps.length > 0 && (
+            <div style={{ marginTop: 8, display: 'grid', gap: 2 }}>
+              {steps.map((st, ti) => (
+                <button key={st.id || ti} onClick={() => toggleStep(ti)} title={st.status === 'done' ? 'Reopen' : 'Mark done'} style={{ display: 'flex', alignItems: 'flex-start', gap: 9, background: 'transparent', border: 'none', padding: '3px 0', cursor: 'pointer', textAlign: 'left', color: INK }}>
+                  {st.status === 'done' ? <span style={{ width: 15, height: 15, borderRadius: 99, background: GREEN, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 2 }}><Check size={10} color={NAVY_DEEP} /></span>
+                    : <span style={{ width: 15, height: 15, borderRadius: 99, border: `1.5px solid ${st.status === 'inmotion' ? GOLD : st.status === 'blocked' ? RED : 'rgba(234,241,248,0.3)'}`, display: 'inline-block', flexShrink: 0, marginTop: 2 }} />}
+                  <span style={{ fontFamily: MONO, fontSize: 10, color: GOLD, letterSpacing: '0.5px', paddingTop: 2, flexShrink: 0 }}>{st.id}</span>
+                  <span style={{ fontSize: 13, lineHeight: 1.45, color: st.status === 'done' ? GRAY : INK, textDecoration: st.status === 'done' ? 'line-through' : 'none' }}>{st.label}{st.note && <span style={{ display: 'block', fontSize: 12, color: st.status === 'blocked' ? RED : GRAY }}>{st.note}</span>}</span>
+                </button>
+              ))}
+            </div>
+          )}
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
+            <button onClick={() => setExpanded(x => !x)} style={{ ...S.btnGhost, padding: '4px 9px', fontSize: 10 }}>Open</button>
+            {open && !onBoard && <button onClick={load} disabled={busy} style={{ ...S.btnGhost, padding: '4px 9px', fontSize: 10, color: GREEN, borderColor: 'rgba(67,211,146,0.4)' }}>Load</button>}
+            {open && <button onClick={addStep} style={{ ...S.btnGhost, padding: '4px 9px', fontSize: 10 }}><Plus size={10} /> Step</button>}
+            {open && <button onClick={doneWhen} style={{ ...S.btnGhost, padding: '4px 9px', fontSize: 10 }}>Done when</button>}
+            {open && <button onClick={rename} style={{ ...S.btnGhost, padding: '4px 9px', fontSize: 10 }}>Rename</button>}
+            {open
+              ? <button onClick={() => { if (window.confirm(`Close milestone ${n}? 10 miles on the next update.`)) api.toggleTask(project.id, task) }} style={{ ...S.btnGhost, padding: '4px 9px', fontSize: 10, color: GOLD, borderColor: 'rgba(230,181,79,0.4)' }}><Check size={10} /> Close milestone</button>
+              : <button onClick={() => api.toggleTask(project.id, task)} style={{ ...S.btnGhost, padding: '4px 9px', fontSize: 10 }}>Reopen</button>}
+            <button onClick={() => { if (window.confirm('Delete this milestone?')) api.deleteTask(project.id, task.id) }} title="Delete" style={{ background: 'transparent', border: 'none', color: 'rgba(234,241,248,0.25)', cursor: 'pointer', padding: 4 }}><Trash2 size={12} /></button>
+          </div>
+          {msg && <div style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '1px', textTransform: 'uppercase', color: msg.startsWith('Could') || msg.startsWith('Will') || msg.startsWith('No session') ? RED : GOLD, marginTop: 6 }}>{msg}</div>}
+        </div>
       </div>
-      {open && !promoted && (
-        <button onClick={() => onPromote(project, task)} title="Promote to Objectives (lands in Queue)" style={{
-          ...S.btnGhost, padding: '4px 8px', fontSize: 10, color: GOLD, borderColor: 'rgba(230,181,79,0.35)',
-        }}><ArrowUpRight size={11} /> Objective</button>
-      )}
-      <button onClick={() => { if (window.confirm('Delete this task?')) onDelete(project.id, task.id) }} title="Delete task" style={{
-        background: 'transparent', border: 'none', color: 'rgba(234,241,248,0.25)', cursor: 'pointer', padding: 4,
-      }}><Trash2 size={13} /></button>
-    </div>
-    {expanded && <ItemDetail item={{ id: task.objective_id || task.id, objective_id: task.objective_id || null, task_id: task.id, kind: 'Main Mission', title: task.text, project: project.name, project_id: project.id, description: task.notes || null }} onClose={() => setExpanded(false)} onNavigate={onNavigate} />}
+      {expanded && <ItemDetail item={{ id: task.objective_id || task.id, objective_id: task.objective_id || null, task_id: task.id, kind: 'Main Mission', title: stripNum(task.text), project: project.name, project_id: project.id, description: task.notes }} onClose={() => setExpanded(false)} onNavigate={onNavigate} onChange={() => api.refresh()} />}
     </div>
   )
 }
@@ -271,18 +299,6 @@ function FilesTab({ project, listFiles, uploadFile, createFolder, fileUrl, delet
 }
 
 // =============================================================================
-// Detail: session board (read-only mirror of the live board)
-// =============================================================================
-function BoardTab({ board }) {
-  if (!board) {
-    return <div style={{ fontSize: 13, color: GRAY, padding: '12px 0' }}>
-      No session board for this mission yet. One appears when a Claude session opens a board under this mission's key.
-    </div>
-  }
-  return <SessionBoard key={board.id} board={board} compact />
-}
-
-// =============================================================================
 // Detail view
 // =============================================================================
 
@@ -317,17 +333,17 @@ function SharesTab({ project }) {
   )
 }
 
-function ProjectDetail({ project, board, api, onBack, initialTab, initialSlug, onNavigate }) {
-  const [tab, setTab] = useState(initialTab && ['tasks', 'board', 'artifacts', 'files', 'shares'].includes(initialTab) ? initialTab : 'tasks')
+function ProjectDetail({ project, board: boardProp, api, onBack, initialTab, initialSlug, onNavigate }) {
+  const [tab, setTab] = useState(initialTab && ['tasks', 'board', 'artifacts', 'files', 'shares'].includes(initialTab) ? (initialTab === 'board' ? 'tasks' : initialTab) : 'tasks')
+  const [board, setBoard] = useState(boardProp)
+  useEffect(() => { let on = true; Promise.resolve().then(() => { if (on) setBoard(boardProp) }); return () => { on = false } }, [boardProp])
   const [artifactSlug, setArtifactSlug] = useState(initialSlug || null)
   const openArtifact = (slug) => { setArtifactSlug(slug); setTab('artifacts') }
   const [newTask, setNewTask] = useState('')
-  const [showDone, setShowDone] = useState(false)
 
-  const tasks = [...(project.tasks || [])].sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
-  const open = tasks.filter(isOpen)
-  const blockedFirst = [...open.filter(isBlocked), ...open.filter(t => !isBlocked(t))]
-  const doneTasks = tasks.filter(t => !isOpen(t))
+  const tasks = milestonesOf(project)
+  const closed = tasks.filter(t => !isOpen(t)).length
+  const pct = tasks.length ? Math.round(closed / tasks.length * 100) : 0
 
   const submit = async (e) => {
     e.preventDefault()
@@ -335,11 +351,6 @@ function ProjectDetail({ project, board, api, onBack, initialTab, initialSlug, o
     if (!text) return
     setNewTask('')
     await api.addTask(project.id, text)
-  }
-
-  const promote = async (proj, task) => {
-    const obj = await api.promoteTask(proj, task)
-    if (!obj) window.alert('Promote failed, check console.')
   }
 
   return (
@@ -373,59 +384,38 @@ function ProjectDetail({ project, board, api, onBack, initialTab, initialSlug, o
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16, flexWrap: 'wrap', marginBottom: 6 }}>
         <div style={{ flex: 1, minWidth: 280 }}>
           <h1 style={S.h1}>{project.name}</h1>
+          <div style={{ fontSize: 14, lineHeight: 1.6, color: TEXT_DIM, margin: '8px 0 0', maxWidth: '72ch' }}>
+            {project.description ? <span><span style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '1.4px', textTransform: 'uppercase', color: BLUE, marginRight: 8 }}>Destination</span>{project.description}</span> : <button onClick={async () => { const d = window.prompt('Where is this mission going? One sentence.', ''); if (d?.trim()) await api.updateProject(project.id, { description: d.trim() }) }} style={{ ...S.btnGhost, padding: '3px 9px', fontSize: 10 }}>Set the destination</button>}
+          </div>
           <div style={S.sub}>
-            {[project.key, CATEGORY_LABELS[project.category] || project.category, project.kind === 'provisional' ? 'provisional' : 'standing'].filter(Boolean).join(' · ')}
+            {[CATEGORY_LABELS[project.category] || project.category, project.key, '100 miles on completion · 10 per milestone'].filter(Boolean).join(' · ')}
           </div>
         </div>
-        <div style={{ display: 'flex', gap: 6, paddingTop: 6 }}>
-          <Pill active={tab === 'tasks'} onClick={() => setTab('tasks')}>Tasks</Pill>
-          <Pill active={tab === 'board'} onClick={() => setTab('board')}>Session Board</Pill>
+        <div style={{ display: 'flex', gap: 6, paddingTop: 6, flexWrap: 'wrap' }}>
+          <Pill active={tab === 'tasks'} onClick={() => setTab('tasks')}>Milestones · {tasks.length}</Pill>
           <Pill active={tab === 'artifacts'} onClick={() => setTab('artifacts')}>Artifacts</Pill>
           <Pill active={tab === 'files'} onClick={() => setTab('files')}>Files</Pill>
           <Pill active={tab === 'shares'} onClick={() => setTab('shares')}>Shares</Pill>
+          <Pill active={false} onClick={() => onNavigate && onNavigate('cabinet')}>Cabinet</Pill>
         </div>
       </div>
 
-      {project.description && (
-        <p style={{ fontSize: 14, lineHeight: 1.6, color: TEXT_DIM, margin: '10px 0 0', maxWidth: '72ch' }}>{project.description}</p>
-      )}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '14px 0 0' }}>
+        <span style={{ flex: 1, height: 5, borderRadius: 99, background: 'rgba(255,255,255,0.08)', overflow: 'hidden' }}><span style={{ display: 'block', width: `${pct}%`, height: '100%', background: GOLD }} /></span>
+        <span style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '1px', textTransform: 'uppercase', color: GRAY }}>{closed} of {tasks.length} closed</span>
+      </div>
 
       <div style={{ ...S.panel, marginTop: 20 }}>
         {tab === 'tasks' && (
           <div>
-            <form onSubmit={submit} style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
-              <input
-                value={newTask}
-                onChange={e => setNewTask(e.target.value)}
-                placeholder="Add a task to this project…"
-                style={{ ...S.input, flex: 1 }}
-              />
-              <button type="submit" style={S.btnPrimary}><Plus size={13} /> Add</button>
+            {!tasks.length && <div style={{ fontSize: 13, color: GRAY, padding: '10px 0' }}>No milestones yet. Add the first one below: a thing that will be verifiably true.</div>}
+            {tasks.map((t, i) => <MilestoneRow key={t.id} n={i + 1} project={project} task={t} board={board} api={api} onNavigate={onNavigate} onBoardChange={setBoard} />)}
+            <form onSubmit={submit} style={{ display: 'flex', gap: 8, marginTop: 16, borderTop: `1px solid ${PANEL_BORDER}`, paddingTop: 14 }}>
+              <input value={newTask} onChange={e => setNewTask(e.target.value)} placeholder="Add a milestone: something that will be verifiably true…" style={{ ...S.input, flex: 1 }} />
+              <button type="submit" style={S.btnPrimary}><Plus size={13} /> Milestone</button>
             </form>
-
-            {!blockedFirst.length && <div style={{ fontSize: 13, color: GRAY, padding: '10px 0' }}>No open tasks.</div>}
-            {blockedFirst.map(t => (
-              <TaskRow key={t.id} project={project} task={t}
-                onToggle={api.toggleTask} onPromote={promote} onDelete={api.deleteTask} onNavigate={onNavigate} />
-            ))}
-
-            {doneTasks.length > 0 && (
-              <div style={{ marginTop: 16 }}>
-                <button onClick={() => setShowDone(!showDone)} style={{
-                  background: 'none', border: 'none', cursor: 'pointer', padding: 0,
-                  fontFamily: MONO, fontSize: 10, letterSpacing: '1.4px', color: GRAY, textTransform: 'uppercase',
-                }}>
-                  {showDone ? 'Hide' : 'Show'} completed · {doneTasks.length}
-                </button>
-                {showDone && doneTasks.map(t => (
-                  <TaskRow key={t.id} project={project} task={t}
-                    onToggle={api.toggleTask} onPromote={promote} onDelete={api.deleteTask} onNavigate={onNavigate} />
-                ))}
-              </div>
-            )}
           </div>
         )}
-        {tab === 'board' && <BoardTab board={board} />}
         {tab === 'artifacts' && <ArtifactsTab key={artifactSlug || 'first'} project={project} initialSlug={artifactSlug} />}
         {tab === 'shares' && <SharesTab project={project} />}
         {tab === 'files' && (
