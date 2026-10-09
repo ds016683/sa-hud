@@ -5,7 +5,7 @@
 // make_folder, delete_file) so "file the Porsche documents under Personal /
 // Vehicles" works from WhatsApp.
 import { useCallback, useEffect, useState } from 'react'
-import { FolderOpen, Folder, FileText, Upload, FolderPlus, ArrowRight, Pencil, Trash2, Search, ChevronRight, Inbox, Sparkles, ExternalLink } from 'lucide-react'
+import { FolderOpen, Folder, FileText, Upload, FolderPlus, ArrowRight, Pencil, Trash2, Search, ChevronRight, Inbox, Sparkles, ExternalLink, User, Building2, Car, Archive as ArchiveIcon, Image as ImageIcon } from 'lucide-react'
 import { list, openUrl, upload, makeFolder, move, remove, walk, seedStructure, REALMS, fmtSize } from '../lib/cabinet'
 import { INK, INK2, GRAY, PANEL_BORDER, GOLD, GOLD_BRIGHT, BLUE, RED, PURPLE, MONO, SERIF, S, Panel, Label } from './river/canon'
 
@@ -13,6 +13,49 @@ const btn = (color = INK2, filled = false, extra = {}) => ({ display: 'inline-fl
 const field = { background: 'rgba(255,255,255,0.05)', border: `1px solid ${PANEL_BORDER}`, borderRadius: 8, color: INK, padding: '7px 10px', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }
 const fmtWhen = (iso) => iso ? new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : ''
 const realmColor = (path) => path.startsWith('Personal') ? GOLD : path.startsWith('Third Horizon') ? PURPLE : path.startsWith('inbox') ? BLUE : INK2
+
+// The front of the cabinet is two doors. More doors will come; the grid
+// leaves the room and says nothing about it.
+const DOORS = [
+  { path: 'Personal', label: 'Personal', Icon: User, color: GOLD },
+  { path: 'Third Horizon', label: 'Third Horizon', Icon: Building2, color: PURPLE },
+]
+export const CARS = { current: 'Personal/Vehicles/Current', past: 'Personal/Vehicles/Past', cover: 'cover.jpg' }
+
+function Door({ d, onOpen }) {
+  return (
+    <button onClick={() => onOpen(d.path)} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 14, height: 180, borderRadius: 16, cursor: 'pointer', border: `1px solid ${d.color}55`, background: `${d.color}0d`, color: INK }}>
+      <d.Icon size={40} color={d.color} strokeWidth={1.4} />
+      <span style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 20, letterSpacing: '-0.01em' }}>{d.label}</span>
+    </button>
+  )
+}
+function IconTile({ Icon, label, sub, color, onOpen }) {
+  return (
+    <button onClick={onOpen} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 10, height: 140, borderRadius: 14, cursor: 'pointer', border: `1px solid ${color}55`, background: `${color}0d`, color: INK }}>
+      <Icon size={30} color={color} strokeWidth={1.4} />
+      <span style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 16 }}>{label}</span>
+      {sub && <span style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '0.8px', color: GRAY, textTransform: 'uppercase' }}>{sub}</span>}
+    </button>
+  )
+}
+// A car: its folder name is its name, cover.jpg in the folder is its picture.
+function CarCard({ folder, onOpen }) {
+  const [img, setImg] = useState(null)
+  const [count, setCount] = useState(null)
+  useEffect(() => { let alive = true; (async () => { try { const { files } = await list(folder.path); if (!alive) return; setCount(files.filter(f => f.name !== CARS.cover).length); if (files.some(f => f.name === CARS.cover)) setImg(await openUrl(`${folder.path}/${CARS.cover}`)) } catch { /* no cover */ } })(); return () => { alive = false } }, [folder.path])
+  return (
+    <button onClick={() => onOpen(folder.path)} style={{ display: 'flex', flexDirection: 'column', borderRadius: 16, overflow: 'hidden', cursor: 'pointer', border: `1px solid ${GOLD}55`, background: 'rgba(255,255,255,0.03)', color: INK, padding: 0, textAlign: 'left' }}>
+      <div style={{ height: 190, background: img ? `url(${img}) center/cover no-repeat` : 'rgba(255,255,255,0.04)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        {!img && <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, color: GRAY }}><ImageIcon size={26} strokeWidth={1.4} /><span style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '0.8px', textTransform: 'uppercase' }}>send Lumen a photo for the cover</span></div>}
+      </div>
+      <div style={{ padding: '12px 14px' }}>
+        <div style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 18 }}>{folder.name}</div>
+        <div style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '0.8px', color: GRAY, textTransform: 'uppercase', marginTop: 4 }}>{count == null ? '…' : `${count} document${count === 1 ? '' : 's'}`}</div>
+      </div>
+    </button>
+  )
+}
 
 export default function FileCabinetPage() {
   const [path, setPath] = useState(() => { try { return localStorage.getItem('cabinet-path') || '' } catch { return '' } })
@@ -72,14 +115,39 @@ export default function FileCabinetPage() {
               <button onClick={() => setHits(null)} style={{ ...btn(INK2), marginTop: 8 }}>Clear search</button>
             </div>
           )}
+          {path === '' && !hits && (
+            <div style={{ marginBottom: 18 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 14, maxWidth: 760 }}>
+                {DOORS.map(d => <Door key={d.path} d={d} onOpen={go} />)}
+              </div>
+              <button onClick={() => go('inbox')} style={{ ...btn(BLUE), marginTop: 18 }}><Inbox size={11} /> Lumen's inbox</button>
+            </div>
+          )}
+          {path === 'Personal' && !hits && (
+            <div style={{ marginBottom: 18 }}>
+              <Label>Cars</Label>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 12, maxWidth: 640 }}>
+                <IconTile Icon={Car} label="Current Cars" color={GOLD} onOpen={() => go(CARS.current)} />
+                <IconTile Icon={ArchiveIcon} label="Past Cars" sub="archive" color={INK2} onOpen={() => go(CARS.past)} />
+              </div>
+            </div>
+          )}
+          {(path === CARS.current || path === CARS.past) && cur && !hits && (
+            <div style={{ marginBottom: 18 }}>
+              {cur.folders.length === 0 && <div style={{ fontSize: 13, color: GRAY, padding: '10px 0' }}>{path === CARS.past ? 'No cars archived yet.' : 'No cars yet. Make a folder named for the car.'}</div>}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 14 }}>
+                {cur.folders.map(f => <CarCard key={f.path} folder={f} onOpen={go} />)}
+              </div>
+            </div>
+          )}
           {!cur && <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '1.4px', textTransform: 'uppercase', color: GRAY }}>Opening the drawer</div>}
           {cur && cur.folders.length === 0 && cur.files.length === 0 && <div style={{ fontSize: 13, color: GRAY, padding: '10px 0' }}>Empty drawer. Upload something, make a folder, or ask Lumen to file here.</div>}
-          {cur && cur.folders.map(f => (
+          {cur && (path === '' || path === CARS.current || path === CARS.past ? [] : cur.folders).map(f => (
             <div key={f.path} onClick={() => go(f.path)} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderTop: `1px solid ${PANEL_BORDER}`, cursor: 'pointer' }}>
               <Folder size={14} color={realmColor(f.path)} /><span style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 15, color: INK, flex: 1 }}>{f.name}</span><ChevronRight size={12} color={GRAY} />
             </div>
           ))}
-          {cur && cur.files.map(f => (
+          {cur && path !== '' && cur.files.map(f => (
             <div key={f.path} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderTop: `1px solid ${PANEL_BORDER}`, flexWrap: 'wrap' }}>
               <FileText size={14} color={realmColor(f.path)} />
               <button onClick={() => open(f.path)} style={{ background: 'transparent', border: 'none', color: INK, cursor: 'pointer', textAlign: 'left', fontSize: 13.5, flex: 1, minWidth: 220, padding: 0 }}>{f.name}</button>
