@@ -176,7 +176,7 @@ export default async function handler(req, res) {
         if (answered >= 3) break
         if (await alreadySeen('email', m.id)) continue
         answered++
-        const text = `Subject: ${m.subject || '(no subject)'}\n\n${String(m.body?.content || m.bodyPreview || '').trim().slice(0, 8000)}`
+        const text = `[EMAIL from David to lumen@thirdhorizon.com. Whatever you reply here is sent back to him as the email reply by the mail door itself; do NOT call send_email to answer this message, that would send it twice. Act with your other tools as needed, then write the reply.]\nSubject: ${m.subject || '(no subject)'}\n\n${String(m.body?.content || m.bodyPreview || '').trim().slice(0, 8000)}`
         if (dry) { out.push({ kind: 'mail', item: m.subject, would_answer: text.slice(0, 200) }); continue }
         await remember({ channel: 'email', direction: 'in', kind: 'text', body: text, external_id: m.id, meta: { from, subject: m.subject, conversation: m.conversationId } })
         let reply
