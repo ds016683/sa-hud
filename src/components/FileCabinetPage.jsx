@@ -46,7 +46,7 @@ function CarCard({ folder, onOpen, tick }) {
   useEffect(() => { let alive = true; (async () => { try { const { files } = await list(folder.path); if (!alive) return; setCount(files.filter(f => f.name !== CARS.cover).length); if (files.some(f => f.name === CARS.cover)) setImg(await openUrl(`${folder.path}/${CARS.cover}`)) } catch { /* no cover */ } })(); return () => { alive = false } }, [folder.path, tick])
   return (
     <button onClick={() => onOpen(folder.path)} style={{ display: 'flex', flexDirection: 'column', borderRadius: 16, overflow: 'hidden', cursor: 'pointer', border: `1px solid ${GOLD}55`, background: 'rgba(255,255,255,0.03)', color: INK, padding: 0, textAlign: 'left' }}>
-      <div style={{ height: 190, background: img ? `url(${img}) center/cover no-repeat` : 'rgba(255,255,255,0.04)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ height: 190, background: img ? `url("${img}") center/cover no-repeat` : 'rgba(255,255,255,0.04)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         {!img && <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, color: GRAY }}><ImageIcon size={26} strokeWidth={1.4} /><span style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '0.8px', textTransform: 'uppercase' }}>send Lumen a photo for the cover</span></div>}
       </div>
       <div style={{ padding: '12px 14px' }}>

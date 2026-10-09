@@ -45,7 +45,9 @@ export default async function handler(req, res) {
       if (op === 'url') {
         const r = await fetch(`${URL_BASE}/storage/v1/object/sign/${BUCKET}/${enc(q.path)}`, { method: 'POST', headers: { ...hdr(), 'Content-Type': 'application/json' }, body: JSON.stringify({ expiresIn: 600 }) })
         if (!r.ok) return res.status(404).json({ error: `no such file (${r.status})` })
-        const j = await r.json(); return res.status(200).json({ url: `${URL_BASE}/storage/v1${j.signedURL}` })
+        // The signed path comes back with raw spaces; rebuild it with encoded segments so CSS and <img> accept it.
+        const j = await r.json(); const token = String(j.signedURL || '').split('?token=')[1] || ''
+        return res.status(200).json({ url: `${URL_BASE}/storage/v1/object/sign/${BUCKET}/${enc(q.path)}?token=${token}` })
       }
       return res.status(400).json({ error: 'op' })
     }
