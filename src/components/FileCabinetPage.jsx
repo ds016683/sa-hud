@@ -30,10 +30,10 @@ function Door({ d, onOpen }) {
     </button>
   )
 }
-function IconTile({ Icon, label, sub, color, onOpen }) {
+function IconTile({ Icon: TileIcon, label, sub, color, onOpen }) {
   return (
     <button onClick={onOpen} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 10, height: 140, borderRadius: 14, cursor: 'pointer', border: `1px solid ${color}55`, background: `${color}0d`, color: INK }}>
-      <Icon size={30} color={color} strokeWidth={1.4} />
+      <TileIcon size={30} color={color} strokeWidth={1.4} />
       <span style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 16 }}>{label}</span>
       {sub && <span style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '0.8px', color: GRAY, textTransform: 'uppercase' }}>{sub}</span>}
     </button>
