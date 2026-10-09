@@ -69,16 +69,32 @@ const isBlocked = (t) => t.status === 'blocked'
 // =============================================================================
 // Baseball card
 // =============================================================================
-// Milestones are the mission's tasks in creation order; the page numbers
-// them by position (a leading "N · " typed into the text is stripped).
-const stripNum = (t) => String(t || '').replace(/^\s*\d+\s*[·.:)-]\s*/, '')
-const milestonesOf = (project) => [...(project.tasks || [])].sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
-const nowMilestone = (ms) => ms.find(t => isOpen(t) && t.objective_id) || ms.find(t => isOpen(t)) || null
+// Milestones. A milestone typed with a leading number ("3 · Smoke test…")
+// keeps that number and sorts by it; the prefix is stripped from the text.
+// Milestones without a number follow in creation order and are numbered by
+// position. When a mission has numbered milestones, its unnumbered closed
+// tasks are earlier work (history before the plan was reset) and fold away.
+const NUM_RE = /^\s*(\d+)\s*[·.:)-]\s*/
+const numOf = (t) => { const m = NUM_RE.exec(String(t?.text || '')); return m ? Number(m[1]) : null }
+const stripNum = (t) => String(t || '').replace(NUM_RE, '')
+const byCreated = (a, b) => new Date(a.created_at) - new Date(b.created_at)
+function planOf(project) {
+  const all = [...(project.tasks || [])].sort(byCreated)
+  const numbered = all.filter(t => numOf(t) !== null).sort((a, b) => numOf(a) - numOf(b))
+  if (!numbered.length) return { plan: all.map((t, i) => ({ t, n: i + 1 })), history: [] }
+  const rest = all.filter(t => numOf(t) === null)
+  const open = rest.filter(isOpen), history = rest.filter(t => !isOpen(t))
+  let n = Math.max(...numbered.map(numOf))
+  return { plan: [...numbered.map(t => ({ t, n: numOf(t) })), ...open.map(t => ({ t, n: ++n }))], history }
+}
+const nowMilestone = (plan) => plan.find(({ t }) => isOpen(t) && t.objective_id) || plan.find(({ t }) => isOpen(t)) || null
 
 function ProjectCard({ project, onOpen }) {
-  const ms = milestonesOf(project)
+  const { plan, history } = planOf(project)
+  const ms = plan.map(p => p.t)
   const closed = ms.filter(t => !isOpen(t)).length
-  const now = nowMilestone(ms)
+  const nowP = nowMilestone(plan)
+  const now = nowP?.t || null
   const next = now ? ms.find(t => isOpen(t) && t.id !== now.id) : null
   const blocked = ms.filter(t => isOpen(t) && isBlocked(t)).length
   const fresh = freshnessOf(project.last_activity_at)
@@ -98,10 +114,10 @@ function ProjectCard({ project, onOpen }) {
       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
         <span style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 14, color: INK }}>{closed} / {ms.length}</span>
         <span style={{ flex: 1, height: 4, borderRadius: 99, background: 'rgba(255,255,255,0.08)', overflow: 'hidden' }}><span style={{ display: 'block', width: `${pct}%`, height: '100%', background: GOLD }} /></span>
-        <span style={{ fontFamily: MONO, fontSize: 9, letterSpacing: '1px', textTransform: 'uppercase', color: GRAY }}>milestones</span>
+        <span style={{ fontFamily: MONO, fontSize: 9, letterSpacing: '1px', textTransform: 'uppercase', color: GRAY }}>milestones{history.length ? ` · ${history.length} earlier` : ''}</span>
       </div>
       <div style={{ marginTop: 'auto' }}>
-        {now ? <div style={{ fontSize: 12.5, color: INK, lineHeight: 1.4 }}><span style={{ color: now.objective_id ? GREEN : GOLD, fontFamily: MONO, fontSize: 9.5, letterSpacing: '1px', textTransform: 'uppercase', marginRight: 6 }}>{now.objective_id ? 'on the board' : 'now'}</span>{stripNum(now.text)}</div>
+        {now ? <div style={{ fontSize: 12.5, color: INK, lineHeight: 1.4 }}><span style={{ color: now.objective_id ? GREEN : GOLD, fontFamily: MONO, fontSize: 9.5, letterSpacing: '1px', textTransform: 'uppercase', marginRight: 6 }}>{now.objective_id ? 'on the board' : 'now'}</span>{nowP.n} · {stripNum(now.text)}</div>
           : <div style={{ fontSize: 12.5, color: GRAY }}>{ms.length ? 'Every milestone closed.' : 'No milestones yet.'}</div>}
         {next && <div style={{ fontSize: 11.5, color: GRAY, marginTop: 3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>next · {stripNum(next.text)}</div>}
       </div>
@@ -341,9 +357,11 @@ function ProjectDetail({ project, board: boardProp, api, onBack, initialTab, ini
   const openArtifact = (slug) => { setArtifactSlug(slug); setTab('artifacts') }
   const [newTask, setNewTask] = useState('')
 
-  const tasks = milestonesOf(project)
+  const { plan, history } = planOf(project)
+  const tasks = plan.map(p => p.t)
   const closed = tasks.filter(t => !isOpen(t)).length
   const pct = tasks.length ? Math.round(closed / tasks.length * 100) : 0
+  const [showHistory, setShowHistory] = useState(false)
 
   const submit = async (e) => {
     e.preventDefault()
@@ -409,9 +427,17 @@ function ProjectDetail({ project, board: boardProp, api, onBack, initialTab, ini
         {tab === 'tasks' && (
           <div>
             {!tasks.length && <div style={{ fontSize: 13, color: GRAY, padding: '10px 0' }}>No milestones yet. Add the first one below: a thing that will be verifiably true.</div>}
-            {tasks.map((t, i) => <MilestoneRow key={t.id} n={i + 1} project={project} task={t} board={board} api={api} onNavigate={onNavigate} onBoardChange={setBoard} />)}
+            {plan.map(({ t, n }) => <MilestoneRow key={t.id} n={n} project={project} task={t} board={board} api={api} onNavigate={onNavigate} onBoardChange={setBoard} />)}
+            {history.length > 0 && (
+              <div style={{ borderTop: `1px solid ${PANEL_BORDER}`, padding: '10px 0 0' }}>
+                <button onClick={() => setShowHistory(x => !x)} style={{ ...S.btnGhost, padding: '4px 9px', fontSize: 10 }}>{showHistory ? 'Hide' : 'Show'} earlier work · {history.length} closed before this plan</button>
+                {showHistory && history.map(t => (
+                  <div key={t.id} style={{ display: 'flex', gap: 10, padding: '6px 0', fontSize: 13, color: GRAY, textDecoration: 'line-through', opacity: 0.7 }}><Check size={12} color={GREEN} style={{ flexShrink: 0, marginTop: 3 }} /><span>{t.text}</span></div>
+                ))}
+              </div>
+            )}
             <form onSubmit={submit} style={{ display: 'flex', gap: 8, marginTop: 16, borderTop: `1px solid ${PANEL_BORDER}`, paddingTop: 14 }}>
-              <input value={newTask} onChange={e => setNewTask(e.target.value)} placeholder="Add a milestone: something that will be verifiably true…" style={{ ...S.input, flex: 1 }} />
+              <input value={newTask} onChange={e => setNewTask(e.target.value)} placeholder="Add a milestone (lead with its number to place it): something that will be verifiably true…" style={{ ...S.input, flex: 1 }} />
               <button type="submit" style={S.btnPrimary}><Plus size={13} /> Milestone</button>
             </form>
           </div>
