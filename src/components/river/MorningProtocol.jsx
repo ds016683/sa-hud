@@ -26,7 +26,7 @@ import { INK, INK2, GRAY, PANEL_BORDER, GOLD, GOLD_BRIGHT, GREEN, RED, BLUE, MON
 
 // Protocol labels read in the baby blue (David, 10/8).
 const Label = ({ children, style }) => <BaseLabel style={{ color: BLUE, ...style }}>{children}</BaseLabel>
-const READ = { fontFamily: SERIF, fontWeight: 500, fontSize: 16.5, lineHeight: 1.65, letterSpacing: '-0.01em', color: INK }
+const READ = { fontFamily: 'inherit', fontWeight: 400, fontSize: 14.5, lineHeight: 1.7, color: INK }
 import { Instrument, InstrumentGroup, groupMsg } from './Instrument'
 
 export const MORNING_SLUG = 'morning-protocol'
@@ -143,7 +143,7 @@ function LumenStrip({ day, where, onReplied, prompt }) {
       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}><Label style={{ marginBottom: 0 }}>Lumen · same thread as WhatsApp</Label>{prompt && <span style={{ fontSize: 11.5, color: GRAY }}>{prompt}</span>}</div>
       {last.length > 0 && (
         <div style={{ display: 'grid', gap: 6, margin: '10px 0 4px' }}>
-          {last.map(m => <div key={m.id} style={{ fontSize: 13.5, lineHeight: 1.6, color: m.direction === 'in' ? INK2 : INK, fontFamily: m.direction === 'in' ? 'inherit' : SERIF, fontWeight: m.direction === 'in' ? 400 : 500, paddingLeft: m.direction === 'in' ? 0 : 12, borderLeft: m.direction === 'in' ? 'none' : `2px solid ${BLUE}66`, whiteSpace: 'pre-wrap' }}><span style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '1px', color: GRAY, marginRight: 8 }}>{m.direction === 'in' ? (m.kind === 'audio' ? 'YOU · VOICE' : 'YOU') : 'LUMEN'} · {fmtTime(m.at)}</span>{m.body}</div>)}
+          {last.map(m => <div key={m.id} style={{ fontSize: 13.5, lineHeight: 1.65, color: m.direction === 'in' ? INK2 : INK, paddingLeft: m.direction === 'in' ? 0 : 12, borderLeft: m.direction === 'in' ? 'none' : `2px solid ${BLUE}66`, whiteSpace: 'pre-wrap' }}><span style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '1px', color: GRAY, marginRight: 8 }}>{m.direction === 'in' ? (m.kind === 'audio' ? 'YOU · VOICE' : 'YOU') : 'LUMEN'} · {fmtTime(m.at)}</span>{m.body}</div>)}
         </div>
       )}
       {busy && <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '1px', color: BLUE, textTransform: 'uppercase', margin: '8px 0 4px' }} className="mp-blink">Lumen is working…</div>}
@@ -487,8 +487,12 @@ function Protocol({ day, session, onClose, onFinished, onChange, onNavigate }) {
     // 5 Today's Game Plan
     if (cur.id === 'plan') {
       const blocks = [...(plan?.blocks || [])].sort((a, b) => String(a.start).localeCompare(String(b.start)))
-      const covered = new Set(blocks.filter(b => b.ref?.type === 'event').map(b => b.ref.id))
-      const extraMeetings = events.filter(e => !e.is_all_day && !covered.has(e.id)).map(e => ({ start: chiHHMM(e.start_at), end: chiHHMM(e.end_at), title: e.subject, kind: 'meeting', ref: { type: 'event', id: e.id }, fromCalendar: true }))
+      const coveredIds = new Set(blocks.filter(b => b.ref?.type === 'event').map(b => String(b.ref.id)))
+      const coveredStarts = new Set(blocks.filter(b => b.kind === 'meeting').map(b => String(b.start)))
+      const norm = (t) => String(t || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()
+      const coveredTitles = blocks.filter(b => b.kind === 'meeting').map(b => norm(b.title))
+      const extraMeetings = events.filter(e => !e.is_all_day && !coveredIds.has(String(e.id)) && !coveredStarts.has(chiHHMM(e.start_at)) && !coveredTitles.some(t => t && (t.includes(norm(e.subject)) || norm(e.subject).includes(t))))
+        .map(e => ({ start: chiHHMM(e.start_at), end: chiHHMM(e.end_at), title: e.subject, kind: 'meeting', ref: { type: 'event', id: e.id }, fromCalendar: true }))
       const timeline = [...blocks, ...extraMeetings].sort((a, b) => String(a.start).localeCompare(String(b.start)))
       const KIND_C = { meeting: BLUE, work: GOLD, admin: INK2, travel: '#5FC9C0', break: GREEN }
       const isLoaded = (ref) => ref && board.some(b => b.id === ref.id) || (ref?.type === 'task' && board.some(b => b.id === ref.id))
