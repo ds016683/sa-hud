@@ -131,8 +131,11 @@ function ProjectCard({ project, onOpen }) {
 
 // =============================================================================
 // Detail: milestone row. The steps under it come from the mission's session
-// board: the phase whose items carry this task id. Ticking a step or adding
-// one writes that board, the same document the agent writes.
+// board: the phase that carries this task id (on the phase, or on one of its
+// items). Ticking a step or adding one writes that board, the same document
+// the agent writes. New steps never carry the task id themselves: the sync
+// closes the Ledger task when an item with its id is done, so only the step
+// that means "the milestone is true" should carry it.
 // =============================================================================
 const Chip = ({ color, children }) => <span style={{ fontFamily: MONO, fontSize: 9, letterSpacing: '1px', textTransform: 'uppercase', color, border: `1px solid ${color}55`, borderRadius: 999, padding: '2px 7px', whiteSpace: 'nowrap' }}>{children}</span>
 
@@ -144,7 +147,7 @@ function MilestoneRow({ n, project, task, board, api, onNavigate, onBoardChange 
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState(null)
   const phases = board?.phases || []
-  const pi = phases.findIndex(ph => (ph.tasks || []).some(t => t.task_id === task.id))
+  const pi = phases.findIndex(ph => ph.task_id === task.id || (ph.tasks || []).some(t => t.task_id === task.id))
   const phase = pi >= 0 ? phases[pi] : null
   const steps = phase ? (phase.tasks || []) : []
   const stepsDone = steps.filter(t => t.status === 'done').length
@@ -158,9 +161,9 @@ function MilestoneRow({ n, project, task, board, api, onNavigate, onBoardChange 
   const toggleStep = (ti) => writeBoard(phases.map((ph, i) => i !== pi ? ph : { ...ph, tasks: ph.tasks.map((t, j) => j !== ti ? t : { ...t, status: t.status === 'done' ? 'open' : 'done' }) }))
   const addStep = () => {
     const label = window.prompt('The step', ''); if (!label?.trim()) return
-    const item = { id: `${n}.${steps.length + 1}`, label: label.trim(), status: 'open', task_id: task.id }
+    const item = { id: `${n}.${steps.length + 1}`, label: label.trim(), status: 'open' }
     if (phase) writeBoard(phases.map((ph, i) => i !== pi ? ph : { ...ph, tasks: [...(ph.tasks || []), item] }))
-    else writeBoard([...phases, { title: stripNum(task.text), tasks: [item] }])
+    else writeBoard([...phases, { title: `${n} · ${stripNum(task.text)}`, task_id: task.id, tasks: [item] }])
   }
   const load = async () => { setBusy(true); try { const r = await equipTask(task, project.name, { clock: false }); setMsg(r.ok ? 'On the Board' : `Will not fit: ${r.reasons.join(' · ')}`); if (r.ok) api.refresh() } catch (e) { setMsg(`Could not load: ${e.message}`) } finally { setBusy(false) } }
   const rename = async () => { const t = window.prompt('Milestone', stripNum(task.text)); if (!t?.trim()) return; await api.updateTask(project.id, task.id, { text: t.trim() }) }
