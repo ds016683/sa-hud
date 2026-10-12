@@ -42,12 +42,22 @@ export async function fetchLoadout() {
     q(supabase.from('objectives').select('id,title,state,tags,effort,due_date,activated_at,captured_at,description').eq('state', 'active').is('deleted_at', null).order('activated_at', { ascending: true })),
     q(supabase.from('clocks').select('id,objective_id,day,started_at,stopped_at,minutes').or(`stopped_at.is.null,day.eq.${day}`)),
     q(supabase.from('calendar_events').select('subject,start_at,end_at,is_all_day').eq('day', day).eq('is_cancelled', false)),
-    q(supabase.from('project_tasks').select('objective_id,project_id').not('objective_id', 'is', null)),
+    q(supabase.from('project_tasks').select('id,objective_id,project_id,text,created_at,status')),
     q(supabase.from('projects').select('id,name')),
   ])
   const projName = new Map(projects.map(p => [p.id, p.name]))
-  const projByObj = new Map(links.map(l => [l.objective_id, projName.get(l.project_id)]))
-  const projIdByObj = new Map(links.map(l => [l.objective_id, l.project_id]))
+  const linked = links.filter(l => l.objective_id)
+  const projByObj = new Map(linked.map(l => [l.objective_id, projName.get(l.project_id)]))
+  const projIdByObj = new Map(linked.map(l => [l.objective_id, l.project_id]))
+  // The milestone's number and the mission's count: a typed "N · " wins, else position by creation.
+  const NUM = /^\s*(\d+)\s*[·.:)-]\s*/
+  const taskInfo = new Map()
+  for (const l of linked) {
+    const all = links.filter(t => t.project_id === l.project_id).sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
+    const m = NUM.exec(l.text || '')
+    taskInfo.set(l.objective_id, { task_id: l.id, task_text: String(l.text || '').replace(NUM, ''), task_n: m ? Number(m[1]) : all.indexOf(l) + 1, task_total: all.length })
+  }
+  const stepRows = active.length ? await q(supabase.from('objective_steps').select('objective_id,text,done,done_at,position').in('objective_id', active.map(o => o.id)).order('position')) : []
   const running = clocks.find(c => !c.stopped_at) || null
   const now = Date.now()
   const minutesFor = (id) => clocks.filter(c => c.objective_id === id).reduce((s, c) => s + (c.stopped_at ? (Number(c.minutes) || 0) : (now - new Date(c.started_at).getTime()) / 60000), 0)
@@ -61,6 +71,7 @@ export async function fetchLoadout() {
       project: projByObj.get(o.id) || null, project_id: projIdByObj.get(o.id) || null, description: o.description || null,
       kind: tags.includes('impromptu') ? 'Ad Hoc' : (projByObj.has(o.id) || tags.includes('mission-task')) ? 'Main Mission' : tags.includes('session') ? 'Session' : 'Side Mission',
       personal: tags.includes('personal'), adhoc: tags.includes('impromptu'), call: tags.includes('call'),
+      ...(taskInfo.get(o.id) || {}), steps: stepRows.filter(s => s.objective_id === o.id),
     }
   })
   // Three slots for planned work; the Ad Hoc slot carries impromptu items

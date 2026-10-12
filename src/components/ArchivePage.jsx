@@ -13,6 +13,30 @@ const KINDS = [['artifact', 'Artifacts', FileText, GOLD_BRIGHT], ['decision', 'D
 const KIND = Object.fromEntries(KINDS.map(k => [k[0], k]))
 const fmt = (iso) => iso ? new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : ''
 
+// A filed document (a brief, a decision) read as a page: each field a labeled
+// paragraph or list, never raw JSON.
+const DOC_SKIP = new Set(['kind', 'title', 'summary', 'slug'])
+function Doc({ doc }) {
+  if (!doc || typeof doc !== 'object') return <div style={{ fontSize: 13, color: INK2 }}>{String(doc)}</div>
+  const fields = Object.entries(doc).filter(([k, v]) => !DOC_SKIP.has(k) && v !== null && v !== '' && !(Array.isArray(v) && !v.length))
+  const label = (k) => k.replace(/_/g, ' ')
+  return (
+    <div style={{ display: 'grid', gap: 10 }}>
+      {doc.summary && !fields.some(([k]) => k === 'summary') && <div style={{ fontSize: 13.5, lineHeight: 1.65, color: INK2 }}>{renderMarkdown(String(doc.summary))}</div>}
+      {fields.map(([k, v]) => (
+        <div key={k}>
+          <Label>{label(k)}</Label>
+          {Array.isArray(v)
+            ? <div style={{ display: 'grid', gap: 4 }}>{v.map((x, i) => <div key={i} style={{ fontSize: 13.5, lineHeight: 1.55, color: INK2, display: 'flex', gap: 8 }}><span style={{ color: GOLD }}>·</span><span>{typeof x === 'string' ? renderMarkdown(x) : typeof x === 'object' && x ? (x.text || x.title || x.label || JSON.stringify(x)) : String(x)}</span></div>)}</div>
+            : typeof v === 'object'
+              ? <Doc doc={v} />
+              : <div style={{ fontSize: 13.5, lineHeight: 1.65, color: INK2 }}>{renderMarkdown(String(v))}</div>}
+        </div>
+      ))}
+    </div>
+  )
+}
+
 export default function ArchivePage() {
   const [rows, setRows] = useState(undefined)
   const [q, setQ] = useState('')
@@ -57,7 +81,7 @@ export default function ArchivePage() {
                 {r.tags?.length > 0 && <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>{r.tags.map(t => <span key={t} style={{ ...S.chip('rgba(255,255,255,0.06)', INK2), fontFamily: MONO, fontSize: 9, letterSpacing: '1px' }}>{t}</span>)}</div>}
                 {r.kind === 'board' && r.body?.phases && <div style={{ marginTop: 10 }}><SessionBoard board={{ id: r.id, title: r.title, phases: r.body.phases }} compact /></div>}
                 {r.kind === 'summary' && r.body?.steps?.length > 0 && <div style={{ marginTop: 8 }}><Label>Steps</Label>{r.body.steps.map((s, i) => <div key={i} style={{ fontSize: 13, color: s.done ? GRAY : INK, textDecoration: s.done ? 'line-through' : 'none' }}>{s.text}</div>)}</div>}
-                {(r.kind === 'artifact' || r.kind === 'decision') && r.body && <pre style={{ marginTop: 8, fontSize: 11.5, color: INK2, whiteSpace: 'pre-wrap', fontFamily: MONO, maxHeight: 320, overflow: 'auto' }}>{JSON.stringify(r.body, null, 1).slice(0, 6000)}</pre>}
+                {(r.kind === 'artifact' || r.kind === 'decision') && r.body && <div style={{ marginTop: 8 }}><Doc doc={r.body} /></div>}
               </div>
             )}
           </div>

@@ -203,9 +203,9 @@ const GENERIC = (
 import { BADGES, badgeTier, TIER_COLORS } from '../constants/collection'
 const hexA = (hex, a) => { const n = parseInt(hex.slice(1), 16); return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})` }
 
-export default function BadgeMedallion({ id, size = 34, earned = true, glow = false }) {
+export default function BadgeMedallion({ id, size = 34, earned = true, glow = false, color = null }) {
   const emblem = EMBLEMS[id] || GENERIC
-  const tierColor = BADGES[id] && !BADGES[id].legacy ? TIER_COLORS[badgeTier(id)] : GOLD
+  const tierColor = color || (BADGES[id] && !BADGES[id].legacy ? TIER_COLORS[badgeTier(id)] : GOLD)
   const stroke = earned ? tierColor : 'rgba(234,241,248,0.28)'
   return (
     <svg width={size} height={size} viewBox="0 0 48 48" aria-hidden="true" style={{

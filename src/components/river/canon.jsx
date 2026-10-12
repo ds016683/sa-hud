@@ -27,6 +27,8 @@ export const S = {
   panelTitle: { fontSize: 10, fontWeight: 600, color: BLUE, textTransform: 'uppercase', letterSpacing: '1.6px', marginBottom: 10, fontFamily: MONO },
   chip: (bg, fg) => ({ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 9999, background: bg, color: fg, textTransform: 'uppercase', letterSpacing: '0.05em', whiteSpace: 'nowrap' }),
   source: { fontSize: 10, color: GRAY, marginTop: 10, fontFamily: MONO, letterSpacing: '0.4px' },
+  btnPrimary: { display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: MONO, fontSize: 10, letterSpacing: '1.2px', textTransform: 'uppercase', padding: '8px 14px', borderRadius: 8, border: `1px solid ${GOLD}`, background: GOLD, color: '#0A1B2B', cursor: 'pointer' },
+  btnGhost: { display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: MONO, fontSize: 10, letterSpacing: '1.2px', textTransform: 'uppercase', padding: '8px 12px', borderRadius: 8, border: `1px solid ${PANEL_BORDER}`, background: 'transparent', color: INK2, cursor: 'pointer' },
 }
 
 export const Eyebrow = ({ children, style }) => (

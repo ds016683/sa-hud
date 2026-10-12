@@ -6,13 +6,17 @@
 // Empty slots stay visible on purpose (David, 10/7: the structure is the point).
 import { useEffect, useState, useCallback } from 'react'
 import { Play, Pause, PackageCheck, Archive, X as XIcon, Zap, Phone, Swords } from 'lucide-react'
+import BadgeMedallion from '../BadgeArt'
+import RecallModal, { BrainButton } from './Recall'
+import YayPage from './YayPage'
+import { MILES } from '../../lib/summary'
 import { supabase } from '../../lib/supabase'
 import { DispatchModal } from './AmbushPanel'
 import { pockets } from '../../lib/objectives'
 import FileAway from './FileAway'
 import { fetchLoadout, equip, holster, stash, extract, addImpromptu, fmtClock, SIZES, SLOTS } from '../../lib/loadout'
 import ItemDetail from './ItemDetail'
-import { INK, INK2, GRAY, PANEL_BORDER, GOLD, GOLD_BRIGHT, BLUE, GREEN, RED, MONO, SERIF, S, Eyebrow, Label, Panel, KindChip } from './canon'
+import { INK, INK2, GRAY, PANEL_BORDER, GOLD, GOLD_BRIGHT, BLUE, GREEN, RED, MONO, SERIF, S, Eyebrow, Label, Panel, KIND_COLOR } from './canon'
 
 const btn = (color = INK2, filled = false) => ({
   display: 'inline-flex', alignItems: 'center', gap: 5, fontFamily: MONO, fontSize: 9.5, letterSpacing: '1px', textTransform: 'uppercase',
@@ -88,28 +92,54 @@ function Notches({ from, span, color }) {
   return <span style={{ display: 'inline-flex', gap: 3 }}>{[0, 1, 2].map(i => <span key={i} style={{ width: 14, height: 5, borderRadius: 2, background: i >= from && i < from + span ? color : 'rgba(255,255,255,0.10)' }} />)}</span>
 }
 
-function FilledSlot({ it, n, act, onOpen, onExtract }) {
+// The slot card (David, 10/12, alternative C): the badge top left in the
+// cannon color; beside it the mission, the kind, and the type line (MMT 2 of
+// 10, Mythic · gate 3 of 5, Bounty · N/A); then the task as the biggest line;
+// miles and due; the clock and the actions; the brain at bottom right.
+const badgeFor = (it) => it.kind === 'Main Mission' ? 'mission-task' : it.kind === 'Ad Hoc' ? 'impromptu' : it.size === 'heavy' ? 'mythic' : it.size === 'medium' ? 'contract' : 'bounty'
+const fmtDue = (d) => d ? new Date(`${d}T12:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : null
+const Fact = ({ label, children }) => <div style={{ padding: '7px 0' }}><div style={{ fontFamily: MONO, fontSize: 9, letterSpacing: '1.3px', textTransform: 'uppercase', color: GRAY, marginBottom: 2 }}>{label}</div>{children}</div>
+
+function FilledSlot({ it, n, act, onOpen, onExtract, onRecall }) {
   const span = it.slots || 1
+  const color = KIND_COLOR[it.kind] || INK2
+  const main = it.kind === 'Main Mission'
+  const gates = it.steps || []
+  const gatesDone = gates.filter(g => g.done).length
+  const gate = gates.find(g => !g.done) || null
+  const typeLine = main ? (it.task_n ? `MMT ${it.task_n} of ${it.task_total}` : 'Mission task')
+    : it.size === 'heavy' ? `Mythic · gate ${Math.min(gatesDone + 1, Math.max(gates.length, 1))} of ${gates.length || 5}${gates.length ? ` · ${gates.map(g => g.done ? '✓' : '○').join(' ')}` : ''}`
+    : it.size === 'medium' ? 'Contract · N/A' : 'Bounty · N/A'
+  const task = main ? (it.task_text || it.title) : it.size === 'heavy' ? (gate ? gate.text : gates.length ? 'Every gate closed. Extract.' : 'No gates yet. Tell Lumen the gates.') : null
+  const miles = main ? { n: MILES.mmt, sub: 'on close' } : it.size === 'heavy' ? { n: MILES.gate * Math.min(gatesDone, MILES.gatesPaid), sub: `of ${MILES.mythic + MILES.gate * MILES.gatesPaid} banked` } : it.size === 'medium' ? { n: MILES.contract, sub: 'on close' } : { n: MILES.bounty, sub: 'on close' }
+  const due = fmtDue(it.due_date)
+  const late = it.due_date && it.due_date < new Date().toISOString().slice(0, 10)
   return (
     <div style={{ ...slotBox(it.equipped ? GREEN : PANEL_BORDER, it.equipped ? 'rgba(67,211,146,0.07)' : 'rgba(255,255,255,0.03)'), gridColumn: `span ${span}` }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+        <BadgeMedallion id={badgeFor(it)} size={50} color={color} />
+        <div style={{ flex: 1, minWidth: 0, display: 'grid', gap: 2 }}>
+          <div onClick={() => onOpen(it)} title="Open this item" style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 14.5, color: INK, lineHeight: 1.25, cursor: 'pointer', whiteSpace: main || it.size === 'heavy' ? 'normal' : 'normal' }}>{main ? (it.project || 'Main Mission') : it.title}</div>
+          <div style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '1.4px', textTransform: 'uppercase', color }}>{it.kind}{it.personal ? ' · personal' : ''}</div>
+          <div style={{ fontFamily: MONO, fontSize: 9, letterSpacing: '1.1px', textTransform: 'uppercase', color: GRAY }}>{typeLine}</div>
+        </div>
         <Notches from={n - 1} span={span} color={SIZES[it.size]?.color || INK2} />
-        <Label style={{ marginBottom: 0 }}>{span === 1 ? `Slot ${n}` : `Slots ${n} to ${n + span - 1}`}</Label>
-        <span style={{ flex: 1 }} />
-        <KindChip kind={it.kind} /><SizeChip size={it.size} />
       </div>
-      <div onClick={() => onOpen(it)} title="Open this item: overview, artifacts, sessions, files, notes" style={{ fontFamily: SERIF, fontSize: 16, fontWeight: 500, color: '#fff', lineHeight: 1.3, cursor: 'pointer', flex: 1 }}>{it.title}</div>
+      {task
+        ? <div onClick={() => onOpen(it)} style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 18, color: '#fff', lineHeight: 1.28, cursor: 'pointer', flex: 1 }}>{task}</div>
+        : <div style={{ fontSize: 12.5, color: GRAY, lineHeight: 1.45, flex: 1 }}>{it.size === 'medium' ? 'One deliverable, no steps. Extract when it is done.' : 'One action, no steps. Extract when it is done.'}</div>}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', borderTop: `1px solid ${PANEL_BORDER}`, borderBottom: `1px solid ${PANEL_BORDER}` }}>
+        <Fact label="Miles"><span style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 16, color: INK }}>{miles.n}</span><span style={{ fontFamily: MONO, fontSize: 9, letterSpacing: '1px', textTransform: 'uppercase', color: GRAY, marginLeft: 5 }}>{miles.sub}</span></Fact>
+        <div style={{ borderLeft: `1px solid ${PANEL_BORDER}`, paddingLeft: 12 }}><Fact label="Due">{due ? <span style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 16, color: late ? RED : INK }}>{due}{late ? <span style={{ fontFamily: MONO, fontSize: 9, letterSpacing: '1px', textTransform: 'uppercase', marginLeft: 5 }}>overdue</span> : null}</span> : <span style={{ fontSize: 13, color: GRAY }}>none set</span>}</Fact></div>
+      </div>
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
-        {it.project && <span style={S.chip(`${BLUE}22`, BLUE)}>{it.project}</span>}
-        {it.personal && <span style={S.chip('rgba(255,255,255,0.06)', INK2)}>personal</span>}
-        <span style={{ fontFamily: MONO, fontSize: 10, color: it.equipped ? GREEN : GRAY, letterSpacing: '0.6px' }}>{it.equipped ? 'running · ' : 'holstered · '}{fmtClock(it.minutes_today)}</span>
-      </div>
-      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+        <span style={{ fontFamily: MONO, fontSize: 10, color: it.equipped ? GREEN : GRAY, letterSpacing: '0.6px', marginRight: 2 }}>{it.equipped ? 'running · ' : 'holstered · '}{fmtClock(it.minutes_today)}</span>
         {it.equipped
           ? <button onClick={() => act(() => holster(it.id), `Timer off (holstered): ${it.title}`)} title="Holster: pause the clock, stays loaded" style={btn(GREEN, true)}><Pause size={11} /> Timer on</button>
           : <button onClick={() => act(() => equip(it.id), `Timer on (equipped): ${it.title}`)} title="Equip: run the clock on this, pause the rest" style={btn(INK2)}><Play size={11} /> Timer off</button>}
         <button onClick={() => act(() => stash(it.id), `Stashed: ${it.title}`)} title="Park it; it stays planned" style={btn(INK2)}><Archive size={11} /> Stash</button>
         <button onClick={() => onExtract(it)} style={btn(GOLD)}><PackageCheck size={11} /> Extract</button>
+        <span style={{ marginLeft: 'auto' }}><BrainButton onClick={() => onRecall(it)} /></span>
       </div>
     </div>
   )
@@ -128,7 +158,7 @@ function EmptySlot({ n }) {
 
 // The Ad Hoc slot: empty, it takes a task or a call right in the box; loaded,
 // it carries the impromptu item with its clock until Dispatch.
-function AdHocSlot({ item, act, onDispatch, onOpen, onChanged }) {
+function AdHocSlot({ item, act, onDispatch, onOpen, onChanged, onRecall }) {
   const [mode, setMode] = useState('task')
   const [text, setText] = useState('')
   const [busy, setBusy] = useState(false)
@@ -156,6 +186,7 @@ function AdHocSlot({ item, act, onDispatch, onOpen, onChanged }) {
           ? <button onClick={() => act(() => holster(item.id), `Timer off: ${item.title}`)} style={btn(GREEN, true)}><Pause size={11} /> Timer on</button>
           : <button onClick={() => act(() => equip(item.id), `Timer on: ${item.title}`)} style={btn(INK2)}><Play size={11} /> Timer off</button>}
         <button onClick={() => onDispatch(item)} style={btn(GOLD)}><Swords size={11} /> Dispatch</button>
+        <span style={{ marginLeft: 'auto' }}><BrainButton onClick={() => onRecall(item)} /></span>
       </div>
     </div>
   )
@@ -186,6 +217,8 @@ export default function LoadoutPanel({ onChange, refreshKey = 0, onNavigate, bar
   const [related, setRelated] = useState(null)
   const [projects, setProjects] = useState([])
   const [msg, setMsg] = useState(null)
+  const [recallOf, setRecallOf] = useState(null)
+  const [yay, setYay] = useState(null)
   const refresh = useCallback(() => fetchLoadout().then(setL).catch(e => console.warn('loadout', e.message)), [])
   useEffect(() => { refresh() }, [refresh, tick, refreshKey])
   useEffect(() => { const t = setInterval(() => setTick(x => x + 1), 30_000); return () => clearInterval(t) }, [])
@@ -219,17 +252,19 @@ export default function LoadoutPanel({ onChange, refreshKey = 0, onNavigate, bar
     <Wrap style={wrapStyle}>
       <style>{`.board-slots { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px } @media (max-width: 980px) { .board-slots { grid-template-columns: repeat(2, minmax(0, 1fr)) } }`}</style>
       {related && <ItemDetail item={{ id: related.id, objective_id: related.id, kind: related.kind, title: related.title, project: related.project, project_id: related.project_id, description: related.description, tags: related.tags, size: related.size }} onClose={() => setRelated(null)} onNavigate={onNavigate} onChange={bump} />}
-      {open && <ExtractModal item={open} onClose={() => setOpen(null)} onDone={(r) => { setOpen(null); setMsg(`Extracted: ${open.title} · ${fmtClock(r.minutes)}${r.personal ? ' · personal' : ''}`); bump() }} />}
-      {filing && <FileAway objective={filing.o} pockets={filing.p} onClose={() => setFiling(null)} onDone={({ filed, released }) => { setFiling(null); setMsg(`Filed ${filed.length} to the Archive · extracted ${filing.o.title} · ${released.minutes}m`); bump() }} />}
+      {open && <ExtractModal item={open} onClose={() => setOpen(null)} onDone={(r) => { const id = open.id, session = open.session; setOpen(null); setMsg(`Extracted: ${open.title} · ${fmtClock(r.minutes)}${r.personal ? ' · personal' : ''}`); bump(); if (!session) setYay(id) }} />}
+      {filing && <FileAway objective={filing.o} pockets={filing.p} onClose={() => setFiling(null)} onDone={({ filed, released }) => { const id = filing.o.id; setFiling(null); setMsg(`Filed ${filed.length} to the Archive · extracted ${filing.o.title} · ${released.minutes}m`); bump(); setYay(id) }} />}
+      {recallOf && <RecallModal objectiveId={recallOf.id} taskId={recallOf.task_id || null} title={recallOf.title} onClose={() => setRecallOf(null)} />}
+      {yay && <YayPage objectiveId={yay} fresh onClose={() => setYay(null)} />}
       {dispatch && <DispatchModal item={dispatch} projects={projects} onClose={() => setDispatch(null)} onDone={(r) => { setDispatch(null); setMsg(`Dispatched: ${dispatch.title} · ${fmtClock(r.minutes)}${r.ported.length ? ` · ported ${r.ported.length}` : ' · nothing left'} · 1 mile on the next update`); bump() }} />}
       {!L ? (
         <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '1.4px', textTransform: 'uppercase', color: GRAY, padding: '12px 0' }}>Reading the board</div>
       ) : (
         <>
           <div className="board-slots">
-            {layout.placed.map(({ it, n }) => <FilledSlot key={it.id} it={it} n={n} act={act} onOpen={setRelated} onExtract={extractGate} />)}
+            {layout.placed.map(({ it, n }) => <FilledSlot key={it.id} it={it} n={n} act={act} onOpen={setRelated} onExtract={extractGate} onRecall={setRecallOf} />)}
             {layout.empties.map(n => <EmptySlot key={`empty-${n}`} n={n} />)}
-            <AdHocSlot item={L.adhoc[0] || null} act={act} onDispatch={setDispatch} onOpen={setRelated} onChanged={bump} />
+            <AdHocSlot item={L.adhoc[0] || null} act={act} onDispatch={setDispatch} onOpen={setRelated} onChanged={bump} onRecall={setRecallOf} />
           </div>
           {layout.overflow.length > 0 && <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '0.8px', color: RED, textTransform: 'uppercase', marginTop: 8 }}>Over capacity ({L.slots.used}/{SLOTS} slots): {layout.overflow.map(i => `${i.title} · ${SIZES[i.size]?.label}`).join(' · ')}. Stash something.</div>}
           {L.adhoc.length > 1 && <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '0.8px', color: GRAY, textTransform: 'uppercase', marginTop: 8 }}>Also unplanned: {L.adhoc.slice(1).map(i => i.title).join(' · ')} · dispatch the slot to reach them</div>}
