@@ -6,21 +6,38 @@ import { X as XIcon, Check, ExternalLink } from 'lucide-react'
 import BadgeMedallion from '../BadgeArt'
 import { missionSummary, fmtDay } from '../../lib/summary'
 import { signedUrl } from '../../lib/archive'
-import { INK, INK2, GRAY, PANEL_BORDER, GOLD, GREEN, MONO, SERIF, S, KIND_COLOR, KindIcon, Label } from './canon'
+import { INK, INK2, GRAY, PANEL_BORDER, GOLD, GREEN, MONO, SERIF, S, KindIcon, Label } from './canon'
+import DocView from './DocView'
+import SessionBoard from './SessionBoard'
 
 const Fact = ({ label, children }) => <div><Label>{label}</Label><div style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 17, color: INK, lineHeight: 1.25 }}>{children}</div></div>
 
-export default function YayPage({ objectiveId, onClose, fresh = false }) {
+export default function YayPage({ objectiveId, onClose, fresh = false, onOpenMission = null }) {
   const [m, setM] = useState(null)
   const [err, setErr] = useState(null)
+  const [reading, setReading] = useState(null)
   useEffect(() => { let on = true; missionSummary(objectiveId).then(x => { if (on) setM(x) }).catch(e => { if (on) setErr(e.message) }); return () => { on = false } }, [objectiveId])
   useEffect(() => { const k = (e) => { if (e.key === 'Escape') onClose() }; window.addEventListener('keydown', k); return () => window.removeEventListener('keydown', k) }, [onClose])
-  const color = m ? (KIND_COLOR[m.kind] || GOLD) : GOLD
+  const color = m ? m.color : GOLD
   return (
     <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 300, background: 'rgba(5,16,28,0.86)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16, overflowY: 'auto' }}>
       <div onClick={e => e.stopPropagation()} style={{ width: 'min(720px, 100%)', maxHeight: '92vh', overflowY: 'auto', background: '#0F2338', border: `1px solid ${color}55`, borderRadius: 16, padding: '34px 32px 26px', boxShadow: `0 0 60px -20px ${color}` }}>
         {err && <div style={{ fontFamily: MONO, fontSize: 10, color: '#E8836F', letterSpacing: '1px', textTransform: 'uppercase' }}>{err}</div>}
         {!m && !err && <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '1.4px', textTransform: 'uppercase', color: GRAY }}>Reading the Ledger</div>}
+        {reading && (
+          <div onClick={() => setReading(null)} style={{ position: 'fixed', inset: 0, zIndex: 310, background: 'rgba(5,16,28,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+            <div onClick={e => e.stopPropagation()} style={{ width: 'min(760px, 100%)', maxHeight: '88vh', overflowY: 'auto', background: '#10273B', border: `1px solid ${PANEL_BORDER}`, borderRadius: 14, padding: '24px 26px', display: 'grid', gap: 14 }}>
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '1.4px', textTransform: 'uppercase', color: GRAY }}>{reading.kind} · filed {fmtDay(reading.filed_at)}</div>
+                  <h3 style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 22, color: '#fff', margin: '4px 0 0', lineHeight: 1.25 }}>{reading.title}</h3>
+                </div>
+                <button onClick={() => setReading(null)} style={{ background: 'transparent', border: 'none', color: GRAY, cursor: 'pointer' }}><XIcon size={18} /></button>
+              </div>
+              {reading.kind === 'board' && reading.body?.phases ? <SessionBoard board={{ id: reading.id, title: reading.title, phases: reading.body.phases }} compact /> : reading.body ? <DocView doc={reading.body} /> : <div style={{ fontSize: 14, lineHeight: 1.65, color: INK2 }}>{reading.summary}</div>}
+            </div>
+          </div>
+        )}
         {m && (
           <div style={{ display: 'grid', gap: 18 }}>
             <div style={{ display: 'flex', gap: 22, alignItems: 'center', flexWrap: 'wrap' }}>
@@ -72,14 +89,17 @@ export default function YayPage({ objectiveId, onClose, fresh = false }) {
                     <div key={a.id} style={{ display: 'flex', gap: 10, alignItems: 'center', fontSize: 13.5, color: INK2 }}>
                       <span style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '1px', textTransform: 'uppercase', color: GRAY, width: 64, flexShrink: 0 }}>{a.kind}</span>
                       <span style={{ flex: 1 }}>{a.title}</span>
-                      {a.path && <button onClick={async () => { const u = await signedUrl(a.bucket || 'project-files', a.path); if (u) window.open(u, '_blank', 'noopener') }} style={{ background: 'transparent', border: `1px solid ${PANEL_BORDER}`, borderRadius: 8, color: INK2, cursor: 'pointer', padding: '3px 8px', display: 'inline-flex', alignItems: 'center', gap: 5, fontFamily: MONO, fontSize: 9.5 }}><ExternalLink size={10} /> open</button>}
+                      {a.kind === 'file' && a.path
+                        ? <button onClick={async () => { const u = await signedUrl(a.bucket || 'project-files', a.path); if (u) window.open(u, '_blank', 'noopener') }} style={{ background: 'transparent', border: `1px solid ${PANEL_BORDER}`, borderRadius: 8, color: INK2, cursor: 'pointer', padding: '3px 8px', display: 'inline-flex', alignItems: 'center', gap: 5, fontFamily: MONO, fontSize: 9.5 }}><ExternalLink size={10} /> open</button>
+                        : <button onClick={() => setReading(a)} style={{ background: 'transparent', border: `1px solid ${PANEL_BORDER}`, borderRadius: 8, color: INK2, cursor: 'pointer', padding: '3px 8px', display: 'inline-flex', alignItems: 'center', gap: 5, fontFamily: MONO, fontSize: 9.5 }}><ExternalLink size={10} /> read</button>}
                     </div>
                   ))}
                 </div>
               </div>
             )}
 
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, borderTop: `1px solid ${PANEL_BORDER}`, paddingTop: 14 }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, borderTop: `1px solid ${PANEL_BORDER}`, paddingTop: 14, flexWrap: 'wrap' }}>
+              {onOpenMission && <button onClick={() => onOpenMission(m.objective)} style={S.btnGhost}><ExternalLink size={11} /> Open mission page</button>}
               <button onClick={onClose} style={S.btnPrimary}>Carry on</button>
             </div>
           </div>

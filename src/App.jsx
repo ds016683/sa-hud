@@ -266,7 +266,7 @@ export default function App() {
           {active === 'main-missions'    && <ProjectsPage deepLink={params} onNavigate={setRoute} />}
           {active === 'side-missions'    && <SideMissionsPage onNavigate={setRoute} />}
           {active === 'maintenance'      && <MaintenancePage deepLink={params} />}
-          {active === 'archive'          && <ArchivePage />}
+          {active === 'archive'          && <ArchivePage onNavigate={setRoute} />}
           {active === 'cabinet'          && <FileCabinetPage />}
           {active === 'company-finance'  && <CompanyFinancePage />}
           {active === 'personal-finance' && <PersonalFinancePage />}

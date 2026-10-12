@@ -9,12 +9,12 @@ import { Play, Pause, PackageCheck, Archive, X as XIcon, Zap, Phone, Swords } fr
 import BadgeMedallion from '../BadgeArt'
 import RecallModal, { BrainButton } from './Recall'
 import YayPage from './YayPage'
-import { MILES } from '../../lib/summary'
+import { MILES, colorOf } from '../../lib/summary'
 import { supabase } from '../../lib/supabase'
 import { DispatchModal } from './AmbushPanel'
 import { pockets } from '../../lib/objectives'
 import FileAway from './FileAway'
-import { fetchLoadout, equip, holster, stash, extract, addImpromptu, fmtClock, SIZES, SLOTS } from '../../lib/loadout'
+import { fetchLoadout, equip, holster, stash, extract, addImpromptu, fmtClock, SIZES, SLOTS, sizeOf } from '../../lib/loadout'
 import ItemDetail from './ItemDetail'
 import { INK, INK2, GRAY, PANEL_BORDER, GOLD, GOLD_BRIGHT, BLUE, GREEN, RED, MONO, SERIF, S, Eyebrow, Label, Panel, KIND_COLOR } from './canon'
 
@@ -117,7 +117,7 @@ function FilledSlot({ it, n, act, onOpen, onExtract, onRecall }) {
   return (
     <div style={{ ...slotBox(it.equipped ? GREEN : PANEL_BORDER, it.equipped ? 'rgba(67,211,146,0.07)' : 'rgba(255,255,255,0.03)'), gridColumn: `span ${span}` }}>
       <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
-        <BadgeMedallion id={badgeFor(it)} size={50} color={color} />
+        <BadgeMedallion id={badgeFor(it)} size={50} color={colorOf(it.kind, it.size)} />
         <div style={{ flex: 1, minWidth: 0, display: 'grid', gap: 2 }}>
           <div onClick={() => onOpen(it)} title="Open this item" style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 14.5, color: INK, lineHeight: 1.25, cursor: 'pointer', whiteSpace: main || it.size === 'heavy' ? 'normal' : 'normal' }}>{main ? (it.project || 'Main Mission') : it.title}</div>
           <div style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '1.4px', textTransform: 'uppercase', color }}>{it.kind}{it.personal ? ' · personal' : ''}</div>
@@ -255,7 +255,7 @@ export default function LoadoutPanel({ onChange, refreshKey = 0, onNavigate, bar
       {open && <ExtractModal item={open} onClose={() => setOpen(null)} onDone={(r) => { const id = open.id, session = open.session; setOpen(null); setMsg(`Extracted: ${open.title} · ${fmtClock(r.minutes)}${r.personal ? ' · personal' : ''}`); bump(); if (!session) setYay(id) }} />}
       {filing && <FileAway objective={filing.o} pockets={filing.p} onClose={() => setFiling(null)} onDone={({ filed, released }) => { const id = filing.o.id; setFiling(null); setMsg(`Filed ${filed.length} to the Archive · extracted ${filing.o.title} · ${released.minutes}m`); bump(); setYay(id) }} />}
       {recallOf && <RecallModal objectiveId={recallOf.id} taskId={recallOf.task_id || null} title={recallOf.title} onClose={() => setRecallOf(null)} />}
-      {yay && <YayPage objectiveId={yay} fresh onClose={() => setYay(null)} />}
+      {yay && <YayPage objectiveId={yay} fresh onClose={() => setYay(null)} onOpenMission={(o) => { setYay(null); setRelated({ id: o.id, objective_id: o.id, kind: (o.tags || []).includes('impromptu') ? 'Ad Hoc' : 'Side Mission', title: o.title, description: o.description, tags: o.tags, size: sizeOf(o) }) }} />}
       {dispatch && <DispatchModal item={dispatch} projects={projects} onClose={() => setDispatch(null)} onDone={(r) => { setDispatch(null); setMsg(`Dispatched: ${dispatch.title} · ${fmtClock(r.minutes)}${r.ported.length ? ` · ported ${r.ported.length}` : ' · nothing left'} · 1 mile on the next update`); bump() }} />}
       {!L ? (
         <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '1.4px', textTransform: 'uppercase', color: GRAY, padding: '12px 0' }}>Reading the board</div>

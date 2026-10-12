@@ -8,39 +8,20 @@ import { Archive as ArchiveIcon, FileText, Paperclip, ListChecks, Scale, AlignLe
 import { listClosedMissions, signedUrl } from '../lib/archive'
 import { reopenObjective, realmOf } from '../lib/objectives'
 import { sizeOf } from '../lib/loadout'
-import { kindOf, typeOf, badgeOf, milesFor, fmtDay } from '../lib/summary'
+import { kindOf, typeOf, badgeOf, milesFor, colorOf, fmtDay } from '../lib/summary'
 import { renderMarkdown } from './river/MeetingCloseout'
 import SessionBoard from './river/SessionBoard'
 import BadgeMedallion from './BadgeArt'
 import YayPage from './river/YayPage'
-import { INK, INK2, GRAY, PANEL_BORDER, GOLD, GOLD_BRIGHT, BLUE, GREEN, PURPLE, MONO, SERIF, S, Panel, Label, KIND_COLOR } from './river/canon'
+import DocView from './river/DocView'
+import ItemDetail from './river/ItemDetail'
+import { INK, INK2, GRAY, PANEL_BORDER, GOLD, GOLD_BRIGHT, BLUE, GREEN, PURPLE, MONO, SERIF, S, Panel, Label } from './river/canon'
 
 const btn = (color = INK2, filled = false, extra = {}) => ({ display: 'inline-flex', alignItems: 'center', gap: 5, fontFamily: MONO, fontSize: 9.5, letterSpacing: '1px', textTransform: 'uppercase', padding: '5px 9px', borderRadius: 8, border: `1px solid ${filled ? color : `${color}66`}`, background: filled ? color : 'transparent', color: filled ? '#0A1B2B' : color, cursor: 'pointer', ...extra })
 const KIND = { artifact: ['Brief', FileText, GOLD_BRIGHT], decision: ['Decision', Scale, GOLD], board: ['Board', ListChecks, GREEN], file: ['File', Paperclip, BLUE], summary: ['Close-out', AlignLeft, INK2] }
 const TYPES = ['Bounty', 'Contract', 'Mythic', 'Main Mission task', 'Ad Hoc']
 const words = (q) => q.toLowerCase().split(/\s+/).filter(Boolean)
 const hay = (m) => [m.o.title, m.o.description, m.project, ...m.entries.flatMap(e => [e.title, e.summary, JSON.stringify(e.body || '')])].join(' ').toLowerCase()
-
-// A filed document (a brief, a decision) read as a page: each field a labeled
-// paragraph or list, never raw JSON.
-const DOC_SKIP = new Set(['kind', 'title', 'summary', 'slug'])
-function Doc({ doc }) {
-  if (!doc || typeof doc !== 'object') return <div style={{ fontSize: 13, color: INK2 }}>{String(doc)}</div>
-  const fields = Object.entries(doc).filter(([k, v]) => !DOC_SKIP.has(k) && v !== null && v !== '' && !(Array.isArray(v) && !v.length))
-  return (
-    <div style={{ display: 'grid', gap: 10 }}>
-      {doc.summary && <div style={{ fontSize: 13.5, lineHeight: 1.65, color: INK2 }}>{renderMarkdown(String(doc.summary))}</div>}
-      {fields.map(([k, v]) => (
-        <div key={k}>
-          <Label>{k.replace(/_/g, ' ')}</Label>
-          {Array.isArray(v)
-            ? <div style={{ display: 'grid', gap: 4 }}>{v.map((x, i) => <div key={i} style={{ fontSize: 13.5, lineHeight: 1.55, color: INK2, display: 'flex', gap: 8 }}><span style={{ color: GOLD }}>·</span><span>{typeof x === 'string' ? renderMarkdown(x) : typeof x === 'object' && x ? (x.text || x.title || x.label || JSON.stringify(x)) : String(x)}</span></div>)}</div>
-            : typeof v === 'object' ? <Doc doc={v} /> : <div style={{ fontSize: 13.5, lineHeight: 1.65, color: INK2 }}>{renderMarkdown(String(v))}</div>}
-        </div>
-      ))}
-    </div>
-  )
-}
 
 function Entry({ e }) {
   const [label, Icon, color] = KIND[e.kind] || KIND.summary
@@ -52,14 +33,14 @@ function Entry({ e }) {
         <span style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '1px', textTransform: 'uppercase', color, width: 68 }}>{label}</span>
         <span style={{ flex: 1, fontSize: 13.5, color: INK, minWidth: 200 }}>{e.title}</span>
         <span style={{ fontFamily: MONO, fontSize: 9.5, color: GRAY }}>{fmtDay(e.filed_at)}</span>
-        {e.path && <button onClick={async (ev) => { ev.stopPropagation(); const u = await signedUrl(e.bucket || 'project-files', e.path); if (u) window.open(u, '_blank', 'noopener') }} style={btn(INK2)}><ExternalLink size={10} /> open</button>}
+        {e.kind === 'file' && e.path && <button onClick={async (ev) => { ev.stopPropagation(); const u = await signedUrl(e.bucket || 'project-files', e.path); if (u) window.open(u, '_blank', 'noopener') }} style={btn(INK2)}><ExternalLink size={10} /> open</button>}
       </div>
       {open && (
         <div style={{ marginTop: 8, paddingLeft: 23 }}>
           {e.kind === 'summary' && e.summary && <div style={{ fontSize: 13.5, lineHeight: 1.65, color: INK2 }}>{renderMarkdown(e.summary)}</div>}
           {e.kind === 'summary' && e.body?.steps?.length > 0 && <div style={{ marginTop: 8, display: 'grid', gap: 3 }}>{e.body.steps.map((s, i) => <div key={i} style={{ fontSize: 13, color: s.done ? INK2 : GRAY, display: 'flex', gap: 8 }}><span style={{ color: s.done ? GREEN : GRAY }}>{s.done ? '✓' : '○'}</span>{s.text}</div>)}</div>}
           {e.kind === 'board' && e.body?.phases && <SessionBoard board={{ id: e.id, title: e.title, phases: e.body.phases }} compact />}
-          {(e.kind === 'artifact' || e.kind === 'decision') && (e.body ? <Doc doc={e.body} /> : e.summary && <div style={{ fontSize: 13.5, lineHeight: 1.65, color: INK2 }}>{renderMarkdown(e.summary)}</div>)}
+          {(e.kind === 'artifact' || e.kind === 'decision') && (e.body ? <DocView doc={e.body} /> : e.summary && <div style={{ fontSize: 13.5, lineHeight: 1.65, color: INK2 }}>{renderMarkdown(e.summary)}</div>)}
           {e.kind === 'file' && e.summary && <div style={{ fontSize: 13, color: INK2 }}>{e.summary}</div>}
         </div>
       )}
@@ -71,7 +52,7 @@ function MissionRow({ m, onYay, onReopen }) {
   const [open, setOpen] = useState(false)
   const kind = kindOf(m.o, !!m.project)
   const size = sizeOf(m.o)
-  const color = KIND_COLOR[kind] || GOLD
+  const color = colorOf(kind, size)
   const realm = realmOf(m.o)
   const sum = m.entries.find(e => e.kind === 'summary')
   const left = m.entries.filter(e => e.kind !== 'summary')
@@ -108,12 +89,13 @@ function MissionRow({ m, onYay, onReopen }) {
   )
 }
 
-export default function ArchivePage() {
+export default function ArchivePage({ onNavigate }) {
   const [data, setData] = useState(undefined)
   const [q, setQ] = useState('')
   const [realm, setRealm] = useState(null)
   const [type, setType] = useState(null)
   const [yay, setYay] = useState(null)
+  const [detail, setDetail] = useState(null)
   const [err, setErr] = useState(null)
   const [tick, setTick] = useState(0)
   useEffect(() => { let on = true; listClosedMissions().then(d => { if (on) setData(d) }).catch(e => { if (on) setErr(e.message) }); return () => { on = false } }, [tick])
@@ -136,7 +118,8 @@ export default function ArchivePage() {
 
   return (
     <div style={S.page}>
-      {yay && <YayPage objectiveId={yay.id} onClose={() => setYay(null)} />}
+      {yay && <YayPage objectiveId={yay.id} onClose={() => setYay(null)} onOpenMission={(o) => { setYay(null); setDetail(o) }} />}
+      {detail && <ItemDetail item={{ id: detail.id, objective_id: detail.id, kind: kindOf(detail, false), title: detail.title, description: detail.description, tags: detail.tags, size: sizeOf(detail), objective: detail }} onClose={() => setDetail(null)} onNavigate={onNavigate} onChange={() => setTick(x => x + 1)} />}
       <div style={{ marginBottom: 18 }}>
         <h1 style={S.h1}><ArchiveIcon size={22} color={BLUE} style={{ verticalAlign: '-3px', marginRight: 8 }} />Archive</h1>
         <div style={S.sub}>every closed mission and what it left behind · any word finds it</div>

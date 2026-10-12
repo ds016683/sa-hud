@@ -10,6 +10,8 @@ export const MILES = { bounty: 4, contract: 15, mythic: 50, gate: 10, gatesPaid:
 export const kindOf = (o, linked) => linked ? 'Main Mission' : (o?.tags || []).includes('impromptu') ? 'Ad Hoc' : 'Side Mission'
 export const typeOf = (kind, size) => kind === 'Main Mission' ? 'Main Mission task' : kind === 'Ad Hoc' ? 'Ad Hoc' : SIZES[size].label
 export const badgeOf = (kind, size) => kind === 'Main Mission' ? 'mission-task' : kind === 'Ad Hoc' ? 'impromptu' : size === 'heavy' ? 'mythic' : size === 'medium' ? 'contract' : 'bounty'
+// Medallion color: a Side Mission takes its type's color (Bounty gold, Contract baby blue, Mythic purple); a Main Mission task is purple; Ad Hoc green.
+export const colorOf = (kind, size) => kind === 'Main Mission' ? '#B4A3E8' : kind === 'Ad Hoc' ? '#43D392' : SIZES[size].color
 export const milesFor = (kind, size, gatesDone = 0) => kind === 'Main Mission' ? MILES.mmt : kind === 'Ad Hoc' ? MILES.adhoc : size === 'heavy' ? MILES.mythic + MILES.gate * Math.min(gatesDone, MILES.gatesPaid) : size === 'medium' ? MILES.contract : MILES.bounty
 
 export async function missionSummary(objectiveId) {
@@ -37,7 +39,7 @@ export async function missionSummary(objectiveId) {
   const sum = archive.find(a => a.kind === 'summary')
   const achieved = sum?.summary || o.description || null
   return {
-    id: o.id, title: o.title, kind, type, size, badge, badgeLabel: BADGES[badge]?.label, lore: BADGES[badge]?.lore,
+    id: o.id, title: o.title, kind, type, size, badge, color: colorOf(kind, size), objective: o, badgeLabel: BADGES[badge]?.label, lore: BADGES[badge]?.lore,
     project: project?.name || null, projectKey: project?.key || null, task: link ? link.text : null,
     personal: tags.includes('personal'), state: o.state, released_kind: o.released_kind,
     miles, gatesDone, gatesTotal: steps.length, gatesPaid: Math.min(gatesDone, MILES.gatesPaid),
