@@ -822,7 +822,10 @@ export async function callTool(name, args = {}) {
       let path = `archive_entries?select=id,kind,title,summary,realm,tags,source_kind,source_title,filed_at,path&order=filed_at.desc&limit=${Math.min(50, Number(args.limit) || 20)}`
       if (args.realm) path += `&realm=eq.${encodeURIComponent(args.realm)}`
       if (args.kind) path += `&kind=eq.${encodeURIComponent(args.kind)}`
-      if (q) path += `&or=(title.ilike.*${encodeURIComponent(q)}*,summary.ilike.*${encodeURIComponent(q)}*,source_title.ilike.*${encodeURIComponent(q)}*)`
+      // Every word must land somewhere (title, summary or source), so
+      // "Danbury Greg" finds what "Greg" finds.
+      const words = q.split(/\s+/).filter(Boolean).slice(0, 6)
+      if (words.length) path += `&and=(${words.map(w => { const e = encodeURIComponent(w.replace(/[(),.*]/g, '')); return `or(title.ilike.*${e}*,summary.ilike.*${e}*,source_title.ilike.*${e}*)` }).join(',')})`
       try { return JSON.stringify({ ok: true, entries: await sb(path) }) } catch (e) { return JSON.stringify({ ok: false, error: `the Archive is not set up yet (${String(e.message).slice(0, 80)})` }) }
     }
     case 'file_to_archive': {

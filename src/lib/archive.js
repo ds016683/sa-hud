@@ -13,7 +13,8 @@ export async function listEntries({ q = '', realm = null, kind = null, limit = 2
   let query = supabase.from('archive_entries').select('*').order('filed_at', { ascending: false }).limit(limit)
   if (realm) query = query.eq('realm', realm)
   if (kind) query = query.eq('kind', kind)
-  if (q.trim()) query = query.or(`title.ilike.%${q.trim()}%,summary.ilike.%${q.trim()}%,source_title.ilike.%${q.trim()}%`)
+  // Every word must land somewhere; chained .or() calls are ANDed.
+  for (const w of q.trim().split(/\s+/).filter(Boolean).slice(0, 6)) { const e = w.replace(/[(),.%]/g, ''); if (e) query = query.or(`title.ilike.%${e}%,summary.ilike.%${e}%,source_title.ilike.%${e}%`) }
   const { data, error } = await query
   if (error) { if (missing(error)) return null; throw new Error(error.message) }
   return data || []
