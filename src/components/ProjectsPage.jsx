@@ -390,7 +390,7 @@ function ProjectDetail({ project, board: boardProp, api, onBack, initialTab, ini
               const ok = await api.updateProject(project.id, { status: 'completed', archived_at: new Date().toISOString() })
               try { await archiveSharesFor(project.id) } catch (e) { console.warn('shares archive', e.message) }
               // The mission's own cabinet moves into the master cabinet under Missions.
-              try { await importProject(project.id, `${project.category === 'personal' ? 'Personal' : 'Third Horizon'}/Missions/${project.name.replace(/[\/]/g, ' ')}`) } catch (e) { console.warn('cabinet import', e.message) }
+              try { await importProject(project.id, `${project.category === 'personal' ? 'Personal' : 'Third Horizon'}/Missions/${project.name.replace(/[/\\]/g, ' ')}`) } catch (e) { console.warn('cabinet import', e.message) }
               // File the mission's artifacts and its latest session board in the Archive.
               try {
                 const list = await listProjArtifacts(project.id)
