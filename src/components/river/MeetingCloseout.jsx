@@ -49,14 +49,15 @@ const mdDash = { width: 12, height: 2, background: GOLD, flexShrink: 0, marginTo
 
 // Block level: # / ## headings become mono blue labels, "- " "* " "• " lines
 // become gold-dash bullets, blank lines split paragraphs.
-export function renderMarkdown(text) {
+export function renderMarkdown(text, { size = 12.5 } = {}) {
+  const sz = { fontSize: size, lineHeight: size > 13 ? 1.7 : 1.6 }
   const lines = String(text || '').replace(/\r\n?/g, '\n').split('\n')
   const out = []
   let para = [], list = []
-  const flushPara = () => { if (para.length) { out.push(<p key={`p${out.length}`} style={mdPara}>{inline(para.join(' '), `p${out.length}`)}</p>); para = [] } }
+  const flushPara = () => { if (para.length) { out.push(<p key={`p${out.length}`} style={{ ...mdPara, ...sz }}>{inline(para.join(' '), `p${out.length}`)}</p>); para = [] } }
   const flushList = () => {
     if (list.length) {
-      out.push(<div key={`l${out.length}`} style={{ margin: '4px 0' }}>{list.map((l, i) => <div key={i} style={mdBullet}><span style={mdDash} /><span style={{ minWidth: 0 }}>{inline(l, `l${out.length}-${i}`)}</span></div>)}</div>)
+      out.push(<div key={`l${out.length}`} style={{ margin: '4px 0' }}>{list.map((l, i) => <div key={i} style={{ ...mdBullet, ...sz }}><span style={{ ...mdDash, marginTop: size > 13 ? 12 : 9 }} /><span style={{ minWidth: 0 }}>{inline(l, `l${out.length}-${i}`)}</span></div>)}</div>)
       list = []
     }
   }
@@ -66,7 +67,8 @@ export function renderMarkdown(text) {
     const h = line.match(/^#{1,6}\s+(.*)$/)
     if (h) { flushPara(); flushList(); out.push(<div key={`h${out.length}`} style={mdHeading}>{h[1].replace(/\*\*/g, '')}</div>); continue }
     const b = line.match(/^(?:[-*•]|\d+[.)])\s+(.*)$/)
-    if (b) { flushPara(); list.push(b[1]); continue }
+    // "1) … 2) … 3) …" on one line is prose, not a list of one.
+    if (b && !/\s\d+[.)]\s/.test(b[1])) { flushPara(); list.push(b[1]); continue }
     flushList(); para.push(line)
   }
   flushPara(); flushList()

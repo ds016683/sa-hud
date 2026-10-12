@@ -77,7 +77,7 @@ export default function YayPage({ objectiveId, onClose, fresh = false, onOpenMis
             <div>
               <Label>Achieved</Label>
               {m.achieved
-                ? <div style={{ fontSize: 14.5, lineHeight: 1.65, color: INK }}>{m.achieved}{m.achievedFrom === 'archive' && <div style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '0.8px', textTransform: 'uppercase', color: GRAY, marginTop: 6 }}>from the close-out summary</div>}</div>
+                ? <div style={{ fontSize: 15.5, lineHeight: 1.7, color: INK }}>{m.achieved}{m.achievedFrom === 'archive' && <div style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '0.8px', textTransform: 'uppercase', color: GRAY, marginTop: 6 }}>from the close-out summary</div>}</div>
                 : <div style={{ fontSize: 13.5, color: GRAY }}>Nothing written at close. Tell Lumen what was achieved and it lands here.</div>}
             </div>
 

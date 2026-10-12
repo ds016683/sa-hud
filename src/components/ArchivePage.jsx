@@ -37,10 +37,10 @@ function Entry({ e }) {
       </div>
       {open && (
         <div style={{ marginTop: 8, paddingLeft: 23 }}>
-          {e.kind === 'summary' && e.summary && <div style={{ fontSize: 13.5, lineHeight: 1.65, color: INK2 }}>{renderMarkdown(e.summary)}</div>}
-          {e.kind === 'summary' && e.body?.steps?.length > 0 && <div style={{ marginTop: 8, display: 'grid', gap: 3 }}>{e.body.steps.map((s, i) => <div key={i} style={{ fontSize: 13, color: s.done ? INK2 : GRAY, display: 'flex', gap: 8 }}><span style={{ color: s.done ? GREEN : GRAY }}>{s.done ? '✓' : '○'}</span>{s.text}</div>)}</div>}
+          {e.kind === 'summary' && e.summary && <div style={{ color: INK2 }}>{renderMarkdown(e.summary, { size: 15.5 })}</div>}
+          {e.kind === 'summary' && e.body?.steps?.length > 0 && <div style={{ marginTop: 8, display: 'grid', gap: 4 }}>{e.body.steps.map((s, i) => <div key={i} style={{ fontSize: 14.5, color: s.done ? INK2 : GRAY, display: 'flex', gap: 8 }}><span style={{ color: s.done ? GREEN : GRAY }}>{s.done ? '✓' : '○'}</span>{s.text}</div>)}</div>}
           {e.kind === 'board' && e.body?.phases && <SessionBoard board={{ id: e.id, title: e.title, phases: e.body.phases }} compact />}
-          {(e.kind === 'artifact' || e.kind === 'decision') && (e.body ? <DocView doc={e.body} /> : e.summary && <div style={{ fontSize: 13.5, lineHeight: 1.65, color: INK2 }}>{renderMarkdown(e.summary)}</div>)}
+          {(e.kind === 'artifact' || e.kind === 'decision') && (e.body ? <DocView doc={e.body} /> : e.summary && <div style={{ color: INK2 }}>{renderMarkdown(e.summary, { size: 15.5 })}</div>)}
           {e.kind === 'file' && e.summary && <div style={{ fontSize: 13, color: INK2 }}>{e.summary}</div>}
         </div>
       )}
