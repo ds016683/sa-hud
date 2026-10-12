@@ -12,7 +12,7 @@ import { pockets } from '../../lib/objectives'
 import FileAway from './FileAway'
 import { fetchLoadout, equip, holster, stash, extract, addImpromptu, fmtClock, SIZES, SLOTS } from '../../lib/loadout'
 import ItemDetail from './ItemDetail'
-import { INK, INK2, GRAY, PANEL_BORDER, GOLD, GOLD_BRIGHT, BLUE, GREEN, RED, MONO, SERIF, S, Eyebrow, Label, Panel } from './canon'
+import { INK, INK2, GRAY, PANEL_BORDER, GOLD, GOLD_BRIGHT, BLUE, GREEN, RED, MONO, SERIF, S, Eyebrow, Label, Panel, KindChip } from './canon'
 
 const btn = (color = INK2, filled = false) => ({
   display: 'inline-flex', alignItems: 'center', gap: 5, fontFamily: MONO, fontSize: 9.5, letterSpacing: '1px', textTransform: 'uppercase',
@@ -25,8 +25,6 @@ const SizeChip = ({ size }) => {
   return <span style={{ ...S.chip('rgba(255,255,255,0.06)', s.color), border: `1px solid ${s.color}55`, fontFamily: MONO, fontSize: 9, letterSpacing: '1px', padding: '2px 7px' }}>{s.label} · {s.slots} slot{s.slots === 1 ? '' : 's'}</span>
 }
 
-const KIND_COLOR = { 'Side Mission': GREEN, 'Main Mission': GOLD_BRIGHT, 'Ad Hoc': INK2, 'Session': BLUE }
-const KindChip = ({ kind }) => <span style={{ ...S.chip('transparent', KIND_COLOR[kind] || INK2), border: `1px solid ${(KIND_COLOR[kind] || INK2)}55`, fontFamily: MONO, fontSize: 9, letterSpacing: '1px', padding: '2px 7px' }}>{kind}</span>
 
 function ExtractModal({ item, onClose, onDone }) {
   const [minutes, setMinutes] = useState(Math.round(item.minutes_today) || '')

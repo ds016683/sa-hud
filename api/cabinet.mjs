@@ -6,6 +6,8 @@
 //   GET  ?op=url&path=               -> { url } (signed, 10 minutes)
 //   POST ?op=upload&path=  (raw body, Content-Type = the file's type) -> { ok, path }
 //   POST ?op=mkdir  {path} | ?op=move {from,to} | ?op=remove {path}
+//   POST ?op=import {project_id, dest}  copies every file of a mission's own cabinet
+//        (bucket project-files, root <project_id>) into the master cabinet at <dest>
 export const config = { maxDuration: 60, api: { bodyParser: false } }
 
 import { authorized } from './lumen-hud.mjs'
@@ -17,8 +19,8 @@ const norm = (p) => String(p || '').replace(/^\/+|\/+$/g, '').replace(/\.\.+/g, 
 const enc = (p) => norm(p).split('/').map(encodeURIComponent).join('/')
 function readRaw(req) { return new Promise((resolve, reject) => { const chunks = []; req.on('data', c => chunks.push(c)); req.on('end', () => resolve(Buffer.concat(chunks))); req.on('error', reject) }) }
 
-async function list(prefix) {
-  const r = await fetch(`${URL_BASE}/storage/v1/object/list/${BUCKET}`, { method: 'POST', headers: { ...hdr(), 'Content-Type': 'application/json' }, body: JSON.stringify({ prefix: norm(prefix), limit: 1000, sortBy: { column: 'name', order: 'asc' } }) })
+async function list(prefix, bucket = BUCKET) {
+  const r = await fetch(`${URL_BASE}/storage/v1/object/list/${bucket}`, { method: 'POST', headers: { ...hdr(), 'Content-Type': 'application/json' }, body: JSON.stringify({ prefix: norm(prefix), limit: 1000, sortBy: { column: 'name', order: 'asc' } }) })
   if (!r.ok) throw new Error(`list ${r.status}`)
   const rows = await r.json(); const pre = norm(prefix)
   const folders = [], files = []
@@ -68,6 +70,23 @@ export default async function handler(req, res) {
     if (op === 'move') {
       const r = await fetch(`${URL_BASE}/storage/v1/object/move`, { method: 'POST', headers: { ...hdr(), 'Content-Type': 'application/json' }, body: JSON.stringify({ bucketId: BUCKET, sourceKey: norm(body.from), destinationKey: norm(body.to) }) })
       return r.ok ? res.status(200).json({ ok: true }) : res.status(502).json({ error: `move ${r.status}: ${(await r.text()).slice(0, 160)}` })
+    }
+    if (op === 'import') {
+      const pid = norm(body.project_id), dest = norm(body.dest)
+      if (!/^[0-9a-f-]{36}$/.test(pid) || !dest) return res.status(400).json({ error: 'project_id and dest' })
+      const found = []
+      const go = async (pre, d) => { const { folders, files } = await list(pre, 'project-files'); found.push(...files); if (d > 0) for (const fo of folders) await go(fo.path, d - 1) }
+      await go(pid, 6)
+      await fetch(`${URL_BASE}/storage/v1/object/${BUCKET}/${enc(dest)}/.keep`, { method: 'POST', headers: { ...hdr(), 'Content-Type': 'text/plain', 'x-upsert': 'true' }, body: '' })
+      const copied = [], failed = []
+      for (const f of found.slice(0, 400)) {
+        const rel = f.path.slice(pid.length + 1)
+        const src = await fetch(`${URL_BASE}/storage/v1/object/project-files/${enc(f.path)}`, { headers: hdr() })
+        if (!src.ok) { failed.push(rel); continue }
+        const r = await fetch(`${URL_BASE}/storage/v1/object/${BUCKET}/${enc(`${dest}/${rel}`)}`, { method: 'POST', headers: { ...hdr(), 'Content-Type': f.type || 'application/octet-stream', 'x-upsert': 'true' }, body: Buffer.from(await src.arrayBuffer()) })
+        if (r.ok) copied.push(rel); else failed.push(rel)
+      }
+      return res.status(200).json({ ok: true, dest, copied, failed })
     }
     if (op === 'remove') {
       const r = await fetch(`${URL_BASE}/storage/v1/object/${BUCKET}/${enc(body.path)}`, { method: 'DELETE', headers: hdr() })

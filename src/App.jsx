@@ -9,6 +9,7 @@ import { fetchProtocolState } from './lib/protocol'
 import useGameState from './hooks/useGameState'
 import LoginPage from './components/LoginPage'
 import ProjectsPage from './components/ProjectsPage'
+import { MissionMark } from './components/river/canon'
 import EcosystemPage from './components/EcosystemPage'
 import MeetingNotesPage from './components/MeetingNotesPage'
 import SideMissionsPage from './components/SideMissionsPage'
@@ -34,7 +35,7 @@ const NAV_ITEMS = [
   { id: 'activity',         label: 'Activity',              icon: Activity,       group: 'MONITOR' },
   { id: 'accomplishments',  label: 'Accomplishments',       icon: Award,          group: 'MONITOR' },
   { id: 'notes',            label: 'Notes',                 icon: FileText,       group: 'MONITOR' },
-  { id: 'main-missions',    label: 'Main Missions',         icon: LayoutGrid,     group: 'MISSION BOARD' },
+  { id: 'main-missions',    label: 'Main Missions',         icon: MissionMark,    group: 'MISSION BOARD' },
   { id: 'side-missions',    label: 'Side Missions',         icon: Target,         group: 'MISSION BOARD' },
   { id: 'maintenance',      label: 'Maintenance',           icon: Wrench,         group: 'MISSION BOARD' },
   { id: 'archive',          label: 'Archive',               icon: ArchiveIcon,    group: 'MISSION BOARD' },

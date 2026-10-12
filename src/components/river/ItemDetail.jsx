@@ -12,12 +12,11 @@ import { fetchLoadout, equip, holster, stash, equipObjective, equipTask, fmtCloc
 import { fetchSteps, addStep, toggleStep, removeStep, listObjectiveArtifacts, listObjectiveFiles, uploadObjectiveFile, listObjectiveBoards, provenance, realmOf, setSize, updateObjective } from '../../lib/objectives'
 import { renderMarkdown } from './MeetingCloseout'
 import SessionBoard from './SessionBoard'
-import { INK, INK2, GRAY, PANEL_BORDER, GOLD, GOLD_BRIGHT, BLUE, GREEN, RED, MONO, SERIF, S, Label } from './canon'
+import { INK, INK2, GRAY, PANEL_BORDER, GOLD, GOLD_BRIGHT, BLUE, GREEN, RED, MONO, SERIF, S, Label, KIND_COLOR, KindIcon } from './canon'
 
 const NAVY_DEEP = '#0A1B2B'
 const TABS = ['overview', 'artifacts', 'sessions', 'files', 'notes']
 const TAB_LABEL = { overview: 'Overview', artifacts: 'Artifacts', sessions: 'Sessions', files: 'Files', notes: 'Notes' }
-const KIND_COLOR = { 'Main Mission': GOLD_BRIGHT, 'Side Mission': GREEN, 'Ad Hoc': INK2, 'Session': BLUE, 'Event': BLUE }
 const STOP = new Set(['the', 'and', 'with', 'for', 'from', 'about', 'notes', 'upload', 'interview', 'call', 'meeting', 'review', 'investigate', 'weekly', 'monthly', 'david', 'smith'])
 const words = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9 ]/g, ' ').split(/\s+/).filter(w => w.length > 2 && !STOP.has(w))
 const chiTime = (iso) => iso ? new Date(iso).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'America/Chicago' }) : ''
@@ -158,7 +157,7 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: 16, flexWrap: 'wrap', marginTop: 22 }}>
           <div style={{ minWidth: 0 }}>
             <h1 style={{ ...S.h1, marginBottom: 6 }}>{item.title}</h1>
-            <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '1.6px', textTransform: 'uppercase', color: KIND_COLOR[item.kind] || INK2 }}>
+            <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '1.6px', textTransform: 'uppercase', color: KIND_COLOR[item.kind] || INK2, display: 'inline-flex', alignItems: 'center', gap: 6 }}><KindIcon kind={item.kind} size={12} />
               {item.kind}{rel?.project ? ` · ${rel.project.name}` : item.project ? ` · ${item.project}` : ''}{item.size ? ` · ${SIZES[item.size]?.label || item.size}` : ''}{item.event ? ` · ${chiTime(item.event.start_at)} to ${chiTime(item.event.end_at)}` : ''}
             </div>
           </div>

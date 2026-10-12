@@ -10,6 +10,9 @@ import SessionBoard from './river/SessionBoard'
 import { listShares, archiveShare, archiveSharesFor, shareUrl } from '../lib/shares'
 import { fileProject } from '../lib/archive'
 import { equipTask } from '../lib/loadout'
+import { importProject } from '../lib/cabinet'
+import BadgeMedallion from './BadgeArt'
+import { BADGES } from '../constants/collection'
 import { supabase as sbClient2 } from '../lib/supabase'
 import { listArtifacts as listProjArtifacts, readArtifact as readProjArtifact } from '../lib/artifacts'
 import { supabase as sbClient } from '../lib/supabase'
@@ -28,6 +31,7 @@ const PANEL_BG = 'rgba(255,255,255,0.035)'
 const GOLD = '#E6B54F'
 const GREEN = '#43D392'
 const RED = '#E06C5F'
+const PURPLE = '#B4A3E8'
 
 const SERIF = "'Lora', Georgia, serif"
 const MONO = 'var(--font-mono, monospace)'
@@ -139,7 +143,7 @@ function ProjectCard({ project, onOpen }) {
 // =============================================================================
 const Chip = ({ color, children }) => <span style={{ fontFamily: MONO, fontSize: 9, letterSpacing: '1px', textTransform: 'uppercase', color, border: `1px solid ${color}55`, borderRadius: 999, padding: '2px 7px', whiteSpace: 'nowrap' }}>{children}</span>
 
-function MilestoneRow({ n, project, task, board, api, onNavigate, onBoardChange }) {
+function MilestoneRow({ n, project, task, board, api, onNavigate, onBoardChange, onAward }) {
   const open = isOpen(task)
   const blocked = isBlocked(task)
   const onBoard = !!task.objective_id && open
@@ -201,7 +205,7 @@ function MilestoneRow({ n, project, task, board, api, onNavigate, onBoardChange 
             {open && <button onClick={doneWhen} style={{ ...S.btnGhost, padding: '4px 9px', fontSize: 10 }}>Done when</button>}
             {open && <button onClick={rename} style={{ ...S.btnGhost, padding: '4px 9px', fontSize: 10 }}>Rename</button>}
             {open
-              ? <button onClick={() => { if (window.confirm(`Close milestone ${n}? 10 miles on the next update.`)) api.toggleTask(project.id, task) }} style={{ ...S.btnGhost, padding: '4px 9px', fontSize: 10, color: GOLD, borderColor: 'rgba(230,181,79,0.4)' }}><Check size={10} /> Close milestone</button>
+              ? <button onClick={async () => { if (!window.confirm(`Close milestone ${n}? 10 miles on the next update.`)) return; await api.toggleTask(project.id, task); onAward && onAward({ n, title: stripNum(task.text) }) }} style={{ ...S.btnGhost, padding: '4px 9px', fontSize: 10, color: GOLD, borderColor: 'rgba(230,181,79,0.4)' }}><Check size={10} /> Close milestone</button>
               : <button onClick={() => api.toggleTask(project.id, task)} style={{ ...S.btnGhost, padding: '4px 9px', fontSize: 10 }}>Reopen</button>}
             <button onClick={() => { if (window.confirm('Delete this milestone?')) api.deleteTask(project.id, task.id) }} title="Delete" style={{ background: 'transparent', border: 'none', color: 'rgba(234,241,248,0.25)', cursor: 'pointer', padding: 4 }}><Trash2 size={12} /></button>
           </div>
@@ -365,6 +369,7 @@ function ProjectDetail({ project, board: boardProp, api, onBack, initialTab, ini
   const closed = tasks.filter(t => !isOpen(t)).length
   const pct = tasks.length ? Math.round(closed / tasks.length * 100) : 0
   const [showHistory, setShowHistory] = useState(false)
+  const [award, setAward] = useState(null)
 
   const submit = async (e) => {
     e.preventDefault()
@@ -384,6 +389,8 @@ function ProjectDetail({ project, board: boardProp, api, onBack, initialTab, ini
               if (!window.confirm(`Mark "${project.name}" complete? The River strikes 10 miles on the next update.`)) return
               const ok = await api.updateProject(project.id, { status: 'completed', archived_at: new Date().toISOString() })
               try { await archiveSharesFor(project.id) } catch (e) { console.warn('shares archive', e.message) }
+              // The mission's own cabinet moves into the master cabinet under Missions.
+              try { await importProject(project.id, `${project.category === 'personal' ? 'Personal' : 'Third Horizon'}/Missions/${project.name.replace(/[\/]/g, ' ')}`) } catch (e) { console.warn('cabinet import', e.message) }
               // File the mission's artifacts and its latest session board in the Archive.
               try {
                 const list = await listProjArtifacts(project.id)
@@ -415,9 +422,8 @@ function ProjectDetail({ project, board: boardProp, api, onBack, initialTab, ini
         <div style={{ display: 'flex', gap: 6, paddingTop: 6, flexWrap: 'wrap' }}>
           <Pill active={tab === 'tasks'} onClick={() => setTab('tasks')}>Milestones · {tasks.length}</Pill>
           <Pill active={tab === 'artifacts'} onClick={() => setTab('artifacts')}>Artifacts</Pill>
-          <Pill active={tab === 'files'} onClick={() => setTab('files')}>Files</Pill>
+          <Pill active={tab === 'files'} onClick={() => setTab('files')}>Cabinet</Pill>
           <Pill active={tab === 'shares'} onClick={() => setTab('shares')}>Shares</Pill>
-          <Pill active={false} onClick={() => onNavigate && onNavigate('cabinet')}>Cabinet</Pill>
         </div>
       </div>
 
@@ -430,7 +436,7 @@ function ProjectDetail({ project, board: boardProp, api, onBack, initialTab, ini
         {tab === 'tasks' && (
           <div>
             {!tasks.length && <div style={{ fontSize: 13, color: GRAY, padding: '10px 0' }}>No milestones yet. Add the first one below: a thing that will be verifiably true.</div>}
-            {plan.map(({ t, n }) => <MilestoneRow key={t.id} n={n} project={project} task={t} board={board} api={api} onNavigate={onNavigate} onBoardChange={setBoard} />)}
+            {plan.map(({ t, n }) => <MilestoneRow key={t.id} n={n} project={project} task={t} board={board} api={api} onNavigate={onNavigate} onBoardChange={setBoard} onAward={setAward} />)}
             {history.length > 0 && (
               <div style={{ borderTop: `1px solid ${PANEL_BORDER}`, padding: '10px 0 0' }}>
                 <button onClick={() => setShowHistory(x => !x)} style={{ ...S.btnGhost, padding: '4px 9px', fontSize: 10 }}>{showHistory ? 'Hide' : 'Show'} earlier work · {history.length} closed before this plan</button>
@@ -452,6 +458,18 @@ function ProjectDetail({ project, board: boardProp, api, onBack, initialTab, ini
             listFiles={api.listFiles} uploadFile={api.uploadFile} createFolder={api.createFolder}
             fileUrl={api.fileUrl} deleteFile={api.deleteFile} />
         )}
+      {award && (
+        <div onClick={() => setAward(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(5,16,28,0.78)', display: 'grid', placeItems: 'center', zIndex: 60 }}>
+          <div onClick={e => e.stopPropagation()} style={{ ...S.panel, width: 'min(440px, 92vw)', textAlign: 'center', padding: '34px 28px 26px', display: 'grid', gap: 12, justifyItems: 'center' }}>
+            <BadgeMedallion id="mission-task" size={112} glow />
+            <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '2px', textTransform: 'uppercase', color: PURPLE }}>MMT badge awarded</div>
+            <div style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 22, letterSpacing: '-0.01em', color: INK, lineHeight: 1.25 }}>{award.n} · {award.title}</div>
+            <div style={{ fontSize: 13, color: TEXT_DIM, lineHeight: 1.5 }}>{BADGES['mission-task'].label} · {BADGES['mission-task'].miles} miles on the River at the next update.</div>
+            <div style={{ fontFamily: SERIF, fontStyle: 'italic', fontSize: 13, color: GRAY }}>{BADGES['mission-task'].lore}</div>
+            <button onClick={() => setAward(null)} style={{ ...S.btnPrimary, marginTop: 6 }}>Carry on</button>
+          </div>
+        </div>
+      )}
       </div>
     </div>
   )

@@ -1,3 +1,4 @@
+import { Target, Zap } from 'lucide-react'
 // The HUD's shared design canon (CIP treatment): navy stage, Lora headings at
 // deck weight and tracking, mono eyebrows, hairline panels, gold as the single
 // warm accent and periwinkle/blue as the cool one. Every River page imports
@@ -72,3 +73,22 @@ export const chiDayOf = (iso) => iso ? new Intl.DateTimeFormat('en-CA', { timeZo
 export const fmtTime = (ts) => ts ? new Date(ts).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'America/Chicago' }) : ''
 export const fmtDay = (day) => day ? new Date(day + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }) : ''
 export const weekday = (day) => day ? new Date(day + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long' }) : ''
+
+// The kinds and their colors (the cannon): Main Mission purple, Side Mission
+// gold, Ad Hoc green. Every chip, label and icon that names a kind reads here.
+export const KIND_COLOR = { 'Main Mission': PURPLE, 'Side Mission': GOLD, 'Ad Hoc': GREEN, 'Session': BLUE, 'Event': BLUE }
+// The Main Mission mark: the flag planted on the peak, drawn like the badge.
+export function MissionMark({ size = 14, color = 'currentColor', style }) {
+  return (
+    <svg width={size} height={size} viewBox="9 7 32 32" fill="none" stroke={color} strokeWidth="2.2" strokeLinejoin="round" strokeLinecap="round" style={{ flexShrink: 0, ...style }} aria-hidden="true">
+      <path d="M12 36 L21 22 L26 28 L31 19 L36 36 Z" fill={color} fillOpacity="0.14" />
+      <path d="M31 19 V10.5" />
+      <path d="M31 10.5 h7 l-2 2.5 l2 2.5 h-7 Z" fill={color} fillOpacity="0.4" />
+    </svg>
+  )
+}
+export const KindIcon = ({ kind, size = 11, color }) => kind === 'Main Mission' ? <MissionMark size={size} color={color} /> : kind === 'Side Mission' ? <Target size={size} color={color} /> : kind === 'Ad Hoc' ? <Zap size={size} color={color} /> : null
+export const KindChip = ({ kind }) => {
+  const c = KIND_COLOR[kind] || INK2
+  return <span style={{ ...S.chip('transparent', c), border: `1px solid ${c}55`, fontFamily: MONO, fontSize: 9, letterSpacing: '1px', padding: '2px 7px', display: 'inline-flex', alignItems: 'center', gap: 5 }}><KindIcon kind={kind} color={c} />{kind}</span>
+}

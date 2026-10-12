@@ -33,6 +33,8 @@ export async function upload(folder, file) {
 export const makeFolder = (path) => call('mkdir', { body: { path: norm(path) } })
 export const move = (from, to) => call('move', { body: { from: norm(from), to: norm(to) } })
 export const remove = (path) => call('remove', { body: { path: norm(path) } })
+// A completed mission's own cabinet moves into the master cabinet under Missions.
+export const importProject = (projectId, dest) => call('import', { body: { project_id: projectId, dest: norm(dest) } })
 export const walk = async (prefix = '', depth = 4) => (await call('walk', { params: { prefix: norm(prefix), depth } })).files
 export async function seedStructure() { for (const realm of REALMS) { await makeFolder(realm); for (const sub of SEED[realm]) await makeFolder(`${realm}/${sub}`) } }
 export const fmtSize = (n) => n > 1048576 ? `${(n / 1048576).toFixed(1)} MB` : n > 1024 ? `${Math.round(n / 1024)} KB` : `${n} B`
