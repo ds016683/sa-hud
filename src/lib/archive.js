@@ -20,6 +20,29 @@ export async function listEntries({ q = '', realm = null, kind = null, limit = 2
   return data || []
 }
 
+// The Archive's list: every closed mission (released objectives, newest
+// first) with its filings grouped under it, plus filings from other sources
+// (Main Mission close-outs, decisions) on their own.
+export async function listClosedMissions() {
+  const [objs, entries, links, projects] = await Promise.all([
+    supabase.from('objectives').select('id,title,state,tags,effort,captured_at,activated_at,released_at,released_kind,description').eq('state', 'released').is('deleted_at', null).order('released_at', { ascending: false }).limit(400).then(r => r.data || []),
+    listEntries({ limit: 600 }),
+    supabase.from('project_tasks').select('objective_id,project_id').not('objective_id', 'is', null).then(r => r.data || []),
+    supabase.from('projects').select('id,name').then(r => r.data || []),
+  ])
+  if (entries === null) return null
+  const ids = objs.map(o => o.id)
+  const steps = ids.length ? await supabase.from('objective_steps').select('objective_id,done').in('objective_id', ids).then(r => r.data || []) : []
+  const projName = new Map(projects.map(p => [p.id, p.name]))
+  const projOf = new Map(links.map(l => [l.objective_id, projName.get(l.project_id) || 'Main Mission']))
+  const byId = new Map()
+  for (const e of entries) { if (!e.source_id) continue; if (!byId.has(e.source_id)) byId.set(e.source_id, []); byId.get(e.source_id).push(e) }
+  const missions = objs.map(o => ({ o, project: projOf.get(o.id) || null, entries: byId.get(o.id) || [], gatesDone: steps.filter(s => s.objective_id === o.id && s.done).length, gatesTotal: steps.filter(s => s.objective_id === o.id).length }))
+  const seen = new Set(ids)
+  const loose = entries.filter(e => !e.source_id || !seen.has(e.source_id))
+  return { missions, loose }
+}
+
 export async function fileEntry(row) {
   const { data, error } = await supabase.from('archive_entries').insert(row).select().single()
   if (error) { if (missing(error)) throw new Error('The Archive is not set up yet: run sql/2026-10-07-side-missions-archive.sql'); throw new Error(error.message) }

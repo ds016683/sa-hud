@@ -6,7 +6,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Target, Play, Plus, Bell, Hourglass, ArrowUpRight, Inbox as InboxIcon, Flag, Trash2, RotateCcw, ExternalLink, Check } from 'lucide-react'
 import ItemDetail from './river/ItemDetail'
-import YayPage from './river/YayPage'
 import FileAway from './river/FileAway'
 import { fetchObjectives, addObjective, route, binObjective, restoreObjective, purgeObjective, reopenObjective, closeOut, pockets, provenance, realmOf, STATE, TAGS, sizeOf } from '../lib/objectives'
 import { fetchLoadout, SIZES } from '../lib/loadout'
@@ -19,7 +18,7 @@ const btn = (color = INK2, filled = false, extra = {}) => ({
 const field = { background: 'rgba(255,255,255,0.05)', border: `1px solid ${PANEL_BORDER}`, borderRadius: 8, color: INK, padding: '8px 10px', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }
 const chip = (fg, border = `${fg}55`) => ({ ...S.chip('transparent', fg), border: `1px solid ${border}`, fontFamily: MONO, fontSize: 9, letterSpacing: '1px', padding: '2px 7px' })
 const fmtDay = (d) => d ? new Date(d + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : ''
-const CONTAINERS = ['inbox', 'follow_up', 'waiting', 'foreman', 'parked', 'released', 'bin']
+const CONTAINERS = ['inbox', 'follow_up', 'waiting', 'foreman', 'parked', 'bin']
 const ICON = { inbox: InboxIcon, follow_up: Bell, waiting: Hourglass, foreman: ArrowUpRight, parked: Flag, released: Check, bin: Trash2 }
 
 function SizePills({ value, onChange, small = false }) {
@@ -70,7 +69,7 @@ function AddForm({ onAdded }) {
   )
 }
 
-function Row({ o, container, loadItem, onOpen, onRoute, onDone, onBin, onRestore, onPurge, onReopen, onYay }) {
+function Row({ o, container, loadItem, onOpen, onRoute, onDone, onBin, onRestore, onPurge, onReopen }) {
   const size = sizeOf(o); const prov = provenance(o); const today = chiToday()
   const late = o.due_date && o.due_date < today
   return (
@@ -95,7 +94,6 @@ function Row({ o, container, loadItem, onOpen, onRoute, onDone, onBin, onRestore
           </>
         ) : container === 'released' ? (
           <>
-            <button onClick={() => onYay(o)} title="The Mission Summary" style={btn(GOLD)}><Check size={10} /> Yay page</button>
             <button onClick={() => onOpen(o)} style={btn(INK2)}><ExternalLink size={10} /> Open</button>
             <button onClick={() => onReopen(o)} style={btn(INK2)}><RotateCcw size={10} /> Reopen</button>
           </>
@@ -117,7 +115,6 @@ export default function SideMissionsPage({ onNavigate }) {
   const [L, setL] = useState(null)
   const [container, setContainer] = useState(() => { try { return localStorage.getItem('sm-container') || 'parked' } catch { return 'parked' } })
   const [open, setOpen] = useState(null)
-  const [yay, setYay] = useState(null)
   const [filing, setFiling] = useState(null)
   const [msg, setMsg] = useState(null)
   const [filter, setFilter] = useState('')
@@ -153,7 +150,6 @@ export default function SideMissionsPage({ onNavigate }) {
   return (
     <div style={S.page}>
       {open && <ItemDetail item={toItem(open)} onClose={() => { setOpen(null); refresh() }} onNavigate={onNavigate} onChange={refresh} />}
-      {yay && <YayPage objectiveId={yay.id} onClose={() => setYay(null)} />}
       {filing && <FileAway objective={filing.o} pockets={filing.p} onClose={() => setFiling(null)} onDone={({ filed, released }) => { setFiling(null); setMsg(`Filed ${filed.length} to the Archive and released ${filing.o.title} · ${released.minutes}m`); refresh() }} />}
       <div style={{ marginBottom: 18 }}>
         <h1 style={S.h1}><Target size={22} color={BLUE} style={{ verticalAlign: '-3px', marginRight: 8 }} />Side Missions</h1>
@@ -182,7 +178,7 @@ export default function SideMissionsPage({ onNavigate }) {
           {!rows && <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '1.4px', textTransform: 'uppercase', color: GRAY, padding: '10px 0' }}>Reading the queue</div>}
           {rows && shown.length === 0 && <div style={{ fontSize: 13, color: GRAY, padding: '12px 0' }}>{container === 'released' ? `Nothing released in the last ${range || 'all'} days.` : container === 'bin' ? 'The bin is empty.' : `Nothing in ${STATE[container].label}.`}</div>}
           {shown.map(o => (
-            <Row key={o.id} o={o} container={container} loadItem={loadItemFor(o)} onOpen={setOpen} onYay={setYay}
+            <Row key={o.id} o={o} container={container} loadItem={loadItemFor(o)} onOpen={setOpen}
               onRoute={(x, c) => act(() => route(x.id, c), c === 'active' ? `Loaded: ${x.title}` : `${x.title} → ${STATE[c].label}`)}
               onDone={onDone} onBin={(x) => act(() => binObjective(x.id), `Binned: ${x.title}`)}
               onRestore={(x) => act(() => restoreObjective(x.id), `Restored: ${x.title}`)} onPurge={(x) => { if (window.confirm(`Purge "${x.title}" for good?`)) act(() => purgeObjective(x.id), 'Purged') }}

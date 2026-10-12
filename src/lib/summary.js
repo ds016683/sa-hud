@@ -7,6 +7,10 @@ import { BADGES } from '../constants/collection'
 
 const q = (p) => p.then(r => (r.error ? [] : (Array.isArray(r.data) ? r.data : [])))
 export const MILES = { bounty: 4, contract: 15, mythic: 50, gate: 10, gatesPaid: 5, mmt: 10, mainMission: 100, adhoc: 1 }
+export const kindOf = (o, linked) => linked ? 'Main Mission' : (o?.tags || []).includes('impromptu') ? 'Ad Hoc' : 'Side Mission'
+export const typeOf = (kind, size) => kind === 'Main Mission' ? 'Main Mission task' : kind === 'Ad Hoc' ? 'Ad Hoc' : SIZES[size].label
+export const badgeOf = (kind, size) => kind === 'Main Mission' ? 'mission-task' : kind === 'Ad Hoc' ? 'impromptu' : size === 'heavy' ? 'mythic' : size === 'medium' ? 'contract' : 'bounty'
+export const milesFor = (kind, size, gatesDone = 0) => kind === 'Main Mission' ? MILES.mmt : kind === 'Ad Hoc' ? MILES.adhoc : size === 'heavy' ? MILES.mythic + MILES.gate * Math.min(gatesDone, MILES.gatesPaid) : size === 'medium' ? MILES.contract : MILES.bounty
 
 export async function missionSummary(objectiveId) {
   const [o] = await q(supabase.from('objectives').select('*').eq('id', objectiveId).limit(1))
@@ -21,11 +25,11 @@ export async function missionSummary(objectiveId) {
   const project = link ? (await q(supabase.from('projects').select('id,name,key').eq('id', link.project_id).limit(1)))[0] || null : null
   const tags = o.tags || []
   const size = sizeOf(o)
-  const kind = link ? 'Main Mission' : tags.includes('impromptu') ? 'Ad Hoc' : 'Side Mission'
-  const type = kind === 'Main Mission' ? 'Main Mission task' : kind === 'Ad Hoc' ? 'Ad Hoc' : SIZES[size].label
+  const kind = kindOf(o, !!link)
+  const type = typeOf(kind, size)
   const gatesDone = steps.filter(s => s.done).length
-  const miles = kind === 'Main Mission' ? MILES.mmt : kind === 'Ad Hoc' ? MILES.adhoc : size === 'heavy' ? MILES.mythic + MILES.gate * Math.min(gatesDone, MILES.gatesPaid) : size === 'medium' ? MILES.contract : MILES.bounty
-  const badge = kind === 'Main Mission' ? 'mission-task' : kind === 'Ad Hoc' ? 'impromptu' : size === 'heavy' ? 'mythic' : size === 'medium' ? 'contract' : 'bounty'
+  const miles = milesFor(kind, size, gatesDone)
+  const badge = badgeOf(kind, size)
   const minutes = clocks.reduce((s, c) => s + (c.stopped_at ? Number(c.minutes) || 0 : (Date.now() - new Date(c.started_at)) / 60000), 0)
   const opened = o.captured_at || o.activated_at || null
   const closed = o.released_at || link?.released_at || null
