@@ -9,7 +9,7 @@ import ItemDetail from './river/ItemDetail'
 import FileAway from './river/FileAway'
 import { fetchObjectives, addObjective, route, binObjective, restoreObjective, purgeObjective, reopenObjective, closeOut, pockets, provenance, realmOf, STATE, TAGS, sizeOf } from '../lib/objectives'
 import { fetchLoadout, SIZES } from '../lib/loadout'
-import { INK, INK2, GRAY, PANEL_BORDER, GOLD, GOLD_BRIGHT, BLUE, GREEN, RED, PURPLE, MONO, S, Panel, Label, chiToday } from './river/canon'
+import { INK, INK2, GRAY, PANEL_BORDER, GOLD, GOLD_BRIGHT, BLUE, GREEN, RED, PURPLE, MONO, S, Panel, Label, chiToday, NORTH_STAR_LABEL, NORTH_STAR_ASK } from './river/canon'
 
 const btn = (color = INK2, filled = false, extra = {}) => ({
   display: 'inline-flex', alignItems: 'center', gap: 5, fontFamily: MONO, fontSize: 9.5, letterSpacing: '1px', textTransform: 'uppercase',
@@ -35,6 +35,7 @@ function AddForm({ onAdded }) {
   const [personal, setPersonal] = useState(false)
   const [tags, setTags] = useState([])
   const [due, setDue] = useState('')
+  const [star, setStar] = useState('')
   const [more, setMore] = useState(false)
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState(null)
@@ -42,9 +43,10 @@ function AddForm({ onAdded }) {
     if (!title.trim() || busy) return
     setBusy(true); setErr(null)
     try {
-      const r = await addObjective({ title, size, personal, tags, due_date: due || null, state })
+      const r = await addObjective({ title, size, personal, tags, due_date: due || null, state, north_star: star })
       if (r.refused) setErr(`Captured in the queue; it would not fit on the Board: ${r.refused.join(' · ')}`)
-      setTitle(''); setDue(''); setTags([]); onAdded(r)
+      if (r.north_star_dropped) setErr('Captured, but the North Star did not save: run sql/2026-10-13-north-star.sql first.')
+      setTitle(''); setDue(''); setTags([]); setStar(''); onAdded(r)
     } catch (e) { setErr(e.message) } finally { setBusy(false) }
   }
   return (
@@ -56,6 +58,10 @@ function AddForm({ onAdded }) {
         <button onClick={() => setMore(m => !m)} style={btn(INK2)}>{more ? 'less' : 'more'}</button>
         <button onClick={() => submit('parked')} disabled={busy || !title.trim()} style={btn(BLUE, true, { opacity: title.trim() ? 1 : 0.5 })}><Plus size={11} /> Queue</button>
         <button onClick={() => submit('active')} disabled={busy || !title.trim()} style={btn(GREEN, true, { opacity: title.trim() ? 1 : 0.5 })}><Play size={11} /> Load now</button>
+      </div>
+      <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginTop: 8, flexWrap: 'wrap' }}>
+        <Label style={{ marginBottom: 0, color: BLUE, whiteSpace: 'nowrap' }}>{NORTH_STAR_LABEL}</Label>
+        <input value={star} onChange={e => setStar(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') submit('parked') }} placeholder={NORTH_STAR_ASK} style={{ flex: 1, minWidth: 260, background: 'rgba(255,255,255,0.05)', border: `1px solid ${PANEL_BORDER}`, borderRadius: 8, padding: '7px 10px', color: INK, fontSize: 13, fontFamily: 'inherit' }} />
       </div>
       {more && (
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginTop: 10 }}>

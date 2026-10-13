@@ -24,7 +24,7 @@ export async function missionSummary(objectiveId) {
     q(supabase.from('project_tasks').select('id,text,project_id,released_at').eq('objective_id', o.id).limit(1)),
   ])
   const link = links[0] || null
-  const project = link ? (await q(supabase.from('projects').select('id,name,key').eq('id', link.project_id).limit(1)))[0] || null : null
+  const project = link ? (await q(supabase.from('projects').select('id,name,key,description').eq('id', link.project_id).limit(1)))[0] || null : null
   const tags = o.tags || []
   const size = sizeOf(o)
   const kind = kindOf(o, !!link)
@@ -45,6 +45,7 @@ export async function missionSummary(objectiveId) {
     miles, gatesDone, gatesTotal: steps.length, gatesPaid: Math.min(gatesDone, MILES.gatesPaid),
     opened, closed, days, minutes: Math.round(minutes),
     gates: steps, achieved, achievedFrom: sum ? 'archive' : o.description ? 'description' : null,
+    north_star: link ? (project?.description || null) : (o.north_star || null),
     attachments: archive.filter(a => a.kind !== 'summary'),
   }
 }

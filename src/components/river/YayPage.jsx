@@ -6,7 +6,7 @@ import { X as XIcon, Check, ExternalLink } from 'lucide-react'
 import BadgeMedallion from '../BadgeArt'
 import { missionSummary, fmtDay } from '../../lib/summary'
 import { signedUrl } from '../../lib/archive'
-import { INK, INK2, GRAY, PANEL_BORDER, GOLD, GREEN, MONO, SERIF, S, KindIcon, Label } from './canon'
+import { INK, INK2, GRAY, PANEL_BORDER, GOLD, GREEN, BLUE, MONO, SERIF, S, KindIcon, Label, NORTH_STAR_LABEL } from './canon'
 import DocView from './DocView'
 import SessionBoard from './SessionBoard'
 
@@ -51,6 +51,12 @@ export default function YayPage({ objectiveId, onClose, fresh = false, onOpenMis
               <button onClick={onClose} title="Close" style={{ background: 'transparent', border: 'none', color: GRAY, cursor: 'pointer', alignSelf: 'flex-start' }}><XIcon size={18} /></button>
             </div>
 
+            <div style={{ borderTop: `1px solid ${PANEL_BORDER}`, paddingTop: 14 }}>
+              <Label style={{ color: BLUE }}>{NORTH_STAR_LABEL}</Label>
+              {m.north_star
+                ? <div style={{ fontFamily: SERIF, fontStyle: 'italic', fontSize: 18, lineHeight: 1.45, color: INK }}>{m.north_star}</div>
+                : <div style={{ fontSize: 13.5, color: GRAY }}>No star was written for this one.</div>}
+            </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 14, borderTop: `1px solid ${PANEL_BORDER}`, borderBottom: `1px solid ${PANEL_BORDER}`, padding: '14px 0' }}>
               <Fact label="Miles netted"><span style={{ fontSize: 30, color: GOLD }}>{m.miles}</span>{m.size === 'heavy' && m.kind === 'Side Mission' && <div style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '0.8px', color: GRAY, marginTop: 2 }}>50 + 10 × {m.gatesPaid} gates</div>}</Fact>
               <Fact label="Opened">{fmtDay(m.opened)}</Fact>
@@ -75,7 +81,7 @@ export default function YayPage({ objectiveId, onClose, fresh = false, onOpenMis
             )}
 
             <div>
-              <Label>Achieved</Label>
+              <Label>Achieved{m.north_star ? ' · What Is Different Now' : ''}</Label>
               {m.achieved
                 ? <div style={{ fontSize: 15.5, lineHeight: 1.7, color: INK }}>{m.achieved}{m.achievedFrom === 'archive' && <div style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '0.8px', textTransform: 'uppercase', color: GRAY, marginTop: 6 }}>from the close-out summary</div>}</div>
                 : <div style={{ fontSize: 13.5, color: GRAY }}>Nothing written at close. Tell Lumen what was achieved and it lands here.</div>}

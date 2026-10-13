@@ -499,6 +499,7 @@ export const TOOLS = [
       due_date: { type: 'string', description: 'YYYY-MM-DD' },
       follow_up_date: { type: 'string', description: 'YYYY-MM-DD; required when state is follow_up' },
       description: { type: 'string' },
+      north_star: { type: 'string', description: "The North Star: one sentence in David's own words answering 'What will be true, that wasn't true before?'. Ask him once at capture, write it from his words, read it back." },
       tags: { type: 'array', items: { type: 'string' }, description: "e.g. ['third-horizon','client'] or ['personal']" },
     }, required: ['title'] },
   },
@@ -538,6 +539,11 @@ export const TOOLS = [
     name: 'holster',
     description: "Stop the clock on an item without releasing it (it stays loaded). Use it when David steps away, breaks, or says he is done for now but not finished.",
     inputSchema: { type: 'object', properties: { title: { type: 'string' } }, required: ['title'] },
+  },
+  {
+    name: 'set_north_star',
+    description: "Write or rewrite a mission's North Star: one sentence in David's own words answering 'What will be true, that wasn't true before?'. A Side Mission by title, or a Main Mission by project key or name (its description is its star). Ask him once, write it from his words, read it back, then save.",
+    inputSchema: { type: 'object', properties: { title: { type: 'string', description: 'the Side Mission' }, project: { type: 'string', description: 'the Main Mission key or name, instead of title' }, text: { type: 'string' } }, required: ['text'] },
   },
   {
     name: 'set_size',
@@ -613,7 +619,7 @@ export async function callTool(name, args = {}) {
       return JSON.stringify({ from, to, timezone_note: 'times are UTC; Chicago is UTC-5 in September', days: byDay }, null, 2)
     }
     case 'get_objectives': {
-      const os = await sb(`objectives?select=title,state,due_date,follow_up_date,is_anchor,is_emergency,released_at,released_kind,who,tags&deleted_at=is.null&order=captured_at.desc`)
+      const os = (await sb(`objectives?select=*&deleted_at=is.null&order=captured_at.desc`)).map(o => ({ title: o.title, state: o.state, due_date: o.due_date, follow_up_date: o.follow_up_date, is_anchor: o.is_anchor, is_emergency: o.is_emergency, released_at: o.released_at, released_kind: o.released_kind, who: o.who, tags: o.tags, ...(o.north_star ? { north_star: o.north_star } : {}) }))
       const grouped = { active: [], parked: [], waiting: [], follow_up: [], foreman: [], inbox: [], released_today: [] }
       for (const o of os) {
         if (o.state === 'released') {
@@ -1169,11 +1175,14 @@ export async function callTool(name, args = {}) {
         description: args.description || null,
         tags,
         activated_at: state === 'active' ? new Date().toISOString() : null,
+        ...(String(args.north_star || '').trim() ? { north_star: String(args.north_star).trim() } : {}),
       }
-      const out = await sbWrite('POST', 'objectives', row)
+      let out
+      try { out = await sbWrite('POST', 'objectives', row) }
+      catch (e) { if (row.north_star && /north_star/.test(String(e.message))) { delete row.north_star; out = await sbWrite('POST', 'objectives', row); row.star_dropped = 'the north_star column is not there yet; David runs sql/2026-10-13-north-star.sql' } else throw e }
       let clock = null
       if (state === 'active' && out?.[0]?.id) clock = await equip(out[0].id, 'equipped on add').catch(e => ({ error: String(e.message || e) }))
-      return JSON.stringify({ ok: true, objective: { title, state, size, due_date: row.due_date, follow_up_date: row.follow_up_date, id: out?.[0]?.id, tags }, ...(clock ? { equipped: clock } : {}), ...(fit?.forced ? { forced_over: fit.reasons } : {}) })
+      return JSON.stringify({ ok: true, objective: { title, state, size, due_date: row.due_date, follow_up_date: row.follow_up_date, id: out?.[0]?.id, tags, north_star: row.north_star || null }, ...(row.star_dropped ? { note: row.star_dropped } : {}), ...(clock ? { equipped: clock } : {}), ...(fit?.forced ? { forced_over: fit.reasons } : {}) })
     }
     case 'move_objective': {
       const o = await findObjective(args.title)
@@ -1264,6 +1273,21 @@ export async function callTool(name, args = {}) {
       const o = await findObjective(args.title)
       const r = await holster(o.id)
       return JSON.stringify({ ok: true, holstered: o.title, ...r })
+    }
+    case 'set_north_star': {
+      const text = String(args.text || '').trim()
+      if (!text) throw new Error('text required')
+      if (args.project) {
+        const q = esc(args.project)
+        const ps = await sb(`projects?select=id,key,name&or=(key.ilike.${encodeURIComponent(q)},name.ilike.${encodeURIComponent(q)})&limit=2`)
+        if (ps.length !== 1) throw new Error(ps.length ? 'ambiguous project' : 'no such project')
+        await sbWrite('PATCH', `projects?id=eq.${ps[0].id}`, { description: text }, 'return=minimal')
+        return JSON.stringify({ ok: true, project: ps[0].name, north_star: text })
+      }
+      const o = await findObjective(args.title)
+      try { await sbWrite('PATCH', `objectives?id=eq.${o.id}`, { north_star: text }, 'return=minimal') }
+      catch (e) { if (/north_star/.test(String(e.message))) return JSON.stringify({ ok: false, error: 'the north_star column is not there yet; David runs sql/2026-10-13-north-star.sql' }); throw e }
+      return JSON.stringify({ ok: true, title: o.title, north_star: text })
     }
     case 'set_size': {
       const o = await findObjective(args.title)

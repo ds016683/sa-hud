@@ -24,11 +24,13 @@ async function gather({ objective_id, task_id }) {
   const H = []
   const add = (at, text) => text && H.push({ at: at || null, when: day(at), text })
   let o = null, task = null, project = null
-  if (objective_id) o = (await soft(sb(`objectives?id=eq.${objective_id}&select=id,title,state,effort,tags,due_date,captured_at,activated_at,released_at,released_kind,description,stakeholder`)))[0] || null
+  if (objective_id) o = (await soft(sb(`objectives?id=eq.${objective_id}&select=*`)))[0] || null
   if (task_id) task = (await soft(sb(`project_tasks?id=eq.${task_id}&select=id,text,status,notes,created_at,released_at,project_id,objective_id`)))[0] || null
   if (!task && o) task = (await soft(sb(`project_tasks?objective_id=eq.${o.id}&select=id,text,status,notes,created_at,released_at,project_id,objective_id&limit=1`)))[0] || null
   if (task?.project_id) project = (await soft(sb(`projects?id=eq.${task.project_id}&select=id,key,name,description`)))[0] || null
   const title = task ? stripNum(task.text) : (o?.title || '')
+  const star = project ? (project.description || null) : (o?.north_star || null)
+  if (star) H.push({ at: '0000', when: 'Star', text: `What Will Be True, That Wasn't True Before: ${star}` })
   if (o) {
     add(o.captured_at, `Captured as a Side Mission${o.stakeholder ? ` (stakeholder ${o.stakeholder})` : ''}${o.due_date ? `, due ${day(o.due_date)}` : ''}.${o.description ? ` ${String(o.description).slice(0, 240)}` : ''}`)
     if (o.activated_at) add(o.activated_at, 'Loaded onto the Board.')
@@ -69,12 +71,12 @@ async function gather({ objective_id, task_id }) {
   }
   H.sort((a, b) => (a.at || '9999').localeCompare(b.at || '9999'))
   const kind = task ? 'Main Mission' : (o?.tags || []).includes('impromptu') ? 'Ad Hoc' : 'Side Mission'
-  return { title, kind, project: project?.name || null, history: H }
+  return { title, kind, project: project?.name || null, star, history: H }
 }
 
 async function nextSteps(g) {
   if (!process.env.ANTHROPIC_API_KEY) return []
-  const prompt = `David pressed the brain on his Loadout card for "${g.title}" (${g.kind}${g.project ? ` on ${g.project}` : ''}). Here is everything the system has on it, oldest first:\n${g.history.map(h => `- ${h.when}: ${h.text}`).join('\n') || '- nothing recorded'}\n\nGive David two or three next steps. Plain, one line each, concrete, in his language, no preamble, no numbering. Return a JSON array of strings and nothing else.`
+  const prompt = `David pressed the brain on his Loadout card for "${g.title}" (${g.kind}${g.project ? ` on ${g.project}` : ''}).${g.star ? ` His North Star for it, what will be true that wasn't true before: "${g.star}". Every step you suggest must move toward that line.` : ''} Here is everything the system has on it, oldest first:\n${g.history.map(h => `- ${h.when}: ${h.text}`).join('\n') || '- nothing recorded'}\n\nGive David two or three next steps. Plain, one line each, concrete, in his language, no preamble, no numbering. Return a JSON array of strings and nothing else.`
   try {
     const r = await fetch('https://api.anthropic.com/v1/messages', { method: 'POST', headers: { 'x-api-key': process.env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' }, body: JSON.stringify({ model: process.env.LUMEN_MODEL || 'claude-sonnet-5', max_tokens: 400, messages: [{ role: 'user', content: prompt }] }) })
     const j = await r.json(); const text = (j.content || []).map(c => c.text || '').join('')

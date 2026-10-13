@@ -70,6 +70,7 @@ function MissionRow({ m, onYay, onReopen }) {
             {m.gatesTotal > 0 && <span>{m.gatesDone} of {m.gatesTotal} gates</span>}
             <span>{left.length ? `${left.length} left behind` : 'nothing filed'}</span>
           </div>
+          {m.o.north_star && <div style={{ fontFamily: SERIF, fontStyle: 'italic', fontSize: 13.5, color: INK2, marginTop: 6, lineHeight: 1.45, borderLeft: `2px solid ${BLUE}`, paddingLeft: 9 }}>{m.o.north_star}</div>}
           {sum?.summary && !open && <div style={{ fontSize: 13, color: INK2, marginTop: 6, lineHeight: 1.5, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{sum.summary}</div>}
         </div>
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', justifyContent: 'flex-end' }}>

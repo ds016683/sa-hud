@@ -94,3 +94,10 @@ export const KindChip = ({ kind }) => {
   const c = KIND_COLOR[kind] || INK2
   return <span style={{ ...S.chip('transparent', c), border: `1px solid ${c}55`, fontFamily: MONO, fontSize: 9, letterSpacing: '1px', padding: '2px 7px', display: 'inline-flex', alignItems: 'center', gap: 5 }}><KindIcon kind={kind} color={c} />{kind}</span>
 }
+
+// The North Star (David, 10/12): one line on every mission, written at
+// capture, carried on the card, first in the brain, top of the yay page, and
+// answered by Achieved at close. Labels like this one read in Title Case
+// (the first letter of each word capitalized), David's cannon 10/13.
+export const NORTH_STAR_LABEL = "What Will Be True, That Wasn't True Before"
+export const NORTH_STAR_ASK = "What will be true, that wasn't true before? One sentence."

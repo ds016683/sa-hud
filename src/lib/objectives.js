@@ -50,13 +50,16 @@ export async function fetchObjectives() {
   return q(supabase.from('objectives').select('*').eq('user_id', DAVID).order('captured_at', { ascending: false }).limit(3000))
 }
 
-export async function addObjective({ title, size = 'light', personal = false, tags = [], due_date = null, follow_up_date = null, description = null, state = 'parked', stakeholder = null }) {
+export async function addObjective({ title, size = 'light', personal = false, tags = [], due_date = null, follow_up_date = null, description = null, state = 'parked', stakeholder = null, north_star = null }) {
   const text = String(title || '').trim()
   if (!text) throw new Error('give it a name')
   const now = new Date().toISOString()
   const allTags = [...new Set([...(personal ? ['personal'] : []), ...tags.filter(t => t !== 'personal')])]
   const row = { user_id: DAVID, title: text.slice(0, 200), state: state === 'active' ? 'parked' : state, kind: 'execution', effort: effortOf(size), importance: 2, needs_sizing: false, tags: allTags, due_date, follow_up_date, description, stakeholder, captured_at: now }
-  const data = await q(supabase.from('objectives').insert(row).select().single())
+  const star = String(north_star || '').trim() || null
+  let data
+  try { data = await q(supabase.from('objectives').insert(star ? { ...row, north_star: star } : row).select().single()) }
+  catch (e) { if (star && /north_star/.test(e.message)) { data = await q(supabase.from('objectives').insert(row).select().single()); data.north_star_dropped = true } else throw e }
   if (state === 'active') { const r = await equipObjective(data.id, { clock: true }); if (!r.ok) return { ...data, refused: r.reasons } }
   return data
 }

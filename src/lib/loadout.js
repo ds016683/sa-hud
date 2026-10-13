@@ -39,13 +39,14 @@ export async function fetchLoadout() {
   const day = chiToday()
   const nowIso = new Date().toISOString()
   const [active, clocks, events, links, projects] = await Promise.all([
-    q(supabase.from('objectives').select('id,title,state,tags,effort,due_date,activated_at,captured_at,description').eq('state', 'active').is('deleted_at', null).order('activated_at', { ascending: true })),
+    q(supabase.from('objectives').select('*').eq('state', 'active').is('deleted_at', null).order('activated_at', { ascending: true })),
     q(supabase.from('clocks').select('id,objective_id,day,started_at,stopped_at,minutes').or(`stopped_at.is.null,day.eq.${day}`)),
     q(supabase.from('calendar_events').select('subject,start_at,end_at,is_all_day').eq('day', day).eq('is_cancelled', false)),
     q(supabase.from('project_tasks').select('id,objective_id,project_id,text,created_at,status')),
-    q(supabase.from('projects').select('id,name')),
+    q(supabase.from('projects').select('id,name,description')),
   ])
   const projName = new Map(projects.map(p => [p.id, p.name]))
+  const projStar = new Map(projects.map(p => [p.id, p.description || null]))
   const linked = links.filter(l => l.objective_id)
   const projByObj = new Map(linked.map(l => [l.objective_id, projName.get(l.project_id)]))
   const projIdByObj = new Map(linked.map(l => [l.objective_id, l.project_id]))
@@ -72,6 +73,7 @@ export async function fetchLoadout() {
       kind: tags.includes('impromptu') ? 'Ad Hoc' : (projByObj.has(o.id) || tags.includes('mission-task')) ? 'Main Mission' : tags.includes('session') ? 'Session' : 'Side Mission',
       personal: tags.includes('personal'), adhoc: tags.includes('impromptu'), call: tags.includes('call'),
       ...(taskInfo.get(o.id) || {}), steps: stepRows.filter(s => s.objective_id === o.id),
+      north_star: projByObj.has(o.id) ? (projStar.get(projIdByObj.get(o.id)) || null) : (o.north_star || null),
     }
   })
   // Three slots for planned work; the Ad Hoc slot carries impromptu items

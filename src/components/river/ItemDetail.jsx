@@ -12,7 +12,7 @@ import { fetchLoadout, equip, holster, stash, equipObjective, equipTask, fmtCloc
 import { fetchSteps, addStep, toggleStep, removeStep, listObjectiveArtifacts, listObjectiveFiles, uploadObjectiveFile, listObjectiveBoards, provenance, realmOf, setSize, updateObjective } from '../../lib/objectives'
 import { renderMarkdown } from './MeetingCloseout'
 import SessionBoard from './SessionBoard'
-import { INK, INK2, GRAY, PANEL_BORDER, GOLD, GOLD_BRIGHT, BLUE, GREEN, RED, MONO, SERIF, S, Label, KIND_COLOR, KindIcon } from './canon'
+import { INK, INK2, GRAY, PANEL_BORDER, GOLD, GOLD_BRIGHT, BLUE, GREEN, RED, MONO, SERIF, S, Label, KIND_COLOR, KindIcon, NORTH_STAR_LABEL, NORTH_STAR_ASK } from './canon'
 
 const NAVY_DEEP = '#0A1B2B'
 const TABS = ['overview', 'artifacts', 'sessions', 'files', 'notes']
@@ -173,6 +173,10 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
             <div style={{ display: 'grid', gap: 16 }}>
               {obj && (() => { const prov = provenance(obj); const sz = SIZES[item.size] ? item.size : 'light'; const realm = realmOf(obj); return (
                 <>
+                  <div>
+                    <Label style={{ color: BLUE }}>{NORTH_STAR_LABEL}</Label>
+                    <textarea defaultValue={obj.north_star || ''} rows={2} onBlur={e => { const v = e.target.value.trim() || null; if (v !== (obj.north_star || null)) patchObj({ north_star: v }) }} placeholder={NORTH_STAR_ASK} style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: `1px solid ${PANEL_BORDER}`, borderRadius: 8, padding: '8px 10px', color: INK, fontSize: 15, fontFamily: SERIF, fontStyle: 'italic', lineHeight: 1.5, resize: 'vertical' }} />
+                  </div>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 14 }}>
                     <div><Label>Where it came from</Label><div style={{ fontSize: 13.5, color: INK }}>{prov.label}</div><div style={{ fontSize: 11.5, color: GRAY, marginTop: 2 }}>{prov.detail}</div></div>
                     <div><Label>Captured</Label><div style={{ fontSize: 13.5, color: INK }}>{obj.captured_at ? new Date(obj.captured_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'unknown'}</div><div style={{ fontSize: 11.5, color: GRAY, marginTop: 2 }}>{obj.state === 'released' ? `released ${obj.released_at ? obj.released_at.slice(0, 10) : ''}` : obj.state === 'active' ? 'on the Board' : (obj.state || '').replace('_', ' ')}</div></div>
