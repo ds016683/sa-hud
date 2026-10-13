@@ -10,11 +10,14 @@ import BadgeMedallion from '../BadgeArt'
 import RecallModal, { BrainButton } from './Recall'
 import YayPage from './YayPage'
 import { MILES, colorOf } from '../../lib/summary'
+import { upsertSession, logToHarvest, hoursBetween } from '../../lib/meetings'
+import { RECURRING } from './RecurringPanel'
+import { Square, Mail, Hash, CalendarCheck, Brain } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { DispatchModal } from './AmbushPanel'
 import { pockets } from '../../lib/objectives'
 import FileAway from './FileAway'
-import { fetchLoadout, equip, holster, stash, extract, addImpromptu, fmtClock, SIZES, SLOTS, sizeOf } from '../../lib/loadout'
+import { fetchLoadout, equip, holster, stash, extract, addImpromptu, fmtClock, SIZES, SLOTS, sizeOf, chiToday } from '../../lib/loadout'
 import ItemDetail from './ItemDetail'
 import { INK, INK2, GRAY, PANEL_BORDER, GOLD, GOLD_BRIGHT, BLUE, GREEN, RED, MONO, SERIF, S, Eyebrow, Label, Panel, KIND_COLOR, NORTH_STAR_LABEL } from './canon'
 
@@ -173,7 +176,7 @@ function AdHocSlot({ item, act, onDispatch, onOpen, onChanged, onRecall }) {
     } catch (e) { setErr(e.message) } finally { setBusy(false) }
   }
   if (item) return (
-    <div style={slotBox(item.equipped ? GREEN : `${CORAL}99`, item.equipped ? 'rgba(67,211,146,0.07)' : 'rgba(232,131,111,0.06)')}>
+    <div style={{ ...slotBox(item.equipped ? GREEN : `${CORAL}99`, item.equipped ? 'rgba(67,211,146,0.07)' : 'rgba(232,131,111,0.06)'), minHeight: 0, flex: 1 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
         <Label style={{ marginBottom: 0, color: CORAL }}>Ad Hoc Slot</Label><span style={{ flex: 1 }} />
         <span style={{ ...S.chip('transparent', CORAL), border: `1px solid ${CORAL}55`, fontFamily: MONO, fontSize: 9, letterSpacing: '1px', padding: '2px 7px' }}>{item.call ? 'Call' : 'Ad Hoc'}</span>
@@ -192,7 +195,7 @@ function AdHocSlot({ item, act, onDispatch, onOpen, onChanged, onRecall }) {
     </div>
   )
   return (
-    <div style={slotBox(`${CORAL}66`, 'rgba(232,131,111,0.04)', true)}>
+    <div style={{ ...slotBox(`${CORAL}66`, 'rgba(232,131,111,0.04)', true), minHeight: 0, flex: 1 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
         <Zap size={12} color={CORAL} /><Label style={{ marginBottom: 0, color: CORAL }}>Ad Hoc Slot</Label>
       </div>
@@ -205,6 +208,72 @@ function AdHocSlot({ item, act, onDispatch, onOpen, onChanged, onRecall }) {
       <input value={text} onChange={e => setText(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') start() }} disabled={busy}
         placeholder={mode === 'call' ? 'Who is calling? Enter starts the clock.' : 'What just landed on you? Enter starts the clock.'} style={{ ...field, marginTop: 'auto' }} />
       {err && <div style={{ fontFamily: MONO, fontSize: 9.5, color: RED, letterSpacing: '0.6px', textTransform: 'uppercase' }}>{err}</div>}
+    </div>
+  )
+}
+
+// The Routine slot (David, 10/13): the bottom half of the right column. It
+// shows the one recurring thing that is on right now (a Console chore, a
+// timer Lumen started by hand) with its clock and a Stop, and when nothing
+// is on, the chores you can start from here.
+const ROUTINE_ICON = { 'email-refresh': Mail, 'slack-review': Hash, 'calendar-sweep': CalendarCheck, 'thinking': Brain }
+function RoutineSlot({ tick, onChanged }) {
+  const [running, setRunning] = useState(null)
+  const [now, setNow] = useState(() => Date.now())
+  const [msg, setMsg] = useState(null)
+  const day = chiToday()
+  const pull = useCallback(async () => {
+    setNow(Date.now())
+    const { data } = await supabase.from('meeting_sessions').select('event_id,subject,started_at,stopped_at,hours,special_notes').eq('day', day).like('event_id', 'adhoc:%').is('stopped_at', null).not('started_at', 'is', null).order('started_at', { ascending: true })
+    setRunning(Array.isArray(data) && data.length ? data[0] : null)
+  }, [day])
+  useEffect(() => { pull() }, [pull, tick])
+  const slugOf = (eid) => String(eid || '').split(':').slice(2).join(':')
+  const chore = running ? RECURRING.find(r => `adhoc:${day}:${r.slug}` === running.event_id) : null
+  const mins = running ? ((Number(running.hours) || 0) * 60) + (now - new Date(running.started_at).getTime()) / 60000 : 0
+  const start = async (r) => {
+    try { await upsertSession({ event_id: `adhoc:${day}:${r.slug}`, day, subject: r.label, started_at: new Date().toISOString(), stopped_at: null }); setMsg(null); await pull(); onChanged && onChanged() }
+    catch (e) { setMsg(`Could not start: ${e.message}`) }
+  }
+  const stop = async () => {
+    if (!running) return
+    try {
+      const stoppedIso = new Date().toISOString()
+      const span = Math.max(0.01, hoursBetween(running.started_at, stoppedIso))
+      const hours = Math.round(((Number(running.hours) || 0) + span) * 100) / 100
+      const personal = running.special_notes === 'personal'
+      let logged = false
+      if (!personal) { try { await logToHarvest(running.subject, Math.round(span * 100) / 100); logged = true } catch (e) { setMsg(`Stopped; Harvest did not take it: ${e.message}`) } }
+      await upsertSession({ event_id: running.event_id, day, subject: running.subject, started_at: running.started_at, stopped_at: stoppedIso, hours, harvest_logged: logged })
+      if (logged) setMsg(`${running.subject}: ${fmtClock(span * 60)} logged to Harvest`)
+      await pull(); onChanged && onChanged()
+    } catch (e) { setMsg(`Could not stop: ${e.message}`) }
+  }
+  const Icon = chore ? (ROUTINE_ICON[chore.slug] || Zap) : Zap
+  if (running) return (
+    <div style={{ ...slotBox(GREEN, 'rgba(67,211,146,0.07)'), minHeight: 0, flex: 1 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        <Icon size={12} color={GREEN} /><Label style={{ marginBottom: 0, color: GREEN }}>Routine · on</Label><span style={{ flex: 1 }} />
+        <span style={{ fontFamily: MONO, fontSize: 10, color: GREEN, letterSpacing: '0.6px' }}>running · {fmtClock(mins)}</span>
+      </div>
+      <div style={{ fontFamily: SERIF, fontSize: 16, fontWeight: 500, color: '#fff', lineHeight: 1.3, flex: 1 }}>{running.subject}</div>
+      <div style={{ fontFamily: MONO, fontSize: 9.5, color: GRAY, letterSpacing: '0.6px' }}>{chore ? 'Console chore' : `started by ${slugOf(running.event_id).includes('-') ? 'Lumen' : 'hand'}`}{running.special_notes === 'personal' ? ' · personal' : ' · logs to Harvest on stop'}</div>
+      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+        <button onClick={stop} style={btn(GREEN, true)}><Square size={11} /> Stop</button>
+      </div>
+      {msg && <div style={{ fontFamily: MONO, fontSize: 9.5, color: msg.startsWith('Could') ? RED : GOLD_BRIGHT, letterSpacing: '0.6px', textTransform: 'uppercase' }}>{msg}</div>}
+    </div>
+  )
+  return (
+    <div style={{ ...slotBox('rgba(255,255,255,0.14)', 'transparent', true), minHeight: 0, flex: 1 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        <Label style={{ marginBottom: 0 }}>Routine · nothing on</Label>
+      </div>
+      <div style={{ fontFamily: SERIF, fontSize: 15, color: 'rgba(234,241,248,0.6)' }}>Start a chore</div>
+      <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+        {RECURRING.filter(r => !r.travel).map(r => { const I = ROUTINE_ICON[r.slug] || Zap; return <button key={r.slug} onClick={() => start(r)} style={{ ...btn(INK2), padding: '4px 8px' }}><I size={10} /> {r.label}</button> })}
+      </div>
+      {msg && <div style={{ fontFamily: MONO, fontSize: 9.5, color: RED, letterSpacing: '0.6px', textTransform: 'uppercase' }}>{msg}</div>}
     </div>
   )
 }
@@ -265,7 +334,10 @@ export default function LoadoutPanel({ onChange, refreshKey = 0, onNavigate, bar
           <div className="board-slots">
             {layout.placed.map(({ it, n }) => <FilledSlot key={it.id} it={it} n={n} act={act} onOpen={setRelated} onExtract={extractGate} onRecall={setRecallOf} />)}
             {layout.empties.map(n => <EmptySlot key={`empty-${n}`} n={n} />)}
-            <AdHocSlot item={L.adhoc[0] || null} act={act} onDispatch={setDispatch} onOpen={setRelated} onChanged={bump} onRecall={setRecallOf} />
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, minWidth: 0 }}>
+              <AdHocSlot item={L.adhoc[0] || null} act={act} onDispatch={setDispatch} onOpen={setRelated} onChanged={bump} onRecall={setRecallOf} />
+              <RoutineSlot tick={tick} onChanged={bump} />
+            </div>
           </div>
           {layout.overflow.length > 0 && <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '0.8px', color: RED, textTransform: 'uppercase', marginTop: 8 }}>Over capacity ({L.slots.used}/{SLOTS} slots): {layout.overflow.map(i => `${i.title} · ${SIZES[i.size]?.label}`).join(' · ')}. Stash something.</div>}
           {L.adhoc.length > 1 && <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '0.8px', color: GRAY, textTransform: 'uppercase', marginTop: 8 }}>Also unplanned: {L.adhoc.slice(1).map(i => i.title).join(' · ')} · dispatch the slot to reach them</div>}

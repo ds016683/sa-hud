@@ -114,7 +114,10 @@ export default function RecurringPanel({ onChange }) {
   const byId = new Map(sessions.map(s => [s.event_id, s]))
   const isRunning = (s) => !!(s && s.started_at && !s.stopped_at)
   // The one-at-a-time rule ignores Travel (and Travel ignores it).
-  const runningOther = (slug) => sessions.find(s => isRunning(s) && s.event_id !== eid(day, slug) && !CONCURRENT.some(c => s.event_id === eid(day, c)))
+  // Only the Console's own chores block each other. A timer Lumen started by
+  // hand (work_timer, its own adhoc id) runs alongside, like Travel does.
+  const CHORE_IDS = new Set(RECURRING.filter(r => !r.concurrent).map(r => eid(day, r.slug)))
+  const runningOther = (slug) => sessions.find(s => isRunning(s) && s.event_id !== eid(day, slug) && CHORE_IDS.has(s.event_id))
 
   const start = async (r) => {
     try {
@@ -205,7 +208,7 @@ export default function RecurringPanel({ onChange }) {
   return (
     <>
       <style>{`@keyframes rcblink { 0%,100% { opacity: 1 } 50% { opacity: .15 } } .rc-blink { animation: rcblink 1s ease-in-out infinite }`}</style>
-      <InstrumentGroup label="Tending" divider footer={groupMsg(msg, bad)}>
+      <InstrumentGroup label="Tending" divider>
         {RECURRING.filter(r => r.group === 'tend').map(r => {
           const s = byId.get(eid(day, r.slug)); const running = isRunning(s); const mins = minutesOf(s)
           const rule = RULES[r.light](lights)
@@ -227,6 +230,7 @@ export default function RecurringPanel({ onChange }) {
           light={nextLeg && !travelRunning ? { level: legState === 'live' ? 'green' : 'gold', text: travelTitle } : null}
           extra={<span onClick={openTravelEdit} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontFamily: MONO, fontSize: 9, letterSpacing: '1px', textTransform: 'uppercase', color: GRAY, cursor: 'pointer' }}><Pencil size={9} /> edit span</span>} />
       </InstrumentGroup>
+      {msg && <div style={{ flexBasis: '100%', order: 99, marginTop: 8 }}>{groupMsg(msg, bad)}</div>}
       {travelEdit && (
         <div onClick={() => setTravelEdit(null)} style={{ position: 'fixed', inset: 0, zIndex: 250, background: 'rgba(8,20,32,0.88)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
           <div onClick={e => e.stopPropagation()} style={{ maxWidth: 520, width: '100%', background: '#10273B', border: `1px solid ${PANEL_BORDER}`, borderRadius: 14, padding: '22px 24px' }}>
