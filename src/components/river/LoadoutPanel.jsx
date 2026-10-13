@@ -339,8 +339,23 @@ export default function LoadoutPanel({ onChange, refreshKey = 0, onNavigate, bar
               <RoutineSlot tick={tick} onChanged={bump} />
             </div>
           </div>
-          {layout.overflow.length > 0 && <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '0.8px', color: RED, textTransform: 'uppercase', marginTop: 8 }}>Over capacity ({L.slots.used}/{SLOTS} slots): {layout.overflow.map(i => `${i.title} · ${SIZES[i.size]?.label}`).join(' · ')}. Stash something.</div>}
-          {L.adhoc.length > 1 && <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '0.8px', color: GRAY, textTransform: 'uppercase', marginTop: 8 }}>Also unplanned: {L.adhoc.slice(1).map(i => i.title).join(' · ')} · dispatch the slot to reach them</div>}
+          {(layout.overflow.length > 0 || L.adhoc.length > 1) && (
+            <div style={{ marginTop: 12, borderTop: `1px solid ${PANEL_BORDER}`, paddingTop: 8 }}>
+              {layout.overflow.map(it => (
+                <div key={it.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '5px 0', flexWrap: 'wrap' }}>
+                  <span onClick={() => setRelated(it)} style={{ fontSize: 13, color: INK2, flex: 1, minWidth: 200, cursor: 'pointer' }}>{it.title}</span>
+                  <span style={{ fontFamily: MONO, fontSize: 10, color: GRAY, letterSpacing: '0.6px' }}>{SIZES[it.size]?.label} · no slot free</span>
+                  <button onClick={() => act(() => stash(it.id), `Stashed: ${it.title}`)} style={btn(INK2)}><Archive size={11} /> Stash</button>
+                </div>
+              ))}
+              {L.adhoc.slice(1).map(it => (
+                <div key={it.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '5px 0', flexWrap: 'wrap' }}>
+                  <span onClick={() => setRelated(it)} style={{ fontSize: 13, color: INK2, flex: 1, minWidth: 200, cursor: 'pointer' }}>{it.title}</span>
+                  <span style={{ fontFamily: MONO, fontSize: 10, color: GRAY, letterSpacing: '0.6px' }}>Ad Hoc · waiting for the slot</span>
+                </div>
+              ))}
+            </div>
+          )}
 
           {L.sessions.length > 0 && (
             <div style={{ marginTop: 12, borderTop: `1px solid ${PANEL_BORDER}`, paddingTop: 8 }}>
