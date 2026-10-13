@@ -541,6 +541,16 @@ export const TOOLS = [
     inputSchema: { type: 'object', properties: { title: { type: 'string' } }, required: ['title'] },
   },
   {
+    name: 'schedule_event',
+    description: "Put a block on David's own calendar (no attendees): a trip, a meeting block, focus time. Only when he asks for it in so many words; read the subject, day and times back in the reply. Times are local to the place he will be (timezone, default America/Chicago).",
+    inputSchema: { type: 'object', properties: { subject: { type: 'string' }, start: { type: 'string', description: 'YYYY-MM-DDTHH:MM local' }, end: { type: 'string', description: 'YYYY-MM-DDTHH:MM local' }, timezone: { type: 'string', description: 'IANA, e.g. America/New_York; default America/Chicago' }, location: { type: 'string' }, body: { type: 'string', description: 'notes, plain text' }, all_day: { type: 'boolean' } }, required: ['subject', 'start', 'end'] },
+  },
+  {
+    name: 'file_attachment',
+    description: "File an email attachment onto a mission's page (its file cabinet) instead of, or as well as, sending it on WhatsApp. side_mission by title, or project by key or name. Returns the stored path.",
+    inputSchema: { type: 'object', properties: { message_id: { type: 'string' }, filename: { type: 'string', description: 'which attachment; omit when there is one' }, side_mission: { type: 'string' }, project: { type: 'string' } }, required: ['message_id'] },
+  },
+  {
     name: 'set_north_star',
     description: "Write or rewrite a mission's North Star: one sentence in David's own words answering 'What will be true, that wasn't true before?'. A Side Mission by title, or a Main Mission by project key or name (its description is its star). Ask him once, write it from his words, read it back, then save.",
     inputSchema: { type: 'object', properties: { title: { type: 'string', description: 'the Side Mission' }, project: { type: 'string', description: 'the Main Mission key or name, instead of title' }, text: { type: 'string' } }, required: ['text'] },
@@ -1273,6 +1283,37 @@ export async function callTool(name, args = {}) {
       const o = await findObjective(args.title)
       const r = await holster(o.id)
       return JSON.stringify({ ok: true, holstered: o.title, ...r })
+    }
+    case 'schedule_event': {
+      const subject = String(args.subject || '').trim(); if (!subject) throw new Error('subject required')
+      const tz = String(args.timezone || 'America/Chicago')
+      const ev = { subject, start: { dateTime: String(args.start), timeZone: tz }, end: { dateTime: String(args.end), timeZone: tz }, isAllDay: !!args.all_day, ...(args.location ? { location: { displayName: String(args.location) } } : {}), ...(args.body ? { body: { contentType: 'text', content: String(args.body) } } : {}), isReminderOn: true, reminderMinutesBeforeStart: 15 }
+      const token = await graphToken()
+      const r = await fetch(`https://graph.microsoft.com/v1.0/users/${MAILBOX}/events`, { method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify(ev) })
+      if (r.status === 403 || r.status === 401) return JSON.stringify({ ok: false, error: `the calendar hand is not granted yet (Graph ${r.status}): the M365 app needs Calendars.ReadWrite on David's mailbox. Tell David plainly; do not retry.` })
+      if (!r.ok) throw new Error(`calendar -> ${r.status}: ${(await r.text()).slice(0, 200)}`)
+      const j = await r.json()
+      return JSON.stringify({ ok: true, id: j.id, subject, start: args.start, end: args.end, timezone: tz, location: args.location || null, web_link: j.webLink || null })
+    }
+    case 'file_attachment': {
+      const token = await graphToken()
+      const id = encodeURIComponent(String(args.message_id || ''))
+      const atts = await mailAttachments(token, id)
+      if (!atts.length) return JSON.stringify({ ok: false, error: 'that message has no file attachments' })
+      const want = String(args.filename || '').toLowerCase()
+      const pick = want ? atts.find(a => a.name.toLowerCase() === want) || atts.find(a => a.name.toLowerCase().includes(want)) : (atts.length === 1 ? atts[0] : null)
+      if (!pick) return JSON.stringify({ ok: false, error: 'which one?', attachments: atts.map(a => a.name) })
+      let root
+      if (args.side_mission) { const o = await findObjective(args.side_mission); root = `objectives/${o.id}/files` }
+      else if (args.project) { const q = esc(args.project); const ps = await sb(`projects?select=id,name&or=(key.ilike.${encodeURIComponent(q)},name.ilike.${encodeURIComponent(q)})&limit=2`); if (ps.length !== 1) throw new Error(ps.length ? 'ambiguous project' : 'no such project'); root = `${ps[0].id}` }
+      else throw new Error('side_mission or project required')
+      const bin = await fetch(`https://graph.microsoft.com/v1.0/users/${MAILBOX}/messages/${id}/attachments/${encodeURIComponent(pick.id)}/$value`, { headers: { Authorization: `Bearer ${token}` } })
+      if (!bin.ok) throw new Error(`attachment download -> ${bin.status}`)
+      const name = pick.name.replace(/[^A-Za-z0-9._ -]/g, '_')
+      const path = `${root}/${name}`
+      const up = await fetch(`${URL_BASE}/storage/v1/object/project-files/${path.split('/').map(encodeURIComponent).join('/')}`, { method: 'POST', headers: { ...sbHeaders(), 'Content-Type': pick.contentType || 'application/octet-stream', 'x-upsert': 'true' }, body: Buffer.from(await bin.arrayBuffer()) })
+      if (!up.ok) throw new Error(`file upload -> ${up.status}: ${(await up.text()).slice(0, 160)}`)
+      return JSON.stringify({ ok: true, filed: name, path, size: pick.size })
     }
     case 'set_north_star': {
       const text = String(args.text || '').trim()
