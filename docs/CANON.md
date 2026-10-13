@@ -11,11 +11,13 @@ A single discrete action with a clear finish, under an hour. An email, a call, a
 **Test:** can it be done in one sitting and be over? Bounty.
 
 ## Contract · 2 slots · 15 miles
+
+A Contract may carry up to three marks (10/13): observable things that have to happen, written on its Mission Briefing. They pay nothing; the Contract pays 15 on release. A Bounty carries none.
 A standard piece of work with a named deliverable and usually a counterparty. Review a proposal. Frame a concept paper. Research a subject. Draft a memo. A couple of hours, one or two sittings. It may carry an artifact or a file; it has no steps.
 
 **Test:** is there a deliverable someone is waiting on, and will it take a couple of hours? Contract.
 
-## Mythic · 3 slots · 50 miles, plus 10 per task (five at most)
+## Mythic · 3 slots · 50 miles, plus 10 per gate (five at most)
 Several steps that have to happen in order, with a story of its own, done within days. It takes the whole bag on the day it is worked. It is the only Side Mission type with the steps module: each step is a Mythic Task (10 miles, the first five). It carries steps, artifacts, files, and sometimes a session board.
 
 **Test:** does closing it out take several ordered steps, but fit inside a week and your own hands? Mythic. A sixth step, or weeks of work with its own cabinet: that is a Main Mission.

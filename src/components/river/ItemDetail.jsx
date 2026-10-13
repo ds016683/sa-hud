@@ -9,6 +9,8 @@ import { ArrowLeft, Play, Pause, Archive, ExternalLink, FolderOpen, FileText, Li
 import { supabase } from '../../lib/supabase'
 import { listArtifacts, readArtifact, writeArtifact } from '../../lib/artifacts'
 import { fetchLoadout, equip, holster, stash, equipObjective, equipTask, fmtClock, SIZES } from '../../lib/loadout'
+import DocView from './DocView'
+import { stepsMaxFor } from '../../lib/objectives'
 import { fetchSteps, addStep, toggleStep, removeStep, listObjectiveArtifacts, listObjectiveFiles, uploadObjectiveFile, listObjectiveBoards, provenance, realmOf, setSize, updateObjective } from '../../lib/objectives'
 import { renderMarkdown } from './MeetingCloseout'
 import SessionBoard from './SessionBoard'
@@ -16,7 +18,7 @@ import { INK, INK2, GRAY, PANEL_BORDER, GOLD, GOLD_BRIGHT, BLUE, GREEN, RED, MON
 
 const NAVY_DEEP = '#0A1B2B'
 const TABS = ['overview', 'artifacts', 'sessions', 'files', 'notes']
-const TAB_LABEL = { overview: 'Overview', artifacts: 'Artifacts', sessions: 'Sessions', files: 'Files', notes: 'Notes' }
+const TAB_LABEL = { overview: 'Briefing', artifacts: 'Artifacts', sessions: 'Sessions', files: 'Files', notes: 'Notes' }
 const STOP = new Set(['the', 'and', 'with', 'for', 'from', 'about', 'notes', 'upload', 'interview', 'call', 'meeting', 'review', 'investigate', 'weekly', 'monthly', 'david', 'smith'])
 const words = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9 ]/g, ' ').split(/\s+/).filter(w => w.length > 2 && !STOP.has(w))
 const chiTime = (iso) => iso ? new Date(iso).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'America/Chicago' }) : ''
@@ -135,12 +137,28 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
   const obj = rel?.objective || null
   const [stepText, setStepText] = useState('')
   const [objBusy, setObjBusy] = useState(false)
+  const [editStar, setEditStar] = useState(false)
+  const [reading, setReading] = useState(null)
+  const [briefs, setBriefs] = useState({})
+  const readObjArtifact = useCallback(async (root, slug) => { const { data, error } = await supabase.storage.from('project-files').download(`${root}/artifacts/${slug}.json`); if (error) throw new Error(error.message); return JSON.parse(await data.text()) }, [])
+  useEffect(() => { let on = true; const objArts = (rel?.objArtifacts || []); Promise.all(objArts.map(a => readObjArtifact(a.root || `objectives/${obj?.id}`, a.slug).then(d => [a.slug, d]).catch(() => [a.slug, null]))).then(ps => { if (on) setBriefs(Object.fromEntries(ps)) }); return () => { on = false } }, [rel, obj, readObjArtifact])
   const patchObj = async (patch) => { try { await updateObjective(obj.id, patch); await load(); onChange && onChange() } catch (e) { setMsg(`Could not save: ${e.message}`) } }
   const addStepNow = async () => { const t = stepText.trim(); if (!t || !obj) return; setObjBusy(true); try { const r = await addStep(obj.id, t, (rel.steps || []).length); if (r === null) setMsg('Steps are not set up yet: run sql/2026-10-07-side-missions-archive.sql'); setStepText(''); await load() } catch (e) { setMsg(`Could not add: ${e.message}`) } finally { setObjBusy(false) } }
   const uploadNow = async (file) => { if (!file || !obj) return; setObjBusy(true); try { await uploadObjectiveFile(obj.id, file); setMsg(`Filed ${file.name}`); await load() } catch (e) { setMsg(`Could not upload: ${e.message}`) } finally { setObjBusy(false) } }
 
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 240, overflowY: 'auto', background: 'linear-gradient(180deg, #0F2A40 0%, #0A1B2B 100%)' }}>
+      {reading && (
+        <div onClick={() => setReading(null)} style={{ position: 'fixed', inset: 0, zIndex: 250, background: 'rgba(5,16,28,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+          <div onClick={e => e.stopPropagation()} style={{ width: 'min(760px, 100%)', maxHeight: '88vh', overflowY: 'auto', background: '#10273B', border: `1px solid ${PANEL_BORDER}`, borderRadius: 14, padding: '24px 26px', display: 'grid', gap: 14 }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+              <h3 style={{ flex: 1, fontFamily: SERIF, fontWeight: 500, fontSize: 22, color: '#fff', margin: 0, lineHeight: 1.25 }}>{reading.doc?.title || reading.title}</h3>
+              <button onClick={() => setReading(null)} style={btn(INK2)}>Close</button>
+            </div>
+            <DocView doc={reading.doc} />
+          </div>
+        </div>
+      )}
       <div style={{ ...S.page, maxWidth: 1180, margin: '0 auto' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
           <button onClick={onClose} style={btn(INK2)}><ArrowLeft size={13} /> Back</button>
@@ -158,7 +176,7 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
           <div style={{ minWidth: 0 }}>
             <h1 style={{ ...S.h1, marginBottom: 6 }}>{item.title}</h1>
             <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '1.6px', textTransform: 'uppercase', color: KIND_COLOR[item.kind] || INK2, display: 'inline-flex', alignItems: 'center', gap: 6 }}><KindIcon kind={item.kind} size={12} />
-              {item.kind}{rel?.project ? ` · ${rel.project.name}` : item.project ? ` · ${item.project}` : ''}{item.size ? ` · ${SIZES[item.size]?.label || item.size}` : ''}{item.event ? ` · ${chiTime(item.event.start_at)} to ${chiTime(item.event.end_at)}` : ''}
+              Mission Briefing · {item.kind}{rel?.project ? ` · ${rel.project.name}` : item.project ? ` · ${item.project}` : ''}{item.size ? ` · ${SIZES[item.size]?.label || item.size}` : ''}{item.event ? ` · ${chiTime(item.event.start_at)} to ${chiTime(item.event.end_at)}` : ''}
             </div>
           </div>
           <div style={{ display: 'flex', gap: 6, paddingBottom: 4, flexWrap: 'wrap' }}>
@@ -170,46 +188,70 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
           {!rel && <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '1.4px', textTransform: 'uppercase', color: GRAY, padding: '10px 0' }}>Reading the Ledger</div>}
 
           {rel && tab === 'overview' && (
-            <div style={{ display: 'grid', gap: 16 }}>
-              {obj && (() => { const prov = provenance(obj); const sz = SIZES[item.size] ? item.size : 'light'; const realm = realmOf(obj); return (
+            <div style={{ display: 'grid', gap: 22 }}>
+              {obj && (() => { const prov = provenance(obj); const sz = SIZES[item.size] ? item.size : 'light'; const realm = realmOf(obj); const max = stepsMaxFor(sz); const field = { background: 'rgba(255,255,255,0.05)', border: `1px solid ${PANEL_BORDER}`, borderRadius: 8, color: INK, padding: '6px 9px', fontFamily: MONO, fontSize: 12, height: 32, width: '100%', boxSizing: 'border-box' }; return (
                 <>
                   <div>
                     <Label style={{ color: BLUE }}>{NORTH_STAR_LABEL}</Label>
-                    <textarea defaultValue={obj.north_star || ''} rows={2} onBlur={e => { const v = e.target.value.trim() || null; if (v !== (obj.north_star || null)) patchObj({ north_star: v }) }} placeholder={NORTH_STAR_ASK} style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: `1px solid ${PANEL_BORDER}`, borderRadius: 8, padding: '8px 10px', color: INK, fontSize: 15, fontFamily: SERIF, fontStyle: 'italic', lineHeight: 1.5, resize: 'vertical' }} />
+                    {editStar || !obj.north_star
+                      ? <textarea autoFocus={editStar} defaultValue={obj.north_star || ''} rows={2} onBlur={e => { const v = e.target.value.trim() || null; setEditStar(false); if (v !== (obj.north_star || null)) patchObj({ north_star: v }) }} placeholder={NORTH_STAR_ASK} style={{ width: '100%', boxSizing: 'border-box', background: 'rgba(255,255,255,0.05)', border: `1px solid ${PANEL_BORDER}`, borderRadius: 8, padding: '10px 12px', color: INK, fontSize: 17, fontFamily: SERIF, fontStyle: 'italic', lineHeight: 1.45, resize: 'vertical' }} />
+                      : <div onClick={() => setEditStar(true)} title="Click to edit" style={{ fontFamily: SERIF, fontStyle: 'italic', fontSize: 19, lineHeight: 1.45, color: INK, borderLeft: `2px solid ${BLUE}`, paddingLeft: 12, cursor: 'text' }}>{obj.north_star}</div>}
                   </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 14 }}>
-                    <div><Label>Where it came from</Label><div style={{ fontSize: 13.5, color: INK }}>{prov.label}</div><div style={{ fontSize: 11.5, color: GRAY, marginTop: 2 }}>{prov.detail}</div></div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 16, borderTop: `1px solid ${PANEL_BORDER}`, borderBottom: `1px solid ${PANEL_BORDER}`, padding: '14px 0' }}>
+                    <div><Label>Where It Came From</Label><div style={{ fontSize: 13.5, color: INK, lineHeight: 1.4 }}>{prov.label}</div><div style={{ fontSize: 11.5, color: GRAY, marginTop: 2 }}>{prov.detail}</div></div>
                     <div><Label>Captured</Label><div style={{ fontSize: 13.5, color: INK }}>{obj.captured_at ? new Date(obj.captured_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'unknown'}</div><div style={{ fontSize: 11.5, color: GRAY, marginTop: 2 }}>{obj.state === 'released' ? `released ${obj.released_at ? obj.released_at.slice(0, 10) : ''}` : obj.state === 'active' ? 'on the Board' : (obj.state || '').replace('_', ' ')}</div></div>
                     <div><Label>Realm</Label><div style={{ display: 'flex', gap: 4 }}>{[['third-horizon', 'Third Horizon'], ['personal', 'Personal']].map(([k, l]) => <button key={k} onClick={() => patchObj({ tags: [...new Set([...(obj.tags || []).filter(t => t !== 'personal'), ...(k === 'personal' ? ['personal'] : [])])] })} style={{ ...btn(realm === k ? (k === 'personal' ? GOLD : BLUE) : INK2, realm === k), padding: '4px 8px' }}>{l}</button>)}</div></div>
-                    <div><Label>Size</Label><div style={{ display: 'flex', gap: 4 }}>{Object.entries(SIZES).map(([k, s]) => <button key={k} onClick={() => setSize(obj.id, k).then(load)} title={s.sub} style={{ ...btn(sz === k ? s.color : INK2, sz === k), padding: '4px 8px' }}>{s.label} · {s.slots} slot{s.slots === 1 ? '' : 's'}</button>)}</div></div>
-                    <div><Label>Due</Label><input type="date" value={obj.due_date || ''} onChange={e => patchObj({ due_date: e.target.value || null })} style={{ background: 'rgba(255,255,255,0.05)', border: `1px solid ${PANEL_BORDER}`, borderRadius: 8, color: INK, padding: '5px 8px', fontFamily: MONO, fontSize: 12 }} /></div>
-                    <div><Label>Follow up</Label><input type="date" value={obj.follow_up_date || ''} onChange={e => patchObj({ follow_up_date: e.target.value || null })} style={{ background: 'rgba(255,255,255,0.05)', border: `1px solid ${PANEL_BORDER}`, borderRadius: 8, color: INK, padding: '5px 8px', fontFamily: MONO, fontSize: 12 }} /></div>
-                    <div><Label>Who</Label><input defaultValue={obj.stakeholder || ''} onBlur={e => { if ((e.target.value || '') !== (obj.stakeholder || '')) patchObj({ stakeholder: e.target.value || null }) }} placeholder="stakeholder" style={{ background: 'rgba(255,255,255,0.05)', border: `1px solid ${PANEL_BORDER}`, borderRadius: 8, color: INK, padding: '5px 8px', fontSize: 12.5, width: '100%', boxSizing: 'border-box' }} /></div>
+                    <div><Label>Type</Label><div style={{ display: 'flex', gap: 4 }}>{Object.entries(SIZES).map(([k, sdef]) => <button key={k} onClick={() => setSize(obj.id, k).then(load)} title={sdef.sub} style={{ ...btn(sz === k ? sdef.color : INK2, sz === k), padding: '4px 8px' }}>{sdef.label}</button>)}</div></div>
+                    <div><Label>Due</Label><input type="date" value={obj.due_date || ''} onChange={e => patchObj({ due_date: e.target.value || null })} style={field} /></div>
+                    <div><Label>Follow Up</Label><input type="date" value={obj.follow_up_date || ''} onChange={e => patchObj({ follow_up_date: e.target.value || null })} style={field} /></div>
+                    <div><Label>Who</Label><input defaultValue={obj.stakeholder || ''} onBlur={e => { if ((e.target.value || '') !== (obj.stakeholder || '')) patchObj({ stakeholder: e.target.value || null }) }} placeholder="stakeholder" style={{ ...field, fontFamily: 'inherit', fontSize: 13 }} /></div>
                   </div>
-                  {(obj.tags || []).filter(t => !['personal', 'third-horizon'].includes(t)).length > 0 && <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>{(obj.tags || []).filter(t => !['personal', 'third-horizon'].includes(t)).map(t => <span key={t} style={{ ...S.chip('rgba(255,255,255,0.06)', INK2), fontFamily: MONO, fontSize: 9, letterSpacing: '1px' }}>{t}</span>)}</div>}
-                  {sz !== 'heavy' && (Array.isArray(rel.steps) && rel.steps.length > 0) && <div style={{ fontSize: 12.5, color: GRAY }}>This {SIZES[sz].label} carries {rel.steps.length} step{rel.steps.length === 1 ? '' : 's'} from when it was a Mythic; make it a Mythic again to work them.</div>}
-                  {sz === 'heavy' && <div>
-                    <Label>What needs to happen to close this out · Mythic tasks, 10 miles each, five at most</Label>
-                    {rel.steps === null && <div style={{ fontSize: 12.5, color: GRAY }}>Steps are not set up yet. Run sql/2026-10-07-side-missions-archive.sql in the Ledger and they appear here.</div>}
-                    {Array.isArray(rel.steps) && rel.steps.map(st => (
-                      <div key={st.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 0', borderTop: `1px solid ${PANEL_BORDER}` }}>
+
+                  {(item.description || obj.description) && <div><Label>Back Story</Label><div style={{ fontSize: 14.5, lineHeight: 1.65, color: INK, whiteSpace: 'pre-wrap' }}>{item.description || obj.description}</div></div>}
+
+                  <div>
+                    <Label>{sz === 'heavy' ? 'Gates · Mythic Tasks, 10 Miles Each, Five At Most' : sz === 'medium' ? 'Marks · What Has To Happen, Three At Most' : 'Marks'}</Label>
+                    {max === 0 && <div style={{ fontSize: 13, color: GRAY }}>A Bounty is one action; it carries no marks. Make it a Contract for up to three, a Mythic for five paid gates.</div>}
+                    {max > 0 && rel.steps === null && <div style={{ fontSize: 12.5, color: GRAY }}>Steps are not set up yet. Run sql/2026-10-07-side-missions-archive.sql in the Ledger and they appear here.</div>}
+                    {max > 0 && Array.isArray(rel.steps) && rel.steps.map((st, i) => (
+                      <div key={st.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 0', borderTop: `1px solid ${PANEL_BORDER}` }}>
                         <button onClick={() => toggleStep(st.id, !st.done).then(load)} aria-label={st.done ? 'Undo' : 'Done'} style={{ width: 18, height: 18, borderRadius: 999, border: `1px solid ${st.done ? GREEN : 'rgba(255,255,255,0.3)'}`, background: st.done ? `${GREEN}22` : 'transparent', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>{st.done && <Check size={11} color={GREEN} />}</button>
-                        <span style={{ flex: 1, fontSize: 13.5, color: st.done ? GRAY : INK, textDecoration: st.done ? 'line-through' : 'none' }}>{st.text}</span>
+                        <span style={{ fontFamily: MONO, fontSize: 10, color: GOLD, width: 14 }}>{i + 1}</span>
+                        <span style={{ flex: 1, fontSize: 14, color: st.done ? GRAY : INK, textDecoration: st.done ? 'line-through' : 'none' }}>{st.text}</span>
                         {st.done_at && <span style={{ fontFamily: MONO, fontSize: 9.5, color: GRAY }}>{chiTime(st.done_at)}</span>}
                         <button onClick={() => removeStep(st.id).then(load)} aria-label="Remove" style={{ background: 'transparent', border: 'none', color: GRAY, cursor: 'pointer', padding: 2 }}><Trash2 size={11} /></button>
                       </div>
                     ))}
-                    {Array.isArray(rel.steps) && rel.steps.length < 5 && (
+                    {max > 0 && Array.isArray(rel.steps) && rel.steps.length < max && (
                       <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-                        <input value={stepText} onChange={e => setStepText(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') addStepNow() }} placeholder={rel.steps.length ? `step ${rel.steps.length + 1} of 5` : 'the first thing that has to happen (1 of 5)'} disabled={objBusy} style={{ flex: 1, background: 'rgba(255,255,255,0.05)', border: `1px solid ${PANEL_BORDER}`, borderRadius: 8, color: INK, padding: '7px 10px', fontSize: 13 }} />
+                        <input value={stepText} onChange={e => setStepText(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') addStepNow() }} placeholder={rel.steps.length ? `${sz === 'heavy' ? 'gate' : 'mark'} ${rel.steps.length + 1} of ${max}: something that can be seen to have happened` : `the first thing that has to happen (1 of ${max}): a decision marked, a conversation had, a thing produced`} disabled={objBusy} style={{ flex: 1, background: 'rgba(255,255,255,0.05)', border: `1px solid ${PANEL_BORDER}`, borderRadius: 8, color: INK, padding: '7px 10px', fontSize: 13, fontFamily: 'inherit' }} />
                         <button onClick={addStepNow} disabled={objBusy || !stepText.trim()} style={btn(BLUE, false)}><Plus size={11} /> Add</button>
                       </div>
                     )}
-                    {Array.isArray(rel.steps) && rel.steps.length >= 5 && <div style={{ fontSize: 12, color: GRAY, marginTop: 8 }}>Five steps is the Mythic's limit. A sixth means this is a Main Mission: promote it.</div>}
-                  </div>}
+                    {max > 0 && Array.isArray(rel.steps) && rel.steps.length >= max && <div style={{ fontSize: 12, color: GRAY, marginTop: 8 }}>{sz === 'heavy' ? 'Five gates is the Mythic’s limit. A sixth means this is a Main Mission: promote it.' : 'Three marks is a Contract’s limit. More than that is a Mythic.'}</div>}
+                  </div>
+
+                  {(rel.objArtifacts || []).filter(a => briefs[a.slug]).length > 0 && (
+                    <div>
+                      <Label>Mission Briefing</Label>
+                      <div style={{ display: 'grid', gap: 18 }}>
+                        {(rel.objArtifacts || []).filter(a => briefs[a.slug]).map(a => (
+                          <div key={a.slug} style={{ borderTop: `1px solid ${PANEL_BORDER}`, paddingTop: 12 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+                              <FileText size={14} color={GOLD_BRIGHT} />
+                              <div style={{ flex: 1, fontFamily: SERIF, fontWeight: 500, fontSize: 18, color: '#fff' }}>{briefs[a.slug].title || a.title}</div>
+                              <span style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '1px', textTransform: 'uppercase', color: GRAY }}>{briefs[a.slug].kind || 'artifact'}{briefs[a.slug].updated_by ? ` · by ${briefs[a.slug].updated_by}` : ''}</span>
+                            </div>
+                            <DocView doc={briefs[a.slug]} />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </>
               ) })()}
-              {(item.description || task?.notes) && <div><Label>Back story</Label><div style={{ fontSize: 13.5, lineHeight: 1.65, color: INK, whiteSpace: 'pre-wrap' }}>{item.description || task.notes}</div></div>}
+              {!obj && (item.description || task?.notes) && <div><Label>Back Story</Label><div style={{ fontSize: 14.5, lineHeight: 1.65, color: INK, whiteSpace: 'pre-wrap' }}>{item.description || task.notes}</div></div>}
               {item.event && (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 14 }}>
                   <div><Label>When</Label><div style={{ fontSize: 13, color: INK }}>{chiTime(item.event.start_at)} to {chiTime(item.event.end_at)} CT</div></div>
@@ -230,17 +272,14 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
                   <div style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '1px', color: GRAY, textTransform: 'uppercase', marginTop: 4 }}>{task.status}{task.due_date ? ` · due ${task.due_date}` : ''}</div>
                 </div>
               )}
-              {loaded && (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 14 }}>
-                  <div><Label>Clock today</Label><div style={{ fontFamily: SERIF, fontSize: 22, color: loaded.equipped ? GREEN : INK }}>{fmtClock(loaded.minutes_today)}</div></div>
-                  <div><Label>Size</Label><div style={{ fontFamily: SERIF, fontSize: 22, color: INK }}>{SIZES[loaded.size]?.label} · {SIZES[loaded.size]?.slots} slot{SIZES[loaded.size]?.slots === 1 ? '' : 's'}</div></div>
-                  <div><Label>State</Label><div style={{ fontFamily: SERIF, fontSize: 22, color: INK }}>{loaded.equipped ? 'Equipped' : 'Holstered'}</div></div>
+              <div style={{ display: 'flex', gap: 22, flexWrap: 'wrap', alignItems: 'flex-end', borderTop: `1px solid ${PANEL_BORDER}`, paddingTop: 14 }}>
+                {loaded && <div><Label>Clock Today</Label><div style={{ fontFamily: SERIF, fontSize: 20, color: loaded.equipped ? GREEN : INK }}>{fmtClock(loaded.minutes_today)}</div></div>}
+                {loaded && <div><Label>State</Label><div style={{ fontFamily: SERIF, fontSize: 20, color: INK }}>{loaded.equipped ? 'Equipped' : 'Holstered'}</div></div>}
+                <div style={{ marginLeft: 'auto', display: 'flex', gap: 14, flexWrap: 'wrap', fontFamily: MONO, fontSize: 9.5, letterSpacing: '1px', textTransform: 'uppercase', color: GRAY }}>
+                  <span>{counts.artifacts} artifact{counts.artifacts === 1 ? '' : 's'}</span><span>{counts.sessions} session{counts.sessions === 1 ? '' : 's'}</span><span>{counts.files} file{counts.files === 1 ? '' : 's'}</span><span>{counts.notes} note{counts.notes === 1 ? '' : 's'}</span>
                 </div>
-              )}
-              {!item.description && !task?.notes && !rel.project && !item.event && !loaded && !obj && <div style={{ fontSize: 13, color: GRAY }}>No back story on this one yet.</div>}
-              <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', fontFamily: MONO, fontSize: 9.5, letterSpacing: '1px', textTransform: 'uppercase', color: GRAY }}>
-                <span>{counts.artifacts} artifact{counts.artifacts === 1 ? '' : 's'}</span><span>{counts.sessions} session{counts.sessions === 1 ? '' : 's'}</span><span>{counts.files} file{counts.files === 1 ? '' : 's'}</span><span>{counts.notes} note{counts.notes === 1 ? '' : 's'}</span>
               </div>
+              {!item.description && !task?.notes && !rel.project && !item.event && !loaded && !obj && <div style={{ fontSize: 13, color: GRAY }}>No back story on this one yet.</div>}
             </div>
           )}
 
@@ -250,7 +289,7 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
                 <div key={a.slug} style={rowStyle}>
                   <FileText size={14} color={GOLD_BRIGHT} /><span style={{ flex: 1, fontSize: 13.5, color: INK }}>{a.title}{a.decision ? <span style={{ fontFamily: MONO, fontSize: 9, letterSpacing: '1px', color: GOLD, marginLeft: 8, textTransform: 'uppercase' }}>decision</span> : null}</span>
                   {a.obj
-                    ? <button onClick={() => open('project-files', `${a.root}/artifacts/${a.slug}.json`)} style={btn(GOLD, true)}>Open</button>
+                    ? <button onClick={async () => { try { setReading({ title: a.title, doc: briefs[a.slug] || await readObjArtifact(a.root, a.slug) }) } catch (e) { setMsg(`Could not read: ${e.message}`) } }} style={btn(GOLD, true)}>Read</button>
                     : <button onClick={() => go([a.project_id || rel.project.id, 'artifacts', a.slug])} style={btn(GOLD, true)}>Open</button>}
                 </div>
               ))}

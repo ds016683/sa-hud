@@ -87,9 +87,11 @@ export async function reopenObjective(id) { return updateObjective(id, { state: 
 const soft = async (p) => { try { return await q(p) } catch (e) { if (/objective_steps|schema cache|does not exist/i.test(e.message)) return null; throw e } }
 export const fetchSteps = (objectiveId) => soft(supabase.from('objective_steps').select('*').eq('objective_id', objectiveId).order('position').order('id'))
 export const MYTHIC_STEPS_MAX = 5
+export const CONTRACT_MARKS_MAX = 3
+export const stepsMaxFor = (size) => size === 'heavy' ? MYTHIC_STEPS_MAX : size === 'medium' ? CONTRACT_MARKS_MAX : 0
 export async function addStep(objectiveId, text, position = 0) {
   const existing = await fetchSteps(objectiveId)
-  if (existing && existing.length >= MYTHIC_STEPS_MAX) throw new Error(`a Mythic holds ${MYTHIC_STEPS_MAX} steps at most; a sixth means this is a Main Mission`)
+  if (existing && existing.length >= MYTHIC_STEPS_MAX) throw new Error(`a Mythic holds ${MYTHIC_STEPS_MAX} gates at most; a sixth means this is a Main Mission`)
   return soft(supabase.from('objective_steps').insert({ objective_id: objectiveId, text: String(text).trim().slice(0, 300), position }).select().single())
 }
 export const toggleStep = (id, done) => soft(supabase.from('objective_steps').update({ done, done_at: done ? new Date().toISOString() : null }).eq('id', id).select().single())

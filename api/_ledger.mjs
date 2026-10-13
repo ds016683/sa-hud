@@ -318,7 +318,7 @@ export const TOOLS = [
   },
   {
     name: 'add_step',
-    description: "Add a step to a Mythic Side Mission (five at most; a sixth means it is a Main Mission). Each step is a Mythic Task: 10 miles when completed. Refuses on a Bounty or Contract; set_size heavy first if David wants it to be a Mythic.",
+    description: "Add a gate to a Mythic (five at most, 10 miles each; a sixth means it is a Main Mission) or a mark to a Contract (three at most, unpaid). Every one must be observable: a decision marked, a conversation had, a thing produced. Refuses on a Bounty; set_size first if David wants it to be a Mythic.",
     inputSchema: { type: 'object', properties: { title: { type: 'string' }, text: { type: 'string' } }, required: ['title', 'text'] },
   },
   {
@@ -776,11 +776,12 @@ export async function callTool(name, args = {}) {
     }
     case 'add_step': {
       const o = await findObjective(args.title)
-      if (sizeOf(o) !== 'heavy') return JSON.stringify({ ok: false, error: `"${o.title}" is a ${sizeOf(o) === 'medium' ? 'Contract' : 'Bounty'}; only a Mythic carries steps. Ask David whether to make it a Mythic (set_size heavy, 3 slots) first.` })
+      const maxSteps = sizeOf(o) === 'heavy' ? 5 : sizeOf(o) === 'medium' ? 3 : 0
+      if (!maxSteps) return JSON.stringify({ ok: false, error: `"${o.title}" is a Bounty, one action; a Contract carries up to three marks, a Mythic five gates. Ask David whether to make it a Mythic (set_size heavy, 3 slots) first.` })
       const steps = await sb(`objective_steps?select=id&objective_id=eq.${o.id}`).catch(() => [])
-      if (steps.length >= 5) return JSON.stringify({ ok: false, error: 'five steps is the limit for a Mythic; a sixth means this is a Main Mission (create_project and add_project_task).' })
+      if (steps.length >= maxSteps) return JSON.stringify({ ok: false, error: maxSteps === 5 ? 'five gates is the limit for a Mythic; a sixth means this is a Main Mission (create_project and add_project_task).' : 'three marks is the limit for a Contract; more than that and it is a Mythic (set_size heavy).' })
       const out = await sbWrite('POST', 'objective_steps', { objective_id: o.id, text: String(args.text || '').trim().slice(0, 300), position: steps.length })
-      return JSON.stringify({ ok: true, title: o.title, step: out?.[0], count: steps.length + 1, max: 5 })
+      return JSON.stringify({ ok: true, title: o.title, step: out?.[0], count: steps.length + 1, max: maxSteps, pays: maxSteps === 5 ? '10 miles when closed' : 'unpaid; the Contract pays 15 on release' })
     }
     case 'complete_step':
     case 'remove_step': {
