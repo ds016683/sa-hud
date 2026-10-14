@@ -163,7 +163,8 @@ export async function extract(item, { minutes, note } = {}) {
 export const DAVID = '9d28e8cf-3e35-48d9-a029-1327bd37fdd4'
 
 // Same rules as the server: slots, one Heavy, stamina during the working day.
-export function fitReasons(L, size = 'light', { alreadyLoadedId, adhoc = false } = {}) {
+export const isStaminaReason = (r) => /^stamina:/.test(String(r))
+export function fitReasons(L, size = 'light', { alreadyLoadedId, adhoc = false, ignoreStamina = false } = {}) {
   const reasons = []
   const already = alreadyLoadedId && L.items.some(i => i.id === alreadyLoadedId)
   if (already) return reasons
@@ -172,20 +173,20 @@ export function fitReasons(L, size = 'light', { alreadyLoadedId, adhoc = false }
   const hours = sz.hours
   const free = SLOTS - L.slots.used
   if (sz.slots > free) reasons.push(`${sz.label} takes ${sz.slots} slot${sz.slots === 1 ? '' : 's'} and the Board has ${free} free (${L.board.map(i => `${i.title} · ${i.slots}`).join(' | ') || 'empty'})`)
-  if (!L.stamina.afterHours && L.stamina.loaded + hours > L.stamina.free) reasons.push(`stamina: ${L.stamina.loaded}h loaded + ${hours}h vs ${L.stamina.free}h free before 6 PM`)
+  if (!ignoreStamina && !L.stamina.afterHours && L.stamina.loaded + hours > L.stamina.free) reasons.push(`stamina: ${L.stamina.loaded}h loaded + ${hours}h vs ${L.stamina.free}h free before 6 PM`)
   return reasons
 }
 
 // Activate an objective (if it is not already) and run its clock. The Morning
 // Protocol loads items without starting a clock (clock: false); Launch picks
 // the one that runs.
-export async function equipObjective(objectiveId, { size, clock = true } = {}) {
+export async function equipObjective(objectiveId, { size, clock = true, ignoreStamina = false } = {}) {
   const L = await fetchLoadout()
   const o = (await q(supabase.from('objectives').select('id,title,state,effort,tags').eq('id', objectiveId).limit(1)))[0]
   if (!o) throw new Error('objective not found')
   const sz = size || sizeOf(o)
   if (o.state !== 'active') {
-    const reasons = fitReasons(L, sz, { alreadyLoadedId: o.id })
+    const reasons = fitReasons(L, sz, { alreadyLoadedId: o.id, ignoreStamina })
     if (reasons.length) return { ok: false, reasons }
     const { error } = await supabase.from('objectives').update({ state: 'active', activated_at: new Date().toISOString(), released_at: null, released_kind: null, ...(size ? { effort: effortOf(size) } : {}) }).eq('id', o.id)
     if (error) throw new Error(error.message)
@@ -196,10 +197,10 @@ export async function equipObjective(objectiveId, { size, clock = true } = {}) {
 
 // A Main Mission task onto the board: reuse its linked objective or create the
 // bridge (the same one Lumen's activate_project_task creates), then equip.
-export async function equipTask(task, projectName, { clock = true } = {}) {
-  if (task.objective_id) return equipObjective(task.objective_id, { clock })
+export async function equipTask(task, projectName, { clock = true, ignoreStamina = false } = {}) {
+  if (task.objective_id) return equipObjective(task.objective_id, { clock, ignoreStamina })
   const L = await fetchLoadout()
-  const reasons = fitReasons(L, 'light')
+  const reasons = fitReasons(L, 'light', { ignoreStamina })
   if (reasons.length) return { ok: false, reasons }
   const now = new Date().toISOString()
   const { data, error } = await supabase.from('objectives').insert({
@@ -248,10 +249,10 @@ export async function resolveObjectiveId(ref) {
 export async function startWithRoom(target, { projectName = null } = {}) {
   const stashed = []
   if (target.type === 'objective') target = { ...target, id: await resolveObjectiveId(target.id) }
-  const attempt = () => target.type === 'task' ? equipTask(target.task, projectName, { clock: true }) : equipObjective(target.id, { clock: true })
+  const attempt = () => target.type === 'task' ? equipTask(target.task, projectName, { clock: true, ignoreStamina: true }) : equipObjective(target.id, { clock: true, ignoreStamina: true })
   for (let i = 0; i < 4; i++) {
     const r = await attempt()
-    if (r.ok) return { ...r, stashed }
+    if (r.ok) { const L = await fetchLoadout(); const over = !L.stamina.afterHours && L.stamina.loaded > L.stamina.free; return { ...r, stashed, over_stamina: over ? `${L.stamina.loaded}h loaded vs ${L.stamina.free}h free before 6 PM` : null } }
     if (!r.reasons || !r.reasons.some(x => /slot|heavy|mythic/i.test(x))) return { ...r, stashed }
     const L = await fetchLoadout()
     const victim = L.board.filter(b => !b.equipped && !b.meeting && b.id !== target.id).sort((a, b) => String(a.activated_at || '').localeCompare(String(b.activated_at || '')))[0]

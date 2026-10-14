@@ -298,7 +298,7 @@ function WorkPanel({ tasks, projects, objectives, loading, day, refresh, refresh
     try {
       const r = ref.type === 'task' ? await startWithRoom({ type: 'task', id: row?.raw?.objective_id || ref.id, task: row?.raw || (tasks || []).find(t => t.id === ref.id) }, { projectName: row?.project }) : await startWithRoom({ type: 'objective', id: ref.id })
       if (!r.ok) { setNote(`Will not fit: ${(r.reasons || []).join(' · ')}`); reportSoft(`start ${title}`, `refused: ${(r.reasons || []).join(' · ')}`); return }
-      setNote(`${title} started${r.stashed?.length ? ` · stashed ${r.stashed.join(', ')}` : ''}`); refresh && refresh()
+      setNote(`${title} started${r.stashed?.length ? ` · stashed ${r.stashed.join(', ')}` : ''}${r.over_stamina ? ` · over stamina: ${r.over_stamina}` : ''}`); refresh && refresh()
     } catch (e) { setNote(`Could not start: ${e.message}`); reportSoft(`start ${title}`, e) } finally { setBusy(false) }
   }
   const stop = async (id, title) => { setBusy(true); try { await holster(id); setNote(`${title} holstered`); refresh && refresh() } catch (e) { setNote(`Could not stop: ${e.message}`) } finally { setBusy(false) } }

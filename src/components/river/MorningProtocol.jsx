@@ -318,7 +318,7 @@ function Protocol({ day, session, onClose, onFinished, onChange, onNavigate }) {
     setBusy(true)
     try {
       let r
-      if (ref?.type === 'objective') r = await equipObjective(await resolveObjectiveId(ref.id), { clock: false })
+      if (ref?.type === 'objective') r = await equipObjective(await resolveObjectiveId(ref.id), { clock: false, ignoreStamina: true })
       else if (ref?.type === 'task') { const { data } = await supabase.from('project_tasks').select('id,text,status,objective_id,project_id').eq('id', ref.id).limit(1); if (!data?.[0]) throw new Error('task not found'); r = await equipTask(data[0], projects.get(data[0].project_id)?.name, { clock: false }) }
       else throw new Error('nothing to load')
       if (!r.ok) { setMsg(`Will not fit: ${r.reasons.join(' · ')}`); return }
@@ -337,7 +337,7 @@ function Protocol({ day, session, onClose, onFinished, onChange, onNavigate }) {
       else throw new Error('nothing to start')
       if (!r.ok) { setMsg(`Will not fit: ${r.reasons.join(' · ')}`); return }
       const lo = await fetchLoadout(); setL(lo); if (!first) setFirst(r.id || ref.id)
-      setMsg(`${title || r.title} started${r.stashed?.length ? ` · stashed ${r.stashed.join(', ')} to make room` : ''} (${lo.slots.used}/${SLOTS} slots)`)
+      setMsg(`${title || r.title} started${r.stashed?.length ? ` · stashed ${r.stashed.join(', ')} to make room` : ''}${r.over_stamina ? ` · over stamina: ${r.over_stamina}` : ''} (${lo.slots.used}/${SLOTS} slots)`)
     } catch (e) { setMsg(`Could not start: ${e.message}`); reportSoft(`plan start ${title}`, e) } finally { setBusy(false) }
   }
   const stopRef = async (id, title) => { setBusy(true); try { await holster(id); const lo = await fetchLoadout(); setL(lo); setMsg(`${title} holstered`) } catch (e) { setMsg(`Could not stop: ${e.message}`) } finally { setBusy(false) } }
