@@ -9,6 +9,21 @@ import { waSendDocument, davidNumber } from './_wa.mjs'
 import { extractText, clip } from './_docs.mjs'
 import { logHours, setHours } from './time.mjs'
 import { sendMail } from './_mail.mjs'
+
+// Graph answers a PATCH with the wall time in the event's own zone (Chicago,
+// after our own patch), not UTC. Turn that into the instant (10/14: an 8:30
+// Chicago meeting landed in the Ledger as 8:30 UTC and the clock ran six
+// hours long).
+function zonedToIso(g) {
+  const dt = String(g?.dateTime || '').slice(0, 19), tz = String(g?.timeZone || 'UTC')
+  if (!dt) return null
+  if (/^utc$/i.test(tz)) return new Date(dt + 'Z').toISOString()
+  const guess = new Date(dt + 'Z')
+  const parts = new Intl.DateTimeFormat('en-US', { timeZone: tz, hour12: false, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' }).formatToParts(guess)
+  const get = (t) => Number(parts.find(p => p.type === t)?.value || 0)
+  const asLocal = Date.UTC(get('year'), get('month') - 1, get('day'), get('hour') % 24, get('minute'), get('second'))
+  return new Date(guess.getTime() - (asLocal - guess.getTime())).toISOString()
+}
 import { loadout, checkFit, equip, holster, extract, effortOf, sizeOf, SIZES } from './_loadout.mjs'
 import { markdownToDocx, DOCX_MIME } from './_docx.mjs'
 import { fillScorecard } from './_scorecard.mjs'
@@ -1083,7 +1098,7 @@ export async function callTool(name, args = {}) {
       if (!r.ok) throw new Error(`calendar update -> ${r.status}: ${(await r.text()).slice(0, 200)}`)
       const j = await r.json()
       const toIso = (dt) => dt?.dateTime ? new Date(dt.dateTime + (dt.timeZone === 'UTC' ? 'Z' : '')).toISOString() : null
-      await sbWrite('PATCH', `calendar_events?id=eq.${encodeURIComponent(ev.id)}`, { ...(j.start ? { start_at: toIso(j.start) } : {}), ...(j.end ? { end_at: toIso(j.end) } : {}) }, 'return=minimal').catch(() => null)
+      await sbWrite('PATCH', `calendar_events?id=eq.${encodeURIComponent(ev.id)}`, { ...(j.start ? { start_at: zonedToIso(j.start) } : {}), ...(j.end ? { end_at: zonedToIso(j.end) } : {}) }, 'return=minimal').catch(() => null)
       return JSON.stringify({ ok: true, subject: ev.subject, day, start: j.start?.dateTime, end: j.end?.dateTime, timeZone: j.start?.timeZone })
     }
     case 'work_timer': {
