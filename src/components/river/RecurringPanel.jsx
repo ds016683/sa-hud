@@ -65,7 +65,6 @@ const RULES = {
     return { level, blink: false, reading, unit, text: level === 'red' ? 'Saturday: close the week' : level === 'gold' ? 'Friday: bills this week?' : 'the week is open' }
   },
 }
-}
 
 const eid = (day, slug) => `adhoc:${day}:${slug}`
 const TRAVEL_RE = /\b(flight|airlines?|airways|amtrak|train|drive to|driving|travel|uber|lyft|airport|depart|arriv|road trip)\b/i
