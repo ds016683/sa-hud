@@ -17,7 +17,8 @@ import { supabase } from '../../lib/supabase'
 import { DispatchModal } from './AmbushPanel'
 import { pockets } from '../../lib/objectives'
 import FileAway from './FileAway'
-import { fetchLoadout, equip, holster, stash, extract, addImpromptu, fmtClock, SIZES, SLOTS, sizeOf, chiToday } from '../../lib/loadout'
+import { fetchLoadout, equip, holster, stash, extract, addImpromptu, fmtClock, SIZES, SLOTS, sizeOf, chiToday, fetchStash, returnToInventory, equipObjective, STASH_MAX } from '../../lib/loadout'
+import { Undo2, ArrowUpToLine } from 'lucide-react'
 import ItemDetail from './ItemDetail'
 import { INK, INK2, GRAY, PANEL_BORDER, GOLD, GOLD_BRIGHT, BLUE, GREEN, RED, MONO, SERIF, S, Eyebrow, Label, Panel, KIND_COLOR, KindChip, NORTH_STAR_LABEL } from './canon'
 
@@ -253,6 +254,38 @@ function AdHocSlot({ item, act, onDispatch, onOpen, onChanged, onRecall }) {
   )
 }
 
+// The Stash (David, 10/14): a stack of ten thin rows beside the Loadout.
+// Each row is the item's vitals as a header: badge, title, kind, type. Click
+// opens its page. Load puts it on the Loadout; Return sends it to the
+// Missions Inventory.
+function StashStack({ items, act, onOpen }) {
+  const rows = [...(items || []).slice(0, STASH_MAX)]
+  while (rows.length < STASH_MAX) rows.push(null)
+  return (
+    <div style={{ ...slotBox(`${BLUE}44`, 'rgba(169,201,232,0.025)'), minHeight: 0, gap: 6, padding: '12px 12px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        <Label style={{ marginBottom: 0, color: BLUE }}>Stash</Label><span style={{ flex: 1 }} />
+        <span style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '0.8px', color: GRAY }}>{(items || []).length} of {STASH_MAX}</span>
+      </div>
+      <div style={{ display: 'grid', gap: 4, flex: 1 }}>
+        {rows.map((it, i) => it ? (
+          <div key={it.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 8px', borderRadius: 8, border: `1px solid ${BLUE}55`, background: 'rgba(169,201,232,0.06)', minWidth: 0 }}>
+            <BadgeMedallion id={badgeFor(it)} size={20} color={colorOf(it.kind, it.size)} />
+            <div onClick={() => onOpen(it)} title={`${it.title}${it.north_star ? ` · ${it.north_star}` : ''}`} style={{ flex: 1, minWidth: 0, cursor: 'pointer', display: 'grid', gap: 0 }}>
+              <div style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 12.5, color: INK, lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{it.kind === 'Main Mission' ? (it.task_text || it.title).replace(/^\s*\d+\s*[·.:)-]\s*/, '') : it.title}</div>
+              <div style={{ fontFamily: MONO, fontSize: 8, letterSpacing: '1px', textTransform: 'uppercase', color: colorOf(it.kind, it.size), whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{it.kind === 'Main Mission' ? `Main Mission · ${it.project || ''}` : `${it.kind} · ${SIZES[it.size]?.label || ''}`}</div>
+            </div>
+            <button onClick={() => act(async () => { const r = await equipObjective(it.id, { clock: false, ignoreStamina: true }); if (!r.ok) throw new Error(r.reasons.join(' · ')) }, `Loaded: ${it.title}`)} title="Load onto the Loadout" style={{ ...btn(BLUE), padding: '3px 6px' }}><ArrowUpToLine size={10} /></button>
+            <button onClick={() => act(() => returnToInventory(it.id), `Returned to the inventory: ${it.title}`)} title="Return to the Missions Inventory" style={{ ...btn(INK2), padding: '3px 6px' }}><Undo2 size={10} /></button>
+          </div>
+        ) : (
+          <div key={`empty-${i}`} style={{ height: 30, borderRadius: 8, border: `1px dashed ${GREEN}55`, display: 'flex', alignItems: 'center', paddingLeft: 10, fontFamily: MONO, fontSize: 8, letterSpacing: '1px', textTransform: 'uppercase', color: `${GREEN}99` }}>{i + 1}</div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 // The Routine slot (David, 10/13): the bottom half of the right column. It
 // shows the one recurring thing that is on right now (a Console chore, a
 // timer Lumen started by hand) with its clock and a Stop, and when nothing
@@ -324,7 +357,8 @@ export default function LoadoutPanel({ onChange, refreshKey = 0, onNavigate, bar
   const [msg, setMsg] = useState(null)
   const [recallOf, setRecallOf] = useState(null)
   const [yay, setYay] = useState(null)
-  const refresh = useCallback(() => fetchLoadout().then(setL).catch(e => console.warn('loadout', e.message)), [])
+  const [held, setHeld] = useState([])
+  const refresh = useCallback(() => Promise.all([fetchLoadout().then(setL), fetchStash().then(setHeld)]).catch(e => console.warn('loadout', e.message)), [])
   useEffect(() => { refresh() }, [refresh, tick, refreshKey])
   useEffect(() => { const t = setInterval(() => setTick(x => x + 1), 30_000); return () => clearInterval(t) }, [])
   useEffect(() => { supabase.from('projects').select('id,name').eq('status', 'active').order('name').then(({ data }) => setProjects(Array.isArray(data) ? data : [])) }, [])
@@ -355,7 +389,7 @@ export default function LoadoutPanel({ onChange, refreshKey = 0, onNavigate, bar
 
   return (
     <Wrap style={wrapStyle}>
-      <style>{`.board-slots { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px } @media (max-width: 980px) { .board-slots { grid-template-columns: repeat(2, minmax(0, 1fr)) } }`}</style>
+      <style>{`.board-slots { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)) minmax(0, 0.8fr); gap: 10px } @media (max-width: 980px) { .board-slots { grid-template-columns: repeat(2, minmax(0, 1fr)) } }`}</style>
       {related && <ItemDetail item={{ id: related.id, objective_id: related.id, kind: related.kind, title: related.title, project: related.project, project_id: related.project_id, description: related.description, tags: related.tags, size: related.size }} onClose={() => setRelated(null)} onNavigate={onNavigate} onChange={bump} />}
       {open && <ExtractModal item={open} onClose={() => setOpen(null)} onDone={(r) => { const id = open.id, session = open.session; setOpen(null); setMsg(`Extracted: ${open.title} · ${fmtClock(r.minutes)}${r.personal ? ' · personal' : ''}`); bump(); if (!session) setYay(id) }} />}
       {filing && <FileAway objective={filing.o} pockets={filing.p} onClose={() => setFiling(null)} onDone={({ filed, released }) => { const id = filing.o.id; setFiling(null); setMsg(`Filed ${filed.length} to the Archive · extracted ${filing.o.title} · ${released.minutes}m`); bump(); setYay(id) }} />}
@@ -373,6 +407,7 @@ export default function LoadoutPanel({ onChange, refreshKey = 0, onNavigate, bar
               <AdHocSlot item={L.adhoc[0] || null} act={act} onDispatch={setDispatch} onOpen={setRelated} onChanged={bump} onRecall={setRecallOf} />
               <RoutineSlot tick={tick} onChanged={bump} />
             </div>
+            <StashStack items={held} act={act} onOpen={(it) => setRelated({ id: it.id, objective_id: it.id, kind: it.kind, title: it.title, project: it.project, description: it.description, tags: it.tags, size: it.size })} />
           </div>
           {(layout.overflow.length > 0 || L.adhoc.length > 1) && (
             <div style={{ marginTop: 12, borderTop: `1px solid ${PANEL_BORDER}`, paddingTop: 8 }}>

@@ -133,10 +133,31 @@ export async function clockedMinutes(objectiveId) {
   return Math.round(rows.reduce((s, r) => s + (Number(r.minutes) || 0), 0))
 }
 
-// Stash: park the item (it stays planned), clock holstered.
+// Stash (David, 10/14): a held place beside the Loadout, ten deep. The item
+// leaves the board (parked, clock holstered) and wears the 'stashed' tag so
+// it sits in the stack instead of the Missions Inventory. Load puts it back
+// on the board; Return sends it to the inventory.
+export const STASH_MAX = 10
+export async function fetchStash() {
+  const rows = await q(supabase.from('objectives').select('id,title,tags,effort,due_date,description,north_star,captured_at,updated_at').eq('state', 'parked').contains('tags', ['stashed']).is('deleted_at', null).order('updated_at', { ascending: false }))
+  const links = rows.length ? await q(supabase.from('project_tasks').select('id,objective_id,project_id,text').in('objective_id', rows.map(r => r.id))) : []
+  const projects = links.length ? await q(supabase.from('projects').select('id,name').in('id', links.map(l => l.project_id))) : []
+  const pn = new Map(projects.map(p => [p.id, p.name]))
+  return rows.map(o => { const l = links.find(x => x.objective_id === o.id); return { ...o, size: sizeOf(o), slots: slotsOf(o), kind: l ? 'Main Mission' : (o.tags || []).includes('impromptu') ? 'Ad Hoc' : 'Side Mission', project: l ? (pn.get(l.project_id) || null) : null, task_id: l?.id || null, task_text: l?.text || null } })
+}
 export async function stash(objectiveId) {
+  const held = await q(supabase.from('objectives').select('id').eq('state', 'parked').contains('tags', ['stashed']).is('deleted_at', null))
+  if (held.length >= STASH_MAX && !held.some(h => h.id === objectiveId)) throw new Error(`the Stash holds ${STASH_MAX}; return something to the inventory first`)
   await holster(objectiveId)
-  const { error } = await supabase.from('objectives').update({ state: 'parked', activated_at: null }).eq('id', objectiveId)
+  const o = (await q(supabase.from('objectives').select('tags').eq('id', objectiveId).limit(1)))[0]
+  const tags = [...new Set([...(o?.tags || []), 'stashed'])]
+  const { error } = await supabase.from('objectives').update({ state: 'parked', activated_at: null, tags }).eq('id', objectiveId)
+  if (error) throw new Error(error.message)
+}
+// Return: out of the Stash, back to the Missions Inventory (parked, no tag).
+export async function returnToInventory(objectiveId) {
+  const o = (await q(supabase.from('objectives').select('tags').eq('id', objectiveId).limit(1)))[0]
+  const { error } = await supabase.from('objectives').update({ tags: (o?.tags || []).filter(t => t !== 'stashed') }).eq('id', objectiveId)
   if (error) throw new Error(error.message)
 }
 
@@ -188,7 +209,7 @@ export async function equipObjective(objectiveId, { size, clock = true, ignoreSt
   if (o.state !== 'active') {
     const reasons = fitReasons(L, sz, { alreadyLoadedId: o.id, ignoreStamina })
     if (reasons.length) return { ok: false, reasons }
-    const { error } = await supabase.from('objectives').update({ state: 'active', activated_at: new Date().toISOString(), released_at: null, released_kind: null, ...(size ? { effort: effortOf(size) } : {}) }).eq('id', o.id)
+    const { error } = await supabase.from('objectives').update({ state: 'active', activated_at: new Date().toISOString(), released_at: null, released_kind: null, tags: (o.tags || []).filter(t => t !== 'stashed'), ...(size ? { effort: effortOf(size) } : {}) }).eq('id', o.id)
     if (error) throw new Error(error.message)
   }
   if (clock) await equip(o.id)

@@ -309,7 +309,7 @@ function WorkPanel({ tasks, projects, objectives, loading, day, refresh, refresh
   const activeObj = new Set((objectives || []).filter(o => o.state === 'active').map(o => o.id))
   const queue = [
     ...(tasks || []).filter(t => !prioIds.has(String(t.id)) && !(t.objective_id && activeObj.has(t.objective_id))).map(t => ({ id: `t:${t.id}`, kind: 'Main Mission', title: stripNum(t.text), project: byProj.get(t.project_id)?.name || null, due: t.due_date || null, ref: { type: 'task', id: t.id }, raw: t, blocked: t.status === 'blocked' })),
-    ...(objectives || []).filter(o => o.state !== 'active' && !prioIds.has(String(o.id))).map(o => ({ id: `o:${o.id}`, kind: (o.tags || []).includes('impromptu') ? 'Ad Hoc' : 'Side Mission', size: sizeOf(o), title: o.title, project: null, due: o.due_date || o.follow_up_date || null, ref: { type: 'objective', id: o.id }, raw: o, state: o.state })),
+    ...(objectives || []).filter(o => o.state !== 'active' && !(o.tags || []).includes('stashed') && !prioIds.has(String(o.id))).map(o => ({ id: `o:${o.id}`, kind: (o.tags || []).includes('impromptu') ? 'Ad Hoc' : 'Side Mission', size: sizeOf(o), title: o.title, project: null, due: o.due_date || o.follow_up_date || null, ref: { type: 'objective', id: o.id }, raw: o, state: o.state })),
   ].sort((a, b) => String(a.due || '9999').localeCompare(String(b.due || '9999')))
   const shown = showAll ? queue : queue.slice(0, 10)
   const openRow = (row) => row.kind === 'Main Mission'

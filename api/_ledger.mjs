@@ -1221,6 +1221,9 @@ export async function callTool(name, args = {}) {
         if (!fit.ok) return JSON.stringify({ ok: false, refused: 'loadout', reasons: fit.reasons, loadout: fit.loadout, note: 'Ask David what to stash (park), or whether to force it.' })
       }
       const patch = { state }
+      // Off the board into the Stash (10/14): a parked item that was active wears the 'stashed' tag and sits in the stack beside the Loadout; loading strips it.
+      if (state === 'parked' && o.state === 'active') patch.tags = [...new Set([...(o.tags || []), 'stashed'])]
+      if (state === 'active') patch.tags = (o.tags || []).filter(t => t !== 'stashed')
       if (state === 'released' || state === 'foreman') { patch.released_kind = state === 'foreman' ? 'foreman' : 'done'; patch.released_at = new Date().toISOString() }
       else { patch.released_kind = null; patch.released_at = null }
       patch.activated_at = state === 'active' ? new Date().toISOString() : null
