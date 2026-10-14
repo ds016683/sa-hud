@@ -45,12 +45,16 @@ const isBoardItem = (o) => !(o.tags || []).includes('session')
 export async function loadout() {
   const day = chiToday()
   const nowIso = new Date().toISOString()
-  const [active, clocks, events, meetingsRunning] = await Promise.all([
+  const [active, clocks, events, meetingsRunning, links, projects] = await Promise.all([
     sb(`objectives?select=id,title,state,tags,effort,due_date,activated_at,captured_at&state=eq.active&deleted_at=is.null&order=activated_at.asc`),
     sb(`clocks?select=id,objective_id,day,started_at,stopped_at,minutes&or=(stopped_at.is.null,day.eq.${day})`).catch(() => []),
     sb(`calendar_events?select=subject,start_at,end_at,is_all_day&day=eq.${day}&is_cancelled=eq.false`).catch(() => []),
     sb(`meeting_sessions?select=event_id,subject,started_at,hours&day=eq.${day}&stopped_at=is.null&started_at=not.is.null&event_id=not.like.adhoc:*&event_id=not.like.personal:*`).catch(() => []),
+    sb(`project_tasks?select=objective_id,project_id,text&objective_id=not.is.null`).catch(() => []),
+    sb(`projects?select=id,name`).catch(() => []),
   ])
+  const projName = new Map(projects.map(p => [p.id, p.name]))
+  const linkByObj = new Map(links.map(l => [l.objective_id, l]))
   const running = clocks.find(c => !c.stopped_at) || null
   const minutesFor = (id) => clocks.filter(c => c.objective_id === id).reduce((s, c) => s + (c.stopped_at ? (Number(c.minutes) || 0) : (Date.now() - new Date(c.started_at).getTime()) / 60000), 0)
   const items = active.map(o => ({
@@ -58,7 +62,8 @@ export async function loadout() {
     equipped: !!running && running.objective_id === o.id,
     minutes_today: Math.round(minutesFor(o.id)),
     session: !isBoardItem(o),
-    kind: (o.tags || []).includes('impromptu') ? 'impromptu' : (o.tags || []).includes('mission-task') ? 'mission-task' : 'side-mission',
+    kind: (o.tags || []).includes('impromptu') ? 'impromptu' : (linkByObj.has(o.id) || (o.tags || []).includes('mission-task')) ? 'mission-task' : 'side-mission',
+    ...(linkByObj.has(o.id) ? { main_mission: projName.get(linkByObj.get(o.id).project_id) || null, milestone: linkByObj.get(o.id).text } : {}),
     adhoc: (o.tags || []).includes('impromptu'),
   }))
   // A meeting with its timer running takes one slot while it runs (David, 10/14).

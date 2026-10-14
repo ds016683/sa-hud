@@ -147,16 +147,16 @@ function FilledSlot({ it, n, act, onOpen, onExtract, onRecall }) {
       <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
         <BadgeMedallion id={badgeFor(it)} size={50} color={colorOf(it.kind, it.size)} />
         <div style={{ flex: 1, minWidth: 0, display: 'grid', gap: 2 }}>
-          <div onClick={() => onOpen(it)} title="Open this item" style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 14.5, color: INK, lineHeight: 1.25, cursor: 'pointer', whiteSpace: main || it.size === 'heavy' ? 'normal' : 'normal' }}>{main ? (it.project || 'Main Mission') : it.title}</div>
+          <div onClick={() => onOpen(it)} title={main ? (it.project || 'Main Mission') : it.title} style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 14.5, color: INK, lineHeight: 1.25, cursor: 'pointer', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{main ? (it.project || 'Main Mission') : it.title}</div>
           <div style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '1.4px', textTransform: 'uppercase', color }}>{it.kind}{it.personal ? ' · personal' : ''}</div>
           <div style={{ fontFamily: MONO, fontSize: 9, letterSpacing: '1.1px', textTransform: 'uppercase', color: GRAY }}>{typeLine}</div>
         </div>
         <Notches from={n - 1} span={span} color={SIZES[it.size]?.color || INK2} />
       </div>
       {task
-        ? <div onClick={() => onOpen(it)} style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 18, color: '#fff', lineHeight: 1.28, cursor: 'pointer', flex: 1 }}>{task}</div>
+        ? <div onClick={() => onOpen(it)} title={task} style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 18, color: '#fff', lineHeight: 1.28, cursor: 'pointer', flex: 1, display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{task}</div>
         : <div style={{ flex: 1 }} />}
-      <div title={NORTH_STAR_LABEL} style={{ fontFamily: SERIF, fontStyle: 'italic', fontSize: 13, lineHeight: 1.45, color: it.north_star ? INK2 : GRAY, borderLeft: `2px solid ${it.north_star ? BLUE : PANEL_BORDER}`, paddingLeft: 9 }}>{it.north_star || 'No star yet.'}</div>
+      <div title={it.north_star ? `${NORTH_STAR_LABEL}: ${it.north_star}` : NORTH_STAR_LABEL} style={{ fontFamily: SERIF, fontStyle: 'italic', fontSize: 13, lineHeight: 1.45, color: it.north_star ? INK2 : GRAY, borderLeft: `2px solid ${it.north_star ? BLUE : PANEL_BORDER}`, paddingLeft: 9, display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{it.north_star || 'No star yet.'}</div>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', borderTop: `1px solid ${PANEL_BORDER}`, borderBottom: `1px solid ${PANEL_BORDER}` }}>
         <Fact label="Miles"><span style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 16, color: INK }}>{miles.n}</span><span style={{ fontFamily: MONO, fontSize: 9, letterSpacing: '1px', textTransform: 'uppercase', color: GRAY, marginLeft: 5 }}>{miles.sub}</span></Fact>
         <div style={{ borderLeft: `1px solid ${PANEL_BORDER}`, paddingLeft: 12 }}><Fact label="Due">{due ? <span style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 16, color: late ? RED : INK }}>{due}{late ? <span style={{ fontFamily: MONO, fontSize: 9, letterSpacing: '1px', textTransform: 'uppercase', marginLeft: 5 }}>overdue</span> : null}</span> : <span style={{ fontSize: 13, color: GRAY }}>none set</span>}</Fact></div>
@@ -205,7 +205,7 @@ function AdHocSlot({ item, act, onDispatch, onOpen, onChanged, onRecall }) {
   if (item) {
     const since = item.activated_at ? new Date(item.activated_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'America/Chicago' }) : null
     return (
-      <div style={{ ...slotBox(item.equipped ? GREEN : `${BLUE}66`, item.equipped ? 'rgba(67,211,146,0.07)' : 'rgba(169,201,232,0.05)'), minHeight: 0, flex: 1 }}>
+      <div style={{ ...slotBox(item.equipped ? GREEN : `${BLUE}66`, item.equipped ? 'rgba(67,211,146,0.07)' : 'rgba(169,201,232,0.05)'), minHeight: 0, flex: '1 1 auto' }}>
         <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
           <BadgeMedallion id="impromptu" size={50} color={BLUE} />
           <div style={{ flex: 1, minWidth: 0, display: 'grid', gap: 2 }}>
@@ -232,7 +232,7 @@ function AdHocSlot({ item, act, onDispatch, onOpen, onChanged, onRecall }) {
     )
   }
   return (
-    <div style={{ ...slotBox(`${BLUE}55`, 'rgba(169,201,232,0.04)', true), minHeight: 0, flex: 1 }}>
+    <div style={{ ...slotBox(`${BLUE}55`, 'rgba(169,201,232,0.04)', true), minHeight: 0, flex: '1 1 auto' }}>
       <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
         <BadgeMedallion id="impromptu" size={50} color={BLUE} earned={false} />
         <div style={{ flex: 1, minWidth: 0, display: 'grid', gap: 2 }}>
@@ -288,7 +288,7 @@ function RoutineSlot({ tick, onChanged }) {
   }
   const Icon = chore ? (ROUTINE_ICON[chore.slug] || Zap) : Zap
   if (running) return (
-    <div style={{ ...slotBox(GREEN, 'rgba(67,211,146,0.07)'), minHeight: 0, flex: 1 }}>
+    <div style={{ ...slotBox(GREEN, 'rgba(67,211,146,0.07)'), minHeight: 0, flex: '0 0 auto' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
         <Icon size={12} color={GREEN} /><Label style={{ marginBottom: 0, color: GREEN }}>Routine · on</Label><span style={{ flex: 1 }} />
         <span style={{ fontFamily: MONO, fontSize: 10, color: GREEN, letterSpacing: '0.6px' }}>running · {fmtClock(mins)}</span>
@@ -302,7 +302,7 @@ function RoutineSlot({ tick, onChanged }) {
     </div>
   )
   return (
-    <div style={{ ...slotBox('rgba(255,255,255,0.14)', 'transparent', true), minHeight: 0, flex: 1 }}>
+    <div style={{ ...slotBox('rgba(255,255,255,0.14)', 'transparent', true), minHeight: 0, flex: '0 0 auto' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
         <Label style={{ marginBottom: 0 }}>Routine · nothing on</Label>
       </div>
@@ -369,7 +369,7 @@ export default function LoadoutPanel({ onChange, refreshKey = 0, onNavigate, bar
           <div className="board-slots">
             {layout.placed.map(({ it, n }) => it.meeting ? <MeetingSlot key={it.id} it={it} n={n} act={act} /> : <FilledSlot key={it.id} it={it} n={n} act={act} onOpen={setRelated} onExtract={extractGate} onRecall={setRecallOf} />)}
             {layout.empties.map(n => <EmptySlot key={`empty-${n}`} n={n} />)}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, minWidth: 0 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, minWidth: 0, alignSelf: 'stretch' }}>
               <AdHocSlot item={L.adhoc[0] || null} act={act} onDispatch={setDispatch} onOpen={setRelated} onChanged={bump} onRecall={setRecallOf} />
               <RoutineSlot tick={tick} onChanged={bump} />
             </div>
