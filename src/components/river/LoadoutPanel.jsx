@@ -83,7 +83,6 @@ function ExtractModal({ item, onClose, onDone }) {
   )
 }
 
-const CORAL = '#E8836F'
 const field = { width: '100%', background: 'rgba(255,255,255,0.05)', border: `1px solid ${PANEL_BORDER}`, borderRadius: 8, color: INK, padding: '8px 10px', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }
 const slotBox = (border, bg = 'rgba(255,255,255,0.03)', dashed = false) => ({
   display: 'flex', flexDirection: 'column', gap: 8, minHeight: 168, padding: '12px 14px', borderRadius: 14,
@@ -201,38 +200,54 @@ function AdHocSlot({ item, act, onDispatch, onOpen, onChanged, onRecall }) {
       if (!r.ok) setErr(r.reasons.join(' · ')); else { setText(''); onChanged() }
     } catch (e) { setErr(e.message) } finally { setBusy(false) }
   }
-  if (item) return (
-    <div style={{ ...slotBox(item.equipped ? GREEN : `${CORAL}99`, item.equipped ? 'rgba(67,211,146,0.07)' : 'rgba(232,131,111,0.06)'), minHeight: 0, flex: 1 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-        <Label style={{ marginBottom: 0, color: CORAL }}>Ad Hoc Slot</Label><span style={{ flex: 1 }} />
-        <span style={{ ...S.chip('transparent', CORAL), border: `1px solid ${CORAL}55`, fontFamily: MONO, fontSize: 9, letterSpacing: '1px', padding: '2px 7px' }}>{item.call ? 'Call' : 'Ad Hoc'}</span>
+  // Loaded: the same shape as the other cards (badge, kind, type, the thing
+  // itself, a facts strip, clock and actions), lettered in baby blue (David, 10/14).
+  if (item) {
+    const since = item.activated_at ? new Date(item.activated_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'America/Chicago' }) : null
+    return (
+      <div style={{ ...slotBox(item.equipped ? GREEN : `${BLUE}66`, item.equipped ? 'rgba(67,211,146,0.07)' : 'rgba(169,201,232,0.05)'), minHeight: 0, flex: 1 }}>
+        <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+          <BadgeMedallion id="impromptu" size={50} color={BLUE} />
+          <div style={{ flex: 1, minWidth: 0, display: 'grid', gap: 2 }}>
+            <div style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 14.5, color: INK, lineHeight: 1.25 }}>The Unplanned</div>
+            <div style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '1.4px', textTransform: 'uppercase', color: BLUE }}>Ad Hoc</div>
+            <div style={{ fontFamily: MONO, fontSize: 9, letterSpacing: '1.1px', textTransform: 'uppercase', color: GRAY }}>{item.call ? 'Call' : 'Task'} · its own slot</div>
+          </div>
+          {item.call ? <Phone size={14} color={BLUE} /> : <Zap size={14} color={BLUE} />}
+        </div>
+        <div onClick={() => onOpen(item)} style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 18, color: '#fff', lineHeight: 1.28, cursor: 'pointer', flex: 1 }}>{item.title}</div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', borderTop: `1px solid ${PANEL_BORDER}`, borderBottom: `1px solid ${PANEL_BORDER}` }}>
+          <Fact label="Miles"><span style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 16, color: INK }}>1</span><span style={{ fontFamily: MONO, fontSize: 9, letterSpacing: '1px', textTransform: 'uppercase', color: GRAY, marginLeft: 5 }}>on dispatch</span></Fact>
+          <div style={{ borderLeft: `1px solid ${PANEL_BORDER}`, paddingLeft: 12 }}><Fact label="Landed">{since ? <span style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 16, color: INK }}>{since}</span> : <span style={{ fontSize: 13, color: GRAY }}>today</span>}</Fact></div>
+        </div>
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+          <span style={{ fontFamily: MONO, fontSize: 10, color: item.equipped ? GREEN : GRAY, letterSpacing: '0.6px', marginRight: 2 }}>{item.equipped ? 'running · ' : 'holstered · '}{fmtClock(item.minutes_today)}</span>
+          {item.equipped
+            ? <button onClick={() => act(() => holster(item.id), `Timer off: ${item.title}`)} style={btn(GREEN, true)}><Pause size={11} /> Timer on</button>
+            : <button onClick={() => act(() => equip(item.id), `Timer on: ${item.title}`)} style={btn(INK2)}><Play size={11} /> Timer off</button>}
+          <button onClick={() => onDispatch(item)} style={btn(GOLD)}><Swords size={11} /> Dispatch</button>
+          <span style={{ marginLeft: 'auto' }}><BrainButton onClick={() => onRecall(item)} /></span>
+        </div>
       </div>
-      <div onClick={() => onOpen(item)} style={{ display: 'flex', gap: 8, alignItems: 'flex-start', fontFamily: SERIF, fontSize: 16, fontWeight: 500, color: '#fff', lineHeight: 1.3, cursor: 'pointer', flex: 1 }}>
-        {item.call ? <Phone size={14} color={CORAL} style={{ marginTop: 3, flexShrink: 0 }} /> : <Zap size={14} color={CORAL} style={{ marginTop: 3, flexShrink: 0 }} />}{item.title}
-      </div>
-      <div style={{ fontFamily: MONO, fontSize: 10, color: item.equipped ? GREEN : GRAY, letterSpacing: '0.6px' }}>{item.equipped ? 'running · ' : 'holstered · '}{fmtClock(item.minutes_today)} · 1 mile on dispatch</div>
-      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-        {item.equipped
-          ? <button onClick={() => act(() => holster(item.id), `Timer off: ${item.title}`)} style={btn(GREEN, true)}><Pause size={11} /> Timer on</button>
-          : <button onClick={() => act(() => equip(item.id), `Timer on: ${item.title}`)} style={btn(INK2)}><Play size={11} /> Timer off</button>}
-        <button onClick={() => onDispatch(item)} style={btn(GOLD)}><Swords size={11} /> Dispatch</button>
-        <span style={{ marginLeft: 'auto' }}><BrainButton onClick={() => onRecall(item)} /></span>
-      </div>
-    </div>
-  )
+    )
+  }
   return (
-    <div style={{ ...slotBox(`${CORAL}66`, 'rgba(232,131,111,0.04)', true), minHeight: 0, flex: 1 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-        <Zap size={12} color={CORAL} /><Label style={{ marginBottom: 0, color: CORAL }}>Ad Hoc Slot</Label>
+    <div style={{ ...slotBox(`${BLUE}55`, 'rgba(169,201,232,0.04)', true), minHeight: 0, flex: 1 }}>
+      <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+        <BadgeMedallion id="impromptu" size={50} color={BLUE} earned={false} />
+        <div style={{ flex: 1, minWidth: 0, display: 'grid', gap: 2 }}>
+          <div style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 14.5, color: 'rgba(234,241,248,0.7)', lineHeight: 1.25 }}>Load the Unplanned</div>
+          <div style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '1.4px', textTransform: 'uppercase', color: BLUE }}>Ad Hoc Slot</div>
+          <div style={{ fontFamily: MONO, fontSize: 9, letterSpacing: '1.1px', textTransform: 'uppercase', color: GRAY }}>a task or a call · 1 mile</div>
+        </div>
       </div>
-      <div style={{ fontFamily: SERIF, fontSize: 15, color: 'rgba(234,241,248,0.6)' }}>Load the Unplanned</div>
-      <div style={{ display: 'flex', gap: 4 }}>
+      <div style={{ display: 'flex', gap: 4, marginTop: 'auto' }}>
         {[['task', 'Task'], ['call', 'Call']].map(([k, l]) => (
-          <button key={k} onClick={() => setMode(k)} style={{ ...btn(mode === k ? CORAL : INK2, mode === k), padding: '4px 9px' }}>{k === 'call' ? <Phone size={10} /> : <Zap size={10} />} {l}</button>
+          <button key={k} onClick={() => setMode(k)} style={{ ...btn(mode === k ? BLUE : INK2, mode === k), padding: '4px 9px' }}>{k === 'call' ? <Phone size={10} /> : <Zap size={10} />} {l}</button>
         ))}
       </div>
       <input value={text} onChange={e => setText(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') start() }} disabled={busy}
-        placeholder={mode === 'call' ? 'Who is calling? Enter starts the clock.' : 'What just landed on you? Enter starts the clock.'} style={{ ...field, marginTop: 'auto' }} />
+        placeholder={mode === 'call' ? 'Who is calling? Enter starts the clock.' : 'What just landed on you? Enter starts the clock.'} style={field} />
       {err && <div style={{ fontFamily: MONO, fontSize: 9.5, color: RED, letterSpacing: '0.6px', textTransform: 'uppercase' }}>{err}</div>}
     </div>
   )
