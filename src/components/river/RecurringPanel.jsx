@@ -15,7 +15,7 @@
 // necessary or critical, blinking red something serious may be overlooked.
 // The thresholds are David's (10/1).
 import { useEffect, useState, useCallback } from 'react'
-import { Play, Square, Check, Plane, Pencil, CalendarCheck, Brain, Mail, Hash, Receipt, X as XIcon } from 'lucide-react'
+import { Play, Square, Check, Plane, Pencil, CalendarCheck, Brain, Mail, Hash, Receipt, MessageSquare, X as XIcon } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { upsertSession, logToHarvest, hoursBetween } from '../../lib/meetings'
 import { chiToday, fmtClock } from '../../lib/loadout'
@@ -29,6 +29,7 @@ export const RECURRING = [
   { slug: 'email-refresh',  label: 'E-mail Refresh',  light: 'email', group: 'tend', icon: Mail },
   { slug: 'slack-review',   label: 'Slack Review',    light: 'slack', group: 'tend', clean: true, icon: Hash },
   { slug: 'bill-pay',       label: 'Bill Pay',        light: 'bill',  group: 'tend', icon: Receipt },
+  { slug: 'text-review',    label: 'Text Review',     light: null,    group: 'tend', icon: MessageSquare },   // no indicator yet (David, 10/14)
   { slug: 'calendar-sweep', label: 'Calendar Sweep',  group: 'timer', icon: CalendarCheck },
   { slug: 'thinking',       label: 'Thinking',        group: 'timer', icon: Brain },
   // Daily Planning folded into the Morning Protocol (10/6).
@@ -211,6 +212,7 @@ export default function RecurringPanel({ onChange }) {
       <InstrumentGroup label="Tending" divider>
         {RECURRING.filter(r => r.group === 'tend').map(r => {
           const s = byId.get(eid(day, r.slug)); const running = isRunning(s); const mins = minutesOf(s)
+          if (!r.light) { const Icon = running ? Square : (r.icon || Play); return <Instrument key={r.slug} label={r.label} sub={running ? 'tap to stop' : mins > 0 ? `${fmtClock(mins)} today` : ''} icon={<Icon size={20} />} running={running} clock={fmtClock(mins)} onClick={() => running ? stop(r) : start(r)} /> }
           const rule = RULES[r.light](lights)
           const sub = running ? 'tap to stop' : lights ? (rule.level === 'gray' ? 'no reading' : rule.text.split(' · ')[0]) : 'reading…'
           return (

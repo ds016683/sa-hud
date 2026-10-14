@@ -12,7 +12,7 @@ import YayPage from './YayPage'
 import { MILES, colorOf } from '../../lib/summary'
 import { upsertSession, logToHarvest, hoursBetween } from '../../lib/meetings'
 import { RECURRING } from './RecurringPanel'
-import { Square, Mail, Hash, CalendarCheck, Brain } from 'lucide-react'
+import { Square, Mail, Hash, CalendarCheck, Brain, MessageSquare } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { DispatchModal } from './AmbushPanel'
 import { pockets } from '../../lib/objectives'
@@ -216,7 +216,7 @@ function AdHocSlot({ item, act, onDispatch, onOpen, onChanged, onRecall }) {
 // shows the one recurring thing that is on right now (a Console chore, a
 // timer Lumen started by hand) with its clock and a Stop, and when nothing
 // is on, the chores you can start from here.
-const ROUTINE_ICON = { 'email-refresh': Mail, 'slack-review': Hash, 'calendar-sweep': CalendarCheck, 'thinking': Brain }
+const ROUTINE_ICON = { 'email-refresh': Mail, 'slack-review': Hash, 'calendar-sweep': CalendarCheck, 'thinking': Brain, 'text-review': MessageSquare }
 function RoutineSlot({ tick, onChanged }) {
   const [running, setRunning] = useState(null)
   const [now, setNow] = useState(() => Date.now())
@@ -231,10 +231,6 @@ function RoutineSlot({ tick, onChanged }) {
   const slugOf = (eid) => String(eid || '').split(':').slice(2).join(':')
   const chore = running ? RECURRING.find(r => `adhoc:${day}:${r.slug}` === running.event_id) : null
   const mins = running ? ((Number(running.hours) || 0) * 60) + (now - new Date(running.started_at).getTime()) / 60000 : 0
-  const start = async (r) => {
-    try { await upsertSession({ event_id: `adhoc:${day}:${r.slug}`, day, subject: r.label, started_at: new Date().toISOString(), stopped_at: null }); setMsg(null); await pull(); onChanged && onChanged() }
-    catch (e) { setMsg(`Could not start: ${e.message}`) }
-  }
   const stop = async () => {
     if (!running) return
     try {
@@ -269,10 +265,8 @@ function RoutineSlot({ tick, onChanged }) {
       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
         <Label style={{ marginBottom: 0 }}>Routine · nothing on</Label>
       </div>
-      <div style={{ fontFamily: SERIF, fontSize: 15, color: 'rgba(234,241,248,0.6)' }}>Start a chore</div>
-      <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-        {RECURRING.filter(r => !r.travel).map(r => { const I = ROUTINE_ICON[r.slug] || Zap; return <button key={r.slug} onClick={() => start(r)} style={{ ...btn(INK2), padding: '4px 8px' }}><I size={10} /> {r.label}</button> })}
-      </div>
+      <div style={{ fontFamily: SERIF, fontSize: 15, color: 'rgba(234,241,248,0.6)' }}>Nothing recurring is on</div>
+      <div style={{ fontSize: 11, color: GRAY, lineHeight: 1.5 }}>Start one from the Console below, or tell Lumen. It shows up here with its clock.</div>
       {msg && <div style={{ fontFamily: MONO, fontSize: 9.5, color: RED, letterSpacing: '0.6px', textTransform: 'uppercase' }}>{msg}</div>}
     </div>
   )

@@ -234,6 +234,8 @@ function Protocol({ day, session, onClose, onFinished, onChange, onNavigate }) {
   const [lights, setLights] = useState(null)
   const [followups, setFollowups] = useState([])
   const [queueCount, setQueueCount] = useState(0)
+  const [picks, setPicks] = useState([])
+  const [showOverdue, setShowOverdue] = useState(false)
   const [L, setL] = useState(null)
   const [projects, setProjects] = useState(new Map())
   const [first, setFirst] = useState(null)
@@ -252,7 +254,7 @@ function Protocol({ day, session, onClose, onFinished, onChange, onNavigate }) {
 
   const yd = yesterdayOf(day)
   const loadAll = useCallback(async () => {
-    const [m, ml, ev, lg, fu, fuAll, pj, lo, ss] = await Promise.all([
+    const [m, ml, ev, lg, fu, fuAll, pj, pk, lo, ss] = await Promise.all([
       rows(supabase.from('lumen_messages').select('body,at,meta').eq('channel', 'pulse').eq('direction', 'out').eq('kind', 'text').contains('meta', { kind: 'morning', day }).order('at', { ascending: false }).limit(1)),
       rows(supabase.from('miles_ledger').select('miles,badge,key').eq('day', yd)),
       rows(supabase.from('calendar_events').select('id,subject,start_at,end_at,is_all_day').eq('day', day).eq('is_cancelled', false).order('start_at')),
@@ -260,11 +262,12 @@ function Protocol({ day, session, onClose, onFinished, onChange, onNavigate }) {
       rows(supabase.from('objectives').select('id,title,follow_up_date,effort,tags,description').eq('state', 'follow_up').is('deleted_at', null).lte('follow_up_date', day).order('follow_up_date')),
       rows(supabase.from('objectives').select('id').eq('state', 'follow_up').is('deleted_at', null)),
       rows(supabase.from('projects').select('id,name,status')),
+      rows(supabase.from('objectives').select('id,title,state,effort,tags,due_date,north_star').eq('due_date', day).in('state', ['parked', 'follow_up', 'waiting', 'inbox']).is('deleted_at', null).order('captured_at')),
       fetchLoadout(),
       rows(supabase.from('meeting_sessions').select('event_id,subject,started_at,stopped_at,hours').eq('day', day).like('event_id', 'adhoc:%')),
     ])
     setRead(m[0] || null); setYday({ miles: ml.reduce((s, r) => s + (Number(r.miles) || 0), 0), badges: [...new Set(ml.map(r => r.badge))] })
-    setEvents(ev); setLogs(lg); setFollowups(fu); setQueueCount(fuAll.length); setProjects(new Map(pj.map(p => [p.id, p]))); setL(lo); setSessions(ss)
+    setEvents(ev); setLogs(lg); setFollowups(fu); setQueueCount(fuAll.length); setPicks(pk); setProjects(new Map(pj.map(p => [p.id, p]))); setL(lo); setSessions(ss)
     if (!first && lo.equipped) setFirst(lo.equipped.id)
     try {
       const h = await authHeader()
@@ -321,6 +324,8 @@ function Protocol({ day, session, onClose, onFinished, onChange, onNavigate }) {
       const lo = await fetchLoadout(); setL(lo); if (!first) setFirst(r.id || ref.id); setMsg(`${title || r.title} loaded (${lo.slots.used}/${SLOTS} slots)`)
     } catch (e) { setMsg(`Could not load: ${e.message}`) } finally { setBusy(false) }
   }
+  const rollAll = async (list, n) => { const ids = list.map(o => o.id); if (!ids.length) return; const { error } = await supabase.from('objectives').update({ follow_up_date: plusDays(day, n) }).in('id', ids); if (error) { setMsg(`Could not roll: ${error.message}`); return } setFollowups(f => f.filter(x => !ids.includes(x.id))); setMsg(`${ids.length} rolled to ${n === 1 ? 'tomorrow' : `+${n} days`}`) }
+  const unpick = async (o) => { const { error } = await supabase.from('objectives').update({ due_date: plusDays(day, 1) }).eq('id', o.id); if (error) { setMsg(`Could not move it: ${error.message}`); return } setPicks(p => p.filter(x => x.id !== o.id)); setMsg(`${o.title}: picked for tomorrow instead`) }
   const todayFollow = async (o) => { const { error } = await supabase.from('objectives').update({ due_date: day, follow_up_date: day }).eq('id', o.id); if (error) { setMsg(`Could not mark it: ${error.message}`); return } setFollowups(f => f.filter(x => x.id !== o.id)); await loadRef({ type: 'objective', id: o.id }, o.title) }
 
   // ---- the plan
@@ -538,21 +543,53 @@ function Protocol({ day, session, onClose, onFinished, onChange, onNavigate }) {
               </div>
             </>
           )}
-          {followups.length > 0 && (
-            <Panel style={{ marginBottom: 0 }}>
-              <Label>Follow-ups due · {followups.length} of {queueCount} in the queue</Label>
-              {followups.map(o => (
-                <div key={o.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 0', borderTop: `1px solid ${PANEL_BORDER}`, flexWrap: 'wrap' }}>
-                  <div style={{ flex: 1, minWidth: 240 }}><div style={{ fontSize: 13.5, color: INK }}>{o.title}</div><div style={{ fontFamily: MONO, fontSize: 9.5, color: o.follow_up_date < day ? RED : GRAY, letterSpacing: '0.6px', marginTop: 2 }}>{o.follow_up_date < day ? `overdue since ${o.follow_up_date}` : 'due today'}</div></div>
-                  <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
-                    <button onClick={() => todayFollow(o)} style={btn(GREEN)}>Today · load</button>
-                    <button onClick={() => pushFollow(o, 1)} style={btn(INK2)}>+1d</button><button onClick={() => pushFollow(o, 3)} style={btn(INK2)}>+3d</button><button onClick={() => pushFollow(o, 7)} style={btn(INK2)}>+1w</button>
-                    <button onClick={() => dropFollow(o)} style={btn(RED)}>Drop</button>
-                  </div>
+          {(() => {
+            const pickIds = new Set(picks.map(p => p.id))
+            const dueToday = followups.filter(o => !pickIds.has(o.id) && o.follow_up_date === day)
+            const overdue = followups.filter(o => !pickIds.has(o.id) && o.follow_up_date < day)
+            const Row = ({ o, pick }) => (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 0', borderTop: `1px solid ${PANEL_BORDER}`, flexWrap: 'wrap' }}>
+                <div style={{ flex: 1, minWidth: 240 }}>
+                  <div style={{ fontSize: 13.5, color: INK }}>{o.title}</div>
+                  <div style={{ fontFamily: MONO, fontSize: 9.5, color: pick ? GOLD : o.follow_up_date < day ? RED : GRAY, letterSpacing: '0.6px', marginTop: 2 }}>{pick ? `picked for today${o.state ? ` · ${String(o.state).replace('_', ' ')}` : ''}` : o.follow_up_date < day ? `overdue since ${o.follow_up_date}` : 'due today'}</div>
+                  {pick && o.north_star && <div style={{ fontFamily: SERIF, fontStyle: 'italic', fontSize: 12.5, color: INK2, marginTop: 3 }}>{o.north_star}</div>}
                 </div>
-              ))}
-            </Panel>
-          )}
+                <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
+                  {pick
+                    ? <>{board.some(b => b.id === o.id) ? <span style={{ ...S.chip('transparent', GREEN), border: `1px solid ${GREEN}55`, fontFamily: MONO, fontSize: 8.5, letterSpacing: '1px' }}>loaded</span> : <button disabled={busy} onClick={() => loadRef({ type: 'objective', id: o.id }, o.title)} style={btn(GREEN)}>Load</button>}<button onClick={() => unpick(o)} style={btn(INK2)}>Tomorrow</button></>
+                    : <><button onClick={() => todayFollow(o)} style={btn(GREEN)}>Pick · load</button><button onClick={() => pushFollow(o, 1)} style={btn(INK2)}>+1d</button><button onClick={() => pushFollow(o, 3)} style={btn(INK2)}>+3d</button><button onClick={() => pushFollow(o, 7)} style={btn(INK2)}>+1w</button><button onClick={() => dropFollow(o)} style={btn(RED)}>Drop</button></>}
+                </div>
+              </div>
+            )
+            return (
+              <>
+                <Panel style={{ marginBottom: 0 }}>
+                  <Label style={{ color: GOLD }}>Picked For Today · {picks.length}</Label>
+                  {picks.map(o => <Row key={o.id} o={o} pick />)}
+                  {!picks.length && <div style={{ fontSize: 13, color: GRAY }}>Nothing picked yet. Pick from the lists below, or tell Lumen tonight what tomorrow is for and it lands here.</div>}
+                </Panel>
+                {dueToday.length > 0 && (
+                  <Panel style={{ marginBottom: 0 }}>
+                    <Label>Due Today · {dueToday.length}</Label>
+                    {dueToday.map(o => <Row key={o.id} o={o} />)}
+                  </Panel>
+                )}
+                {overdue.length > 0 && (
+                  <Panel style={{ marginBottom: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                      <Label style={{ marginBottom: 0 }}>Overdue · {overdue.length} of {queueCount} in the queue</Label>
+                      <span style={{ flex: 1 }} />
+                      <button onClick={() => setShowOverdue(x => !x)} style={btn(INK2)}>{showOverdue ? 'Fold' : 'Triage'}</button>
+                      <button onClick={() => rollAll(overdue, 1)} title="Everything overdue moves to tomorrow; your picks stay" style={btn(INK2)}>Roll all +1d</button>
+                      <button onClick={() => rollAll(overdue, 7)} title="Everything overdue moves a week out; your picks stay" style={btn(INK2)}>Roll all +1w</button>
+                    </div>
+                    {!showOverdue && <div style={{ fontSize: 12.5, color: GRAY, marginTop: 8 }}>Folded so the day reads as what you picked. Triage opens the list; the rolls move the lot and keep your picks.</div>}
+                    {showOverdue && overdue.map(o => <Row key={o.id} o={o} />)}
+                  </Panel>
+                )}
+              </>
+            )
+          })()}
         </div>
       )
     }
