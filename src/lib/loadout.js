@@ -234,8 +234,20 @@ export async function addImpromptu(title, { personal = false, tags = [] } = {}) 
 // Agenda loads as many slots as the thing takes, stashing the longest-holstered
 // planned items (never a running clock, never a meeting) until it fits, and
 // runs its clock. Returns what equipObjective/equipTask return, plus `stashed`.
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+// A plan ref may carry a title instead of an id (Lumen's plan, 10/14). Resolve it.
+export async function resolveObjectiveId(ref) {
+  const id = String(ref || '').trim()
+  if (UUID.test(id)) return id
+  const exact = await q(supabase.from('objectives').select('id').eq('title', id).is('deleted_at', null).limit(1))
+  if (exact[0]) return exact[0].id
+  const loose = await q(supabase.from('objectives').select('id,title').ilike('title', `%${id.replace(/[%_]/g, '').slice(0, 60)}%`).is('deleted_at', null).limit(2))
+  if (loose.length === 1) return loose[0].id
+  throw new Error(`no Side Mission matches "${id.slice(0, 40)}"`)
+}
 export async function startWithRoom(target, { projectName = null } = {}) {
   const stashed = []
+  if (target.type === 'objective') target = { ...target, id: await resolveObjectiveId(target.id) }
   const attempt = () => target.type === 'task' ? equipTask(target.task, projectName, { clock: true }) : equipObjective(target.id, { clock: true })
   for (let i = 0; i < 4; i++) {
     const r = await attempt()

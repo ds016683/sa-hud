@@ -291,7 +291,7 @@ function WorkPanel({ tasks, projects, objectives, loading, day, refresh, refresh
   const byProj = new Map((projects || []).map(p => [p.id, p]))
   const prios = plan?.priorities || []
   const prioIds = new Set(prios.flatMap(p => p.ref ? [String(p.ref.id)] : []))
-  const loadedItem = (ref) => ref ? (board.find(b => String(b.id) === String(ref.id)) || board.find(b => ref.type === 'task' && String(b.task_id) === String(ref.id)) || null) : null
+  const loadedItem = (ref) => ref ? (board.find(b => String(b.id) === String(ref.id)) || board.find(b => ref.type === 'task' && String(b.task_id) === String(ref.id)) || board.find(b => ref.type === 'objective' && b.title === String(ref.id)) || null) : null
   const tagOf = (row) => row.kind === 'Main Mission' ? { text: `Main Mission · ${row.project || 'unassigned'}`, color: PURPLE } : { text: `Side Mission · ${SIZES[row.size]?.label || 'Bounty'}`, color: SIZES[row.size]?.color || GOLD }
   const start = async (ref, title, row) => {
     setBusy(true); setNote(null)

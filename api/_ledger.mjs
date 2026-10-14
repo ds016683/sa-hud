@@ -644,7 +644,7 @@ export async function callTool(name, args = {}) {
       return JSON.stringify({ from, to, timezone_note: 'times are UTC; Chicago is UTC-5 in September', days: byDay }, null, 2)
     }
     case 'get_objectives': {
-      const os = (await sb(`objectives?select=*&deleted_at=is.null&order=captured_at.desc`)).map(o => ({ title: o.title, state: o.state, due_date: o.due_date, follow_up_date: o.follow_up_date, is_anchor: o.is_anchor, is_emergency: o.is_emergency, released_at: o.released_at, released_kind: o.released_kind, who: o.who, tags: o.tags, ...(o.north_star ? { north_star: o.north_star } : {}) }))
+      const os = (await sb(`objectives?select=*&deleted_at=is.null&order=captured_at.desc`)).map(o => ({ id: o.id, title: o.title, state: o.state, due_date: o.due_date, follow_up_date: o.follow_up_date, is_anchor: o.is_anchor, is_emergency: o.is_emergency, released_at: o.released_at, released_kind: o.released_kind, who: o.who, tags: o.tags, ...(o.north_star ? { north_star: o.north_star } : {}) }))
       const grouped = { active: [], parked: [], waiting: [], follow_up: [], foreman: [], inbox: [], released_today: [] }
       for (const o of os) {
         if (o.state === 'released') {

@@ -18,7 +18,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { ArrowLeft, ArrowRight, Check, Sunrise, Moon, Play, Pause, Square, Rocket, Send, ExternalLink, SkipForward, SkipBack, RotateCcw, Mic, Music, Sparkles, RefreshCw, ListMusic, X as XIcon } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { upsertSession, logToHarvest, hoursBetween, startMeetingTimer, stopMeetingTimer } from '../../lib/meetings'
-import { fetchLoadout, equipObjective, equipTask, equip, holster, startWithRoom, fmtClock, chiToday, SIZES, SLOTS } from '../../lib/loadout'
+import { fetchLoadout, equipObjective, equipTask, equip, holster, startWithRoom, resolveObjectiveId, fmtClock, chiToday, SIZES, SLOTS } from '../../lib/loadout'
 import { KIND_COLOR, PURPLE } from './canon'
 import { HYGIENE_ITEMS } from '../../constants/hygiene'
 import { GATEWAY_PLAYLIST } from '../../constants/gateway'
@@ -318,7 +318,7 @@ function Protocol({ day, session, onClose, onFinished, onChange, onNavigate }) {
     setBusy(true)
     try {
       let r
-      if (ref?.type === 'objective') r = await equipObjective(ref.id, { clock: false })
+      if (ref?.type === 'objective') r = await equipObjective(await resolveObjectiveId(ref.id), { clock: false })
       else if (ref?.type === 'task') { const { data } = await supabase.from('project_tasks').select('id,text,status,objective_id,project_id').eq('id', ref.id).limit(1); if (!data?.[0]) throw new Error('task not found'); r = await equipTask(data[0], projects.get(data[0].project_id)?.name, { clock: false }) }
       else throw new Error('nothing to load')
       if (!r.ok) { setMsg(`Will not fit: ${r.reasons.join(' · ')}`); return }
