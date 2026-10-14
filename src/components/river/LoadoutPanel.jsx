@@ -156,8 +156,8 @@ function FilledSlot({ it, n, act, onOpen, onExtract, onRecall }) {
       </div>
       {task
         ? <div onClick={() => onOpen(it)} style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 18, color: '#fff', lineHeight: 1.28, cursor: 'pointer', flex: 1 }}>{task}</div>
-        : <div style={{ fontSize: 12.5, color: GRAY, lineHeight: 1.45, flex: 1 }}>{it.size === 'medium' ? 'One deliverable, no steps. Extract when it is done.' : 'One action, no steps. Extract when it is done.'}</div>}
-      <div title={NORTH_STAR_LABEL} style={{ fontFamily: SERIF, fontStyle: 'italic', fontSize: 13, lineHeight: 1.45, color: it.north_star ? INK2 : GRAY, borderLeft: `2px solid ${it.north_star ? BLUE : PANEL_BORDER}`, paddingLeft: 9 }}>{it.north_star || 'No star yet. Tell Lumen why this one.'}</div>
+        : <div style={{ flex: 1 }} />}
+      <div title={NORTH_STAR_LABEL} style={{ fontFamily: SERIF, fontStyle: 'italic', fontSize: 13, lineHeight: 1.45, color: it.north_star ? INK2 : GRAY, borderLeft: `2px solid ${it.north_star ? BLUE : PANEL_BORDER}`, paddingLeft: 9 }}>{it.north_star || 'No star yet.'}</div>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', borderTop: `1px solid ${PANEL_BORDER}`, borderBottom: `1px solid ${PANEL_BORDER}` }}>
         <Fact label="Miles"><span style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 16, color: INK }}>{miles.n}</span><span style={{ fontFamily: MONO, fontSize: 9, letterSpacing: '1px', textTransform: 'uppercase', color: GRAY, marginLeft: 5 }}>{miles.sub}</span></Fact>
         <div style={{ borderLeft: `1px solid ${PANEL_BORDER}`, paddingLeft: 12 }}><Fact label="Due">{due ? <span style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 16, color: late ? RED : INK }}>{due}{late ? <span style={{ fontFamily: MONO, fontSize: 9, letterSpacing: '1px', textTransform: 'uppercase', marginLeft: 5 }}>overdue</span> : null}</span> : <span style={{ fontSize: 13, color: GRAY }}>none set</span>}</Fact></div>

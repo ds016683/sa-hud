@@ -6,7 +6,7 @@
 // captured" chip when a Granola note matched, and a Close out flow that files
 // follow-ups as Side Missions (see river/MeetingCloseout.jsx).
 import { useState, useEffect, useCallback } from 'react'
-import { ChevronLeft, ChevronRight, CalendarDays, Circle, Wrench, Check, HelpCircle, Play, X as XIcon } from 'lucide-react'
+import { ChevronLeft, ChevronRight, CalendarDays, Check, HelpCircle, Play, Pause, X as XIcon } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { matchNotes, hoursBetween, upsertSession, logToHarvest } from '../lib/meetings'
 import MeetingCloseout, { renderMarkdown, CloseoutBlock, friendlyError, fmtHours } from './river/MeetingCloseout'
@@ -14,10 +14,10 @@ import LoadoutPanel from './river/LoadoutPanel'
 import RecurringPanel from './river/RecurringPanel'
 import ReleasePanel from './river/ReleasePanel'
 import ProtocolsPanel from './river/MorningProtocol'
-import { equipTask, equipObjective } from '../lib/loadout'
+import { fetchLoadout, startWithRoom, holster, sizeOf, SIZES } from '../lib/loadout'
 import ItemDetail from './river/ItemDetail'
 import {
-  INK, INK2, GRAY, NAVY_DEEP, PANEL_BORDER, GOLD, GOLD_BRIGHT, BLUE, PERIWINKLE, GREEN, RED, MONO, SERIF,
+  INK, INK2, GRAY, NAVY_DEEP, PANEL_BORDER, GOLD, GOLD_BRIGHT, BLUE, PERIWINKLE, PURPLE, GREEN, RED, MONO, SERIF,
   S, Eyebrow, Label, Panel, chiToday, fmtTime, weekday,
 } from './river/canon'
 
@@ -39,12 +39,6 @@ const attendeeCount = (a) => {
   return 0
 }
 
-const CATEGORY_TONE = {
-  content: ['rgba(169,201,232,0.14)', BLUE],
-  hygiene: ['rgba(67,211,146,0.14)', GREEN],
-  exercise: ['rgba(230,181,79,0.16)', GOLD],
-  other: ['rgba(255,255,255,0.08)', GRAY],
-}
 
 const navBtn = (extra = {}) => ({
   display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
@@ -260,214 +254,106 @@ function CalendarPanel({events, loading, now, day, refresh, onOpenEvent }) {
 // ---- Main Mission (project tasks) --------------------------------------------
 // Priority: P1 overdue (most overdue first), P2 due today, P3 on the board
 // (promoted), P4 due in the next two days. Click a task for its back story.
-const CAP = 40
-const priorityOf = (t, day) => {
-  if (t.due_date && t.due_date < day) return 1
-  if (t.due_date === day) return 2
-  if (t.status === 'promoted') return 3
-  return 4
-}
-const PRIORITY = { 1: { label: 'P1 · overdue', color: RED }, 2: { label: 'P2 · due today', color: GOLD }, 3: { label: 'P3 · on the board', color: GREEN }, 4: { label: 'P4 · coming up', color: GRAY } }
+// ---- Today's Work Priorities, and the queue under it (David, 10/14) -------
+// The priorities are the plan Lumen built in the Morning Protocol (what David
+// set out to do today), with Start and Stop. Under them, the rest: every Main
+// Mission task and Side Mission calling, names only, most overdue first, each
+// with its descriptor. Loaded items live on the Loadout above, not here.
+const stripNum = (t) => String(t || '').replace(/^\s*\d+\s*[·.:)-]\s*/, '')
+const daysLate = (due, day) => due ? Math.round((new Date(day + 'T12:00:00') - new Date(due + 'T12:00:00')) / 864e5) : null
+const whenText = (due, day) => { const n = daysLate(due, day); if (n === null) return null; if (n > 0) return `${n} day${n === 1 ? '' : 's'} overdue`; if (n === 0) return 'due today'; return `due ${fmtShortDay(due)}` }
+const Tag = ({ color, children }) => <span style={{ ...S.chip('transparent', color), border: `1px solid ${color}55`, fontFamily: MONO, fontSize: 8.5, letterSpacing: '1px', padding: '1px 7px', whiteSpace: 'nowrap' }}>{children}</span>
 
-function fmtStamp(iso) {
-  if (!iso) return null
-  const d = new Date(iso)
-  return d.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZone: 'America/Chicago' })
-}
-
-function TaskBackstory({ t, objective, day, onClose, onEquip, onRelated, busy, note }) {
-  useEffect(() => {
-    const onKey = (e) => { if (e.key === 'Escape') onClose() }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [onClose])
-  const pr = PRIORITY[priorityOf(t, day)]
-  const rows = [
-    ['Main Mission', `${t.project?.name || 'Unassigned'}${t.project?.key ? ` · ${t.project.key}` : ''}`],
-    ['Status', t.status + (objective ? ` · on the board as ${objective.state}` : '')],
-    ['Due', t.due_date ? `${t.due_date}${t.due_date < day ? ' · overdue' : t.due_date === day ? ' · today' : ''}` : 'no date'],
-    ['Captured', fmtStamp(t.created_at)],
-    ['Last touched', fmtStamp(t.updated_at)],
-    ['Source', t.source || null],
-    ['Session', t.session_ref || null],
-    ['On the board since', objective?.activated_at ? fmtStamp(objective.activated_at) : null],
-  ].filter(([, v]) => v)
-  return (
-    <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 250, background: 'rgba(8,20,32,0.88)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
-      <div onClick={e => e.stopPropagation()} style={{ maxWidth: 560, width: '100%', maxHeight: '82vh', overflowY: 'auto', background: '#10273B', border: `1px solid ${PANEL_BORDER}`, borderRadius: 14, padding: '24px 26px 22px' }}>
-        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14 }}>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <Eyebrow style={{ marginBottom: 6 }}>Main Mission task</Eyebrow>
-            <div style={{ fontFamily: SERIF, fontSize: 20, fontWeight: 500, color: '#fff', letterSpacing: '-0.01em', lineHeight: 1.3 }}>{t.text}</div>
-            <div style={{ marginTop: 8 }}><span style={{ ...S.chip('transparent', pr.color), border: `1px solid ${pr.color}55`, fontFamily: MONO, fontSize: 9, letterSpacing: '1px', padding: '2px 7px' }}>{pr.label}</span></div>
-          </div>
-          <button onClick={onClose} aria-label="Close" style={{ width: 28, height: 28, borderRadius: 8, border: `1px solid ${PANEL_BORDER}`, background: 'transparent', color: INK2, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><XIcon size={14} /></button>
-        </div>
-        <div style={{ marginTop: 16, display: 'grid', gridTemplateColumns: 'max-content 1fr', columnGap: 14, rowGap: 5 }}>
-          {rows.map(([k, v]) => (
-            <div key={k} style={{ display: 'contents' }}>
-              <span style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '0.8px', color: GRAY, textTransform: 'uppercase', paddingTop: 2 }}>{k}</span>
-              <span style={{ fontSize: 12.5, color: INK2, lineHeight: 1.5 }}>{v}</span>
-            </div>
-          ))}
-        </div>
-        {(t.notes || objective?.description) && (
-          <div style={{ marginTop: 14 }}>
-            <Label>Back story</Label>
-            {t.notes && <div style={{ fontSize: 13, color: INK, lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{t.notes}</div>}
-            {objective?.description && <div style={{ fontSize: 12.5, color: INK2, lineHeight: 1.6, whiteSpace: 'pre-wrap', marginTop: t.notes ? 8 : 0 }}>{objective.description}</div>}
-          </div>
-        )}
-        {!t.notes && !objective?.description && <div style={{ fontSize: 12, color: GRAY, marginTop: 14 }}>No back story on this task yet. Notes added on the project page or by Lumen show here.</div>}
-        {note && <div style={{ fontSize: 12, color: note.startsWith('Could') || note.startsWith('No room') ? RED : GREEN, marginTop: 12 }}>{note}</div>}
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 16 }}>
-          <button onClick={onRelated} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: MONO, fontSize: 9.5, letterSpacing: '1px', textTransform: 'uppercase', padding: '6px 10px', borderRadius: 8, border: `1px solid ${PANEL_BORDER}`, background: 'transparent', color: INK2, cursor: 'pointer' }}>Related: artifacts · sessions · files</button>
-          <button onClick={onEquip} disabled={busy} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: MONO, fontSize: 9.5, letterSpacing: '1px', textTransform: 'uppercase', padding: '6px 10px', borderRadius: 8, border: `1px solid ${GREEN}`, background: GREEN, color: '#0A1B2B', cursor: 'pointer' }}>
-            <Play size={11} /> {objective?.state === 'active' ? 'Timer on' : 'Load and start timer'}
-          </button>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-function MainMissionPanel({ tasks, projects, objectives, loading, day, refresh, onNavigate }) {
+function WorkPanel({ tasks, projects, objectives, loading, day, refresh, refreshKey, onNavigate, isToday }) {
+  const [plan, setPlan] = useState(undefined)
+  const [L, setL] = useState(null)
   const [open, setOpen] = useState(null)
   const [busy, setBusy] = useState(false)
   const [note, setNote] = useState(null)
-  if (loading && !tasks) return <Panel heading="Main Mission tasks" style={{ marginBottom: 0 }}><Empty>Loading…</Empty></Panel>
-  const byId = new Map((projects || []).map(p => [p.id, p]))
-  const objById = new Map((objectives || []).map(o => [o.id, o]))
-  const rows = (tasks || []).map(t => ({ ...t, project: byId.get(t.project_id), pr: priorityOf(t, day) }))
-  rows.sort((a, b) => {
-    if (a.pr !== b.pr) return a.pr - b.pr
-    const da = String(a.due_date || '9999'), db = String(b.due_date || '9999')
-    if (da !== db) return da.localeCompare(db)
-    return (a.project?.name || 'zzz').localeCompare(b.project?.name || 'zzz')
-  })
-  const shown = rows.slice(0, CAP)
-  const more = rows.length - shown.length
-  const counts = rows.reduce((m, t) => { m[t.pr] = (m[t.pr] || 0) + 1; return m }, {})
-  const doEquip = async (t) => {
+  const [showAll, setShowAll] = useState(false)
+  useEffect(() => {
+    let on = true
+    const pull = async () => {
+      try {
+        const lo = await fetchLoadout(); if (on) setL(lo)
+        if (!isToday) { if (on) setPlan(null); return }
+        const { data: { session } } = await supabase.auth.getSession()
+        if (!session) { if (on) setPlan(null); return }
+        const r = await fetch(`/api/lumen-plan?day=${day}`, { headers: { Authorization: `Bearer ${session.access_token}` }, cache: 'no-store' })
+        const j = r.ok ? await r.json() : null
+        if (on) setPlan(j?.plan || null)
+      } catch { if (on) setPlan(null) }
+    }
+    pull()
+    return () => { on = false }
+  }, [day, refreshKey, isToday])
+  const board = L?.board || []
+  const byProj = new Map((projects || []).map(p => [p.id, p]))
+  const prios = plan?.priorities || []
+  const prioIds = new Set(prios.flatMap(p => p.ref ? [String(p.ref.id)] : []))
+  const loadedItem = (ref) => ref ? (board.find(b => String(b.id) === String(ref.id)) || board.find(b => ref.type === 'task' && String(b.task_id) === String(ref.id)) || null) : null
+  const tagOf = (row) => row.kind === 'Main Mission' ? { text: `Main Mission · ${row.project || 'unassigned'}`, color: PURPLE } : { text: `Side Mission · ${SIZES[row.size]?.label || 'Bounty'}`, color: SIZES[row.size]?.color || GOLD }
+  const start = async (ref, title, row) => {
     setBusy(true); setNote(null)
     try {
-      const r = await equipTask(t, t.project?.name)
-      if (r.ok) { setNote(`Timer on: ${r.title}`); refresh && refresh() }
-      else setNote(`No room on the loadout: ${r.reasons.join('; ')}`)
-    } catch (e) { setNote(`Could not load it: ${e.message}`) }
-    setBusy(false)
+      const r = ref.type === 'task' ? await startWithRoom({ type: 'task', id: row?.raw?.objective_id || ref.id, task: row?.raw || (tasks || []).find(t => t.id === ref.id) }, { projectName: row?.project }) : await startWithRoom({ type: 'objective', id: ref.id })
+      if (!r.ok) { setNote(`Will not fit: ${(r.reasons || []).join(' · ')}`); return }
+      setNote(`${title} started${r.stashed?.length ? ` · stashed ${r.stashed.join(', ')}` : ''}`); refresh && refresh()
+    } catch (e) { setNote(`Could not start: ${e.message}`) } finally { setBusy(false) }
   }
+  const stop = async (id, title) => { setBusy(true); try { await holster(id); setNote(`${title} holstered`); refresh && refresh() } catch (e) { setNote(`Could not stop: ${e.message}`) } finally { setBusy(false) } }
+  const StartStop = ({ refx, title, row }) => { const it = loadedItem(refx); return it?.equipped
+    ? <button disabled={busy} onClick={() => stop(it.id, title)} title="Stop the clock" style={chipBtn(GREEN, GREEN, { background: GREEN, color: '#0A1B2B' })}><Pause size={10} /> Stop</button>
+    : <button disabled={busy} onClick={() => start(refx, title, row)} title="Load it and start the clock" style={chipBtn(GREEN, `${GREEN}66`)}><Play size={10} /> Start</button> }
+  // The queue: everything else calling, most overdue first.
+  const activeObj = new Set((objectives || []).filter(o => o.state === 'active').map(o => o.id))
+  const queue = [
+    ...(tasks || []).filter(t => !prioIds.has(String(t.id)) && !(t.objective_id && activeObj.has(t.objective_id))).map(t => ({ id: `t:${t.id}`, kind: 'Main Mission', title: stripNum(t.text), project: byProj.get(t.project_id)?.name || null, due: t.due_date || null, ref: { type: 'task', id: t.id }, raw: t, blocked: t.status === 'blocked' })),
+    ...(objectives || []).filter(o => o.state !== 'active' && !prioIds.has(String(o.id))).map(o => ({ id: `o:${o.id}`, kind: (o.tags || []).includes('impromptu') ? 'Ad Hoc' : 'Side Mission', size: sizeOf(o), title: o.title, project: null, due: o.due_date || o.follow_up_date || null, ref: { type: 'objective', id: o.id }, raw: o, state: o.state })),
+  ].sort((a, b) => String(a.due || '9999').localeCompare(String(b.due || '9999')))
+  const shown = showAll ? queue : queue.slice(0, 10)
+  const openRow = (row) => row.kind === 'Main Mission'
+    ? setOpen({ id: row.raw.objective_id || row.raw.id, objective_id: row.raw.objective_id || null, task_id: row.raw.id, kind: 'Main Mission', title: row.title, project: row.project, project_id: row.raw.project_id, description: row.raw.notes })
+    : setOpen({ id: row.raw.id, objective_id: row.raw.id, kind: row.kind, title: row.raw.title, description: row.raw.description, tags: row.raw.tags, size: row.size, objective: row.raw })
+  if (loading && !tasks) return <Panel heading="Today's Work Priorities" style={{ marginBottom: 0 }}><Empty>Loading…</Empty></Panel>
   return (
-    <Panel heading="Main Mission tasks" style={{ marginBottom: 0 }}>
-      {open && <ItemDetail item={{ id: open.objective_id || open.id, objective_id: open.objective_id || null, task_id: open.id, kind: 'Main Mission', title: open.text, project: open.project?.name || null, project_id: open.project_id, description: open.notes || null }} onClose={() => { setOpen(null); setNote(null) }} onNavigate={onNavigate} onChange={refresh} />}
-      {rows.length > 0 && (
-        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
-          {[1, 2, 3, 4].filter(p => counts[p]).map(p => (
-            <span key={p} style={{ ...S.chip('transparent', PRIORITY[p].color), border: `1px solid ${PRIORITY[p].color}55`, fontFamily: MONO, fontSize: 9, letterSpacing: '1px', padding: '2px 7px' }}>{PRIORITY[p].label} · {counts[p]}</span>
-          ))}
+    <Panel heading="Today's Work Priorities" style={{ marginBottom: 0 }}>
+      {open && <ItemDetail item={open} onClose={() => { setOpen(null); refresh && refresh() }} onNavigate={onNavigate} onChange={refresh} />}
+      {plan === undefined && isToday && <Empty>Reading today's plan…</Empty>}
+      {plan === null && isToday && <Empty>No plan yet. The Morning Protocol builds it from your answers, the calendar, and what you picked.</Empty>}
+      {prios.map(p => { const tag = p.ref?.type === 'task' ? { text: 'Main Mission', color: PURPLE } : { text: `Side Mission · ${SIZES[p.size]?.label || 'Bounty'}`, color: SIZES[p.size]?.color || GOLD }; const it = loadedItem(p.ref); return (
+        <div key={`${p.rank}-${p.title}`} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '7px 0', borderTop: `1px solid ${PANEL_BORDER}` }}>
+          <span style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 18, color: GOLD, width: 18, flexShrink: 0, lineHeight: 1.1 }}>{p.rank}</span>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 13.5, color: INK, lineHeight: 1.4 }}>{p.title}</div>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginTop: 3 }}>
+              <Tag color={tag.color}>{tag.text}</Tag>
+              {p.block && <span style={{ fontFamily: MONO, fontSize: 9.5, color: GRAY, letterSpacing: '0.6px' }}>at {p.block}</span>}
+              {it && <Tag color={GREEN}>{it.equipped ? 'running' : 'loaded'}</Tag>}
+            </div>
+          </div>
+          {p.ref && <StartStop refx={p.ref} title={p.title} />}
+        </div>) })}
+      {queue.length > 0 && (
+        <div style={{ marginTop: prios.length ? 16 : 4 }}>
+          <Label>The Queue · {queue.length} calling · most overdue first</Label>
+          {shown.map(row => { const tag = tagOf(row); const when = whenText(row.due, day); const late = daysLate(row.due, day) > 0; return (
+            <div key={row.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 0', borderTop: `1px solid ${PANEL_BORDER}` }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div onClick={() => openRow(row)} title="Open" style={{ fontSize: 13.5, color: INK, lineHeight: 1.4, cursor: 'pointer', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{row.title}</div>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginTop: 3 }}>
+                  <Tag color={tag.color}>{tag.text}</Tag>
+                  {when && <span style={{ fontFamily: MONO, fontSize: 9.5, color: late ? RED : GRAY, letterSpacing: '0.6px' }}>{when}</span>}
+                  {row.blocked && <Tag color={RED}>blocked</Tag>}
+                </div>
+              </div>
+              <StartStop refx={row.ref} title={row.title} row={row} />
+            </div>) })}
+          {queue.length > 10 && <button onClick={() => setShowAll(x => !x)} style={{ ...chipBtn(INK2), marginTop: 8 }}>{showAll ? 'Fewer' : `+${queue.length - 10} more`}</button>}
         </div>
       )}
-      {rows.length === 0 && <Empty>Nothing due or overdue on the projects, nothing promoted to the board.</Empty>}
-      {shown.map((t) => {
-        const pr = PRIORITY[t.pr]
-        const obj = objById.get(t.objective_id)
-        return (
-          <div key={t.id} onClick={() => setOpen(t)} title="Back story" style={{ display: 'flex', alignItems: 'flex-start', gap: 9, padding: '6px 6px', margin: '0 -6px', borderRadius: 8, cursor: 'pointer' }}
-            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.04)' }} onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}>
-            <Circle size={13} style={{ color: pr.color, flexShrink: 0, marginTop: 3 }} />
-            <span style={{ fontSize: 13, lineHeight: 1.5, color: INK, minWidth: 0, flex: 1 }}>
-              {t.text}
-              <span style={{ display: 'block', marginTop: 2 }}>
-                <span style={{ fontFamily: MONO, fontSize: 9, letterSpacing: '1.2px', color: PERIWINKLE, textTransform: 'uppercase' }}>{t.project?.name || 'Unassigned'}</span>
-                <span style={{ ...S.chip('transparent', pr.color), marginLeft: 8, fontSize: 8.5, padding: '1px 6px', border: `1px solid ${pr.color}44` }}>{pr.label}</span>
-                {obj?.state === 'active' && <span style={{ ...S.chip('rgba(67,211,146,0.14)', GREEN), marginLeft: 6, fontSize: 8.5, padding: '1px 6px' }}>Loaded</span>}
-                {t.status === 'blocked' && <span style={{ ...S.chip('rgba(232,131,111,0.16)', RED), marginLeft: 6, fontSize: 8.5, padding: '1px 6px' }}>Blocked</span>}
-                <DueTag due={t.due_date} day={day} />
-              </span>
-            </span>
-            <button onClick={(e) => { e.stopPropagation(); doEquip(t) }} title="Load it and start the timer" style={{ width: 26, height: 26, borderRadius: 8, border: `1px solid ${PANEL_BORDER}`, background: 'transparent', color: obj?.state === 'active' ? GREEN : INK2, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-              <Play size={11} />
-            </button>
-          </div>
-        )
-      })}
-      {more > 0 && <div style={{ fontFamily: MONO, fontSize: 10, color: GRAY, letterSpacing: '1px' }}>+{more} more</div>}
-      {note && !open && <div style={{ fontSize: 11.5, color: note.startsWith('Could') || note.startsWith('No room') ? RED : GREEN, marginTop: 8 }}>{note}</div>}
-    </Panel>
-  )
-}
-
-// ---- Side Mission (objectives) --------------------------------------------
-function SideMissionPanel({ objectives, loading, day, refresh, onNavigate }) {
-  const [note, setNote] = useState(null)
-  const [openItem, setOpenItem] = useState(null)
-  if (loading && !objectives) return <Panel heading="Side Missions" style={{ marginBottom: 0 }}><Empty>Loading…</Empty></Panel>
-  const doEquip = async (o) => {
-    setNote(null)
-    try { const r = await equipObjective(o.id); setNote(r.ok ? `Timer on: ${r.title}` : `No room on the loadout: ${r.reasons.join('; ')}`); if (r.ok && refresh) refresh() }
-    catch (e) { setNote(`Could not load it: ${e.message}`) }
-  }
-  const rows = [...(objectives || [])].sort((a, b) => {
-    const aa = a.state === 'active' ? 0 : 1, ba = b.state === 'active' ? 0 : 1
-    if (aa !== ba) return aa - ba
-    if (aa === 0) return String(a.activated_at || '').localeCompare(String(b.activated_at || ''))
-    return String(a.due_date || a.follow_up_date || '9999').localeCompare(String(b.due_date || b.follow_up_date || '9999'))
-  })
-  return (
-    <Panel heading="Side Missions" style={{ marginBottom: 0 }}>
-      {openItem && <ItemDetail item={{ id: openItem.id, objective_id: openItem.id, kind: (openItem.tags || []).includes('impromptu') ? 'Ad Hoc' : (openItem.tags || []).includes('session') ? 'Session' : 'Side Mission', title: openItem.title, description: openItem.description || null, tags: openItem.tags || [] }} onClose={() => setOpenItem(null)} onNavigate={onNavigate} onChange={refresh} />}
-      {rows.length === 0 && <Empty>No objectives calling today.</Empty>}
-      {rows.map((o) => {
-        const active = o.state === 'active'
-        return (
-          <div key={o.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 9, padding: '5px 0' }}>
-            <span style={{
-              width: 8, height: 8, borderRadius: '50%', flexShrink: 0, marginTop: 6,
-              background: active ? GREEN : 'transparent',
-              border: active ? 'none' : '1px solid rgba(255,255,255,0.3)',
-              boxShadow: active ? '0 0 8px rgba(67,211,146,0.5)' : 'none',
-            }} />
-            <span onClick={() => setOpenItem(o)} title="Open this item" style={{ fontSize: 13, lineHeight: 1.5, color: INK, minWidth: 0, cursor: 'pointer' }}>
-              {o.title}
-              {o.is_emergency && <span style={{ ...S.chip('rgba(232,131,111,0.18)', RED), marginLeft: 8, fontSize: 8.5, padding: '1px 6px' }}>Emergency</span>}
-              {!active && (
-                <span style={{ fontFamily: MONO, fontSize: 9, letterSpacing: '1px', textTransform: 'uppercase', color: GRAY, marginLeft: 8 }}>
-                  {o.state === 'follow_up' ? 'follow up' : o.state}
-                </span>
-              )}
-              {o.due_date && <DueTag due={o.due_date} day={day} />}
-              {!o.due_date && o.follow_up_date && <DueTag due={o.follow_up_date} day={day} prefix="Follow up" />}
-            </span>
-            <button onClick={() => doEquip(o)} title={active ? 'Timer on' : 'Load it and start the timer'} style={{ width: 26, height: 26, borderRadius: 8, border: `1px solid ${PANEL_BORDER}`, background: 'transparent', color: active ? GREEN : INK2, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginLeft: 'auto' }}>
-              <Play size={11} />
-            </button>
-          </div>
-        )
-      })}
-      {note && <div style={{ fontSize: 11.5, color: note.startsWith('Could') || note.startsWith('No room') ? RED : GREEN, marginTop: 8 }}>{note}</div>}
-    </Panel>
-  )
-}
-
-// ---- Maintenance ------------------------------------------------------------
-function MaintenancePanel({ items, loading }) {
-  if (loading && !items) return <Panel heading="Open Maintenance" style={{ marginBottom: 0 }}><Empty>Loading…</Empty></Panel>
-  return (
-    <Panel heading="Open Maintenance" style={{ marginBottom: 0 }}>
-      {(!items || items.length === 0) && <Empty>No maintenance items yet. They arrive downstream.</Empty>}
-      {(items || []).map((m) => {
-        const [bg, fg] = CATEGORY_TONE[m.category] || CATEGORY_TONE.other
-        return (
-          <div key={m.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 9, padding: '5px 0' }}>
-            <Wrench size={12} style={{ color: GRAY, flexShrink: 0, marginTop: 4 }} />
-            <span style={{ fontSize: 13, lineHeight: 1.5, color: INK, minWidth: 0 }}>
-              {m.title}
-              {m.category && <span style={{ ...S.chip(bg, fg), marginLeft: 8, fontSize: 8.5, padding: '1px 6px' }}>{m.category}</span>}
-              {m.cadence && <span style={{ fontFamily: MONO, fontSize: 9, letterSpacing: '1px', textTransform: 'uppercase', color: GRAY, marginLeft: 8 }}>{m.cadence}</span>}
-            </span>
-          </div>
-        )
-      })}
+      {!prios.length && !queue.length && <Empty>Nothing calling today.</Empty>}
+      {note && <div style={{ fontSize: 11.5, color: note.startsWith('Could') || note.startsWith('Will not') ? RED : GREEN, marginTop: 8 }}>{note}</div>}
     </Panel>
   )
 }
@@ -485,7 +371,6 @@ export default function AgendaPage({ onNavigate } = {}) {
   const [sessions, setSessions] = useState([])
   // Bumped after any write so the day's data re-pulls without clearing the panels.
   const [refreshKey, setRefreshKey] = useState(0)
-  const [allObjectives, setAllObjectives] = useState([])
   const [openEvent, setOpenEvent] = useState(null)
   const refresh = useCallback(() => setRefreshKey(k => k + 1), [])
   const [now, setNow] = useState(() => new Date())
@@ -526,7 +411,6 @@ export default function AgendaPage({ onNavigate } = {}) {
       setEvents(ev.error ? [] : (ev.data || []))
       setProjects(pj.error ? [] : (pj.data || []))
       setTasks(pt.error ? [] : (pt.data || []).filter(t => t.status === 'promoted' || (t.due_date && t.due_date <= addDays(d, 2))))
-      setAllObjectives(ob.error ? [] : (ob.data || []))
       setObjectives(ob.error ? [] : (ob.data || []).filter(o =>
         o.state === 'active' || (o.due_date && o.due_date <= d) || (o.follow_up_date && o.follow_up_date <= horizon)))
       // The maintenance table is new and may not exist yet; an error reads as empty.
@@ -590,13 +474,11 @@ export default function AgendaPage({ onNavigate } = {}) {
           <CalendarPanel events={calEvents} loading={loading} now={now} day={day} refresh={refresh} onOpenEvent={setOpenEvent} />
         </div>
         <div className="agenda-side">
-          <MainMissionPanel tasks={tasks} projects={projects} objectives={allObjectives} loading={loading} day={day} refresh={refresh} onNavigate={onNavigate} />
-          <SideMissionPanel objectives={objectives} loading={loading} day={day} refresh={refresh} onNavigate={onNavigate} />
-          <MaintenancePanel items={maintenance} loading={loading} />
+          <WorkPanel tasks={tasks} projects={projects} objectives={objectives} loading={loading} day={day} refresh={refresh} refreshKey={refreshKey} onNavigate={onNavigate} isToday={day === today} />
         </div>
       </div>
       <div style={{ ...S.source, marginTop: 14 }}>
-        SOURCES · clocks · calendar_events · granola_meetings · meeting_sessions · project_tasks + projects · objectives · maintenance_items
+        SOURCES · clocks · calendar_events · granola_meetings · meeting_sessions · project_tasks + projects · objectives · the day's plan
       </div>
     </div>
   )
