@@ -37,12 +37,30 @@ async function slackUnread() {
   return rows.length ? { unread: Number(rows[0].value), source: rows[0].source === 'slack' ? 'slack' : 'ledger', as_of: rows[0].at } : { unread: null, source: 'none' }
 }
 
+// Bill Pay runs on the week (David, 10/14): green Sunday through Thursday,
+// gold Friday, red Saturday. Closing the week (the question when the timer
+// stops) turns it green until next Sunday and pays 25; declining leaves it
+// red until it is closed.
+function chiWeekStart() {
+  const parts = new Intl.DateTimeFormat('en-US', { timeZone: 'America/Chicago', weekday: 'short', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date())
+  const get = (t) => parts.find(p => p.type === t)?.value
+  const dow = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].indexOf(get('weekday'))
+  const d = new Date(Date.UTC(Number(get('year')), Number(get('month')) - 1, Number(get('day'))))
+  d.setUTCDate(d.getUTCDate() - dow)
+  return { weekday: dow, week_start: d.toISOString().slice(0, 10) }
+}
 async function billPay() {
-  const rows = await sb(`meeting_sessions?select=day,stopped_at,hours&event_id=like.adhoc:*:bill-pay&stopped_at=not.is.null&order=stopped_at.desc&limit=1`)
-  if (!rows.length) return { days: null, last: null }
-  const last = rows[0]
-  const days = Math.floor((Date.now() - new Date(last.stopped_at).getTime()) / 86400e3)
-  return { days, last: last.day, hours: last.hours }
+  const { weekday, week_start } = chiWeekStart()
+  const [closed, declined, rows] = await Promise.all([
+    sb(`daily_logs?select=day,at&what=eq.bill-pay-closed&order=at.desc&limit=1`).catch(() => []),
+    sb(`daily_logs?select=day,at&what=eq.bill-pay-declined&order=at.desc&limit=1`).catch(() => []),
+    sb(`meeting_sessions?select=day,stopped_at,hours&event_id=like.adhoc:*:bill-pay&stopped_at=not.is.null&order=stopped_at.desc&limit=1`).catch(() => []),
+  ])
+  const lastClose = closed[0] || null
+  const closedThisWeek = !!(lastClose && lastClose.day >= week_start)
+  const declinedThisWeek = !!(declined[0] && declined[0].day >= week_start && (!lastClose || declined[0].at > lastClose.at))
+  const days = lastClose ? Math.floor((Date.now() - new Date(lastClose.at).getTime()) / 86400e3) : rows[0] ? Math.floor((Date.now() - new Date(rows[0].stopped_at).getTime()) / 86400e3) : null
+  return { weekday, week_start, closed_this_week: closedThisWeek, declined_this_week: declinedThisWeek, days, last_closed: lastClose?.day || null }
 }
 
 async function planning() {

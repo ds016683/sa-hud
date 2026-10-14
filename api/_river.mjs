@@ -55,7 +55,7 @@ export const RATES_FROM = '2026-10-08'
 export const MILES = {
   'main-mission': 100, 'mission-task': 10, 'bounty': 4, 'contract': 15, 'mythic': 50, 'mythic-task': 10, 'side-mission': 4, 'impromptu': 1,
   'maintenance-bundle': 1, 'cartographer': 2, 'exercise': 5, 'lift': 1, 'sleep': 4,
-  'toastmaster': 4, 'full-day': 4, 'work-horse': 10, 'clean-close': 2, 'clean-slack': 10, 'discomforter': 5, 'hygiene': 3, 'hygiene-item': 0.25, 'devotional': 2, 'dose': 0.5, 'regimen': 2,
+  'toastmaster': 4, 'full-day': 4, 'work-horse': 10, 'clean-close': 2, 'clean-slack': 10, 'bill-pay': 25, 'discomforter': 5, 'hygiene': 3, 'hygiene-item': 0.25, 'devotional': 2, 'dose': 0.5, 'regimen': 2,
 }
 export const MILES_V1 = {
   'main-mission': 10, 'mission-task': 1, 'side-mission': 4, 'impromptu': 1, 'maintenance-bundle': 1, 'cartographer': 2, 'exercise': 5, 'lift': 1, 'sleep': 4,
@@ -195,6 +195,8 @@ export async function computeAwards(day, { closing = false } = {}) {
   // Clean Slack (David, 9/28): 10 miles at the close for a Slack fully caught up.
   // Attested by David (the HUD's Slack clean mark or telling Lumen) until the
   // Slack pipe (R11) can verify it. Set deliberately high to move the habit.
+  const billClosed = logs.find(l => String(l.what || '').toLowerCase() === 'bill-pay-closed')
+  if (billClosed) add('bill-pay', '', 'Bill Pay closed for the week')
   const slackClean = logs.find(l => l.kind === 'activity' && String(l.what || '').toLowerCase() === 'slack-clean')
   if (closing && slackClean) add('clean-slack', '', `Slack clean at the close${slackClean.note ? `: ${slackClean.note}` : ''}`)
   return awards

@@ -3,7 +3,7 @@
 // Awards are struck by deterministic rules on the server (api/_river.mjs)
 // into miles_ledger; this file only knows how to present them.
 import {
-  Flag, Target, Wrench, Dumbbell, Moon, Mic, Tractor, DoorClosed, Flame, Droplets, Timer, Map, Hash,
+  Flag, Target, Wrench, Dumbbell, Moon, Mic, Tractor, DoorClosed, Flame, Droplets, Timer, Map, Hash, Receipt,
 } from 'lucide-react'
 
 export const RIVER_TOTAL_MILES = 10535
@@ -27,6 +27,7 @@ export const BADGES = {
   'full-day':           { label: 'Full Day',             miles: 4,   Icon: Timer,      repeatable: false, desc: 'Six or more hours of dedicated work in Harvest', lore: 'The oars did not stop until the light did.' },
   'work-horse':         { label: 'Work Horse',            miles: 10,  Icon: Tractor,      repeatable: false, desc: 'More than twelve hours of dedicated work in Harvest', lore: 'The current did not carry you. You carried the current.' },
   'clean-close':        { label: 'Clean Close',           miles: 2,   Icon: DoorClosed, repeatable: false, desc: 'Emails addressed, tasks organized, tomorrow prepped and reviewed', lore: 'Camp struck, fire out, boat tied.' },
+  'bill-pay':           { label: 'Bills Paid',             miles: 25,  Icon: Receipt,    repeatable: true,  desc: 'The week\'s Bill Pay closed out on the Console', lore: 'The lamps stay lit because the oil was bought.' },
   'clean-slack':        { label: 'Clean Slack',           miles: 10,  Icon: Hash,       repeatable: false, desc: 'Slack fully caught up at the close of the day', lore: 'Every channel answered, the water goes still.' },
   'discomforter':       { label: 'Discomforter',          miles: 5,   Icon: Flame,      repeatable: false, desc: 'Three deliberate discomforts told to Lumen', lore: 'Three times into the cold water, on purpose.' },
   'hygiene-item':       { label: 'Hygiene Item',          miles: 0.25, Icon: Droplets,  repeatable: true,  silent: true, desc: 'One item of the daily hygiene list logged', lore: 'Small water, every day.' },

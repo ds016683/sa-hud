@@ -56,11 +56,15 @@ const RULES = {
     return { level, blink: n >= 35, reading: n, unit: 'unread', text: (n >= 35 ? 'something is being overlooked' : WORD[level]) + asOf }
   },
   bill: (L) => {
-    const d = L?.bill_pay?.days
-    if (d == null) return { level: 'gold', reading: '—', unit: 'days', text: 'no record yet' }
-    const level = d >= 12 ? 'red' : d >= 8 ? 'gold' : 'green'
-    return { level, blink: d >= 15, reading: d, unit: d === 1 ? 'day since' : 'days since', text: d >= 15 ? 'overlooked?' : d >= 8 && d < 12 ? 'due' : WORD[level] }
+    const b = L?.bill_pay
+    if (!b) return { level: 'gray', reading: '—', unit: 'days', text: 'no reading' }
+    const reading = b.days == null ? '—' : b.days, unit = b.days === 1 ? 'day since' : 'days since'
+    if (b.closed_this_week) return { level: 'green', reading, unit, text: 'closed for the week' }
+    if (b.declined_this_week) return { level: 'red', reading, unit, text: 'not closed: finish it and close the week' }
+    const level = b.weekday === 6 ? 'red' : b.weekday === 5 ? 'gold' : 'green'
+    return { level, blink: false, reading, unit, text: level === 'red' ? 'Saturday: close the week' : level === 'gold' ? 'Friday: bills this week?' : 'the week is open' }
   },
+}
 }
 
 const eid = (day, slug) => `adhoc:${day}:${slug}`
@@ -150,6 +154,14 @@ export default function RecurringPanel({ onChange }) {
       const s = byId.get(eid(day, r.slug))
       if (!isRunning(s)) return
       await closeSpan(r, s, s.started_at, new Date().toISOString(), { personal: s.special_notes === 'personal' })
+      if (r.slug === 'bill-pay') {
+        // The week closes on David's word (10/14): yes pays 25 and turns the light green until Sunday; no leaves it red.
+        const yes = window.confirm("Ready to Close Out This Week's Bill Pay?")
+        const { error } = await supabase.from('daily_logs').insert({ day, kind: 'activity', what: yes ? 'bill-pay-closed' : 'bill-pay-declined', value: 1, note: yes ? 'closed on the Console · 25 miles' : 'not ready', source: 'hud', at: new Date().toISOString() })
+        if (error) setMsg(`Bill Pay stopped; the week did not record: ${error.message}`)
+        else setMsg(yes ? 'Bill Pay closed for the week · 25 miles on the next update' : 'Bill Pay stays open; the light holds red until the week is closed')
+        pullLights()
+      }
     } catch (e) { setMsg(`Could not stop: ${e.message}`) }
   }
   const markSlack = async () => {
