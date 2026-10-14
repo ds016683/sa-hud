@@ -282,3 +282,9 @@ export async function startWithRoom(target, { projectName = null } = {}) {
   }
   return { ok: false, reasons: ['could not make room'], stashed }
 }
+
+// What goes on and off the Board is written to the day's record (daily_logs,
+// what 'board') so the Activity Log can show it (David, 10/14).
+export async function logBoard(text) {
+  try { await supabase.from('daily_logs').insert({ day: chiToday(), kind: 'note', what: 'board', note: String(text).slice(0, 300), source: 'hud', at: new Date().toISOString() }) } catch { /* best effort */ }
+}

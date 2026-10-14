@@ -24,7 +24,7 @@ function zonedToIso(g) {
   const asLocal = Date.UTC(get('year'), get('month') - 1, get('day'), get('hour') % 24, get('minute'), get('second'))
   return new Date(guess.getTime() - (asLocal - guess.getTime())).toISOString()
 }
-import { loadout, checkFit, equip, holster, extract, effortOf, sizeOf, SIZES } from './_loadout.mjs'
+import { loadout, checkFit, equip, holster, extract, effortOf, sizeOf, SIZES, boardLog } from './_loadout.mjs'
 import { markdownToDocx, DOCX_MIME } from './_docx.mjs'
 import { fillScorecard } from './_scorecard.mjs'
 
@@ -1230,6 +1230,7 @@ export async function callTool(name, args = {}) {
       if (state === 'follow_up') patch.follow_up_date = args.follow_up_date || o.follow_up_date || plusDays(7)
       if (args.due_date) patch.due_date = args.due_date
       await sbWrite('PATCH', `objectives?id=eq.${o.id}`, patch, 'return=minimal')
+      boardLog(`${state === 'active' ? 'Loaded' : state === 'parked' && o.state === 'active' ? 'Stashed' : state === 'released' ? 'Extracted' : `Moved to ${state.replace('_', ' ')}`}: ${o.title}`)
       let clock = null, equipped = null
       if (state === 'active') equipped = await equip(o.id, 'equipped on activate').catch(e => ({ error: String(e.message || e) }))
       else if (state !== 'released') await holster(o.id).catch(() => null)

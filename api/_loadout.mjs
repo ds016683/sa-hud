@@ -106,6 +106,11 @@ export async function checkFit(candidate, { force = false } = {}) {
 }
 
 // Run this item's clock; holster everything else.
+export async function boardLog(text) {
+  try { await sbWrite('POST', 'daily_logs', { day: chiToday(), kind: 'note', what: 'board', note: String(text).slice(0, 300), source: 'lumen', at: new Date().toISOString() }, 'return=minimal') } catch { /* best effort */ }
+}
+const titleOf = async (id) => (await sb(`objectives?select=title&id=eq.${id}`).catch(() => []))[0]?.title || id
+
 export async function equip(objectiveId, note = null) {
   const day = chiToday()
   const running = await sb(`clocks?select=id,objective_id,started_at&stopped_at=is.null`).catch(() => [])
@@ -116,6 +121,7 @@ export async function equip(objectiveId, note = null) {
     holstered.push(c.objective_id)
   }
   const row = await sbWrite('POST', 'clocks', { objective_id: objectiveId, day, started_at: new Date().toISOString(), note })
+  boardLog(`Timer on: ${await titleOf(objectiveId)}`)
   return { ok: true, started_at: row?.[0]?.started_at, holstered }
 }
 
@@ -131,6 +137,7 @@ export async function holster(objectiveId) {
   const running = await sb(`clocks?select=id,objective_id,started_at&objective_id=eq.${objectiveId}&stopped_at=is.null`).catch(() => [])
   let minutes = 0
   for (const c of running) minutes += await stopClock(c)
+  if (running.length) boardLog(`Timer off: ${await titleOf(objectiveId)}`)
   return { ok: true, was_running: running.length > 0, minutes_this_run: minutes }
 }
 
