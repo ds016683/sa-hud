@@ -7,7 +7,7 @@
 // follow-ups as Side Missions (see river/MeetingCloseout.jsx).
 import { useState, useEffect, useCallback } from 'react'
 import { ChevronLeft, ChevronRight, CalendarDays, Check, HelpCircle, Play, Pause, X as XIcon } from 'lucide-react'
-import { supabase } from '../lib/supabase'
+import { supabase, reportSoft } from '../lib/supabase'
 import { matchNotes, hoursBetween, upsertSession, logToHarvest } from '../lib/meetings'
 import MeetingCloseout, { renderMarkdown, CloseoutBlock, friendlyError, fmtHours } from './river/MeetingCloseout'
 import LoadoutPanel from './river/LoadoutPanel'
@@ -297,9 +297,9 @@ function WorkPanel({ tasks, projects, objectives, loading, day, refresh, refresh
     setBusy(true); setNote(null)
     try {
       const r = ref.type === 'task' ? await startWithRoom({ type: 'task', id: row?.raw?.objective_id || ref.id, task: row?.raw || (tasks || []).find(t => t.id === ref.id) }, { projectName: row?.project }) : await startWithRoom({ type: 'objective', id: ref.id })
-      if (!r.ok) { setNote(`Will not fit: ${(r.reasons || []).join(' · ')}`); return }
+      if (!r.ok) { setNote(`Will not fit: ${(r.reasons || []).join(' · ')}`); reportSoft(`start ${title}`, `refused: ${(r.reasons || []).join(' · ')}`); return }
       setNote(`${title} started${r.stashed?.length ? ` · stashed ${r.stashed.join(', ')}` : ''}`); refresh && refresh()
-    } catch (e) { setNote(`Could not start: ${e.message}`) } finally { setBusy(false) }
+    } catch (e) { setNote(`Could not start: ${e.message}`); reportSoft(`start ${title}`, e) } finally { setBusy(false) }
   }
   const stop = async (id, title) => { setBusy(true); try { await holster(id); setNote(`${title} holstered`); refresh && refresh() } catch (e) { setNote(`Could not stop: ${e.message}`) } finally { setBusy(false) } }
   const StartStop = ({ refx, title, row }) => { const it = loadedItem(refx); return it?.equipped
@@ -319,6 +319,7 @@ function WorkPanel({ tasks, projects, objectives, loading, day, refresh, refresh
   return (
     <Panel heading="Today's Work Priorities" style={{ marginBottom: 0 }}>
       {open && <ItemDetail item={open} onClose={() => { setOpen(null); refresh && refresh() }} onNavigate={onNavigate} onChange={refresh} />}
+      {note && <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '0.8px', textTransform: 'uppercase', color: note.startsWith('Could') || note.startsWith('Will not') ? RED : GREEN, marginBottom: 10 }}>{note}</div>}
       {plan === undefined && isToday && <Empty>Reading today's plan…</Empty>}
       {plan === null && isToday && <Empty>No plan yet. The Morning Protocol builds it from your answers, the calendar, and what you picked.</Empty>}
       {prios.map(p => { const tag = p.ref?.type === 'task' ? { text: 'Main Mission', color: PURPLE } : { text: `Side Mission · ${SIZES[p.size]?.label || 'Bounty'}`, color: SIZES[p.size]?.color || GOLD }; const it = loadedItem(p.ref); return (
@@ -353,7 +354,6 @@ function WorkPanel({ tasks, projects, objectives, loading, day, refresh, refresh
         </div>
       )}
       {!prios.length && !queue.length && <Empty>Nothing calling today.</Empty>}
-      {note && <div style={{ fontSize: 11.5, color: note.startsWith('Could') || note.startsWith('Will not') ? RED : GREEN, marginTop: 8 }}>{note}</div>}
     </Panel>
   )
 }

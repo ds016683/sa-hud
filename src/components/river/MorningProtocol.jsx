@@ -16,7 +16,7 @@
 // planning light and the River can see it ran. No miles for the timer.
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { ArrowLeft, ArrowRight, Check, Sunrise, Moon, Play, Pause, Square, Rocket, Send, ExternalLink, SkipForward, SkipBack, RotateCcw, Mic, Music, Sparkles, RefreshCw, ListMusic, X as XIcon } from 'lucide-react'
-import { supabase } from '../../lib/supabase'
+import { supabase, reportSoft } from '../../lib/supabase'
 import { upsertSession, logToHarvest, hoursBetween, startMeetingTimer, stopMeetingTimer } from '../../lib/meetings'
 import { fetchLoadout, equipObjective, equipTask, equip, holster, startWithRoom, resolveObjectiveId, fmtClock, chiToday, SIZES, SLOTS } from '../../lib/loadout'
 import { KIND_COLOR, PURPLE } from './canon'
@@ -338,7 +338,7 @@ function Protocol({ day, session, onClose, onFinished, onChange, onNavigate }) {
       if (!r.ok) { setMsg(`Will not fit: ${r.reasons.join(' · ')}`); return }
       const lo = await fetchLoadout(); setL(lo); if (!first) setFirst(r.id || ref.id)
       setMsg(`${title || r.title} started${r.stashed?.length ? ` · stashed ${r.stashed.join(', ')} to make room` : ''} (${lo.slots.used}/${SLOTS} slots)`)
-    } catch (e) { setMsg(`Could not start: ${e.message}`) } finally { setBusy(false) }
+    } catch (e) { setMsg(`Could not start: ${e.message}`); reportSoft(`plan start ${title}`, e) } finally { setBusy(false) }
   }
   const stopRef = async (id, title) => { setBusy(true); try { await holster(id); const lo = await fetchLoadout(); setL(lo); setMsg(`${title} holstered`) } catch (e) { setMsg(`Could not stop: ${e.message}`) } finally { setBusy(false) } }
   const meetingSession = (eventId) => sessions.find(x => x.event_id === eventId)
