@@ -10,7 +10,7 @@ import BadgeMedallion from '../BadgeArt'
 import RecallModal, { BrainButton } from './Recall'
 import YayPage from './YayPage'
 import { MILES, colorOf } from '../../lib/summary'
-import { upsertSession, logToHarvest, hoursBetween } from '../../lib/meetings'
+import { upsertSession, logToHarvest, hoursBetween, stopMeetingTimer } from '../../lib/meetings'
 import { RECURRING } from './RecurringPanel'
 import { Square, Mail, Hash, CalendarCheck, Brain, MessageSquare } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
@@ -99,9 +99,35 @@ function Notches({ from, span, color }) {
 // cannon color; beside it the mission, the kind, and the type line (MMT 2 of
 // 10, Mythic · gate 3 of 5, Bounty · N/A); then the task as the biggest line;
 // miles and due; the clock and the actions; the brain at bottom right.
-const badgeFor = (it) => it.kind === 'Main Mission' ? 'mission-task' : it.kind === 'Ad Hoc' ? 'impromptu' : it.size === 'heavy' ? 'mythic' : it.size === 'medium' ? 'contract' : 'bounty'
+const badgeFor = (it) => it.meeting ? 'toastmaster' : it.kind === 'Main Mission' ? 'mission-task' : it.kind === 'Ad Hoc' ? 'impromptu' : it.size === 'heavy' ? 'mythic' : it.size === 'medium' ? 'contract' : 'bounty'
 const fmtDue = (d) => d ? new Date(`${d}T12:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : null
 const Fact = ({ label, children }) => <div style={{ padding: '7px 0' }}><div style={{ fontFamily: MONO, fontSize: 9, letterSpacing: '1.3px', textTransform: 'uppercase', color: GRAY, marginBottom: 2 }}>{label}</div>{children}</div>
+
+function MeetingSlot({ it, n, act }) {
+  const ends = it.ends_at ? new Date(it.ends_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'America/Chicago' }) : null
+  return (
+    <div style={{ ...slotBox(GREEN, 'rgba(67,211,146,0.07)'), gridColumn: 'span 1' }}>
+      <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+        <BadgeMedallion id="toastmaster" size={50} color={BLUE} />
+        <div style={{ flex: 1, minWidth: 0, display: 'grid', gap: 2 }}>
+          <div style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 14.5, color: INK, lineHeight: 1.25 }}>In a meeting</div>
+          <div style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '1.4px', textTransform: 'uppercase', color: BLUE }}>Meeting</div>
+          <div style={{ fontFamily: MONO, fontSize: 9, letterSpacing: '1.1px', textTransform: 'uppercase', color: GRAY }}>1 slot while it runs</div>
+        </div>
+        <Notches from={n - 1} span={1} color={BLUE} />
+      </div>
+      <div style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 18, color: '#fff', lineHeight: 1.28, flex: 1 }}>{it.title}</div>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', borderTop: `1px solid ${PANEL_BORDER}`, borderBottom: `1px solid ${PANEL_BORDER}` }}>
+        <Fact label="Logs to"><span style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 16, color: INK }}>Harvest</span></Fact>
+        <div style={{ borderLeft: `1px solid ${PANEL_BORDER}`, paddingLeft: 12 }}><Fact label="Ends">{ends ? <span style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 16, color: INK }}>{ends}</span> : <span style={{ fontSize: 13, color: GRAY }}>open</span>}</Fact></div>
+      </div>
+      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+        <span style={{ fontFamily: MONO, fontSize: 10, color: GREEN, letterSpacing: '0.6px', marginRight: 2 }}>running · {fmtClock(it.minutes_today)}</span>
+        <button onClick={() => act(() => stopMeetingTimer({ id: it.event_id, subject: it.title }, { started_at: it.running_since, hours: 0 }, chiToday()), `Meeting stopped: ${it.title}`)} style={btn(GREEN, true)}><Square size={11} /> Stop</button>
+      </div>
+    </div>
+  )
+}
 
 function FilledSlot({ it, n, act, onOpen, onExtract, onRecall }) {
   const span = it.slots || 1
@@ -326,7 +352,7 @@ export default function LoadoutPanel({ onChange, refreshKey = 0, onNavigate, bar
       ) : (
         <>
           <div className="board-slots">
-            {layout.placed.map(({ it, n }) => <FilledSlot key={it.id} it={it} n={n} act={act} onOpen={setRelated} onExtract={extractGate} onRecall={setRecallOf} />)}
+            {layout.placed.map(({ it, n }) => it.meeting ? <MeetingSlot key={it.id} it={it} n={n} act={act} /> : <FilledSlot key={it.id} it={it} n={n} act={act} onOpen={setRelated} onExtract={extractGate} onRecall={setRecallOf} />)}
             {layout.empties.map(n => <EmptySlot key={`empty-${n}`} n={n} />)}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10, minWidth: 0 }}>
               <AdHocSlot item={L.adhoc[0] || null} act={act} onDispatch={setDispatch} onOpen={setRelated} onChanged={bump} onRecall={setRecallOf} />

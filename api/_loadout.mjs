@@ -45,10 +45,11 @@ const isBoardItem = (o) => !(o.tags || []).includes('session')
 export async function loadout() {
   const day = chiToday()
   const nowIso = new Date().toISOString()
-  const [active, clocks, events] = await Promise.all([
+  const [active, clocks, events, meetingsRunning] = await Promise.all([
     sb(`objectives?select=id,title,state,tags,effort,due_date,activated_at,captured_at&state=eq.active&deleted_at=is.null&order=activated_at.asc`),
     sb(`clocks?select=id,objective_id,day,started_at,stopped_at,minutes&or=(stopped_at.is.null,day.eq.${day})`).catch(() => []),
     sb(`calendar_events?select=subject,start_at,end_at,is_all_day&day=eq.${day}&is_cancelled=eq.false`).catch(() => []),
+    sb(`meeting_sessions?select=event_id,subject,started_at,hours&day=eq.${day}&stopped_at=is.null&started_at=not.is.null&event_id=not.like.adhoc:*&event_id=not.like.personal:*`).catch(() => []),
   ])
   const running = clocks.find(c => !c.stopped_at) || null
   const minutesFor = (id) => clocks.filter(c => c.objective_id === id).reduce((s, c) => s + (c.stopped_at ? (Number(c.minutes) || 0) : (Date.now() - new Date(c.started_at).getTime()) / 60000), 0)
@@ -60,6 +61,8 @@ export async function loadout() {
     kind: (o.tags || []).includes('impromptu') ? 'impromptu' : (o.tags || []).includes('mission-task') ? 'mission-task' : 'side-mission',
     adhoc: (o.tags || []).includes('impromptu'),
   }))
+  // A meeting with its timer running takes one slot while it runs (David, 10/14).
+  for (const ms of meetingsRunning) items.push({ id: `meeting:${ms.event_id}`, title: ms.subject || 'Meeting', tags: [], size: 'light', size_label: 'Meeting', slots: 1, hours: 1, due_date: null, equipped: true, minutes_today: Math.round(((Number(ms.hours) || 0) * 60) + (Date.now() - new Date(ms.started_at).getTime()) / 60000), session: false, kind: 'meeting', adhoc: false, meeting: true })
   // The three slots hold planned work. Impromptu items ride the Ad Hoc slot
   // (one at a time) and never count against the three (David, 10/7).
   const board = items.filter(i => !i.session && !i.adhoc)

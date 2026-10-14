@@ -17,8 +17,9 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { ArrowLeft, ArrowRight, Check, Sunrise, Moon, Play, Pause, Square, Rocket, Send, ExternalLink, SkipForward, SkipBack, RotateCcw, Mic, Music, Sparkles, RefreshCw, ListMusic, X as XIcon } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
-import { upsertSession, logToHarvest, hoursBetween } from '../../lib/meetings'
-import { fetchLoadout, equipObjective, equipTask, equip, fmtClock, chiToday, SIZES, SLOTS } from '../../lib/loadout'
+import { upsertSession, logToHarvest, hoursBetween, startMeetingTimer, stopMeetingTimer } from '../../lib/meetings'
+import { fetchLoadout, equipObjective, equipTask, equip, holster, startWithRoom, fmtClock, chiToday, SIZES, SLOTS } from '../../lib/loadout'
+import { KIND_COLOR, PURPLE } from './canon'
 import { HYGIENE_ITEMS } from '../../constants/hygiene'
 import { GATEWAY_PLAYLIST } from '../../constants/gateway'
 import { MEDICATIONS, dueOn } from '../../constants/medications'
@@ -264,7 +265,7 @@ function Protocol({ day, session, onClose, onFinished, onChange, onNavigate }) {
       rows(supabase.from('projects').select('id,name,status')),
       rows(supabase.from('objectives').select('id,title,state,effort,tags,due_date,north_star').eq('due_date', day).in('state', ['parked', 'follow_up', 'waiting', 'inbox']).is('deleted_at', null).order('captured_at')),
       fetchLoadout(),
-      rows(supabase.from('meeting_sessions').select('event_id,subject,started_at,stopped_at,hours').eq('day', day).like('event_id', 'adhoc:%')),
+      rows(supabase.from('meeting_sessions').select('event_id,subject,started_at,stopped_at,hours').eq('day', day)),
     ])
     setRead(m[0] || null); setYday({ miles: ml.reduce((s, r) => s + (Number(r.miles) || 0), 0), badges: [...new Set(ml.map(r => r.badge))] })
     setEvents(ev); setLogs(lg); setFollowups(fu); setQueueCount(fuAll.length); setPicks(pk); setProjects(new Map(pj.map(p => [p.id, p]))); setL(lo); setSessions(ss)
@@ -326,6 +327,24 @@ function Protocol({ day, session, onClose, onFinished, onChange, onNavigate }) {
   }
   const rollAll = async (list, n) => { const ids = list.map(o => o.id); if (!ids.length) return; const { error } = await supabase.from('objectives').update({ follow_up_date: plusDays(day, n) }).in('id', ids); if (error) { setMsg(`Could not roll: ${error.message}`); return } setFollowups(f => f.filter(x => !ids.includes(x.id))); setMsg(`${ids.length} rolled to ${n === 1 ? 'tomorrow' : `+${n} days`}`) }
   const unpick = async (o) => { const { error } = await supabase.from('objectives').update({ due_date: plusDays(day, 1) }).eq('id', o.id); if (error) { setMsg(`Could not move it: ${error.message}`); return } setPicks(p => p.filter(x => x.id !== o.id)); setMsg(`${o.title}: picked for tomorrow instead`) }
+  // Start from the Game Plan or the Agenda: load with as many slots as it takes, clock on (David, 10/14).
+  const startRef = async (ref, title) => {
+    setBusy(true)
+    try {
+      let r
+      if (ref?.type === 'objective') r = await startWithRoom({ type: 'objective', id: ref.id })
+      else if (ref?.type === 'task') { const { data } = await supabase.from('project_tasks').select('id,text,status,objective_id,project_id').eq('id', ref.id).limit(1); if (!data?.[0]) throw new Error('task not found'); r = await startWithRoom({ type: 'task', id: data[0].objective_id || data[0].id, task: data[0] }, { projectName: projects.get(data[0].project_id)?.name }) }
+      else throw new Error('nothing to start')
+      if (!r.ok) { setMsg(`Will not fit: ${r.reasons.join(' · ')}`); return }
+      const lo = await fetchLoadout(); setL(lo); if (!first) setFirst(r.id || ref.id)
+      setMsg(`${title || r.title} started${r.stashed?.length ? ` · stashed ${r.stashed.join(', ')} to make room` : ''} (${lo.slots.used}/${SLOTS} slots)`)
+    } catch (e) { setMsg(`Could not start: ${e.message}`) } finally { setBusy(false) }
+  }
+  const stopRef = async (id, title) => { setBusy(true); try { await holster(id); const lo = await fetchLoadout(); setL(lo); setMsg(`${title} holstered`) } catch (e) { setMsg(`Could not stop: ${e.message}`) } finally { setBusy(false) } }
+  const meetingSession = (eventId) => sessions.find(x => x.event_id === eventId)
+  const meetingRunning = (eventId) => { const x = meetingSession(eventId); return !!(x && x.started_at && !x.stopped_at) }
+  const startMeeting = async (e) => { setBusy(true); try { await startMeetingTimer(e, day); await loadAll(); setMsg(`${e.subject}: meeting timer on, one slot taken`) } catch (x) { setMsg(`Could not start: ${x.message}`) } finally { setBusy(false) } }
+  const stopMeeting = async (e) => { setBusy(true); try { const r = await stopMeetingTimer(e, meetingSession(e.id), day); await loadAll(); setMsg(`${e.subject}: ${fmtClock(r.hours * 60)}${r.logged ? ' logged to Harvest' : ' (Harvest did not take it)'}`) } catch (x) { setMsg(`Could not stop: ${x.message}`) } finally { setBusy(false) } }
   const todayFollow = async (o) => { const { error } = await supabase.from('objectives').update({ due_date: day, follow_up_date: day }).eq('id', o.id); if (error) { setMsg(`Could not mark it: ${error.message}`); return } setFollowups(f => f.filter(x => x.id !== o.id)); await loadRef({ type: 'objective', id: o.id }, o.title) }
 
   // ---- the plan
@@ -500,9 +519,17 @@ function Protocol({ day, session, onClose, onFinished, onChange, onNavigate }) {
         .map(e => ({ start: chiHHMM(e.start_at), end: chiHHMM(e.end_at), title: e.subject, kind: 'meeting', ref: { type: 'event', id: e.id }, fromCalendar: true }))
       const timeline = [...blocks, ...extraMeetings].sort((a, b) => String(a.start).localeCompare(String(b.start)))
       const KIND_C = { meeting: BLUE, work: GOLD, admin: INK2, travel: '#5FC9C0', break: GREEN }
-      const isLoaded = (ref) => ref && board.some(b => b.id === ref.id) || (ref?.type === 'task' && board.some(b => b.id === ref.id))
+      const loadedItem = (ref) => ref ? (board.find(b => b.id === ref.id) || board.find(b => ref.type === 'task' && b.task_id === ref.id) || null) : null
+      const prios = plan?.priorities || []
+      const sameRef = (a, b) => a?.ref && b?.ref && String(a.ref.id) === String(b.ref.id)
+      const rankOf = (b) => { const p = prios.find(p => sameRef(p, b) || (p.title && b.title && norm(p.title) === norm(b.title))); return p ? p.rank : null }
+      const placed = (p) => timeline.some(b => sameRef(p, b) || (p.title && b.title && norm(p.title) === norm(b.title)))
+      const tagOf = (p) => p.ref?.type === 'task' ? { text: 'Main Mission', color: PURPLE } : { text: `Side Mission · ${SIZES[p.size]?.label || 'Bounty'}`, color: SIZES[p.size]?.color || GOLD }
+      const StartStop = ({ refx, title }) => { const it = loadedItem(refx); if (!refx) return null; return it?.equipped ? <button disabled={busy} onClick={() => stopRef(it.id, title)} style={btn(GREEN, true)}><Pause size={11} /> Stop</button> : <button disabled={busy} onClick={() => startRef(refx, title)} style={btn(GREEN)}><Play size={11} /> {it ? 'Start' : 'Start'}</button> }
+      const MeetingStartStop = ({ eventId }) => { const e = events.find(x => String(x.id) === String(eventId)); if (!e) return null; return meetingRunning(e.id) ? <button disabled={busy} onClick={() => stopMeeting(e)} style={btn(GREEN, true)}><Square size={11} /> Stop</button> : <button disabled={busy} onClick={() => startMeeting(e)} style={btn(BLUE)}><Play size={11} /> Start</button> }
       return (
         <div style={{ display: 'grid', gap: 16 }}>
+          <style>{`@keyframes mp-pulse { 0%,100% { box-shadow: 0 0 0 0 transparent } 50% { box-shadow: 0 0 14px 2px rgba(169,201,232,0.45) } } .mp-pulse { animation: mp-pulse 2.6s ease-in-out infinite; border-radius: 10px }`}</style>
           {plan === undefined && <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '1.4px', textTransform: 'uppercase', color: GRAY }}>Reading today's plan</div>}
           {planBusy && <div className="mp-blink" style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '1.4px', textTransform: 'uppercase', color: GOLD }}><Sparkles size={11} style={{ verticalAlign: '-2px' }} /> Lumen is building the day from your answers, the calendar, and the queue…</div>}
           {plan === null && !planBusy && <Panel style={{ marginBottom: 0 }}><div style={{ fontSize: 13.5, color: INK2 }}>No plan yet.</div><button onClick={() => runPlan('build')} style={{ ...btn(GOLD, true), marginTop: 10 }}><Sparkles size={12} /> Build the plan</button></Panel>}
@@ -513,10 +540,14 @@ function Protocol({ day, session, onClose, onFinished, onChange, onNavigate }) {
                 <Panel style={{ marginBottom: 0 }}>
                   <Label>Agenda · Chicago</Label>
                   {timeline.map((b, i) => (
-                    <div key={`${b.start}-${i}`} style={{ display: 'grid', gridTemplateColumns: '86px 1fr auto', gap: 10, alignItems: 'start', padding: '7px 0', borderTop: i ? `1px solid ${PANEL_BORDER}` : 'none' }}>
+                    <div key={`${b.start}-${i}`} style={{ display: 'grid', gridTemplateColumns: '22px 86px 1fr auto', gap: 10, alignItems: 'start', padding: '7px 0', borderTop: i ? `1px solid ${PANEL_BORDER}` : 'none' }}>
+                      <div style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 17, color: GOLD, lineHeight: 1.1 }}>{rankOf(b) ?? ''}</div>
                       <div style={{ fontFamily: MONO, fontSize: 11, color: GRAY, letterSpacing: '0.4px', paddingTop: 2 }}>{b.start}{b.end ? `–${b.end}` : ''}</div>
                       <div style={{ minWidth: 0 }}><div style={{ fontSize: 13.5, color: INK }}>{b.title}</div>{b.note && <div style={{ fontSize: 11.5, color: GRAY, marginTop: 2 }}>{b.note}</div>}</div>
-                      <span style={{ ...S.chip('transparent', KIND_C[b.kind] || INK2), border: `1px solid ${(KIND_C[b.kind] || INK2)}55`, fontFamily: MONO, fontSize: 8.5, letterSpacing: '1px' }}>{b.kind}{b.fromCalendar ? ' · calendar' : ''}</span>
+                      <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                        {b.kind === 'meeting' && b.ref?.type === 'event' ? <MeetingStartStop eventId={b.ref.id} /> : (b.ref && b.ref.type !== 'event') ? <StartStop refx={b.ref} title={b.title} /> : null}
+                        <span style={{ ...S.chip('transparent', KIND_C[b.kind] || INK2), border: `1px solid ${(KIND_C[b.kind] || INK2)}55`, fontFamily: MONO, fontSize: 8.5, letterSpacing: '1px' }}>{b.kind}{b.fromCalendar ? ' · calendar' : ''}</span>
+                      </div>
                     </div>
                   ))}
                   {!timeline.length && <div style={{ fontSize: 13, color: GRAY }}>Nothing on the agenda.</div>}
@@ -524,11 +555,20 @@ function Protocol({ day, session, onClose, onFinished, onChange, onNavigate }) {
                 <div style={{ display: 'grid', gap: 14, alignContent: 'start' }}>
                   <Panel style={{ marginBottom: 0 }}>
                     <Label>Priorities · load onto the Board</Label>
-                    {(plan.priorities || []).map(p => { const loaded = isLoaded(p.ref); return (
-                      <div key={`${p.rank}-${p.title}`} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '8px 0', borderTop: `1px solid ${PANEL_BORDER}` }}>
+                    {prios.map(p => { const tag = tagOf(p); const it = loadedItem(p.ref); const unplaced = !placed(p); return (
+                      <div key={`${p.rank}-${p.title}`} className={unplaced ? 'mp-pulse' : ''} title={unplaced ? 'No room for this inside normal hours' : undefined} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '8px 6px', margin: '0 -6px', borderTop: `1px solid ${PANEL_BORDER}`, border: unplaced ? `1px solid ${BLUE}55` : undefined }}>
                         <span style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 18, color: GOLD, width: 18, flexShrink: 0 }}>{p.rank}</span>
-                        <div style={{ flex: 1, minWidth: 0 }}><div style={{ fontSize: 13.5, color: INK }}>{p.title}</div><div style={{ fontSize: 11.5, color: GRAY, marginTop: 2 }}>{p.why}{p.block ? ` · at ${p.block}` : ''}{p.size ? ` · ${SIZES[p.size]?.label || p.size}` : ''}</div></div>
-                        {p.ref && (loaded ? <span style={{ ...S.chip('transparent', GREEN), border: `1px solid ${GREEN}55`, fontFamily: MONO, fontSize: 8.5, letterSpacing: '1px' }}>loaded</span> : <button disabled={busy} onClick={() => loadRef(p.ref, p.title)} style={btn(GOLD)}>Load</button>)}
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: 13.5, color: INK }}>{p.title}</div>
+                          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginTop: 4 }}>
+                            <span style={{ ...S.chip('transparent', tag.color), border: `1px solid ${tag.color}55`, fontFamily: MONO, fontSize: 8.5, letterSpacing: '1px' }}>{tag.text}</span>
+                            {p.block && <span style={{ fontFamily: MONO, fontSize: 9.5, color: GRAY, letterSpacing: '0.6px' }}>at {p.block}</span>}
+                            {unplaced && <span style={{ fontFamily: MONO, fontSize: 9.5, color: BLUE, letterSpacing: '0.6px' }}>no room in normal hours</span>}
+                            {it && <span style={{ ...S.chip('transparent', GREEN), border: `1px solid ${GREEN}55`, fontFamily: MONO, fontSize: 8.5, letterSpacing: '1px' }}>{it.equipped ? 'running' : 'loaded'}</span>}
+                          </div>
+                          {p.why && <div style={{ fontSize: 11.5, color: GRAY, marginTop: 3 }}>{p.why}</div>}
+                        </div>
+                        <StartStop refx={p.ref} title={p.title} />
                       </div>) })}
                     {!(plan.priorities || []).length && <div style={{ fontSize: 13, color: GRAY }}>No priorities named.</div>}
                     <div style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '0.8px', color: GRAY, marginTop: 8 }}>Board · {L ? `${L.slots.used}/${SLOTS} slots` : '…'}{(plan.parked || []).length ? ` · parked: ${plan.parked.join(', ')}` : ''}</div>

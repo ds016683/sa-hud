@@ -38,12 +38,13 @@ const q = (p) => p.then(r => { if (r.error) console.warn('loadout', r.error.mess
 export async function fetchLoadout() {
   const day = chiToday()
   const nowIso = new Date().toISOString()
-  const [active, clocks, events, links, projects] = await Promise.all([
+  const [active, clocks, events, links, projects, meetingsRunning] = await Promise.all([
     q(supabase.from('objectives').select('*').eq('state', 'active').is('deleted_at', null).order('activated_at', { ascending: true })),
     q(supabase.from('clocks').select('id,objective_id,day,started_at,stopped_at,minutes').or(`stopped_at.is.null,day.eq.${day}`)),
     q(supabase.from('calendar_events').select('subject,start_at,end_at,is_all_day').eq('day', day).eq('is_cancelled', false)),
     q(supabase.from('project_tasks').select('id,objective_id,project_id,text,created_at,status')),
     q(supabase.from('projects').select('id,name,description')),
+    q(supabase.from('meeting_sessions').select('event_id,subject,started_at,stopped_at,hours').eq('day', day).is('stopped_at', null).not('started_at', 'is', null).not('event_id', 'like', 'adhoc:%').not('event_id', 'like', 'personal:%')),
   ])
   const projName = new Map(projects.map(p => [p.id, p.name]))
   const projStar = new Map(projects.map(p => [p.id, p.description || null]))
@@ -76,6 +77,13 @@ export async function fetchLoadout() {
       north_star: projByObj.has(o.id) ? (projStar.get(projIdByObj.get(o.id)) || null) : (o.north_star || null),
     }
   })
+  // A meeting with its timer running takes one slot while it runs (David, 10/14).
+  for (const ms of meetingsRunning) {
+    const ev = events.find(e => e.subject === ms.subject) || null
+    items.push({ id: `meeting:${ms.event_id}`, event_id: ms.event_id, title: ms.subject || 'Meeting', tags: [], size: 'light', slots: 1, hours: 1, due_date: null, activated_at: ms.started_at,
+      equipped: true, running_since: ms.started_at, minutes_today: ((Number(ms.hours) || 0) * 60) + (now - new Date(ms.started_at).getTime()) / 60000,
+      session: false, project: null, project_id: null, description: null, kind: 'Event', personal: false, adhoc: false, call: false, meeting: true, ends_at: ev?.end_at || null, steps: [], north_star: null })
+  }
   // Three slots for planned work; the Ad Hoc slot carries impromptu items
   // (one at a time) and never counts against the three (David, 10/7).
   const board = items.filter(i => !i.session && !i.adhoc)
@@ -220,4 +228,23 @@ export async function addImpromptu(title, { personal = false, tags = [] } = {}) 
   if (error) throw new Error(error.message)
   await equip(data.id)
   return { ok: true, id: data.id, title: data.title }
+}
+
+// Make room, then start (David, 10/14): a Start from the Game Plan or the
+// Agenda loads as many slots as the thing takes, stashing the longest-holstered
+// planned items (never a running clock, never a meeting) until it fits, and
+// runs its clock. Returns what equipObjective/equipTask return, plus `stashed`.
+export async function startWithRoom(target, { projectName = null } = {}) {
+  const stashed = []
+  const attempt = () => target.type === 'task' ? equipTask(target.task, projectName, { clock: true }) : equipObjective(target.id, { clock: true })
+  for (let i = 0; i < 4; i++) {
+    const r = await attempt()
+    if (r.ok) return { ...r, stashed }
+    if (!r.reasons || !r.reasons.some(x => /slot|heavy|mythic/i.test(x))) return { ...r, stashed }
+    const L = await fetchLoadout()
+    const victim = L.board.filter(b => !b.equipped && !b.meeting && b.id !== target.id).sort((a, b) => String(a.activated_at || '').localeCompare(String(b.activated_at || '')))[0]
+    if (!victim) return { ...r, stashed }
+    await stash(victim.id); stashed.push(victim.title)
+  }
+  return { ok: false, reasons: ['could not make room'], stashed }
 }

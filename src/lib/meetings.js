@@ -66,3 +66,18 @@ export async function createFollowUps(lines, { day, subject }) {
   if (error) throw error
   return data || []
 }
+
+// Meeting timer, the same writes the Agenda page makes: Start opens the
+// session on the event, Stop closes it and logs the hours to Harvest. A running
+// meeting takes one Loadout slot (David, 10/14).
+export async function startMeetingTimer(e, day) {
+  return upsertSession({ event_id: e.id, day, subject: e.subject || null, started_at: new Date().toISOString() })
+}
+export async function stopMeetingTimer(e, session, day) {
+  const nowIso = new Date().toISOString()
+  const hours = Math.round(((Number(session?.hours) || 0) + hoursBetween(session?.started_at || nowIso, nowIso)) * 100) / 100
+  await upsertSession({ event_id: e.id, day, subject: e.subject || null, stopped_at: nowIso, hours })
+  let logged = false
+  try { await logToHarvest(e.subject || '(no subject)', hours); logged = true; await upsertSession({ event_id: e.id, harvest_logged: true }) } catch { /* Harvest down: the session row still holds the hours */ }
+  return { hours, logged }
+}
