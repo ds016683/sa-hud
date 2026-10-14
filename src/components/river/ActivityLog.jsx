@@ -51,7 +51,9 @@ export function Timeline({ view, loading }) {
       <div style={{ fontSize: 12.5, color: GRAY, marginTop: 4 }}>The record fills as the day moves.</div>
     </div>
   )
-  return <div style={{ paddingTop: 6 }}>{view.rows.map((r, i) => <TimelineRow key={i} r={r} last={i === view.rows.length - 1} />)}</div>
+  // Newest at the top (David, 10/14): the record reads down into the past.
+  const rows = [...view.rows].reverse()
+  return <div style={{ paddingTop: 6 }}>{rows.map((r, i) => <TimelineRow key={i} r={r} last={i === rows.length - 1} />)}</div>
 }
 
 export default function ActivityLogModal({ onClose, initialDay = null }) {
