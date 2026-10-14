@@ -105,7 +105,7 @@ const Fact = ({ label, children }) => <div style={{ padding: '7px 0' }}><div sty
 function MeetingSlot({ it, n, act }) {
   const ends = it.ends_at ? new Date(it.ends_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'America/Chicago' }) : null
   return (
-    <div style={{ ...slotBox(GREEN, 'rgba(67,211,146,0.07)'), gridColumn: 'span 1' }}>
+    <div style={{ ...slotBox(BLUE, 'rgba(169,201,232,0.08)'), gridColumn: 'span 1' }}>
       <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
         <BadgeMedallion id="toastmaster" size={50} color={BLUE} />
         <div style={{ flex: 1, minWidth: 0, display: 'grid', gap: 2 }}>
@@ -143,7 +143,7 @@ function FilledSlot({ it, n, act, onOpen, onExtract, onRecall }) {
   const due = fmtDue(it.due_date)
   const late = it.due_date && it.due_date < new Date().toISOString().slice(0, 10)
   return (
-    <div style={{ ...slotBox(it.equipped ? GREEN : PANEL_BORDER, it.equipped ? 'rgba(67,211,146,0.07)' : 'rgba(255,255,255,0.03)'), gridColumn: `span ${span}` }}>
+    <div style={{ ...slotBox(it.equipped ? BLUE : `${BLUE}66`, it.equipped ? 'rgba(169,201,232,0.08)' : 'rgba(169,201,232,0.035)'), gridColumn: `span ${span}` }}>
       <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
         <BadgeMedallion id={badgeFor(it)} size={50} color={colorOf(it.kind, it.size)} />
         <div style={{ flex: 1, minWidth: 0, display: 'grid', gap: 2 }}>
@@ -176,9 +176,9 @@ function FilledSlot({ it, n, act, onOpen, onExtract, onRecall }) {
 
 function EmptySlot({ n }) {
   return (
-    <div style={{ ...slotBox('rgba(255,255,255,0.14)', 'transparent', true), justifyContent: 'center', alignItems: 'center', textAlign: 'center' }}>
-      <Notches from={n - 1} span={1} color="rgba(255,255,255,0.28)" />
-      <Label style={{ marginBottom: 0 }}>Slot {n} · empty</Label>
+    <div style={{ ...slotBox(`${GREEN}99`, 'rgba(67,211,146,0.03)', true), justifyContent: 'center', alignItems: 'center', textAlign: 'center' }}>
+      <Notches from={n - 1} span={1} color={`${GREEN}88`} />
+      <Label style={{ marginBottom: 0, color: GREEN }}>Slot {n} · empty</Label>
       <div style={{ fontFamily: SERIF, fontSize: 15, color: 'rgba(234,241,248,0.4)' }}>Load from what is due</div>
       <div style={{ fontSize: 11, color: GRAY, lineHeight: 1.5 }}>a Side Mission, a Main Mission task, or tell Lumen</div>
     </div>
@@ -205,7 +205,7 @@ function AdHocSlot({ item, act, onDispatch, onOpen, onChanged, onRecall }) {
   if (item) {
     const since = item.activated_at ? new Date(item.activated_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'America/Chicago' }) : null
     return (
-      <div style={{ ...slotBox(item.equipped ? GREEN : `${BLUE}66`, item.equipped ? 'rgba(67,211,146,0.07)' : 'rgba(169,201,232,0.05)'), minHeight: 0, flex: '1 1 auto' }}>
+      <div style={{ ...slotBox(item.equipped ? BLUE : `${BLUE}66`, item.equipped ? 'rgba(169,201,232,0.08)' : 'rgba(169,201,232,0.035)'), minHeight: 0, flex: '1 1 auto' }}>
         <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
           <BadgeMedallion id="impromptu" size={50} color={BLUE} />
           <div style={{ flex: 1, minWidth: 0, display: 'grid', gap: 2 }}>
@@ -232,7 +232,7 @@ function AdHocSlot({ item, act, onDispatch, onOpen, onChanged, onRecall }) {
     )
   }
   return (
-    <div style={{ ...slotBox(`${BLUE}55`, 'rgba(169,201,232,0.04)', true), minHeight: 0, flex: '1 1 auto' }}>
+    <div style={{ ...slotBox(`${GREEN}99`, 'rgba(67,211,146,0.03)', true), minHeight: 0, flex: '1 1 auto' }}>
       <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
         <BadgeMedallion id="impromptu" size={50} color={BLUE} earned={false} />
         <div style={{ flex: 1, minWidth: 0, display: 'grid', gap: 2 }}>
@@ -288,7 +288,7 @@ function RoutineSlot({ tick, onChanged }) {
   }
   const Icon = chore ? (ROUTINE_ICON[chore.slug] || Zap) : Zap
   if (running) return (
-    <div style={{ ...slotBox(GREEN, 'rgba(67,211,146,0.07)'), minHeight: 0, flex: '0 0 auto' }}>
+    <div style={{ ...slotBox(BLUE, 'rgba(169,201,232,0.08)'), minHeight: 0, flex: '0 0 auto' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
         <Icon size={12} color={GREEN} /><Label style={{ marginBottom: 0, color: GREEN }}>Routine · on</Label><span style={{ flex: 1 }} />
         <span style={{ fontFamily: MONO, fontSize: 10, color: GREEN, letterSpacing: '0.6px' }}>running · {fmtClock(mins)}</span>
@@ -302,9 +302,9 @@ function RoutineSlot({ tick, onChanged }) {
     </div>
   )
   return (
-    <div style={{ ...slotBox('rgba(255,255,255,0.14)', 'transparent', true), minHeight: 0, flex: '0 0 auto' }}>
+    <div style={{ ...slotBox(`${GREEN}99`, 'rgba(67,211,146,0.03)', true), minHeight: 0, flex: '0 0 auto' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-        <Label style={{ marginBottom: 0 }}>Routine · nothing on</Label>
+        <Label style={{ marginBottom: 0, color: GREEN }}>Routine · nothing on</Label>
       </div>
       <div style={{ fontFamily: SERIF, fontSize: 15, color: 'rgba(234,241,248,0.6)' }}>Nothing recurring is on</div>
       <div style={{ fontSize: 11, color: GRAY, lineHeight: 1.5 }}>Start one from the Console below, or tell Lumen. It shows up here with its clock.</div>
