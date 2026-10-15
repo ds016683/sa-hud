@@ -198,21 +198,27 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
                       : <div onClick={() => setEditStar(true)} title="Click to edit" style={{ fontFamily: SERIF, fontStyle: 'italic', fontSize: 19, lineHeight: 1.45, color: INK, borderLeft: `2px solid ${BLUE}`, paddingLeft: 12, cursor: 'text' }}>{obj.north_star}</div>}
                   </div>
 
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 16, borderTop: `1px solid ${PANEL_BORDER}`, borderBottom: `1px solid ${PANEL_BORDER}`, padding: '14px 0' }}>
-                    <div><Label>Where It Came From</Label><div style={{ fontSize: 13.5, color: INK, lineHeight: 1.4 }}>{prov.label}</div><div style={{ fontSize: 11.5, color: GRAY, marginTop: 2 }}>{prov.detail}</div></div>
-                    <div><Label>Captured</Label><div style={{ fontSize: 13.5, color: INK }}>{obj.captured_at ? new Date(obj.captured_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'unknown'}</div><div style={{ fontSize: 11.5, color: GRAY, marginTop: 2 }}>{obj.state === 'released' ? `released ${obj.released_at ? obj.released_at.slice(0, 10) : ''}` : obj.state === 'active' ? 'on the Board' : (obj.state || '').replace('_', ' ')}</div></div>
-                    <div><Label>Realm</Label><div style={{ display: 'flex', gap: 4 }}>{[['third-horizon', 'Third Horizon'], ['personal', 'Personal']].map(([k, l]) => <button key={k} onClick={() => patchObj({ tags: [...new Set([...(obj.tags || []).filter(t => t !== 'personal'), ...(k === 'personal' ? ['personal'] : [])])] })} style={{ ...btn(realm === k ? (k === 'personal' ? GOLD : BLUE) : INK2, realm === k), padding: '4px 8px' }}>{l}</button>)}</div></div>
-                    <div><Label>Type</Label><div style={{ display: 'flex', gap: 4 }}>{Object.entries(SIZES).map(([k, sdef]) => <button key={k} onClick={() => setSize(obj.id, k).then(load)} title={sdef.sub} style={{ ...btn(sz === k ? sdef.color : INK2, sz === k), padding: '4px 8px' }}>{sdef.label}</button>)}</div></div>
-                    <div><Label>Due</Label><input type="date" value={obj.due_date || ''} onChange={e => patchObj({ due_date: e.target.value || null })} style={field} /></div>
-                    <div><Label>Follow Up</Label><input type="date" value={obj.follow_up_date || ''} onChange={e => patchObj({ follow_up_date: e.target.value || null })} style={field} /></div>
-                    <div><Label>Who</Label><input defaultValue={obj.stakeholder || ''} onBlur={e => { if ((e.target.value || '') !== (obj.stakeholder || '')) patchObj({ stakeholder: e.target.value || null }) }} placeholder="stakeholder" style={{ ...field, fontFamily: 'inherit', fontSize: 13 }} /></div>
-                  </div>
+                  {(() => { const seg = (on, color) => ({ ...btn(on ? color : INK2, on), padding: '5px 10px', whiteSpace: 'nowrap', borderRadius: 8 }); const cell = { display: 'grid', gap: 6, alignContent: 'start' }; return (
+                    <div style={{ borderTop: `1px solid ${PANEL_BORDER}`, borderBottom: `1px solid ${PANEL_BORDER}`, padding: '14px 0', display: 'grid', gap: 16 }}>
+                      <div style={{ display: 'flex', gap: 28, flexWrap: 'wrap', alignItems: 'flex-start' }}>
+                        <div style={cell}><Label style={{ marginBottom: 0 }}>Realm</Label><div style={{ display: 'flex', gap: 4 }}>{[['third-horizon', 'Third Horizon'], ['personal', 'Personal']].map(([k, l]) => <button key={k} onClick={() => patchObj({ tags: [...new Set([...(obj.tags || []).filter(t => t !== 'personal'), ...(k === 'personal' ? ['personal'] : [])])] })} style={seg(realm === k, k === 'personal' ? GOLD : BLUE)}>{l}</button>)}</div></div>
+                        <div style={cell}><Label style={{ marginBottom: 0 }}>Type</Label><div style={{ display: 'flex', gap: 4 }}>{Object.entries(SIZES).map(([k, sdef]) => <button key={k} onClick={() => setSize(obj.id, k).then(load)} title={sdef.sub} style={seg(sz === k, sdef.color)}>{sdef.label}</button>)}</div></div>
+                        <div style={cell}><Label style={{ marginBottom: 0 }}>Due</Label><input type="date" value={obj.due_date || ''} onChange={e => patchObj({ due_date: e.target.value || null })} style={{ ...field, width: 150 }} /></div>
+                        <div style={cell}><Label style={{ marginBottom: 0 }}>Follow Up</Label><input type="date" value={obj.follow_up_date || ''} onChange={e => patchObj({ follow_up_date: e.target.value || null })} style={{ ...field, width: 150 }} /></div>
+                        <div style={{ ...cell, flex: 1, minWidth: 180 }}><Label style={{ marginBottom: 0 }}>Who</Label><input defaultValue={obj.stakeholder || ''} onBlur={e => { if ((e.target.value || '') !== (obj.stakeholder || '')) patchObj({ stakeholder: e.target.value || null }) }} placeholder="the person this is for or with" style={{ ...field, fontFamily: 'inherit', fontSize: 13, width: '100%', maxWidth: 320 }} /></div>
+                      </div>
+                      <div style={{ display: 'flex', gap: 28, flexWrap: 'wrap', fontSize: 13, color: INK2 }}>
+                        <span><span style={{ fontFamily: MONO, fontSize: 9, letterSpacing: '1.2px', textTransform: 'uppercase', color: GRAY, marginRight: 8 }}>Captured</span>{obj.captured_at ? new Date(obj.captured_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'unknown'}<span style={{ color: GRAY }}> · {obj.state === 'released' ? `released ${obj.released_at ? obj.released_at.slice(0, 10) : ''}` : obj.state === 'active' ? 'on the Board' : (obj.tags || []).includes('stashed') ? 'in the Stash' : (obj.state || '').replace('_', ' ')}</span></span>
+                        <span><span style={{ fontFamily: MONO, fontSize: 9, letterSpacing: '1.2px', textTransform: 'uppercase', color: GRAY, marginRight: 8 }}>From</span>{prov.label}{prov.label !== 'Added by hand' && prov.detail ? <span style={{ color: GRAY }}> · {prov.detail}</span> : null}</span>
+                      </div>
+                    </div>
+                  ) })()}
 
                   {(item.description || obj.description) && <div><Label>Back Story</Label><div style={{ fontSize: 14.5, lineHeight: 1.65, color: INK, whiteSpace: 'pre-wrap' }}>{item.description || obj.description}</div></div>}
 
                   <div>
                     <Label>{sz === 'heavy' ? 'Gates · Mythic Tasks, 10 Miles Each, Five At Most' : sz === 'medium' ? 'Marks · What Has To Happen, Three At Most' : 'Marks'}</Label>
-                    {max === 0 && <div style={{ fontSize: 13, color: GRAY }}>A Bounty is one action; it carries no marks. Make it a Contract for up to three, a Mythic for five paid gates.</div>}
+                    {max === 0 && <div style={{ fontSize: 13, color: GRAY }}>A Bounty is one action and carries no marks.</div>}
                     {max > 0 && rel.steps === null && <div style={{ fontSize: 12.5, color: GRAY }}>Steps are not set up yet. Run sql/2026-10-07-side-missions-archive.sql in the Ledger and they appear here.</div>}
                     {max > 0 && Array.isArray(rel.steps) && rel.steps.map((st, i) => (
                       <div key={st.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 0', borderTop: `1px solid ${PANEL_BORDER}` }}>
@@ -272,13 +278,12 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
                   <div style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '1px', color: GRAY, textTransform: 'uppercase', marginTop: 4 }}>{task.status}{task.due_date ? ` · due ${task.due_date}` : ''}</div>
                 </div>
               )}
-              <div style={{ display: 'flex', gap: 22, flexWrap: 'wrap', alignItems: 'flex-end', borderTop: `1px solid ${PANEL_BORDER}`, paddingTop: 14 }}>
-                {loaded && <div><Label>Clock Today</Label><div style={{ fontFamily: SERIF, fontSize: 20, color: loaded.equipped ? GREEN : INK }}>{fmtClock(loaded.minutes_today)}</div></div>}
-                {loaded && <div><Label>State</Label><div style={{ fontFamily: SERIF, fontSize: 20, color: INK }}>{loaded.equipped ? 'Equipped' : 'Holstered'}</div></div>}
-                <div style={{ marginLeft: 'auto', display: 'flex', gap: 14, flexWrap: 'wrap', fontFamily: MONO, fontSize: 9.5, letterSpacing: '1px', textTransform: 'uppercase', color: GRAY }}>
-                  <span>{counts.artifacts} artifact{counts.artifacts === 1 ? '' : 's'}</span><span>{counts.sessions} session{counts.sessions === 1 ? '' : 's'}</span><span>{counts.files} file{counts.files === 1 ? '' : 's'}</span><span>{counts.notes} note{counts.notes === 1 ? '' : 's'}</span>
+              {loaded && (
+                <div style={{ display: 'flex', gap: 22, flexWrap: 'wrap', alignItems: 'flex-end', borderTop: `1px solid ${PANEL_BORDER}`, paddingTop: 14 }}>
+                  <div><Label>Clock Today</Label><div style={{ fontFamily: SERIF, fontSize: 20, color: loaded.equipped ? GREEN : INK }}>{fmtClock(loaded.minutes_today)}</div></div>
+                  <div><Label>State</Label><div style={{ fontFamily: SERIF, fontSize: 20, color: INK }}>{loaded.equipped ? 'Equipped' : 'Holstered'}</div></div>
                 </div>
-              </div>
+              )}
               {!item.description && !task?.notes && !rel.project && !item.event && !loaded && !obj && <div style={{ fontSize: 13, color: GRAY }}>No back story on this one yet.</div>}
             </div>
           )}
