@@ -1316,7 +1316,8 @@ export async function callTool(name, args = {}) {
       const eid = `adhoc:${day}:${slug}`
       const start = `${day}T13:00:00.000Z`, end = new Date(new Date(start).getTime() + hours * 3600e3).toISOString()
       let harvest = null
-      try { harvest = await setHours(title, hours, day) } catch (e) { harvest = { error: String(e.message || e) } }
+      // A whole day can be one block (David, 10/16: 8 AM to 11 PM); the usual 12-hour ceiling does not apply here, 20 does.
+      try { harvest = await setHours(title, hours, day, 20) } catch (e) { harvest = { error: String(e.message || e) } }
       const cur = (await sb(`meeting_sessions?select=event_id&event_id=eq.${encodeURIComponent(eid)}&limit=1`))[0] || null
       await putSession(cur, { event_id: eid, day, subject: title, started_at: start, stopped_at: end, hours, harvest_logged: !!harvest?.ok, special_notes: args.note ? String(args.note).slice(0, 300) : null })
       boardLog(`Amended ${day}: ${title} · ${hours}h`)

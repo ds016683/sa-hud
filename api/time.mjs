@@ -37,11 +37,11 @@ async function harvest(path, { method = 'GET', body } = {}) {
 const chiToday = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Chicago', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date())
 
 // Log a completed span to Harvest: one entry per title per day (appends).
-export async function logHours(title, hours, day = null) {
+export async function logHours(title, hours, day = null, ceiling = MAX_HOURS) {
   const h = Math.round(Number(hours) * 100) / 100
   if (!title || !Number.isFinite(h)) return { error: 'title and hours required' }
   if (h < MIN_HOURS) return { ok: true, note: `span ${h}h under minimum; not logged` }
-  if (h > MAX_HOURS) return { error: `span ${h}h over sanity ceiling` }
+  if (h > ceiling) return { error: `span ${h}h over sanity ceiling (${ceiling}h)` }
   const today = /^\d{4}-\d{2}-\d{2}$/.test(String(day || '')) ? day : chiToday()
   const notes = NOTE_PREFIX + String(title).slice(0, 200)
   const me = await harvest('users/me')
@@ -57,10 +57,10 @@ export async function logHours(title, hours, day = null) {
 }
 
 // Set today's Harvest entry for a title to exactly `hours` (create if absent).
-export async function setHours(title, hours, day = null) {
+export async function setHours(title, hours, day = null, ceiling = MAX_HOURS) {
   const h = Math.round(Number(hours) * 100) / 100
   if (!title || !Number.isFinite(h) || h <= 0) return { error: 'title and positive hours required' }
-  if (h > MAX_HOURS) return { error: `span ${h}h over sanity ceiling` }
+  if (h > ceiling) return { error: `span ${h}h over sanity ceiling (${ceiling}h)` }
   const today = /^\d{4}-\d{2}-\d{2}$/.test(String(day || '')) ? day : chiToday()
   const notes = NOTE_PREFIX + String(title).slice(0, 200)
   const me = await harvest('users/me')
