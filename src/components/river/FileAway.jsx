@@ -68,8 +68,9 @@ export default function FileAway({ objective: o, pockets: P, onClose, onDone }) 
           <div><Label>Minutes</Label><input type="number" min="0" value={minutes} onChange={e => setMinutes(e.target.value)} placeholder="clock" style={field} /></div>
         </div>
         <div style={{ marginTop: 14 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}><Label style={{ marginBottom: 0 }}>Summary for the Archive</Label><span style={{ flex: 1 }} /><button onClick={draft} disabled={drafting} style={btn(BLUE, false, { opacity: drafting ? 0.6 : 1 })}><Sparkles size={11} /> {drafting ? 'Lumen is drafting…' : 'Ask Lumen'}</button></div>
-          <textarea rows={3} value={summary} onChange={e => setSummary(e.target.value)} placeholder="Two sentences: what this was and what came of it." style={{ ...field, marginTop: 6, resize: 'vertical' }} />
+          {o.north_star && <div style={{ fontFamily: SERIF, fontStyle: 'italic', fontSize: 14, lineHeight: 1.45, color: INK2, borderLeft: `2px solid ${BLUE}`, paddingLeft: 10, marginBottom: 10 }}>{o.north_star}</div>}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}><Label style={{ marginBottom: 0, color: BLUE }}>Achieved · Is It True? What's Different Now?</Label><span style={{ flex: 1 }} /><button onClick={draft} disabled={drafting} style={btn(BLUE, false, { opacity: drafting ? 0.6 : 1 })}><Sparkles size={11} /> {drafting ? 'Lumen is drafting…' : 'Ask Lumen'}</button></div>
+          <textarea rows={3} value={summary} onChange={e => setSummary(e.target.value)} placeholder="In your words. What is different now that this is done?" style={{ ...field, marginTop: 6, resize: 'vertical' }} />
           <input value={notes} onChange={e => setNotes(e.target.value)} placeholder="Anything else to keep with it (optional)" style={{ ...field, marginTop: 8 }} />
         </div>
         {err && <div style={{ fontSize: 12, color: RED, marginTop: 10 }}>{err}</div>}

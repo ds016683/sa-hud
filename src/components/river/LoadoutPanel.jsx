@@ -18,6 +18,7 @@ import { DispatchModal } from './AmbushPanel'
 import { pockets } from '../../lib/objectives'
 import FileAway from './FileAway'
 import { fetchLoadout, equip, holster, stash, extract, addImpromptu, fmtClock, SIZES, SLOTS, sizeOf, chiToday, fetchStash, returnToInventory, equipObjective, STASH_MAX, logBoard } from '../../lib/loadout'
+import { fileAchieved } from '../../lib/archive'
 import { Undo2, ArrowUpToLine, ScrollText } from 'lucide-react'
 import ActivityLogModal from './ActivityLog'
 import ItemDetail from './ItemDetail'
@@ -47,7 +48,7 @@ function ExtractModal({ item, onClose, onDone }) {
   }, [onClose])
   const go = async () => {
     setBusy(true); setErr(null)
-    try { const r = await extract(item, { minutes: Number(minutes) || 0, note: note.trim() || null }); onDone(r) }
+    try { if (note.trim()) await fileAchieved(item, note.trim()); const r = await extract(item, { minutes: Number(minutes) || 0, note: note.trim() || null }); onDone(r) }
     catch (e) { setErr(e.message); setBusy(false) }
   }
   const field = { width: '100%', background: 'rgba(255,255,255,0.05)', border: `1px solid ${PANEL_BORDER}`, borderRadius: 8, color: INK, padding: '8px 10px', fontSize: 13, fontFamily: 'inherit' }
@@ -70,8 +71,9 @@ function ExtractModal({ item, onClose, onDone }) {
             <div style={{ fontSize: 10.5, color: GRAY, marginTop: 4 }}>minutes · clocked {fmtClock(item.minutes_today)}</div>
           </div>
           <div>
-            <Label>Anything to file?</Label>
-            <textarea rows={3} value={note} onChange={e => setNote(e.target.value)} placeholder="A receipt, a conversation, a note. Leave blank if nothing." style={{ ...field, resize: 'vertical' }} />
+            {item.north_star && <div style={{ fontFamily: SERIF, fontStyle: 'italic', fontSize: 13, lineHeight: 1.45, color: INK2, borderLeft: `2px solid ${BLUE}`, paddingLeft: 9, marginBottom: 8 }}>{item.north_star}</div>}
+            <Label style={{ color: BLUE }}>Achieved · Is It True? What's Different Now?</Label>
+            <textarea rows={3} value={note} onChange={e => setNote(e.target.value)} placeholder="In your words. It lands on the yay page under the star." style={{ ...field, resize: 'vertical' }} />
           </div>
         </div>
         <div style={{ fontSize: 11.5, color: GRAY, marginTop: 10 }}>{item.personal ? 'Personal time stays out of Harvest; the clock is kept in the Ledger.' : 'The clock is kept in the Ledger. Harvest is for Third Horizon work you log yourself.'} Miles bank on the next update.</div>

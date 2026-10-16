@@ -57,7 +57,7 @@ export async function fileObjective(o, pockets, { realm, summary, picks, notes }
   const root = archiveRoot(o.title)
   const base = { realm, source_kind: 'objective', source_id: o.id, source_title: o.title, tags: (o.tags || []).filter(t => !['personal', 'third-horizon'].includes(t)) }
   const filed = []
-  if (summary && summary.trim()) filed.push(await fileEntry({ ...base, kind: 'summary', title: o.title, summary: summary.trim(), body: { description: o.description || null, steps: (pockets.steps || []).map(s => ({ text: s.text, done: s.done })), notes: notes || null } }))
+  if (summary && summary.trim()) filed.push(await fileEntry({ ...base, kind: 'summary', title: o.title, summary: summary.trim(), body: { achieved: summary.trim(), north_star: o.north_star || null, description: o.description || null, steps: (pockets.steps || []).map(s => ({ text: s.text, done: s.done })), notes: notes || null } }))
   for (const a of pockets.artifacts.filter(a => picks.artifacts.includes(a.slug))) {
     filed.push(await fileEntry({ ...base, kind: a.kind === 'decision' ? 'decision' : 'artifact', title: a.title, summary: a.doc?.question || a.doc?.summary || null, body: a.doc || null, bucket: BUCKET, path: `${a.root}/artifacts/${a.slug}.json` }))
   }
@@ -79,4 +79,11 @@ export async function fileProject(project, { artifacts = [], boards = [], realm 
   for (const a of artifacts) filed.push(await fileEntry({ ...base, kind: a.kind === 'decision' ? 'decision' : 'artifact', title: a.title, summary: a.doc?.question || null, body: a.doc || null, bucket: BUCKET, path: `${project.id}/artifacts/${a.slug}.json` }))
   for (const b of boards) filed.push(await fileEntry({ ...base, kind: 'board', title: b.title, summary: `${b.done}/${b.total} done`, body: { phases: b.phases } }))
   return filed
+}
+
+// Achieved alone (David, 10/16): an extract with nothing else to file still
+// records his answer to "Is it true? What's different now?" for the yay page.
+export async function fileAchieved(item, text) {
+  const t = String(text || '').trim(); if (!t) return null
+  return fileEntry({ realm: item.personal ? 'personal' : 'third-horizon', source_kind: 'objective', source_id: item.id, source_title: item.title, tags: [], kind: 'summary', title: item.title, summary: t, body: { achieved: t, north_star: item.north_star || null } })
 }

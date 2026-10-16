@@ -170,7 +170,7 @@ const OBJ_STATES = ['active', 'parked', 'waiting', 'follow_up', 'foreman', 'rele
 async function findObjective(title) {
   const q = esc(title || '')
   if (!q) throw new Error('title required')
-  const exact = await sb(`objectives?select=id,title,state,due_date,follow_up_date,activated_at,tags,effort&deleted_at=is.null&title=ilike.${encodeURIComponent(q)}&limit=5`)
+  const exact = await sb(`objectives?select=id,title,state,due_date,follow_up_date,activated_at,tags,effort,north_star&deleted_at=is.null&title=ilike.${encodeURIComponent(q)}&limit=5`)
   if (exact.length === 1) return exact[0]
   const like = await sb(`objectives?select=id,title,state,due_date,follow_up_date,activated_at,tags,effort&deleted_at=is.null&title=ilike.*${encodeURIComponent(q)}*&order=captured_at.desc&limit=5`)
   if (like.length === 1) return like[0]
@@ -348,8 +348,8 @@ export const TOOLS = [
   },
   {
     name: 'close_out',
-    description: "Close out a Side Mission the HUD's way. First call with just the title: it reports what the mission is carrying (artifacts, files, session boards, open steps). Carrying nothing: it releases at once (clock kept in the Ledger, linked task closed, miles on the next update). Carrying something: it stops and asks; call again with file_away true (realm 'personal' | 'third-horizon', a two-sentence summary) to file the content into the Archive and release, or discard true to release without filing. minutes and note as on move_objective.",
-    inputSchema: { type: 'object', properties: { title: { type: 'string' }, file_away: { type: 'boolean' }, discard: { type: 'boolean' }, realm: { type: 'string' }, summary: { type: 'string' }, minutes: { type: 'number' }, note: { type: 'string' } }, required: ['title'] },
+    description: "Close out a Side Mission the HUD's way. Before the final call, read the mission's North Star back to David and ask one question: 'Is it true? What's different now?' His answer is Achieved: pass it as `achieved`, in his words, never drafted. First call with just the title: it reports what the mission is carrying (artifacts, files, session boards, open steps). Carrying nothing: it releases at once (clock kept in the Ledger, linked task closed, miles on the next update) and files Achieved. Carrying something: it stops and asks; call again with file_away true (realm 'personal' | 'third-horizon') to file the content into the Archive and release, or discard true to release without filing. minutes and note as on move_objective.",
+    inputSchema: { type: 'object', properties: { title: { type: 'string' }, achieved: { type: 'string', description: "David's answer to 'Is it true? What's different now?', verbatim" }, file_away: { type: 'boolean' }, discard: { type: 'boolean' }, realm: { type: 'string' }, summary: { type: 'string', description: 'legacy; use achieved' }, minutes: { type: 'number' }, note: { type: 'string' } }, required: ['title'] },
   },
   {
     name: 'update_project_task',
@@ -829,10 +829,12 @@ export async function callTool(name, args = {}) {
       const carrying = arts.length + files.length + myBoards.length > 0
       if (carrying && !args.file_away && !args.discard) return JSON.stringify({ ok: false, carrying: true, inventory, note: 'This Side Mission is carrying content. Ask David: file it to the Archive (call again with file_away true, realm, and a two-sentence summary) or close without filing (discard true).' })
       const filed = []
+      const realm = args.realm === 'personal' ? 'personal' : ((o.tags || []).includes('personal') ? 'personal' : 'third-horizon')
+      const base = { realm, source_kind: 'objective', source_id: o.id, source_title: o.title, tags: (o.tags || []).filter(t => !['personal', 'third-horizon'].includes(t)), filed_by: 'lumen' }
+      // Achieved (David, 10/16): his answer to "Is it true? What's different now?", filed on every close, carrying or not; the yay page reads it under the star.
+      const achievedText = String(args.achieved || args.summary || '').trim()
+      if (achievedText) filed.push(await sbWrite('POST', 'archive_entries', { ...base, kind: 'summary', title: o.title, summary: achievedText.slice(0, 4000), body: { achieved: achievedText.slice(0, 4000), north_star: o.north_star || null, steps: steps.map(st => ({ text: st.text, done: st.done })) } }))
       if (carrying && args.file_away) {
-        const realm = args.realm === 'personal' ? 'personal' : ((o.tags || []).includes('personal') ? 'personal' : 'third-horizon')
-        const base = { realm, source_kind: 'objective', source_id: o.id, source_title: o.title, tags: (o.tags || []).filter(t => !['personal', 'third-horizon'].includes(t)), filed_by: 'lumen' }
-        if (args.summary) filed.push(await sbWrite('POST', 'archive_entries', { ...base, kind: 'summary', title: o.title, summary: String(args.summary).slice(0, 4000), body: { steps: steps.map(st => ({ text: st.text, done: st.done })) } }))
         for (const f of arts) { const d = await readArtifact(root, f.name.replace(/\.json$/, '')).catch(() => null); filed.push(await sbWrite('POST', 'archive_entries', { ...base, kind: d?.kind === 'decision' ? 'decision' : 'artifact', title: d?.title || f.name, summary: d?.question || d?.summary || null, body: d, bucket: 'project-files', path: `${root}/artifacts/${f.name}` })) }
         for (const f of files) filed.push(await sbWrite('POST', 'archive_entries', { ...base, kind: 'file', title: f.name, bucket: 'project-files', path: `${root}/files/${f.name}` }))
         for (const b of myBoards) { const ts = (b.phases || []).flatMap(ph => ph.tasks || []); filed.push(await sbWrite('POST', 'archive_entries', { ...base, kind: 'board', title: b.title, summary: `${ts.filter(t => t.status === 'done').length}/${ts.length} done · ${b.project}`, body: { phases: b.phases } })) }
