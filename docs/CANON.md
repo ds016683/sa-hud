@@ -44,3 +44,7 @@ Any title for something, a header or a label, reads in Title Case: the first let
 ## Buttons
 
 The button that carries the player forward after a badge, a close, or a filed answer says **Continue**. Never "Carry on" (David, 10/16).
+
+## Live Files
+
+The files in play right now (David, 10/16). A file a session or Lumen produces for David never lands on the Desktop; it goes into Live Files: bytes in the Ledger's storage under the item it belongs to (`objectives/<id>/files/`, a Main Mission's folder, or `live/` when tied to nothing yet), one row in `live_files` as the index. The Board carries a Live Files window (drop in, tie to an item, Open, Done) and a paperclip count on every Loadout card and Stash peek; a tied file also shows under the item's Mission Briefing, Files. Versions: the same name put again supersedes the earlier row (v2, v3). Sessions use `~/.claude/hud-board/livefile.py put <file> --item "<title>"`. The final filing system comes later; Done only takes a file out of view.

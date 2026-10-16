@@ -19,8 +19,10 @@ import { pockets } from '../../lib/objectives'
 import FileAway from './FileAway'
 import { fetchLoadout, equip, holster, stash, extract, addImpromptu, fmtClock, SIZES, SLOTS, sizeOf, chiToday, fetchStash, returnToInventory, equipObjective, STASH_MAX, logBoard } from '../../lib/loadout'
 import { fileAchieved } from '../../lib/archive'
-import { Undo2, ArrowUpToLine, ScrollText } from 'lucide-react'
+import { Undo2, ArrowUpToLine, ScrollText, Paperclip } from 'lucide-react'
 import ActivityLogModal from './ActivityLog'
+import LiveFilesModal, { ClipButton } from './LiveFiles'
+import { liveCounts } from '../../lib/livefiles'
 import ItemDetail from './ItemDetail'
 import { INK, INK2, GRAY, PANEL_BORDER, GOLD, GOLD_BRIGHT, BLUE, GREEN, RED, MONO, SERIF, S, Eyebrow, Label, Panel, KIND_COLOR, KindChip, NORTH_STAR_LABEL } from './canon'
 
@@ -135,7 +137,7 @@ function MeetingSlot({ it, n, act }) {
   )
 }
 
-function FilledSlot({ it, n, act, onOpen, onExtract, onRecall, dropFromStash }) {
+function FilledSlot({ it, n, act, onOpen, onExtract, onRecall, dropFromStash, clips = 0, onFiles }) {
   const span = it.slots || 1
   const color = KIND_COLOR[it.kind] || INK2
   const main = it.kind === 'Main Mission'
@@ -175,7 +177,7 @@ function FilledSlot({ it, n, act, onOpen, onExtract, onRecall, dropFromStash }) 
           : <button onClick={() => act(() => equip(it.id), `Timer on (equipped): ${it.title}`)} title="Equip: run the clock on this, pause the rest" style={btn(INK2)}><Play size={11} /> Timer off</button>}
         <button onClick={() => act(() => stash(it.id), `Stashed: ${it.title}`)} title="Park it; it stays planned" style={btn(INK2)}><Archive size={11} /> Stash</button>
         <button onClick={() => onExtract(it)} style={btn(GOLD)}><PackageCheck size={11} /> Extract</button>
-        <span style={{ marginLeft: 'auto' }}><BrainButton onClick={() => onRecall(it)} /></span>
+        <span style={{ marginLeft: 'auto', display: 'inline-flex', gap: 6, alignItems: 'center' }}>{onFiles && <ClipButton count={clips} onClick={() => onFiles(it)} />}<BrainButton onClick={() => onRecall(it)} /></span>
       </div>
     </div>
   )
@@ -299,7 +301,7 @@ function StashStack({ items, act, onOpen, dropFromLoadout }) {
 // The Stash peek (David, 10/16): a light preview of a stashed item, not the
 // whole Briefing. Vitals, the star, the back story's first lines, and the
 // three moves: Load, Return, Open the Briefing.
-function StashPeek({ it, act, onClose, onOpenFull }) {
+function StashPeek({ it, act, onClose, onOpenFull, clips = 0, onFiles }) {
   useEffect(() => { const k = (e) => { if (e.key === 'Escape') onClose() }; window.addEventListener('keydown', k); return () => window.removeEventListener('keydown', k) }, [onClose])
   const color = colorOf(it.kind, it.size)
   const title = it.kind === 'Main Mission' ? (it.task_text || it.title).replace(/^\s*\d+\s*[·.:)-]\s*/, '') : it.title
@@ -312,6 +314,7 @@ function StashPeek({ it, act, onClose, onOpenFull }) {
             <div style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '1.4px', textTransform: 'uppercase', color }}>{it.kind === 'Main Mission' ? `Main Mission · ${it.project || ''}` : `${it.kind} · ${SIZES[it.size]?.label || ''}`} · in the Stash</div>
             <div style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 20, color: '#fff', lineHeight: 1.25, marginTop: 4 }}>{title}</div>
           </div>
+          {onFiles && <ClipButton count={clips} onClick={() => onFiles(it)} />}
           <button onClick={onClose} style={{ background: 'transparent', border: 'none', color: GRAY, cursor: 'pointer' }}><XIcon size={16} /></button>
         </div>
         <div style={{ fontFamily: SERIF, fontStyle: 'italic', fontSize: 14, lineHeight: 1.45, color: it.north_star ? INK2 : GRAY, borderLeft: `2px solid ${it.north_star ? BLUE : PANEL_BORDER}`, paddingLeft: 10 }}>{it.north_star || 'No star yet.'}</div>
@@ -406,7 +409,9 @@ export default function LoadoutPanel({ onChange, refreshKey = 0, onNavigate, bar
   const [held, setHeld] = useState([])
   const [logOpen, setLogOpen] = useState(false)
   const [peek, setPeek] = useState(null)
-  const refresh = useCallback(() => Promise.all([fetchLoadout().then(setL), fetchStash().then(setHeld)]).catch(e => console.warn('loadout', e.message)), [])
+  const [filesOpen, setFilesOpen] = useState(null)   // null | { objectiveId, title } | {}
+  const [clips, setClips] = useState({})
+  const refresh = useCallback(() => Promise.all([fetchLoadout().then(setL), fetchStash().then(setHeld), liveCounts().then(setClips)]).catch(e => console.warn('loadout', e.message)), [])
   useEffect(() => { refresh() }, [refresh, tick, refreshKey])
   useEffect(() => { const t = setInterval(() => setTick(x => x + 1), 30_000); return () => clearInterval(t) }, [])
   useEffect(() => { supabase.from('projects').select('id,name').eq('status', 'active').order('name').then(({ data }) => setProjects(Array.isArray(data) ? data : [])) }, [])
@@ -443,7 +448,8 @@ export default function LoadoutPanel({ onChange, refreshKey = 0, onNavigate, bar
       {filing && <FileAway objective={filing.o} pockets={filing.p} onClose={() => setFiling(null)} onDone={({ filed, released }) => { const id = filing.o.id; setFiling(null); setMsg(`Filed ${filed.length} to the Archive · extracted ${filing.o.title} · ${released.minutes}m`); logBoard(`Extracted: ${filing.o.title} · filed ${filed.length} to the Archive`); bump(); setYay(id) }} />}
       {recallOf && <RecallModal objectiveId={recallOf.id} taskId={recallOf.task_id || null} title={recallOf.title} onClose={() => setRecallOf(null)} />}
       {logOpen && <ActivityLogModal onClose={() => setLogOpen(false)} />}
-      {peek && <StashPeek it={peek} act={act} onClose={() => setPeek(null)} onOpenFull={(it) => setRelated({ id: it.id, objective_id: it.id, kind: it.kind, title: it.title, project: it.project, description: it.description, tags: it.tags, size: it.size })} />}
+      {filesOpen && <LiveFilesModal onClose={() => setFilesOpen(null)} filter={filesOpen.objectiveId ? filesOpen : null} items={[...(L?.items || []).filter(x => !x.meeting).map(x => ({ ...x, stashed: false })), ...held.map(x => ({ ...x, stashed: true }))]} onChanged={refresh} />}
+      {peek && <StashPeek it={peek} act={act} clips={clips[peek.id] || 0} onFiles={(x) => { setPeek(null); setFilesOpen({ objectiveId: x.id, title: x.kind === 'Main Mission' ? (x.task_text || x.title).replace(/^\s*\d+\s*[·.:)-]\s*/, '') : x.title }) }} onClose={() => setPeek(null)} onOpenFull={(it) => setRelated({ id: it.id, objective_id: it.id, kind: it.kind, title: it.title, project: it.project, description: it.description, tags: it.tags, size: it.size })} />}
       {yay && <YayPage objectiveId={yay} fresh onClose={() => setYay(null)} onOpenMission={(o) => { setYay(null); setRelated({ id: o.id, objective_id: o.id, kind: (o.tags || []).includes('impromptu') ? 'Ad Hoc' : 'Side Mission', title: o.title, description: o.description, tags: o.tags, size: sizeOf(o) }) }} />}
       {dispatch && <DispatchModal item={dispatch} projects={projects} onClose={() => setDispatch(null)} onDone={(r) => { setDispatch(null); setMsg(`Dispatched: ${dispatch.title} · ${fmtClock(r.minutes)}${r.ported.length ? ` · ported ${r.ported.length}` : ' · nothing left'} · 1 mile on the next update`); logBoard(`Dispatched: ${dispatch.title} · ${fmtClock(r.minutes)}`); bump() }} />}
       {!L ? (
@@ -451,7 +457,7 @@ export default function LoadoutPanel({ onChange, refreshKey = 0, onNavigate, bar
       ) : (
         <>
           <div className="board-slots">
-            {layout.placed.map(({ it, n }) => it.meeting ? <MeetingSlot key={it.id} it={it} n={n} act={act} /> : <FilledSlot key={it.id} it={it} n={n} act={act} onOpen={setRelated} onExtract={extractGate} onRecall={setRecallOf} dropFromStash={(id) => act(async () => { const r = await equipObjective(id, { clock: true, ignoreStamina: true }); if (!r.ok) throw new Error(r.reasons.join(' · ')) }, 'Loaded from the Stash · timer on')} />)}
+            {layout.placed.map(({ it, n }) => it.meeting ? <MeetingSlot key={it.id} it={it} n={n} act={act} /> : <FilledSlot key={it.id} it={it} n={n} act={act} onOpen={setRelated} onExtract={extractGate} onRecall={setRecallOf} clips={clips[it.id] || 0} onFiles={(x) => setFilesOpen({ objectiveId: x.id, title: x.kind === 'Main Mission' ? (x.task_text || x.title).replace(/^\s*\d+\s*[·.:)-]\s*/, '') : x.title })} dropFromStash={(id) => act(async () => { const r = await equipObjective(id, { clock: true, ignoreStamina: true }); if (!r.ok) throw new Error(r.reasons.join(' · ')) }, 'Loaded from the Stash · timer on')} />)}
             {layout.empties.map(n => <EmptySlot key={`empty-${n}`} n={n} dropFromStash={(id) => act(async () => { const r = await equipObjective(id, { clock: true, ignoreStamina: true }); if (!r.ok) throw new Error(r.reasons.join(' · ')) }, 'Loaded from the Stash · timer on')} />)}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10, minWidth: 0, alignSelf: 'stretch' }}>
               <AdHocSlot item={L.adhoc[0] || null} act={act} onDispatch={setDispatch} onOpen={setRelated} onChanged={bump} onRecall={setRecallOf} />
@@ -496,6 +502,7 @@ export default function LoadoutPanel({ onChange, refreshKey = 0, onNavigate, bar
           )}
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 10, flexWrap: 'wrap' }}>
             <button onClick={() => setLogOpen(true)} style={btn(BLUE)}><ScrollText size={11} /> Activity Log</button>
+            <button onClick={() => setFilesOpen({})} style={btn(BLUE)}><Paperclip size={11} /> Live Files{Object.values(clips).reduce((a, b) => a + b, 0) ? ` · ${Object.values(clips).reduce((a, b) => a + b, 0)}` : ''}</button>
             {msg && msg.startsWith('Could not') && <span style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '1px', color: RED, textTransform: 'uppercase' }}>{msg}</span>}
           </div>
         </>

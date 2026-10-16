@@ -137,6 +137,15 @@ async function listArtifacts(projectId) {
 }
 
 // Put a binary into the `files` bucket (receipts, photos David sends). Returns the path.
+// Live Files index: a row for anything Lumen writes or files, so the Board's
+// Live Files window sees it. Never fatal (the table may not exist yet).
+export async function indexLiveFile({ name, bucket, path, size, mime, objective_id = null, project_id = null, note = null }) {
+  try {
+    const prior = await sb(`live_files?select=id,version&path=eq.${encodeURIComponent(path)}&bucket=eq.${bucket}&superseded_by=is.null&filed_at=is.null&order=version.desc&limit=1`)
+    const ins = await sbWrite('POST', 'live_files', { user_id: DAVID, name, bucket, path, size: size || null, mime: mime || null, objective_id, project_id, note, source: 'lumen', version: prior.length ? (prior[0].version || 1) + 1 : 1 })
+    if (prior.length && ins?.[0]) await sbWrite('PATCH', `live_files?id=eq.${prior[0].id}`, { superseded_by: ins[0].id }, 'return=minimal')
+  } catch (e) { console.warn('live file index', e.message) }
+}
 export async function putFile(path, bytes, mime) {
   const res = await fetch(`${URL_BASE}/storage/v1/object/files/${path.split('/').map(encodeURIComponent).join('/')}`, {
     method: 'POST', headers: { ...sbHeaders(), 'Content-Type': mime || 'application/octet-stream', 'x-upsert': 'true' }, body: bytes,
@@ -601,6 +610,11 @@ export const TOOLS = [
     inputSchema: { type: 'object', properties: { project: { type: 'string', description: 'the exact mission name or key' } }, required: ['project'] },
   },
   {
+    name: 'list_live_files',
+    description: "Live Files (10/16): the files in play right now, newest first, each tied to a Loadout or Stash item, a Main Mission, or nothing yet. What a Claude session produced (livefile.py), what you filed (write_file, file_attachment), what David dropped on the Board. Use it for 'what files are live', 'where is the agenda', 'what do I have on X'. Optional side_mission or project narrows it.",
+    inputSchema: { type: 'object', properties: { side_mission: { type: 'string' }, project: { type: 'string' } }, required: [] },
+  },
+  {
     name: 'list_standing_orders',
     description: 'The active standing orders Lumen is holding for David.',
     inputSchema: { type: 'object', properties: {} },
@@ -926,6 +940,7 @@ export async function callTool(name, args = {}) {
       else if (ext === 'md' || ext === 'txt') { bytes = new TextEncoder().encode(String(args.content)); mime = ext === 'md' ? 'text/markdown' : 'text/plain' }
       else throw new Error('path must end in .docx, .md, or .txt')
       await putFile(path, bytes, mime)
+      await indexLiveFile({ name: path.split('/').pop(), bucket: 'files', path, size: bytes.length, mime, note: args.caption || null })
       let wa = null
       if (args.send) { try { wa = await waSendDocument(davidNumber(), bytes, { filename: path.split('/').pop(), mime, caption: args.caption || '' }) } catch (e) { wa = `send failed: ${e.message}` } }
       return JSON.stringify({ ok: true, path, bytes: bytes.length, format: ext, ...(args.send ? { sent: wa } : {}), note: 'David forwards finished documents himself; you can send_file it again any time.' })
@@ -1364,7 +1379,8 @@ export async function callTool(name, args = {}) {
       const path = `${root}/${name}`
       const up = await fetch(`${URL_BASE}/storage/v1/object/project-files/${path.split('/').map(encodeURIComponent).join('/')}`, { method: 'POST', headers: { ...sbHeaders(), 'Content-Type': pick.contentType || 'application/octet-stream', 'x-upsert': 'true' }, body: Buffer.from(await bin.arrayBuffer()) })
       if (!up.ok) throw new Error(`file upload -> ${up.status}: ${(await up.text()).slice(0, 160)}`)
-      return JSON.stringify({ ok: true, filed: name, path, size: pick.size })
+      await indexLiveFile({ name, bucket: 'project-files', path, size: pick.size, mime: pick.contentType, objective_id: root.startsWith('objectives/') ? root.split('/')[1] : null, project_id: root.startsWith('objectives/') ? null : root, note: 'from email' })
+      return JSON.stringify({ ok: true, filed: name, path, size: pick.size, live: true })
     }
     case 'set_north_star': {
       const text = String(args.text || '').trim()
@@ -1427,6 +1443,17 @@ export async function callTool(name, args = {}) {
       await sbWrite('PATCH', `projects?id=eq.${p.id}`, { status: 'deleted', archived_at: now, last_activity_at: now }, 'return=minimal')
       boardLog(`Deleted Main Mission (no miles): ${p.name}`)
       return JSON.stringify({ ok: true, deleted: p.name, closed_milestones_kept: tasks.filter(t => t.status === 'done').length, open_milestones_removed: tasks.length - tasks.filter(t => t.status === 'done').length, miles: 0 })
+    }
+    case 'list_live_files': {
+      let f = 'filed_at=is.null&superseded_by=is.null'
+      if (args.side_mission) { const o = await findObjective(args.side_mission); f += `&objective_id=eq.${o.id}` }
+      else if (args.project) { const q = esc(args.project); const ps = await sb(`projects?select=id,name&status=neq.deleted&or=(key.ilike.${encodeURIComponent(q)},name.ilike.${encodeURIComponent(q)})&limit=2`); if (ps.length !== 1) throw new Error(ps.length ? 'ambiguous project' : 'no such project'); f += `&project_id=eq.${ps[0].id}` }
+      let rows
+      try { rows = await sb(`live_files?select=id,name,bucket,path,size,source,session,version,note,objective_id,project_id,created_at&${f}&order=created_at.desc&limit=100`) } catch (e) { return JSON.stringify({ ok: false, error: /live_files/.test(e.message) ? 'the live_files table is not in the Ledger yet (David runs sql/2026-10-16-live-files.sql)' : e.message }) }
+      const oids = [...new Set(rows.map(r => r.objective_id).filter(Boolean))]; const pids = [...new Set(rows.map(r => r.project_id).filter(Boolean))]
+      const [os, ps] = await Promise.all([oids.length ? sb(`objectives?select=id,title,state&id=in.(${oids.join(',')})`) : [], pids.length ? sb(`projects?select=id,name&id=in.(${pids.join(',')})`) : []])
+      const O = new Map(os.map(o => [o.id, o])), P = new Map(ps.map(p => [p.id, p.name]))
+      return JSON.stringify(rows.map(r => ({ name: r.name, version: r.version, size: r.size, when: r.created_at, by: r.source, session: r.session, note: r.note, tied_to: r.objective_id ? { item: O.get(r.objective_id)?.title, state: O.get(r.objective_id)?.state } : r.project_id ? { mission: P.get(r.project_id) } : null, bucket: r.bucket, path: r.path })), null, 2)
     }
     case 'list_standing_orders': {
       return JSON.stringify(await sb('standing_orders?select=id,text,cadence,next_at,last_fired_at&active=eq.true&order=next_at.asc.nullslast'), null, 2)
