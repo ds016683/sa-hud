@@ -100,6 +100,9 @@ function Notches({ from, span, color }) {
 // cannon color; beside it the mission, the kind, and the type line (MMT 2 of
 // 10, Mythic · gate 3 of 5, Bounty · N/A); then the task as the biggest line;
 // miles and due; the clock and the actions; the brain at bottom right.
+// Drag and drop (David, 10/16): a card drags from the Loadout into the Stash; a Stash row drags onto the Loadout. Native HTML5 drag, one JSON payload.
+const dragPayload = (kind, id) => JSON.stringify({ kind, id })
+const readDrag = (e) => { try { return JSON.parse(e.dataTransfer.getData('text/plain') || '{}') } catch { return {} } }
 const badgeFor = (it) => it.meeting ? 'toastmaster' : it.kind === 'Main Mission' ? 'mission-task' : it.kind === 'Ad Hoc' ? 'impromptu' : it.size === 'heavy' ? 'mythic' : it.size === 'medium' ? 'contract' : 'bounty'
 const fmtDue = (d) => d ? new Date(`${d}T12:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : null
 const Fact = ({ label, children }) => <div style={{ padding: '7px 0' }}><div style={{ fontFamily: MONO, fontSize: 9, letterSpacing: '1.3px', textTransform: 'uppercase', color: GRAY, marginBottom: 2 }}>{label}</div>{children}</div>
@@ -130,7 +133,7 @@ function MeetingSlot({ it, n, act }) {
   )
 }
 
-function FilledSlot({ it, n, act, onOpen, onExtract, onRecall }) {
+function FilledSlot({ it, n, act, onOpen, onExtract, onRecall, dropFromStash }) {
   const span = it.slots || 1
   const color = KIND_COLOR[it.kind] || INK2
   const main = it.kind === 'Main Mission'
@@ -145,7 +148,7 @@ function FilledSlot({ it, n, act, onOpen, onExtract, onRecall }) {
   const due = fmtDue(it.due_date)
   const late = it.due_date && it.due_date < new Date().toISOString().slice(0, 10)
   return (
-    <div style={{ ...slotBox(it.equipped ? BLUE : `${BLUE}66`, it.equipped ? 'rgba(169,201,232,0.08)' : 'rgba(169,201,232,0.035)'), gridColumn: `span ${span}` }}>
+    <div draggable onDragStart={e => { e.dataTransfer.setData('text/plain', dragPayload('loadout', it.id)); e.dataTransfer.effectAllowed = 'move' }} onDragOver={e => { if (dropFromStash) e.preventDefault() }} onDrop={e => { const d = readDrag(e); if (d.kind === 'stash' && dropFromStash) { e.preventDefault(); dropFromStash(d.id) } }} title="Drag to the Stash" style={{ ...slotBox(it.equipped ? BLUE : `${BLUE}66`, it.equipped ? 'rgba(169,201,232,0.08)' : 'rgba(169,201,232,0.035)'), gridColumn: `span ${span}`, cursor: 'grab' }}>
       <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
         <BadgeMedallion id={badgeFor(it)} size={50} color={colorOf(it.kind, it.size)} />
         <div style={{ flex: 1, minWidth: 0, display: 'grid', gap: 2 }}>
@@ -176,9 +179,11 @@ function FilledSlot({ it, n, act, onOpen, onExtract, onRecall }) {
   )
 }
 
-function EmptySlot({ n }) {
+function EmptySlot({ n, dropFromStash }) {
+  const [over, setOver] = useState(false)
   return (
-    <div style={{ ...slotBox(`${GREEN}99`, 'rgba(67,211,146,0.03)', true), justifyContent: 'center', alignItems: 'center', textAlign: 'center' }}>
+    <div onDragOver={e => { e.preventDefault(); setOver(true) }} onDragLeave={() => setOver(false)} onDrop={e => { setOver(false); const d = readDrag(e); if (d.kind === 'stash' && dropFromStash) { e.preventDefault(); dropFromStash(d.id) } }}
+      style={{ ...slotBox(over ? GREEN : `${GREEN}99`, over ? 'rgba(67,211,146,0.12)' : 'rgba(67,211,146,0.03)', true), justifyContent: 'center', alignItems: 'center', textAlign: 'center' }}>
       <Notches from={n - 1} span={1} color={`${GREEN}88`} />
       <Label style={{ marginBottom: 0, color: GREEN }}>Slot {n} · empty</Label>
       <div style={{ fontFamily: SERIF, fontSize: 15, color: 'rgba(234,241,248,0.4)' }}>Load from what is due</div>
@@ -259,18 +264,20 @@ function AdHocSlot({ item, act, onDispatch, onOpen, onChanged, onRecall }) {
 // Each row is the item's vitals as a header: badge, title, kind, type. Click
 // opens its page. Load puts it on the Loadout; Return sends it to the
 // Missions Inventory.
-function StashStack({ items, act, onOpen }) {
+function StashStack({ items, act, onOpen, dropFromLoadout }) {
   const rows = [...(items || []).slice(0, STASH_MAX)]
   while (rows.length < STASH_MAX) rows.push(null)
+  const [over, setOver] = useState(false)
   return (
-    <div style={{ ...slotBox(`${BLUE}44`, 'rgba(169,201,232,0.025)'), minHeight: 0, gap: 6, padding: '12px 12px' }}>
+    <div onDragOver={e => { e.preventDefault(); setOver(true) }} onDragLeave={() => setOver(false)} onDrop={e => { setOver(false); const d = readDrag(e); if (d.kind === 'loadout' && dropFromLoadout) { e.preventDefault(); dropFromLoadout(d.id) } }}
+      style={{ ...slotBox(over ? BLUE : `${BLUE}44`, over ? 'rgba(169,201,232,0.10)' : 'rgba(169,201,232,0.025)'), minHeight: 0, gap: 6, padding: '12px 12px' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
         <Label style={{ marginBottom: 0, color: BLUE }}>Stash</Label><span style={{ flex: 1 }} />
         <span style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '0.8px', color: GRAY }}>{(items || []).length} of {STASH_MAX}</span>
       </div>
       <div style={{ display: 'grid', gap: 4, flex: 1 }}>
         {rows.map((it, i) => it ? (
-          <div key={it.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 8px', borderRadius: 8, border: `1px solid ${BLUE}55`, background: 'rgba(169,201,232,0.06)', minWidth: 0 }}>
+          <div key={it.id} draggable onDragStart={e => { e.dataTransfer.setData('text/plain', dragPayload('stash', it.id)); e.dataTransfer.effectAllowed = 'move' }} title="Drag onto the Loadout" style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 8px', borderRadius: 8, border: `1px solid ${BLUE}55`, background: 'rgba(169,201,232,0.06)', minWidth: 0, cursor: 'grab' }}>
             <BadgeMedallion id={badgeFor(it)} size={20} color={colorOf(it.kind, it.size)} />
             <div onClick={() => onOpen(it)} title={`${it.title}${it.north_star ? ` · ${it.north_star}` : ''}`} style={{ flex: 1, minWidth: 0, cursor: 'pointer', display: 'grid', gap: 0 }}>
               <div style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 12.5, color: INK, lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{it.kind === 'Main Mission' ? (it.task_text || it.title).replace(/^\s*\d+\s*[·.:)-]\s*/, '') : it.title}</div>
@@ -282,6 +289,42 @@ function StashStack({ items, act, onOpen }) {
         ) : (
           <div key={`empty-${i}`} style={{ height: 30, borderRadius: 8, border: `1px dashed ${GREEN}55`, display: 'flex', alignItems: 'center', paddingLeft: 10, fontFamily: MONO, fontSize: 8, letterSpacing: '1px', textTransform: 'uppercase', color: `${GREEN}99` }}>{i + 1}</div>
         ))}
+      </div>
+    </div>
+  )
+}
+
+// The Stash peek (David, 10/16): a light preview of a stashed item, not the
+// whole Briefing. Vitals, the star, the back story's first lines, and the
+// three moves: Load, Return, Open the Briefing.
+function StashPeek({ it, act, onClose, onOpenFull }) {
+  useEffect(() => { const k = (e) => { if (e.key === 'Escape') onClose() }; window.addEventListener('keydown', k); return () => window.removeEventListener('keydown', k) }, [onClose])
+  const color = colorOf(it.kind, it.size)
+  const title = it.kind === 'Main Mission' ? (it.task_text || it.title).replace(/^\s*\d+\s*[·.:)-]\s*/, '') : it.title
+  return (
+    <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 270, background: 'rgba(5,16,28,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+      <div onClick={e => e.stopPropagation()} style={{ width: 'min(520px, 100%)', background: '#0F2338', border: `1px solid ${color}55`, borderRadius: 14, padding: '22px 24px', display: 'grid', gap: 14 }}>
+        <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
+          <BadgeMedallion id={badgeFor(it)} size={48} color={color} />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '1.4px', textTransform: 'uppercase', color }}>{it.kind === 'Main Mission' ? `Main Mission · ${it.project || ''}` : `${it.kind} · ${SIZES[it.size]?.label || ''}`} · in the Stash</div>
+            <div style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 20, color: '#fff', lineHeight: 1.25, marginTop: 4 }}>{title}</div>
+          </div>
+          <button onClick={onClose} style={{ background: 'transparent', border: 'none', color: GRAY, cursor: 'pointer' }}><XIcon size={16} /></button>
+        </div>
+        <div style={{ fontFamily: SERIF, fontStyle: 'italic', fontSize: 14, lineHeight: 1.45, color: it.north_star ? INK2 : GRAY, borderLeft: `2px solid ${it.north_star ? BLUE : PANEL_BORDER}`, paddingLeft: 10 }}>{it.north_star || 'No star yet.'}</div>
+        {it.description && <div style={{ fontSize: 13, lineHeight: 1.55, color: INK2, display: '-webkit-box', WebkitLineClamp: 4, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{it.description}</div>}
+        <div style={{ display: 'flex', gap: 18, fontFamily: MONO, fontSize: 9.5, letterSpacing: '1px', textTransform: 'uppercase', color: GRAY, flexWrap: 'wrap' }}>
+          <span>{it.slots} slot{it.slots === 1 ? '' : 's'}</span>
+          <span>{it.kind === 'Main Mission' ? MILES.mmt : it.kind === 'Ad Hoc' ? MILES.adhoc : it.size === 'heavy' ? `${MILES.mythic} + gates` : it.size === 'medium' ? MILES.contract : MILES.bounty} mi on close</span>
+          {it.due_date && <span>due {new Date(`${it.due_date}T12:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>}
+        </div>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', borderTop: `1px solid ${PANEL_BORDER}`, paddingTop: 14 }}>
+          <button onClick={() => { onClose(); act(async () => { const r = await equipObjective(it.id, { clock: false, ignoreStamina: true }); if (!r.ok) throw new Error(r.reasons.join(' · ')) }, `Loaded: ${it.title}`) }} style={btn(BLUE, true)}><ArrowUpToLine size={11} /> Load onto the Loadout</button>
+          <button onClick={() => { onClose(); act(() => returnToInventory(it.id), `Returned to the inventory: ${it.title}`) }} style={btn(INK2)}><Undo2 size={11} /> Return to the inventory</button>
+          <span style={{ flex: 1 }} />
+          <button onClick={() => { onClose(); onOpenFull(it) }} style={btn(GOLD)}>Open the Briefing</button>
+        </div>
       </div>
     </div>
   )
@@ -360,6 +403,7 @@ export default function LoadoutPanel({ onChange, refreshKey = 0, onNavigate, bar
   const [yay, setYay] = useState(null)
   const [held, setHeld] = useState([])
   const [logOpen, setLogOpen] = useState(false)
+  const [peek, setPeek] = useState(null)
   const refresh = useCallback(() => Promise.all([fetchLoadout().then(setL), fetchStash().then(setHeld)]).catch(e => console.warn('loadout', e.message)), [])
   useEffect(() => { refresh() }, [refresh, tick, refreshKey])
   useEffect(() => { const t = setInterval(() => setTick(x => x + 1), 30_000); return () => clearInterval(t) }, [])
@@ -397,6 +441,7 @@ export default function LoadoutPanel({ onChange, refreshKey = 0, onNavigate, bar
       {filing && <FileAway objective={filing.o} pockets={filing.p} onClose={() => setFiling(null)} onDone={({ filed, released }) => { const id = filing.o.id; setFiling(null); setMsg(`Filed ${filed.length} to the Archive · extracted ${filing.o.title} · ${released.minutes}m`); logBoard(`Extracted: ${filing.o.title} · filed ${filed.length} to the Archive`); bump(); setYay(id) }} />}
       {recallOf && <RecallModal objectiveId={recallOf.id} taskId={recallOf.task_id || null} title={recallOf.title} onClose={() => setRecallOf(null)} />}
       {logOpen && <ActivityLogModal onClose={() => setLogOpen(false)} />}
+      {peek && <StashPeek it={peek} act={act} onClose={() => setPeek(null)} onOpenFull={(it) => setRelated({ id: it.id, objective_id: it.id, kind: it.kind, title: it.title, project: it.project, description: it.description, tags: it.tags, size: it.size })} />}
       {yay && <YayPage objectiveId={yay} fresh onClose={() => setYay(null)} onOpenMission={(o) => { setYay(null); setRelated({ id: o.id, objective_id: o.id, kind: (o.tags || []).includes('impromptu') ? 'Ad Hoc' : 'Side Mission', title: o.title, description: o.description, tags: o.tags, size: sizeOf(o) }) }} />}
       {dispatch && <DispatchModal item={dispatch} projects={projects} onClose={() => setDispatch(null)} onDone={(r) => { setDispatch(null); setMsg(`Dispatched: ${dispatch.title} · ${fmtClock(r.minutes)}${r.ported.length ? ` · ported ${r.ported.length}` : ' · nothing left'} · 1 mile on the next update`); logBoard(`Dispatched: ${dispatch.title} · ${fmtClock(r.minutes)}`); bump() }} />}
       {!L ? (
@@ -404,13 +449,13 @@ export default function LoadoutPanel({ onChange, refreshKey = 0, onNavigate, bar
       ) : (
         <>
           <div className="board-slots">
-            {layout.placed.map(({ it, n }) => it.meeting ? <MeetingSlot key={it.id} it={it} n={n} act={act} /> : <FilledSlot key={it.id} it={it} n={n} act={act} onOpen={setRelated} onExtract={extractGate} onRecall={setRecallOf} />)}
-            {layout.empties.map(n => <EmptySlot key={`empty-${n}`} n={n} />)}
+            {layout.placed.map(({ it, n }) => it.meeting ? <MeetingSlot key={it.id} it={it} n={n} act={act} /> : <FilledSlot key={it.id} it={it} n={n} act={act} onOpen={setRelated} onExtract={extractGate} onRecall={setRecallOf} dropFromStash={(id) => act(async () => { const r = await equipObjective(id, { clock: false, ignoreStamina: true }); if (!r.ok) throw new Error(r.reasons.join(' · ')) }, 'Loaded from the Stash')} />)}
+            {layout.empties.map(n => <EmptySlot key={`empty-${n}`} n={n} dropFromStash={(id) => act(async () => { const r = await equipObjective(id, { clock: false, ignoreStamina: true }); if (!r.ok) throw new Error(r.reasons.join(' · ')) }, 'Loaded from the Stash')} />)}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10, minWidth: 0, alignSelf: 'stretch' }}>
               <AdHocSlot item={L.adhoc[0] || null} act={act} onDispatch={setDispatch} onOpen={setRelated} onChanged={bump} onRecall={setRecallOf} />
               <RoutineSlot tick={tick} onChanged={bump} />
             </div>
-            <StashStack items={held} act={act} onOpen={(it) => setRelated({ id: it.id, objective_id: it.id, kind: it.kind, title: it.title, project: it.project, description: it.description, tags: it.tags, size: it.size })} />
+            <StashStack items={held} act={act} onOpen={setPeek} dropFromLoadout={(id) => act(() => stash(id), 'Stashed from the Loadout')} />
           </div>
           {(layout.overflow.length > 0 || L.adhoc.length > 1) && (
             <div style={{ marginTop: 12, borderTop: `1px solid ${PANEL_BORDER}`, paddingTop: 8 }}>
