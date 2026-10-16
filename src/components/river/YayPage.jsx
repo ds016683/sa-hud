@@ -106,7 +106,7 @@ export default function YayPage({ objectiveId, onClose, fresh = false, onOpenMis
 
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, borderTop: `1px solid ${PANEL_BORDER}`, paddingTop: 14, flexWrap: 'wrap' }}>
               {onOpenMission && <button onClick={() => onOpenMission(m.objective)} style={S.btnGhost}><ExternalLink size={11} /> Open mission page</button>}
-              <button onClick={onClose} style={S.btnPrimary}>Carry on</button>
+              <button onClick={onClose} style={S.btnPrimary}>Continue</button>
             </div>
           </div>
         )}

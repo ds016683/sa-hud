@@ -467,7 +467,7 @@ function ProjectDetail({ project, board: boardProp, api, onBack, initialTab, ini
             <div style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 22, letterSpacing: '-0.01em', color: INK, lineHeight: 1.25 }}>{award.n} · {award.title}</div>
             <div style={{ fontSize: 13, color: TEXT_DIM, lineHeight: 1.5 }}>{BADGES['mission-task'].label} · {BADGES['mission-task'].miles} miles on the River at the next update.</div>
             <div style={{ fontFamily: SERIF, fontStyle: 'italic', fontSize: 13, color: GRAY }}>{BADGES['mission-task'].lore}</div>
-            <button onClick={() => setAward(null)} style={{ ...S.btnPrimary, marginTop: 6 }}>Carry on</button>
+            <button onClick={() => setAward(null)} style={{ ...S.btnPrimary, marginTop: 6 }}>Continue</button>
           </div>
         </div>
       )}

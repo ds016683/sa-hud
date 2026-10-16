@@ -39,4 +39,8 @@ Every mission carries one line, written on the front end, labeled **What Will Be
 
 ## Labels
 
-A label like the one above reads in Title Case: the first letter of each word capitalized (David, 10/13). Mono eyebrows stay uppercase.
+Any title for something, a header or a label, reads in Title Case: the first letter of each word capitalized (David, 10/16; set first for the North Star label on 10/13 and extended to the entire system). Mono eyebrows stay uppercase. Sentences, quotes, and David's own words are not labels and keep their case.
+
+## Buttons
+
+The button that carries the player forward after a badge, a close, or a filed answer says **Continue**. Never "Carry on" (David, 10/16).
