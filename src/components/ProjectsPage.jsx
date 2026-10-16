@@ -9,7 +9,7 @@ import ItemDetail from './river/ItemDetail'
 import SessionBoard from './river/SessionBoard'
 import { listShares, archiveShare, archiveSharesFor, shareUrl } from '../lib/shares'
 import { fileProject } from '../lib/archive'
-import { equipTask } from '../lib/loadout'
+import { equipTask, stashTask, deleteMission } from '../lib/loadout'
 import { NORTH_STAR_LABEL } from './river/canon'
 import { importProject } from '../lib/cabinet'
 import BadgeMedallion from './BadgeArt'
@@ -144,10 +144,12 @@ function ProjectCard({ project, onOpen }) {
 // =============================================================================
 const Chip = ({ color, children }) => <span style={{ fontFamily: MONO, fontSize: 9, letterSpacing: '1px', textTransform: 'uppercase', color, border: `1px solid ${color}55`, borderRadius: 999, padding: '2px 7px', whiteSpace: 'nowrap' }}>{children}</span>
 
-function MilestoneRow({ n, project, task, board, api, onNavigate, onBoardChange, onAward }) {
+function MilestoneRow({ n, project, task, board, api, onNavigate, onBoardChange, onAward, objState }) {
   const open = isOpen(task)
   const blocked = isBlocked(task)
-  const onBoard = !!task.objective_id && open
+  const ost = task.objective_id ? objState?.[task.objective_id] : null
+  const onBoard = open && !!task.objective_id && (ost ? ost.state === 'active' : true)
+  const stashed = open && !!ost && ost.state === 'parked' && (ost.tags || []).includes('stashed')
   const [expanded, setExpanded] = useState(false)
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState(null)
@@ -171,6 +173,7 @@ function MilestoneRow({ n, project, task, board, api, onNavigate, onBoardChange,
     else writeBoard([...phases, { title: `${n} · ${stripNum(task.text)}`, task_id: task.id, tasks: [item] }])
   }
   const load = async () => { setBusy(true); try { const r = await equipTask(task, project.name, { clock: false }); setMsg(r.ok ? 'On the Board' : `Will not fit: ${r.reasons.join(' · ')}`); if (r.ok) api.refresh() } catch (e) { setMsg(`Could not load: ${e.message}`) } finally { setBusy(false) } }
+  const toStash = async () => { setBusy(true); try { await stashTask(task, project.name); setMsg('In the Stash'); api.refresh() } catch (e) { setMsg(`Could not stash: ${e.message}`) } finally { setBusy(false) } }
   const rename = async () => { const t = window.prompt('Milestone', stripNum(task.text)); if (!t?.trim()) return; await api.updateTask(project.id, task.id, { text: t.trim() }) }
   const doneWhen = async () => { const t = window.prompt('Done when…', task.notes || ''); if (t === null) return; await api.updateTask(project.id, task.id, { notes: t.trim() || null }) }
 
@@ -183,6 +186,7 @@ function MilestoneRow({ n, project, task, board, api, onNavigate, onBoardChange,
             <span onClick={() => setExpanded(x => !x)} title="Open this milestone" style={{ fontSize: 15, lineHeight: 1.4, color: open ? INK : GRAY, textDecoration: open ? 'none' : 'line-through', cursor: 'pointer', flex: 1, minWidth: 220 }}>{stripNum(task.text)}</span>
             {!open && <Chip color={GREEN}>closed{task.released_at ? ` ${new Date(task.released_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}` : ''} · 10 mi</Chip>}
             {open && onBoard && <Chip color={GREEN}>on the board</Chip>}
+            {stashed && <Chip color={BLUE}>in the stash</Chip>}
             {open && blocked && <Chip color={RED}>blocked · needs David</Chip>}
             {steps.length > 0 && <Chip color={stepsDone === steps.length ? GOLD : GRAY}>{stepsDone} / {steps.length} steps</Chip>}
           </div>
@@ -202,6 +206,7 @@ function MilestoneRow({ n, project, task, board, api, onNavigate, onBoardChange,
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
             <button onClick={() => setExpanded(x => !x)} style={{ ...S.btnGhost, padding: '4px 9px', fontSize: 10 }}>Open</button>
             {open && !onBoard && <button onClick={load} disabled={busy} style={{ ...S.btnGhost, padding: '4px 9px', fontSize: 10, color: GREEN, borderColor: 'rgba(67,211,146,0.4)' }}>Load</button>}
+            {open && !onBoard && !stashed && <button onClick={toStash} disabled={busy} title="Stage it in the Stash on the Board; no slot, no clock" style={{ ...S.btnGhost, padding: '4px 9px', fontSize: 10, color: BLUE, borderColor: 'rgba(169,201,232,0.4)' }}>Stash</button>}
             {open && <button onClick={addStep} style={{ ...S.btnGhost, padding: '4px 9px', fontSize: 10 }}><Plus size={10} /> Step</button>}
             {open && <button onClick={doneWhen} style={{ ...S.btnGhost, padding: '4px 9px', fontSize: 10 }}>Done when</button>}
             {open && <button onClick={rename} style={{ ...S.btnGhost, padding: '4px 9px', fontSize: 10 }}>Rename</button>}
@@ -210,7 +215,7 @@ function MilestoneRow({ n, project, task, board, api, onNavigate, onBoardChange,
               : <button onClick={() => api.toggleTask(project.id, task)} style={{ ...S.btnGhost, padding: '4px 9px', fontSize: 10 }}>Reopen</button>}
             <button onClick={() => { if (window.confirm('Delete this milestone?')) api.deleteTask(project.id, task.id) }} title="Delete" style={{ background: 'transparent', border: 'none', color: 'rgba(234,241,248,0.25)', cursor: 'pointer', padding: 4 }}><Trash2 size={12} /></button>
           </div>
-          {msg && <div style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '1px', textTransform: 'uppercase', color: msg.startsWith('Could') || msg.startsWith('Will') || msg.startsWith('No session') ? RED : GOLD, marginTop: 6 }}>{msg}</div>}
+          {msg && <div style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '1px', textTransform: 'uppercase', color: msg.startsWith('Could') || msg.startsWith('Will') || msg.startsWith('No session') ? RED : msg === 'In the Stash' ? BLUE : GOLD, marginTop: 6 }}>{msg}</div>}
         </div>
       </div>
       {expanded && <ItemDetail item={{ id: task.objective_id || task.id, objective_id: task.objective_id || null, task_id: task.id, kind: 'Main Mission', title: stripNum(task.text), project: project.name, project_id: project.id, description: task.notes }} onClose={() => setExpanded(false)} onNavigate={onNavigate} onChange={() => api.refresh()} />}
@@ -367,6 +372,14 @@ function ProjectDetail({ project, board: boardProp, api, onBack, initialTab, ini
 
   const { plan, history } = planOf(project)
   const tasks = plan.map(p => p.t)
+  const [objState, setObjState] = useState({})
+  const objIds = tasks.map(t => t.objective_id).filter(Boolean).sort().join(',')
+  useEffect(() => {
+    let on = true
+    if (!objIds) { Promise.resolve().then(() => { if (on) setObjState({}) }); return () => { on = false } }
+    sbClient2.from('objectives').select('id,state,tags').in('id', objIds.split(',')).then(({ data }) => { if (on) setObjState(Object.fromEntries((data || []).map(o => [o.id, o]))) })
+    return () => { on = false }
+  }, [objIds])
   const closed = tasks.filter(t => !isOpen(t)).length
   const pct = tasks.length ? Math.round(closed / tasks.length * 100) : 0
   const [showHistory, setShowHistory] = useState(false)
@@ -408,6 +421,20 @@ function ProjectDetail({ project, board: boardProp, api, onBack, initialTab, ini
             ✓ Mark mission complete
           </button>
         )}
+        {project.status !== 'completed' && (
+          <button
+            onClick={async () => {
+              const typed = window.prompt(`Delete "${project.name}"? No miles are awarded; milestones already closed keep theirs. Its artifacts and cabinet stay in the Ledger. Type the mission name to confirm.`, '')
+              if (typed === null) return
+              if (typed.trim().toLowerCase() !== project.name.trim().toLowerCase()) { window.alert('The name did not match; nothing was deleted.'); return }
+              try { await deleteMission(project); await api.refresh(); onBack() } catch (e) { window.alert(`Could not delete: ${e.message}`) }
+            }}
+            title="Delete this mission: no miles, gone from every list"
+            style={{ ...S.btnGhost, border: '1px solid rgba(232,131,111,0.35)', color: RED, padding: '6px 10px' }}
+          >
+            <Trash2 size={12} /> Delete mission
+          </button>
+        )}
       </div>
 
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16, flexWrap: 'wrap', marginBottom: 6 }}>
@@ -437,7 +464,7 @@ function ProjectDetail({ project, board: boardProp, api, onBack, initialTab, ini
         {tab === 'tasks' && (
           <div>
             {!tasks.length && <div style={{ fontSize: 13, color: GRAY, padding: '10px 0' }}>No milestones yet. Add the first one below: a thing that will be verifiably true.</div>}
-            {plan.map(({ t, n }) => <MilestoneRow key={t.id} n={n} project={project} task={t} board={board} api={api} onNavigate={onNavigate} onBoardChange={setBoard} onAward={setAward} />)}
+            {plan.map(({ t, n }) => <MilestoneRow key={t.id} n={n} project={project} task={t} board={board} api={api} onNavigate={onNavigate} onBoardChange={setBoard} onAward={setAward} objState={objState} />)}
             {history.length > 0 && (
               <div style={{ borderTop: `1px solid ${PANEL_BORDER}`, padding: '10px 0 0' }}>
                 <button onClick={() => setShowHistory(x => !x)} style={{ ...S.btnGhost, padding: '4px 9px', fontSize: 10 }}>{showHistory ? 'Hide' : 'Show'} earlier work · {history.length} closed before this plan</button>

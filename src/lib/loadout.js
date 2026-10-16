@@ -234,6 +234,36 @@ export async function equipTask(task, projectName, { clock = true, ignoreStamina
   return { ok: true, title: data.title, id: data.id }
 }
 
+// A Main Mission task into the Stash (staging, no slot, no clock): reuse its
+// linked objective or create the bridge parked and tagged stashed.
+export async function stashTask(task, projectName) {
+  if (task.objective_id) { await stash(task.objective_id); return { ok: true, id: task.objective_id } }
+  const held = await q(supabase.from('objectives').select('id').eq('state', 'parked').contains('tags', ['stashed']).is('deleted_at', null))
+  if (held.length >= STASH_MAX) throw new Error(`the Stash holds ${STASH_MAX}; return something to the inventory first`)
+  const now = new Date().toISOString()
+  const { data, error } = await supabase.from('objectives').insert({
+    user_id: DAVID, title: String(task.text || '').replace(/^\d+\s*·\s*/, '').slice(0, 120), state: 'parked', kind: 'execution', effort: 1, importance: 2, needs_sizing: false,
+    tags: ['mission-task', 'stashed'], description: `Promoted from project: ${projectName || 'Project'}`, captured_at: now,
+  }).select().single()
+  if (error) throw new Error(error.message)
+  await supabase.from('project_tasks').update({ objective_id: data.id, status: task.status === 'blocked' ? 'blocked' : 'promoted' }).eq('id', task.id)
+  await logBoard(`Stashed: ${data.title}`)
+  return { ok: true, id: data.id }
+}
+
+// Delete a Main Mission without miles: status 'deleted' (the River pays only
+// completed), its open milestones' bridge objectives soft-deleted so nothing
+// lingers in the Stash or the queue. Closed milestones keep what they banked.
+export async function deleteMission(project) {
+  const now = new Date().toISOString()
+  const tasks = await q(supabase.from('project_tasks').select('id,objective_id,status').eq('project_id', project.id))
+  const openObjs = tasks.filter(t => t.objective_id && t.status !== 'done').map(t => t.objective_id)
+  if (openObjs.length) await supabase.from('objectives').update({ deleted_at: now, state: 'bin' }).in('id', openObjs)
+  const { error } = await supabase.from('projects').update({ status: 'deleted', archived_at: now, last_activity_at: now }).eq('id', project.id)
+  if (error) throw new Error(error.message)
+  await logBoard(`Deleted Main Mission (no miles): ${project.name}`)
+}
+
 // Impromptu: something David is doing right now that was never planned. Goes on
 // the board tagged impromptu (1 mile on extract), Light, timer running.
 export async function addImpromptu(title, { personal = false, tags = [] } = {}) {

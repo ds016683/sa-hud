@@ -38,6 +38,7 @@ export default function useProjects() {
           .from('projects')
           .select('*, tasks:project_tasks(id,text,status,done,source,session_ref,due_date,notes,objective_id,released_at,created_at)')
           .eq('user_id', session.user.id)
+          .neq('status', 'deleted')
           .order('name', { ascending: true }),
         supabase.from('session_boards').select('id,project,title,phases,updated_at'),
       ])

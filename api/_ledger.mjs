@@ -86,7 +86,7 @@ export async function granolaTranscript(noteId, { fromMin = null, toMin = null }
 // project page; Lumen drafts into them and ports them out with write_file.
 async function findProject(q) {
   const pq = esc(String(q || ''))
-  const ps = await sb(`projects?select=id,key,name&or=(key.ilike.${encodeURIComponent(pq)},name.ilike.*${encodeURIComponent(pq)}*)&limit=5`)
+  const ps = await sb(`projects?select=id,key,name&status=neq.deleted&or=(key.ilike.${encodeURIComponent(pq)},name.ilike.*${encodeURIComponent(pq)}*)&limit=5`)
   if (ps.length !== 1) throw new Error(ps.length ? `project ambiguous: ${ps.map(p => p.name).join(' | ')}` : `no project matches "${q}"`)
   return ps[0]
 }
@@ -596,6 +596,11 @@ export const TOOLS = [
     inputSchema: { type: 'object', properties: { name: { type: 'string' }, key: { type: 'string' }, category: { type: 'string' }, description: { type: 'string' } }, required: ['name'] },
   },
   {
+    name: 'delete_project',
+    description: "Delete a Main Mission without miles, only on David's explicit word in this conversation (he must name it). The mission leaves every list; the River pays nothing; milestones already closed keep what they banked; its artifacts and cabinet stay in the Ledger. Open milestones' board items are removed from the Stash and the queue. Not for retiring finished work (that is the HUD's Mark mission complete).",
+    inputSchema: { type: 'object', properties: { project: { type: 'string', description: 'the exact mission name or key' } }, required: ['project'] },
+  },
+  {
     name: 'list_standing_orders',
     description: 'The active standing orders Lumen is holding for David.',
     inputSchema: { type: 'object', properties: {} },
@@ -663,7 +668,7 @@ export async function callTool(name, args = {}) {
     }
     case 'get_projects': {
       const [projects, tasks] = await Promise.all([
-        sb(`projects?select=id,name,key,category,status,description&order=name.asc`),
+        sb(`projects?select=id,name,key,category,status,description&status=neq.deleted&order=name.asc`),
         sb(`project_tasks?select=project_id,text,status,source,due_date&status=neq.done`),
       ])
       const byId = new Map(projects.filter(p => p.status !== 'archived').map(p => [p.id, { ...p, open_tasks: [] }]))
@@ -1260,14 +1265,14 @@ export async function callTool(name, args = {}) {
     }
     case 'add_project_task': {
       const q = esc(args.project || '')
-      const ps = await sb(`projects?select=id,key,name&or=(key.ilike.${encodeURIComponent(q)},name.ilike.*${encodeURIComponent(q)}*)&limit=5`)
+      const ps = await sb(`projects?select=id,key,name&status=neq.deleted&or=(key.ilike.${encodeURIComponent(q)},name.ilike.*${encodeURIComponent(q)}*)&limit=5`)
       if (ps.length !== 1) throw new Error(ps.length ? `project ambiguous: ${ps.map(p => p.name).join(' | ')}` : `no project matches "${args.project}"`)
       const out = await sbWrite('POST', 'project_tasks', { project_id: ps[0].id, text: String(args.text || '').trim(), status: 'open', source: 'lumen', due_date: args.due_date || null })
       return JSON.stringify({ ok: true, project: ps[0].name, task: out?.[0]?.text || args.text })
     }
     case 'activate_project_task': {
       const pq = esc(args.project || '')
-      const ps = await sb(`projects?select=id,key,name&or=(key.ilike.${encodeURIComponent(pq)},name.ilike.*${encodeURIComponent(pq)}*)&limit=5`)
+      const ps = await sb(`projects?select=id,key,name&status=neq.deleted&or=(key.ilike.${encodeURIComponent(pq)},name.ilike.*${encodeURIComponent(pq)}*)&limit=5`)
       if (ps.length !== 1) throw new Error(ps.length ? `project ambiguous: ${ps.map(p => p.name).join(' | ')}` : `no project matches "${args.project}"`)
       const tq = esc(args.text || '')
       let ts = await sb(`project_tasks?select=id,text,status,objective_id&project_id=eq.${ps[0].id}&status=neq.done&text=ilike.${encodeURIComponent(tq)}&limit=5`)
@@ -1351,7 +1356,7 @@ export async function callTool(name, args = {}) {
       if (!pick) return JSON.stringify({ ok: false, error: 'which one?', attachments: atts.map(a => a.name) })
       let root
       if (args.side_mission) { const o = await findObjective(args.side_mission); root = `objectives/${o.id}/files` }
-      else if (args.project) { const q = esc(args.project); const ps = await sb(`projects?select=id,name&or=(key.ilike.${encodeURIComponent(q)},name.ilike.${encodeURIComponent(q)})&limit=2`); if (ps.length !== 1) throw new Error(ps.length ? 'ambiguous project' : 'no such project'); root = `${ps[0].id}` }
+      else if (args.project) { const q = esc(args.project); const ps = await sb(`projects?select=id,name&status=neq.deleted&or=(key.ilike.${encodeURIComponent(q)},name.ilike.${encodeURIComponent(q)})&limit=2`); if (ps.length !== 1) throw new Error(ps.length ? 'ambiguous project' : 'no such project'); root = `${ps[0].id}` }
       else throw new Error('side_mission or project required')
       const bin = await fetch(`https://graph.microsoft.com/v1.0/users/${MAILBOX}/messages/${id}/attachments/${encodeURIComponent(pick.id)}/$value`, { headers: { Authorization: `Bearer ${token}` } })
       if (!bin.ok) throw new Error(`attachment download -> ${bin.status}`)
@@ -1366,7 +1371,7 @@ export async function callTool(name, args = {}) {
       if (!text) throw new Error('text required')
       if (args.project) {
         const q = esc(args.project)
-        const ps = await sb(`projects?select=id,key,name&or=(key.ilike.${encodeURIComponent(q)},name.ilike.${encodeURIComponent(q)})&limit=2`)
+        const ps = await sb(`projects?select=id,key,name&status=neq.deleted&or=(key.ilike.${encodeURIComponent(q)},name.ilike.${encodeURIComponent(q)})&limit=2`)
         if (ps.length !== 1) throw new Error(ps.length ? 'ambiguous project' : 'no such project')
         await sbWrite('PATCH', `projects?id=eq.${ps[0].id}`, { description: text }, 'return=minimal')
         return JSON.stringify({ ok: true, project: ps[0].name, north_star: text })
@@ -1397,7 +1402,7 @@ export async function callTool(name, args = {}) {
     case 'create_project': {
       const name = String(args.name || '').trim()
       if (!name) throw new Error('name required')
-      const dupes = await sb(`projects?select=id,name,key,user_id&or=(name.ilike.${encodeURIComponent(esc(name))},key.eq.${encodeURIComponent(args.key || '__none__')})&limit=3`)
+      const dupes = await sb(`projects?select=id,name,key,user_id&status=neq.deleted&or=(name.ilike.${encodeURIComponent(esc(name))},key.eq.${encodeURIComponent(args.key || '__none__')})&limit=3`)
       if (dupes.length) {
         // The HUD lists only David's rows; claim any ownerless project (and its tasks) rather than duplicating.
         let claimed = 0
@@ -1409,6 +1414,19 @@ export async function callTool(name, args = {}) {
       }
       const out = await sbWrite('POST', 'projects', { user_id: DAVID, name, key: args.key || null, category: args.category || 'third-horizon', status: 'active', description: args.description || null, last_activity_at: new Date().toISOString() })
       return JSON.stringify({ ok: true, project: out?.[0] })
+    }
+    case 'delete_project': {
+      const q = esc(String(args.project || '').trim()); if (!q) throw new Error('project required')
+      const ps = await sb(`projects?select=id,name,key,status&status=neq.deleted&or=(key.ilike.${encodeURIComponent(q)},name.ilike.${encodeURIComponent(q)})&limit=2`)
+      if (!ps.length) return JSON.stringify({ ok: false, error: 'no mission by that exact name or key' })
+      if (ps.length > 1) return JSON.stringify({ ok: false, error: 'more than one match; give the exact name', matches: ps.map(p => p.name) })
+      const p = ps[0]; const now = new Date().toISOString()
+      const tasks = await sb(`project_tasks?select=id,objective_id,status&project_id=eq.${p.id}`)
+      const openObjs = tasks.filter(t => t.objective_id && t.status !== 'done').map(t => t.objective_id)
+      if (openObjs.length) await sbWrite('PATCH', `objectives?id=in.(${openObjs.join(',')})`, { deleted_at: now, state: 'bin' }, 'return=minimal')
+      await sbWrite('PATCH', `projects?id=eq.${p.id}`, { status: 'deleted', archived_at: now, last_activity_at: now }, 'return=minimal')
+      boardLog(`Deleted Main Mission (no miles): ${p.name}`)
+      return JSON.stringify({ ok: true, deleted: p.name, closed_milestones_kept: tasks.filter(t => t.status === 'done').length, open_milestones_removed: tasks.length - tasks.filter(t => t.status === 'done').length, miles: 0 })
     }
     case 'list_standing_orders': {
       return JSON.stringify(await sb('standing_orders?select=id,text,cadence,next_at,last_fired_at&active=eq.true&order=next_at.asc.nullslast'), null, 2)
