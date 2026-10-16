@@ -37,12 +37,12 @@ async function harvest(path, { method = 'GET', body } = {}) {
 const chiToday = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Chicago', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date())
 
 // Log a completed span to Harvest: one entry per title per day (appends).
-export async function logHours(title, hours) {
+export async function logHours(title, hours, day = null) {
   const h = Math.round(Number(hours) * 100) / 100
   if (!title || !Number.isFinite(h)) return { error: 'title and hours required' }
   if (h < MIN_HOURS) return { ok: true, note: `span ${h}h under minimum; not logged` }
   if (h > MAX_HOURS) return { error: `span ${h}h over sanity ceiling` }
-  const today = chiToday()
+  const today = /^\d{4}-\d{2}-\d{2}$/.test(String(day || '')) ? day : chiToday()
   const notes = NOTE_PREFIX + String(title).slice(0, 200)
   const me = await harvest('users/me')
   const existing = (await harvest(`time_entries?user_id=${me.id}&from=${today}&to=${today}&per_page=100`)).time_entries || []
@@ -57,11 +57,11 @@ export async function logHours(title, hours) {
 }
 
 // Set today's Harvest entry for a title to exactly `hours` (create if absent).
-export async function setHours(title, hours) {
+export async function setHours(title, hours, day = null) {
   const h = Math.round(Number(hours) * 100) / 100
   if (!title || !Number.isFinite(h) || h <= 0) return { error: 'title and positive hours required' }
   if (h > MAX_HOURS) return { error: `span ${h}h over sanity ceiling` }
-  const today = chiToday()
+  const today = /^\d{4}-\d{2}-\d{2}$/.test(String(day || '')) ? day : chiToday()
   const notes = NOTE_PREFIX + String(title).slice(0, 200)
   const me = await harvest('users/me')
   const existing = (await harvest(`time_entries?user_id=${me.id}&from=${today}&to=${today}&per_page=100`)).time_entries || []

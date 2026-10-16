@@ -556,6 +556,11 @@ export const TOOLS = [
     inputSchema: { type: 'object', properties: { title: { type: 'string' } }, required: ['title'] },
   },
   {
+    name: 'amend_day',
+    description: "Amend a past day's time in one move: one block of hours under a title, logged to Harvest on THAT day and recorded as a session (no calendar event needed). Use when David says yesterday was really one long thing, or a meeting ran far longer than scheduled. Idempotent per day and title: calling again sets the hours, it does not add.",
+    inputSchema: { type: 'object', properties: { day: { type: 'string', description: 'YYYY-MM-DD, Chicago' }, title: { type: 'string', description: "what the block was, e.g. 'DC / Internal Meetings · capital pathway'" }, hours: { type: 'number' }, note: { type: 'string' } }, required: ['day', 'title', 'hours'] },
+  },
+  {
     name: 'schedule_event',
     description: "Put a block on David's own calendar (no attendees): a trip, a meeting block, focus time. Only when he asks for it in so many words; read the subject, day and times back in the reply. Times are local to the place he will be (timezone, default America/Chicago).",
     inputSchema: { type: 'object', properties: { subject: { type: 'string' }, start: { type: 'string', description: 'YYYY-MM-DDTHH:MM local' }, end: { type: 'string', description: 'YYYY-MM-DDTHH:MM local' }, timezone: { type: 'string', description: 'IANA, e.g. America/New_York; default America/Chicago' }, location: { type: 'string' }, body: { type: 'string', description: 'notes, plain text' }, all_day: { type: 'boolean' } }, required: ['subject', 'start', 'end'] },
@@ -1030,14 +1035,14 @@ export async function callTool(name, args = {}) {
           const hours = args.hours != null ? Math.round(Number(args.hours) * 100) / 100 : sched
           if (!hours) return JSON.stringify({ ok: false, error: 'hours required' })
           let harvest = null
-          try { harvest = await setHours(ev.subject, hours) } catch (e) { harvest = { error: String(e.message || e) } }
+          try { harvest = await setHours(ev.subject, hours, day) } catch (e) { harvest = { error: String(e.message || e) } }
           await putSession(cur, { ...base, started_at: cur?.started_at || ev.start_at, stopped_at: cur?.stopped_at || ev.end_at, hours, harvest_logged: !!harvest?.ok })
           return JSON.stringify({ ok: true, set: ev.subject, hours, harvest })
         }
         if (!cur?.started_at || cur?.stopped_at) return JSON.stringify({ ok: false, error: `no timer running on "${ev.subject}"` })
         const hours = Math.round(((Date.now() - new Date(cur.started_at).getTime()) / 3600e3) * 100) / 100
         let harvest = null, logged = false
-        try { harvest = await logHours(ev.subject, hours); logged = !!harvest?.ok && !harvest?.note } catch (e) { harvest = { error: String(e.message || e) } }
+        try { harvest = await logHours(ev.subject, hours, day); logged = !!harvest?.ok && !harvest?.note } catch (e) { harvest = { error: String(e.message || e) } }
         await putSession(cur, { ...base, stopped_at: now, hours, harvest_logged: logged })
         return JSON.stringify({ ok: true, stopped: ev.subject, hours, harvest })
       }
@@ -1304,6 +1309,19 @@ export async function callTool(name, args = {}) {
       const r = await holster(o.id)
       return JSON.stringify({ ok: true, holstered: o.title, ...r })
     }
+    case 'amend_day': {
+      const day = String(args.day || '').slice(0, 10); const title = String(args.title || '').trim(); const hours = Math.round(Number(args.hours) * 100) / 100
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(day) || !title || !(hours > 0)) throw new Error('day, title and positive hours required')
+      const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 60)
+      const eid = `adhoc:${day}:${slug}`
+      const start = `${day}T13:00:00.000Z`, end = new Date(new Date(start).getTime() + hours * 3600e3).toISOString()
+      let harvest = null
+      try { harvest = await setHours(title, hours, day) } catch (e) { harvest = { error: String(e.message || e) } }
+      const cur = (await sb(`meeting_sessions?select=event_id&event_id=eq.${encodeURIComponent(eid)}&limit=1`))[0] || null
+      await putSession(cur, { event_id: eid, day, subject: title, started_at: start, stopped_at: end, hours, harvest_logged: !!harvest?.ok, special_notes: args.note ? String(args.note).slice(0, 300) : null })
+      boardLog(`Amended ${day}: ${title} · ${hours}h`)
+      return JSON.stringify({ ok: true, day, title, hours, harvest, note: 'logged on that day in Harvest and recorded as a session; the River re-reads the day at the next update' })
+    }
     case 'schedule_event': {
       const subject = String(args.subject || '').trim(); if (!subject) throw new Error('subject required')
       const tz = String(args.timezone || 'America/Chicago')
@@ -1313,7 +1331,12 @@ export async function callTool(name, args = {}) {
       if (r.status === 403 || r.status === 401) return JSON.stringify({ ok: false, error: `the calendar hand is not granted yet (Graph ${r.status}): the M365 app needs Calendars.ReadWrite on David's mailbox. Tell David plainly; do not retry.` })
       if (!r.ok) throw new Error(`calendar -> ${r.status}: ${(await r.text()).slice(0, 200)}`)
       const j = await r.json()
-      return JSON.stringify({ ok: true, id: j.id, subject, start: args.start, end: args.end, timezone: tz, location: args.location || null, web_link: j.webLink || null })
+      // The Ledger sees it now, not at the next sync (10/16: Lumen created a block and could not find it).
+      try {
+        const sIso = zonedToIso(j.start), eIso = zonedToIso(j.end)
+        if (sIso && eIso) await sbWrite('POST', 'calendar_events', { id: j.id, subject, start_at: sIso, end_at: eIso, day: sIso.slice(0, 10), organizer: 'David Smith', attendees: [], is_all_day: !!args.all_day, is_cancelled: false, synced_at: new Date().toISOString() }, 'resolution=merge-duplicates,return=minimal')
+      } catch (e) { /* the sync will carry it */ }
+      return JSON.stringify({ ok: true, id: j.id, subject, start: args.start, end: args.end, timezone: tz, location: args.location || null, web_link: j.webLink || null, in_ledger: true })
     }
     case 'file_attachment': {
       const token = await graphToken()
