@@ -14,6 +14,7 @@ import { stepsMaxFor } from '../../lib/objectives'
 import { fetchSteps, addStep, toggleStep, removeStep, listObjectiveArtifacts, listObjectiveFiles, uploadObjectiveFile, listObjectiveBoards, provenance, realmOf, setSize, updateObjective } from '../../lib/objectives'
 import { renderMarkdown } from './MeetingCloseout'
 import SessionBoard from './SessionBoard'
+import { recall } from '../../lib/recall'
 import { INK, INK2, GRAY, PANEL_BORDER, GOLD, GOLD_BRIGHT, BLUE, GREEN, RED, MONO, SERIF, S, Label, KIND_COLOR, KindIcon, NORTH_STAR_LABEL, NORTH_STAR_ASK } from './canon'
 
 const NAVY_DEEP = '#0A1B2B'
@@ -96,6 +97,66 @@ async function loadRelated(item) {
   if (item.event?.notes) out.meetings = [item.event.notes, ...out.meetings.filter(m => m.id !== item.event.notes.id)]
   try { out.loadout = await fetchLoadout() } catch { out.loadout = null }
   return out
+}
+
+// Where It Stands (David, 10/17): above the facts, two lists. Done: the gates
+// or marks ticked, the board items closed, what was produced. Still needed:
+// the open gates, the open board items, and Lumen's two or three next steps
+// toward the star (the same brain as the Loadout card, loaded after).
+function WhereItStands({ item, rel, task, taskId, linkedBoards }) {
+  const [next, setNext] = useState(null)
+  const [thinking, setThinking] = useState(false)
+  const oid = item.objective_id || (item.kind !== 'Main Mission' && item.kind !== 'Event' && item.kind !== 'Session' ? item.id : null)
+  useEffect(() => {
+    let on = true
+    if (!oid && !taskId) { Promise.resolve().then(() => { if (on) setNext([]) }); return () => { on = false } }
+    Promise.resolve().then(() => { if (on) setThinking(true) })
+    recall({ objective_id: oid, task_id: taskId }).then(r => { if (on) setNext(Array.isArray(r?.next) ? r.next : []) }).catch(() => { if (on) setNext([]) }).finally(() => { if (on) setThinking(false) })
+    return () => { on = false }
+  }, [oid, taskId])
+  const steps = Array.isArray(rel.steps) ? rel.steps : []
+  const boardItems = []
+  for (const b of linkedBoards) for (const ph of (b.phases || [])) {
+    const phTied = !taskId || ph.task_id === taskId || (ph.tasks || []).some(t => t.task_id === taskId)
+    if (!phTied) continue
+    for (const t of (ph.tasks || [])) boardItems.push({ ...t, board: b.title })
+  }
+  const done = [
+    ...steps.filter(st => st.done).map(st => ({ text: st.text, meta: st.done_at ? chiTime(st.done_at) : null, kind: 'gate' })),
+    ...boardItems.filter(t => t.status === 'done').map(t => ({ text: t.label, meta: t.id, kind: 'board' })),
+    ...(rel.objArtifacts || []).map(a => ({ text: a.title || a.slug, meta: 'artifact', kind: 'made' })),
+    ...(rel.artifacts || []).filter(a => taskId && a.task_id === taskId).map(a => ({ text: a.title || a.slug, meta: 'artifact', kind: 'made' })),
+    ...(rel.objFiles || []).map(f => ({ text: f.name, meta: 'file', kind: 'made' })),
+  ]
+  const needed = [
+    ...steps.filter(st => !st.done).map(st => ({ text: st.text, meta: null, kind: 'gate' })),
+    ...boardItems.filter(t => t.status !== 'done').map(t => ({ text: t.label, meta: t.status === 'blocked' ? (t.note || 'blocked') : t.status === 'inmotion' ? 'in motion' : t.id, kind: t.status === 'blocked' ? 'blocked' : 'board' })),
+  ]
+  if (task && task.status === 'done') done.unshift({ text: 'Milestone closed', meta: task.released_at ? new Date(task.released_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : null, kind: 'board' })
+  const Row = ({ r, color }) => (
+    <div style={{ display: 'flex', gap: 9, alignItems: 'flex-start', padding: '4px 0' }}>
+      <span style={{ width: 6, height: 6, borderRadius: 99, background: color, marginTop: 7, flexShrink: 0 }} />
+      <span style={{ fontSize: 13.5, lineHeight: 1.5, color: INK, flex: 1 }}>{r.text}{r.meta && <span style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '0.8px', color: r.kind === 'blocked' ? RED : GRAY, marginLeft: 8 }}>{r.meta}</span>}</span>
+    </div>
+  )
+  return (
+    <div style={{ borderTop: `1px solid ${PANEL_BORDER}`, paddingTop: 14 }}>
+      <Label>Where It Stands</Label>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 22 }}>
+        <div>
+          <div style={{ fontFamily: MONO, fontSize: 9, letterSpacing: '1.3px', textTransform: 'uppercase', color: GREEN, marginBottom: 4 }}>Done</div>
+          {done.length ? done.map((r, i) => <Row key={i} r={r} color={GREEN} />) : <div style={{ fontSize: 13, color: GRAY, padding: '4px 0' }}>Nothing ticked, closed or produced yet.</div>}
+        </div>
+        <div>
+          <div style={{ fontFamily: MONO, fontSize: 9, letterSpacing: '1.3px', textTransform: 'uppercase', color: GOLD, marginBottom: 4 }}>Still Needed</div>
+          {needed.map((r, i) => <Row key={i} r={r} color={r.kind === 'blocked' ? RED : GOLD} />)}
+          {thinking && <div style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '1px', textTransform: 'uppercase', color: GRAY, padding: '4px 0' }}>Lumen is reading the trail</div>}
+          {!thinking && (next || []).map((t, i) => <div key={`n${i}`} style={{ display: 'flex', gap: 9, alignItems: 'flex-start', padding: '4px 0' }}><span style={{ width: 6, height: 6, borderRadius: 99, border: `1px solid ${BLUE}`, marginTop: 7, flexShrink: 0 }} /><span style={{ fontSize: 13.5, lineHeight: 1.5, color: INK2, fontStyle: 'italic', flex: 1 }}>{t}<span style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '0.8px', color: BLUE, marginLeft: 8, fontStyle: 'normal' }}>Lumen</span></span></div>)}
+          {!thinking && !needed.length && !(next || []).length && <div style={{ fontSize: 13, color: GRAY, padding: '4px 0' }}>Nothing open. If the star is true, extract it.</div>}
+        </div>
+      </div>
+    </div>
+  )
 }
 
 export default function ItemDetail({ item, onClose, onNavigate, onChange, initialTab = 'overview' }) {
@@ -198,6 +259,8 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
                       : <div onClick={() => setEditStar(true)} title="Click to edit" style={{ fontFamily: SERIF, fontStyle: 'italic', fontSize: 19, lineHeight: 1.45, color: INK, borderLeft: `2px solid ${BLUE}`, paddingLeft: 12, cursor: 'text' }}>{obj.north_star}</div>}
                   </div>
 
+                  <WhereItStands item={item} rel={rel} task={task} taskId={taskId} linkedBoards={linkedBoards} />
+
                   {(() => { const seg = (on, color) => ({ ...btn(on ? color : INK2, on), padding: '5px 10px', whiteSpace: 'nowrap', borderRadius: 8 }); const cell = { display: 'grid', gap: 6, alignContent: 'start' }; return (
                     <div style={{ borderTop: `1px solid ${PANEL_BORDER}`, borderBottom: `1px solid ${PANEL_BORDER}`, padding: '14px 0', display: 'grid', gap: 16 }}>
                       <div style={{ display: 'flex', gap: 28, flexWrap: 'wrap', alignItems: 'flex-start' }}>
@@ -257,6 +320,7 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
                   )}
                 </>
               ) })()}
+              {!obj && item.kind !== 'Event' && item.kind !== 'Session' && <WhereItStands item={item} rel={rel} task={task} taskId={taskId} linkedBoards={linkedBoards} />}
               {!obj && (item.description || task?.notes) && <div><Label>Back Story</Label><div style={{ fontSize: 14.5, lineHeight: 1.65, color: INK, whiteSpace: 'pre-wrap' }}>{item.description || task.notes}</div></div>}
               {item.event && (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 14 }}>
@@ -284,6 +348,13 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
                   <div><Label>State</Label><div style={{ fontFamily: SERIF, fontSize: 20, color: INK }}>{loaded.equipped ? 'Equipped' : 'Holstered'}</div></div>
                 </div>
               )}
+              {(() => { const b = linkedBoards[0] || (task ? (rel.boards || [])[0] : null); return b && item.kind !== 'Event' ? (
+                <div style={{ borderTop: `1px solid ${PANEL_BORDER}`, paddingTop: 16 }}>
+                  <Label>{taskId ? 'Milestone Board · Claude’s Steps On This Milestone' : 'Session Board'}</Label>
+                  {!b.linked && !(rel.objBoards || []).length && <div style={{ fontSize: 12.5, color: GRAY, marginBottom: 8 }}>Claude's latest board on the mission; nothing on it is tied to this {what.item} yet.</div>}
+                  <SessionBoard key={b.id} board={b} compact focusTaskId={taskId} onChange={() => onChange && onChange()} />
+                </div>
+              ) : null })()}
               {!item.description && !task?.notes && !rel.project && !item.event && !loaded && !obj && <div style={{ fontSize: 13, color: GRAY }}>No back story on this one yet.</div>}
             </div>
           )}

@@ -13,8 +13,12 @@ export const boardStats = (phases) => {
 export const isLive = (iso) => iso && (Date.now() - new Date(iso).getTime()) < 10 * 60_000
 const fmtTime = (iso) => iso ? new Date(iso).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'America/Chicago' }) : ''
 
-export default function SessionBoard({ board, onChange, compact = false }) {
+export default function SessionBoard({ board, onChange, compact = false, focusTaskId = null }) {
   const [phases, setPhases] = useState(board.phases || [])
+  const [whole, setWhole] = useState(false)
+  const tied = (p) => !!focusTaskId && (p.task_id === focusTaskId || (p.tasks || []).some(t => t.task_id === focusTaskId))
+  const hasTied = !!focusTaskId && phases.some(tied)
+  const shown = phases.map((p, i) => [p, i]).filter(([p]) => whole || !hasTied || tied(p))
   const savingRef = useRef(false)
   const stats = boardStats(phases)
   const live = isLive(board.updated_at)
@@ -45,8 +49,9 @@ export default function SessionBoard({ board, onChange, compact = false }) {
           {live && <span className="sb-pulse" style={{ width: 7, height: 7, borderRadius: '50%', background: GREEN }} />}
           {live ? 'live' : 'idle'} · {stats.done}/{stats.total} done · updated {fmtTime(board.updated_at)}
         </span>
+        {hasTied && <button onClick={() => setWhole(w => !w)} style={{ marginLeft: 'auto', background: 'transparent', border: `1px solid ${PANEL_BORDER}`, borderRadius: 7, color: GRAY, fontFamily: MONO, fontSize: 9.5, letterSpacing: '1px', textTransform: 'uppercase', padding: '3px 8px', cursor: 'pointer' }}>{whole ? 'This milestone only' : 'Whole board'}</button>}
       </div>
-      {phases.map((p, pi) => {
+      {shown.map(([p, pi]) => {
         const pd = (p.tasks || []).filter(t => t.status === 'done').length
         return (
           <div key={pi} style={{ marginTop: compact ? 20 : 30 }}>
