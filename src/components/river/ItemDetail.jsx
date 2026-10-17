@@ -18,7 +18,7 @@ import { recall } from '../../lib/recall'
 import { INK, INK2, GRAY, PANEL_BORDER, GOLD, GOLD_BRIGHT, BLUE, GREEN, RED, MONO, SERIF, S, Label, KIND_COLOR, KindIcon, NORTH_STAR_LABEL, NORTH_STAR_ASK } from './canon'
 
 const NAVY_DEEP = '#0A1B2B'
-const TABS = ['overview', 'artifacts', 'sessions', 'files', 'notes']
+const TABS = ['overview', 'artifacts', 'files', 'notes']
 const TAB_LABEL = { overview: 'Briefing', artifacts: 'Artifacts', sessions: 'Sessions', files: 'Files', notes: 'Notes' }
 const STOP = new Set(['the', 'and', 'with', 'for', 'from', 'about', 'notes', 'upload', 'interview', 'call', 'meeting', 'review', 'investigate', 'weekly', 'monthly', 'david', 'smith'])
 const words = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9 ]/g, ' ').split(/\s+/).filter(w => w.length > 2 && !STOP.has(w))
@@ -165,6 +165,9 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
   const [msg, setMsg] = useState(null)
   const [openNote, setOpenNote] = useState(null)
   const [boardId, setBoardId] = useState(null)
+  const [recentBoards, setRecentBoards] = useState([])
+  useEffect(() => { let on = true; supabase.from('session_boards').select('id,project,title,updated_at,board').order('updated_at', { ascending: false }).limit(24).then(({ data }) => { if (on) setRecentBoards(Array.isArray(data) ? data : []) }); return () => { on = false } }, [])
+  const tieBoard = async (b) => { if (!obj) return; const { error } = await supabase.from('session_boards').update({ board: { ...(b.board || {}), objective_id: obj.id } }).eq('id', b.id); if (error) { setMsg(`Could not tie: ${error.message}`); return } setMsg(`Tied ${b.title}`); load() }
   const load = useCallback(() => loadRelated(item).then(setRel).catch(e => { console.warn('item detail', e.message); setRel({ project: null, task: null, artifacts: [], boards: [], projectFiles: [], storeFiles: [], meetings: [], loadout: null }) }), [item])
   useEffect(() => { load() }, [load])
   useEffect(() => {
@@ -348,13 +351,36 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
                   <div><Label>State</Label><div style={{ fontFamily: SERIF, fontSize: 20, color: INK }}>{loaded.equipped ? 'Equipped' : 'Holstered'}</div></div>
                 </div>
               )}
+              {obj && (
+                <div style={{ borderTop: `1px solid ${PANEL_BORDER}`, paddingTop: 14 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
+                    <Label style={{ marginBottom: 0 }}>Production Files</Label><span style={{ flex: 1 }} />
+                    <label style={{ ...btn(BLUE), cursor: objBusy ? 'wait' : 'pointer' }}><Upload size={11} /> Put a file in play<input type="file" style={{ display: 'none' }} onChange={e => { uploadNow(e.target.files?.[0]); e.target.value = '' }} /></label>
+                  </div>
+                  {(rel.objFiles || []).map(f => (
+                    <div key={f.path} style={rowStyle}><FileText size={14} color={BLUE} /><span style={{ flex: 1, fontSize: 13.5, color: INK, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.name}</span>{f.updated_at && <span style={{ fontFamily: MONO, fontSize: 9.5, color: GRAY }}>{new Date(f.updated_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>}<button onClick={() => open(f.bucket, f.path)} style={btn(BLUE)}><ExternalLink size={11} /> Open</button></div>
+                  ))}
+                  {!(rel.objFiles || []).length && <div style={{ fontSize: 13, color: GRAY }}>Nothing produced yet. Files a session puts in play for this {what.item} land here (livefile.py put, tied to it), as do files Lumen files to it and anything you drop on the Board's Live Files window tied to it.</div>}
+                </div>
+              )}
               {(() => { const b = linkedBoards[0] || (task ? (rel.boards || [])[0] : null); return b && item.kind !== 'Event' ? (
                 <div style={{ borderTop: `1px solid ${PANEL_BORDER}`, paddingTop: 16 }}>
                   <Label>{taskId ? 'Milestone Board · Claude’s Steps On This Milestone' : 'Session Board'}</Label>
                   {!b.linked && !(rel.objBoards || []).length && <div style={{ fontSize: 12.5, color: GRAY, marginBottom: 8 }}>Claude's latest board on the mission; nothing on it is tied to this {what.item} yet.</div>}
                   <SessionBoard key={b.id} board={b} compact focusTaskId={taskId} onChange={() => onChange && onChange()} />
                 </div>
-              ) : null })()}
+              ) : (obj && item.kind !== 'Event' ? (
+                <div style={{ borderTop: `1px solid ${PANEL_BORDER}`, paddingTop: 14 }}>
+                  <Label>Session Board</Label>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', fontSize: 13, color: GRAY }}>
+                    <span>No Claude board is tied to this {what.item} yet. Tie the session that is working it:</span>
+                    <select defaultValue="" onChange={e => { const b = recentBoards.find(x => x.id === e.target.value); if (b) tieBoard(b) }} style={{ background: '#0A1B2B', color: INK, border: `1px solid ${PANEL_BORDER}`, borderRadius: 7, padding: '4px 8px', fontSize: 12, maxWidth: 360 }}>
+                      <option value="">Pick a recent board…</option>
+                      {recentBoards.map(b => <option key={b.id} value={b.id}>{b.project} · {b.title}</option>)}
+                    </select>
+                  </div>
+                </div>
+              ) : null) })()}
               {!item.description && !task?.notes && !rel.project && !item.event && !loaded && !obj && <div style={{ fontSize: 13, color: GRAY }}>No back story on this one yet.</div>}
             </div>
           )}
