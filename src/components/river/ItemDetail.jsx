@@ -5,7 +5,7 @@
 // what is linked or says plainly that the item doesn't call for it, and
 // offers to attach one from the mission.
 import { useCallback, useEffect, useState } from 'react'
-import { ArrowLeft, Play, Pause, Archive, ExternalLink, FolderOpen, FileText, ListChecks, Mic, Map as MapIcon, Check, Plus, Trash2, Upload } from 'lucide-react'
+import { ArrowLeft, Play, Pause, Archive, ExternalLink, FolderOpen, FileText, ListChecks, Mic, Map as MapIcon, Check, Plus, Trash2, Upload, Mail } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { listArtifacts, readArtifact, writeArtifact } from '../../lib/artifacts'
 import { fetchLoadout, equip, holster, stash, equipObjective, equipTask, fmtClock, SIZES } from '../../lib/loadout'
@@ -15,6 +15,7 @@ import { fetchSteps, addStep, toggleStep, removeStep, listObjectiveArtifacts, li
 import { renderMarkdown } from './MeetingCloseout'
 import SessionBoard from './SessionBoard'
 import { recall } from '../../lib/recall'
+import { draftMail } from '../../lib/livefiles'
 import { INK, INK2, GRAY, PANEL_BORDER, GOLD, GOLD_BRIGHT, BLUE, GREEN, RED, MONO, SERIF, S, Label, KIND_COLOR, KindIcon, NORTH_STAR_LABEL, NORTH_STAR_ASK } from './canon'
 
 const NAVY_DEEP = '#0A1B2B'
@@ -358,7 +359,7 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
                     <label style={{ ...btn(BLUE), cursor: objBusy ? 'wait' : 'pointer' }}><Upload size={11} /> Put a file in play<input type="file" style={{ display: 'none' }} onChange={e => { uploadNow(e.target.files?.[0]); e.target.value = '' }} /></label>
                   </div>
                   {(rel.objFiles || []).map(f => (
-                    <div key={f.path} style={rowStyle}><FileText size={14} color={BLUE} /><span style={{ flex: 1, fontSize: 13.5, color: INK, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.name}</span>{f.updated_at && <span style={{ fontFamily: MONO, fontSize: 9.5, color: GRAY }}>{new Date(f.updated_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>}<button onClick={() => open(f.bucket, f.path)} style={btn(BLUE)}><ExternalLink size={11} /> Open</button></div>
+                    <div key={f.path} style={rowStyle}><FileText size={14} color={BLUE} /><span style={{ flex: 1, fontSize: 13.5, color: INK, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.name}</span>{f.updated_at && <span style={{ fontFamily: MONO, fontSize: 9.5, color: GRAY }}>{new Date(f.updated_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>}<button onClick={() => open(f.bucket, f.path)} style={btn(BLUE)}><ExternalLink size={11} /> Open</button><button onClick={() => act(async () => { setMsg(`Drafting in Outlook: ${f.name}`); const d = await draftMail(f); if (d.webLink) window.open(d.webLink, '_blank', 'noopener') }, `Draft open in Outlook: ${f.name}`)} title="Open a new Outlook draft with this file attached" style={btn(GOLD)}><Mail size={11} /> Mail</button></div>
                   ))}
                   {!(rel.objFiles || []).length && <div style={{ fontSize: 13, color: GRAY }}>Nothing produced yet. Files a session puts in play for this {what.item} land here (livefile.py put, tied to it), as do files Lumen files to it and anything you drop on the Board's Live Files window tied to it.</div>}
                 </div>

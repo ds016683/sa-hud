@@ -3,8 +3,8 @@
 // a file on the window to put it in play; tie it to an item from the select;
 // Open reads it; Done takes it out of view (the filing system comes later).
 import { useEffect, useRef, useState, useCallback } from 'react'
-import { Paperclip, X as XIcon, ExternalLink, Check, Trash2, Upload } from 'lucide-react'
-import { listLiveFiles, putLiveFile, linkLiveFile, openLiveFile, markFiled, removeLiveFile, noteLiveFile, fmtSize, extOf } from '../../lib/livefiles'
+import { Paperclip, X as XIcon, ExternalLink, Check, Trash2, Upload, Mail } from 'lucide-react'
+import { listLiveFiles, putLiveFile, linkLiveFile, openLiveFile, markFiled, removeLiveFile, noteLiveFile, draftMail, fmtSize, extOf } from '../../lib/livefiles'
 import { INK, INK2, GRAY, PANEL_BORDER, GOLD, BLUE, GREEN, RED, MONO, SERIF, Label, KIND_COLOR, fmtTime } from './canon'
 
 const EXT_COLOR = { xlsx: GREEN, xls: GREEN, csv: GREEN, pptx: GOLD, ppt: GOLD, key: GOLD, docx: BLUE, doc: BLUE, pdf: RED, md: INK2, txt: INK2, html: BLUE, png: INK2, jpg: INK2, jpeg: INK2 }
@@ -117,6 +117,7 @@ export default function LiveFilesModal({ onClose, filter = null, items = [], onC
                           {r.objective_id && !items.some(it => it.id === r.objective_id) && <option value={r.objective_id}>{r.item?.title || 'current item'}</option>}
                         </select>
                         <button onClick={() => act(async () => { window.open(await openLiveFile(r), '_blank', 'noopener') }, `Opened ${r.name}`)} style={sbtn(BLUE)}><ExternalLink size={10} /> Open</button>
+                        <button onClick={() => act(async () => { setMsg(`Drafting in Outlook: ${r.name}`); const d = await draftMail(r); if (d.webLink) window.open(d.webLink, '_blank', 'noopener') }, `Draft open in Outlook: ${r.name}`)} title="Open a new Outlook draft with this file attached" style={sbtn(GOLD)}><Mail size={10} /> Mail</button>
                         <button onClick={() => { if (window.confirm(`Done with ${r.name}? It leaves Live Files (the bytes stay in storage until the filing system moves them).`)) act(() => markFiled(r.id), `Out of play: ${r.name}`) }} title="Done: out of Live Files" style={sbtn(GREEN)}><Check size={10} /> Done</button>
                         <button onClick={() => { if (window.confirm(`Delete ${r.name} from storage? This cannot be undone.`)) act(() => removeLiveFile(r), `Deleted ${r.name}`) }} title="Delete the file" style={{ background: 'transparent', border: 'none', color: 'rgba(234,241,248,0.25)', cursor: 'pointer', padding: 3 }}><Trash2 size={12} /></button>
                       </div>

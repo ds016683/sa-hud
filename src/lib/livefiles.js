@@ -98,3 +98,16 @@ export async function removeLiveFile(row) {
 
 export const fmtSize = (n) => !n ? '' : n > 1048576 ? `${(n / 1048576).toFixed(1)} MB` : n > 1024 ? `${Math.round(n / 1024)} KB` : `${n} B`
 export const extOf = (name) => (String(name || '').split('.').pop() || '').toLowerCase()
+
+// Mail icon: a draft in David's Outlook with the file attached, opened in a
+// new tab. Nothing is sent; he writes the note there. `f` is a live_files row
+// ({ id }) or any stored file ({ bucket, path, name }).
+export async function draftMail(f) {
+  const { data: { session } } = await supabase.auth.getSession()
+  if (!session) throw new Error('not signed in')
+  const body = f.id && f.created_at ? { action: 'draft', id: f.id } : { action: 'draft', bucket: f.bucket || BUCKET, path: f.path, name: f.name }
+  const r = await fetch('/api/live-files', { method: 'POST', headers: { Authorization: `Bearer ${session.access_token}`, 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+  const j = await r.json().catch(() => ({}))
+  if (!r.ok || j.error) throw new Error(j.error || `draft ${r.status}`)
+  return j
+}
