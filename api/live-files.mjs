@@ -7,7 +7,7 @@
 import { authorized } from './lumen-hud.mjs'
 import { graphToken, MAILBOX } from './_sync-core.mjs'
 
-const URL_BASE = process.env.SUPABASE_URL
+const URL_BASE = 'https://cmuvomnmaoseccxpeuxq.supabase.co'
 const hdr = () => ({ apikey: process.env.SUPABASE_SERVICE_KEY, Authorization: `Bearer ${process.env.SUPABASE_SERVICE_KEY}` })
 const enc = (p) => String(p).split('/').map(encodeURIComponent).join('/')
 const INLINE_MAX = 3 * 1024 * 1024
