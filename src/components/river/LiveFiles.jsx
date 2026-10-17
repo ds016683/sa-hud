@@ -5,7 +5,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { Paperclip, X as XIcon, ExternalLink, Check, Trash2, Upload, Mail } from 'lucide-react'
 import { listLiveFiles, putLiveFile, linkLiveFile, openLiveFile, markFiled, removeLiveFile, noteLiveFile, draftMail, groupVersions, fmtStamp, fmtSize, extOf } from '../../lib/livefiles'
-import { INK, INK2, GRAY, PANEL_BORDER, GOLD, BLUE, GREEN, RED, MONO, SERIF, Label, KIND_COLOR, fmtTime } from './canon'
+import { INK, INK2, GRAY, PANEL_BORDER, GOLD, BLUE, GREEN, RED, MONO, SERIF, Label, KIND_COLOR } from './canon'
 
 const EXT_COLOR = { xlsx: GREEN, xls: GREEN, csv: GREEN, pptx: GOLD, ppt: GOLD, key: GOLD, docx: BLUE, doc: BLUE, pdf: RED, md: INK2, txt: INK2, html: BLUE, png: INK2, jpg: INK2, jpeg: INK2 }
 const sbtn = (color = INK2) => ({ display: 'inline-flex', alignItems: 'center', gap: 4, fontFamily: MONO, fontSize: 9, letterSpacing: '1px', textTransform: 'uppercase', padding: '4px 8px', borderRadius: 7, border: `1px solid ${color}66`, background: 'transparent', color, cursor: 'pointer' })
