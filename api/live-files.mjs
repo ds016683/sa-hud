@@ -39,7 +39,15 @@ async function draftWithFile(f) {
   const message = { subject, body: { contentType: 'Text', content: f.note ? `${f.note}\n\n` : '' }, toRecipients: [] }
   if (bytes.length <= INLINE_MAX) message.attachments = [{ '@odata.type': '#microsoft.graph.fileAttachment', name: f.name, contentType: mime, contentBytes: bytes.toString('base64') }]
   const made = await fetch(`${box}/messages`, { method: 'POST', headers: H, body: JSON.stringify(message) })
-  if (!made.ok) throw new Error(`draft -> ${made.status}: ${(await made.text()).slice(0, 200)}`)
+  if (!made.ok) {
+    const text = (await made.text()).slice(0, 200)
+    if (made.status === 403) {
+      let roles = []
+      try { roles = JSON.parse(Buffer.from(token.split('.')[1], 'base64url').toString()).roles || [] } catch { /* opaque token */ }
+      throw new Error(`Outlook refused to create the draft in ${MAILBOX} (403). The app token carries Graph roles [${roles.join(', ') || 'none readable'}]; drafting needs Mail.ReadWrite (application) with admin consent. Entra: App registrations, the Lumen app, API permissions, Add a permission, Microsoft Graph, Application permissions, Mail.ReadWrite, then Grant admin consent.`)
+    }
+    throw new Error(`draft -> ${made.status}: ${text}`)
+  }
   const msg = await made.json()
   if (bytes.length > INLINE_MAX) {
     const us = await fetch(`${box}/messages/${encodeURIComponent(msg.id)}/attachments/createUploadSession`, { method: 'POST', headers: H, body: JSON.stringify({ AttachmentItem: { attachmentType: 'file', name: f.name, size: bytes.length, contentType: mime } }) })
