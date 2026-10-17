@@ -137,3 +137,16 @@ export async function draftMail(f) {
   if (!r.ok || j.error) throw new Error(j.error || `draft ${r.status}`)
   return j
 }
+
+// A path on David's Mac, typed into the HUD. The browser cannot read it, so the
+// row waits (bucket 'request') until a Claude session on the Mac puts the file
+// in play (livefile.py put <path> --request <id>); the session hook announces it.
+export async function requestLiveFile(localPath, { objectiveId = null, projectId = null, note = null } = {}) {
+  const path = String(localPath || '').trim().replace(/^~/, '/Users/davidsmith')
+  if (!path) throw new Error('a path is required')
+  const name = path.split('/').pop()
+  const { data: { session: s } } = await supabase.auth.getSession()
+  const row = { user_id: s?.user?.id || null, name, bucket: 'request', path, size: null, mime: null, objective_id: objectiveId, project_id: projectId, note, source: 'request', version: 1 }
+  return (await q(supabase.from('live_files').insert(row).select()))[0]
+}
+export const isRequest = (r) => r && r.bucket === 'request'

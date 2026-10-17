@@ -48,6 +48,7 @@ const NAVY = '#002C77'
 const BLUE = '#009DE0'
 const GOLD = '#D4A106'
 const GRAY = '#8096B2'
+const LABEL = '#7FA8D4'
 const TEXT_DIM = '#565656'
 const PANEL_BORDER = '#E2E8F0'
 const PAGE_BG = '#F7F9FC'
@@ -256,7 +257,7 @@ export default function RelationshipsPage() {
         {/* LEFT: Lists + Tags sidebar */}
         <aside>
           <div style={{ ...S.panel, marginBottom: 10 }}>
-            <div style={{ fontSize: 10, fontWeight: 700, color: GRAY, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: LABEL, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>
               Target lists
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
@@ -324,7 +325,7 @@ export default function RelationshipsPage() {
             if (custom.length === 0) return null
             return (
               <div style={{ ...S.panel, marginBottom: 10 }}>
-                <div style={{ fontSize: 10, fontWeight: 700, color: GRAY, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: LABEL, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>
                   Custom tags
                 </div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
@@ -339,7 +340,7 @@ export default function RelationshipsPage() {
           })()}
 
           <div style={S.panel}>
-            <div style={{ fontSize: 10, fontWeight: 700, color: GRAY, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: LABEL, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>
               Quick filters
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -630,7 +631,7 @@ function DrillPanel({ person, isNew, onClose, onTogglePin, onHide, onAddTag, onR
   const inputStyle = {
     ...S.input, fontSize: 12, padding: '5px 8px', width: '100%',
   }
-  const labelStyle = { fontSize: 10, color: GRAY, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 2, display: 'block' }
+  const labelStyle = { fontSize: 10, color: LABEL, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 2, display: 'block' }
 
   return (
     <div
@@ -710,15 +711,15 @@ function DrillPanel({ person, isNew, onClose, onTogglePin, onHide, onAddTag, onR
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginBottom: 16 }}>
           <div style={{ ...S.panel, padding: 10, textAlign: 'center' }}>
             <div style={{ fontSize: 20, fontWeight: 700, color: NAVY }}>{person.contact_count || 0}</div>
-            <div style={{ fontSize: 10, color: GRAY, textTransform: 'uppercase', letterSpacing: '0.08em' }}>contacts</div>
+            <div style={{ fontSize: 10, color: LABEL, textTransform: 'uppercase', letterSpacing: '0.08em' }}>contacts</div>
           </div>
           <div style={{ ...S.panel, padding: 10, textAlign: 'center' }}>
             <div style={{ fontSize: 14, fontWeight: 700, color: NAVY }}>{relativeDate(person.last_contact_at)}</div>
-            <div style={{ fontSize: 10, color: GRAY, textTransform: 'uppercase', letterSpacing: '0.08em' }}>last contact</div>
+            <div style={{ fontSize: 10, color: LABEL, textTransform: 'uppercase', letterSpacing: '0.08em' }}>last contact</div>
           </div>
           <div style={{ ...S.panel, padding: 10, textAlign: 'center' }}>
             <div style={{ fontSize: 14, fontWeight: 700, color: NAVY }}>{strengthOf(person.contact_count)}</div>
-            <div style={{ fontSize: 10, color: GRAY, textTransform: 'uppercase', letterSpacing: '0.08em' }}>strength</div>
+            <div style={{ fontSize: 10, color: LABEL, textTransform: 'uppercase', letterSpacing: '0.08em' }}>strength</div>
           </div>
         </div>
       )}
@@ -726,7 +727,7 @@ function DrillPanel({ person, isNew, onClose, onTogglePin, onHide, onAddTag, onR
       {/* Contact info — edit form OR static display */}
       {editing ? (
         <div style={{ ...S.panel, marginBottom: 14, padding: 12 }}>
-          <div style={{ fontSize: 10, fontWeight: 700, color: GRAY, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>
+          <div style={{ fontSize: 10, fontWeight: 700, color: LABEL, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>
             Contact info
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
@@ -777,7 +778,7 @@ function DrillPanel({ person, isNew, onClose, onTogglePin, onHide, onAddTag, onR
       ) : (
         (person.title || person.phone || person.mobile_phone || person.address || person.website || person.linkedin_url) && (
           <div style={{ ...S.panel, marginBottom: 14, padding: 12 }}>
-            <div style={{ fontSize: 10, fontWeight: 700, color: GRAY, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: LABEL, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>
               Contact info
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 12, color: TEXT_DIM }}>
@@ -826,7 +827,7 @@ function DrillPanel({ person, isNew, onClose, onTogglePin, onHide, onAddTag, onR
       {/* Target lists */}
       {!isNew && <>
       <div style={{ marginBottom: 14 }}>
-        <div style={{ fontSize: 10, fontWeight: 700, color: GRAY, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6 }}>
+        <div style={{ fontSize: 10, fontWeight: 700, color: LABEL, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6 }}>
           On target lists
         </div>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, alignItems: 'center' }}>
@@ -852,7 +853,7 @@ function DrillPanel({ person, isNew, onClose, onTogglePin, onHide, onAddTag, onR
 
       {/* Tags */}
       <div style={{ marginBottom: 14 }}>
-        <div style={{ fontSize: 10, fontWeight: 700, color: GRAY, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6 }}>
+        <div style={{ fontSize: 10, fontWeight: 700, color: LABEL, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6 }}>
           Tags
         </div>
 
@@ -892,7 +893,7 @@ function DrillPanel({ person, isNew, onClose, onTogglePin, onHide, onAddTag, onR
 
         {/* Custom tags */}
         <div style={{ marginTop: 8 }}>
-          <div style={{ fontSize: 9, color: GRAY, fontWeight: 700, marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Custom</div>
+          <div style={{ fontSize: 10.5, color: LABEL, fontWeight: 700, marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Custom</div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, alignItems: 'center' }}>
             {(person.tags || []).filter(t => !t.includes(':')).map(t => (
               <span key={t} style={{ ...S.chip('#F1F5F9', TEXT_DIM), padding: '4px 10px' }}>
@@ -913,7 +914,7 @@ function DrillPanel({ person, isNew, onClose, onTogglePin, onHide, onAddTag, onR
 
       {/* Notes */}
       <div style={{ marginBottom: 14 }}>
-        <div style={{ fontSize: 10, fontWeight: 700, color: GRAY, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6 }}>
+        <div style={{ fontSize: 10, fontWeight: 700, color: LABEL, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6 }}>
           Notes
         </div>
         <textarea
@@ -933,7 +934,7 @@ function DrillPanel({ person, isNew, onClose, onTogglePin, onHide, onAddTag, onR
 
       {/* Interaction timeline */}
       <div>
-        <div style={{ fontSize: 10, fontWeight: 700, color: GRAY, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6 }}>
+        <div style={{ fontSize: 10, fontWeight: 700, color: LABEL, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6 }}>
           Recent activity · {interactions.length}
         </div>
         {loadingI ? (

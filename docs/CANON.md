@@ -37,6 +37,10 @@ Three slots of planned work plus the Ad Hoc slot. A Bounty takes one, a Contract
 
 Every mission carries one line, written on the front end, labeled **What Will Be True, That Wasn't True Before**. One sentence in David's own words. It is the answer to one question, asked once at capture or the first time the mission is loaded without it: why this one, what is different when it is done. Lumen writes the sentence from David's words, reads it back once, David says yes or fixes a word. It carries through the mission: on the Loadout card, first in the brain, at the top of the yay page. Gates and milestones under it are observable things (a decision marked, a conversation had, a thing produced). At close, Lumen reads the star back and asks whether it is true and what is different now; that answer is Achieved, shown under the star on the yay page. A Side Mission's star lives in objectives.north_star; a Main Mission's is its description.
 
+## Color
+
+Gray (`GRAY`) means off: a closed item, a disabled control, a placeholder, something not reachable right now. It is never the color of a live label. Eyebrows and field labels (Domain, Type, Due, Where It Stands, Production Files) read in `LABEL`, a steel blue, 10.5 to 11 px mono, distinct but not loud. Live secondary text (timestamps, captions, meta) reads in `MUTED`, not gray (David, 10/17). The realm of a mission is called its Domain.
+
 ## Labels
 
 Any title for something, a header or a label, reads in Title Case: the first letter of each word capitalized (David, 10/16; set first for the North Star label on 10/13 and extended to the entire system). Mono eyebrows stay uppercase. Sentences, quotes, and David's own words are not labels and keep their case.

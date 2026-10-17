@@ -10,7 +10,7 @@ import { HYGIENE_ITEMS, HYGIENE_KEYS } from '../constants/hygiene'
 import { MEDICATIONS, dueOn } from '../constants/medications'
 import HygieneChecklist from './river/HygieneChecklist'
 import RegimenChecklist from './river/RegimenChecklist'
-import { S, Eyebrow, Panel, Stat, Label, GRAY, INK2, GOLD, GREEN, BLUE, PURPLE, PERIWINKLE, RED, PANEL_BORDER, MONO, chiToday, fmtTime } from './river/canon'
+import { S, Eyebrow, Panel, Stat, Label, GRAY, INK2, GOLD, GREEN, BLUE, PURPLE, PERIWINKLE, RED, PANEL_BORDER, MONO, chiToday, fmtTime, LABEL } from './river/canon'
 
 // ---------- constants ----------
 const TOP_PILLS = [
@@ -175,7 +175,7 @@ function ItemList({ items, cats, insertCat, onChanged, title, blank }) {
 function LogTable14({ cols, rows, blank = 'No logs in the last 14 days.' }) {
   const any = rows.some(r => cols.some(c => c.key !== 'day' && c.render(r)))
   if (!any) return <div style={{ color: GRAY, fontSize: 13 }}>{blank}</div>
-  const th = { textAlign: 'left', fontFamily: MONO, fontSize: 9.5, letterSpacing: '1.2px', textTransform: 'uppercase', color: GRAY, padding: '4px 8px 6px 0', fontWeight: 500, whiteSpace: 'nowrap' }
+  const th = { textAlign: 'left', fontFamily: MONO, fontSize: 10.5, letterSpacing: '1.2px', textTransform: 'uppercase', color: LABEL, padding: '4px 8px 6px 0', fontWeight: 500, whiteSpace: 'nowrap' }
   const td = { fontSize: 12.5, color: INK2, padding: '5px 8px 5px 0', borderTop: `1px solid ${PANEL_BORDER}`, verticalAlign: 'top' }
   return (
     <div style={{ overflowX: 'auto' }}>

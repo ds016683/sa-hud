@@ -9,7 +9,7 @@ import ItemDetail from './river/ItemDetail'
 import FileAway from './river/FileAway'
 import { fetchObjectives, addObjective, route, binObjective, restoreObjective, purgeObjective, reopenObjective, closeOut, pockets, provenance, realmOf, STATE, TAGS, sizeOf } from '../lib/objectives'
 import { fetchLoadout, SIZES } from '../lib/loadout'
-import { INK, INK2, GRAY, PANEL_BORDER, GOLD, GOLD_BRIGHT, BLUE, GREEN, RED, PURPLE, MONO, S, Panel, Label, chiToday, NORTH_STAR_LABEL, NORTH_STAR_ASK } from './river/canon'
+import { INK, INK2, GRAY, PANEL_BORDER, GOLD, GOLD_BRIGHT, BLUE, GREEN, RED, PURPLE, MONO, S, Panel, Label, chiToday, NORTH_STAR_LABEL, NORTH_STAR_ASK, LABEL } from './river/canon'
 
 const btn = (color = INK2, filled = false, extra = {}) => ({
   display: 'inline-flex', alignItems: 'center', gap: 5, fontFamily: MONO, fontSize: 9.5, letterSpacing: '1px', textTransform: 'uppercase',
@@ -181,7 +181,7 @@ export default function SideMissionsPage({ onNavigate }) {
           <input value={filter} onChange={e => setFilter(e.target.value)} placeholder="filter" style={{ ...field, width: 160, padding: '6px 10px', fontSize: 12 }} />
         </div>
         <div style={{ marginTop: 10 }}>
-          {!rows && <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '1.4px', textTransform: 'uppercase', color: GRAY, padding: '10px 0' }}>Reading the queue</div>}
+          {!rows && <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '1.4px', textTransform: 'uppercase', color: LABEL, padding: '10px 0' }}>Reading the queue</div>}
           {rows && shown.length === 0 && <div style={{ fontSize: 13, color: GRAY, padding: '12px 0' }}>{container === 'released' ? `Nothing released in the last ${range || 'all'} days.` : container === 'bin' ? 'The bin is empty.' : `Nothing in ${STATE[container].label}.`}</div>}
           {shown.map(o => (
             <Row key={o.id} o={o} container={container} loadItem={loadItemFor(o)} onOpen={setOpen}

@@ -4,7 +4,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { ChevronLeft, ChevronRight, Check, X as XIcon } from 'lucide-react'
 import { fetchDay, build, KINDS, shiftDay } from '../../lib/activity'
-import { INK, GRAY, PANEL_BORDER, GREEN, MONO, SERIF, S, Label, chiToday, fmtTime, fmtDay } from './canon'
+import { INK, GRAY, PANEL_BORDER, GREEN, MONO, SERIF, S, Label, chiToday, fmtTime, fmtDay, LABEL } from './canon'
 
 export const KindChip = ({ kind }) => {
   const c = (KINDS[kind] || KINDS.Activity).color
@@ -44,7 +44,7 @@ export function useDayRecord(day) {
 }
 
 export function Timeline({ view, loading }) {
-  if (loading && !view) return <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '1.4px', textTransform: 'uppercase', color: GRAY, padding: '18px 0' }}>Reading the pipes</div>
+  if (loading && !view) return <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '1.4px', textTransform: 'uppercase', color: LABEL, padding: '18px 0' }}>Reading the pipes</div>
   if (view && view.rows.length === 0) return (
     <div style={{ padding: '26px 0 16px' }}>
       <div style={{ fontFamily: SERIF, fontSize: 18, fontWeight: 500, color: '#fff', letterSpacing: '-0.01em' }}>Quiet so far.</div>

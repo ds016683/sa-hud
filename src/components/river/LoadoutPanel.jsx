@@ -24,7 +24,7 @@ import ActivityLogModal from './ActivityLog'
 import LiveFilesModal, { ClipButton } from './LiveFiles'
 import { liveCounts } from '../../lib/livefiles'
 import ItemDetail from './ItemDetail'
-import { INK, INK2, GRAY, PANEL_BORDER, GOLD, GOLD_BRIGHT, BLUE, GREEN, RED, MONO, SERIF, S, Eyebrow, Label, Panel, KIND_COLOR, KindChip, NORTH_STAR_LABEL } from './canon'
+import { INK, INK2, GRAY, PANEL_BORDER, GOLD, GOLD_BRIGHT, BLUE, GREEN, RED, MONO, SERIF, S, Eyebrow, Label, Panel, KIND_COLOR, KindChip, NORTH_STAR_LABEL, LABEL } from './canon'
 
 const btn = (color = INK2, filled = false) => ({
   display: 'inline-flex', alignItems: 'center', gap: 5, fontFamily: MONO, fontSize: 9.5, letterSpacing: '1px', textTransform: 'uppercase',
@@ -109,7 +109,7 @@ const dragPayload = (kind, id) => JSON.stringify({ kind, id })
 const readDrag = (e) => { try { return JSON.parse(e.dataTransfer.getData('text/plain') || '{}') } catch { return {} } }
 const badgeFor = (it) => it.meeting ? 'toastmaster' : it.kind === 'Main Mission' ? 'mission-task' : it.kind === 'Ad Hoc' ? 'impromptu' : it.size === 'heavy' ? 'mythic' : it.size === 'medium' ? 'contract' : 'bounty'
 const fmtDue = (d) => d ? new Date(`${d}T12:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : null
-const Fact = ({ label, children }) => <div style={{ padding: '7px 0' }}><div style={{ fontFamily: MONO, fontSize: 9, letterSpacing: '1.3px', textTransform: 'uppercase', color: GRAY, marginBottom: 2 }}>{label}</div>{children}</div>
+const Fact = ({ label, children }) => <div style={{ padding: '7px 0' }}><div style={{ fontFamily: MONO, fontSize: 10.5, letterSpacing: '1.3px', textTransform: 'uppercase', color: LABEL, marginBottom: 2 }}>{label}</div>{children}</div>
 
 function MeetingSlot({ it, n, act }) {
   const ends = it.ends_at ? new Date(it.ends_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'America/Chicago' }) : null
@@ -120,7 +120,7 @@ function MeetingSlot({ it, n, act }) {
         <div style={{ flex: 1, minWidth: 0, display: 'grid', gap: 2 }}>
           <div style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 14.5, color: INK, lineHeight: 1.25 }}>In a meeting</div>
           <div style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '1.4px', textTransform: 'uppercase', color: BLUE }}>Meeting</div>
-          <div style={{ fontFamily: MONO, fontSize: 9, letterSpacing: '1.1px', textTransform: 'uppercase', color: GRAY }}>1 slot while it runs</div>
+          <div style={{ fontFamily: MONO, fontSize: 10.5, letterSpacing: '1.1px', textTransform: 'uppercase', color: LABEL }}>1 slot while it runs</div>
         </div>
         <Notches from={n - 1} span={1} color={BLUE} />
       </div>
@@ -158,7 +158,7 @@ function FilledSlot({ it, n, act, onOpen, onExtract, onRecall, dropFromStash, cl
         <div style={{ flex: 1, minWidth: 0, display: 'grid', gap: 2 }}>
           <div onClick={() => onOpen(it)} title={main ? (it.project || 'Main Mission') : it.title} style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 14.5, color: INK, lineHeight: 1.25, cursor: 'pointer', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{main ? (it.project || 'Main Mission') : it.title}</div>
           <div style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '1.4px', textTransform: 'uppercase', color }}>{it.kind}{it.personal ? ' · personal' : ''}</div>
-          <div style={{ fontFamily: MONO, fontSize: 9, letterSpacing: '1.1px', textTransform: 'uppercase', color: GRAY }}>{typeLine}</div>
+          <div style={{ fontFamily: MONO, fontSize: 10.5, letterSpacing: '1.1px', textTransform: 'uppercase', color: LABEL }}>{typeLine}</div>
         </div>
         <Notches from={n - 1} span={span} color={SIZES[it.size]?.color || INK2} />
       </div>
@@ -167,7 +167,7 @@ function FilledSlot({ it, n, act, onOpen, onExtract, onRecall, dropFromStash, cl
         : <div style={{ flex: 1 }} />}
       <div title={it.north_star ? `${NORTH_STAR_LABEL}: ${it.north_star}` : NORTH_STAR_LABEL} style={{ fontFamily: SERIF, fontStyle: 'italic', fontSize: 13, lineHeight: 1.45, color: it.north_star ? INK2 : GRAY, borderLeft: `2px solid ${it.north_star ? BLUE : PANEL_BORDER}`, paddingLeft: 9, display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{it.north_star || 'No star yet.'}</div>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', borderTop: `1px solid ${PANEL_BORDER}`, borderBottom: `1px solid ${PANEL_BORDER}` }}>
-        <Fact label="Miles"><span style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 16, color: INK }}>{miles.n}</span><span style={{ fontFamily: MONO, fontSize: 9, letterSpacing: '1px', textTransform: 'uppercase', color: GRAY, marginLeft: 5 }}>{miles.sub}</span></Fact>
+        <Fact label="Miles"><span style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 16, color: INK }}>{miles.n}</span><span style={{ fontFamily: MONO, fontSize: 10.5, letterSpacing: '1px', textTransform: 'uppercase', color: LABEL, marginLeft: 5 }}>{miles.sub}</span></Fact>
         <div style={{ borderLeft: `1px solid ${PANEL_BORDER}`, paddingLeft: 12 }}><Fact label="Due">{due ? <span style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 16, color: late ? RED : INK }}>{due}{late ? <span style={{ fontFamily: MONO, fontSize: 9, letterSpacing: '1px', textTransform: 'uppercase', marginLeft: 5 }}>overdue</span> : null}</span> : <span style={{ fontSize: 13, color: GRAY }}>none set</span>}</Fact></div>
       </div>
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
@@ -222,13 +222,13 @@ function AdHocSlot({ item, act, onDispatch, onOpen, onChanged, onRecall }) {
           <div style={{ flex: 1, minWidth: 0, display: 'grid', gap: 2 }}>
             <div style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 14.5, color: INK, lineHeight: 1.25 }}>The Unplanned</div>
             <div style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '1.4px', textTransform: 'uppercase', color: BLUE }}>Ad Hoc</div>
-            <div style={{ fontFamily: MONO, fontSize: 9, letterSpacing: '1.1px', textTransform: 'uppercase', color: GRAY }}>{item.call ? 'Call' : 'Task'} · its own slot</div>
+            <div style={{ fontFamily: MONO, fontSize: 10.5, letterSpacing: '1.1px', textTransform: 'uppercase', color: LABEL }}>{item.call ? 'Call' : 'Task'} · its own slot</div>
           </div>
           {item.call ? <Phone size={14} color={BLUE} /> : <Zap size={14} color={BLUE} />}
         </div>
         <div onClick={() => onOpen(item)} style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 18, color: '#fff', lineHeight: 1.28, cursor: 'pointer', flex: 1 }}>{item.title}</div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', borderTop: `1px solid ${PANEL_BORDER}`, borderBottom: `1px solid ${PANEL_BORDER}` }}>
-          <Fact label="Miles"><span style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 16, color: INK }}>1</span><span style={{ fontFamily: MONO, fontSize: 9, letterSpacing: '1px', textTransform: 'uppercase', color: GRAY, marginLeft: 5 }}>on dispatch</span></Fact>
+          <Fact label="Miles"><span style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 16, color: INK }}>1</span><span style={{ fontFamily: MONO, fontSize: 10.5, letterSpacing: '1px', textTransform: 'uppercase', color: LABEL, marginLeft: 5 }}>on dispatch</span></Fact>
           <div style={{ borderLeft: `1px solid ${PANEL_BORDER}`, paddingLeft: 12 }}><Fact label="Landed">{since ? <span style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 16, color: INK }}>{since}</span> : <span style={{ fontSize: 13, color: GRAY }}>today</span>}</Fact></div>
         </div>
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
@@ -249,7 +249,7 @@ function AdHocSlot({ item, act, onDispatch, onOpen, onChanged, onRecall }) {
         <div style={{ flex: 1, minWidth: 0, display: 'grid', gap: 2 }}>
           <div style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 14.5, color: 'rgba(234,241,248,0.7)', lineHeight: 1.25 }}>Load the Unplanned</div>
           <div style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '1.4px', textTransform: 'uppercase', color: BLUE }}>Ad Hoc Slot</div>
-          <div style={{ fontFamily: MONO, fontSize: 9, letterSpacing: '1.1px', textTransform: 'uppercase', color: GRAY }}>a task or a call · 1 mile</div>
+          <div style={{ fontFamily: MONO, fontSize: 10.5, letterSpacing: '1.1px', textTransform: 'uppercase', color: LABEL }}>a task or a call · 1 mile</div>
         </div>
       </div>
       <div style={{ display: 'flex', gap: 4, marginTop: 'auto' }}>
@@ -319,7 +319,7 @@ function StashPeek({ it, act, onClose, onOpenFull, clips = 0, onFiles }) {
         </div>
         <div style={{ fontFamily: SERIF, fontStyle: 'italic', fontSize: 14, lineHeight: 1.45, color: it.north_star ? INK2 : GRAY, borderLeft: `2px solid ${it.north_star ? BLUE : PANEL_BORDER}`, paddingLeft: 10 }}>{it.north_star || 'No star yet.'}</div>
         {it.description && <div style={{ fontSize: 13, lineHeight: 1.55, color: INK2, display: '-webkit-box', WebkitLineClamp: 4, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{it.description}</div>}
-        <div style={{ display: 'flex', gap: 18, fontFamily: MONO, fontSize: 9.5, letterSpacing: '1px', textTransform: 'uppercase', color: GRAY, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: 18, fontFamily: MONO, fontSize: 10.5, letterSpacing: '1px', textTransform: 'uppercase', color: LABEL, flexWrap: 'wrap' }}>
           <span>{it.slots} slot{it.slots === 1 ? '' : 's'}</span>
           <span>{it.kind === 'Main Mission' ? MILES.mmt : it.kind === 'Ad Hoc' ? MILES.adhoc : it.size === 'heavy' ? `${MILES.mythic} + gates` : it.size === 'medium' ? MILES.contract : MILES.bounty} mi on close</span>
           {it.due_date && <span>due {new Date(`${it.due_date}T12:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>}
@@ -453,7 +453,7 @@ export default function LoadoutPanel({ onChange, refreshKey = 0, onNavigate, bar
       {yay && <YayPage objectiveId={yay} fresh onClose={() => setYay(null)} onOpenMission={(o) => { setYay(null); setRelated({ id: o.id, objective_id: o.id, kind: (o.tags || []).includes('impromptu') ? 'Ad Hoc' : 'Side Mission', title: o.title, description: o.description, tags: o.tags, size: sizeOf(o) }) }} />}
       {dispatch && <DispatchModal item={dispatch} projects={projects} onClose={() => setDispatch(null)} onDone={(r) => { setDispatch(null); setMsg(`Dispatched: ${dispatch.title} · ${fmtClock(r.minutes)}${r.ported.length ? ` · ported ${r.ported.length}` : ' · nothing left'} · 1 mile on the next update`); logBoard(`Dispatched: ${dispatch.title} · ${fmtClock(r.minutes)}`); bump() }} />}
       {!L ? (
-        <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '1.4px', textTransform: 'uppercase', color: GRAY, padding: '12px 0' }}>Reading the board</div>
+        <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '1.4px', textTransform: 'uppercase', color: LABEL, padding: '12px 0' }}>Reading the board</div>
       ) : (
         <>
           <div className="board-slots">

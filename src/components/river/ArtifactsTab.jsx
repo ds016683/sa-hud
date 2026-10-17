@@ -5,7 +5,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { Save, RefreshCw, User, Eye, X as XIcon } from 'lucide-react'
 import { listArtifacts, readArtifact, writeArtifact } from '../../lib/artifacts'
 import { renderMarkdown } from './MeetingCloseout'
-import { INK, INK2, GRAY, PANEL_BORDER, GOLD, GOLD_BRIGHT, BLUE, GREEN, RED, MONO, SERIF, S, Eyebrow, Label } from './canon'
+import { INK, INK2, GRAY, PANEL_BORDER, GOLD, GOLD_BRIGHT, BLUE, GREEN, RED, MONO, SERIF, S, Eyebrow, Label, LABEL } from './canon'
 
 const field = { width: '100%', background: 'rgba(255,255,255,0.04)', border: `1px solid ${PANEL_BORDER}`, borderRadius: 8, color: INK, padding: '9px 11px', fontSize: 13, lineHeight: 1.55, fontFamily: 'inherit', resize: 'vertical', boxSizing: 'border-box' }
 const pill = (active, color = BLUE) => ({
@@ -123,7 +123,7 @@ function Decision({ doc, onChange }) {
           <Eyebrow style={{ marginBottom: 8 }}>Economics</Eyebrow>
           <div style={{ ...S.panel, padding: '6px 6px 2px', marginBottom: 16, overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <thead><tr><th style={{ ...cell, borderTop: 'none', fontFamily: MONO, fontSize: 9.5, letterSpacing: '1px', color: GRAY, textAlign: 'left', textTransform: 'uppercase' }}>Line</th>{optNames.map(n => <th key={n} style={{ ...cell, borderTop: 'none', fontFamily: MONO, fontSize: 9.5, letterSpacing: '1px', color: GRAY, textAlign: 'right', textTransform: 'uppercase' }}>{n}</th>)}</tr></thead>
+              <thead><tr><th style={{ ...cell, borderTop: 'none', fontFamily: MONO, fontSize: 10.5, letterSpacing: '1px', color: LABEL, textAlign: 'left', textTransform: 'uppercase' }}>Line</th>{optNames.map(n => <th key={n} style={{ ...cell, borderTop: 'none', fontFamily: MONO, fontSize: 10.5, letterSpacing: '1px', color: LABEL, textAlign: 'right', textTransform: 'uppercase' }}>{n}</th>)}</tr></thead>
               <tbody>{econ.map((r, i) => (
                 <tr key={i}><td style={{ ...cell, color: INK2 }}>{r.label}</td>{optNames.map(n => <td key={n} style={{ ...cell, textAlign: 'right', fontFamily: MONO, fontSize: 12.5 }}>{(r.values || {})[n] ?? ''}</td>)}</tr>
               ))}</tbody>
@@ -246,7 +246,7 @@ function Scorecard({ doc, onChange }) {
             </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 10, flexWrap: 'wrap' }}>
-            <span style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '1px', color: GRAY, textTransform: 'uppercase' }}>{q.id} rating<Req done={has(q.rating)} /></span>
+            <span style={{ fontFamily: MONO, fontSize: 10.5, letterSpacing: '1px', color: LABEL, textTransform: 'uppercase' }}>{q.id} rating<Req done={has(q.rating)} /></span>
             <RatingPills scale={scale} value={q.rating} onChange={v => set(d => { d.questions[i].rating = v; return d })} />
           </div>
         </div>

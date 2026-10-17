@@ -6,6 +6,7 @@ const NAVY = '#002C77'
 const BLUE = '#009DE0'
 const GOLD = '#D4A106'
 const GRAY = '#8096B2'
+const LABEL = '#7FA8D4'
 const TEXT_DIM = '#565656'
 const PANEL_BORDER = '#E2E8F0'
 const PAGE_BG = '#F7F9FC'
@@ -174,7 +175,7 @@ export default function TripPlannerView({ people, onSelectPerson }) {
         {/* Destination chips */}
         {!selectedDest && (
           <div style={{ ...S.panel, marginBottom: 10 }}>
-            <div style={{ fontSize: 10, fontWeight: 700, color: GRAY, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: LABEL, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>
               {query.trim() ? `Matches (${matchedDests.length})` : 'Top destinations'}
             </div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
@@ -252,7 +253,7 @@ export default function TripPlannerView({ people, onSelectPerson }) {
       {/* Right: Moves summary */}
       <div>
         <div style={S.panel}>
-          <div style={{ fontSize: 10, fontWeight: 700, color: GRAY, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>
+          <div style={{ fontSize: 10, fontWeight: 700, color: LABEL, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>
             Trip dashboard
           </div>
           {!selectedDest ? (
@@ -278,7 +279,7 @@ export default function TripPlannerView({ people, onSelectPerson }) {
                 </div>
                 <div style={{ background: '#F1F5F9', padding: 10, borderRadius: 8, textAlign: 'center' }}>
                   <div style={{ fontSize: 22, fontWeight: 700, color: GRAY }}>{moveBuckets.low.length}</div>
-                  <div style={{ fontSize: 9, color: GRAY, fontWeight: 700, textTransform: 'uppercase' }}>low</div>
+                  <div style={{ fontSize: 10.5, color: LABEL, fontWeight: 700, textTransform: 'uppercase' }}>low</div>
                 </div>
               </div>
 

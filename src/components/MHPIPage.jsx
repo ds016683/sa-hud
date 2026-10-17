@@ -10,6 +10,7 @@ import { Bell, Lock, Globe, FileText, Landmark, Users, Compass, Building2, Heart
 const NAVY = '#EAF1F8'
 const NAVY_DEEP = '#0E2336'
 const GRAY = 'rgba(234,241,248,0.45)'
+const LABEL = '#7FA8D4'
 const INK2 = 'rgba(234,241,248,0.66)'
 const PANEL_BORDER = 'rgba(255,255,255,0.10)'
 const PANEL_BG = 'rgba(255,255,255,0.035)'
@@ -23,7 +24,7 @@ const TH = 'Third Horizon'
 const S = {
   page: { maxWidth: 1040, margin: '0 auto', padding: '4px 0 80px', fontFamily: 'inherit', color: NAVY },
   h1: { fontSize: 28, fontWeight: 500, margin: 0, color: '#FFFFFF', fontFamily: "'Lora', Georgia, serif", letterSpacing: '-0.01em' },
-  sub: { fontSize: 10, color: GRAY, margin: '6px 0 0', fontFamily: 'var(--font-mono, monospace)', letterSpacing: '1.4px', textTransform: 'uppercase' },
+  sub: { fontSize: 10, color: LABEL, margin: '6px 0 0', fontFamily: 'var(--font-mono, monospace)', letterSpacing: '1.4px', textTransform: 'uppercase' },
   panel: { background: PANEL_BG, border: `1px solid ${PANEL_BORDER}`, borderRadius: 12, padding: 16, marginBottom: 12 },
   panelTitle: { fontSize: 10, fontWeight: 600, color: BLUE, textTransform: 'uppercase', letterSpacing: '1.6px', marginBottom: 10, fontFamily: 'var(--font-mono, monospace)' },
   chip: (bg, fg) => ({ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 9999, background: bg, color: fg, textTransform: 'uppercase', letterSpacing: '0.05em', whiteSpace: 'nowrap' }),
@@ -34,7 +35,7 @@ const Serif = ({ children, size = 20, style }) => (
   <div style={{ fontFamily: "'Lora', Georgia, serif", fontSize: size, fontWeight: 500, color: '#fff', letterSpacing: '-0.01em', lineHeight: 1.25, ...style }}>{children}</div>
 )
 const Body = ({ children, style }) => <div style={{ fontSize: 13, lineHeight: 1.6, color: INK2, ...style }}>{children}</div>
-const Label = ({ children }) => <div style={{ fontSize: 9.5, color: GRAY, textTransform: 'uppercase', letterSpacing: '1.4px', marginBottom: 5, fontFamily: 'var(--font-mono, monospace)' }}>{children}</div>
+const Label = ({ children }) => <div style={{ fontSize: 10.5, color: LABEL, textTransform: 'uppercase', letterSpacing: '1.4px', marginBottom: 5, fontFamily: 'var(--font-mono, monospace)' }}>{children}</div>
 const Bullets = ({ items, color = GOLD }) => (
   <ul style={{ margin: '6px 0 0', padding: 0, listStyle: 'none' }}>
     {items.map((t, i) => (

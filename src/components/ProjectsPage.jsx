@@ -10,7 +10,7 @@ import SessionBoard from './river/SessionBoard'
 import { listShares, archiveShare, archiveSharesFor, shareUrl } from '../lib/shares'
 import { fileProject } from '../lib/archive'
 import { equipTask, stashTask, deleteMission } from '../lib/loadout'
-import { NORTH_STAR_LABEL } from './river/canon'
+import { NORTH_STAR_LABEL, LABEL } from './river/canon'
 import { importProject } from '../lib/cabinet'
 import BadgeMedallion from './BadgeArt'
 import { BADGES } from '../constants/collection'
@@ -40,7 +40,7 @@ const MONO = 'var(--font-mono, monospace)'
 const S = {
   page: { maxWidth: 1100, margin: '0 auto', padding: '20px 24px 80px', color: INK },
   h1: { fontSize: 28, fontWeight: 500, margin: 0, color: '#FFFFFF', fontFamily: SERIF, letterSpacing: '-0.01em' },
-  sub: { fontSize: 10, color: GRAY, margin: '6px 0 0', fontFamily: MONO, letterSpacing: '1.4px', textTransform: 'uppercase' },
+  sub: { fontSize: 10, color: LABEL, margin: '6px 0 0', fontFamily: MONO, letterSpacing: '1.4px', textTransform: 'uppercase' },
   panel: { background: PANEL_BG, border: `1px solid ${PANEL_BORDER}`, borderRadius: 12, padding: 16 },
   panelTitle: { fontSize: 10, fontWeight: 600, color: BLUE, textTransform: 'uppercase', letterSpacing: '1.6px', marginBottom: 10, fontFamily: MONO },
   btnPrimary: { background: BLUE, color: NAVY_DEEP, border: 'none', borderRadius: 8, padding: '8px 14px', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', display: 'inline-flex', alignItems: 'center', gap: 6 },
@@ -119,14 +119,14 @@ function ProjectCard({ project, onOpen }) {
       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
         <span style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 14, color: INK }}>{closed} / {ms.length}</span>
         <span style={{ flex: 1, height: 4, borderRadius: 99, background: 'rgba(255,255,255,0.08)', overflow: 'hidden' }}><span style={{ display: 'block', width: `${pct}%`, height: '100%', background: GOLD }} /></span>
-        <span style={{ fontFamily: MONO, fontSize: 9, letterSpacing: '1px', textTransform: 'uppercase', color: GRAY }}>milestones{history.length ? ` · ${history.length} earlier` : ''}</span>
+        <span style={{ fontFamily: MONO, fontSize: 10.5, letterSpacing: '1px', textTransform: 'uppercase', color: LABEL }}>milestones{history.length ? ` · ${history.length} earlier` : ''}</span>
       </div>
       <div style={{ marginTop: 'auto' }}>
         {now ? <div style={{ fontSize: 12.5, color: INK, lineHeight: 1.4 }}><span style={{ color: now.objective_id ? GREEN : GOLD, fontFamily: MONO, fontSize: 9.5, letterSpacing: '1px', textTransform: 'uppercase', marginRight: 6 }}>{now.objective_id ? 'on the board' : 'now'}</span>{nowP.n} · {stripNum(now.text)}</div>
           : <div style={{ fontSize: 12.5, color: GRAY }}>{ms.length ? 'Every milestone closed.' : 'No milestones yet.'}</div>}
         {next && <div style={{ fontSize: 11.5, color: GRAY, marginTop: 3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>next · {stripNum(next.text)}</div>}
       </div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, fontFamily: MONO, fontSize: 9.5, letterSpacing: '0.8px', color: GRAY, textTransform: 'uppercase' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, fontFamily: MONO, fontSize: 10.5, letterSpacing: '0.8px', color: LABEL, textTransform: 'uppercase' }}>
         {blocked > 0 && <span style={{ color: RED, display: 'inline-flex', alignItems: 'center', gap: 4 }}><Hand size={10} /> {blocked} on David</span>}
         <span style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 6 }}><span style={{ width: 7, height: 7, borderRadius: 99, background: freshColor }} />touched {lastTouch}</span>
       </div>
@@ -346,7 +346,7 @@ function SharesTab({ project }) {
       {recs.map(r => (
         <div key={r.slug} style={{ borderTop: `1px solid ${PANEL_BORDER}`, padding: '12px 0', display: 'grid', gridTemplateColumns: '1fr auto', gap: 12, alignItems: 'start' }}>
           <div style={{ minWidth: 0 }}>
-            <div style={{ fontSize: 14, color: r.active ? INK : GRAY }}>{r.title || r.slug}{!r.active && <span style={{ fontFamily: MONO, fontSize: 9, letterSpacing: '1px', color: GRAY, marginLeft: 8, textTransform: 'uppercase' }}>archived{r.archived_at ? ` · ${String(r.archived_at).slice(0, 10)}` : ''}</span>}</div>
+            <div style={{ fontSize: 14, color: r.active ? INK : GRAY }}>{r.title || r.slug}{!r.active && <span style={{ fontFamily: MONO, fontSize: 10.5, letterSpacing: '1px', color: LABEL, marginLeft: 8, textTransform: 'uppercase' }}>archived{r.archived_at ? ` · ${String(r.archived_at).slice(0, 10)}` : ''}</span>}</div>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 6, alignItems: 'center' }}>
               <button onClick={() => copy(shareUrl(r.slug), 'Link')} style={{ ...S.btnGhost, fontSize: 11, padding: '4px 10px', fontFamily: MONO }}>{shareUrl(r.slug).replace(/^https?:\/\//, '')}</button>
               <button onClick={() => copy(r.code, 'Code')} style={{ ...S.btnGhost, fontSize: 11, padding: '4px 10px', fontFamily: MONO, letterSpacing: '2px', color: r.active ? GOLD : GRAY, borderColor: r.active ? 'rgba(230,181,79,0.4)' : PANEL_BORDER }}>{r.code}</button>
@@ -370,6 +370,8 @@ function ProjectDetail({ project, board: boardProp, api, onBack, initialTab, ini
   const openArtifact = (slug) => { setArtifactSlug(slug); setTab('artifacts') }
   const [newTask, setNewTask] = useState('')
 
+  // mission hash (David, 10/17): the open mission and its tab ride the URL so a refresh lands back here.
+  useEffect(() => { try { const suffix = ((window.location.hash || '').match(/\/item\/[^/]+$/) || [''])[0]; window.history.replaceState(window.history.state, '', `#/main-missions/${project.id}/${tab}${suffix}`) } catch { /* no-op */ } }, [project.id, tab])
   const { plan, history } = planOf(project)
   const tasks = plan.map(p => p.t)
   const [objState, setObjState] = useState({})
@@ -457,7 +459,7 @@ function ProjectDetail({ project, board: boardProp, api, onBack, initialTab, ini
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '14px 0 0' }}>
         <span style={{ flex: 1, height: 5, borderRadius: 99, background: 'rgba(255,255,255,0.08)', overflow: 'hidden' }}><span style={{ display: 'block', width: `${pct}%`, height: '100%', background: GOLD }} /></span>
-        <span style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '1px', textTransform: 'uppercase', color: GRAY }}>{closed} of {tasks.length} closed</span>
+        <span style={{ fontFamily: MONO, fontSize: 10.5, letterSpacing: '1px', textTransform: 'uppercase', color: LABEL }}>{closed} of {tasks.length} closed</span>
       </div>
 
       <div style={{ ...S.panel, marginTop: 20 }}>
@@ -527,7 +529,7 @@ export default function ProjectsPage({ deepLink = [], onNavigate } = {}) {
   const detail = detailId ? projects.find(p => p.id === detailId) : null
   if (detail) {
     const board = boards.find(b => b.project === detail.key) || null
-    return <ProjectDetail key={detail.id + (deepLink[1] || '') + (deepLink[2] || '')} project={detail} board={board} api={api} onBack={() => setDetailId(null)} initialTab={deepLink[0] === detail.id ? deepLink[1] : undefined} initialSlug={deepLink[0] === detail.id ? deepLink[2] : undefined} onNavigate={onNavigate} />
+    return <ProjectDetail key={detail.id + (deepLink[1] || '') + (deepLink[2] || '')} project={detail} board={board} api={api} onBack={() => { setDetailId(null); try { window.history.replaceState(window.history.state, '', '#/main-missions') } catch { /* no-op */ } }} initialTab={deepLink[0] === detail.id ? deepLink[1] : undefined} initialSlug={deepLink[0] === detail.id ? deepLink[2] : undefined} onNavigate={onNavigate} />
   }
 
   const cats = CATEGORY_ORDER.filter(c => active.some(p => p.category === c))

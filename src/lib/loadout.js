@@ -318,3 +318,13 @@ export async function startWithRoom(target, { projectName = null } = {}) {
 export async function logBoard(text) {
   try { await supabase.from('daily_logs').insert({ day: chiToday(), kind: 'note', what: 'board', note: String(text).slice(0, 300), source: 'hud', at: new Date().toISOString() }) } catch { /* best effort */ }
 }
+
+// Rebuild a Board item from an objective id (for a refreshed Mission Briefing).
+export async function itemFromObjective(id) {
+  const o = (await q(supabase.from('objectives').select('id,title,tags,effort,description,north_star,state,due_date').eq('id', id).limit(1)))[0]
+  if (!o) return null
+  const link = (await q(supabase.from('project_tasks').select('id,project_id,text').eq('objective_id', id).limit(1)))[0] || null
+  const project = link ? (await q(supabase.from('projects').select('id,name').eq('id', link.project_id).limit(1)))[0] || null : null
+  const kind = link ? 'Main Mission' : (o.tags || []).includes('impromptu') ? 'Ad Hoc' : 'Side Mission'
+  return { id: o.id, objective_id: o.id, kind, title: link ? (link.text || o.title) : o.title, project: project?.name || null, project_id: project?.id || null, task_id: link?.id || null, task_text: link?.text || null, description: o.description, tags: o.tags, size: sizeOf(o), north_star: o.north_star, personal: (o.tags || []).includes('personal') }
+}

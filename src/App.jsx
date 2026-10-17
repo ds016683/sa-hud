@@ -9,6 +9,8 @@ import { fetchProtocolState } from './lib/protocol'
 import useGameState from './hooks/useGameState'
 import LoginPage from './components/LoginPage'
 import ProjectsPage from './components/ProjectsPage'
+import ItemDetail from './components/river/ItemDetail'
+import { itemFromObjective } from './lib/loadout'
 import { MissionMark } from './components/river/canon'
 import EcosystemPage from './components/EcosystemPage'
 import MeetingNotesPage from './components/MeetingNotesPage'
@@ -196,11 +198,17 @@ export default function App() {
   const parseHash = () => {
     const parts = (window.location.hash || '').replace(/^#\/?/, '').split('/').filter(Boolean)
     const page = NAV_ITEMS.some(n => n.id === parts[0]) ? parts[0] : 'river'
-    return { page, params: page === parts[0] ? parts.slice(1).map(decodeURIComponent) : [] }
+    const all = page === parts[0] ? parts.slice(1).map(decodeURIComponent) : []
+    const at = all.indexOf('item')
+    return { page, params: at >= 0 ? all.slice(0, at) : all, item: at >= 0 ? all[at + 1] || null : null }
   }
   const readHash = () => parseHash().page
   const [active, setActiveState] = useState(readHash)
   const [params, setParams] = useState(() => parseHash().params)
+  // A Mission Briefing open in the URL (…/item/<objective id>) survives a refresh.
+  const [globalItemId, setGlobalItemId] = useState(() => parseHash().item)
+  const [globalItem, setGlobalItem] = useState(null)
+  useEffect(() => { let on = true; if (!globalItemId) { Promise.resolve().then(() => { if (on) setGlobalItem(null) }); return () => { on = false } } itemFromObjective(globalItemId).then(it => { if (on) setGlobalItem(it) }).catch(() => { if (on) setGlobalItem(null) }); return () => { on = false } }, [globalItemId])
   const setActive = (id) => {
     if (id === active && !params.length) return
     try { window.history.pushState({ page: id }, '', `#/${id}`) } catch { /* no-op */ }
@@ -218,7 +226,7 @@ export default function App() {
     else setActive('river')
   }
   useEffect(() => {
-    const onPop = () => { const h = parseHash(); setParams(h.params); setActiveState(h.page) }
+    const onPop = () => { const h = parseHash(); setParams(h.params); setActiveState(h.page); setGlobalItemId(h.item) }
     window.addEventListener('popstate', onPop)
     return () => window.removeEventListener('popstate', onPop)
   }, [])
@@ -276,6 +284,7 @@ export default function App() {
           {active === 'learning'         && <LearningPage />}
           {active === 'anthropic'        && <AnthropicPage />}
         </div>
+        {globalItem && <ItemDetail item={globalItem} onClose={() => { setGlobalItemId(null); setGlobalItem(null) }} onNavigate={setRoute} />}
       </div>
     </div>
   )

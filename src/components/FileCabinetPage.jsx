@@ -7,7 +7,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { FolderOpen, Folder, FileText, Upload, FolderPlus, ArrowRight, Pencil, Trash2, Search, ChevronRight, Inbox, Sparkles, ExternalLink, User, Building2, Car, Archive as ArchiveIcon, Image as ImageIcon } from 'lucide-react'
 import { list, openUrl, upload, makeFolder, move, remove, walk, seedStructure, REALMS, fmtSize } from '../lib/cabinet'
-import { INK, INK2, GRAY, PANEL_BORDER, GOLD, GOLD_BRIGHT, BLUE, RED, PURPLE, MONO, SERIF, S, Panel, Label } from './river/canon'
+import { INK, INK2, GRAY, PANEL_BORDER, GOLD, GOLD_BRIGHT, BLUE, RED, PURPLE, MONO, SERIF, S, Panel, Label, LABEL } from './river/canon'
 
 const btn = (color = INK2, filled = false, extra = {}) => ({ display: 'inline-flex', alignItems: 'center', gap: 5, fontFamily: MONO, fontSize: 9.5, letterSpacing: '1px', textTransform: 'uppercase', padding: '5px 9px', borderRadius: 8, border: `1px solid ${filled ? color : `${color}66`}`, background: filled ? color : 'transparent', color: filled ? '#0A1B2B' : color, cursor: 'pointer', ...extra })
 const field = { background: 'rgba(255,255,255,0.05)', border: `1px solid ${PANEL_BORDER}`, borderRadius: 8, color: INK, padding: '7px 10px', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }
@@ -35,7 +35,7 @@ function IconTile({ Icon: TileIcon, label, sub, color, onOpen }) {
     <button onClick={onOpen} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 10, height: 140, borderRadius: 14, cursor: 'pointer', border: `1px solid ${color}55`, background: `${color}0d`, color: INK }}>
       <TileIcon size={30} color={color} strokeWidth={1.4} />
       <span style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 16 }}>{label}</span>
-      {sub && <span style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '0.8px', color: GRAY, textTransform: 'uppercase' }}>{sub}</span>}
+      {sub && <span style={{ fontFamily: MONO, fontSize: 10.5, letterSpacing: '0.8px', color: LABEL, textTransform: 'uppercase' }}>{sub}</span>}
     </button>
   )
 }
@@ -51,7 +51,7 @@ function CarCard({ folder, onOpen, tick }) {
       </div>
       <div style={{ padding: '12px 14px' }}>
         <div style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 18 }}>{folder.name}</div>
-        <div style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '0.8px', color: GRAY, textTransform: 'uppercase', marginTop: 4 }}>{count == null ? '…' : `${count} document${count === 1 ? '' : 's'}`}</div>
+        <div style={{ fontFamily: MONO, fontSize: 10.5, letterSpacing: '0.8px', color: LABEL, textTransform: 'uppercase', marginTop: 4 }}>{count == null ? '…' : `${count} document${count === 1 ? '' : 's'}`}</div>
       </div>
     </button>
   )
@@ -143,7 +143,7 @@ export default function FileCabinetPage() {
               </div>
             </div>
           )}
-          {!cur && <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '1.4px', textTransform: 'uppercase', color: GRAY }}>Opening the drawer</div>}
+          {!cur && <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '1.4px', textTransform: 'uppercase', color: LABEL }}>Opening the drawer</div>}
           {cur && cur.folders.length === 0 && cur.files.length === 0 && <div style={{ fontSize: 13, color: GRAY, padding: '10px 0' }}>Empty drawer. Upload something, make a folder, or ask Lumen to file here.</div>}
           {cur && (path === '' || path === CARS.current || path === CARS.past ? [] : cur.folders).map(f => (
             <div key={f.path} onClick={() => go(f.path)} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderTop: `1px solid ${PANEL_BORDER}`, cursor: 'pointer' }}>

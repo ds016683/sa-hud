@@ -8,8 +8,7 @@ import { fetchDay, build, KINDS, shiftDay } from '../lib/activity'
 import { KindChip } from './river/ActivityLog'
 import {
   INK, INK2, GRAY, PANEL_BORDER, GOLD, GOLD_BRIGHT, BLUE, PERIWINKLE, PURPLE, GREEN, RED, MONO, SERIF,
-  S, Eyebrow, Label, Stat, Panel, chiToday, fmtTime, fmtDay,
-} from './river/canon'
+  S, Eyebrow, Label, Stat, Panel, chiToday, fmtTime, fmtDay, LABEL } from './river/canon'
 
 // The record itself is built in lib/activity (shared with the Board's Activity Log popup).
 
@@ -65,7 +64,7 @@ function RecordModal({ title, subtitle, items, onClose }) {
                 <span style={{ fontFamily: MONO, fontSize: 10.5, color: GRAY, letterSpacing: '0.6px' }}>{fmtTime(r.at)}</span>
                 <KindChip kind={r.kind} />
                 {r.documented && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontFamily: MONO, fontSize: 9, letterSpacing: '1px', color: GREEN, textTransform: 'uppercase' }}><Check size={11} /> documented</span>}
-                <span style={{ marginLeft: 'auto', fontFamily: MONO, fontSize: 9.5, letterSpacing: '1px', color: GRAY, textTransform: 'uppercase' }}>{r.src || 'derived'}</span>
+                <span style={{ marginLeft: 'auto', fontFamily: MONO, fontSize: 10.5, letterSpacing: '1px', color: LABEL, textTransform: 'uppercase' }}>{r.src || 'derived'}</span>
               </div>
               <div style={{ fontSize: 13.5, lineHeight: 1.5, color: INK, marginTop: 6 }}>{r.text}</div>
               {r.meta && <div style={{ fontSize: 11.5, lineHeight: 1.5, color: GRAY, marginTop: 2 }}>{r.meta}</div>}

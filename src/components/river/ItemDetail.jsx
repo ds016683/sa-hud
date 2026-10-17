@@ -15,8 +15,9 @@ import { fetchSteps, addStep, toggleStep, removeStep, listObjectiveArtifacts, li
 import { renderMarkdown } from './MeetingCloseout'
 import SessionBoard from './SessionBoard'
 import { recall } from '../../lib/recall'
-import { draftMail, groupVersions, fmtStamp } from '../../lib/livefiles'
-import { INK, INK2, GRAY, PANEL_BORDER, GOLD, GOLD_BRIGHT, BLUE, GREEN, RED, MONO, SERIF, S, Label, KIND_COLOR, KindIcon, NORTH_STAR_LABEL, NORTH_STAR_ASK } from './canon'
+import { draftMail, groupVersions, fmtStamp, requestLiveFile, listLiveFiles, isRequest } from '../../lib/livefiles'
+import { DropZone } from './LiveFiles'
+import { INK, INK2, GRAY, PANEL_BORDER, GOLD, GOLD_BRIGHT, BLUE, GREEN, RED, MONO, SERIF, S, Label, KIND_COLOR, KindIcon, NORTH_STAR_LABEL, NORTH_STAR_ASK, LABEL } from './canon'
 
 const NAVY_DEEP = '#0A1B2B'
 const TABS = ['overview', 'artifacts', 'files', 'notes']
@@ -151,7 +152,7 @@ function WhereItStands({ item, rel, task, taskId, linkedBoards }) {
         <div>
           <div style={{ fontFamily: MONO, fontSize: 9, letterSpacing: '1.3px', textTransform: 'uppercase', color: GOLD, marginBottom: 4 }}>Still Needed</div>
           {needed.map((r, i) => <Row key={i} r={r} color={r.kind === 'blocked' ? RED : GOLD} />)}
-          {thinking && <div style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '1px', textTransform: 'uppercase', color: GRAY, padding: '4px 0' }}>Lumen is reading the trail</div>}
+          {thinking && <div style={{ fontFamily: MONO, fontSize: 10.5, letterSpacing: '1px', textTransform: 'uppercase', color: LABEL, padding: '4px 0' }}>Lumen is reading the trail</div>}
           {!thinking && (next || []).map((t, i) => <div key={`n${i}`} style={{ display: 'flex', gap: 9, alignItems: 'flex-start', padding: '4px 0' }}><span style={{ width: 6, height: 6, borderRadius: 99, border: `1px solid ${BLUE}`, marginTop: 7, flexShrink: 0 }} /><span style={{ fontSize: 13.5, lineHeight: 1.5, color: INK2, fontStyle: 'italic', flex: 1 }}>{t}<span style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '0.8px', color: BLUE, marginLeft: 8, fontStyle: 'normal' }}>Lumen</span></span></div>)}
           {!thinking && !needed.length && !(next || []).length && <div style={{ fontSize: 13, color: GRAY, padding: '4px 0' }}>Nothing open. If the star is true, extract it.</div>}
         </div>
@@ -168,10 +169,22 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
   const [boardId, setBoardId] = useState(null)
   const [recentBoards, setRecentBoards] = useState([])
   const [olderOpen, setOlderOpen] = useState({})
+  const [requests, setRequests] = useState([])
+  const objKey = item.objective_id || null
+  useEffect(() => { let on = true; if (!objKey) { Promise.resolve().then(() => { if (on) setRequests([]) }); return () => { on = false } } listLiveFiles({ objectiveId: objKey }).then(r => { if (on) setRequests((r.rows || []).filter(isRequest)) }).catch(() => {}); return () => { on = false } }, [objKey, rel])
   useEffect(() => { let on = true; supabase.from('session_boards').select('id,project,title,updated_at,board').order('updated_at', { ascending: false }).limit(24).then(({ data }) => { if (on) setRecentBoards(Array.isArray(data) ? data : []) }); return () => { on = false } }, [])
   const tieBoard = async (b) => { if (!obj) return; const { error } = await supabase.from('session_boards').update({ board: { ...(b.board || {}), objective_id: obj.id } }).eq('id', b.id); if (error) { setMsg(`Could not tie: ${error.message}`); return } setMsg(`Tied ${b.title}`); load() }
   const load = useCallback(() => loadRelated(item).then(setRel).catch(e => { console.warn('item detail', e.message); setRel({ project: null, task: null, artifacts: [], boards: [], projectFiles: [], storeFiles: [], meetings: [], loadout: null }) }), [item])
   useEffect(() => { load() }, [load])
+  // hash deep link (David, 10/17): the open briefing rides the URL, so a refresh
+  // lands back on it. #/<page>/.../item/<objective id>
+  useEffect(() => {
+    const key = item.objective_id || (item.kind !== 'Event' && item.kind !== 'Session' ? item.id : null)
+    if (!key) return
+    const base = (window.location.hash || '#/river').replace(/\/item\/[^/]+$/, '')
+    try { window.history.replaceState(window.history.state, '', `${base}/item/${encodeURIComponent(key)}`) } catch { /* no-op */ }
+    return () => { try { if (/\/item\//.test(window.location.hash)) window.history.replaceState(window.history.state, '', (window.location.hash || '').replace(/\/item\/[^/]+$/, '') || '#/river') } catch { /* no-op */ } }
+  }, [item.objective_id, item.id, item.kind])
   useEffect(() => {
     const onKey = (e) => { if (e.key === 'Escape') onClose() }
     window.addEventListener('keydown', onKey)
@@ -251,7 +264,7 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
         </div>
 
         <div style={{ ...S.panel, marginTop: 20 }}>
-          {!rel && <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '1.4px', textTransform: 'uppercase', color: GRAY, padding: '10px 0' }}>Reading the Ledger</div>}
+          {!rel && <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '1.4px', textTransform: 'uppercase', color: LABEL, padding: '10px 0' }}>Reading the Ledger</div>}
 
           {rel && tab === 'overview' && (
             <div style={{ display: 'grid', gap: 22 }}>
@@ -269,15 +282,15 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
                   {(() => { const seg = (on, color) => ({ ...btn(on ? color : INK2, on), padding: '5px 10px', whiteSpace: 'nowrap', borderRadius: 8 }); const cell = { display: 'grid', gap: 6, alignContent: 'start' }; return (
                     <div style={{ borderTop: `1px solid ${PANEL_BORDER}`, borderBottom: `1px solid ${PANEL_BORDER}`, padding: '14px 0', display: 'grid', gap: 16 }}>
                       <div style={{ display: 'flex', gap: 28, flexWrap: 'wrap', alignItems: 'flex-start' }}>
-                        <div style={cell}><Label style={{ marginBottom: 0 }}>Realm</Label><div style={{ display: 'flex', gap: 4 }}>{[['third-horizon', 'Third Horizon'], ['personal', 'Personal']].map(([k, l]) => <button key={k} onClick={() => patchObj({ tags: [...new Set([...(obj.tags || []).filter(t => t !== 'personal'), ...(k === 'personal' ? ['personal'] : [])])] })} style={seg(realm === k, k === 'personal' ? GOLD : BLUE)}>{l}</button>)}</div></div>
+                        <div style={cell}><Label style={{ marginBottom: 0 }}>Domain</Label><div style={{ display: 'flex', gap: 4 }}>{[['third-horizon', 'Third Horizon'], ['personal', 'Personal']].map(([k, l]) => <button key={k} onClick={() => patchObj({ tags: [...new Set([...(obj.tags || []).filter(t => t !== 'personal'), ...(k === 'personal' ? ['personal'] : [])])] })} style={seg(realm === k, k === 'personal' ? GOLD : BLUE)}>{l}</button>)}</div></div>
                         <div style={cell}><Label style={{ marginBottom: 0 }}>Type</Label><div style={{ display: 'flex', gap: 4 }}>{Object.entries(SIZES).map(([k, sdef]) => <button key={k} onClick={() => setSize(obj.id, k).then(load)} title={sdef.sub} style={seg(sz === k, sdef.color)}>{sdef.label}</button>)}</div></div>
                         <div style={cell}><Label style={{ marginBottom: 0 }}>Due</Label><input type="date" value={obj.due_date || ''} onChange={e => patchObj({ due_date: e.target.value || null })} style={{ ...field, width: 150 }} /></div>
                         <div style={cell}><Label style={{ marginBottom: 0 }}>Follow Up</Label><input type="date" value={obj.follow_up_date || ''} onChange={e => patchObj({ follow_up_date: e.target.value || null })} style={{ ...field, width: 150 }} /></div>
                         <div style={{ ...cell, flex: 1, minWidth: 180 }}><Label style={{ marginBottom: 0 }}>Who</Label><input defaultValue={obj.stakeholder || ''} onBlur={e => { if ((e.target.value || '') !== (obj.stakeholder || '')) patchObj({ stakeholder: e.target.value || null }) }} placeholder="the person this is for or with" style={{ ...field, fontFamily: 'inherit', fontSize: 13, width: '100%', maxWidth: 320 }} /></div>
                       </div>
                       <div style={{ display: 'flex', gap: 28, flexWrap: 'wrap', fontSize: 13, color: INK2 }}>
-                        <span><span style={{ fontFamily: MONO, fontSize: 9, letterSpacing: '1.2px', textTransform: 'uppercase', color: GRAY, marginRight: 8 }}>Captured</span>{obj.captured_at ? new Date(obj.captured_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'unknown'}<span style={{ color: GRAY }}> · {obj.state === 'released' ? `released ${obj.released_at ? obj.released_at.slice(0, 10) : ''}` : obj.state === 'active' ? 'on the Board' : (obj.tags || []).includes('stashed') ? 'in the Stash' : (obj.state || '').replace('_', ' ')}</span></span>
-                        <span><span style={{ fontFamily: MONO, fontSize: 9, letterSpacing: '1.2px', textTransform: 'uppercase', color: GRAY, marginRight: 8 }}>From</span>{prov.label}{prov.label !== 'Added by hand' && prov.detail ? <span style={{ color: GRAY }}> · {prov.detail}</span> : null}</span>
+                        <span><span style={{ fontFamily: MONO, fontSize: 10.5, letterSpacing: '1.2px', textTransform: 'uppercase', color: LABEL, marginRight: 8 }}>Captured</span>{obj.captured_at ? new Date(obj.captured_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'unknown'}<span style={{ color: GRAY }}> · {obj.state === 'released' ? `released ${obj.released_at ? obj.released_at.slice(0, 10) : ''}` : obj.state === 'active' ? 'on the Board' : (obj.tags || []).includes('stashed') ? 'in the Stash' : (obj.state || '').replace('_', ' ')}</span></span>
+                        <span><span style={{ fontFamily: MONO, fontSize: 10.5, letterSpacing: '1.2px', textTransform: 'uppercase', color: LABEL, marginRight: 8 }}>From</span>{prov.label}{prov.label !== 'Added by hand' && prov.detail ? <span style={{ color: GRAY }}> · {prov.detail}</span> : null}</span>
                       </div>
                     </div>
                   ) })()}
@@ -315,7 +328,7 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
                             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
                               <FileText size={14} color={GOLD_BRIGHT} />
                               <div style={{ flex: 1, fontFamily: SERIF, fontWeight: 500, fontSize: 18, color: '#fff' }}>{briefs[a.slug].title || a.title}</div>
-                              <span style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '1px', textTransform: 'uppercase', color: GRAY }}>{briefs[a.slug].kind || 'artifact'}{briefs[a.slug].updated_by ? ` · by ${briefs[a.slug].updated_by}` : ''}</span>
+                              <span style={{ fontFamily: MONO, fontSize: 10.5, letterSpacing: '1px', textTransform: 'uppercase', color: LABEL }}>{briefs[a.slug].kind || 'artifact'}{briefs[a.slug].updated_by ? ` · by ${briefs[a.slug].updated_by}` : ''}</span>
                             </div>
                             <DocView doc={briefs[a.slug]} />
                           </div>
@@ -344,7 +357,7 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
                 <div>
                   <Label>Task</Label>
                   <div style={{ fontSize: 13, color: INK }}>{task.text}</div>
-                  <div style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '1px', color: GRAY, textTransform: 'uppercase', marginTop: 4 }}>{task.status}{task.due_date ? ` · due ${task.due_date}` : ''}</div>
+                  <div style={{ fontFamily: MONO, fontSize: 10.5, letterSpacing: '1px', color: LABEL, textTransform: 'uppercase', marginTop: 4 }}>{task.status}{task.due_date ? ` · due ${task.due_date}` : ''}</div>
                 </div>
               )}
               {loaded && (
@@ -355,10 +368,13 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
               )}
               {obj && (
                 <div style={{ borderTop: `1px solid ${PANEL_BORDER}`, paddingTop: 14 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
-                    <Label style={{ marginBottom: 0 }}>Production Files</Label><span style={{ flex: 1 }} />
-                    <label style={{ ...btn(BLUE), cursor: objBusy ? 'wait' : 'pointer' }}><Upload size={11} /> Put a file in play<input type="file" style={{ display: 'none' }} onChange={e => { uploadNow(e.target.files?.[0]); e.target.value = '' }} /></label>
+                  <Label>Production Files</Label>
+                  <div style={{ marginBottom: 12 }}>
+                    <DropZone busy={objBusy} onFiles={(fs) => fs.forEach(f => uploadNow(f))} onPath={(pth) => act(() => requestLiveFile(pth, { objectiveId: obj.id }), 'Requested; the next Claude session on the Mac puts it in play')} />
                   </div>
+                  {requests.map(r => (
+                    <div key={r.id} style={{ ...rowStyle, opacity: 0.85 }}><FileText size={14} color={GOLD} /><span style={{ flex: 1, fontSize: 13.5, color: INK, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={r.path}>{r.name}</span><span style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '1px', textTransform: 'uppercase', color: GOLD }}>waiting for a session on the Mac</span></div>
+                  ))}
                   {groupVersions(rel.objFiles || [], { timeKey: 'updated_at' }).map(g => {
                     const FileRow = ({ f, dim = false }) => (
                       <div key={f.path} style={{ ...rowStyle, opacity: dim ? 0.6 : 1 }}><FileText size={14} color={dim ? GRAY : BLUE} /><span style={{ flex: 1, fontSize: dim ? 12.5 : 13.5, color: dim ? INK2 : INK, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.name}</span><span style={{ fontFamily: MONO, fontSize: 9.5, color: GRAY, whiteSpace: 'nowrap' }}>{fmtStamp(f.updated_at)}</span><button onClick={() => open(f.bucket, f.path)} style={btn(dim ? INK2 : BLUE)}><ExternalLink size={11} /> Open</button><button onClick={() => act(async () => { setMsg(`Drafting in Outlook: ${f.name}`); const d = await draftMail(f); if (d.webLink) window.open(d.webLink, '_blank', 'noopener') }, `Draft open in Outlook: ${f.name}`)} title="Open a new Outlook draft with this file attached" style={btn(dim ? INK2 : GOLD)}><Mail size={11} /> Mail</button></div>
@@ -368,7 +384,7 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
                         <FileRow f={g.current} />
                         {g.older.length > 0 && (
                           <div style={{ paddingLeft: 24 }}>
-                            <button onClick={() => setOlderOpen(o => ({ ...o, [g.key]: !o[g.key] }))} style={{ background: 'transparent', border: 'none', color: GRAY, cursor: 'pointer', fontFamily: MONO, fontSize: 9.5, letterSpacing: '1px', textTransform: 'uppercase', padding: '2px 0 6px' }}>{olderOpen[g.key] ? 'Hide' : 'Show'} {g.older.length} older version{g.older.length === 1 ? '' : 's'}</button>
+                            <button onClick={() => setOlderOpen(o => ({ ...o, [g.key]: !o[g.key] }))} style={{ background: 'transparent', border: 'none', color: LABEL, cursor: 'pointer', fontFamily: MONO, fontSize: 10.5, letterSpacing: '1px', textTransform: 'uppercase', padding: '2px 0 6px' }}>{olderOpen[g.key] ? 'Hide' : 'Show'} {g.older.length} older version{g.older.length === 1 ? '' : 's'}</button>
                             {olderOpen[g.key] && g.older.map(f => <FileRow key={f.path} f={f} dim />)}
                           </div>
                         )}

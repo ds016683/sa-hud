@@ -10,8 +10,7 @@ import { supabase } from '../lib/supabase'
 import { matchNotes } from '../lib/meetings'
 import {
   INK, INK2, GRAY, PANEL_BG, PANEL_BORDER, GOLD, GOLD_BRIGHT, BLUE, PERIWINKLE, GREEN, MONO, SERIF,
-  S, Eyebrow, Stat, fmtDay, fmtTime, chiToday, chiDayOf,
-} from './river/canon'
+  S, Eyebrow, Stat, fmtDay, fmtTime, chiToday, chiDayOf, LABEL } from './river/canon'
 
 const DAYS_STEP = 30
 const MAX_ATTENDEES = 4
@@ -358,7 +357,7 @@ function MeetingRow({ unit, query, open, onToggle, first }) {
           {hasNotes ? (
             <Markdown text={notes.summary} />
           ) : (
-            <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '1px', textTransform: 'uppercase', color: GRAY, padding: '10px 0' }}>No Granola notes for this meeting</div>
+            <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '1px', textTransform: 'uppercase', color: LABEL, padding: '10px 0' }}>No Granola notes for this meeting</div>
           )}
 
           {session && (
@@ -374,13 +373,13 @@ function MeetingRow({ unit, query, open, onToggle, first }) {
                   ))}
                 </div>
               ) : (
-                <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '1px', textTransform: 'uppercase', color: GRAY }}>No follow-ups</div>
+                <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '1px', textTransform: 'uppercase', color: LABEL }}>No follow-ups</div>
               )}
               {specialNotes && (
                 <p style={{ ...mdPara, marginTop: 10 }}>{highlight(specialNotes, query)}</p>
               )}
               {!closed && (
-                <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '1px', textTransform: 'uppercase', color: GRAY, marginTop: 8 }}>Not closed out</div>
+                <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '1px', textTransform: 'uppercase', color: LABEL, marginTop: 8 }}>Not closed out</div>
               )}
             </div>
           )}
@@ -423,7 +422,7 @@ function DaySection({ day, events, recordings, query, openIds, onToggle }) {
       </div>
       <div style={{ ...S.panel, padding: '0 16px', marginBottom: 0 }}>
         {events.length === 0 && (
-          <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '1px', textTransform: 'uppercase', color: GRAY, padding: '12px 0' }}>Nothing on the calendar</div>
+          <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '1px', textTransform: 'uppercase', color: LABEL, padding: '12px 0' }}>Nothing on the calendar</div>
         )}
         {events.map((u, i) => (
           <MeetingRow key={u.key} unit={u} query={query} open={openIds.has(u.key)} onToggle={() => onToggle(u.key)} first={i === 0} />
@@ -445,7 +444,7 @@ function DaySection({ day, events, recordings, query, openIds, onToggle }) {
 }
 
 const Empty = ({ children }) => (
-  <div style={{ ...S.panel, fontFamily: MONO, fontSize: 11, letterSpacing: '1px', textTransform: 'uppercase', color: GRAY, textAlign: 'center', padding: '40px 16px' }}>{children}</div>
+  <div style={{ ...S.panel, fontFamily: MONO, fontSize: 11, letterSpacing: '1px', textTransform: 'uppercase', color: LABEL, textAlign: 'center', padding: '40px 16px' }}>{children}</div>
 )
 
 /* -------------------- data -------------------- */

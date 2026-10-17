@@ -7,6 +7,7 @@ const NAVY = '#002C77'
 const BLUE = '#009DE0'
 const GOLD = '#D4A106'
 const GRAY = '#8096B2'
+const LABEL = '#7FA8D4'
 const TEXT_DIM = '#565656'
 const PANEL_BORDER = '#E2E8F0'
 
@@ -182,7 +183,7 @@ export default function MapView({ people, onSelectPerson }) {
       {/* Right pane */}
       <div>
         <div style={{ ...S.panel, marginBottom: 10 }}>
-          <div style={{ fontSize: 10, fontWeight: 700, color: GRAY, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6 }}>
+          <div style={{ fontSize: 10, fontWeight: 700, color: LABEL, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6 }}>
             {selectedMetro ? 'Metro' : selectedState ? 'State' : 'Selection'}
           </div>
           <div style={{ fontSize: 18, fontWeight: 700, color: NAVY }}>

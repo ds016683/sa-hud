@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { Brain, MessageCircle } from 'lucide-react'
 import { recall, askLumen } from '../../lib/recall'
-import { INK, INK2, GRAY, PANEL_BORDER, BLUE, GOLD, GREEN, RED, MONO, SERIF, S } from './canon'
+import { INK, INK2, GRAY, PANEL_BORDER, BLUE, GOLD, GREEN, RED, MONO, SERIF, S, LABEL } from './canon'
 
 export const BrainButton = ({ onClick, title = 'Recall: what the system knows, and a next step' }) => (
   <button onClick={onClick} title={title} style={{ width: 28, height: 28, borderRadius: 99, border: `1px solid ${BLUE}66`, background: `${BLUE}14`, color: BLUE, display: 'inline-grid', placeItems: 'center', cursor: 'pointer', flexShrink: 0 }}><Brain size={14} /></button>
@@ -25,7 +25,7 @@ export default function RecallModal({ objectiveId = null, taskId = null, title, 
     <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 290, background: 'rgba(5,16,28,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
       <div onClick={e => e.stopPropagation()} style={{ width: 'min(640px, 100%)', maxHeight: '88vh', overflowY: 'auto', background: '#0F2338', border: `1px solid ${PANEL_BORDER}`, borderRadius: 14, padding: '22px 24px', display: 'grid', gap: 16 }}>
         <h3 style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 20, margin: 0, color: '#fff', display: 'flex', alignItems: 'center', gap: 10 }}><BrainButton onClick={() => {}} title="" />Recall · {r?.title || title}</h3>
-        {!r && !err && <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '1.4px', textTransform: 'uppercase', color: GRAY }}>Reading everything the system has</div>}
+        {!r && !err && <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '1.4px', textTransform: 'uppercase', color: LABEL }}>Reading everything the system has</div>}
         {r && (
           <>
             <div>

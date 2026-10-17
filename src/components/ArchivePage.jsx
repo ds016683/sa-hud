@@ -15,7 +15,7 @@ import BadgeMedallion from './BadgeArt'
 import YayPage from './river/YayPage'
 import DocView from './river/DocView'
 import ItemDetail from './river/ItemDetail'
-import { INK, INK2, GRAY, PANEL_BORDER, GOLD, GOLD_BRIGHT, BLUE, GREEN, PURPLE, MONO, SERIF, S, Panel, Label } from './river/canon'
+import { INK, INK2, GRAY, PANEL_BORDER, GOLD, GOLD_BRIGHT, BLUE, GREEN, PURPLE, MONO, SERIF, S, Panel, Label, LABEL } from './river/canon'
 
 const btn = (color = INK2, filled = false, extra = {}) => ({ display: 'inline-flex', alignItems: 'center', gap: 5, fontFamily: MONO, fontSize: 9.5, letterSpacing: '1px', textTransform: 'uppercase', padding: '5px 9px', borderRadius: 8, border: `1px solid ${filled ? color : `${color}66`}`, background: filled ? color : 'transparent', color: filled ? '#0A1B2B' : color, cursor: 'pointer', ...extra })
 const KIND = { artifact: ['Brief', FileText, GOLD_BRIGHT], decision: ['Decision', Scale, GOLD], board: ['Board', ListChecks, GREEN], file: ['File', Paperclip, BLUE], summary: ['Close-out', AlignLeft, INK2] }
@@ -62,7 +62,7 @@ function MissionRow({ m, onYay, onReopen }) {
         <BadgeMedallion id={badgeOf(kind, size)} size={40} color={color} />
         <div style={{ flex: 1, minWidth: 0 }}>
           <div onClick={() => setOpen(x => !x)} style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 17, color: '#fff', lineHeight: 1.3, cursor: 'pointer' }}>{m.o.title}</div>
-          <div style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '1px', textTransform: 'uppercase', color: GRAY, marginTop: 4, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+          <div style={{ fontFamily: MONO, fontSize: 10.5, letterSpacing: '1px', textTransform: 'uppercase', color: LABEL, marginTop: 4, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
             <span style={{ color }}>{typeOf(kind, size)}{m.project ? ` · ${m.project}` : ''}</span>
             <span style={{ color: realm === 'personal' ? GOLD : PURPLE }}>{realm === 'personal' ? 'Personal' : 'Third Horizon'}</span>
             <span>closed {fmtDay(m.o.released_at)}{m.o.released_kind && m.o.released_kind !== 'done' ? ` · ${m.o.released_kind}` : ''}</span>
@@ -134,7 +134,7 @@ export default function ArchivePage({ onNavigate }) {
         </div>
       </Panel>
       <Panel>
-        {data === undefined && !err && <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '1.4px', textTransform: 'uppercase', color: GRAY, padding: '10px 0' }}>Reading the Archive</div>}
+        {data === undefined && !err && <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '1.4px', textTransform: 'uppercase', color: LABEL, padding: '10px 0' }}>Reading the Archive</div>}
         {data === null && <div style={{ fontSize: 13, color: INK2, lineHeight: 1.6 }}>The Archive is not set up yet. Run <span style={{ fontFamily: MONO, fontSize: 12 }}>sql/2026-10-07-side-missions-archive.sql</span> in the Supabase SQL editor.</div>}
         {data && (
           <>

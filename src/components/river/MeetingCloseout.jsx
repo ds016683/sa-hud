@@ -13,8 +13,7 @@ import { Check } from 'lucide-react'
 import { upsertSession, createFollowUps } from '../../lib/meetings'
 import {
   INK, INK2, GRAY, NAVY_DEEP, PANEL_BORDER, GOLD, GOLD_BRIGHT, BLUE, PERIWINKLE, GREEN, RED, MONO, SERIF,
-  Eyebrow, Label, fmtTime,
-} from './canon'
+  Eyebrow, Label, fmtTime, LABEL } from './canon'
 
 // ---- Errors ------------------------------------------------------------------
 // The meeting_sessions table may not exist yet. Postgres says 42P01 (relation
@@ -170,7 +169,7 @@ export default function MeetingCloseout({ event, day, onStop, onCancel, onSaved 
       }}>
         <Eyebrow style={{ marginBottom: 8 }}>Close out</Eyebrow>
         <div style={{ fontFamily: SERIF, fontSize: 20, fontWeight: 500, color: '#fff', letterSpacing: '-0.01em', lineHeight: 1.25 }}>{event?.subject || '(no subject)'}</div>
-        <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '1.2px', textTransform: 'uppercase', color: GRAY, marginTop: 6 }}>
+        <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '1.2px', textTransform: 'uppercase', color: LABEL, marginTop: 6 }}>
           {event?.is_all_day ? 'All day' : `${fmtTime(event?.start_at)}${event?.end_at ? ` to ${fmtTime(event.end_at)}` : ''}`}
           {hours != null && <span style={{ color: INK2 }}> · {fmtHours(hours)} logged{session?.harvest_logged ? '' : ' (not in Harvest)'}</span>}
           {running && <span style={{ color: GREEN }}> · timer running, stops on save</span>}

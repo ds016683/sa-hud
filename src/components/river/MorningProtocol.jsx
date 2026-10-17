@@ -19,7 +19,7 @@ import { ArrowLeft, ArrowRight, Check, Sunrise, Moon, Play, Pause, Square, Rocke
 import { supabase, reportSoft } from '../../lib/supabase'
 import { upsertSession, logToHarvest, hoursBetween, startMeetingTimer, stopMeetingTimer } from '../../lib/meetings'
 import { fetchLoadout, equipObjective, equipTask, equip, holster, startWithRoom, resolveObjectiveId, fmtClock, chiToday, SIZES, SLOTS } from '../../lib/loadout'
-import { KIND_COLOR, PURPLE } from './canon'
+import { KIND_COLOR, PURPLE, LABEL } from './canon'
 import { HYGIENE_ITEMS } from '../../constants/hygiene'
 import { GATEWAY_PLAYLIST } from '../../constants/gateway'
 import { MEDICATIONS, dueOn } from '../../constants/medications'
@@ -530,7 +530,7 @@ function Protocol({ day, session, onClose, onFinished, onChange, onNavigate }) {
       return (
         <div style={{ display: 'grid', gap: 16 }}>
           <style>{`@keyframes mp-pulse { 0%,100% { box-shadow: 0 0 0 0 transparent } 50% { box-shadow: 0 0 14px 2px rgba(169,201,232,0.45) } } .mp-pulse { animation: mp-pulse 2.6s ease-in-out infinite; border-radius: 10px }`}</style>
-          {plan === undefined && <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '1.4px', textTransform: 'uppercase', color: GRAY }}>Reading today's plan</div>}
+          {plan === undefined && <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '1.4px', textTransform: 'uppercase', color: LABEL }}>Reading today's plan</div>}
           {planBusy && <div className="mp-blink" style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '1.4px', textTransform: 'uppercase', color: GOLD }}><Sparkles size={11} style={{ verticalAlign: '-2px' }} /> Lumen is building the day from your answers, the calendar, and the queue…</div>}
           {plan === null && !planBusy && <Panel style={{ marginBottom: 0 }}><div style={{ fontSize: 13.5, color: INK2 }}>No plan yet.</div><button onClick={() => runPlan('build')} style={{ ...btn(GOLD, true), marginTop: 10 }}><Sparkles size={12} /> Build the plan</button></Panel>}
           {plan && (

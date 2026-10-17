@@ -19,7 +19,7 @@ import { Play, Square, Check, Plane, Pencil, CalendarCheck, Brain, Mail, Hash, R
 import { supabase } from '../../lib/supabase'
 import { upsertSession, logToHarvest, hoursBetween } from '../../lib/meetings'
 import { chiToday, fmtClock } from '../../lib/loadout'
-import { INK, INK2, GRAY, PANEL_BORDER, GOLD, GREEN, RED, BLUE, MONO, Label, fmtTime } from './canon'
+import { INK, INK2, GRAY, PANEL_BORDER, GOLD, GREEN, RED, BLUE, MONO, Label, fmtTime, LABEL } from './canon'
 import { Instrument, InstrumentGroup, groupMsg } from './Instrument'
 
 // Add a chore here and it appears as a card. slug is the Harvest note and
@@ -243,7 +243,7 @@ export default function RecurringPanel({ onChange }) {
         })}
         <Instrument label="Travel" sub={travelSub} title={travelTitle} icon={travelRunning ? <Square size={20} /> : <Plane size={20} />} running={travelRunning} clock={fmtClock(travelMin)} tone={BLUE} onClick={travelTap}
           light={nextLeg && !travelRunning ? { level: legState === 'live' ? 'green' : 'gold', text: travelTitle } : null}
-          extra={<span onClick={openTravelEdit} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontFamily: MONO, fontSize: 9, letterSpacing: '1px', textTransform: 'uppercase', color: GRAY, cursor: 'pointer' }}><Pencil size={9} /> edit span</span>} />
+          extra={<span onClick={openTravelEdit} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontFamily: MONO, fontSize: 10.5, letterSpacing: '1px', textTransform: 'uppercase', color: LABEL, cursor: 'pointer' }}><Pencil size={9} /> edit span</span>} />
       </InstrumentGroup>
       {msg && <div style={{ flexBasis: '100%', order: 99, marginTop: 8 }}>{groupMsg(msg, bad)}</div>}
       {travelEdit && (

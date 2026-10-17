@@ -7,8 +7,7 @@ import { RefreshCw, Printer, CheckCircle2, Circle } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import {
   INK, INK2, GRAY, NAVY_DEEP, PANEL_BORDER, GOLD, GOLD_BRIGHT, BLUE, RED, MONO, SERIF,
-  S, Eyebrow, chiToday, fmtTime, fmtDay, weekday,
-} from './river/canon'
+  S, Eyebrow, chiToday, fmtTime, fmtDay, weekday, LABEL } from './river/canon'
 
 // A composer slip can land a list field as a bare string; rows are canon, so
 // tolerate any shape on read.
@@ -153,7 +152,7 @@ export default function NarrativePage() {
       {/* Past narratives strip */}
       {recent.length > 0 && (
         <div className="no-print" style={{ marginBottom: 26 }}>
-          <div style={{ fontSize: 9.5, color: GRAY, fontFamily: MONO, letterSpacing: '1.4px', textTransform: 'uppercase', marginBottom: 8 }}>Past narratives</div>
+          <div style={{ fontSize: 10.5, color: LABEL, fontFamily: MONO, letterSpacing: '1.4px', textTransform: 'uppercase', marginBottom: 8 }}>Past narratives</div>
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
             {recent.map((d) => {
               const on = d === day

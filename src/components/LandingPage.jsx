@@ -17,8 +17,7 @@ import { supabase } from '../lib/supabase'
 import { BADGES, RIVER_TOTAL_MILES, RIVER_START_DAY, WAYPOINTS, whereOnRiver } from '../constants/collection'
 import {
   INK, INK2, GRAY, PANEL_BORDER, GOLD, GOLD_BRIGHT, BLUE, GREEN, RED, MONO, SERIF,
-  S, Eyebrow, Label, Stat, Panel, chiToday,
-} from './river/canon'
+  S, Eyebrow, Label, Stat, Panel, chiToday, LABEL } from './river/canon'
 
 // ---- Helpers ----------------------------------------------------------------
 const DAY_MS = 86400000
@@ -258,7 +257,7 @@ export default function LandingPage({ onNavigate }) {
           <p style={S.sub}>{RIVER_TOTAL_MILES.toLocaleString()} miles · Provo to Western Springs · past {whereOnRiver(total).last.label}</p>
         </div>
         <div style={{ textAlign: 'right', paddingTop: 6 }}>
-          <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '1.6px', color: GRAY, textTransform: 'uppercase' }}>
+          <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '1.6px', color: LABEL, textTransform: 'uppercase' }}>
             {lastRun ? `Last update ${new Date(lastRun.generated_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'America/Chicago' })}${lastRun.model === 'Daily Report' ? ' · closed' : ''}` : 'No update yet today'}
           </div>
           <div style={{ fontSize: 11.5, color: INK2, marginTop: 4 }}>Ask Lumen to run the update or close the day.</div>
