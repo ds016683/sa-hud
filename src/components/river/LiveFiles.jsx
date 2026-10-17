@@ -14,6 +14,7 @@ const sbtn = (color = INK2) => ({ display: 'inline-flex', alignItems: 'center', 
 // Drop or choose a file (goes up now), or type a path on the Mac (a session
 // picks it up). `children` is the tie-to select when the host has one.
 export function DropZone({ onFiles, onPath, children, busy = false }) {
+  const [drag, setDrag] = useState(false)
   const [path, setPath] = useState('')
   const ref = useRef(null)
   return (
@@ -52,7 +53,6 @@ export default function LiveFilesModal({ onClose, filter = null, items = [], onC
   const [rows, setRows] = useState(null)
   const [missing, setMissing] = useState(false)
   const [msg, setMsg] = useState(null)
-  const [drag, setDrag] = useState(false)
   const [scope, setScope] = useState(filter?.objectiveId ? 'item' : 'all')
   const [dropTarget, setDropTarget] = useState(filter?.objectiveId || '')
   const [olderOpen, setOlderOpen] = useState({})
