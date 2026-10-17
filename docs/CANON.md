@@ -39,7 +39,7 @@ Every mission carries one line, written on the front end, labeled **What Will Be
 
 ## Color
 
-Gray (`GRAY`) means off: a closed item, a disabled control, a placeholder, something not reachable right now. It is never the color of a live label. Eyebrows and field labels (Domain, Type, Due, Where It Stands, Production Files) read in `LABEL`, a steel blue, 10.5 to 11 px mono, distinct but not loud. Live secondary text (timestamps, captions, meta) reads in `MUTED`, not gray (David, 10/17). The realm of a mission is called its Domain.
+Gray (`GRAY`) means off: a closed item, a disabled control, a placeholder, something not reachable right now. It is never the color of a live label. Eyebrows and field labels (Domain, Type, Due, Where It Stands, Production Files) read in `LABEL`, a steel blue, 10.5 to 11 px mono, distinct but not loud. Live secondary text (timestamps, captions, meta) reads in `MUTED`, not gray (David, 10/17). The realm of a mission is called its Domain. Headers are never smaller than the content beneath them: a field or section label (`<Label>`) reads in Title Case at 14px, weight 600, LABEL color, in the body face; small mono uppercase is for tags and chips that sit beside content, not for anything that heads it (David, 10/17).
 
 ## Labels
 

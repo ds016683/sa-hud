@@ -42,7 +42,10 @@ export const Serif = ({ children, size = 20, style }) => (
   <div style={{ fontFamily: SERIF, fontSize: size, fontWeight: 500, color: '#fff', letterSpacing: '-0.01em', lineHeight: 1.25, ...style }}>{children}</div>
 )
 export const Body = ({ children, style }) => <div style={{ fontSize: 13, lineHeight: 1.6, color: INK2, ...style }}>{children}</div>
-export const Label = ({ children, style }) => <div style={{ fontSize: 11, color: LABEL, textTransform: 'uppercase', letterSpacing: '1.5px', marginBottom: 6, fontFamily: MONO, ...style }}>{children}</div>
+// Headers are never smaller than the content under them (David, 10/17): a
+// field or section label reads in Title Case at 14px, LABEL color, body face.
+export const titleCase = (t) => typeof t === 'string' ? t.replace(/\b([a-z])/g, (m, c, i) => (i === 0 || !/^(a|an|and|at|by|for|in|of|on|or|the|to|vs|with)$/.test(t.slice(i).split(/\s/)[0])) ? c.toUpperCase() : c) : t
+export const Label = ({ children, style }) => <div style={{ fontSize: 14, fontWeight: 600, color: LABEL, letterSpacing: '0.2px', marginBottom: 6, ...style }}>{titleCase(children)}</div>
 export const Stat = ({ v, l, color = '#fff' }) => (
   <div style={{ borderLeft: `2px solid ${BLUE}55`, paddingLeft: 12 }}>
     <div style={{ fontFamily: SERIF, fontSize: 26, fontWeight: 500, color, lineHeight: 1.1, letterSpacing: '-0.01em' }}>{v}</div>
