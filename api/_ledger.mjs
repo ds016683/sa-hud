@@ -139,11 +139,14 @@ async function listArtifacts(projectId) {
 // Put a binary into the `files` bucket (receipts, photos David sends). Returns the path.
 // Live Files index: a row for anything Lumen writes or files, so the Board's
 // Live Files window sees it. Never fatal (the table may not exist yet).
+const stemOf = (n) => String(n || '').replace(/\.[^.]+$/, '').replace(/[\s_.-]*(v|ver|version)\s*\d+[a-z]?$/i, '').replace(/[\s_.-]*\(\d+\)$/, '').replace(/[\s_.-]*(final|draft|copy|latest|new)(\s*\d+)?$/i, '').replace(/[\s_.-]+$/, '').trim().toLowerCase()
 export async function indexLiveFile({ name, bucket, path, size, mime, objective_id = null, project_id = null, note = null }) {
   try {
-    const prior = await sb(`live_files?select=id,version&path=eq.${encodeURIComponent(path)}&bucket=eq.${bucket}&superseded_by=is.null&filed_at=is.null&order=version.desc&limit=1`)
+    const root = path.replace(/\/[^/]+$/, '')
+    const inRoot = await sb(`live_files?select=id,name,version&path=like.${encodeURIComponent(root + '/%')}&bucket=eq.${bucket}&superseded_by=is.null&filed_at=is.null`)
+    const prior = inRoot.filter(r => stemOf(r.name) === stemOf(name)).sort((a, b) => (b.version || 1) - (a.version || 1))
     const ins = await sbWrite('POST', 'live_files', { user_id: DAVID, name, bucket, path, size: size || null, mime: mime || null, objective_id, project_id, note, source: 'lumen', version: prior.length ? (prior[0].version || 1) + 1 : 1 })
-    if (prior.length && ins?.[0]) await sbWrite('PATCH', `live_files?id=eq.${prior[0].id}`, { superseded_by: ins[0].id }, 'return=minimal')
+    if (ins?.[0]) for (const pr of prior) await sbWrite('PATCH', `live_files?id=eq.${pr.id}`, { superseded_by: ins[0].id }, 'return=minimal')
   } catch (e) { console.warn('live file index', e.message) }
 }
 export async function putFile(path, bytes, mime) {

@@ -15,7 +15,7 @@ import { fetchSteps, addStep, toggleStep, removeStep, listObjectiveArtifacts, li
 import { renderMarkdown } from './MeetingCloseout'
 import SessionBoard from './SessionBoard'
 import { recall } from '../../lib/recall'
-import { draftMail } from '../../lib/livefiles'
+import { draftMail, groupVersions, fmtStamp } from '../../lib/livefiles'
 import { INK, INK2, GRAY, PANEL_BORDER, GOLD, GOLD_BRIGHT, BLUE, GREEN, RED, MONO, SERIF, S, Label, KIND_COLOR, KindIcon, NORTH_STAR_LABEL, NORTH_STAR_ASK } from './canon'
 
 const NAVY_DEEP = '#0A1B2B'
@@ -167,6 +167,7 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
   const [openNote, setOpenNote] = useState(null)
   const [boardId, setBoardId] = useState(null)
   const [recentBoards, setRecentBoards] = useState([])
+  const [olderOpen, setOlderOpen] = useState({})
   useEffect(() => { let on = true; supabase.from('session_boards').select('id,project,title,updated_at,board').order('updated_at', { ascending: false }).limit(24).then(({ data }) => { if (on) setRecentBoards(Array.isArray(data) ? data : []) }); return () => { on = false } }, [])
   const tieBoard = async (b) => { if (!obj) return; const { error } = await supabase.from('session_boards').update({ board: { ...(b.board || {}), objective_id: obj.id } }).eq('id', b.id); if (error) { setMsg(`Could not tie: ${error.message}`); return } setMsg(`Tied ${b.title}`); load() }
   const load = useCallback(() => loadRelated(item).then(setRel).catch(e => { console.warn('item detail', e.message); setRel({ project: null, task: null, artifacts: [], boards: [], projectFiles: [], storeFiles: [], meetings: [], loadout: null }) }), [item])
@@ -358,9 +359,22 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
                     <Label style={{ marginBottom: 0 }}>Production Files</Label><span style={{ flex: 1 }} />
                     <label style={{ ...btn(BLUE), cursor: objBusy ? 'wait' : 'pointer' }}><Upload size={11} /> Put a file in play<input type="file" style={{ display: 'none' }} onChange={e => { uploadNow(e.target.files?.[0]); e.target.value = '' }} /></label>
                   </div>
-                  {(rel.objFiles || []).map(f => (
-                    <div key={f.path} style={rowStyle}><FileText size={14} color={BLUE} /><span style={{ flex: 1, fontSize: 13.5, color: INK, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.name}</span>{f.updated_at && <span style={{ fontFamily: MONO, fontSize: 9.5, color: GRAY }}>{new Date(f.updated_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>}<button onClick={() => open(f.bucket, f.path)} style={btn(BLUE)}><ExternalLink size={11} /> Open</button><button onClick={() => act(async () => { setMsg(`Drafting in Outlook: ${f.name}`); const d = await draftMail(f); if (d.webLink) window.open(d.webLink, '_blank', 'noopener') }, `Draft open in Outlook: ${f.name}`)} title="Open a new Outlook draft with this file attached" style={btn(GOLD)}><Mail size={11} /> Mail</button></div>
-                  ))}
+                  {groupVersions(rel.objFiles || [], { timeKey: 'updated_at' }).map(g => {
+                    const FileRow = ({ f, dim = false }) => (
+                      <div key={f.path} style={{ ...rowStyle, opacity: dim ? 0.6 : 1 }}><FileText size={14} color={dim ? GRAY : BLUE} /><span style={{ flex: 1, fontSize: dim ? 12.5 : 13.5, color: dim ? INK2 : INK, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.name}</span><span style={{ fontFamily: MONO, fontSize: 9.5, color: GRAY, whiteSpace: 'nowrap' }}>{fmtStamp(f.updated_at)}</span><button onClick={() => open(f.bucket, f.path)} style={btn(dim ? INK2 : BLUE)}><ExternalLink size={11} /> Open</button><button onClick={() => act(async () => { setMsg(`Drafting in Outlook: ${f.name}`); const d = await draftMail(f); if (d.webLink) window.open(d.webLink, '_blank', 'noopener') }, `Draft open in Outlook: ${f.name}`)} title="Open a new Outlook draft with this file attached" style={btn(dim ? INK2 : GOLD)}><Mail size={11} /> Mail</button></div>
+                    )
+                    return (
+                      <div key={g.key}>
+                        <FileRow f={g.current} />
+                        {g.older.length > 0 && (
+                          <div style={{ paddingLeft: 24 }}>
+                            <button onClick={() => setOlderOpen(o => ({ ...o, [g.key]: !o[g.key] }))} style={{ background: 'transparent', border: 'none', color: GRAY, cursor: 'pointer', fontFamily: MONO, fontSize: 9.5, letterSpacing: '1px', textTransform: 'uppercase', padding: '2px 0 6px' }}>{olderOpen[g.key] ? 'Hide' : 'Show'} {g.older.length} older version{g.older.length === 1 ? '' : 's'}</button>
+                            {olderOpen[g.key] && g.older.map(f => <FileRow key={f.path} f={f} dim />)}
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
                   {!(rel.objFiles || []).length && <div style={{ fontSize: 13, color: GRAY }}>Nothing produced yet. Files a session puts in play for this {what.item} land here (livefile.py put, tied to it), as do files Lumen files to it and anything you drop on the Board's Live Files window tied to it.</div>}
                 </div>
               )}

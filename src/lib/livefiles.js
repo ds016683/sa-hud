@@ -60,10 +60,11 @@ export async function putLiveFile(file, { objectiveId = null, projectId = null, 
   const { error } = await supabase.storage.from(BUCKET).upload(path, file, { upsert: true, contentType: file.type || undefined })
   if (error) throw new Error(error.message)
   const { data: { session: s } } = await supabase.auth.getSession()
-  const prior = await q(supabase.from('live_files').select('id,version').eq('path', path).is('superseded_by', null).is('filed_at', null).order('version', { ascending: false }).limit(1))
-  const row = { user_id: s?.user?.id || null, name, bucket: BUCKET, path, size: file.size || null, mime: file.type || null, objective_id: objectiveId, project_id: projectId, note, source, session, version: prior.length ? (prior[0].version || 1) + 1 : 1 }
+  const inRoot = await q(supabase.from('live_files').select('id,name,version').like('path', `${root}/%`).is('superseded_by', null).is('filed_at', null))
+  const prior = inRoot.filter(r => stemOf(r.name) === stemOf(name)).sort((a, b) => (b.version || 1) - (a.version || 1))
+  const row = { user_id: s?.user?.id || null, name, bucket: BUCKET, path, size: file.size || null, mime: file.type || null, objective_id: objectiveId, project_id: projectId, note, source, session, version: prior.length ? Math.max(prior[0].version || 1, versionNum(name, 0)) + (versionNum(name, 0) > (prior[0].version || 1) ? 0 : 1) : versionNum(name, 1) }
   const ins = await q(supabase.from('live_files').insert(row).select())
-  if (prior.length) await supabase.from('live_files').update({ superseded_by: ins[0].id }).eq('id', prior[0].id)
+  for (const pr of prior) await supabase.from('live_files').update({ superseded_by: ins[0].id }).eq('id', pr.id)
   return ins[0]
 }
 
@@ -95,6 +96,31 @@ export async function removeLiveFile(row) {
   await supabase.storage.from(row.bucket || BUCKET).remove([row.path])
   await q(supabase.from('live_files').delete().eq('id', row.id).select())
 }
+
+// Versions (David, 10/17): a file put in play again under the same name, or
+// under a name that only adds a version marker (v2, _v3, (2), final), is a new
+// version of the same file. Only the current one shows; older ones sit behind
+// an expander. The stem is the name without its extension and marker.
+export const stemOf = (name) => String(name || '').replace(/\.[^.]+$/, '').replace(/[\s_.-]*(v|ver|version)\s*\d+[a-z]?$/i, '').replace(/[\s_.-]*\(\d+\)$/, '').replace(/[\s_.-]*(final|draft|copy|latest|new)(\s*\d+)?$/i, '').replace(/[\s_.-]+$/, '').trim().toLowerCase()
+export const versionNum = (name, fallback = 1) => { const m = String(name || '').match(/(?:v|ver|version)\s*(\d+)[a-z]?(?:\.[^.]+)?$/i) || String(name || '').match(/\((\d+)\)(?:\.[^.]+)?$/); return m ? parseInt(m[1], 10) : fallback }
+// files: [{ name, ... , <timeKey> }] -> [{ key, current, older: [...] }], newest family first.
+export function groupVersions(files, { timeKey = 'created_at', rootKey = null } = {}) {
+  const fam = new Map()
+  for (const f of files || []) {
+    const key = `${rootKey && f[rootKey] ? String(f[rootKey]).replace(/\/[^/]+$/, '') + '|' : ''}${stemOf(f.name)}`
+    if (!fam.has(key)) fam.set(key, [])
+    fam.get(key).push(f)
+  }
+  const rank = (f) => [versionNum(f.name, f.version || 1), f[timeKey] ? new Date(f[timeKey]).getTime() : 0]
+  const out = []
+  for (const [key, list] of fam) {
+    list.sort((a, b) => { const ra = rank(a), rb = rank(b); return rb[0] - ra[0] || rb[1] - ra[1] })
+    out.push({ key, current: list[0], older: list.slice(1) })
+  }
+  out.sort((a, b) => (new Date(b.current[timeKey] || 0).getTime()) - (new Date(a.current[timeKey] || 0).getTime()))
+  return out
+}
+export const fmtStamp = (iso) => iso ? new Date(iso).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZone: 'America/Chicago' }) : ''
 
 export const fmtSize = (n) => !n ? '' : n > 1048576 ? `${(n / 1048576).toFixed(1)} MB` : n > 1024 ? `${Math.round(n / 1024)} KB` : `${n} B`
 export const extOf = (name) => (String(name || '').split('.').pop() || '').toLowerCase()

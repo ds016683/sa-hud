@@ -4,7 +4,7 @@
 // Open reads it; Done takes it out of view (the filing system comes later).
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { Paperclip, X as XIcon, ExternalLink, Check, Trash2, Upload, Mail } from 'lucide-react'
-import { listLiveFiles, putLiveFile, linkLiveFile, openLiveFile, markFiled, removeLiveFile, noteLiveFile, draftMail, fmtSize, extOf } from '../../lib/livefiles'
+import { listLiveFiles, putLiveFile, linkLiveFile, openLiveFile, markFiled, removeLiveFile, noteLiveFile, draftMail, groupVersions, fmtStamp, fmtSize, extOf } from '../../lib/livefiles'
 import { INK, INK2, GRAY, PANEL_BORDER, GOLD, BLUE, GREEN, RED, MONO, SERIF, Label, KIND_COLOR, fmtTime } from './canon'
 
 const EXT_COLOR = { xlsx: GREEN, xls: GREEN, csv: GREEN, pptx: GOLD, ppt: GOLD, key: GOLD, docx: BLUE, doc: BLUE, pdf: RED, md: INK2, txt: INK2, html: BLUE, png: INK2, jpg: INK2, jpeg: INK2 }
@@ -18,11 +18,6 @@ export function ClipButton({ count, onClick, color = BLUE, title = 'Live Files o
   )
 }
 
-function fmtWhen(iso) {
-  const d = new Date(iso); const today = new Date()
-  const same = d.toDateString() === today.toDateString()
-  return same ? fmtTime(iso) : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-}
 
 export default function LiveFilesModal({ onClose, filter = null, items = [], onChanged }) {
   const [rows, setRows] = useState(null)
@@ -31,6 +26,7 @@ export default function LiveFilesModal({ onClose, filter = null, items = [], onC
   const [drag, setDrag] = useState(false)
   const [scope, setScope] = useState(filter?.objectiveId ? 'item' : 'all')
   const [dropTarget, setDropTarget] = useState(filter?.objectiveId || '')
+  const [olderOpen, setOlderOpen] = useState({})
   const fileRef = useRef(null)
   const load = useCallback(() => listLiveFiles(scope === 'item' && filter?.objectiveId ? { objectiveId: filter.objectiveId } : {}).then(r => { setRows(r.rows); setMissing(r.missing) }), [scope, filter])
   useEffect(() => { load() }, [load])
@@ -95,7 +91,7 @@ export default function LiveFilesModal({ onClose, filter = null, items = [], onC
                   : <span style={{ fontFamily: MONO, fontSize: 9, letterSpacing: '1.2px', textTransform: 'uppercase', color: GRAY }}>Tied to nothing yet</span>}
               </div>
               <div style={{ display: 'grid', gap: 4 }}>
-                {g.rows.map(r => {
+                {groupVersions(g.rows, { timeKey: 'created_at', rootKey: 'path' }).map(fam => [fam.current, ...(olderOpen[fam.key] ? fam.older : [])].map((r, idx) => { const isOld = idx > 0
                   const ext = extOf(r.name); const c = EXT_COLOR[ext] || INK2
                   return (
                     <div key={r.id} style={{ display: 'grid', gridTemplateColumns: '44px 1fr auto', gap: 10, alignItems: 'center', padding: '8px 10px', border: `1px solid ${PANEL_BORDER}`, borderRadius: 10, background: 'rgba(255,255,255,0.02)' }}>
@@ -106,7 +102,7 @@ export default function LiveFilesModal({ onClose, filter = null, items = [], onC
                           {r.version > 1 && <span style={{ fontFamily: MONO, fontSize: 9, letterSpacing: '1px', color: GOLD }}>v{r.version}</span>}
                         </div>
                         <div style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '0.6px', color: GRAY, marginTop: 2 }}>
-                          {fmtWhen(r.created_at)}{r.size ? ` · ${fmtSize(r.size)}` : ''} · {r.source === 'session' ? `Claude${r.session ? ` · ${r.session}` : ''}` : r.source === 'lumen' ? 'Lumen' : 'David'}
+                          {fmtStamp(r.created_at)}{r.size ? ` · ${fmtSize(r.size)}` : ''} · {r.source === 'session' ? `Claude${r.session ? ` · ${r.session}` : ''}` : r.source === 'lumen' ? 'Lumen' : 'David'}{isOld ? ' · older version' : ''}
                         </div>
                         <div onClick={() => { const n = window.prompt('Note on this file', r.note || ''); if (n !== null) act(() => noteLiveFile(r.id, n.trim() || null), 'Note saved') }} style={{ fontSize: 12, color: r.note ? INK2 : GRAY, marginTop: 3, cursor: 'text', fontStyle: r.note ? 'normal' : 'italic' }}>{r.note || 'add a note'}</div>
                       </div>
@@ -123,7 +119,7 @@ export default function LiveFilesModal({ onClose, filter = null, items = [], onC
                       </div>
                     </div>
                   )
-                })}
+                }).concat(fam.older.length ? [<div key={`${fam.key}-more`} style={{ paddingLeft: 10 }}><button onClick={() => setOlderOpen(o => ({ ...o, [fam.key]: !o[fam.key] }))} style={{ background: 'transparent', border: 'none', color: GRAY, cursor: 'pointer', fontFamily: MONO, fontSize: 9.5, letterSpacing: '1px', textTransform: 'uppercase', padding: '0 0 4px' }}>{olderOpen[fam.key] ? 'Hide' : 'Show'} {fam.older.length} older version{fam.older.length === 1 ? '' : 's'}</button></div>] : []))}
               </div>
             </div>
           ))}
