@@ -9,7 +9,7 @@ import { graphToken, MAILBOX } from './_sync-core.mjs'
 import { waSendText, davidNumber } from './_wa.mjs'
 
 const URL_BASE = 'https://cmuvomnmaoseccxpeuxq.supabase.co'
-const DAVID = '9d28e8cf-3e35-48d9-a029-1327bd37fdd4'
+
 const hdr = () => ({ apikey: process.env.SUPABASE_SERVICE_KEY, Authorization: `Bearer ${process.env.SUPABASE_SERVICE_KEY}`, 'Content-Type': 'application/json' })
 const sb = async (path, init = {}) => { const r = await fetch(`${URL_BASE}/rest/v1/${path}`, { ...init, headers: { ...hdr(), Prefer: init.method ? 'return=representation' : undefined, ...(init.headers || {}) } }); if (!r.ok) throw new Error(`${path.split('?')[0]} -> ${r.status}`); const t = await r.text(); return t ? JSON.parse(t) : null }
 const MARK = 'mail-draft-consent'
@@ -33,8 +33,8 @@ export default async function handler(req, res) {
     let wa = null, err = null
     try { wa = await waSendText(davidNumber(), text) } catch (e) { err = String(e.message || e) }
     await sb('lumen_messages', { method: 'POST', body: JSON.stringify({ at: now, direction: 'out', channel: 'whatsapp', kind: 'text', body: text, external_id: wa || null, meta: { via: 'consent-watch', error: err } }) }).catch(() => {})
-    await sb('daily_logs', { method: 'POST', body: JSON.stringify({ user_id: DAVID, day: new Date().toLocaleDateString('en-CA', { timeZone: 'America/Chicago' }), what: MARK, kind: 'system', note: `Mail.ReadWrite consent confirmed by probe at ${now}; David pinged on WhatsApp${err ? ` (send failed: ${err})` : ''}`, at: now }) }).catch(() => {})
-    await sb('daily_logs', { method: 'POST', body: JSON.stringify({ user_id: DAVID, day: new Date().toLocaleDateString('en-CA', { timeZone: 'America/Chicago' }), what: 'board', note: 'Mail on live files: Graph consent landed; Lumen asked David for the smoke test', at: now }) }).catch(() => {})
+    await sb('daily_logs', { method: 'POST', body: JSON.stringify({ day: new Date().toLocaleDateString('en-CA', { timeZone: 'America/Chicago' }), what: MARK, kind: 'system', note: `Mail.ReadWrite consent confirmed by probe at ${now}; David pinged on WhatsApp${err ? ` (send failed: ${err})` : ''}`, at: now }) }).catch(() => {})
+    await sb('daily_logs', { method: 'POST', body: JSON.stringify({ day: new Date().toLocaleDateString('en-CA', { timeZone: 'America/Chicago' }), what: 'board', note: 'Mail on live files: Graph consent landed; Lumen asked David for the smoke test', at: now }) }).catch(() => {})
     return res.status(200).json({ ok: true, state: 'granted; David pinged', sent: !err, error: err })
   } catch (e) {
     return res.status(500).json({ error: e.message })
