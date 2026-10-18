@@ -74,7 +74,7 @@ export async function fetchLoadout() {
       kind: tags.includes('impromptu') ? 'Ad Hoc' : (projByObj.has(o.id) || tags.includes('mission-task')) ? 'Main Mission' : tags.includes('session') ? 'Session' : 'Side Mission',
       personal: tags.includes('personal'), adhoc: tags.includes('impromptu'), call: tags.includes('call'),
       ...(taskInfo.get(o.id) || {}), steps: stepRows.filter(s => s.objective_id === o.id),
-      north_star: projByObj.has(o.id) ? (projStar.get(projIdByObj.get(o.id)) || null) : (o.north_star || null),
+      north_star: o.north_star || (projByObj.has(o.id) ? (projStar.get(projIdByObj.get(o.id)) || null) : null),
     }
   })
   // A meeting with its timer running takes one slot while it runs (David, 10/14).

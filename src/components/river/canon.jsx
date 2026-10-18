@@ -100,9 +100,9 @@ export const KindChip = ({ kind }) => {
   return <span style={{ ...S.chip('transparent', c), border: `1px solid ${c}55`, fontFamily: MONO, fontSize: 9, letterSpacing: '1px', padding: '2px 7px', display: 'inline-flex', alignItems: 'center', gap: 5 }}><KindIcon kind={kind} color={c} />{kind}</span>
 }
 
-// The North Star (David, 10/12): one line on every mission, written at
+// The Polaris Objective (David, 10/12): one line on every mission, written at
 // capture, carried on the card, first in the brain, top of the yay page, and
 // answered by Achieved at close. Labels like this one read in Title Case
 // (the first letter of each word capitalized), David's cannon 10/13.
-export const NORTH_STAR_LABEL = "What Will Be True, That Wasn't True Before"
-export const NORTH_STAR_ASK = "What will be true, that wasn't true before? One sentence."
+export const NORTH_STAR_LABEL = "Polaris Objective"   // David, 10/18: the one line every mission steers by (was "What Will Be True, That Wasn't True Before")
+export const NORTH_STAR_ASK = "Polaris Objective: what will be true when this is done? One sentence."

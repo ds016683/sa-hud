@@ -444,7 +444,7 @@ function ProjectDetail({ project, board: boardProp, api, onBack, initialTab, ini
         <div style={{ flex: 1, minWidth: 280 }}>
           <h1 style={S.h1}>{project.name}</h1>
           <div style={{ fontSize: 14, lineHeight: 1.6, color: TEXT_DIM, margin: '8px 0 0', maxWidth: '72ch' }}>
-            {project.description ? <span><span style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '1.4px', textTransform: 'uppercase', color: BLUE, marginRight: 8, display: 'block', marginBottom: 2 }}>{NORTH_STAR_LABEL}</span><span style={{ fontFamily: SERIF, fontStyle: 'italic', fontSize: 15.5, color: INK }}>{project.description}</span></span> : <button onClick={async () => { const d = window.prompt(`${NORTH_STAR_LABEL}? One sentence.`, ''); if (d?.trim()) await api.updateProject(project.id, { description: d.trim() }) }} style={{ ...S.btnGhost, padding: '3px 9px', fontSize: 10 }}>Write the North Star</button>}
+            {project.description ? <span><span style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '1.4px', textTransform: 'uppercase', color: BLUE, marginRight: 8, display: 'block', marginBottom: 2 }}>{NORTH_STAR_LABEL}</span><span style={{ fontFamily: SERIF, fontStyle: 'italic', fontSize: 15.5, color: INK }}>{project.description}</span></span> : <button onClick={async () => { const d = window.prompt(`${NORTH_STAR_LABEL}? One sentence.`, ''); if (d?.trim()) await api.updateProject(project.id, { description: d.trim() }) }} style={{ ...S.btnGhost, padding: '3px 9px', fontSize: 10 }}>Write the Polaris Objective</button>}
           </div>
           <div style={S.sub}>
             {[CATEGORY_LABELS[project.category] || project.category, project.key, '100 miles on completion · 10 per milestone'].filter(Boolean).join(' · ')}

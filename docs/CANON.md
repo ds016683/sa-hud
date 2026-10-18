@@ -33,7 +33,7 @@ Three slots of planned work plus the Ad Hoc slot. A Bounty takes one, a Contract
 ## Calibration
 100 miles is a balanced, good, productive day. North of that is extra effort. South means a conscious decoupling or a distraction. No one thing is overweighted; nerf and buff as we go.
 
-## The North Star
+## The Polaris Objective
 
 Every mission carries one line, written on the front end, labeled **What Will Be True, That Wasn't True Before**. One sentence in David's own words. It is the answer to one question, asked once at capture or the first time the mission is loaded without it: why this one, what is different when it is done. Lumen writes the sentence from David's words, reads it back once, David says yes or fixes a word. It carries through the mission: on the Loadout card, first in the brain, at the top of the yay page. Gates and milestones under it are observable things (a decision marked, a conversation had, a thing produced). At close, Lumen reads the star back and asks whether it is true and what is different now; that answer is Achieved, shown under the star on the yay page. A Side Mission's star lives in objectives.north_star; a Main Mission's is its description.
 

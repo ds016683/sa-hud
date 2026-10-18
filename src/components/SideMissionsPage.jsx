@@ -45,7 +45,7 @@ function AddForm({ onAdded }) {
     try {
       const r = await addObjective({ title, size, personal, tags, due_date: due || null, state, north_star: star })
       if (r.refused) setErr(`Captured in the queue; it would not fit on the Board: ${r.refused.join(' · ')}`)
-      if (r.north_star_dropped) setErr('Captured, but the North Star did not save: run sql/2026-10-13-north-star.sql first.')
+      if (r.north_star_dropped) setErr('Captured, but the Polaris Objective did not save: run sql/2026-10-13-north-star.sql first.')
       setTitle(''); setDue(''); setTags([]); setStar(''); onAdded(r)
     } catch (e) { setErr(e.message) } finally { setBusy(false) }
   }
