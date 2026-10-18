@@ -33,8 +33,8 @@ export default async function handler(req, res) {
     let wa = null, err = null
     try { wa = await waSendText(davidNumber(), text) } catch (e) { err = String(e.message || e) }
     await sb('lumen_messages', { method: 'POST', body: JSON.stringify({ at: now, direction: 'out', channel: 'whatsapp', kind: 'text', body: text, external_id: wa || null, meta: { via: 'consent-watch', error: err } }) }).catch(() => {})
-    await sb('daily_logs', { method: 'POST', body: JSON.stringify({ day: new Date().toLocaleDateString('en-CA', { timeZone: 'America/Chicago' }), what: MARK, kind: 'system', note: `Mail.ReadWrite consent confirmed by probe at ${now}; David pinged on WhatsApp${err ? ` (send failed: ${err})` : ''}`, at: now }) }).catch(() => {})
-    await sb('daily_logs', { method: 'POST', body: JSON.stringify({ day: new Date().toLocaleDateString('en-CA', { timeZone: 'America/Chicago' }), what: 'board', note: 'Mail on live files: Graph consent landed; Lumen asked David for the smoke test', at: now }) }).catch(() => {})
+    await sb('daily_logs', { method: 'POST', body: JSON.stringify({ day: new Date().toLocaleDateString('en-CA', { timeZone: 'America/Chicago' }), what: MARK, kind: 'note', source: 'lumen', note: `Mail.ReadWrite consent confirmed by probe at ${now}; David pinged on WhatsApp${err ? ` (send failed: ${err})` : ''}`, at: now }) }).catch(() => {})
+    await sb('daily_logs', { method: 'POST', body: JSON.stringify({ day: new Date().toLocaleDateString('en-CA', { timeZone: 'America/Chicago' }), what: 'board', kind: 'note', source: 'lumen', note: 'Mail on live files: Graph consent landed; Lumen asked David for the smoke test', at: now }) }).catch(() => {})
     return res.status(200).json({ ok: true, state: 'granted; David pinged', sent: !err, error: err })
   } catch (e) {
     return res.status(500).json({ error: e.message })
