@@ -144,7 +144,8 @@ export async function indexLiveFile({ name, bucket, path, size, mime, objective_
   try {
     const root = path.replace(/\/[^/]+$/, '')
     const inRoot = await sb(`live_files?select=id,name,version&path=like.${encodeURIComponent(root + '/%')}&bucket=eq.${bucket}&superseded_by=is.null&filed_at=is.null`)
-    const prior = inRoot.filter(r => stemOf(r.name) === stemOf(name)).sort((a, b) => (b.version || 1) - (a.version || 1))
+    const ext = (n) => (String(n || '').split('.').pop() || '').toLowerCase()
+    const prior = inRoot.filter(r => stemOf(r.name) === stemOf(name) && ext(r.name) === ext(name)).sort((a, b) => (b.version || 1) - (a.version || 1))
     const ins = await sbWrite('POST', 'live_files', { user_id: DAVID, name, bucket, path, size: size || null, mime: mime || null, objective_id, project_id, note, source: 'lumen', version: prior.length ? (prior[0].version || 1) + 1 : 1 })
     if (ins?.[0]) for (const pr of prior) await sbWrite('PATCH', `live_files?id=eq.${pr.id}`, { superseded_by: ins[0].id }, 'return=minimal')
   } catch (e) { console.warn('live file index', e.message) }

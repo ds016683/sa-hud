@@ -61,7 +61,7 @@ export async function putLiveFile(file, { objectiveId = null, projectId = null, 
   if (error) throw new Error(error.message)
   const { data: { session: s } } = await supabase.auth.getSession()
   const inRoot = await q(supabase.from('live_files').select('id,name,version').like('path', `${root}/%`).is('superseded_by', null).is('filed_at', null))
-  const prior = inRoot.filter(r => stemOf(r.name) === stemOf(name)).sort((a, b) => (b.version || 1) - (a.version || 1))
+  const prior = inRoot.filter(r => famKey(r.name) === famKey(name)).sort((a, b) => (b.version || 1) - (a.version || 1))
   const row = { user_id: s?.user?.id || null, name, bucket: BUCKET, path, size: file.size || null, mime: file.type || null, objective_id: objectiveId, project_id: projectId, note, source, session, version: prior.length ? Math.max(prior[0].version || 1, versionNum(name, 0)) + (versionNum(name, 0) > (prior[0].version || 1) ? 0 : 1) : versionNum(name, 1) }
   const ins = await q(supabase.from('live_files').insert(row).select())
   for (const pr of prior) await supabase.from('live_files').update({ superseded_by: ins[0].id }).eq('id', pr.id)
@@ -102,12 +102,13 @@ export async function removeLiveFile(row) {
 // version of the same file. Only the current one shows; older ones sit behind
 // an expander. The stem is the name without its extension and marker.
 export const stemOf = (name) => String(name || '').replace(/\.[^.]+$/, '').replace(/[\s_.-]*(v|ver|version)\s*\d+[a-z]?$/i, '').replace(/[\s_.-]*\(\d+\)$/, '').replace(/[\s_.-]*(final|draft|copy|latest|new)(\s*\d+)?$/i, '').replace(/[\s_.-]+$/, '').trim().toLowerCase()
+export const famKey = (name) => `${stemOf(name)}.${(String(name || '').split('.').pop() || '').toLowerCase()}`
 export const versionNum = (name, fallback = 1) => { const m = String(name || '').match(/(?:v|ver|version)\s*(\d+)[a-z]?(?:\.[^.]+)?$/i) || String(name || '').match(/\((\d+)\)(?:\.[^.]+)?$/); return m ? parseInt(m[1], 10) : fallback }
 // files: [{ name, ... , <timeKey> }] -> [{ key, current, older: [...] }], newest family first.
 export function groupVersions(files, { timeKey = 'created_at', rootKey = null } = {}) {
   const fam = new Map()
   for (const f of files || []) {
-    const key = `${rootKey && f[rootKey] ? String(f[rootKey]).replace(/\/[^/]+$/, '') + '|' : ''}${stemOf(f.name)}`
+    const key = `${rootKey && f[rootKey] ? String(f[rootKey]).replace(/\/[^/]+$/, '') + '|' : ''}${famKey(f.name)}`
     if (!fam.has(key)) fam.set(key, [])
     fam.get(key).push(f)
   }
