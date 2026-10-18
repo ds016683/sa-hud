@@ -1442,7 +1442,7 @@ export async function callTool(name, args = {}) {
       const p = ps[0]; const now = new Date().toISOString()
       const tasks = await sb(`project_tasks?select=id,objective_id,status&project_id=eq.${p.id}`)
       const openObjs = tasks.filter(t => t.objective_id && t.status !== 'done').map(t => t.objective_id)
-      if (openObjs.length) await sbWrite('PATCH', `objectives?id=in.(${openObjs.join(',')})`, { deleted_at: now, state: 'bin' }, 'return=minimal')
+      if (openObjs.length) await sbWrite('PATCH', `objectives?id=in.(${openObjs.join(',')})`, { deleted_at: now, state: 'parked', activated_at: null }, 'return=minimal')
       await sbWrite('PATCH', `projects?id=eq.${p.id}`, { status: 'deleted', archived_at: now, last_activity_at: now }, 'return=minimal')
       boardLog(`Deleted Main Mission (no miles): ${p.name}`)
       return JSON.stringify({ ok: true, deleted: p.name, closed_milestones_kept: tasks.filter(t => t.status === 'done').length, open_milestones_removed: tasks.length - tasks.filter(t => t.status === 'done').length, miles: 0 })

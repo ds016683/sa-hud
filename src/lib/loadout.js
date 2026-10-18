@@ -258,7 +258,7 @@ export async function deleteMission(project) {
   const now = new Date().toISOString()
   const tasks = await q(supabase.from('project_tasks').select('id,objective_id,status').eq('project_id', project.id))
   const openObjs = tasks.filter(t => t.objective_id && t.status !== 'done').map(t => t.objective_id)
-  if (openObjs.length) await supabase.from('objectives').update({ deleted_at: now, state: 'bin' }).in('id', openObjs)
+  if (openObjs.length) await supabase.from('objectives').update({ deleted_at: now, state: 'parked', activated_at: null }).in('id', openObjs)
   const { error } = await supabase.from('projects').update({ status: 'deleted', archived_at: now, last_activity_at: now }).eq('id', project.id)
   if (error) throw new Error(error.message)
   await logBoard(`Deleted Main Mission (no miles): ${project.name}`)
