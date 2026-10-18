@@ -17,11 +17,12 @@ import SessionBoard from './SessionBoard'
 import { recall } from '../../lib/recall'
 import { draftMail, groupVersions, fmtStamp, requestLiveFile, listLiveFiles, isRequest } from '../../lib/livefiles'
 import { DropZone } from './LiveFiles'
+import WorkbenchTab from './Workbench'
 import { INK, INK2, GRAY, PANEL_BORDER, GOLD, GOLD_BRIGHT, BLUE, GREEN, RED, MONO, SERIF, S, Label, KIND_COLOR, KindIcon, NORTH_STAR_LABEL, NORTH_STAR_ASK, LABEL } from './canon'
 
 const NAVY_DEEP = '#0A1B2B'
-const TABS = ['overview', 'artifacts', 'files', 'notes']
-const TAB_LABEL = { overview: 'Briefing', artifacts: 'Artifacts', sessions: 'Sessions', files: 'Production', notes: 'Notes' }
+const TABS = ['overview', 'workbench', 'artifacts', 'files', 'notes']
+const TAB_LABEL = { overview: 'Briefing', workbench: 'Workbench', artifacts: 'Artifacts', sessions: 'Sessions', files: 'Production', notes: 'Notes' }
 const STOP = new Set(['the', 'and', 'with', 'for', 'from', 'about', 'notes', 'upload', 'interview', 'call', 'meeting', 'review', 'investigate', 'weekly', 'monthly', 'david', 'smith'])
 const words = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9 ]/g, ' ').split(/\s+/).filter(w => w.length > 2 && !STOP.has(w))
 const chiTime = (iso) => iso ? new Date(iso).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'America/Chicago' }) : ''
@@ -415,6 +416,8 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
               {!item.description && !task?.notes && !rel.project && !item.event && !loaded && !obj && <div style={{ fontSize: 13, color: GRAY }}>No back story on this one yet.</div>}
             </div>
           )}
+
+          {rel && tab === 'workbench' && (item.objective_id ? <WorkbenchTab objectiveId={item.objective_id} /> : <None what={{ ...what, thing: 'a workbench' }} />)}
 
           {rel && tab === 'artifacts' && (
             <div>
