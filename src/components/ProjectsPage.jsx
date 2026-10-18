@@ -5,6 +5,7 @@ import {
 } from 'lucide-react'
 import useProjects, { freshnessOf } from '../hooks/useProjects'
 import ArtifactsTab from './river/ArtifactsTab'
+import WorkbenchTab from './river/Workbench'
 import ItemDetail from './river/ItemDetail'
 import SessionBoard from './river/SessionBoard'
 import { listShares, archiveShare, archiveSharesFor, shareUrl } from '../lib/shares'
@@ -363,7 +364,7 @@ function SharesTab({ project }) {
 }
 
 function ProjectDetail({ project, board: boardProp, api, onBack, initialTab, initialSlug, onNavigate }) {
-  const [tab, setTab] = useState(initialTab && ['tasks', 'board', 'artifacts', 'files', 'shares'].includes(initialTab) ? (initialTab === 'board' ? 'tasks' : initialTab) : 'tasks')
+  const [tab, setTab] = useState(initialTab && ['tasks', 'board', 'artifacts', 'files', 'shares', 'workbench'].includes(initialTab) ? (initialTab === 'board' ? 'tasks' : initialTab) : 'tasks')
   const [board, setBoard] = useState(boardProp)
   useEffect(() => { let on = true; Promise.resolve().then(() => { if (on) setBoard(boardProp) }); return () => { on = false } }, [boardProp])
   const [artifactSlug, setArtifactSlug] = useState(initialSlug || null)
@@ -454,6 +455,7 @@ function ProjectDetail({ project, board: boardProp, api, onBack, initialTab, ini
           <Pill active={tab === 'artifacts'} onClick={() => setTab('artifacts')}>Artifacts</Pill>
           <Pill active={tab === 'files'} onClick={() => setTab('files')}>Cabinet</Pill>
           <Pill active={tab === 'shares'} onClick={() => setTab('shares')}>Shares</Pill>
+          <Pill active={tab === 'workbench'} onClick={() => setTab('workbench')}>Workbench</Pill>
         </div>
       </div>
 
@@ -483,6 +485,7 @@ function ProjectDetail({ project, board: boardProp, api, onBack, initialTab, ini
         )}
         {tab === 'artifacts' && <ArtifactsTab key={artifactSlug || 'first'} project={project} initialSlug={artifactSlug} />}
         {tab === 'shares' && <SharesTab project={project} />}
+        {tab === 'workbench' && <WorkbenchTab project={project} />}
         {tab === 'files' && (
           <FilesTab project={project}
             listFiles={api.listFiles} uploadFile={api.uploadFile} createFolder={api.createFolder}
