@@ -253,11 +253,16 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
         </div>
 
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: 16, flexWrap: 'wrap', marginTop: 22 }}>
-          <div style={{ minWidth: 0 }}>
-            <h1 style={{ ...S.h1, marginBottom: 6 }}>{item.title}</h1>
-            <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '1.6px', textTransform: 'uppercase', color: KIND_COLOR[item.kind] || INK2, display: 'inline-flex', alignItems: 'center', gap: 6 }}><KindIcon kind={item.kind} size={12} />
-              Mission Briefing · {item.kind}{rel?.project ? ` · ${rel.project.name}` : item.project ? ` · ${item.project}` : ''}{item.size ? ` · ${SIZES[item.size]?.label || item.size}` : ''}{item.event ? ` · ${chiTime(item.event.start_at)} to ${chiTime(item.event.end_at)}` : ''}
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 8 }}>
+              <span style={{ fontSize: 15, fontWeight: 600, color: KIND_COLOR[item.kind] || INK2, display: 'inline-flex', alignItems: 'center', gap: 7 }}><KindIcon kind={item.kind} size={14} />{item.kind}</span>
+              {(rel?.project || item.project) && <span style={{ fontSize: 15, fontWeight: 600, color: INK }}>· {rel?.project?.name || item.project}</span>}
+              {task && <span style={{ fontSize: 15, fontWeight: 600, color: INK2 }}>· Milestone{String(task.text || '').match(/^\s*(\d+)\s*[·.:)-]/) ? ` ${String(task.text).match(/^\s*(\d+)\s*[·.:)-]/)[1]}` : ''}</span>}
+              {item.size && !task && <span style={{ fontSize: 15, fontWeight: 600, color: INK2 }}>· {SIZES[item.size]?.label || item.size}</span>}
+              {item.event && <span style={{ fontSize: 15, fontWeight: 600, color: INK2 }}>· {chiTime(item.event.start_at)}</span>}
+              <span style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '1.4px', textTransform: 'uppercase', color: LABEL, marginLeft: 4 }}>Mission Briefing</span>
             </div>
+            <h1 style={{ ...S.h1, marginBottom: 6, fontSize: String(item.title || '').length > 70 ? 22 : 28, lineHeight: 1.25 }}>{task ? String(item.title || '').replace(/^\s*\d+\s*[·.:)-]\s*/, '') : item.title}</h1>
           </div>
           <div style={{ display: 'flex', gap: 6, paddingBottom: 4, flexWrap: 'wrap' }}>
             {TABS.map(t => <Pill key={t} active={tab === t} onClick={() => setTab(t)} count={counts[t]}>{TAB_LABEL[t]}</Pill>)}

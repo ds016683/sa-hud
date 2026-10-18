@@ -41,6 +41,10 @@ Every mission carries one line, written on the front end, labeled **What Will Be
 
 Gray (`GRAY`) means off: a closed item, a disabled control, a placeholder, something not reachable right now. It is never the color of a live label. Eyebrows and field labels (Domain, Type, Due, Where It Stands, Production Files) read in `LABEL`, a steel blue, 10.5 to 11 px mono, distinct but not loud. Live secondary text (timestamps, captions, meta) reads in `MUTED`, not gray (David, 10/17). The realm of a mission is called its Domain. Headers are never smaller than the content beneath them: a field or section label (`<Label>`) reads in Title Case at 14px, weight 600, LABEL color, in the body face; small mono uppercase is for tags and chips that sit beside content, not for anything that heads it (David, 10/17).
 
+## Placement
+
+Placement before content (David, 10/18). The first thing a card, peek or briefing says is what kind of mission this is and what it hangs from: the mission's name or the kind as the heading, then "Main Mission · Milestone 4" or "Side Mission · Bounty" and where it sits (on the board, in the Stash). Only then the title or the sentence. A long sentence is content, set at content size; it is never the headline over an unplaced reader.
+
 ## Labels
 
 Any title for something, a header or a label, reads in Title Case: the first letter of each word capitalized (David, 10/16; set first for the North Star label on 10/13 and extended to the entire system). Mono eyebrows stay uppercase. Sentences, quotes, and David's own words are not labels and keep their case.

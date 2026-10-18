@@ -311,8 +311,12 @@ function StashPeek({ it, act, onClose, onOpenFull, clips = 0, onFiles }) {
         <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
           <BadgeMedallion id={badgeFor(it)} size={48} color={color} />
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '1.4px', textTransform: 'uppercase', color }}>{it.kind === 'Main Mission' ? `Main Mission · ${it.project || ''}` : `${it.kind} · ${SIZES[it.size]?.label || ''}`} · in the Stash</div>
-            <div style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 20, color: '#fff', lineHeight: 1.25, marginTop: 4 }}>{title}</div>
+            <div style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 20, color: '#fff', lineHeight: 1.2 }}>{it.kind === 'Main Mission' ? (it.project || 'Main Mission') : it.kind}</div>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginTop: 5 }}>
+              <span style={{ fontSize: 13, fontWeight: 600, color }}>{it.kind === 'Main Mission' ? `Main Mission${(it.task_text || '').match(/^\s*(\d+)\s*[·.:)-]/) ? ` · Milestone ${(it.task_text || '').match(/^\s*(\d+)\s*[·.:)-]/)[1]}` : ' · Milestone'}` : `${it.kind} · ${SIZES[it.size]?.label || ''}`}</span>
+              <span style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '1.2px', textTransform: 'uppercase', color: LABEL }}>in the Stash</span>
+            </div>
+            <div style={{ fontSize: 15.5, lineHeight: 1.4, color: INK, marginTop: 10 }}>{title}</div>
           </div>
           {onFiles && <ClipButton count={clips} onClick={() => onFiles(it)} />}
           <button onClick={onClose} style={{ background: 'transparent', border: 'none', color: GRAY, cursor: 'pointer' }}><XIcon size={16} /></button>
