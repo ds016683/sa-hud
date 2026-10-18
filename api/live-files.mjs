@@ -42,9 +42,9 @@ async function draftWithFile(f) {
   if (!made.ok) {
     const text = (await made.text()).slice(0, 200)
     if (made.status === 403) {
-      let roles = []
-      try { roles = JSON.parse(Buffer.from(token.split('.')[1], 'base64url').toString()).roles || [] } catch { /* opaque token */ }
-      throw new Error(`Outlook refused to create the draft in ${MAILBOX} (403). The app token carries Graph roles [${roles.join(', ') || 'none readable'}]; drafting needs Mail.ReadWrite (application) with admin consent. Entra: App registrations, the Lumen app, API permissions, Add a permission, Microsoft Graph, Application permissions, Mail.ReadWrite, then Grant admin consent.`)
+      let roles = [], app = ''
+      try { const c = JSON.parse(Buffer.from(token.split('.')[1], 'base64url').toString()); roles = c.roles || []; app = c.appid || c.azp || '' } catch { /* opaque token */ }
+      throw new Error(`Outlook refused to create the draft in ${MAILBOX} (403). The HUD's Graph app ${app ? `(client ${app.slice(0, 8)}…) ` : ''}carries roles [${roles.join(', ') || 'none readable'}]; drafting needs Mail.ReadWrite (application) with admin consent. Entra: App registrations, the Lumen app, API permissions, Add a permission, Microsoft Graph, Application permissions, Mail.ReadWrite, then Grant admin consent.`)
     }
     throw new Error(`draft -> ${made.status}: ${text}`)
   }
