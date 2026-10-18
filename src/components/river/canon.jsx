@@ -26,7 +26,7 @@ export const S = {
   h1: { fontSize: 28, fontWeight: 500, margin: 0, color: '#FFFFFF', fontFamily: SERIF, letterSpacing: '-0.01em' },
   sub: { fontSize: 10.5, color: LABEL, margin: '6px 0 0', fontFamily: MONO, letterSpacing: '1.4px', textTransform: 'uppercase' },
   panel: { background: PANEL_BG, border: `1px solid ${PANEL_BORDER}`, borderRadius: 12, padding: 16, marginBottom: 12 },
-  panelTitle: { fontSize: 10, fontWeight: 600, color: BLUE, textTransform: 'uppercase', letterSpacing: '1.6px', marginBottom: 10, fontFamily: MONO },
+  panelTitle: { fontSize: 16, fontWeight: 600, color: LABEL, letterSpacing: '0.1px', marginBottom: 10 },
   chip: (bg, fg) => ({ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 9999, background: bg, color: fg, textTransform: 'uppercase', letterSpacing: '0.05em', whiteSpace: 'nowrap' }),
   source: { fontSize: 10, color: GRAY, marginTop: 10, fontFamily: MONO, letterSpacing: '0.4px' },
   btnPrimary: { display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: MONO, fontSize: 10, letterSpacing: '1.2px', textTransform: 'uppercase', padding: '8px 14px', borderRadius: 8, border: `1px solid ${GOLD}`, background: GOLD, color: '#0A1B2B', cursor: 'pointer' },
@@ -45,7 +45,10 @@ export const Body = ({ children, style }) => <div style={{ fontSize: 13, lineHei
 // Headers are never smaller than the content under them (David, 10/17): a
 // field or section label reads in Title Case at 14px, LABEL color, body face.
 export const titleCase = (t) => typeof t === 'string' ? t.replace(/(^|\s)([a-z])(?=[a-z']*)/g, (m, sp, c, i) => sp + ((i === 0 || !/^(a|an|and|at|by|for|in|of|on|or|the|to|vs|with)\b/.test(t.slice(i + sp.length))) ? c.toUpperCase() : c)) : t
-export const Label = ({ children, style }) => <div style={{ fontSize: 14, fontWeight: 600, color: LABEL, letterSpacing: '0.2px', marginBottom: 6, ...style }}>{titleCase(children)}</div>
+// Type scale (David, 10/18): header 16/600 > sub-head 14.5/600 > body 13.5 > meta 10.5 mono. A header is always a clear step above the text under it.
+export const TYPE = { header: 16, subhead: 14.5, body: 13.5, meta: 10.5 }
+export const Label = ({ children, style }) => <div style={{ fontSize: TYPE.header, fontWeight: 600, color: LABEL, letterSpacing: '0.1px', marginBottom: 8, lineHeight: 1.3, ...style }}>{titleCase(children)}</div>
+export const SubLabel = ({ children, color = LABEL, style }) => <div style={{ fontSize: TYPE.subhead, fontWeight: 600, color, marginBottom: 5, ...style }}>{titleCase(children)}</div>
 export const Stat = ({ v, l, color = '#fff' }) => (
   <div style={{ borderLeft: `2px solid ${BLUE}55`, paddingLeft: 12 }}>
     <div style={{ fontFamily: SERIF, fontSize: 26, fontWeight: 500, color, lineHeight: 1.1, letterSpacing: '-0.01em' }}>{v}</div>

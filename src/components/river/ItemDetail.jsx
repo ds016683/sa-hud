@@ -147,11 +147,11 @@ function WhereItStands({ item, rel, task, taskId, linkedBoards }) {
       <Label>Where It Stands</Label>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 22 }}>
         <div>
-          <div style={{ fontSize: 13.5, fontWeight: 600, color: GREEN, marginBottom: 4 }}>Done</div>
+          <div style={{ fontSize: 14.5, fontWeight: 600, color: GREEN, marginBottom: 5 }}>Done</div>
           {done.length ? done.map((r, i) => <Row key={i} r={r} color={GREEN} />) : <div style={{ fontSize: 13, color: GRAY, padding: '4px 0' }}>Nothing ticked, closed or produced yet.</div>}
         </div>
         <div>
-          <div style={{ fontSize: 13.5, fontWeight: 600, color: GOLD, marginBottom: 4 }}>Still Needed</div>
+          <div style={{ fontSize: 14.5, fontWeight: 600, color: GOLD, marginBottom: 5 }}>Still Needed</div>
           {needed.map((r, i) => <Row key={i} r={r} color={r.kind === 'blocked' ? RED : GOLD} />)}
           {thinking && <div style={{ fontFamily: MONO, fontSize: 10.5, letterSpacing: '1px', textTransform: 'uppercase', color: LABEL, padding: '4px 0' }}>Lumen is reading the trail</div>}
           {!thinking && (next || []).map((t, i) => <div key={`n${i}`} style={{ display: 'flex', gap: 9, alignItems: 'flex-start', padding: '4px 0' }}><span style={{ width: 6, height: 6, borderRadius: 99, border: `1px solid ${BLUE}`, marginTop: 7, flexShrink: 0 }} /><span style={{ fontSize: 13.5, lineHeight: 1.5, color: INK2, fontStyle: 'italic', flex: 1 }}>{t}<span style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '0.8px', color: BLUE, marginLeft: 8, fontStyle: 'normal' }}>Lumen</span></span></div>)}
@@ -280,7 +280,7 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
                     <Label style={{ color: BLUE }}>{NORTH_STAR_LABEL}</Label>
                     {editStar || !obj.north_star
                       ? <textarea autoFocus={editStar} defaultValue={obj.north_star || ''} rows={2} onBlur={e => { const v = e.target.value.trim() || null; setEditStar(false); if (v !== (obj.north_star || null)) patchObj({ north_star: v }) }} placeholder={NORTH_STAR_ASK} style={{ width: '100%', boxSizing: 'border-box', background: 'rgba(255,255,255,0.05)', border: `1px solid ${PANEL_BORDER}`, borderRadius: 8, padding: '10px 12px', color: INK, fontSize: 17, fontFamily: SERIF, fontStyle: 'italic', lineHeight: 1.45, resize: 'vertical' }} />
-                      : <div onClick={() => setEditStar(true)} title="Click to edit" style={{ fontFamily: SERIF, fontStyle: 'italic', fontSize: 19, lineHeight: 1.45, color: INK, borderLeft: `2px solid ${BLUE}`, paddingLeft: 12, cursor: 'text' }}>{obj.north_star}</div>}
+                      : <div onClick={() => setEditStar(true)} title="Click to edit" style={{ fontFamily: SERIF, fontStyle: 'italic', fontSize: 15.5, lineHeight: 1.5, color: INK, borderLeft: `2px solid ${BLUE}`, paddingLeft: 12, cursor: 'text' }}>{obj.north_star}</div>}
                   </div>
 
                   <WhereItStands item={item} rel={rel} task={task} taskId={taskId} linkedBoards={linkedBoards} />

@@ -60,8 +60,8 @@ export default function WorkbenchTab({ project = null, objectiveId = null }) {
         <div key={g.key} style={{ marginTop: 16 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2 }}>
             {g.item
-              ? <><span style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '1.2px', textTransform: 'uppercase', color: KIND_COLOR[g.item.kind] || INK2 }}>Milestone</span><span style={{ fontSize: 14, fontWeight: 600, color: INK }}>{g.item.title}</span>{g.item.state === 'active' && <span style={{ fontFamily: MONO, fontSize: 9, letterSpacing: '1px', textTransform: 'uppercase', color: GREEN }}>on the board</span>}{g.item.stashed && <span style={{ fontFamily: MONO, fontSize: 9, letterSpacing: '1px', textTransform: 'uppercase', color: GRAY }}>in the stash</span>}</>
-              : <span style={{ fontSize: 14, fontWeight: 600, color: INK }}>{objectiveId ? 'In play' : 'On the mission'}</span>}
+              ? <><span style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '1.2px', textTransform: 'uppercase', color: KIND_COLOR[g.item.kind] || INK2 }}>Milestone</span><span style={{ fontSize: 14.5, fontWeight: 600, color: INK }}>{g.item.title}</span>{g.item.state === 'active' && <span style={{ fontFamily: MONO, fontSize: 9, letterSpacing: '1px', textTransform: 'uppercase', color: GREEN }}>on the board</span>}{g.item.stashed && <span style={{ fontFamily: MONO, fontSize: 9, letterSpacing: '1px', textTransform: 'uppercase', color: GRAY }}>in the stash</span>}</>
+              : <span style={{ fontSize: 14.5, fontWeight: 600, color: INK }}>{objectiveId ? 'In play' : 'On the mission'}</span>}
           </div>
           {groupVersions(g.rows, { timeKey: 'created_at', rootKey: 'path' }).map(fam => (
             <div key={fam.key}>

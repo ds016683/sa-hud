@@ -108,7 +108,7 @@ export default function LiveFilesModal({ onClose, filter = null, items = [], onC
                 {g.item
                   ? <>
                     <span style={{ fontFamily: MONO, fontSize: 9, letterSpacing: '1.2px', textTransform: 'uppercase', color: KIND_COLOR[g.item.kind] || INK2 }}>{g.item.kind}{g.item.kind === 'Main Mission' && g.item.project && g.item.id ? ` · ${g.item.project}` : ''}</span>
-                    <span style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 14.5, color: INK }}>{g.item.title}</span>
+                    <span style={{ fontSize: 14.5, fontWeight: 600, color: INK }}>{g.item.title}</span>
                     {g.item.stashed && <span style={{ fontFamily: MONO, fontSize: 10.5, letterSpacing: '1px', textTransform: 'uppercase', color: LABEL }}>in the stash</span>}
                     {g.item.state === 'active' && <span style={{ fontFamily: MONO, fontSize: 9, letterSpacing: '1px', textTransform: 'uppercase', color: GREEN }}>on the board</span>}
                   </>
