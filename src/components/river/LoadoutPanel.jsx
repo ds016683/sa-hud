@@ -373,6 +373,18 @@ function RoutineSlot({ tick, onChanged }) {
     } catch (e) { setMsg(`Could not stop: ${e.message}`) }
   }
   const Icon = chore ? (ROUTINE_ICON[chore.slug] || Zap) : Zap
+  // Concurrent chores (Travel, David 10/18): the clock runs while he does other things. No card; a discreet strip.
+  if (running && chore?.concurrent) return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', border: `1px solid ${GREEN}55`, borderRadius: 10, background: 'rgba(67,211,146,0.05)', flex: '0 0 auto' }}>
+      <style>{`@keyframes trvpulse { 0%,100% { opacity: 1 } 50% { opacity: .2 } } .trv-pulse { animation: trvpulse 1.6s ease-in-out infinite }`}</style>
+      <span className="trv-pulse" style={{ width: 7, height: 7, borderRadius: 99, background: GREEN, flexShrink: 0 }} />
+      <Icon size={13} color={GREEN} />
+      <span style={{ fontSize: 13.5, fontWeight: 600, color: INK }}>{running.subject}</span>
+      <span style={{ fontFamily: MONO, fontSize: 10, color: GREEN, letterSpacing: '0.6px', marginLeft: 'auto' }}>{fmtClock(mins)}</span>
+      <button onClick={stop} title="Stop the travel clock" style={{ ...btn(GREEN), padding: '3px 7px' }}><Square size={10} /> Stop</button>
+      {msg && <span style={{ fontFamily: MONO, fontSize: 9.5, color: msg.startsWith('Could') ? RED : GOLD_BRIGHT, letterSpacing: '0.6px', textTransform: 'uppercase' }}>{msg}</span>}
+    </div>
+  )
   if (running) return (
     <div style={{ ...slotBox(BLUE, 'rgba(169,201,232,0.08)'), minHeight: 0, flex: '0 0 auto' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
