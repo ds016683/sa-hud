@@ -54,8 +54,23 @@ export async function liveCounts() {
   } catch { return {} }
 }
 
+// The HUD's upload door: bytes travel base64 to api/live-files, which writes to storage with the
+// service key and indexes the row. Used first for files under 4 MB; the direct path is the fallback.
+export async function putLiveFileViaDoor(file, { objectiveId = null, projectId = null, note = null, source = 'david' } = {}) {
+  const { data: { session } } = await supabase.auth.getSession()
+  if (!session) throw new Error('not signed in')
+  const b64 = await new Promise((res, rej) => { const rd = new FileReader(); rd.onload = () => res(String(rd.result).split(',')[1] || ''); rd.onerror = () => rej(new Error('could not read the file')); rd.readAsDataURL(file) })
+  const r = await fetch('/api/live-files', { method: 'POST', headers: { Authorization: `Bearer ${session.access_token}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'put', name: file.name, mime: file.type || null, content_base64: b64, objective_id: objectiveId, project_id: projectId, note, source }) })
+  const j = await r.json().catch(() => ({}))
+  if (!r.ok || j.error) throw new Error(j.error || `upload ${r.status}`)
+  return j.row
+}
+
 // David drops a file on the Board (or into an item): upload, index, version.
 export async function putLiveFile(file, { objectiveId = null, projectId = null, note = null, source = 'david', session = null } = {}) {
+  if (file.size <= 4 * 1024 * 1024) {
+    try { return await putLiveFileViaDoor(file, { objectiveId, projectId, note, source }) } catch (e) { console.warn('live file door, falling back to direct upload:', e.message) }
+  }
   const name = safe(file.name); const root = rootFor({ objectiveId, projectId }); const path = `${root}/${name}`
   const { error } = await supabase.storage.from(BUCKET).upload(path, file, { upsert: true, contentType: file.type || undefined })
   if (error) throw new Error(error.message)

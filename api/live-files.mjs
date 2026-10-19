@@ -67,6 +67,28 @@ export default async function handler(req, res) {
   if (!(await authorized(req))) return res.status(401).json({ error: 'unauthorized' })
   try {
     const body = req.body || {}
+    if (body.action === 'put') {
+      // The HUD's own upload path: bytes come base64 in the body, go up with the service key
+      // (no storage policy in the way), and the index row is written here. Under 4.5 MB.
+      const name = String(body.name || 'file').replace(/[^A-Za-z0-9._ -]/g, '_')
+      const bytes = Buffer.from(String(body.content_base64 || ''), 'base64')
+      if (!bytes.length) return res.status(400).json({ error: 'empty file' })
+      const root = body.objective_id ? `objectives/${body.objective_id}/files` : body.project_id ? String(body.project_id) : 'live'
+      const path = `${root}/${name}`
+      const up = await fetch(`${URL_BASE}/storage/v1/object/project-files/${enc(path)}`, { method: 'POST', headers: { ...hdr(), 'Content-Type': body.mime || 'application/octet-stream', 'x-upsert': 'true' }, body: bytes })
+      if (!up.ok) return res.status(502).json({ error: `storage -> ${up.status}: ${(await up.text()).slice(0, 160)}` })
+      const stem = (n) => String(n || '').replace(/\.[^.]+$/, '').replace(/[\s_.-]*(v|ver|version)\s*\d+[a-z]?$/i, '').replace(/[\s_.-]*\(\d+\)$/, '').replace(/[\s_.-]+$/, '').trim().toLowerCase()
+      const ext = (n) => (String(n || '').split('.').pop() || '').toLowerCase()
+      const inRootR = await fetch(`${URL_BASE}/rest/v1/live_files?select=id,name,version&path=like.${encodeURIComponent(root + '/%')}&superseded_by=is.null&filed_at=is.null`, { headers: { ...hdr(), 'Content-Type': 'application/json' } })
+      const inRoot = inRootR.ok ? await inRootR.json() : []
+      const prior = inRoot.filter(r => stem(r.name) === stem(name) && ext(r.name) === ext(name)).sort((a, b) => (b.version || 1) - (a.version || 1))
+      const row = { user_id: '9d28e8cf-3e35-48d9-a029-1327bd37fdd4', name, bucket: 'project-files', path, size: bytes.length, mime: body.mime || null, objective_id: body.objective_id || null, project_id: body.project_id || null, note: body.note || null, source: body.source || 'david', version: prior.length ? (prior[0].version || 1) + 1 : 1 }
+      const ins = await fetch(`${URL_BASE}/rest/v1/live_files`, { method: 'POST', headers: { ...hdr(), 'Content-Type': 'application/json', Prefer: 'return=representation' }, body: JSON.stringify(row) })
+      if (!ins.ok) return res.status(502).json({ error: `index -> ${ins.status}: ${(await ins.text()).slice(0, 160)}` })
+      const made = (await ins.json())[0]
+      for (const pr of prior) await fetch(`${URL_BASE}/rest/v1/live_files?id=eq.${pr.id}`, { method: 'PATCH', headers: { ...hdr(), 'Content-Type': 'application/json', Prefer: 'return=minimal' }, body: JSON.stringify({ superseded_by: made.id }) })
+      return res.status(200).json({ ok: true, row: made })
+    }
     if (body.action === 'draft') {
       const f = await fileRow(body)
       const out = await draftWithFile(f)
