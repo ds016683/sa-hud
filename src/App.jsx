@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import {
   LayoutGrid, Network, LogOut, Menu, X, Target, Users,
-  FileText, Wallet, CreditCard, ListChecks, Compass, Waves, CalendarDays, BookOpen, Activity, Award, Wrench, GraduationCap, Sparkles, Archive as ArchiveIcon, FolderOpen,
+  FileText, Wallet, CreditCard, ListChecks, Compass, Waves, CalendarDays, BookOpen, Activity, Award, Wrench, GraduationCap, Sparkles, Archive as ArchiveIcon, FolderOpen, PenTool,
 } from 'lucide-react'
 import { getSession, onAuthStateChange, signOut } from './lib/auth'
 import { statusFor } from './constants/saDesign'
@@ -28,6 +28,7 @@ import ActivityPage from './components/ActivityPage'
 import AccomplishmentsPage from './components/AccomplishmentsPage'
 import MaintenancePage from './components/MaintenancePage'
 import LearningPage from './components/LearningPage'
+import ScratchpadPage from './components/ScratchpadPage'
 import AnthropicPage from './components/AnthropicPage'
 
 const NAV_ITEMS = [
@@ -37,6 +38,7 @@ const NAV_ITEMS = [
   { id: 'activity',         label: 'Activity',              icon: Activity,       group: 'MONITOR' },
   { id: 'accomplishments',  label: 'Accomplishments',       icon: Award,          group: 'MONITOR' },
   { id: 'notes',            label: 'Notes',                 icon: FileText,       group: 'MONITOR' },
+  { id: 'scratchpad',       label: 'Scratchpad',            icon: PenTool,        group: 'MONITOR' },
   { id: 'main-missions',    label: 'Main Missions',         icon: MissionMark,    group: 'MISSION BOARD' },
   { id: 'side-missions',    label: 'Side Missions',         icon: Target,         group: 'MISSION BOARD' },
   { id: 'maintenance',      label: 'Maintenance',           icon: Wrench,         group: 'MISSION BOARD' },
@@ -271,6 +273,7 @@ export default function App() {
           {active === 'activity'         && <ActivityPage />}
           {active === 'accomplishments'  && <AccomplishmentsPage />}
           {active === 'notes'            && <MeetingNotesPage />}
+          {active === 'scratchpad'       && <ScratchpadPage />}
           {active === 'main-missions'    && <ProjectsPage deepLink={params} onNavigate={setRoute} />}
           {active === 'side-missions'    && <SideMissionsPage onNavigate={setRoute} />}
           {active === 'maintenance'      && <MaintenancePage deepLink={params} />}
