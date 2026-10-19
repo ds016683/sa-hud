@@ -31,14 +31,6 @@ export default function ScratchpadPage() {
   const [recent, setRecent] = useState([])
   const [, force] = useState(0)
 
-  const size = useCallback(() => {
-    const c = canvasRef.current, w = wrapRef.current; if (!c || !w) return
-    const dpr = window.devicePixelRatio || 1
-    const cw = w.clientWidth, ch = Math.max(520, Math.round(window.innerHeight * 0.68))
-    c.width = Math.round(cw * dpr); c.height = Math.round(ch * dpr); c.style.width = `${cw}px`; c.style.height = `${ch}px`
-    redraw()
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
-
   function redraw() {
     const c = canvasRef.current; if (!c) return
     const ctx = c.getContext('2d'); const dpr = window.devicePixelRatio || 1
@@ -62,6 +54,14 @@ export default function ScratchpadPage() {
     }
     ctx.restore()
   }
+
+  const size = useCallback(() => {
+    const c = canvasRef.current, w = wrapRef.current; if (!c || !w) return
+    const dpr = window.devicePixelRatio || 1
+    const cw = w.clientWidth, ch = Math.max(520, Math.round(window.innerHeight * 0.68))
+    c.width = Math.round(cw * dpr); c.height = Math.round(ch * dpr); c.style.width = `${cw}px`; c.style.height = `${ch}px`
+    redraw()
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     size(); window.addEventListener('resize', size)
