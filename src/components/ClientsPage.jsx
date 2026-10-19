@@ -91,18 +91,54 @@ export function ClientCard({ client, anchor, missions, items, onOpen }) {
 }
 
 // =============================================================================
-// Waterfall. Months run down the page (MONTH_H px each), lanes run across.
-// A marker sits at the item's true day; its card cascades below the card
-// before it in the lane when they would collide, with a hairline back to the
-// marker. A start alone is a diamond; a start and an end draw a vertical bar.
+// Waterfall. Months run down the page, lanes run across. A marker sits at the
+// item's true day; its tag cascades below the tag before it in the lane when
+// they would collide, with a hairline back to the marker. A start alone is a
+// diamond; a start and an end draw a vertical bar. Two views (David, 10/19):
+// Simple draws one-line tags, Detailed draws two-line cards. Clicking an item
+// opens a small popover beside it; Edit in the popover opens the modal.
 // =============================================================================
 const RAIL_W = 92
-const MONTH_H = 132
-const CARD_H = 62
-const CARD_GAP = 6
+const VIEWS = {
+  simple:   { month: 160, card: 26, gap: 5 },
+  detailed: { month: 220, card: 62, gap: 6 },
+}
 
-export function Waterfall({ client, items, onOpen, onAdd }) {
+function Popover({ client, item, flip, top, onEdit, onClose }) {
+  const color = laneColor(client, item.lane)
+  const row = (k, v) => v ? <div style={{ display: 'flex', gap: 8, fontSize: 12 }}><span style={{ ...S.eyebrow, fontSize: 9, width: 48, flexShrink: 0, paddingTop: 2 }}>{k}</span><span style={{ color: INK, lineHeight: 1.4 }}>{v}</span></div> : null
+  return (
+    <div role="dialog" onClick={e => e.stopPropagation()} style={{
+      position: 'absolute', top: Math.max(0, top - 6), zIndex: 30, width: 272,
+      ...(flip ? { right: 'calc(100% - 22px)' } : { left: 'calc(100% - 14px)' }),
+      background: 'rgba(14,35,54,0.98)', border: `1px solid ${PANEL_BORDER}`, borderTop: `3px solid ${color}`, borderRadius: 10, padding: '10px 12px 10px', boxShadow: '0 14px 40px rgba(0,0,0,0.45)', display: 'grid', gap: 7,
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <span style={{ ...S.eyebrow, fontSize: 9, color }}>{item.lane}</span>
+        <span style={{ fontFamily: MONO, fontSize: 9.5, color: MUTED }}>{item.date_label || dayLabel(item.start_date)}{item.end_date ? ` through ${dayLabel(item.end_date)}` : ''}</span>
+        <button onClick={onClose} aria-label="Close" style={{ marginLeft: 'auto', background: 'none', border: 'none', color: MUTED, cursor: 'pointer', padding: 2 }}><X size={13} /></button>
+      </div>
+      <div style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 15, lineHeight: 1.3, color: INK }}>{item.title}</div>
+      <div style={{ display: 'grid', gap: 4 }}>
+        {row('Status', <span style={{ color: STATUS_COLOR[item.status] || MUTED }}>{STATUS_LABEL[item.status] || item.status}</span>)}
+        {row('Owner', item.owner)}
+        {row('Dates', item.start_date ? `${dayLabel(item.start_date)}${item.end_date ? ` to ${dayLabel(item.end_date)}` : ''}` : 'To be set')}
+        {row('Source', item.source)}
+        {item.notes && <div style={{ fontSize: 12, color: INK2, lineHeight: 1.45, display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden', borderTop: `1px solid ${PANEL_BORDER}`, paddingTop: 6 }}>{item.notes}</div>}
+        {(item.links || []).length > 0 && <div style={{ fontSize: 11.5, color: BLUE }}>{item.links.length} link{item.links.length === 1 ? '' : 's'}</div>}
+      </div>
+      <div style={{ display: 'flex', gap: 6, marginTop: 2 }}>
+        <button onClick={onEdit} style={{ ...S.btnPrimary, padding: '5px 10px', fontSize: 11.5 }}>Edit</button>
+        <button onClick={onClose} style={{ ...S.btnGhost, padding: '4px 9px', fontSize: 11.5 }}>Close</button>
+      </div>
+    </div>
+  )
+}
+
+export function Waterfall({ client, items, view = 'simple', onOpen, onAdd }) {
   const today = chiToday()
+  const size = VIEWS[view] || VIEWS.simple
+  const [pop, setPop] = useState(null)   // item id with the popover open
   const axis = useMemo(() => {
     const starts = items.filter(i => i.start_date).map(i => utc(i.start_date))
     const ends = items.filter(i => i.end_date).map(i => utc(i.end_date))
@@ -112,20 +148,20 @@ export function Waterfall({ client, items, onOpen, onAdd }) {
     while ((yearOf(hi) - yearOf(lo)) * 12 + new Date(hi).getUTCMonth() - new Date(lo).getUTCMonth() < 6) hi = addMonths(hi, 1)
     const months = []
     for (let m = lo; m < hi; m = addMonths(m, 1)) months.push(m)
-    return { lo, hi, months, height: months.length * MONTH_H }
-  }, [items, today])
+    return { lo, hi, months, height: months.length * size.month }
+  }, [items, today, size.month])
   const y = (ms) => (ms - axis.lo) / (axis.hi - axis.lo) * axis.height
   const todayY = y(utc(today))
 
-  // Per lane: markers at their day, cards cascading.
+  // Per lane: markers at their day, tags cascading.
   const lanes = client.lanes.map(l => {
     const list = items.filter(i => i.lane === l.id && i.start_date).sort((a, b) => a.start_date.localeCompare(b.start_date) || (a.position - b.position))
     let bottom = -Infinity
     const placed = list.map(it => {
       const top = y(utc(it.start_date))
       const end = it.end_date ? y(utc(it.end_date) + DAY) : null
-      const cardTop = Math.max(top, bottom + CARD_GAP)
-      bottom = cardTop + CARD_H
+      const cardTop = Math.max(top - (view === 'simple' ? size.card / 2 : 0), bottom + size.gap)
+      bottom = cardTop + size.card
       return { it, top, end, cardTop }
     })
     const undated = items.filter(i => i.lane === l.id && !i.start_date)
@@ -134,9 +170,12 @@ export function Waterfall({ client, items, onOpen, onAdd }) {
   const extraLanes = [...new Set(items.map(i => i.lane))].filter(id => !client.lanes.some(l => l.id === id))
   const bodyH = axis.height + Math.max(0, ...lanes.map(l => l.overflow)) + 24
   const cols = `${RAIL_W}px repeat(${client.lanes.length}, minmax(150px, 1fr))`
+  const openPop = (it) => setPop(prev => (prev === it.id ? null : it.id))
+  const edit = (it) => { setPop(null); onOpen(it) }
 
   return (
     <div style={{ overflowX: 'auto' }}>
+      {pop && <div onClick={() => setPop(null)} style={{ position: 'fixed', inset: 0, zIndex: 25 }} />}
       <div style={{ minWidth: RAIL_W + client.lanes.length * 150 }}>
         {/* Lane header: the color assignment */}
         <div style={{ display: 'grid', gridTemplateColumns: cols, borderBottom: `1px solid ${PANEL_BORDER}`, position: 'sticky', top: 0, zIndex: 3, background: 'rgba(14,35,54,0.92)', backdropFilter: 'blur(4px)' }}>
@@ -155,18 +194,18 @@ export function Waterfall({ client, items, onOpen, onAdd }) {
 
         {/* Body */}
         <div style={{ display: 'grid', gridTemplateColumns: cols, position: 'relative', height: bodyH }}>
-          {/* Month rail and hairlines */}
+          {/* Month rail */}
           <div style={{ position: 'relative' }}>
             {axis.months.map((m, i) => (
-              <div key={m} style={{ position: 'absolute', top: i * MONTH_H, left: 0, right: 0, height: MONTH_H, borderTop: `1px solid ${PANEL_BORDER}`, padding: '8px 8px 0 0' }}>
+              <div key={m} style={{ position: 'absolute', top: i * size.month, left: 0, right: 0, height: size.month, borderTop: `1px solid ${PANEL_BORDER}`, padding: '8px 8px 0 0' }}>
                 <div style={{ fontFamily: SERIF, fontSize: 15, fontWeight: 500, color: INK }}>{monthName(m)}</div>
                 {(i === 0 || new Date(m).getUTCMonth() === 0) && <div style={{ ...S.eyebrow, fontSize: 9.5, color: MUTED }}>{yearOf(m)}</div>}
               </div>
             ))}
           </div>
-          {/* Hairlines across every lane */}
+          {/* Hairlines across every lane, and today */}
           <div style={{ position: 'absolute', left: RAIL_W, right: 0, top: 0, height: axis.height, pointerEvents: 'none' }}>
-            {axis.months.map((m, i) => <div key={m} style={{ position: 'absolute', top: i * MONTH_H, left: 0, right: 0, borderTop: `1px solid ${PANEL_BORDER}` }} />)}
+            {axis.months.map((m, i) => <div key={m} style={{ position: 'absolute', top: i * size.month, left: 0, right: 0, borderTop: `1px solid ${PANEL_BORDER}` }} />)}
             {todayY >= 0 && todayY <= axis.height && (
               <div style={{ position: 'absolute', top: todayY, left: -RAIL_W, right: 0, borderTop: `1px dashed ${GOLD}`, zIndex: 2 }}>
                 <span style={{ position: 'absolute', left: 0, top: -9, fontFamily: MONO, fontSize: 8.5, letterSpacing: '1.2px', textTransform: 'uppercase', color: NAVY_DEEP, background: GOLD, borderRadius: 3, padding: '1px 5px' }}>Today</span>
@@ -174,27 +213,41 @@ export function Waterfall({ client, items, onOpen, onAdd }) {
             )}
           </div>
           {/* Lanes */}
-          {lanes.map(({ lane, placed, undated }) => (
+          {lanes.map(({ lane, placed, undated }, li) => (
             <div key={lane.id} style={{ position: 'relative', borderLeft: `1px solid ${PANEL_BORDER}` }}>
               {placed.map(({ it, top, end, cardTop }) => {
                 const color = lane.color
                 const done = it.status === 'done'
+                const active = pop === it.id
                 return (
                   <div key={it.id}>
                     {end !== null && end > top
                       ? <div style={{ position: 'absolute', left: 14, top, width: 6, height: Math.max(6, end - top), borderRadius: 3, background: color, opacity: done ? 0.4 : 0.85 }} />
                       : <div style={{ position: 'absolute', left: 11, top: top - 6, width: 12, height: 12, transform: 'rotate(45deg)', borderRadius: 2, background: color, opacity: done ? 0.4 : 1, boxShadow: `0 0 0 2px ${NAVY_DEEP}` }} />}
                     {cardTop > top + 2 && <div style={{ position: 'absolute', left: 17, top, width: 1, height: cardTop - top + 10, background: `${color}66` }} />}
-                    <button onClick={() => onOpen(it)} title={it.title} style={{
-                      position: 'absolute', left: 30, right: 10, top: cardTop, height: CARD_H, textAlign: 'left', cursor: 'pointer', fontFamily: 'inherit',
-                      background: 'rgba(255,255,255,0.045)', border: `1px solid ${PANEL_BORDER}`, borderLeft: `3px solid ${color}`, borderRadius: 8, padding: '5px 8px', color: INK, opacity: done ? 0.6 : 1, overflow: 'hidden', display: 'flex', flexDirection: 'column', gap: 2,
-                    }} onMouseEnter={e => e.currentTarget.style.borderColor = `${color}99`} onMouseLeave={e => { e.currentTarget.style.borderColor = PANEL_BORDER; e.currentTarget.style.borderLeftColor = color }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <span style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '0.8px', color, whiteSpace: 'nowrap' }}>{it.date_label || dayLabel(it.start_date)}</span>
-                        <span style={{ marginLeft: 'auto', width: 6, height: 6, borderRadius: 99, background: STATUS_COLOR[it.status] || MUTED, flexShrink: 0 }} title={STATUS_LABEL[it.status]} />
-                      </div>
-                      <div style={{ fontSize: 12, lineHeight: 1.25, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', textDecoration: done ? 'line-through' : 'none' }}>{it.title}</div>
-                    </button>
+                    {view === 'simple' ? (
+                      <button onClick={() => openPop(it)} title={it.title} style={{
+                        position: 'absolute', left: 30, right: 10, top: cardTop, height: size.card, textAlign: 'left', cursor: 'pointer', fontFamily: 'inherit',
+                        background: active ? `${color}22` : 'rgba(255,255,255,0.045)', border: `1px solid ${active ? color : PANEL_BORDER}`, borderLeft: `3px solid ${color}`, borderRadius: 6, padding: '0 8px', color: INK, opacity: done ? 0.6 : 1, overflow: 'hidden', display: 'flex', alignItems: 'center', gap: 7,
+                      }}>
+                        <span style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '0.6px', color, whiteSpace: 'nowrap', flexShrink: 0 }}>{it.date_label || dayLabel(it.start_date)}</span>
+                        <span style={{ fontSize: 11.5, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', textDecoration: done ? 'line-through' : 'none', flex: 1 }}>{it.title}</span>
+                        <span style={{ width: 6, height: 6, borderRadius: 99, background: STATUS_COLOR[it.status] || MUTED, flexShrink: 0 }} title={STATUS_LABEL[it.status]} />
+                      </button>
+                    ) : (
+                      <button onClick={() => openPop(it)} title={it.title} style={{
+                        position: 'absolute', left: 30, right: 10, top: cardTop, height: size.card, textAlign: 'left', cursor: 'pointer', fontFamily: 'inherit',
+                        background: active ? `${color}22` : 'rgba(255,255,255,0.045)', border: `1px solid ${active ? color : PANEL_BORDER}`, borderLeft: `3px solid ${color}`, borderRadius: 8, padding: '5px 8px', color: INK, opacity: done ? 0.6 : 1, overflow: 'hidden', display: 'flex', flexDirection: 'column', gap: 2,
+                      }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <span style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '0.8px', color, whiteSpace: 'nowrap' }}>{it.date_label || dayLabel(it.start_date)}</span>
+                          {it.owner && <span style={{ fontSize: 10, color: MUTED, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>· {it.owner}</span>}
+                          <span style={{ marginLeft: 'auto', width: 6, height: 6, borderRadius: 99, background: STATUS_COLOR[it.status] || MUTED, flexShrink: 0 }} title={STATUS_LABEL[it.status]} />
+                        </div>
+                        <div style={{ fontSize: 12, lineHeight: 1.25, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', textDecoration: done ? 'line-through' : 'none' }}>{it.title}</div>
+                      </button>
+                    )}
+                    {active && <Popover client={client} item={it} top={cardTop} flip={li >= client.lanes.length - 2} onEdit={() => edit(it)} onClose={() => setPop(null)} />}
                   </div>
                 )
               })}
@@ -295,8 +348,13 @@ export function ItemModal({ client, item, onClose, onSave, onDelete, busy }) {
 // =============================================================================
 // Detail: the Client card opened. Pills: Missions, Timeline.
 // =============================================================================
+const VIEW_KEY = 'hud.clients.timeline.view'
+const readView = () => { try { const v = window.localStorage.getItem(VIEW_KEY); return v === 'detailed' ? 'detailed' : 'simple' } catch { return 'simple' } }
+
 function ClientDetail({ client, anchor, missions, tl, onBack, initialTab, onNavigate }) {
   const [tab, setTab] = useState(initialTab === 'timeline' ? 'timeline' : 'missions')
+  const [view, setViewState] = useState(readView)
+  const setView = (v) => { setViewState(v); try { window.localStorage.setItem(VIEW_KEY, v) } catch { /* no-op */ } }
   const [modal, setModal] = useState(null)      // null | { item } | { item: { lane } } for new
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState(null)
@@ -371,7 +429,11 @@ function ClientDetail({ client, anchor, missions, tl, onBack, initialTab, onNavi
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap', marginBottom: 12 }}>
               <div style={{ flex: 1, minWidth: 260 }}>
                 <SubLabel style={{ marginBottom: 2 }}>Program Timeline</SubLabel>
-                <div style={{ fontSize: 12.5, color: TEXT_DIM, lineHeight: 1.5 }}>Months run down the page, lanes run across. Each lane is a color assignment; the baseline lane carries the client's own plan and dates. Click an item to open it.</div>
+                <div style={{ fontSize: 12.5, color: TEXT_DIM, lineHeight: 1.5 }}>Months run down the page, lanes run across. Each lane is a color assignment; the baseline lane carries the client's own plan and dates. Click an item for its details; Edit opens the full record.</div>
+                <div style={{ display: 'flex', gap: 6, marginTop: 10 }}>
+                  <Pill active={view === 'simple'} onClick={() => setView('simple')}>Simple</Pill>
+                  <Pill active={view === 'detailed'} onClick={() => setView('detailed')}>Detailed</Pill>
+                </div>
               </div>
               <div style={{ display: 'flex', gap: 8 }}>
                 <button onClick={tl.reload} style={S.btnGhost} title="Read the timeline again"><RefreshCw size={12} /></button>
@@ -387,7 +449,7 @@ function ClientDetail({ client, anchor, missions, tl, onBack, initialTab, onNavi
                 {BASELINE[client.key] && <button onClick={() => persist(BASELINE[client.key].map((b, i) => ({ ...b, position: i })))} disabled={busy} style={S.btnPrimary}>{busy ? 'Loading…' : 'Load The Baseline'}</button>}
               </div>
             )}
-            {!tl.loading && tl.items.length > 0 && <Waterfall client={client} items={tl.items} onOpen={(it) => setModal({ item: it })} onAdd={(lane) => setModal({ item: { lane } })} />}
+            {!tl.loading && tl.items.length > 0 && <Waterfall client={client} items={tl.items} view={view} onOpen={(it) => setModal({ item: it })} onAdd={(lane) => setModal({ item: { lane } })} />}
           </div>
         )}
       </div>

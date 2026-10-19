@@ -68,6 +68,18 @@ export default function ScratchpadPage() {
     redraw()
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // iPad Safari treats an Apple Pencil drag on a web page as a text-selection gesture
+  // unless the touch is swallowed at the native layer. React's touch listeners are
+  // passive, so the sheet gets native non-passive listeners, and while this page is
+  // open nothing in the document is selectable at all (the "19" in the top bar was the
+  // nearest selectable text once the description stopped being one).
+  useEffect(() => {
+    const el = wrapRef.current; if (!el) return
+    const swallow = (e) => { e.preventDefault() }
+    el.addEventListener('touchstart', swallow, { passive: false }); el.addEventListener('touchmove', swallow, { passive: false }); el.addEventListener('touchend', swallow, { passive: false })
+    document.documentElement.classList.add('pad-mode')
+    return () => { el.removeEventListener('touchstart', swallow); el.removeEventListener('touchmove', swallow); el.removeEventListener('touchend', swallow); document.documentElement.classList.remove('pad-mode') }
+  }, [])
   useEffect(() => {
     size(); window.addEventListener('resize', size)
     try {
@@ -166,7 +178,7 @@ export default function ScratchpadPage() {
   const noSelect = { WebkitUserSelect: 'none', userSelect: 'none', WebkitTouchCallout: 'none' }
   return (
     <div style={{ ...S.page, ...noSelect }} onContextMenu={e => e.preventDefault()}>
-      <style>{`.pad-sheet, .pad-sheet * { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none } .pad-sheet canvas { touch-action: none }`}</style>
+      <style>{`html.pad-mode, html.pad-mode * { -webkit-user-select: none !important; user-select: none !important; -webkit-touch-callout: none !important; -webkit-tap-highlight-color: transparent !important } html.pad-mode select, html.pad-mode input { -webkit-user-select: auto !important; user-select: auto !important } .pad-sheet canvas { touch-action: none }`}</style>
       <Eyebrow>Scratchpad</Eyebrow>
       <Serif size={28}>Draw it</Serif>
       <div style={{ fontSize: 13.5, color: INK2, margin: '6px 0 14px', maxWidth: '72ch' }}>Pencil on the iPad, mouse on the Mac. Drop or paste a screenshot to mark it up. Save collates every page into one PDF in Live Files, tied to an item if you pick one, and the next Claude session is told a sketch is waiting.</div>
