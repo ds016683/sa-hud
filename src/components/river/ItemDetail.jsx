@@ -18,7 +18,7 @@ import { recall } from '../../lib/recall'
 import { draftMail, groupVersions, fmtStamp, requestLiveFile, listLiveFiles, isRequest, isLink } from '../../lib/livefiles'
 import { DropZone } from './LiveFiles'
 import WorkbenchTab from './Workbench'
-import { INK, INK2, GRAY, PANEL_BORDER, GOLD, GOLD_BRIGHT, BLUE, GREEN, RED, MONO, SERIF, S, Label, KIND_COLOR, KindIcon, NORTH_STAR_LABEL, NORTH_STAR_ASK, LABEL } from './canon'
+import { INK, INK2, GRAY, PANEL_BORDER, GOLD, GOLD_BRIGHT, BLUE, GREEN, RED, MONO, SERIF, S, Label, KIND_COLOR, KindIcon, NORTH_STAR_LABEL, NORTH_STAR_ASK, LABEL, PURPLE } from './canon'
 
 const NAVY_DEEP = '#0A1B2B'
 const TABS = ['overview', 'workbench', 'artifacts', 'files', 'notes']
@@ -379,7 +379,7 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
                     <DropZone busy={objBusy} onFiles={(fs) => fs.forEach(f => uploadNow(f))} onPath={(pth) => act(() => requestLiveFile(pth, { objectiveId: obj.id }), 'Requested; the next Claude session on the Mac puts it in play')} />
                   </div>
                   {requests.filter(isLink).map(r => (
-                    <div key={r.id} style={{ ...rowStyle, border: `1px solid ${GREEN}44`, borderRadius: 10, padding: '10px 12px', margin: '6px 0', background: 'rgba(67,211,146,0.05)' }}><span style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '0.8px', textTransform: 'uppercase', color: GREEN }}>app</span><span style={{ flex: 1, minWidth: 0 }}><span style={{ fontSize: 14.5, fontWeight: 600, color: INK }}>{r.name}</span>{r.note && <span style={{ display: 'block', fontSize: 12.5, color: INK2, marginTop: 2 }}>{r.note}</span>}<span style={{ display: 'block', fontFamily: MONO, fontSize: 9.5, color: GRAY, marginTop: 3 }}>{r.path}</span></span><button onClick={() => window.open(r.path, '_blank', 'noopener')} style={btn(GREEN, true)}><ExternalLink size={11} /> Launch</button></div>
+                    <div key={r.id} style={{ ...rowStyle, border: `1px solid ${PURPLE}66`, borderRadius: 10, padding: '10px 12px', margin: '6px 0', background: 'rgba(180,163,232,0.07)' }}><span style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '0.8px', textTransform: 'uppercase', color: PURPLE }}>app</span><span style={{ flex: 1, minWidth: 0 }}><span style={{ fontSize: 14.5, fontWeight: 600, color: INK }}>{r.name}</span>{r.note && <span style={{ display: 'block', fontSize: 12.5, color: INK2, marginTop: 2 }}>{r.note}</span>}<span style={{ display: 'block', fontFamily: MONO, fontSize: 9.5, color: GRAY, marginTop: 3 }}>{r.path}</span></span><button onClick={() => window.open(r.path, '_blank', 'noopener')} style={btn(PURPLE, true)}><ExternalLink size={11} /> Launch</button></div>
                   ))}
                   {requests.filter(isRequest).map(r => (
                     <div key={r.id} style={{ ...rowStyle, opacity: 0.85 }}><FileText size={14} color={GOLD} /><span style={{ flex: 1, fontSize: 13.5, color: INK, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={r.path}>{r.name}</span><span style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '1px', textTransform: 'uppercase', color: GOLD }}>waiting for a session on the Mac</span></div>

@@ -8,7 +8,7 @@ import { FileText, ExternalLink, Mail, Check } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { listLiveFiles, putLiveFile, requestLiveFile, openLiveFile, draftMail, markFiled, groupVersions, fmtStamp, fmtSize, isRequest, urlOf, isLink, addLiveLink } from '../../lib/livefiles'
 import { DropZone, LinkForm } from './LiveFiles'
-import { INK, INK2, GRAY, PANEL_BORDER, GOLD, BLUE, GREEN, RED, MONO, Label, KIND_COLOR } from './canon'
+import { INK, INK2, GRAY, PANEL_BORDER, GOLD, BLUE, GREEN, RED, MONO, Label, KIND_COLOR, PURPLE } from './canon'
 
 const btn = (color = INK2, filled = false) => ({ display: 'inline-flex', alignItems: 'center', gap: 5, fontFamily: MONO, fontSize: 9.5, letterSpacing: '1px', textTransform: 'uppercase', padding: '5px 9px', borderRadius: 8, border: `1px solid ${filled ? color : `${color}66`}`, background: filled ? color : 'transparent', color: filled ? '#0A1B2B' : color, cursor: 'pointer' })
 const rowStyle = { display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0', borderTop: `1px solid ${PANEL_BORDER}` }
@@ -37,10 +37,10 @@ export default function WorkbenchTab({ project = null, objectiveId = null }) {
   }
   groups.sort((a, b) => (a.key === 'mission' ? -1 : b.key === 'mission' ? 1 : 0))
   const FileRow = ({ r, dim = false }) => isLink(r) ? (
-    <div style={{ ...rowStyle, border: `1px solid ${GREEN}44`, borderRadius: 10, padding: '10px 12px', margin: '6px 0', background: 'rgba(67,211,146,0.05)' }}>
-      <span style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '0.8px', textTransform: 'uppercase', color: GREEN }}>app</span>
+    <div style={{ ...rowStyle, border: `1px solid ${PURPLE}66`, borderRadius: 10, padding: '10px 12px', margin: '6px 0', background: 'rgba(180,163,232,0.07)' }}>
+      <span style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '0.8px', textTransform: 'uppercase', color: PURPLE }}>app</span>
       <span style={{ flex: 1, minWidth: 0 }}><span style={{ fontSize: 14.5, fontWeight: 600, color: INK }}>{r.name}</span>{r.note && <span style={{ display: 'block', fontSize: 12.5, color: INK2, marginTop: 2 }}>{r.note}</span>}<span style={{ display: 'block', fontFamily: MONO, fontSize: 9.5, color: GRAY, marginTop: 3 }}>{r.path}</span></span>
-      <button onClick={() => window.open(r.path, '_blank', 'noopener')} style={{ ...btn(GREEN, true) }}><ExternalLink size={11} /> Launch</button>
+      <button onClick={() => window.open(r.path, '_blank', 'noopener')} style={{ ...btn(PURPLE, true) }}><ExternalLink size={11} /> Launch</button>
       <button onClick={() => { if (window.confirm(`Done with ${r.name}? The link leaves the Workbench.`)) act(() => markFiled(r.id), `Out of play: ${r.name}`) }} style={btn(INK2)}><Check size={11} /> Done</button>
     </div>
   ) : (
