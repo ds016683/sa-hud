@@ -166,10 +166,22 @@ export function Waterfall({ client, items: rawItems, view = 'simple', onOpen, on
   const dayAt = (clientY, rect) => clamp(axis.lo + Math.round(((clientY - rect.top) / axis.height) * (axis.hi - axis.lo) / DAY) * DAY, axis.lo, axis.hi - DAY)
   const laneAt = (clientX, rect) => client.lanes[clamp(Math.floor((clientX - rect.left - RAIL_W) / ((rect.width - RAIL_W) / client.lanes.length)), 0, client.lanes.length - 1)].id
 
+  // The drag listens on the window: when a tag crosses into another lane it
+  // remounts under that column, so a listener on the tag itself would be lost.
   const startDrag = (e, it) => {
     if (e.button !== 0 || !onMove) return
-    try { e.currentTarget.setPointerCapture(e.pointerId) } catch { /* a synthetic pointer: moves still arrive while the pointer stays over the tag */ }
+    e.preventDefault()
     dragRef.current = { id: it.id, it, x0: e.clientX, y0: e.clientY, moved: false, patch: null }
+    const onMoveEv = (ev) => moveDrag(ev)
+    const onUp = () => {
+      window.removeEventListener('pointermove', onMoveEv)
+      window.removeEventListener('pointerup', onUp)
+      window.removeEventListener('pointercancel', onUp)
+      endDrag()
+    }
+    window.addEventListener('pointermove', onMoveEv)
+    window.addEventListener('pointerup', onUp)
+    window.addEventListener('pointercancel', onUp)
   }
   const moveDrag = (e) => {
     const d = dragRef.current
@@ -276,7 +288,7 @@ export function Waterfall({ client, items: rawItems, view = 'simple', onOpen, on
                       : <div style={{ position: 'absolute', left: 11, top: top - 6, width: 12, height: 12, transform: 'rotate(45deg)', borderRadius: 2, background: color, opacity: done ? 0.4 : 1, boxShadow: `0 0 0 2px ${NAVY_DEEP}` }} />}
                     {cardTop > top + 2 && <div style={{ position: 'absolute', left: 17, top, width: 1, height: cardTop - top + 10, background: `${color}66` }} />}
                     {view === 'simple' ? (
-                      <button onClick={() => tagClick(it)} onDoubleClick={(e) => { e.stopPropagation(); onOpen(it) }} onPointerDown={(e) => startDrag(e, it)} onPointerMove={moveDrag} onPointerUp={endDrag} onPointerCancel={endDrag}
+                      <button onClick={() => tagClick(it)} onDoubleClick={(e) => { e.stopPropagation(); onOpen(it) }} onPointerDown={(e) => startDrag(e, it)}
                         title={`${it.date_label || dayLabel(it.start_date)} · ${it.title}`} style={{
                         position: 'absolute', left: 30, right: 10, top: cardTop, height: size.card, textAlign: 'left', cursor: drag?.id === it.id ? 'grabbing' : 'grab', touchAction: 'none', fontFamily: 'inherit',
                         background: active ? `${color}22` : 'rgba(255,255,255,0.045)', border: `1px solid ${active ? color : PANEL_BORDER}`, borderLeft: `3px solid ${color}`, borderRadius: 6, padding: '0 8px', color: INK, opacity: done ? 0.6 : 1, overflow: 'hidden', display: 'flex', alignItems: 'center', gap: 7,
@@ -285,7 +297,7 @@ export function Waterfall({ client, items: rawItems, view = 'simple', onOpen, on
                         <span style={{ width: 6, height: 6, borderRadius: 99, background: STATUS_COLOR[it.status] || MUTED, flexShrink: 0 }} title={STATUS_LABEL[it.status]} />
                       </button>
                     ) : (
-                      <button onClick={() => tagClick(it)} onDoubleClick={(e) => { e.stopPropagation(); onOpen(it) }} onPointerDown={(e) => startDrag(e, it)} onPointerMove={moveDrag} onPointerUp={endDrag} onPointerCancel={endDrag}
+                      <button onClick={() => tagClick(it)} onDoubleClick={(e) => { e.stopPropagation(); onOpen(it) }} onPointerDown={(e) => startDrag(e, it)}
                         title={it.title} style={{
                         position: 'absolute', left: 30, right: 10, top: cardTop, height: size.card, textAlign: 'left', cursor: drag?.id === it.id ? 'grabbing' : 'grab', touchAction: 'none', fontFamily: 'inherit',
                         background: active ? `${color}22` : 'rgba(255,255,255,0.045)', border: `1px solid ${active ? color : PANEL_BORDER}`, borderLeft: `3px solid ${color}`, borderRadius: 8, padding: '5px 8px', color: INK, opacity: done ? 0.6 : 1, overflow: 'hidden', display: 'flex', flexDirection: 'column', gap: 2,
