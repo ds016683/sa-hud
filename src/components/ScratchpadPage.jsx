@@ -29,7 +29,7 @@ export default function ScratchpadPage() {
   const [tie, setTie] = useState('')
   const [msg, setMsg] = useState(null)
   const [recent, setRecent] = useState([])
-  const [, force] = useState(0)
+  const [count, setCount] = useState(0)   // strokes on the sheet, for the toolbar (refs are not read in render)
 
   function redraw() {
     const c = canvasRef.current; if (!c) return
@@ -65,7 +65,7 @@ export default function ScratchpadPage() {
 
   useEffect(() => {
     size(); window.addEventListener('resize', size)
-    try { const saved = JSON.parse(localStorage.getItem(LS) || 'null'); if (saved?.strokes) { strokes.current = saved.strokes; if (saved.bg) { const im = new Image(); im.onload = () => { bg.current = im; redraw() }; im.src = saved.bg } else redraw() } } catch { /* fresh sheet */ }
+    try { const saved = JSON.parse(localStorage.getItem(LS) || 'null'); if (saved?.strokes) { strokes.current = saved.strokes; setCount(saved.strokes.length); if (saved.bg) { const im = new Image(); im.onload = () => { bg.current = im; redraw() }; im.src = saved.bg } else redraw() } } catch { /* fresh sheet */ }
     return () => window.removeEventListener('resize', size)
   }, [size]) // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
@@ -84,10 +84,10 @@ export default function ScratchpadPage() {
     for (const ev of evs) live.current.pts.push(pos(ev))
     redraw()
   }
-  const up = (e) => { if (!live.current) return; e.preventDefault(); strokes.current.push(live.current); live.current = null; redraw(); persist(); force(x => x + 1) }
-  const undo = () => { strokes.current.pop(); redraw(); persist(); force(x => x + 1) }
-  const clear = () => { if (!strokes.current.length && !bg.current) return; if (!window.confirm('Clear the sheet?')) return; strokes.current = []; bg.current = null; redraw(); persist(); force(x => x + 1) }
-  const loadImage = (file) => { if (!file || !file.type.startsWith('image/')) return; const rd = new FileReader(); rd.onload = () => { const im = new Image(); im.onload = () => { bg.current = im; redraw(); persist(); force(x => x + 1) }; im.src = rd.result }; rd.readAsDataURL(file) }
+  const up = (e) => { if (!live.current) return; e.preventDefault(); strokes.current.push(live.current); live.current = null; redraw(); persist(); setCount(strokes.current.length) }
+  const undo = () => { strokes.current.pop(); redraw(); persist(); setCount(strokes.current.length) }
+  const clear = () => { if (!strokes.current.length && !bg.current) return; if (!window.confirm('Clear the sheet?')) return; strokes.current = []; bg.current = null; redraw(); persist(); setCount(strokes.current.length) }
+  const loadImage = (file) => { if (!file || !file.type.startsWith('image/')) return; const rd = new FileReader(); rd.onload = () => { const im = new Image(); im.onload = () => { bg.current = im; redraw(); persist(); setCount(strokes.current.length) }; im.src = rd.result }; rd.readAsDataURL(file) }
   useEffect(() => { const onPaste = (e) => { const f = [...(e.clipboardData?.files || [])].find(x => x.type.startsWith('image/')); if (f) loadImage(f) }; window.addEventListener('paste', onPaste); return () => window.removeEventListener('paste', onPaste) }, [])
 
   const save = async () => {
@@ -117,7 +117,7 @@ export default function ScratchpadPage() {
         <span style={{ width: 1, height: 22, background: PANEL_BORDER, margin: '0 4px' }} />
         <button onClick={() => setEraser(e => !e)} style={btn(eraser ? GOLD : INK2, eraser)}><Eraser size={12} /> Eraser</button>
         <button onClick={() => setEraser(false)} style={btn(!eraser ? GREEN : INK2, false)}><Pen size={12} /> Pen</button>
-        <button onClick={undo} disabled={!strokes.current.length} style={{ ...btn(INK2), opacity: strokes.current.length ? 1 : 0.4 }}><Undo2 size={12} /> Undo</button>
+        <button onClick={undo} disabled={!count} style={{ ...btn(INK2), opacity: count ? 1 : 0.4 }}><Undo2 size={12} /> Undo</button>
         <label style={btn(BLUE)}><ImageIcon size={12} /> Screenshot<input type="file" accept="image/*" style={{ display: 'none' }} onChange={e => { loadImage(e.target.files?.[0]); e.target.value = '' }} /></label>
         <button onClick={clear} style={btn(RED)}><Trash2 size={12} /> Clear</button>
         <span style={{ flex: 1 }} />
