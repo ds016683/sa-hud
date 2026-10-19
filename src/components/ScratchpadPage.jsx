@@ -36,15 +36,24 @@ export default function ScratchpadPage() {
   const [recent, setRecent] = useState([])
   const [count, setCount] = useState(0)   // strokes on the sheet, for the toolbar (refs are not read in render)
 
+  // Compose a page: paper, the background image, then the ink layer (strokes drawn on a
+  // transparent layer so the eraser can punch through to paper and image, never to black).
+  function compose(target, pg, liveStroke) {
+    const dpr = window.devicePixelRatio || 1
+    const ctx = target.getContext('2d'); ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+    const cw = target.width / dpr, ch = target.height / dpr
+    ctx.globalCompositeOperation = 'source-over'
+    ctx.fillStyle = PAPER; ctx.fillRect(0, 0, cw, ch)
+    if (pg.bg) { const im = pg.bg; const sc = Math.min(cw / im.width, ch / im.height, 1); const w = im.width * sc, h = im.height * sc; ctx.drawImage(im, (cw - w) / 2, (ch - h) / 2, w, h) }
+    const layer = document.createElement('canvas'); layer.width = target.width; layer.height = target.height
+    const lc = layer.getContext('2d'); lc.setTransform(dpr, 0, 0, dpr, 0, 0)
+    for (const st of pg.strokes) drawStroke(lc, st)
+    if (liveStroke) drawStroke(lc, liveStroke)
+    ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.drawImage(layer, 0, 0); ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+  }
   function redraw() {
     const c = canvasRef.current; if (!c) return
-    const ctx = c.getContext('2d'); const dpr = window.devicePixelRatio || 1
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
-    const cw = c.width / dpr, ch = c.height / dpr
-    ctx.fillStyle = PAPER; ctx.fillRect(0, 0, cw, ch)
-    if (bg.current) { const im = bg.current; const s = Math.min(cw / im.width, ch / im.height, 1); const w = im.width * s, h = im.height * s; ctx.drawImage(im, (cw - w) / 2, (ch - h) / 2, w, h) }
-    for (const st of strokes.current) drawStroke(ctx, st)
-    if (live.current) drawStroke(ctx, live.current)
+    compose(c, pages.current[pageIx.current], live.current)
   }
   function drawStroke(ctx, st) {
     const pts = st.pts; if (!pts.length) return
@@ -121,13 +130,9 @@ export default function ScratchpadPage() {
 
   // Render any page to an offscreen canvas at the sheet's size.
   const renderPage = (pg) => {
-    const c = canvasRef.current; const dpr = window.devicePixelRatio || 1
+    const c = canvasRef.current
     const off = document.createElement('canvas'); off.width = c.width; off.height = c.height
-    const ctx = off.getContext('2d'); ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
-    const cw = c.width / dpr, ch = c.height / dpr
-    ctx.fillStyle = PAPER; ctx.fillRect(0, 0, cw, ch)
-    if (pg.bg) { const im = pg.bg; const sc = Math.min(cw / im.width, ch / im.height, 1); const w = im.width * sc, h = im.height * sc; ctx.drawImage(im, (cw - w) / 2, (ch - h) / 2, w, h) }
-    for (const st of pg.strokes) drawStroke(ctx, st)
+    compose(off, pg, null)
     return off
   }
   // A one-file PDF of every page: JPEG images, one per page, no library.
