@@ -98,7 +98,7 @@ export function ClientCard({ client, anchor, missions, items, onOpen }) {
 // =============================================================================
 const RAIL_W = 92
 const MONTH_H = 132
-const CARD_H = 54
+const CARD_H = 62
 const CARD_GAP = 6
 
 export function Waterfall({ client, items, onOpen, onAdd }) {
@@ -142,12 +142,13 @@ export function Waterfall({ client, items, onOpen, onAdd }) {
         <div style={{ display: 'grid', gridTemplateColumns: cols, borderBottom: `1px solid ${PANEL_BORDER}`, position: 'sticky', top: 0, zIndex: 3, background: 'rgba(14,35,54,0.92)', backdropFilter: 'blur(4px)' }}>
           <div style={{ ...S.eyebrow, padding: '10px 8px 10px 0' }}>Month</div>
           {client.lanes.map(l => (
-            <div key={l.id} style={{ padding: '8px 10px', borderLeft: `1px solid ${PANEL_BORDER}`, display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ width: 10, height: 10, borderRadius: 3, background: l.color, flexShrink: 0 }} />
-              <span style={{ fontSize: 13, fontWeight: 600, color: l.color, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{l.id}</span>
-              {l.baseline && <span style={{ ...S.eyebrow, fontSize: 9, color: MUTED }}>baseline</span>}
-              <span style={{ ...S.eyebrow, fontSize: 9.5, color: MUTED }}>{items.filter(i => i.lane === l.id).length}</span>
-              <button onClick={() => onAdd(l.id)} title={`Add to ${l.id}`} style={{ marginLeft: 'auto', background: 'none', border: `1px solid ${PANEL_BORDER}`, color: MUTED, borderRadius: 6, width: 22, height: 22, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><Plus size={12} /></button>
+            <div key={l.id} style={{ padding: '8px 8px 8px 10px', borderLeft: `1px solid ${PANEL_BORDER}`, display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+              <span style={{ width: 10, height: 10, borderRadius: 3, background: l.color, flexShrink: 0, marginTop: 3 }} />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 12.5, fontWeight: 600, color: l.color, lineHeight: 1.2 }}>{l.id}</div>
+                <div style={{ ...S.eyebrow, fontSize: 9, color: MUTED, marginTop: 2 }}>{l.baseline ? 'baseline · ' : ''}{items.filter(i => i.lane === l.id).length} items</div>
+              </div>
+              <button onClick={() => onAdd(l.id)} title={`Add to ${l.id}`} style={{ background: 'none', border: `1px solid ${PANEL_BORDER}`, color: MUTED, borderRadius: 6, width: 22, height: 22, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><Plus size={12} /></button>
             </div>
           ))}
         </div>
@@ -192,7 +193,7 @@ export function Waterfall({ client, items, onOpen, onAdd }) {
                         <span style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '0.8px', color, whiteSpace: 'nowrap' }}>{it.date_label || dayLabel(it.start_date)}</span>
                         <span style={{ marginLeft: 'auto', width: 6, height: 6, borderRadius: 99, background: STATUS_COLOR[it.status] || MUTED, flexShrink: 0 }} title={STATUS_LABEL[it.status]} />
                       </div>
-                      <div style={{ fontSize: 12, lineHeight: 1.3, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', textDecoration: done ? 'line-through' : 'none' }}>{it.title}</div>
+                      <div style={{ fontSize: 12, lineHeight: 1.25, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', textDecoration: done ? 'line-through' : 'none' }}>{it.title}</div>
                     </button>
                   </div>
                 )
