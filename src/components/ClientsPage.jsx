@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { Plus, ArrowLeft, ArrowUpRight, RefreshCw, X, Trash2, Link as LinkIcon } from 'lucide-react'
 import useProjects, { freshnessOf } from '../hooks/useProjects'
 import { CLIENTS, clientByKey, laneColor, missionsOf, STATUS_LABEL, STATUS_ORDER } from '../constants/clients'
@@ -99,6 +99,10 @@ export function ClientCard({ client, anchor, missions, items, onOpen }) {
 // opens a small popover beside it; Edit in the popover opens the modal.
 // =============================================================================
 const RAIL_W = 92
+const LANE_MIN = 200
+const HEADER_H = 56
+const isoOf = (ms) => new Date(ms).toISOString().slice(0, 10)
+const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v))
 const VIEWS = {
   simple:   { month: 160, card: 26, gap: 5 },
   detailed: { month: 220, card: 62, gap: 6 },
@@ -135,10 +139,17 @@ function Popover({ client, item, flip, top, onEdit, onClose }) {
   )
 }
 
-export function Waterfall({ client, items, view = 'simple', onOpen, onAdd }) {
+export function Waterfall({ client, items: rawItems, view = 'simple', onOpen, onAdd, onMove, onDraft }) {
   const today = chiToday()
   const size = VIEWS[view] || VIEWS.simple
   const [pop, setPop] = useState(null)   // item id with the popover open
+  // Dragging a tag moves its day (and its end with it) and its lane. The live
+  // patch rides a ref; state mirrors it so the tag follows the pointer.
+  const bodyRef = useRef(null)
+  const dragRef = useRef(null)
+  const [drag, setDrag] = useState(null)
+  const suppressClick = useRef(false)
+  const items = useMemo(() => drag ? rawItems.map(i => i.id === drag.id ? { ...i, ...drag.patch } : i) : rawItems, [rawItems, drag])
   const axis = useMemo(() => {
     const starts = items.filter(i => i.start_date).map(i => utc(i.start_date))
     const ends = items.filter(i => i.end_date).map(i => utc(i.end_date))
@@ -152,6 +163,40 @@ export function Waterfall({ client, items, view = 'simple', onOpen, onAdd }) {
   }, [items, today, size.month])
   const y = (ms) => (ms - axis.lo) / (axis.hi - axis.lo) * axis.height
   const todayY = y(utc(today))
+  const dayAt = (clientY, rect) => clamp(axis.lo + Math.round(((clientY - rect.top) / axis.height) * (axis.hi - axis.lo) / DAY) * DAY, axis.lo, axis.hi - DAY)
+  const laneAt = (clientX, rect) => client.lanes[clamp(Math.floor((clientX - rect.left - RAIL_W) / ((rect.width - RAIL_W) / client.lanes.length)), 0, client.lanes.length - 1)].id
+
+  const startDrag = (e, it) => {
+    if (e.button !== 0 || !onMove) return
+    try { e.currentTarget.setPointerCapture(e.pointerId) } catch { /* a synthetic pointer: moves still arrive while the pointer stays over the tag */ }
+    dragRef.current = { id: it.id, it, x0: e.clientX, y0: e.clientY, moved: false, patch: null }
+  }
+  const moveDrag = (e) => {
+    const d = dragRef.current
+    if (!d || !bodyRef.current) return
+    if (!d.moved && Math.hypot(e.clientX - d.x0, e.clientY - d.y0) < 5) return
+    d.moved = true
+    const rect = bodyRef.current.getBoundingClientRect()
+    const start = isoOf(dayAt(e.clientY, rect))
+    const shift = utc(start) - utc(d.it.start_date)
+    const patch = { lane: laneAt(e.clientX, rect), start_date: start, end_date: d.it.end_date ? isoOf(utc(d.it.end_date) + shift) : d.it.end_date }
+    d.patch = patch
+    setPop(null)
+    setDrag({ id: d.id, patch, x: e.clientX, y: e.clientY })
+  }
+  const endDrag = () => {
+    const d = dragRef.current
+    dragRef.current = null
+    setDrag(null)
+    if (!d || !d.moved) return
+    suppressClick.current = true
+    if (d.patch && (d.patch.lane !== d.it.lane || d.patch.start_date !== d.it.start_date)) onMove(d.it, d.patch)
+  }
+  const tagClick = (it) => { if (suppressClick.current) { suppressClick.current = false; return } openPop(it) }
+  const draftAt = (e, laneId) => {
+    if (!onDraft || e.target !== e.currentTarget) return
+    onDraft(laneId, isoOf(dayAt(e.clientY, e.currentTarget.getBoundingClientRect())))
+  }
 
   // Per lane: markers at their day, tags cascading.
   const lanes = client.lanes.map(l => {
@@ -169,23 +214,28 @@ export function Waterfall({ client, items, view = 'simple', onOpen, onAdd }) {
   })
   const extraLanes = [...new Set(items.map(i => i.lane))].filter(id => !client.lanes.some(l => l.id === id))
   const bodyH = axis.height + Math.max(0, ...lanes.map(l => l.overflow)) + 24
-  const cols = `${RAIL_W}px repeat(${client.lanes.length}, minmax(150px, 1fr))`
+  const cols = `${RAIL_W}px repeat(${client.lanes.length}, minmax(${LANE_MIN}px, 1fr))`
   const openPop = (it) => setPop(prev => (prev === it.id ? null : it.id))
   const edit = (it) => { setPop(null); onOpen(it) }
 
   return (
     <div style={{ overflowX: 'auto' }}>
       {pop && <div onClick={() => setPop(null)} style={{ position: 'fixed', inset: 0, zIndex: 25 }} />}
-      <div style={{ minWidth: RAIL_W + client.lanes.length * 150 }}>
+      {drag && (
+        <div style={{ position: 'fixed', left: drag.x + 14, top: drag.y + 14, zIndex: 40, pointerEvents: 'none', background: GOLD, color: NAVY_DEEP, borderRadius: 6, padding: '3px 8px', fontFamily: MONO, fontSize: 10.5, letterSpacing: '0.6px', whiteSpace: 'nowrap', boxShadow: '0 6px 18px rgba(0,0,0,0.4)' }}>
+          {dayLabel(drag.patch.start_date)}{drag.patch.end_date ? ` to ${dayLabel(drag.patch.end_date)}` : ''} · {drag.patch.lane}
+        </div>
+      )}
+      <div style={{ minWidth: RAIL_W + client.lanes.length * LANE_MIN, userSelect: 'none' }}>
         {/* Lane header: the color assignment */}
-        <div style={{ display: 'grid', gridTemplateColumns: cols, borderBottom: `1px solid ${PANEL_BORDER}`, position: 'sticky', top: 0, zIndex: 3, background: 'rgba(14,35,54,0.92)', backdropFilter: 'blur(4px)' }}>
-          <div style={{ ...S.eyebrow, padding: '10px 8px 10px 0' }}>Month</div>
+        <div style={{ display: 'grid', gridTemplateColumns: cols, height: HEADER_H, alignItems: 'stretch', borderBottom: `1px solid ${PANEL_BORDER}`, position: 'sticky', top: 0, zIndex: 3, background: 'rgba(14,35,54,0.92)', backdropFilter: 'blur(4px)' }}>
+          <div style={{ ...S.eyebrow, display: 'flex', alignItems: 'center', paddingRight: 8 }}>Month</div>
           {client.lanes.map(l => (
-            <div key={l.id} style={{ padding: '8px 8px 8px 10px', borderLeft: `1px solid ${PANEL_BORDER}`, display: 'flex', alignItems: 'flex-start', gap: 8 }}>
-              <span style={{ width: 10, height: 10, borderRadius: 3, background: l.color, flexShrink: 0, marginTop: 3 }} />
+            <div key={l.id} style={{ padding: '0 8px 0 10px', borderLeft: `1px solid ${PANEL_BORDER}`, display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+              <span style={{ width: 10, height: 10, borderRadius: 3, background: l.color, flexShrink: 0 }} />
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 12.5, fontWeight: 600, color: l.color, lineHeight: 1.2 }}>{l.id}</div>
-                <div style={{ ...S.eyebrow, fontSize: 9, color: MUTED, marginTop: 2 }}>{l.baseline ? 'baseline · ' : ''}{items.filter(i => i.lane === l.id).length} items</div>
+                <div style={{ fontSize: 13, fontWeight: 600, color: l.color, lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={l.id}>{l.id}</div>
+                <div style={{ ...S.eyebrow, fontSize: 9, color: MUTED, marginTop: 3, whiteSpace: 'nowrap' }}>{l.baseline ? 'baseline · ' : ''}{items.filter(i => i.lane === l.id).length} items</div>
               </div>
               <button onClick={() => onAdd(l.id)} title={`Add to ${l.id}`} style={{ background: 'none', border: `1px solid ${PANEL_BORDER}`, color: MUTED, borderRadius: 6, width: 22, height: 22, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><Plus size={12} /></button>
             </div>
@@ -193,7 +243,7 @@ export function Waterfall({ client, items, view = 'simple', onOpen, onAdd }) {
         </div>
 
         {/* Body */}
-        <div style={{ display: 'grid', gridTemplateColumns: cols, position: 'relative', height: bodyH }}>
+        <div ref={bodyRef} style={{ display: 'grid', gridTemplateColumns: cols, position: 'relative', height: bodyH }}>
           {/* Month rail */}
           <div style={{ position: 'relative' }}>
             {axis.months.map((m, i) => (
@@ -214,7 +264,7 @@ export function Waterfall({ client, items, view = 'simple', onOpen, onAdd }) {
           </div>
           {/* Lanes */}
           {lanes.map(({ lane, placed, undated }, li) => (
-            <div key={lane.id} style={{ position: 'relative', borderLeft: `1px solid ${PANEL_BORDER}` }}>
+            <div key={lane.id} onDoubleClick={(e) => draftAt(e, lane.id)} title={onDraft ? 'Double-click empty space to draft an item on that day' : undefined} style={{ position: 'relative', borderLeft: `1px solid ${PANEL_BORDER}`, cursor: onDraft ? 'copy' : undefined }}>
               {placed.map(({ it, top, end, cardTop }) => {
                 const color = lane.color
                 const done = it.status === 'done'
@@ -226,16 +276,18 @@ export function Waterfall({ client, items, view = 'simple', onOpen, onAdd }) {
                       : <div style={{ position: 'absolute', left: 11, top: top - 6, width: 12, height: 12, transform: 'rotate(45deg)', borderRadius: 2, background: color, opacity: done ? 0.4 : 1, boxShadow: `0 0 0 2px ${NAVY_DEEP}` }} />}
                     {cardTop > top + 2 && <div style={{ position: 'absolute', left: 17, top, width: 1, height: cardTop - top + 10, background: `${color}66` }} />}
                     {view === 'simple' ? (
-                      <button onClick={() => openPop(it)} title={`${it.date_label || dayLabel(it.start_date)} · ${it.title}`} style={{
-                        position: 'absolute', left: 30, right: 10, top: cardTop, height: size.card, textAlign: 'left', cursor: 'pointer', fontFamily: 'inherit',
+                      <button onClick={() => tagClick(it)} onDoubleClick={(e) => { e.stopPropagation(); onOpen(it) }} onPointerDown={(e) => startDrag(e, it)} onPointerMove={moveDrag} onPointerUp={endDrag} onPointerCancel={endDrag}
+                        title={`${it.date_label || dayLabel(it.start_date)} · ${it.title}`} style={{
+                        position: 'absolute', left: 30, right: 10, top: cardTop, height: size.card, textAlign: 'left', cursor: drag?.id === it.id ? 'grabbing' : 'grab', touchAction: 'none', fontFamily: 'inherit',
                         background: active ? `${color}22` : 'rgba(255,255,255,0.045)', border: `1px solid ${active ? color : PANEL_BORDER}`, borderLeft: `3px solid ${color}`, borderRadius: 6, padding: '0 8px', color: INK, opacity: done ? 0.6 : 1, overflow: 'hidden', display: 'flex', alignItems: 'center', gap: 7,
                       }}>
                         <span style={{ fontSize: 11.5, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', textDecoration: done ? 'line-through' : 'none', flex: 1 }}>{it.title}</span>
                         <span style={{ width: 6, height: 6, borderRadius: 99, background: STATUS_COLOR[it.status] || MUTED, flexShrink: 0 }} title={STATUS_LABEL[it.status]} />
                       </button>
                     ) : (
-                      <button onClick={() => openPop(it)} title={it.title} style={{
-                        position: 'absolute', left: 30, right: 10, top: cardTop, height: size.card, textAlign: 'left', cursor: 'pointer', fontFamily: 'inherit',
+                      <button onClick={() => tagClick(it)} onDoubleClick={(e) => { e.stopPropagation(); onOpen(it) }} onPointerDown={(e) => startDrag(e, it)} onPointerMove={moveDrag} onPointerUp={endDrag} onPointerCancel={endDrag}
+                        title={it.title} style={{
+                        position: 'absolute', left: 30, right: 10, top: cardTop, height: size.card, textAlign: 'left', cursor: drag?.id === it.id ? 'grabbing' : 'grab', touchAction: 'none', fontFamily: 'inherit',
                         background: active ? `${color}22` : 'rgba(255,255,255,0.045)', border: `1px solid ${active ? color : PANEL_BORDER}`, borderLeft: `3px solid ${color}`, borderRadius: 8, padding: '5px 8px', color: INK, opacity: done ? 0.6 : 1, overflow: 'hidden', display: 'flex', flexDirection: 'column', gap: 2,
                       }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -374,9 +426,10 @@ function ClientDetail({ client, anchor, missions, tl, onBack, initialTab, onNavi
     return persist(next)
   }
   const deleteItem = (it) => persist(tl.items.filter(i => i.id !== it.id))
+  const moveItem = (it, patch) => persist(tl.items.map(i => i.id === it.id ? { ...i, ...patch, updated_at: new Date().toISOString() } : i))
 
   return (
-    <div style={S.page}>
+    <div style={{ ...S.page, maxWidth: tab === 'timeline' ? 1480 : 1100 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, marginBottom: 18, flexWrap: 'wrap' }}>
         <button onClick={onBack} style={S.btnGhost}><ArrowLeft size={13} /> All Clients</button>
       </div>
@@ -428,7 +481,7 @@ function ClientDetail({ client, anchor, missions, tl, onBack, initialTab, onNavi
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap', marginBottom: 12 }}>
               <div style={{ flex: 1, minWidth: 260 }}>
                 <SubLabel style={{ marginBottom: 2 }}>Program Timeline</SubLabel>
-                <div style={{ fontSize: 12.5, color: TEXT_DIM, lineHeight: 1.5 }}>Months run down the page, lanes run across. Each lane is a color assignment; the baseline lane carries the client's own plan and dates. Click an item for its details; Edit opens the full record.</div>
+                <div style={{ fontSize: 12.5, color: TEXT_DIM, lineHeight: 1.5 }}>Months run down the page, lanes run across. Each lane is a color assignment; the baseline lane carries the client's own plan and dates. Click an item for its details. Drag it to move its day or lane. Double-click it to edit, or double-click empty space to draft an item on that day.</div>
                 <div style={{ display: 'flex', gap: 6, marginTop: 10 }}>
                   <Pill active={view === 'simple'} onClick={() => setView('simple')}>Simple</Pill>
                   <Pill active={view === 'detailed'} onClick={() => setView('detailed')}>Detailed</Pill>
@@ -448,7 +501,7 @@ function ClientDetail({ client, anchor, missions, tl, onBack, initialTab, onNavi
                 {BASELINE[client.key] && <button onClick={() => persist(BASELINE[client.key].map((b, i) => ({ ...b, position: i })))} disabled={busy} style={S.btnPrimary}>{busy ? 'Loading…' : 'Load The Baseline'}</button>}
               </div>
             )}
-            {!tl.loading && tl.items.length > 0 && <Waterfall client={client} items={tl.items} view={view} onOpen={(it) => setModal({ item: it })} onAdd={(lane) => setModal({ item: { lane } })} />}
+            {!tl.loading && tl.items.length > 0 && <Waterfall client={client} items={tl.items} view={view} onOpen={(it) => setModal({ item: it })} onAdd={(lane) => setModal({ item: { lane } })} onMove={moveItem} onDraft={(lane, start_date) => setModal({ item: { lane, start_date } })} />}
           </div>
         )}
       </div>
