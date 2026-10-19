@@ -19,9 +19,14 @@ const btn = (color = INK2, on = false) => ({ display: 'inline-flex', alignItems:
 export default function ScratchpadPage() {
   const canvasRef = useRef(null)
   const wrapRef = useRef(null)
-  const strokes = useRef([])          // [{ color, width, eraser, pts: [{x,y,p}] }], in CSS pixels
+  // A document is pages; each page is strokes [{ color, width, eraser, pts: [{x,y,p}] }] in CSS pixels plus an optional background image.
+  const pages = useRef([{ strokes: [], bg: null, bgSrc: null }])
+  const pageIx = useRef(0)
+  const strokes = { get current() { return pages.current[pageIx.current].strokes }, set current(v) { pages.current[pageIx.current].strokes = v } }
+  const bg = { get current() { return pages.current[pageIx.current].bg }, set current(v) { pages.current[pageIx.current].bg = v; pages.current[pageIx.current].bgSrc = v ? v.src : null } }
   const live = useRef(null)
-  const bg = useRef(null)             // HTMLImageElement or null
+  const [pageNo, setPageNo] = useState(0)
+  const [pageCount, setPageCount] = useState(1)
   const [color, setColor] = useState(COLORS[0][1])
   const [width, setWidth] = useState(4)
   const [eraser, setEraser] = useState(false)
@@ -65,7 +70,16 @@ export default function ScratchpadPage() {
 
   useEffect(() => {
     size(); window.addEventListener('resize', size)
-    try { const saved = JSON.parse(localStorage.getItem(LS) || 'null'); if (saved?.strokes) { strokes.current = saved.strokes; setCount(saved.strokes.length); if (saved.bg) { const im = new Image(); im.onload = () => { bg.current = im; redraw() }; im.src = saved.bg } else redraw() } } catch { /* fresh sheet */ }
+    try {
+      const saved = JSON.parse(localStorage.getItem(LS) || 'null')
+      const src = saved?.pages ? saved.pages : saved?.strokes ? [{ strokes: saved.strokes, bg: saved.bg || null }] : null
+      if (src) {
+        pages.current = src.map(pg => ({ strokes: pg.strokes || [], bg: null, bgSrc: pg.bg || null }))
+        pageIx.current = Math.min(saved.page || 0, pages.current.length - 1); setPageNo(pageIx.current); setPageCount(pages.current.length); setCount(strokes.current.length)
+        pages.current.forEach(pg => { if (pg.bgSrc) { const im = new Image(); im.onload = () => { pg.bg = im; redraw() }; im.src = pg.bgSrc } })
+        redraw()
+      }
+    } catch { /* fresh sheet */ }
     return () => window.removeEventListener('resize', size)
   }, [size]) // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
@@ -75,9 +89,9 @@ export default function ScratchpadPage() {
     return () => { on = false }
   }, [])
 
-  const persist = () => { try { localStorage.setItem(LS, JSON.stringify({ strokes: strokes.current, bg: bg.current ? bg.current.src : null })) } catch { /* quota */ } }
+  const persist = () => { try { localStorage.setItem(LS, JSON.stringify({ v: 2, page: pageIx.current, pages: pages.current.map(pg => ({ strokes: pg.strokes, bg: pg.bgSrc })) })) } catch { /* quota */ } }
   const pos = (e) => { const r = canvasRef.current.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top, p: e.pointerType === 'pen' ? Math.max(0.15, e.pressure || 0.5) : 0.5 } }
-  const down = (e) => { if (e.pointerType === 'touch' && e.isPrimary === false) return; e.preventDefault(); canvasRef.current.setPointerCapture(e.pointerId); live.current = { color, width, eraser, pts: [pos(e)] }; redraw() }
+  const down = (e) => { if (e.pointerType === 'touch' && e.isPrimary === false) return; e.preventDefault(); try { window.getSelection()?.removeAllRanges() } catch { /* none */ } canvasRef.current.setPointerCapture(e.pointerId); live.current = { color, width, eraser, pts: [pos(e)] }; redraw() }
   const move = (e) => {
     if (!live.current) return; e.preventDefault()
     const evs = typeof e.nativeEvent.getCoalescedEvents === 'function' ? e.nativeEvent.getCoalescedEvents() : [e]
@@ -85,30 +99,77 @@ export default function ScratchpadPage() {
     redraw()
   }
   const up = (e) => { if (!live.current) return; e.preventDefault(); strokes.current.push(live.current); live.current = null; redraw(); persist(); setCount(strokes.current.length) }
+  const goPage = (i) => { if (i < 0 || i >= pages.current.length) return; pageIx.current = i; setPageNo(i); setCount(strokes.current.length); redraw(); persist() }
+  const addPage = () => { pages.current.push({ strokes: [], bg: null, bgSrc: null }); setPageCount(pages.current.length); goPage(pages.current.length - 1) }
+  const deletePage = () => { if (pages.current.length === 1) { clear(); return } if (!window.confirm(`Delete page ${pageIx.current + 1}?`)) return; pages.current.splice(pageIx.current, 1); setPageCount(pages.current.length); goPage(Math.min(pageIx.current, pages.current.length - 1)) }
   const undo = () => { strokes.current.pop(); redraw(); persist(); setCount(strokes.current.length) }
-  const clear = () => { if (!strokes.current.length && !bg.current) return; if (!window.confirm('Clear the sheet?')) return; strokes.current = []; bg.current = null; redraw(); persist(); setCount(strokes.current.length) }
+  const clear = () => { if (!strokes.current.length && !bg.current) return; if (!window.confirm('Clear this page?')) return; strokes.current = []; bg.current = null; redraw(); persist(); setCount(strokes.current.length) }
   const loadImage = (file) => { if (!file || !file.type.startsWith('image/')) return; const rd = new FileReader(); rd.onload = () => { const im = new Image(); im.onload = () => { bg.current = im; redraw(); persist(); setCount(strokes.current.length) }; im.src = rd.result }; rd.readAsDataURL(file) }
   useEffect(() => { const onPaste = (e) => { const f = [...(e.clipboardData?.files || [])].find(x => x.type.startsWith('image/')); if (f) loadImage(f) }; window.addEventListener('paste', onPaste); return () => window.removeEventListener('paste', onPaste) }, [])
 
+  // Render any page to an offscreen canvas at the sheet's size.
+  const renderPage = (pg) => {
+    const c = canvasRef.current; const dpr = window.devicePixelRatio || 1
+    const off = document.createElement('canvas'); off.width = c.width; off.height = c.height
+    const ctx = off.getContext('2d'); ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+    const cw = c.width / dpr, ch = c.height / dpr
+    ctx.fillStyle = PAPER; ctx.fillRect(0, 0, cw, ch)
+    if (pg.bg) { const im = pg.bg; const sc = Math.min(cw / im.width, ch / im.height, 1); const w = im.width * sc, h = im.height * sc; ctx.drawImage(im, (cw - w) / 2, (ch - h) / 2, w, h) }
+    for (const st of pg.strokes) drawStroke(ctx, st)
+    return off
+  }
+  // A one-file PDF of every page: JPEG images, one per page, no library.
+  const buildPdf = (jpegs, w, h) => {
+    const enc = new TextEncoder(); const parts = []; const offsets = []; let len = 0
+    const push = (x) => { const b = typeof x === 'string' ? enc.encode(x) : x; parts.push(b); len += b.length }
+    push('%PDF-1.4\n')
+    const n = jpegs.length; const ids = { catalog: 1, pages: 2 }
+    const objs = []
+    objs.push(`<< /Type /Catalog /Pages 2 0 R >>`)
+    objs.push(`<< /Type /Pages /Kids [${jpegs.map((_, i) => `${3 + i * 3} 0 R`).join(' ')}] /Count ${n} >>`)
+    const pw = 612, ph = Math.round(612 * h / w)
+    for (let i = 0; i < n; i++) {
+      const pageId = 3 + i * 3, imgId = pageId + 1, contentId = pageId + 2
+      objs.push(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${pw} ${ph}] /Resources << /XObject << /Im${i} ${imgId} 0 R >> >> /Contents ${contentId} 0 R >>`)
+      objs.push({ dict: `<< /Type /XObject /Subtype /Image /Width ${w} /Height ${h} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${jpegs[i].length} >>`, stream: jpegs[i] })
+      const content = `q ${pw} 0 0 ${ph} 0 0 cm /Im${i} Do Q`
+      objs.push({ dict: `<< /Length ${content.length} >>`, stream: enc.encode(content) })
+    }
+    objs.forEach((o, i) => {
+      offsets.push(len); push(`${i + 1} 0 obj\n`)
+      if (typeof o === 'string') { push(o + '\n') } else { push(o.dict + '\nstream\n'); push(o.stream); push('\nendstream\n') }
+      push('endobj\n')
+    })
+    const xref = len
+    push(`xref\n0 ${objs.length + 1}\n0000000000 65535 f \n` + offsets.map(o => String(o).padStart(10, '0') + ' 00000 n \n').join(''))
+    push(`trailer\n<< /Size ${objs.length + 1} /Root ${ids.catalog} 0 R >>\nstartxref\n${xref}\n%%EOF\n`)
+    void ids.pages
+    return new Blob(parts, { type: 'application/pdf' })
+  }
   const save = async () => {
     const c = canvasRef.current; if (!c) return
-    if (!strokes.current.length && !bg.current) { setMsg('Nothing on the sheet yet.'); return }
+    const used = pages.current.filter(pg => pg.strokes.length || pg.bg)
+    if (!used.length) { setMsg('Nothing on the sheet yet.'); return }
     setMsg('Saving')
-    const blob = await new Promise(res => c.toBlob(res, 'image/png'))
     const stamp = new Date().toLocaleString('en-CA', { timeZone: 'America/Chicago', hour12: false }).replace(/[^0-9]/g, '').slice(0, 12)
-    const file = new File([blob], `sketch-${stamp}.png`, { type: 'image/png' })
     try {
-      const row = await putLiveFile(file, { objectiveId: tie || null, note: `sketch${tie ? '' : ', untied'} from the iPad Scratchpad`, source: 'david' })
-      setMsg(`Saved ${row.name}${tie ? ', tied to the item' : ', in Live Files (tied to nothing yet)'}. The next Claude session sees it.`)
+      const jpegs = []
+      for (const pg of used) { const off = renderPage(pg); const blob = await new Promise(res => off.toBlob(res, 'image/jpeg', 0.92)); jpegs.push(new Uint8Array(await blob.arrayBuffer())) }
+      const pdf = buildPdf(jpegs, c.width, c.height)
+      const file = new File([pdf], `sketch-${stamp}.pdf`, { type: 'application/pdf' })
+      const row = await putLiveFile(file, { objectiveId: tie || null, note: `sketch, ${used.length} page${used.length === 1 ? '' : 's'}${tie ? '' : ', untied'} from the iPad Scratchpad`, source: 'david' })
+      setMsg(`Saved ${row.name} (${used.length} page${used.length === 1 ? '' : 's'})${tie ? ', tied to the item' : ', in Live Files (tied to nothing yet)'}. The next Claude session sees it.`)
       setRecent(r => [row, ...r].slice(0, 8))
     } catch (e) { setMsg(`Could not save: ${e.message}`) }
   }
 
+  const noSelect = { WebkitUserSelect: 'none', userSelect: 'none', WebkitTouchCallout: 'none' }
   return (
-    <div style={S.page}>
+    <div style={{ ...S.page, ...noSelect }} onContextMenu={e => e.preventDefault()}>
+      <style>{`.pad-sheet, .pad-sheet * { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none } .pad-sheet canvas { touch-action: none }`}</style>
       <Eyebrow>Scratchpad</Eyebrow>
       <Serif size={28}>Draw it</Serif>
-      <div style={{ fontSize: 13.5, color: INK2, margin: '6px 0 14px', maxWidth: '72ch' }}>Pencil on the iPad, mouse on the Mac. Drop or paste a screenshot to mark it up. Save puts the sheet into Live Files as a PNG, tied to an item if you pick one, and the next Claude session is told a sketch is waiting.</div>
+      <div style={{ fontSize: 13.5, color: INK2, margin: '6px 0 14px', maxWidth: '72ch' }}>Pencil on the iPad, mouse on the Mac. Drop or paste a screenshot to mark it up. Save collates every page into one PDF in Live Files, tied to an item if you pick one, and the next Claude session is told a sketch is waiting.</div>
 
       <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginBottom: 10 }}>
         {COLORS.map(([n, c]) => <button key={n} onClick={() => { setColor(c); setEraser(false) }} title={n} style={{ width: 26, height: 26, borderRadius: 99, background: c, border: `2px solid ${color === c && !eraser ? '#fff' : 'transparent'}`, cursor: 'pointer', boxShadow: color === c && !eraser ? `0 0 0 2px ${c}66` : 'none' }} />)}
@@ -128,8 +189,15 @@ export default function ScratchpadPage() {
         <button onClick={save} style={btn(GOLD, true)}><Save size={12} /> Save to Live Files</button>
       </div>
 
-      <div ref={wrapRef} onDragOver={e => e.preventDefault()} onDrop={e => { e.preventDefault(); loadImage(e.dataTransfer?.files?.[0]) }} style={{ border: `1px solid ${PANEL_BORDER}`, borderRadius: 12, overflow: 'hidden', background: PAPER }}>
-        <canvas ref={canvasRef} onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={up} onPointerLeave={up} style={{ display: 'block', touchAction: 'none', cursor: eraser ? 'cell' : 'crosshair' }} />
+      <div ref={wrapRef} className="pad-sheet" onDragOver={e => e.preventDefault()} onDrop={e => { e.preventDefault(); loadImage(e.dataTransfer?.files?.[0]) }} onPointerDown={e => { if (e.pointerType !== 'mouse') e.preventDefault() }} style={{ border: `1px solid ${PANEL_BORDER}`, borderRadius: 12, overflow: 'hidden', background: PAPER, touchAction: 'none' }}>
+        <canvas ref={canvasRef} onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={up} style={{ display: 'block', touchAction: 'none', cursor: eraser ? 'cell' : 'crosshair' }} />
+      </div>
+      <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', marginTop: 10 }}>
+        <span style={{ fontSize: 13, fontWeight: 600, color: LABEL, marginRight: 4 }}>Pages</span>
+        {Array.from({ length: pageCount }, (_, i) => <button key={i} onClick={() => goPage(i)} style={{ ...btn(pageNo === i ? GOLD : INK2, pageNo === i), padding: '5px 10px' }}>{i + 1}</button>)}
+        <button onClick={addPage} style={btn(GREEN)}>+ Page</button>
+        <button onClick={deletePage} style={btn(RED)}>Delete page</button>
+        <span style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '0.8px', color: GRAY, marginLeft: 6 }}>Save collates every page into one PDF</span>
       </div>
       {msg && <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '1px', textTransform: 'uppercase', color: msg.startsWith('Could') ? RED : GOLD, marginTop: 10 }}>{msg}</div>}
 

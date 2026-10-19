@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import {
   LayoutGrid, Network, LogOut, Menu, X, Target, Users,
-  FileText, Wallet, CreditCard, ListChecks, Compass, Waves, CalendarDays, BookOpen, Activity, Award, Wrench, GraduationCap, Sparkles, Archive as ArchiveIcon, FolderOpen, PenTool,
+  FileText, Wallet, CreditCard, ListChecks, Compass, Waves, CalendarDays, BookOpen, Activity, Award, Wrench, GraduationCap, Sparkles, Archive as ArchiveIcon, FolderOpen, PenTool, Briefcase,
 } from 'lucide-react'
 import { getSession, onAuthStateChange, signOut } from './lib/auth'
 import { statusFor } from './constants/saDesign'
@@ -9,6 +9,7 @@ import { fetchProtocolState } from './lib/protocol'
 import useGameState from './hooks/useGameState'
 import LoginPage from './components/LoginPage'
 import ProjectsPage from './components/ProjectsPage'
+import ClientsPage from './components/ClientsPage'
 import ItemDetail from './components/river/ItemDetail'
 import { itemFromObjective } from './lib/loadout'
 import { MissionMark } from './components/river/canon'
@@ -40,6 +41,7 @@ const NAV_ITEMS = [
   { id: 'notes',            label: 'Notes',                 icon: FileText,       group: 'MONITOR' },
   { id: 'scratchpad',       label: 'Scratchpad',            icon: PenTool,        group: 'MONITOR' },
   { id: 'main-missions',    label: 'Main Missions',         icon: MissionMark,    group: 'MISSION BOARD' },
+  { id: 'clients',          label: 'Clients',               icon: Briefcase,      group: 'MISSION BOARD' },
   { id: 'side-missions',    label: 'Side Missions',         icon: Target,         group: 'MISSION BOARD' },
   { id: 'maintenance',      label: 'Maintenance',           icon: Wrench,         group: 'MISSION BOARD' },
   { id: 'archive',          label: 'Archive',               icon: ArchiveIcon,    group: 'MISSION BOARD' },
@@ -275,6 +277,7 @@ export default function App() {
           {active === 'notes'            && <MeetingNotesPage />}
           {active === 'scratchpad'       && <ScratchpadPage />}
           {active === 'main-missions'    && <ProjectsPage deepLink={params} onNavigate={setRoute} />}
+          {active === 'clients'          && <ClientsPage deepLink={params} onNavigate={setRoute} />}
           {active === 'side-missions'    && <SideMissionsPage onNavigate={setRoute} />}
           {active === 'maintenance'      && <MaintenancePage deepLink={params} />}
           {active === 'archive'          && <ArchivePage onNavigate={setRoute} />}
