@@ -6,7 +6,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { FileText, ExternalLink, Mail, Check } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
-import { listLiveFiles, putLiveFile, requestLiveFile, openLiveFile, draftMail, markFiled, groupVersions, fmtStamp, fmtSize, isRequest } from '../../lib/livefiles'
+import { listLiveFiles, putLiveFile, requestLiveFile, openLiveFile, draftMail, markFiled, groupVersions, fmtStamp, fmtSize, isRequest, urlOf } from '../../lib/livefiles'
 import { DropZone } from './LiveFiles'
 import { INK, INK2, GRAY, PANEL_BORDER, GOLD, BLUE, GREEN, RED, MONO, Label, KIND_COLOR } from './canon'
 
@@ -42,7 +42,8 @@ export default function WorkbenchTab({ project = null, objectiveId = null }) {
       <span title={r.path} style={{ flex: 1, fontSize: dim ? 12.5 : 13.5, color: dim ? INK2 : INK, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.name}{r.version > 1 && <span style={{ fontFamily: MONO, fontSize: 9, letterSpacing: '1px', color: GOLD, marginLeft: 8 }}>v{r.version}</span>}{r.note && <span style={{ fontSize: 12, color: INK2, marginLeft: 10 }}>{r.note}</span>}</span>
       {isRequest(r) && <span style={{ fontFamily: MONO, fontSize: 9, letterSpacing: '1px', textTransform: 'uppercase', color: GOLD }}>waiting for a session on the Mac</span>}
       <span style={{ fontFamily: MONO, fontSize: 9.5, color: GRAY, whiteSpace: 'nowrap' }}>{fmtStamp(r.created_at)}{r.size ? ` · ${fmtSize(r.size)}` : ''}</span>
-      {!isRequest(r) && <button onClick={() => act(async () => { window.open(await openLiveFile(r), '_blank', 'noopener') }, `Opened ${r.name}`)} style={btn(BLUE)}><ExternalLink size={11} /> Open</button>}
+      {urlOf(r) && <button onClick={() => window.open(urlOf(r), '_blank', 'noopener')} title={urlOf(r)} style={btn(GREEN)}><ExternalLink size={11} /> Visit</button>}
+      {!isRequest(r) && <button onClick={() => act(async () => { window.open(await openLiveFile(r), '_blank', 'noopener') }, `Opened ${r.name}`)} style={btn(BLUE)}><ExternalLink size={11} /> {String(r.name).toLowerCase().endsWith('.html') ? 'Source' : 'Open'}</button>}
       {!isRequest(r) && <button onClick={() => act(async () => { const d = await draftMail(r); if (d.webLink) window.open(d.webLink, '_blank', 'noopener') }, `Draft open in Outlook: ${r.name}`)} title="Open a new Outlook draft with this file attached" style={btn(GOLD)}><Mail size={11} /> Mail</button>}
       {!dim && <button onClick={() => { if (window.confirm(`Done with ${r.name}? It leaves the Workbench.`)) act(() => markFiled(r.id), `Out of play: ${r.name}`) }} title="Done: out of play" style={btn(GREEN)}><Check size={11} /> Done</button>}
     </div>

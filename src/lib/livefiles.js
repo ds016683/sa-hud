@@ -138,6 +138,8 @@ export function groupVersions(files, { timeKey = 'created_at', rootKey = null } 
 }
 export const fmtStamp = (iso) => iso ? new Date(iso).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZone: 'America/Chicago' }) : ''
 
+// A live file whose note carries a web address (a deployed app, a shared page) opens there, not as stored bytes.
+export const urlOf = (r) => { const m = String(r?.note || '').match(/https?:\/\/[^\s)]+/); return m ? m[0] : null }
 export const fmtSize = (n) => !n ? '' : n > 1048576 ? `${(n / 1048576).toFixed(1)} MB` : n > 1024 ? `${Math.round(n / 1024)} KB` : `${n} B`
 export const extOf = (name) => (String(name || '').split('.').pop() || '').toLowerCase()
 
