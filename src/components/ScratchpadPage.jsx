@@ -158,22 +158,40 @@ export default function ScratchpadPage() {
     void ids.pages
     return new Blob(parts, { type: 'application/pdf' })
   }
-  const save = async () => {
-    const c = canvasRef.current; if (!c) return
+  // The whole document as one PDF file (every page with anything on it).
+  const buildDocument = async () => {
+    const c = canvasRef.current; if (!c) throw new Error('no sheet')
     const used = pages.current.filter(pg => pg.strokes.length || pg.bg)
-    if (!used.length) { setMsg('Nothing on the sheet yet.'); return }
-    setMsg('Saving')
+    if (!used.length) throw new Error('Nothing on the sheet yet.')
     const stamp = new Date().toLocaleString('en-CA', { timeZone: 'America/Chicago', hour12: false }).replace(/[^0-9]/g, '').slice(0, 12)
-    try {
-      const jpegs = []
-      for (const pg of used) { const off = renderPage(pg); const blob = await new Promise(res => off.toBlob(res, 'image/jpeg', 0.92)); jpegs.push(new Uint8Array(await blob.arrayBuffer())) }
-      const pdf = buildPdf(jpegs, c.width, c.height)
-      const file = new File([pdf], `sketch-${stamp}.pdf`, { type: 'application/pdf' })
-      const row = await putLiveFile(file, { objectiveId: tie || null, note: `sketch, ${used.length} page${used.length === 1 ? '' : 's'}${tie ? '' : ', untied'} from the iPad Scratchpad`, source: 'david' })
-      setMsg(`Saved ${row.name} (${used.length} page${used.length === 1 ? '' : 's'})${tie ? ', tied to the item' : ', in Live Files (tied to nothing yet)'}. The next Claude session sees it.`)
-      setRecent(r => [row, ...r].slice(0, 8))
-    } catch (e) { setMsg(`Could not save: ${e.message}`) }
+    const jpegs = []
+    for (const pg of used) {
+      const off = renderPage(pg)
+      const blob = await new Promise(res => off.toBlob(res, 'image/jpeg', 0.92))
+      if (!blob) throw new Error('the browser could not render a page to JPEG')
+      jpegs.push(new Uint8Array(await blob.arrayBuffer()))
+    }
+    const pdf = buildPdf(jpegs, c.width, c.height)
+    return { file: new File([pdf], `sketch-${stamp}.pdf`, { type: 'application/pdf' }), pages: used.length }
   }
+  const save = async () => {
+    setMsg('Saving')
+    try {
+      const { file, pages: n } = await buildDocument()
+      const row = await putLiveFile(file, { objectiveId: tie || null, note: `sketch, ${n} page${n === 1 ? '' : 's'}${tie ? '' : ', untied'} from the iPad Scratchpad`, source: 'david' })
+      setMsg(`Saved ${row.name} (${n} page${n === 1 ? '' : 's'})${tie ? ', tied to the item' : ', in Live Files (tied to nothing yet)'}. The next Claude session sees it.`)
+      setRecent(r => [row, ...r].slice(0, 8))
+    } catch (e) { setMsg(`Could not save: ${e?.message || String(e)}`) }
+  }
+  // Fallbacks when the upload will not go: the share sheet (AirDrop, Files, Mail) or a plain download.
+  const share = async () => {
+    try {
+      const { file } = await buildDocument()
+      if (navigator.share && (!navigator.canShare || navigator.canShare({ files: [file] }))) { await navigator.share({ files: [file], title: file.name }); setMsg(`Shared ${file.name}`); return }
+      download(file)
+    } catch (e) { if (e?.name !== 'AbortError') setMsg(`Could not share: ${e?.message || String(e)}`) }
+  }
+  const download = (file) => { const u = URL.createObjectURL(file); const a = document.createElement('a'); a.href = u; a.download = file.name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(u), 4000); setMsg(`Downloaded ${file.name}; drop it on the Board's Live Files window or the item's Workbench`) }
 
   const noSelect = { WebkitUserSelect: 'none', userSelect: 'none', WebkitTouchCallout: 'none' }
   return (
@@ -199,6 +217,8 @@ export default function ScratchpadPage() {
           {items.map(it => <option key={it.id} value={it.id}>{it.label}</option>)}
         </select>
         <button onClick={save} style={btn(GOLD, true)}><Save size={12} /> Save to Live Files</button>
+        <button onClick={share} title="Share sheet on the iPad (AirDrop, Files, Mail); a download on the Mac" style={btn(BLUE)}>Share</button>
+        <button onClick={async () => { try { download((await buildDocument()).file) } catch (e) { setMsg(`Could not build: ${e?.message || String(e)}`) } }} style={btn(INK2)}>Download PDF</button>
       </div>
 
       <div ref={wrapRef} className="pad-sheet" onDragOver={e => e.preventDefault()} onDrop={e => { e.preventDefault(); loadImage(e.dataTransfer?.files?.[0]) }} onPointerDown={e => { if (e.pointerType !== 'mouse') e.preventDefault() }} style={{ border: `1px solid ${PANEL_BORDER}`, borderRadius: 12, overflow: 'hidden', background: PAPER, touchAction: 'none' }}>
