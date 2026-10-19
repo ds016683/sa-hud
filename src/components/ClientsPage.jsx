@@ -226,11 +226,10 @@ export function Waterfall({ client, items, view = 'simple', onOpen, onAdd }) {
                       : <div style={{ position: 'absolute', left: 11, top: top - 6, width: 12, height: 12, transform: 'rotate(45deg)', borderRadius: 2, background: color, opacity: done ? 0.4 : 1, boxShadow: `0 0 0 2px ${NAVY_DEEP}` }} />}
                     {cardTop > top + 2 && <div style={{ position: 'absolute', left: 17, top, width: 1, height: cardTop - top + 10, background: `${color}66` }} />}
                     {view === 'simple' ? (
-                      <button onClick={() => openPop(it)} title={it.title} style={{
+                      <button onClick={() => openPop(it)} title={`${it.date_label || dayLabel(it.start_date)} · ${it.title}`} style={{
                         position: 'absolute', left: 30, right: 10, top: cardTop, height: size.card, textAlign: 'left', cursor: 'pointer', fontFamily: 'inherit',
                         background: active ? `${color}22` : 'rgba(255,255,255,0.045)', border: `1px solid ${active ? color : PANEL_BORDER}`, borderLeft: `3px solid ${color}`, borderRadius: 6, padding: '0 8px', color: INK, opacity: done ? 0.6 : 1, overflow: 'hidden', display: 'flex', alignItems: 'center', gap: 7,
                       }}>
-                        <span style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '0.6px', color, whiteSpace: 'nowrap', flexShrink: 0 }}>{it.date_label || dayLabel(it.start_date)}</span>
                         <span style={{ fontSize: 11.5, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', textDecoration: done ? 'line-through' : 'none', flex: 1 }}>{it.title}</span>
                         <span style={{ width: 6, height: 6, borderRadius: 99, background: STATUS_COLOR[it.status] || MUTED, flexShrink: 0 }} title={STATUS_LABEL[it.status]} />
                       </button>
