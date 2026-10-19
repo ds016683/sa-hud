@@ -49,7 +49,7 @@ export function LinkForm({ onAdd }) {
       <input value={u} onChange={e => setU(e.target.value)} placeholder="https://… the app's address" style={{ background: '#0A1B2B', color: INK, border: `1px solid ${PANEL_BORDER}`, borderRadius: 8, padding: '7px 10px', fontSize: 12.5, fontFamily: MONO }} />
       <input value={t} onChange={e => setT(e.target.value)} placeholder="Name (what it is)" style={{ background: '#0A1B2B', color: INK, border: `1px solid ${PANEL_BORDER}`, borderRadius: 8, padding: '7px 10px', fontSize: 12.5 }} />
       <input value={n} onChange={e => setN(e.target.value)} placeholder="One line of description (access code, who it is for)" style={{ background: '#0A1B2B', color: INK, border: `1px solid ${PANEL_BORDER}`, borderRadius: 8, padding: '7px 10px', fontSize: 12.5 }} />
-      <div style={{ display: 'flex', gap: 6 }}><button disabled={!/^https?:\/\//.test(u)} onClick={() => { onAdd(u.trim(), t.trim() || null, n.trim() || null); setU(''); setT(''); setN(''); setOpen(false) }} style={sbtn(GREEN)}>Add</button><button onClick={() => setOpen(false)} style={sbtn(INK2)}>Cancel</button></div>
+      <div style={{ display: 'flex', gap: 6 }}><button disabled={!(u.startsWith('http://') || u.startsWith('https://'))} onClick={() => { onAdd(u.trim(), t.trim() || null, n.trim() || null); setU(''); setT(''); setN(''); setOpen(false) }} style={sbtn(GREEN)}>Add</button><button onClick={() => setOpen(false)} style={sbtn(INK2)}>Cancel</button></div>
     </div>
   )
 }
