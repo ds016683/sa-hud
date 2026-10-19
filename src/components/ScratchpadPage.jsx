@@ -39,7 +39,7 @@ export default function ScratchpadPage() {
     redraw()
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const redraw = () => {
+  function redraw() {
     const c = canvasRef.current; if (!c) return
     const ctx = c.getContext('2d'); const dpr = window.devicePixelRatio || 1
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
@@ -49,7 +49,7 @@ export default function ScratchpadPage() {
     for (const st of strokes.current) drawStroke(ctx, st)
     if (live.current) drawStroke(ctx, live.current)
   }
-  const drawStroke = (ctx, st) => {
+  function drawStroke(ctx, st) {
     const pts = st.pts; if (!pts.length) return
     ctx.save(); ctx.lineCap = 'round'; ctx.lineJoin = 'round'
     ctx.globalCompositeOperation = st.eraser ? 'destination-out' : 'source-over'
