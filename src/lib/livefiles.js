@@ -168,3 +168,13 @@ export async function requestLiveFile(localPath, { objectiveId = null, projectId
   return (await q(supabase.from('live_files').insert(row).select()))[0]
 }
 export const isRequest = (r) => r && r.bucket === 'request'
+// A launch link (David, 10/19): a deployed app or shared page gets its own row, with a description and a Launch button.
+export const isLink = (r) => r && r.bucket === 'link'
+export async function addLiveLink(url, { title = null, objectiveId = null, projectId = null, note = null } = {}) {
+  const u = String(url || '').trim(); if (!/^https?:\/\//.test(u)) throw new Error('a full web address is required')
+  const { data: { session: s } } = await supabase.auth.getSession()
+  const name = title || u.replace(/^https?:\/\//, '').replace(/\/$/, '')
+  const prior = await q(supabase.from('live_files').select('id').eq('bucket', 'link').eq('path', u).is('filed_at', null).is('superseded_by', null))
+  if (prior.length) { await q(supabase.from('live_files').update({ name, note, objective_id: objectiveId, project_id: projectId }).eq('id', prior[0].id).select()); return prior[0] }
+  return (await q(supabase.from('live_files').insert({ user_id: s?.user?.id || null, name, bucket: 'link', path: u, size: null, mime: 'text/uri-list', objective_id: objectiveId, project_id: projectId, note, source: 'david', version: 1 }).select()))[0]
+}

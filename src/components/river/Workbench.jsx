@@ -6,8 +6,8 @@
 import { useCallback, useEffect, useState } from 'react'
 import { FileText, ExternalLink, Mail, Check } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
-import { listLiveFiles, putLiveFile, requestLiveFile, openLiveFile, draftMail, markFiled, groupVersions, fmtStamp, fmtSize, isRequest, urlOf } from '../../lib/livefiles'
-import { DropZone } from './LiveFiles'
+import { listLiveFiles, putLiveFile, requestLiveFile, openLiveFile, draftMail, markFiled, groupVersions, fmtStamp, fmtSize, isRequest, urlOf, isLink, addLiveLink } from '../../lib/livefiles'
+import { DropZone, LinkForm } from './LiveFiles'
 import { INK, INK2, GRAY, PANEL_BORDER, GOLD, BLUE, GREEN, RED, MONO, Label, KIND_COLOR } from './canon'
 
 const btn = (color = INK2, filled = false) => ({ display: 'inline-flex', alignItems: 'center', gap: 5, fontFamily: MONO, fontSize: 9.5, letterSpacing: '1px', textTransform: 'uppercase', padding: '5px 9px', borderRadius: 8, border: `1px solid ${filled ? color : `${color}66`}`, background: filled ? color : 'transparent', color: filled ? '#0A1B2B' : color, cursor: 'pointer' })
@@ -36,7 +36,14 @@ export default function WorkbenchTab({ project = null, objectiveId = null }) {
     g.rows.push(r)
   }
   groups.sort((a, b) => (a.key === 'mission' ? -1 : b.key === 'mission' ? 1 : 0))
-  const FileRow = ({ r, dim = false }) => (
+  const FileRow = ({ r, dim = false }) => isLink(r) ? (
+    <div style={{ ...rowStyle, border: `1px solid ${GREEN}44`, borderRadius: 10, padding: '10px 12px', margin: '6px 0', background: 'rgba(67,211,146,0.05)' }}>
+      <span style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '0.8px', textTransform: 'uppercase', color: GREEN }}>app</span>
+      <span style={{ flex: 1, minWidth: 0 }}><span style={{ fontSize: 14.5, fontWeight: 600, color: INK }}>{r.name}</span>{r.note && <span style={{ display: 'block', fontSize: 12.5, color: INK2, marginTop: 2 }}>{r.note}</span>}<span style={{ display: 'block', fontFamily: MONO, fontSize: 9.5, color: GRAY, marginTop: 3 }}>{r.path}</span></span>
+      <button onClick={() => window.open(r.path, '_blank', 'noopener')} style={{ ...btn(GREEN, true) }}><ExternalLink size={11} /> Launch</button>
+      <button onClick={() => { if (window.confirm(`Done with ${r.name}? The link leaves the Workbench.`)) act(() => markFiled(r.id), `Out of play: ${r.name}`) }} style={btn(INK2)}><Check size={11} /> Done</button>
+    </div>
+  ) : (
     <div style={{ ...rowStyle, opacity: dim ? 0.6 : 1, paddingLeft: dim ? 24 : 0 }}>
       <FileText size={14} color={isRequest(r) ? GOLD : dim ? GRAY : BLUE} />
       <span title={r.path} style={{ flex: 1, fontSize: dim ? 12.5 : 13.5, color: dim ? INK2 : INK, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.name}{r.version > 1 && <span style={{ fontFamily: MONO, fontSize: 9, letterSpacing: '1px', color: GOLD, marginLeft: 8 }}>v{r.version}</span>}{r.note && <span style={{ fontSize: 12, color: INK2, marginLeft: 10 }}>{r.note}</span>}</span>
@@ -54,6 +61,7 @@ export default function WorkbenchTab({ project = null, objectiveId = null }) {
       <div style={{ fontSize: 13, color: INK2, marginBottom: 12, lineHeight: 1.5 }}>{objectiveId ? 'What is live on this item: the files in play, one current version each. Sessions and Lumen put files here as they produce them; drop one in, or point at a path on the Mac.' : 'What is live on this mission: files in play on the mission itself and on its milestones. Sessions and Lumen put files here as they produce them; drop one in, or point at a path on the Mac.'}</div>
       <div style={{ marginBottom: 14 }}>
         <DropZone busy={busy} onFiles={(fs) => fs.forEach(f => act(() => putLiveFile(f, objectiveId ? { objectiveId } : { projectId: project.id }), `In play: ${f.name}`))} onPath={(pth) => act(() => requestLiveFile(pth, objectiveId ? { objectiveId } : { projectId: project.id }), 'Requested; the next Claude session on the Mac puts it in play')} />
+        <LinkForm onAdd={(u, t, n) => act(() => addLiveLink(u, objectiveId ? { title: t, note: n, objectiveId } : { title: t, note: n, projectId: project.id }), 'Launch link added')} />
       </div>
       {rows === null && <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '1.4px', textTransform: 'uppercase', color: GRAY, padding: '10px 0' }}>Reading the Ledger</div>}
       {rows && !rows.length && <div style={{ fontSize: 13, color: GRAY, padding: '10px 0' }}>Nothing in play {objectiveId ? 'on this item' : 'on this mission'} yet.</div>}

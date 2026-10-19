@@ -15,7 +15,7 @@ import { fetchSteps, addStep, toggleStep, removeStep, listObjectiveArtifacts, li
 import { renderMarkdown } from './MeetingCloseout'
 import SessionBoard from './SessionBoard'
 import { recall } from '../../lib/recall'
-import { draftMail, groupVersions, fmtStamp, requestLiveFile, listLiveFiles, isRequest } from '../../lib/livefiles'
+import { draftMail, groupVersions, fmtStamp, requestLiveFile, listLiveFiles, isRequest, isLink } from '../../lib/livefiles'
 import { DropZone } from './LiveFiles'
 import WorkbenchTab from './Workbench'
 import { INK, INK2, GRAY, PANEL_BORDER, GOLD, GOLD_BRIGHT, BLUE, GREEN, RED, MONO, SERIF, S, Label, KIND_COLOR, KindIcon, NORTH_STAR_LABEL, NORTH_STAR_ASK, LABEL } from './canon'
@@ -172,7 +172,7 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
   const [olderOpen, setOlderOpen] = useState({})
   const [requests, setRequests] = useState([])
   const objKey = item.objective_id || null
-  useEffect(() => { let on = true; if (!objKey) { Promise.resolve().then(() => { if (on) setRequests([]) }); return () => { on = false } } listLiveFiles({ objectiveId: objKey }).then(r => { if (on) setRequests((r.rows || []).filter(isRequest)) }).catch(() => {}); return () => { on = false } }, [objKey, rel])
+  useEffect(() => { let on = true; if (!objKey) { Promise.resolve().then(() => { if (on) setRequests([]) }); return () => { on = false } } listLiveFiles({ objectiveId: objKey }).then(r => { if (on) setRequests((r.rows || []).filter(x => isRequest(x) || isLink(x))) }).catch(() => {}); return () => { on = false } }, [objKey, rel])
   useEffect(() => { let on = true; supabase.from('session_boards').select('id,project,title,updated_at,board').order('updated_at', { ascending: false }).limit(24).then(({ data }) => { if (on) setRecentBoards(Array.isArray(data) ? data : []) }); return () => { on = false } }, [])
   const tieBoard = async (b) => { if (!obj) return; const { error } = await supabase.from('session_boards').update({ board: { ...(b.board || {}), objective_id: obj.id } }).eq('id', b.id); if (error) { setMsg(`Could not tie: ${error.message}`); return } setMsg(`Tied ${b.title}`); load() }
   const load = useCallback(() => loadRelated(item).then(setRel).catch(e => { console.warn('item detail', e.message); setRel({ project: null, task: null, artifacts: [], boards: [], projectFiles: [], storeFiles: [], meetings: [], loadout: null }) }), [item])
@@ -378,7 +378,10 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
                   <div style={{ marginBottom: 12 }}>
                     <DropZone busy={objBusy} onFiles={(fs) => fs.forEach(f => uploadNow(f))} onPath={(pth) => act(() => requestLiveFile(pth, { objectiveId: obj.id }), 'Requested; the next Claude session on the Mac puts it in play')} />
                   </div>
-                  {requests.map(r => (
+                  {requests.filter(isLink).map(r => (
+                    <div key={r.id} style={{ ...rowStyle, border: `1px solid ${GREEN}44`, borderRadius: 10, padding: '10px 12px', margin: '6px 0', background: 'rgba(67,211,146,0.05)' }}><span style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '0.8px', textTransform: 'uppercase', color: GREEN }}>app</span><span style={{ flex: 1, minWidth: 0 }}><span style={{ fontSize: 14.5, fontWeight: 600, color: INK }}>{r.name}</span>{r.note && <span style={{ display: 'block', fontSize: 12.5, color: INK2, marginTop: 2 }}>{r.note}</span>}<span style={{ display: 'block', fontFamily: MONO, fontSize: 9.5, color: GRAY, marginTop: 3 }}>{r.path}</span></span><button onClick={() => window.open(r.path, '_blank', 'noopener')} style={btn(GREEN, true)}><ExternalLink size={11} /> Launch</button></div>
+                  ))}
+                  {requests.filter(isRequest).map(r => (
                     <div key={r.id} style={{ ...rowStyle, opacity: 0.85 }}><FileText size={14} color={GOLD} /><span style={{ flex: 1, fontSize: 13.5, color: INK, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={r.path}>{r.name}</span><span style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '1px', textTransform: 'uppercase', color: GOLD }}>waiting for a session on the Mac</span></div>
                   ))}
                   {groupVersions(rel.objFiles || [], { timeKey: 'updated_at' }).map(g => {

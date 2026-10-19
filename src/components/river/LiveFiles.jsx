@@ -4,7 +4,7 @@
 // Open reads it; Done takes it out of view (the filing system comes later).
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { Paperclip, X as XIcon, ExternalLink, Check, Trash2, Upload, Mail } from 'lucide-react'
-import { listLiveFiles, putLiveFile, linkLiveFile, openLiveFile, markFiled, removeLiveFile, noteLiveFile, draftMail, groupVersions, fmtStamp, fmtSize, extOf, requestLiveFile, isRequest, urlOf } from '../../lib/livefiles'
+import { listLiveFiles, putLiveFile, linkLiveFile, openLiveFile, markFiled, removeLiveFile, noteLiveFile, draftMail, groupVersions, fmtStamp, fmtSize, extOf, requestLiveFile, isRequest, urlOf, isLink, addLiveLink } from '../../lib/livefiles'
 import { INK, INK2, GRAY, PANEL_BORDER, GOLD, BLUE, GREEN, RED, MONO, SERIF, Label, KIND_COLOR, LABEL } from './canon'
 
 const EXT_COLOR = { xlsx: GREEN, xls: GREEN, csv: GREEN, pptx: GOLD, ppt: GOLD, key: GOLD, docx: BLUE, doc: BLUE, pdf: RED, md: INK2, txt: INK2, html: BLUE, png: INK2, jpg: INK2, jpeg: INK2 }
@@ -36,6 +36,20 @@ export function DropZone({ onFiles, onPath, children, busy = false }) {
           {children}
         </div>
       </div>
+    </div>
+  )
+}
+
+// Add a launch link: a deployed app or a shared page, with a line of description.
+export function LinkForm({ onAdd }) {
+  const [u, setU] = useState(''); const [t, setT] = useState(''); const [n, setN] = useState(''); const [open, setOpen] = useState(false)
+  if (!open) return <button onClick={() => setOpen(true)} style={{ ...sbtn(GREEN), marginTop: 8 }}>+ Launch link</button>
+  return (
+    <div style={{ display: 'grid', gap: 6, marginTop: 8, padding: '10px 12px', border: `1px solid ${GREEN}44`, borderRadius: 10 }}>
+      <input value={u} onChange={e => setU(e.target.value)} placeholder="https://… the app's address" style={{ background: '#0A1B2B', color: INK, border: `1px solid ${PANEL_BORDER}`, borderRadius: 8, padding: '7px 10px', fontSize: 12.5, fontFamily: MONO }} />
+      <input value={t} onChange={e => setT(e.target.value)} placeholder="Name (what it is)" style={{ background: '#0A1B2B', color: INK, border: `1px solid ${PANEL_BORDER}`, borderRadius: 8, padding: '7px 10px', fontSize: 12.5 }} />
+      <input value={n} onChange={e => setN(e.target.value)} placeholder="One line of description (access code, who it is for)" style={{ background: '#0A1B2B', color: INK, border: `1px solid ${PANEL_BORDER}`, borderRadius: 8, padding: '7px 10px', fontSize: 12.5 }} />
+      <div style={{ display: 'flex', gap: 6 }}><button disabled={!/^https?:\/\//.test(u)} onClick={() => { onAdd(u.trim(), t.trim() || null, n.trim() || null); setU(''); setT(''); setN(''); setOpen(false) }} style={sbtn(GREEN)}>Add</button><button onClick={() => setOpen(false)} style={sbtn(INK2)}>Cancel</button></div>
     </div>
   )
 }
@@ -97,6 +111,7 @@ export default function LiveFilesModal({ onClose, filter = null, items = [], onC
               {items.map(it => <option key={it.id} value={it.id}>{itemLabel(it)}{it.stashed ? ' (Stash)' : ''}</option>)}
             </select>
           </DropZone>
+          <LinkForm onAdd={(u, t, n) => act(() => addLiveLink(u, { title: t, note: n, objectiveId: dropTarget || null }), 'Launch link added')} />
         </div>
         {missing && <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '1px', color: GOLD, textTransform: 'uppercase', marginBottom: 10 }}>The live_files table is not in the Ledger yet. Run sql/2026-10-16-live-files.sql.</div>}
         {rows && !rows.length && !missing && <div style={{ fontSize: 13, color: GRAY, padding: '8px 0 16px' }}>Nothing in play{scope === 'item' ? ' on this item' : ''}. Files a session or Lumen puts in play land here; drop one in above.</div>}
@@ -116,6 +131,20 @@ export default function LiveFilesModal({ onClose, filter = null, items = [], onC
               </div>
               <div style={{ display: 'grid', gap: 4 }}>
                 {groupVersions(g.rows, { timeKey: 'created_at', rootKey: 'path' }).map(fam => [fam.current, ...(olderOpen[fam.key] ? fam.older : [])].map((r, idx) => { const isOld = idx > 0
+                  if (isLink(r)) return (
+                    <div key={r.id} style={{ display: 'grid', gridTemplateColumns: '44px 1fr auto', gap: 10, alignItems: 'center', padding: '10px 10px', border: `1px solid ${GREEN}55`, borderRadius: 10, background: 'rgba(67,211,146,0.05)' }}>
+                      <span style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '0.8px', textTransform: 'uppercase', color: GREEN, border: `1px solid ${GREEN}55`, borderRadius: 6, padding: '3px 0', textAlign: 'center' }}>app</span>
+                      <div style={{ minWidth: 0 }}>
+                        <div style={{ fontSize: 14.5, fontWeight: 600, color: INK }}>{r.name}</div>
+                        {r.note && <div style={{ fontSize: 12.5, color: INK2, marginTop: 2 }}>{r.note}</div>}
+                        <div style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '0.6px', color: GRAY, marginTop: 3 }}>{r.path} · {fmtStamp(r.created_at)}</div>
+                      </div>
+                      <div style={{ display: 'flex', gap: 5, alignItems: 'center' }}>
+                        <button onClick={() => window.open(r.path, '_blank', 'noopener')} style={{ ...sbtn(GREEN), background: GREEN, color: '#0A1B2B', fontWeight: 600 }}><ExternalLink size={10} /> Launch</button>
+                        <button onClick={() => { if (window.confirm(`Done with ${r.name}? The link leaves Live Files.`)) act(() => markFiled(r.id), `Out of play: ${r.name}`) }} title="Done: out of Live Files" style={sbtn(INK2)}><Check size={10} /> Done</button>
+                      </div>
+                    </div>
+                  )
                   const ext = extOf(r.name); const c = EXT_COLOR[ext] || INK2
                   return (
                     <div key={r.id} style={{ display: 'grid', gridTemplateColumns: '44px 1fr auto', gap: 10, alignItems: 'center', padding: '8px 10px', border: `1px solid ${PANEL_BORDER}`, borderRadius: 10, background: 'rgba(255,255,255,0.02)' }}>
