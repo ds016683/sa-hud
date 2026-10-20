@@ -4,8 +4,29 @@
     {
       "name": "sa-hud-dev",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev"],
+      "runtimeArgs": [
+        "run",
+        "dev"
+      ],
       "port": 5173
+    },
+    {
+      "name": "hud-board",
+      "runtimeExecutable": "bash",
+      "runtimeArgs": [
+        "-c",
+        "cd /Users/davidsmith/.claude/hud-board && exec python3 -m http.server 4271"
+      ],
+      "port": 4271
+    },
+    {
+      "name": "deck-static",
+      "runtimeExecutable": "bash",
+      "runtimeArgs": [
+        "-c",
+        "cd /Users/davidsmith/builds/apnc-speech/.claude/worktrees/priceless-heyrovsky-97f261/public/speeches && exec python3 -m http.server 4272"
+      ],
+      "port": 4272
     }
   ]
 }
