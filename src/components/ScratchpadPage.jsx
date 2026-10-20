@@ -5,7 +5,7 @@
 // to the next Claude session. The current sheet autosaves in this browser so
 // a reload does not lose it. Milestone 16 on Lumen Production.
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Eraser, Undo2, Trash2, Save, Image as ImageIcon, Pen } from 'lucide-react'
+import { Eraser, Undo2, Trash2, Save, Image as ImageIcon, Pen, FilePlus } from 'lucide-react'
 import { putLiveFile, listLiveFiles, openLiveFile, fmtStamp } from '../lib/livefiles'
 import { fetchLoadout, fetchStash } from '../lib/loadout'
 import { S, Eyebrow, Serif, Label, INK, INK2, GRAY, GOLD, BLUE, GREEN, RED, PURPLE, MONO, PANEL_BORDER, LABEL } from './river/canon'
@@ -22,6 +22,8 @@ export default function ScratchpadPage() {
   // A document is pages; each page is strokes [{ color, width, eraser, pts: [{x,y,p}] }] in CSS pixels plus an optional background image.
   const pages = useRef([{ strokes: [], bg: null, bgSrc: null }])
   const pageIx = useRef(0)
+  // Working memory vs Live Files (David 10/20): dirty = ink or an image changed since the last save.
+  const dirty = useRef(false)
   const strokes = { get current() { return pages.current[pageIx.current].strokes }, set current(v) { pages.current[pageIx.current].strokes = v } }
   const bg = { get current() { return pages.current[pageIx.current].bg }, set current(v) { pages.current[pageIx.current].bg = v; pages.current[pageIx.current].bgSrc = v ? v.src : null } }
   const live = useRef(null)
@@ -96,7 +98,7 @@ export default function ScratchpadPage() {
       const src = saved?.pages ? saved.pages : saved?.strokes ? [{ strokes: saved.strokes, bg: saved.bg || null }] : null
       if (src) {
         pages.current = src.map(pg => ({ strokes: pg.strokes || [], bg: null, bgSrc: pg.bg || null }))
-        pageIx.current = Math.min(saved.page || 0, pages.current.length - 1); setPageNo(pageIx.current); setPageCount(pages.current.length); setCount(strokes.current.length)
+        pageIx.current = Math.min(saved.page || 0, pages.current.length - 1); dirty.current = !!saved.dirty; setPageNo(pageIx.current); setPageCount(pages.current.length); setCount(strokes.current.length)
         pages.current.forEach(pg => { if (pg.bgSrc) { const im = new Image(); im.onload = () => { pg.bg = im; redraw() }; im.src = pg.bgSrc } })
         redraw()
       }
@@ -110,7 +112,9 @@ export default function ScratchpadPage() {
     return () => { on = false }
   }, [])
 
-  const persist = () => { try { localStorage.setItem(LS, JSON.stringify({ v: 2, page: pageIx.current, pages: pages.current.map(pg => ({ strokes: pg.strokes, bg: pg.bgSrc })) })) } catch { /* quota */ } }
+  const persist = () => { try { localStorage.setItem(LS, JSON.stringify({ v: 2, page: pageIx.current, dirty: dirty.current, pages: pages.current.map(pg => ({ strokes: pg.strokes, bg: pg.bgSrc })) })) } catch { /* quota */ } }
+  const touch = () => { dirty.current = true; persist() }
+  const hasContent = () => pages.current.some(pg => pg.strokes.length || pg.bg || pg.bgSrc)
   const pos = (e) => { const r = canvasRef.current.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top, p: e.pointerType === 'pen' ? Math.max(0.15, e.pressure || 0.5) : 0.5 } }
   const down = (e) => { if (e.pointerType === 'touch' && e.isPrimary === false) return; e.preventDefault(); try { window.getSelection()?.removeAllRanges() } catch { /* none */ } canvasRef.current.setPointerCapture(e.pointerId); live.current = { color, width, eraser, pts: [pos(e)] }; redraw() }
   const move = (e) => {
@@ -119,13 +123,22 @@ export default function ScratchpadPage() {
     for (const ev of evs) live.current.pts.push(pos(ev))
     redraw()
   }
-  const up = (e) => { if (!live.current) return; e.preventDefault(); strokes.current.push(live.current); live.current = null; redraw(); persist(); setCount(strokes.current.length) }
+  const up = (e) => { if (!live.current) return; e.preventDefault(); strokes.current.push(live.current); live.current = null; redraw(); touch(); setCount(strokes.current.length) }
   const goPage = (i) => { if (i < 0 || i >= pages.current.length) return; pageIx.current = i; setPageNo(i); setCount(strokes.current.length); redraw(); persist() }
   const addPage = () => { pages.current.push({ strokes: [], bg: null, bgSrc: null }); setPageCount(pages.current.length); goPage(pages.current.length - 1) }
-  const deletePage = () => { if (pages.current.length === 1) { clear(); return } if (!window.confirm(`Delete page ${pageIx.current + 1}?`)) return; pages.current.splice(pageIx.current, 1); setPageCount(pages.current.length); goPage(Math.min(pageIx.current, pages.current.length - 1)) }
-  const undo = () => { strokes.current.pop(); redraw(); persist(); setCount(strokes.current.length) }
-  const clear = () => { if (!strokes.current.length && !bg.current) return; if (!window.confirm('Clear this page?')) return; strokes.current = []; bg.current = null; redraw(); persist(); setCount(strokes.current.length) }
-  const loadImage = (file) => { if (!file || !file.type.startsWith('image/')) return; const rd = new FileReader(); rd.onload = () => { const im = new Image(); im.onload = () => { bg.current = im; redraw(); persist(); setCount(strokes.current.length) }; im.src = rd.result }; rd.readAsDataURL(file) }
+  const deletePage = () => { if (pages.current.length === 1) { clear(); return } if (!window.confirm(`Delete page ${pageIx.current + 1}?`)) return; pages.current.splice(pageIx.current, 1); dirty.current = true; setPageCount(pages.current.length); goPage(Math.min(pageIx.current, pages.current.length - 1)) }
+  const scrub = () => { pages.current = [{ strokes: [], bg: null, bgSrc: null }]; pageIx.current = 0; dirty.current = false; setPageNo(0); setPageCount(1); setCount(0); redraw(); persist() }
+  // New Sketch (David 10/20): scrub working memory. If the sketch is not in Live Files yet, ask to save it first.
+  const newSketch = async () => {
+    if (hasContent() && dirty.current) {
+      if (window.confirm('This sketch is not in Live Files yet. Save it before starting a new one?')) { const ok = await save(); if (!ok) return }
+      else if (!window.confirm('Discard it and start a new sketch?')) return
+    }
+    scrub(); setMsg('New sketch. Working memory is clear.')
+  }
+  const undo = () => { strokes.current.pop(); redraw(); touch(); setCount(strokes.current.length) }
+  const clear = () => { if (!strokes.current.length && !bg.current) return; if (!window.confirm('Clear this page?')) return; strokes.current = []; bg.current = null; redraw(); touch(); setCount(strokes.current.length) }
+  const loadImage = (file) => { if (!file || !file.type.startsWith('image/')) return; const rd = new FileReader(); rd.onload = () => { const im = new Image(); im.onload = () => { bg.current = im; redraw(); touch(); setCount(strokes.current.length) }; im.src = rd.result }; rd.readAsDataURL(file) }
   useEffect(() => { const onPaste = (e) => { const f = [...(e.clipboardData?.files || [])].find(x => x.type.startsWith('image/')); if (f) loadImage(f) }; window.addEventListener('paste', onPaste); return () => window.removeEventListener('paste', onPaste) }, [])
 
   // Render any page to an offscreen canvas at the sheet's size.
@@ -186,7 +199,9 @@ export default function ScratchpadPage() {
       const row = await putLiveFile(file, { objectiveId: tie || null, note: `sketch, ${n} page${n === 1 ? '' : 's'}${tie ? '' : ', untied'} from the iPad Scratchpad`, source: 'david' })
       setMsg(`Saved ${row.name} (${n} page${n === 1 ? '' : 's'})${tie ? ', tied to the item' : ', in Live Files (tied to nothing yet)'}. The next Claude session sees it.`)
       setRecent(r => [row, ...r].slice(0, 8))
-    } catch (e) { setMsg(`Could not save: ${e?.message || String(e)}`) }
+      dirty.current = false; persist()
+      return true
+    } catch (e) { setMsg(`Could not save: ${e?.message || String(e)}`); return false }
   }
   // Fallbacks when the upload will not go: the share sheet (AirDrop, Files, Mail) or a plain download.
   const share = async () => {
@@ -233,6 +248,7 @@ export default function ScratchpadPage() {
         <span style={{ fontSize: 13, fontWeight: 600, color: LABEL, marginRight: 4 }}>Pages</span>
         {Array.from({ length: pageCount }, (_, i) => <button key={i} onClick={() => goPage(i)} style={{ ...btn(pageNo === i ? GOLD : INK2, pageNo === i), padding: '5px 10px' }}>{i + 1}</button>)}
         <button onClick={addPage} style={btn(GREEN)}>+ Page</button>
+        <button onClick={newSketch} style={btn(GOLD)}><FilePlus size={12} /> New Sketch</button>
         <button onClick={deletePage} style={btn(RED)}>Delete page</button>
         <span style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '0.8px', color: GRAY, marginLeft: 6 }}>Save collates every page into one PDF</span>
       </div>
