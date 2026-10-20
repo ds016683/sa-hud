@@ -619,11 +619,63 @@ export const TOOLS = [
     inputSchema: { type: 'object', properties: { side_mission: { type: 'string' }, project: { type: 'string' } }, required: [] },
   },
   {
+    name: 'fetch_url',
+    description: "Read a web page (10/20): fetch a URL and return its text (title, headings, body, links kept as text), up to about 12k characters, with an optional find to jump to the part that matters. Use it for a conference agenda, a session description, a venue page, a news item, a document David points you at. Not for David's own mail or files (those have their own tools).",
+    inputSchema: { type: 'object', properties: { url: { type: 'string' }, find: { type: 'string', description: 'a word or phrase; the excerpt centers on its first match' }, max_chars: { type: 'number' } }, required: ['url'] },
+  },
+  {
+    name: 'web_search',
+    description: "Search the web (10/20): a keyless DuckDuckGo search returning up to 8 results (title, url, snippet). Use it to find a conference site, an agenda, a person, a venue, then fetch_url the best hit. Say what you searched and read; never present a snippet as something David wrote.",
+    inputSchema: { type: 'object', properties: { query: { type: 'string' } }, required: ['query'] },
+  },
+  {
     name: 'list_standing_orders',
     description: 'The active standing orders Lumen is holding for David.',
     inputSchema: { type: 'object', properties: {} },
   },
 ]
+
+// Web hands (10/20): a page reader and a keyless search, so "find it on their
+// website" is something Lumen can do instead of decline.
+const UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125 Safari/537.36 Lumen/1.0'
+const htmlToText = (html) => {
+  let s = String(html)
+  s = s.replace(/<script[\s\S]*?<\/script>/gi, ' ').replace(/<style[\s\S]*?<\/style>/gi, ' ').replace(/<noscript[\s\S]*?<\/noscript>/gi, ' ').replace(/<!--[\s\S]*?-->/g, ' ')
+  s = s.replace(/<\/(p|div|li|tr|h[1-6]|section|article|header|footer|br|blockquote|dd|dt)>/gi, '\n').replace(/<(br|hr)\s*\/?>/gi, '\n')
+  s = s.replace(/<a\s[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/gi, (m, href, txt) => `${txt.replace(/<[^>]+>/g, '')} (${href})`)
+  s = s.replace(/<[^>]+>/g, ' ')
+  s = s.replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;|&rsquo;|&lsquo;/g, "'").replace(/&ldquo;|&rdquo;/g, '"').replace(/&#(\d+);/g, (m, n) => String.fromCharCode(Number(n)))
+  return s.replace(/[ \t]+/g, ' ').replace(/\s*\n\s*/g, '\n').replace(/\n{3,}/g, '\n\n').trim()
+}
+async function fetchUrlText(url, { find = null, max = 12000 } = {}) {
+  if (!/^https?:\/\//i.test(url)) throw new Error('url must start with http:// or https://')
+  const ctrl = new AbortController(); const timer = setTimeout(() => ctrl.abort(), 15000)
+  let res
+  try { res = await fetch(url, { headers: { 'user-agent': UA, accept: 'text/html,application/xhtml+xml,text/plain,application/json;q=0.9,*/*;q=0.5' }, redirect: 'follow', signal: ctrl.signal }) } finally { clearTimeout(timer) }
+  const type = res.headers.get('content-type') || ''
+  const raw = await res.text()
+  const title = (raw.match(/<title[^>]*>([\s\S]*?)<\/title>/i) || [])[1]?.replace(/\s+/g, ' ').trim() || null
+  let text = /html|xml/i.test(type) || /^\s*</.test(raw) ? htmlToText(raw) : raw
+  const total = text.length
+  if (find) { const at = text.toLowerCase().indexOf(String(find).toLowerCase()); if (at >= 0) text = text.slice(Math.max(0, at - Math.floor(max / 4))) }
+  return { ok: res.ok, status: res.status, url: res.url || url, title, chars: total, truncated: text.length > max, text: text.slice(0, max) }
+}
+async function webSearch(query) {
+  const ctrl = new AbortController(); const timer = setTimeout(() => ctrl.abort(), 15000)
+  let res
+  try { res = await fetch('https://html.duckduckgo.com/html/?q=' + encodeURIComponent(query), { headers: { 'user-agent': UA, accept: 'text/html' }, signal: ctrl.signal }) } finally { clearTimeout(timer) }
+  const html = await res.text()
+  const out = []
+  const re = /<a[^>]*class="result__a"[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>[\s\S]*?(?:<a[^>]*class="result__snippet"[^>]*>([\s\S]*?)<\/a>)?/gi
+  let m
+  while ((m = re.exec(html)) && out.length < 8) {
+    let href = m[1]
+    const uddg = href.match(/[?&]uddg=([^&]+)/); if (uddg) href = decodeURIComponent(uddg[1])
+    if (href.startsWith('//')) href = 'https:' + href
+    out.push({ title: htmlToText(m[2]), url: href, snippet: htmlToText(m[3] || '') })
+  }
+  return { ok: res.ok, status: res.status, query, results: out }
+}
 
 export async function callTool(name, args = {}) {
   const TODAY = chiToday()
@@ -1461,6 +1513,14 @@ export async function callTool(name, args = {}) {
     }
     case 'list_standing_orders': {
       return JSON.stringify(await sb('standing_orders?select=id,text,cadence,next_at,last_fired_at&active=eq.true&order=next_at.asc.nullslast'), null, 2)
+    }
+    case 'fetch_url': {
+      try { return JSON.stringify(await fetchUrlText(args.url, { find: args.find || null, max: Math.min(Math.max(Number(args.max_chars) || 12000, 2000), 40000) }), null, 1) }
+      catch (e) { return JSON.stringify({ ok: false, error: e.name === 'AbortError' ? 'timed out after 15s' : e.message }) }
+    }
+    case 'web_search': {
+      try { return JSON.stringify(await webSearch(String(args.query || '')), null, 1) }
+      catch (e) { return JSON.stringify({ ok: false, error: e.name === 'AbortError' ? 'timed out after 15s' : e.message }) }
     }
     default:
       throw new Error(`unknown tool: ${name}`)

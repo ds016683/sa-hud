@@ -1,8 +1,7 @@
 import { useState, useEffect } from 'react'
 import {
   LayoutGrid, Network, LogOut, Menu, X, Target, Users,
-  FileText, Wallet, CreditCard, ListChecks, Compass, Waves, CalendarDays, BookOpen, Activity, Award, Wrench, GraduationCap, Sparkles, Archive as ArchiveIcon, FolderOpen, PenTool, Briefcase,
-} from 'lucide-react'
+  FileText, Wallet, CreditCard, ListChecks, Compass, Waves, CalendarDays, BookOpen, Activity, Award, Wrench, GraduationCap, Sparkles, Archive as ArchiveIcon, FolderOpen, PenTool, Briefcase, Mic } from 'lucide-react'
 import { getSession, onAuthStateChange, signOut } from './lib/auth'
 import { statusFor } from './constants/saDesign'
 import { fetchProtocolState } from './lib/protocol'
@@ -30,6 +29,7 @@ import AccomplishmentsPage from './components/AccomplishmentsPage'
 import MaintenancePage from './components/MaintenancePage'
 import LearningPage from './components/LearningPage'
 import ScratchpadPage from './components/ScratchpadPage'
+import SpeechesPage from './components/SpeechesPage'
 import AnthropicPage from './components/AnthropicPage'
 
 const NAV_ITEMS = [
@@ -40,6 +40,7 @@ const NAV_ITEMS = [
   { id: 'accomplishments',  label: 'Accomplishments',       icon: Award,          group: 'MONITOR' },
   { id: 'notes',            label: 'Notes',                 icon: FileText,       group: 'MONITOR' },
   { id: 'scratchpad',       label: 'Scratchpad',            icon: PenTool,        group: 'MONITOR' },
+  { id: 'speeches',         label: 'Speeches',              icon: Mic,            group: 'MONITOR' },
   { id: 'main-missions',    label: 'Main Missions',         icon: MissionMark,    group: 'MISSION BOARD' },
   { id: 'clients',          label: 'Clients',               icon: Briefcase,      group: 'MISSION BOARD' },
   { id: 'side-missions',    label: 'Side Missions',         icon: Target,         group: 'MISSION BOARD' },
@@ -276,6 +277,7 @@ export default function App() {
           {active === 'accomplishments'  && <AccomplishmentsPage />}
           {active === 'notes'            && <MeetingNotesPage />}
           {active === 'scratchpad'       && <ScratchpadPage />}
+          {active === 'speeches'         && <SpeechesPage />}
           {active === 'main-missions'    && <ProjectsPage deepLink={params} onNavigate={setRoute} />}
           {active === 'clients'          && <ClientsPage deepLink={params} onNavigate={setRoute} />}
           {active === 'side-missions'    && <SideMissionsPage onNavigate={setRoute} />}

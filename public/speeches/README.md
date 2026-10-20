@@ -1,0 +1,1 @@
+Speech decks live here, one folder per speech slug (see src/content/speeches.js), each a self-contained index.html with its brand/ folder, built with the apnc-deck or th-deck skill. Served at /speeches/<slug>/ once pushed to main.
