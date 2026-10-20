@@ -44,52 +44,60 @@ body { overflow: hidden; }
 .foot span { border-left: 1px solid var(--apnc-line); padding-left: 12px; font-size: 10px; font-weight: 600; letter-spacing: .2em; text-transform: uppercase; color: rgba(91,86,80,.7); }
 
 /* ---- type ---- */
-.eyebrow { font-size: 12px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--apnc-red); }
+.eyebrow { font-size: 14px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--apnc-red); }
 h1, h2 { font-weight: 700; letter-spacing: -.02em; line-height: 1.1; color: var(--apnc-ink); }
 h1 { font-size: 64px; }
-h2 { font-size: 50px; margin-top: 10px; max-width: 24ch; }
+h2 { font-size: 52px; margin-top: 12px; max-width: 24ch; }
 .red { color: var(--apnc-red); }
-.lead { margin-top: 18px; font-size: 21px; line-height: 1.6; color: var(--apnc-ink-soft); max-width: 60ch; }
+.lead { margin-top: 20px; font-size: 24px; line-height: 1.55; color: var(--apnc-ink-soft); max-width: 56ch; }
 .sub { margin-top: 14px; font-size: 24px; font-weight: 500; color: var(--apnc-ink-soft); }
 .well { margin-top: 40px; max-width: 1000px; border: 1px solid var(--apnc-red); background: color-mix(in srgb, var(--apnc-red-soft) 30%, white); border-radius: 18px; padding: 26px 38px; font-size: 20px; line-height: 1.6; color: var(--apnc-ink); }
 .logos { display: flex; align-items: center; justify-content: center; gap: 64px; margin-bottom: 48px; }
 .logos img { height: 88px; width: auto; }
+.ico { width: 56px; height: 56px; stroke: var(--apnc-red); fill: none; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; }
+.ico.ink { stroke: var(--apnc-ink); }
+.ico.white { stroke: #fff; }
 
 /* ---- cards ---- */
-.grid { display: grid; gap: 20px; margin-top: 36px; }
+.grid { display: grid; gap: 24px; margin-top: 40px; }
 .cols-2 { grid-template-columns: repeat(2, 1fr); } .cols-3 { grid-template-columns: repeat(3, 1fr); } .cols-4 { grid-template-columns: repeat(4, 1fr); }
-.card { border: 1px solid var(--apnc-line); background: var(--apnc-paper); border-radius: 20px; padding: 26px 28px; }
+.card { border: 1px solid var(--apnc-line); background: var(--apnc-paper); border-radius: 22px; padding: 32px 34px; }
 .card.tint { background: var(--apnc-canvas); }
 .card.accent { border-color: var(--apnc-red); background: var(--apnc-red); color: #fff; }
-.card h3 { font-size: 22px; font-weight: 700; color: var(--apnc-red-dark); }
-.card.accent h3, .card.accent p { color: #fff; }
-.card p { margin-top: 10px; font-size: 15px; line-height: 1.6; color: var(--apnc-ink-soft); }
-.card .big { font-size: 24px; line-height: 1.4; color: var(--apnc-ink); font-weight: 600; margin-top: 14px; }
-.card .num { font-family: var(--mono); font-size: 12px; font-weight: 700; letter-spacing: .2em; color: var(--apnc-red); margin-bottom: 10px; }
-.card ul { margin-top: 12px; padding: 0; list-style: none; }
-.card li, .list li { display: flex; gap: 10px; align-items: flex-start; font-size: 14px; line-height: 1.5; color: var(--apnc-ink-soft); padding: 3px 0; }
-.card li::before, .list li::before { content: ""; flex: none; width: 6px; height: 6px; border-radius: 50%; background: rgba(26,23,20,.3); margin-top: 8px; }
+.card h3 { font-size: 26px; font-weight: 700; color: var(--apnc-red-dark); letter-spacing: -.01em; }
+.card.accent h3, .card.accent p, .card.accent li { color: #fff; }
+.card p { margin-top: 12px; font-size: 17px; line-height: 1.6; color: var(--apnc-ink-soft); }
+.card .big { font-size: 26px; line-height: 1.35; color: var(--apnc-ink); font-weight: 600; margin-top: 16px; letter-spacing: -.01em; }
+.card .q { font-size: 21px; line-height: 1.4; color: var(--apnc-ink); font-weight: 600; margin-top: 14px; }
+.card .num { font-family: var(--mono); font-size: 12px; font-weight: 700; letter-spacing: .2em; color: var(--apnc-red); margin-bottom: 12px; }
+.card .ico { margin-bottom: 18px; }
+.card .ex { margin-top: 18px; font-size: 12px; font-weight: 700; letter-spacing: .15em; text-transform: uppercase; color: var(--apnc-ink-soft); }
+.card ul { margin-top: 8px; padding: 0; list-style: none; }
+.card li, .list li { display: flex; gap: 10px; align-items: flex-start; font-size: 16px; line-height: 1.5; color: var(--apnc-ink-soft); padding: 3px 0; }
+.card li::before, .list li::before { content: ""; flex: none; width: 6px; height: 6px; border-radius: 50%; background: rgba(26,23,20,.3); margin-top: 9px; }
+.card.accent li::before { background: rgba(255,255,255,.6); }
 .pill { display: inline-block; border-radius: 999px; padding: 8px 28px; background: var(--apnc-ink); color: #fff; font-size: 13px; font-weight: 700; letter-spacing: .25em; text-transform: uppercase; }
 
 /* ---- list, quote, flow ---- */
-.list { margin-top: 30px; padding: 0; list-style: none; max-width: 1100px; }
+.list { margin-top: 36px; padding: 0; list-style: none; max-width: 1180px; }
 .list.numbered { counter-reset: n; }
-.list.numbered li::before { content: counter(n); counter-increment: n; width: 34px; height: 34px; border-radius: 50%; background: var(--apnc-red); color: #fff; font-weight: 700; font-size: 14px; display: grid; place-items: center; margin-top: 2px; }
-.list li { font-size: 20px; line-height: 1.5; color: var(--apnc-ink); padding: 10px 0; gap: 18px; }
-.list li small { display: block; font-size: 15px; color: var(--apnc-ink-soft); margin-top: 2px; }
-.list li a { color: var(--apnc-red-dark); text-decoration: none; font-family: var(--mono); font-size: 15px; }
+.list.numbered li::before { content: counter(n); counter-increment: n; width: 40px; height: 40px; border-radius: 50%; background: var(--apnc-red); color: #fff; font-weight: 700; font-size: 16px; display: grid; place-items: center; margin-top: 2px; }
+.list li { font-size: 26px; line-height: 1.45; color: var(--apnc-ink); padding: 14px 0; gap: 22px; }
+.list li small { display: block; font-size: 17px; color: var(--apnc-ink-soft); margin-top: 4px; }
+.list li a { color: var(--apnc-red-dark); text-decoration: none; font-family: var(--mono); font-size: 17px; }
 blockquote { border-left: 4px solid var(--apnc-red); padding-left: 32px; font-size: 42px; font-weight: 600; line-height: 1.2; color: var(--apnc-ink); max-width: 1150px; }
 .attrib { margin-top: 18px; padding-left: 36px; font-size: 17px; color: var(--apnc-ink-soft); }
-.flow { display: flex; align-items: stretch; flex-wrap: nowrap; gap: 12px; margin-top: 40px; }
-.flow .box { flex: 1 1 0; min-width: 0; border: 1px solid var(--apnc-line); background: var(--apnc-paper); border-radius: 18px; padding: 22px 24px; }
+.flow { display: flex; align-items: stretch; flex-wrap: nowrap; gap: 16px; margin-top: 44px; }
+.flow .box { flex: 1 1 0; min-width: 0; border: 1px solid var(--apnc-line); background: var(--apnc-paper); border-radius: 22px; padding: 30px 32px; }
 .flow .box.accent { border-color: var(--apnc-red); background: var(--apnc-red); }
-.flow .box b { display: block; font-size: 21px; font-weight: 700; color: var(--apnc-ink); line-height: 1.25; }
-.flow .box small { display: block; margin-top: 8px; font-size: 14.5px; line-height: 1.45; color: var(--apnc-ink-soft); }
+.flow .box .ico { width: 64px; height: 64px; margin-bottom: 20px; }
+.flow .box b { display: block; font-size: 28px; font-weight: 700; color: var(--apnc-ink); line-height: 1.15; letter-spacing: -.01em; }
+.flow .box small { display: block; margin-top: 12px; font-size: 18px; line-height: 1.45; color: var(--apnc-ink-soft); }
 .flow .box.accent b, .flow .box.accent small { color: #fff; }
-.flow .box.accent small { opacity: .85; }
-.arrow { flex: none; width: 28px; height: 24px; align-self: center; }
+.flow .box.accent small { opacity: .9; }
+.arrow { flex: none; width: 30px; height: 26px; align-self: center; }
 
-/* ---- video slot: fills the body; swap the placeholder for <video> or an iframe when the link lands ---- */
+/* ---- video slot: fills the body ---- */
 .video { position: relative; width: 100%; aspect-ratio: 16 / 9; max-height: 640px; margin: 0 auto; background: var(--apnc-ink); border-radius: 20px; overflow: hidden; display: grid; place-items: center; }
 .video iframe, .video video { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
 .video .ph { text-align: center; color: rgba(255,255,255,.75); }
@@ -101,36 +109,79 @@ blockquote { border-left: 4px solid var(--apnc-red); padding-left: 32px; font-si
 .emoji-slide .body { flex-direction: column; justify-content: center; }
 .glyph { font-family: var(--emoji); font-size: 400px; line-height: 1; text-align: center; }
 .glyph.row { font-size: 190px; letter-spacing: .04em; white-space: nowrap; }
-.tag { margin-top: 28px; text-align: center; font-size: 40px; font-weight: 700; letter-spacing: -.02em; color: var(--apnc-ink); }
-.dates { margin-top: 8px; text-align: center; font-family: var(--mono); font-size: 16px; letter-spacing: .12em; text-transform: uppercase; color: var(--apnc-ink-soft); }
-.phase { position: absolute; top: 44px; left: 72px; }
+.tag { margin-top: 28px; text-align: center; font-size: 44px; font-weight: 700; letter-spacing: -.02em; color: var(--apnc-ink); }
+.dates { margin-top: 10px; text-align: center; font-family: var(--mono); font-size: 17px; letter-spacing: .12em; text-transform: uppercase; color: var(--apnc-ink-soft); }
+.phase { position: absolute; top: 48px; left: 72px; }
 
 /* ---- timeline of emojis ---- */
-.timeline { position: relative; display: grid; grid-template-columns: 1fr 1fr 1fr 1fr 1.35fr; gap: 12px; margin-top: 44px; }
-.timeline::before { content: ""; position: absolute; left: 6%; right: 6%; top: 60px; height: 3px; background: var(--apnc-line); }
+.timeline { position: relative; display: grid; grid-template-columns: 1fr 1fr 1fr 1fr 1.35fr; gap: 12px; margin-top: 48px; }
+.timeline::before { content: ""; position: absolute; left: 6%; right: 6%; top: 64px; height: 3px; background: var(--apnc-line); }
 .timeline .node { position: relative; text-align: center; }
-.timeline .node .g { font-family: var(--emoji); font-size: 112px; line-height: 1.1; display: inline-block; background: var(--apnc-paper); padding: 0 8px; }
-.timeline .node .g.row { font-size: 40px; line-height: 2.9; letter-spacing: 0; white-space: nowrap; }
-.timeline .node b { display: block; margin-top: 14px; font-size: 20px; font-weight: 700; color: var(--apnc-ink); }
-.timeline .node small { display: block; margin-top: 4px; font-family: var(--mono); font-size: 12px; letter-spacing: .1em; text-transform: uppercase; color: var(--apnc-ink-soft); }
+.timeline .node .g { font-family: var(--emoji); font-size: 120px; line-height: 1.1; display: inline-block; background: var(--apnc-paper); padding: 0 8px; }
+.timeline .node .g.row { font-size: 42px; line-height: 3.1; letter-spacing: 0; white-space: nowrap; }
+.timeline .node b { display: block; margin-top: 16px; font-size: 22px; font-weight: 700; color: var(--apnc-ink); }
+.timeline .node small { display: block; margin-top: 6px; font-family: var(--mono); font-size: 13px; letter-spacing: .1em; text-transform: uppercase; color: var(--apnc-ink-soft); }
 
-/* ---- triangle (people, information, machines) ---- */
-.triad { display: grid; grid-template-columns: 1fr 1.15fr; gap: 44px; align-items: center; margin-top: 24px; }
-.triad svg { width: 100%; max-width: 500px; margin: 0 auto; display: block; }
-.triad .def { display: flex; gap: 16px; align-items: flex-start; padding: 12px 0; }
-.triad .def .n { flex: none; width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; font-family: var(--mono); font-size: 12px; font-weight: 700; color: #fff; }
-.triad .def b { display: block; font-size: 22px; font-weight: 700; color: var(--apnc-ink); }
-.triad .def p { margin-top: 4px; font-size: 15px; line-height: 1.55; color: var(--apnc-ink-soft); }
+/* ---- triangle (people, information, machines), a click-through build ---- */
+.triad { display: grid; grid-template-columns: 1fr 1.1fr; gap: 56px; align-items: center; margin-top: 12px; }
+.triad svg { width: 100%; max-width: 520px; margin: 0 auto; display: block; }
+.triad .c { transition: fill .5s, transform .5s; transform-box: fill-box; transform-origin: center; fill: #e8e3dd; }
+.triad .t { transition: fill .5s; fill: #8c857d; }
+.triad .panel { position: relative; min-height: 420px; }
+.triad .def, .triad .bal { position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: center; opacity: 0; transform: translateY(10px); transition: opacity .5s, transform .5s; pointer-events: none; }
+.triad .def .n { width: 48px; height: 48px; border-radius: 50%; display: grid; place-items: center; font-family: var(--mono); font-size: 13px; font-weight: 700; color: #fff; margin-bottom: 20px; }
+.triad .def b { display: block; font-size: 48px; font-weight: 700; letter-spacing: -.02em; color: var(--apnc-ink); line-height: 1.05; }
+.triad .def p { margin-top: 18px; font-size: 22px; line-height: 1.55; color: var(--apnc-ink-soft); }
+.triad .bal { font-size: 30px; line-height: 1.4; font-weight: 600; color: var(--apnc-ink); border-left: 4px solid var(--apnc-red); padding-left: 24px; justify-content: center; }
+.step-0 .bal.intro, .step-4 .bal.outro { opacity: 1; transform: none; }
+.step-1 .def.d-people, .step-2 .def.d-info, .step-3 .def.d-mach { opacity: 1; transform: none; }
+.step-1 .c-people, .step-2 .c-info, .step-3 .c-mach { fill: #e8331c; transform: scale(1.14); }
+.step-1 .t-people, .step-2 .t-info, .step-3 .t-mach { fill: #fff; }
+.step-4 .c-people { fill: #e8331c; } .step-4 .c-mach { fill: #1a1714; } .step-4 .c-info { fill: #a89f93; }
+.step-4 .t { fill: #fff; }
+.pulse { opacity: 0; transition: opacity .5s; }
+.step-4 .pulse { opacity: 1; }
 
-/* ---- cover image and bio ---- */
+/* ---- the operating manual, how it was made ---- */
+.making { display: grid; grid-template-columns: 1fr 40px 1fr 40px 1.05fr; gap: 20px; align-items: center; margin-top: 8px; }
+.making .stage-label { margin-top: 18px; text-align: center; font-size: 20px; font-weight: 700; color: var(--apnc-ink); }
+.making .stage-sub { margin-top: 4px; text-align: center; font-size: 15px; color: var(--apnc-ink-soft); }
+.making .arrow { width: 40px; height: 34px; }
+.scatter { position: relative; height: 330px; }
+.scatter .it { position: absolute; width: 96px; height: 96px; display: grid; place-items: center; background: var(--apnc-paper); border: 1px solid var(--apnc-line); border-radius: 22px; box-shadow: 0 10px 24px rgba(26,23,20,.08); }
+.scatter .it .ico { width: 48px; height: 48px; stroke: var(--apnc-ink); }
+.scatter .it.cal { width: 118px; height: 118px; }
+.scatter .it.cal .ico { width: 64px; height: 64px; }
+.machine { display: grid; place-items: center; height: 330px; }
+.machine .box { width: 300px; height: 230px; border-radius: 28px; background: var(--apnc-ink); display: grid; place-items: center; }
+.machine .box .ico { width: 150px; height: 150px; stroke: #fff; stroke-width: 1.25; }
+.making .cover { height: 330px; }
+.making .cover img { height: 330px; box-shadow: 0 24px 50px rgba(26,23,20,.18); }
 .cover { display: flex; flex-direction: column; align-items: center; justify-content: center; }
 .cover img { height: 560px; width: auto; border: 1px solid var(--apnc-line); box-shadow: 0 24px 60px rgba(26,23,20,.18); }
 .cover .cap { margin-top: 26px; font-size: 24px; font-weight: 600; color: var(--apnc-ink); letter-spacing: -.01em; }
-.bio { display: grid; grid-template-columns: 360px 1fr; gap: 56px; align-items: center; }
-.bio img { width: 360px; height: 420px; object-fit: cover; object-position: top; border-radius: 24px; border: 1px solid var(--apnc-line); }
-.bio .name { font-size: 44px; font-weight: 700; letter-spacing: -.02em; color: var(--apnc-ink); }
-.bio .role { margin-top: 6px; font-size: 20px; color: var(--apnc-ink-soft); }
-.bio .contact { margin-top: 26px; font-family: var(--mono); font-size: 17px; line-height: 1.8; color: var(--apnc-ink); }
+.caption { margin-top: 30px; text-align: center; font-size: 30px; font-weight: 700; color: var(--apnc-ink); letter-spacing: -.02em; }
+
+/* ---- full-bleed photo slide ---- */
+.bleed { padding: 0; border: none; }
+.bleed img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.bleed .shade { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,0) 40%, rgba(0,0,0,.55) 100%); }
+.bleed .word { position: absolute; left: 72px; bottom: 64px; color: #fff; font-size: 120px; font-weight: 700; letter-spacing: -.03em; line-height: 1; text-shadow: 0 6px 30px rgba(0,0,0,.4); }
+.bleed .foot span { color: rgba(255,255,255,.8); border-color: rgba(255,255,255,.3); }
+.bleed .foot img { filter: brightness(0) invert(1); }
+.bleed .credit { position: absolute; left: 72px; bottom: 28px; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: rgba(255,255,255,.6); }
+
+/* ---- big statements ---- */
+.statement h1 { font-size: 96px; line-height: 1.02; max-width: 14ch; }
+.statement .lead { font-size: 30px; margin-top: 34px; }
+
+/* ---- bio ---- */
+.bio { display: grid; grid-template-columns: 400px 1fr; gap: 64px; align-items: center; }
+.bio img { width: 400px; height: 470px; object-fit: cover; object-position: top; border-radius: 24px; border: 1px solid var(--apnc-line); }
+.bio .name { font-size: 52px; font-weight: 700; letter-spacing: -.02em; color: var(--apnc-ink); }
+.bio .role { margin-top: 8px; font-size: 22px; color: var(--apnc-ink-soft); }
+.bio .line { margin-top: 30px; font-size: 28px; line-height: 1.4; color: var(--apnc-ink); font-weight: 600; letter-spacing: -.01em; max-width: 24ch; }
+.bio .contact { margin-top: 30px; font-family: var(--mono); font-size: 19px; line-height: 1.8; color: var(--apnc-ink); }
 .bio .contact span { color: var(--apnc-red); }
 
 /* ---- nav ---- */
@@ -156,6 +207,12 @@ blockquote { border-left: 4px solid var(--apnc-red); padding-left: 32px; font-si
   .stage { position: static; width: 15in; height: 8.4375in; transform: none !important; }
   .pulse { display: none; }
   .slide { display: flex !important; position: relative; inset: auto; width: 15in; height: 8.4375in; border: none; border-radius: 0; page-break-after: always; break-after: page; }
+  .slide[data-steps] .c-people { fill: #e8331c !important; transform: none !important; }
+  .slide[data-steps] .c-mach { fill: #1a1714 !important; transform: none !important; }
+  .slide[data-steps] .c-info { fill: #a89f93 !important; transform: none !important; }
+  .slide[data-steps] .t { fill: #fff !important; }
+  .slide[data-steps] .bal.outro { opacity: 1 !important; transform: none !important; }
+  .slide[data-steps] .bal.intro, .slide[data-steps] .def { opacity: 0 !important; }
 }
 </style>
 </head>
@@ -163,7 +220,7 @@ blockquote { border-left: 4px solid var(--apnc-red); padding-left: 32px; font-si
 <div class="deck">
   <div class="topbar">
     <div class="where"><i></i><span id="where">APNC Fall Conference</span></div>
-    <div class="counter" id="counter">01 / 21</div>
+    <div class="counter" id="counter">01 / 23</div>
   </div>
 
   <div class="stagewrap"><div class="stage" id="stage">
@@ -183,8 +240,8 @@ blockquote { border-left: 4px solid var(--apnc-red); padding-left: 32px; font-si
     </section>
 
     <!-- 02 Learning Objectives (verbatim from the submission) -->
-    <section class="slide" data-notes="The three learning objectives, verbatim from the submission. Read them or skip past them, your call.">
-      <div class="head"><div class="eyebrow">This Session</div><h2>Learning <span class="red">Objectives</span></h2></div>
+    <section class="slide" data-notes="The three learning objectives, verbatim from the submission.">
+      <div class="head"><div class="eyebrow">This Session</div><h2>Three things you should be able to do <span class="red">when we are done.</span></h2></div>
       <div class="body"><div class="inner">
         <ol class="list numbered">
           <li>Describe how connected, real-time data on the workforce, funding, policy, and community conditions can inform daily practice, program decisions, and advocacy.</li>
@@ -195,9 +252,9 @@ blockquote { border-left: 4px solid var(--apnc-red); padding-left: 32px; font-si
       <div class="foot"><img src="brand/apnc-logo.png" alt="APNC" /><span>Fall Conference 2026</span></div>
     </section>
 
-    <!-- 03 Part 1: opening video (link to come) -->
-    <section class="slide" data-notes="Part 1. Open with the video: a bunch of news clips prognosticating the end of therapists, then a cut over to a TikTok influencer panning an AI platform's inadequacies for therapy. It's a funny way to open. But it acknowledges that there is real fear.">
-      <div class="head"><div class="eyebrow">Part 1</div></div>
+    <!-- 03 Opening video (link to come) -->
+    <section class="slide" data-notes="Open with the video: news clips prognosticating the end of therapists, then a TikTok influencer panning an AI platform's inadequacies for therapy. It is a funny way to open. But it acknowledges that there is real fear.">
+      <div class="head"><div class="eyebrow">Let's Get the Fear Out of the Way</div></div>
       <div class="body"><div class="inner">
         <div class="video" id="video-1">
           <div class="ph">
@@ -210,9 +267,9 @@ blockquote { border-left: 4px solid var(--apnc-red); padding-left: 32px; font-si
       <div class="foot"><img src="brand/apnc-logo.png" alt="APNC" /><span>Fall Conference 2026</span></div>
     </section>
 
-    <!-- 04 to 08 Part 2: the journey, one emoji per phase -->
-    <section class="slide emoji-slide" data-notes="Part 2. My own personal journey, a few minutes. Phase 1: Skeptic. 2022 to May 2024.">
-      <div class="eyebrow phase">Part 2 · My Journey · Phase 1 of 5</div>
+    <!-- 04 to 08 The journey, one emoji per phase -->
+    <section class="slide emoji-slide" data-notes="My own journey, a few minutes. Phase 1: Skeptic. 2022 to May 2024.">
+      <div class="eyebrow phase">Nothing to See Here</div>
       <div class="body">
         <div class="glyph">🙄</div>
         <div class="tag">Skeptic</div>
@@ -221,8 +278,8 @@ blockquote { border-left: 4px solid var(--apnc-red); padding-left: 32px; font-si
       <div class="foot"><img src="brand/apnc-logo.png" alt="APNC" /><span>Fall Conference 2026</span></div>
     </section>
 
-    <section class="slide emoji-slide" data-notes="Phase 2: Are Chia Seeds Good for Me? May 2024 to August 2025.">
-      <div class="eyebrow phase">Part 2 · My Journey · Phase 2 of 5</div>
+    <section class="slide emoji-slide" data-notes="Phase 2: Are Chia Seeds Good for Me? May 2024 to August 2025. A nicer search box.">
+      <div class="eyebrow phase">A Nicer Search Box</div>
       <div class="body">
         <div class="glyph">🥱</div>
         <div class="tag">Are Chia Seeds Good for Me?</div>
@@ -231,8 +288,8 @@ blockquote { border-left: 4px solid var(--apnc-red); padding-left: 32px; font-si
       <div class="foot"><img src="brand/apnc-logo.png" alt="APNC" /><span>Fall Conference 2026</span></div>
     </section>
 
-    <section class="slide emoji-slide" data-notes="Phase 3: Passing the Rubicon. August 2025 to March 2026.">
-      <div class="eyebrow phase">Part 2 · My Journey · Phase 3 of 5</div>
+    <section class="slide emoji-slide" data-notes="Phase 3: Passing the Rubicon. August 2025 to March 2026. No going back.">
+      <div class="eyebrow phase">No Going Back</div>
       <div class="body">
         <div class="glyph">😳</div>
         <div class="tag">Passing the Rubicon</div>
@@ -241,18 +298,18 @@ blockquote { border-left: 4px solid var(--apnc-red); padding-left: 32px; font-si
       <div class="foot"><img src="brand/apnc-logo.png" alt="APNC" /><span>Fall Conference 2026</span></div>
     </section>
 
-    <section class="slide emoji-slide" data-notes="Phase 4: Blitzkrieg. March 2026 to August 2026.">
-      <div class="eyebrow phase">Part 2 · My Journey · Phase 4 of 5</div>
+    <section class="slide emoji-slide" data-notes="Phase 4: Blitzkrieg. March 2026 to August 2026. All in, all day.">
+      <div class="eyebrow phase">All In, All Day</div>
       <div class="body">
-        <div class="glyph">☕️</div>
+        <div class="glyph">&#x2615;</div>
         <div class="tag">Blitzkrieg</div>
         <div class="dates">March 2026 to August 2026</div>
       </div>
       <div class="foot"><img src="brand/apnc-logo.png" alt="APNC" /><span>Fall Conference 2026</span></div>
     </section>
 
-    <section class="slide emoji-slide" data-notes="Phase 5: all of it at once. September 2026 to today.">
-      <div class="eyebrow phase">Part 2 · My Journey · Phase 5 of 5</div>
+    <section class="slide emoji-slide" data-notes="Phase 5: every feeling at once. September 2026 to today.">
+      <div class="eyebrow phase">Every Feeling at Once</div>
       <div class="body">
         <div class="glyph row">😎🤬🥰😱🫣</div>
         <div class="tag">Phase 5</div>
@@ -261,32 +318,41 @@ blockquote { border-left: 4px solid var(--apnc-red); padding-left: 32px; font-si
       <div class="foot"><img src="brand/apnc-logo.png" alt="APNC" /><span>Fall Conference 2026</span></div>
     </section>
 
-    <!-- 09 The timeline of emojis -->
-    <section class="slide" data-notes="Close Part 2 with the whole timeline on one slide.">
-      <div class="head"><div class="eyebrow">Part 2 · My Journey</div><h2>Four years, <span class="red">five phases.</span></h2></div>
+    <!-- 09 The timeline -->
+    <section class="slide" data-notes="The whole journey on one slide.">
+      <div class="head"><div class="eyebrow">My Journey</div><h2>Four years, <span class="red">five phases.</span></h2></div>
       <div class="body"><div class="inner">
         <div class="timeline">
           <div class="node"><span class="g">🙄</span><b>Skeptic</b><small>2022 to May 2024</small></div>
           <div class="node"><span class="g">🥱</span><b>Are Chia Seeds Good for Me?</b><small>May 2024 to Aug 2025</small></div>
           <div class="node"><span class="g">😳</span><b>Passing the Rubicon</b><small>Aug 2025 to Mar 2026</small></div>
-          <div class="node"><span class="g">☕️</span><b>Blitzkrieg</b><small>Mar 2026 to Aug 2026</small></div>
+          <div class="node"><span class="g">&#x2615;</span><b>Blitzkrieg</b><small>Mar 2026 to Aug 2026</small></div>
           <div class="node"><span class="g row">😎🤬🥰😱🫣</span><b>Phase 5</b><small>Sep 2026 to Today</small></div>
         </div>
       </div></div>
       <div class="foot"><img src="brand/apnc-logo.png" alt="APNC" /><span>Fall Conference 2026</span></div>
     </section>
 
-    <!-- 10 Part 3: what I've learned, the positive -->
-    <section class="slide" data-notes="Part 3. Some things I've learned, positive and negative. The first positive: the deeper you get into understanding how the machinery works, the better you can see the unique things you bring to the equation. When you can isolate what you bring that a machine never can, and hire the machine to safely process information for you, amazing outputs.">
-      <div class="head"><div class="eyebrow">Part 3 · What I've Learned · The Positive</div><h2>The deeper you get into the machinery, <span class="red">the clearer you see what only you bring.</span></h2></div>
+    <!-- 10 What I've learned, the positive -->
+    <section class="slide" data-notes="The first thing I learned. The deeper you get into understanding how the machinery works, the better you can see the unique things you bring to the equation. Isolate what you bring that a machine never can. Hire the machine to safely process information for you. The outputs are amazing.">
+      <div class="head"><div class="eyebrow">What I've Learned</div><h2>Know the machine, <span class="red">know yourself.</span></h2></div>
       <div class="body"><div class="inner">
-        <p class="lead">Understanding how the machine works is not a technical exercise. It is a mirror. Every hour spent learning what it can do sharpens the picture of what it never will, and that picture is your job description.</p>
+        <p class="lead" style="margin-top:0">The deeper you get into how it works, the clearer you see the things only you bring.</p>
         <div class="flow">
-          <div class="box"><b>Isolate what you bring that a machine never can</b><small>Judgment, relationship, context, accountability. The things the field was built on.</small></div>
+          <div class="box">
+            <svg class="ico" viewBox="0 0 24 24" aria-hidden><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+            <b>What only you bring</b><small>Judgment. Relationships. Context. Accountability.</small>
+          </div>
           <svg class="arrow" viewBox="0 0 30 24"><polygon points="0,4 0,20 22,12" fill="#e8331c"/></svg>
-          <div class="box"><b>Hire the machine to safely process information for you</b><small>The reading, the sorting, the drafting, the first pass. Bounded, checked, yours to accept or reject.</small></div>
+          <div class="box">
+            <svg class="ico" viewBox="0 0 24 24" aria-hidden><rect x="5" y="5" width="14" height="14" rx="2"/><rect x="9" y="9" width="6" height="6"/><path d="M9 2v3M15 2v3M9 19v3M15 19v3M2 9h3M2 15h3M19 9h3M19 15h3"/></svg>
+            <b>What you hire the machine for</b><small>Reading, sorting, drafting, the first pass. Bounded and checked.</small>
+          </div>
           <svg class="arrow" viewBox="0 0 30 24"><polygon points="0,4 0,20 22,12" fill="#e8331c"/></svg>
-          <div class="box accent"><b>Amazing outputs</b><small>Work that neither of you could have produced alone.</small></div>
+          <div class="box accent">
+            <svg class="ico white" viewBox="0 0 24 24" aria-hidden><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/><path d="M19 16l.8 2.2L22 19l-2.2.8L19 22l-.8-2.2L16 19l2.2-.8z"/></svg>
+            <b>What you make together</b><small>Work neither of you could have done alone.</small>
+          </div>
         </div>
       </div></div>
       <div class="foot"><img src="brand/apnc-logo.png" alt="APNC" /><span>Fall Conference 2026</span></div>
@@ -294,32 +360,47 @@ blockquote { border-left: 4px solid var(--apnc-red); padding-left: 32px; font-si
 
     <!-- 11 Two capabilities -->
     <section class="slide" data-notes="When you boil all of this down, there are two fundamental capabilities that our species has now unlocked.">
-      <div class="head"><div class="eyebrow">Part 3 · What I've Learned · The Positive</div><h2>Two fundamental capabilities <span class="red">our species has now unlocked.</span></h2></div>
+      <div class="head"><div class="eyebrow">What I've Learned</div><h2>Two capabilities <span class="red">our species just unlocked.</span></h2></div>
       <div class="body"><div class="inner">
         <div class="grid cols-2">
-          <div class="card"><div class="num">01</div><h3>Natural Language</h3><p class="big">The capacity to get a machine to do stuff using natural language.</p></div>
-          <div class="card"><div class="num">02</div><h3>Recursion</h3><p class="big">A machine's recursive ability to do those things with better and better precision.</p></div>
+          <div class="card">
+            <svg class="ico" viewBox="0 0 24 24" aria-hidden><path d="M21 12a8 8 0 0 1-11.6 7.1L4 21l1.9-5.4A8 8 0 1 1 21 12z"/><path d="M8.5 11h7M8.5 14h4"/></svg>
+            <h3>Natural Language</h3><p class="big">The capacity to get a machine to do stuff using natural language.</p>
+          </div>
+          <div class="card">
+            <svg class="ico" viewBox="0 0 24 24" aria-hidden><path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 3v6h-6"/></svg>
+            <h3>Recursion</h3><p class="big">A machine's recursive ability to do those things with better and better precision.</p>
+          </div>
         </div>
       </div></div>
       <div class="foot"><img src="brand/apnc-logo.png" alt="APNC" /><span>Fall Conference 2026</span></div>
     </section>
 
-    <!-- 12 The negative -->
-    <section class="slide" data-notes="The negative. The cost for the efficiency gains right now is high. Regrettably, so are the stakes. Decision fatigue and the infinite backlog. Social adoption will be far more complex and messy than the technical work.">
-      <div class="head"><div class="eyebrow">Part 3 · What I've Learned · The Negative</div><h2>Three things <span class="red">nobody puts on the brochure.</span></h2></div>
+    <!-- 12 The hard parts -->
+    <section class="slide" data-notes="The negative. The cost of the efficiency gains right now is high, and so are the stakes. Decision paralysis: everything becomes possible at once. And social adoption will be far more complex and messy than the technical work.">
+      <div class="head"><div class="eyebrow">What I've Learned</div><h2>Three things <span class="red">nobody puts on the brochure.</span></h2></div>
       <div class="body"><div class="inner">
         <div class="grid cols-3">
-          <div class="card tint"><div class="num">01</div><h3>The Cost</h3><p class="big">The cost for the efficiency gains right now are high. Regrettably, so are the stakes.</p></div>
-          <div class="card tint"><div class="num">02</div><h3>The Backlog</h3><p class="big">Decision fatigue and the infinite backlog.</p></div>
-          <div class="card tint"><div class="num">03</div><h3>The People Part</h3><p class="big">Social adoption will be farrrrr more complex and messy than the technical work.</p></div>
+          <div class="card tint">
+            <svg class="ico" viewBox="0 0 24 24" aria-hidden><path d="M12 2v20"/><path d="M17 6.5A4 4 0 0 0 13 4h-2a3.5 3.5 0 0 0 0 7h2a3.5 3.5 0 0 1 0 7h-2a4 4 0 0 1-4-2.5"/></svg>
+            <h3>The Cost</h3><p class="big">The efficiency gains are real. Right now they are expensive. Regrettably, so are the stakes.</p>
+          </div>
+          <div class="card tint">
+            <svg class="ico" viewBox="0 0 24 24" aria-hidden><path d="M3 7h3.5l7 10H20"/><path d="M3 17h3.5l2.2-3.1"/><path d="M12.3 10.1L13.5 8.4 20 8.4"/><path d="M18 5.4l3 3-3 3M18 14l3 3-3 3"/></svg>
+            <h3>Decision Paralysis</h3><p class="big">Everything becomes possible at once. The backlog never ends, and choosing becomes the work.</p>
+          </div>
+          <div class="card tint">
+            <svg class="ico" viewBox="0 0 24 24" aria-hidden><circle cx="9" cy="8" r="3.5"/><path d="M2 20c0-3.5 3-6 7-6s7 2.5 7 6"/><circle cx="17" cy="9" r="3"/><path d="M17 14c3 0 5 2 5 5"/></svg>
+            <h3>The People Part</h3><p class="big">Social adoption will be <em><strong>far</strong></em> more complex and messy than the technical work.</p>
+          </div>
         </div>
       </div></div>
       <div class="foot"><img src="brand/apnc-logo.png" alt="APNC" /><span>Fall Conference 2026</span></div>
     </section>
 
-    <!-- 13 Part 4: the triangle -->
-    <section class="slide" data-notes="Part 4. What does all of this mean for the field of behavioral health? The field is going to have to find the right balance between people, information, and machines, and how those elements come together to maximize an output. Walk the triangle and the three definitions.">
-      <div class="head"><div class="eyebrow">Part 4 · What Does All of This Mean for the Field of Behavioral Health?</div><h2>People. Information. Machines. <span class="red">Finding the right balance.</span></h2></div>
+    <!-- 13 The triangle, a click-through build -->
+    <section class="slide step-0" data-steps="4" data-notes="What does all of this mean for the field? The field is going to have to find the right balance between people, information, and machines, and how those elements come together to maximize an output. Press next four times: People, Information, Machines, then all three together.">
+      <div class="head"><div class="eyebrow">What It Means for the Field</div><h2>People. Information. Machines. <span class="red">Finding the balance.</span></h2></div>
       <div class="body"><div class="inner">
         <div class="triad">
           <svg viewBox="0 0 640 560" aria-hidden>
@@ -329,47 +410,120 @@ blockquote { border-left: 4px solid var(--apnc-red); padding-left: 32px; font-si
               <circle r="8" opacity="0.9"><animateMotion dur="2.4s" begin="0.8s" repeatCount="indefinite" path="M 492 424 L 148 424" /></circle>
               <circle r="8" opacity="0.9"><animateMotion dur="2.4s" begin="1.6s" repeatCount="indefinite" path="M 148 424 L 320 128" /></circle>
             </g>
-            <circle cx="320" cy="112" r="74" fill="#e8331c" /><text x="320" y="120" text-anchor="middle" font-family="Geist, sans-serif" font-size="26" font-weight="700" fill="#fff">People</text>
-            <circle cx="148" cy="440" r="74" fill="#1a1714" /><text x="148" y="448" text-anchor="middle" font-family="Geist, sans-serif" font-size="24" font-weight="700" fill="#fff">Machines</text>
-            <circle cx="492" cy="440" r="74" fill="#a89f93" /><text x="492" y="448" text-anchor="middle" font-family="Geist, sans-serif" font-size="22" font-weight="700" fill="#fff">Information</text>
+            <circle class="c c-people" cx="320" cy="112" r="78" /><text class="t t-people" x="320" y="121" text-anchor="middle" font-family="Geist, sans-serif" font-size="27" font-weight="700">People</text>
+            <circle class="c c-mach" cx="148" cy="440" r="78" /><text class="t t-mach" x="148" y="449" text-anchor="middle" font-family="Geist, sans-serif" font-size="25" font-weight="700">Machines</text>
+            <circle class="c c-info" cx="492" cy="440" r="78" /><text class="t t-info" x="492" y="449" text-anchor="middle" font-family="Geist, sans-serif" font-size="23" font-weight="700">Information</text>
           </svg>
-          <div>
-            <div class="def"><span class="n" style="background:#e8331c">01</span><div><b>People</b><p>The professionals who carry the work, and the supervisors, managers, and state stewards behind them. Everything here exists to make them better at the job.</p></div></div>
-            <div class="def"><span class="n" style="background:#a89f93">02</span><div><b>Information</b><p>Real North Carolina data: the state's own deliverables, the credential registry, the statewide assessment, opioid settlement dollars, and workforce intelligence all in one place.</p></div></div>
-            <div class="def"><span class="n" style="background:#1a1714">03</span><div><b>Machines</b><p>Technology that synthesizes data like never before. It enhances the abilities of the people who do the work. It does not replace them.</p></div></div>
-            <p class="lead" style="margin-top:14px;font-size:17px;max-width:none;border-left:4px solid var(--apnc-red);padding-left:16px;color:var(--apnc-ink);font-weight:600">The field is going to have to find the right balance between people, information, and machines, and how those elements come together to maximize an output.</p>
+          <div class="panel">
+            <div class="bal intro">The field is going to have to find the right balance between people, information, and machines, and how those elements come together to maximize an output.</div>
+            <div class="def d-people"><span class="n" style="background:#e8331c">01</span><b>People</b><p>The professionals who carry the work, and the supervisors, managers, and state stewards behind them. Everything here exists to make them better at the job.</p></div>
+            <div class="def d-info"><span class="n" style="background:#a89f93">02</span><b>Information</b><p>Real North Carolina data: the state's own deliverables, the credential registry, the statewide assessment, opioid settlement dollars, and workforce intelligence all in one place.</p></div>
+            <div class="def d-mach"><span class="n" style="background:#1a1714">03</span><b>Machines</b><p>Technology that synthesizes data like never before. It enhances the abilities of the people who do the work. It does not replace them.</p></div>
+            <div class="bal outro">The information informs the people. The people sharpen the information. The machines carry both further.</div>
           </div>
         </div>
       </div></div>
       <div class="foot"><img src="brand/apnc-logo.png" alt="APNC" /><span>Fall Conference 2026</span></div>
     </section>
 
-    <!-- 14 Three domains -->
-    <section class="slide" data-notes="In my view, there are three primary domains that are going to be disrupted. Administration: how you operate your company. Business: how you conduct business with other parties and price your work. Clinical: how you practice medicine.">
-      <div class="head"><div class="eyebrow">Part 4 · What Does All of This Mean for the Field of Behavioral Health?</div><h2>Three domains <span class="red">that are going to be disrupted.</span></h2></div>
+    <!-- 14 Three domains, three questions -->
+    <section class="slide" data-notes="Three domains that are going to be disrupted, and the question to ask yourself in each. Administration: am I paying others for administrative services today that I may now be able to perform myself? Business: what information or tools have I wanted at my fingertips that I have never been able to access? Clinical: how can these tools be integrated with the deeply human work to expand the toolset that leads to recovery, healing, and progression?">
+      <div class="head"><div class="eyebrow">What It Means for the Field</div><h2>Three domains, <span class="red">three questions.</span></h2></div>
       <div class="body"><div class="inner">
-        <div class="grid cols-3">
-          <div class="card"><div class="num">01</div><h3>Administration</h3><p class="big">How you operate your company.</p></div>
-          <div class="card"><div class="num">02</div><h3>Business</h3><p class="big">How you conduct business with other parties and price your work.</p></div>
-          <div class="card"><div class="num">03</div><h3>Clinical</h3><p class="big">How you practice medicine.</p></div>
+        <div class="grid cols-3" style="margin-top:28px">
+          <div class="card">
+            <svg class="ico" viewBox="0 0 24 24" aria-hidden><rect x="4" y="3" width="16" height="18" rx="1.5"/><path d="M9 7h2M13 7h2M9 11h2M13 11h2M9 15h2M13 15h2M10 21v-3.5h4V21"/></svg>
+            <h3>Administration</h3>
+            <p class="q">Am I paying others for administrative services today that I may now be able to perform myself?</p>
+            <div class="ex">For example</div>
+            <ul><li>Billing, claims, and prior auth</li><li>Scheduling, intake, and reminders</li><li>HR, compliance, and grant reporting</li></ul>
+          </div>
+          <div class="card">
+            <svg class="ico" viewBox="0 0 24 24" aria-hidden><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2M3 12h18"/></svg>
+            <h3>Business</h3>
+            <p class="q">What information or tools have I wanted to have at my fingertips to manage my responsibilities that I haven't ever been able to access?</p>
+            <div class="ex">For example</div>
+            <ul><li>What payers actually pay, by service</li><li>Where referrals come from and go</li><li>Workforce supply and funding flows, by county</li></ul>
+          </div>
+          <div class="card">
+            <svg class="ico" viewBox="0 0 24 24" aria-hidden><path d="M19.5 12.6L12 20l-7.5-7.4A5 5 0 1 1 12 6.2a5 5 0 1 1 7.5 6.4z"/><path d="M5 12h3l1.5-3 2.5 6 1.5-3H17"/></svg>
+            <h3>Clinical</h3>
+            <p class="q">How can these tools be integrated with the deeply human work to expand the toolset that leads to recovery, healing, and/or progression?</p>
+            <div class="ex">For example</div>
+            <ul><li>Notes that write themselves while you stay present</li><li>Patterns across a caseload you could not see alone</li><li>Support between sessions, on the client's terms</li></ul>
+          </div>
         </div>
       </div></div>
       <div class="foot"><img src="brand/apnc-logo.png" alt="APNC" /><span>Fall Conference 2026</span></div>
     </section>
 
-    <!-- 15 Part 5: the Operating Manual -->
-    <section class="slide" data-notes="Part 5. A personal use case to bring it together. The cover page of my Operating Manual, and nothing else on the page.">
-      <div class="eyebrow phase">Part 5 · A Personal Use Case</div>
-      <div class="body"><div class="inner cover">
-        <img src="assets/operating-manual-cover.png" alt="The Sovereign Architect: Psyche Map and Operating Manual, cover page" />
-        <div class="cap">The Operating Manual of Another Person</div>
+    <!-- 15 The operating manual, how it was made -->
+    <section class="slide" data-notes="A personal use case. I took my whole life, the notes, the books, the assessments, the journals, and fed it to a machine. I spent days studying the patterns. Together we co-created a full operating language. The cover page of my Operating Manual.">
+      <div class="head"><div class="eyebrow">A Personal Use Case</div><h2>I fed a machine <span class="red">my whole life.</span></h2></div>
+      <div class="body"><div class="inner">
+        <div class="making">
+          <div>
+            <div class="scatter">
+              <div class="it cal" style="left:20px;top:10px;transform:rotate(-6deg)"><svg class="ico" viewBox="0 0 24 24" aria-hidden><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/><text x="12" y="18" text-anchor="middle" font-family="Geist, sans-serif" font-size="6.5" font-weight="700" fill="#e8331c" stroke="none">NOV</text></svg></div>
+              <div class="it" style="left:160px;top:0;transform:rotate(5deg)"><svg class="ico" viewBox="0 0 24 24" aria-hidden><path d="M4 4h16v10l-6 6H4z"/><path d="M14 20v-6h6"/></svg></div>
+              <div class="it" style="left:270px;top:70px;transform:rotate(-3deg)"><svg class="ico" viewBox="0 0 24 24" aria-hidden><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V3H6.5A2.5 2.5 0 0 0 4 5.5z"/><path d="M4 19.5V5.5M8 7h8"/></svg></div>
+              <div class="it" style="left:60px;top:150px;transform:rotate(4deg)"><svg class="ico" viewBox="0 0 24 24" aria-hidden><rect x="5" y="4" width="14" height="18" rx="2"/><path d="M9 4V3h6v1M9 11h6M9 15h4"/></svg></div>
+              <div class="it" style="left:180px;top:125px;transform:rotate(-7deg)"><svg class="ico" viewBox="0 0 24 24" aria-hidden><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M8 13h8M8 17h6"/></svg></div>
+              <div class="it" style="left:290px;top:210px;transform:rotate(6deg)"><svg class="ico" viewBox="0 0 24 24" aria-hidden><rect x="5" y="2" width="14" height="20" rx="2"/><path d="M9 2v20M5 7h2M5 12h2M5 17h2"/></svg></div>
+              <div class="it" style="left:120px;top:235px;transform:rotate(-2deg)"><svg class="ico" viewBox="0 0 24 24" aria-hidden><path d="M4 4h16v10l-6 6H4z"/><path d="M14 20v-6h6"/></svg></div>
+            </div>
+            <div class="stage-label">A whole life, on paper</div>
+            <div class="stage-sub">Notes, journals, books, assessments, a November calendar</div>
+          </div>
+          <svg class="arrow" viewBox="0 0 30 24"><polygon points="0,4 0,20 22,12" fill="#e8331c"/></svg>
+          <div>
+            <div class="machine"><div class="box"><svg class="ico" viewBox="0 0 24 24" aria-hidden><rect x="3" y="4" width="18" height="12" rx="1.5"/><path d="M1.5 20h21"/><path d="M9 11.5l2 2 4-4"/></svg></div></div>
+            <div class="stage-label">Fed to a machine</div>
+            <div class="stage-sub">Days spent studying the patterns, together</div>
+          </div>
+          <svg class="arrow" viewBox="0 0 30 24"><polygon points="0,4 0,20 22,12" fill="#e8331c"/></svg>
+          <div>
+            <div class="cover"><img src="assets/operating-manual-cover.png" alt="The Sovereign Architect: Psyche Map and Operating Manual, cover page" /></div>
+            <div class="stage-label">A full operating language</div>
+            <div class="stage-sub">Co-created, not downloaded</div>
+          </div>
+        </div>
+        <div class="caption">The Operating Manual of Another Person</div>
       </div></div>
       <div class="foot"><img src="brand/apnc-logo.png" alt="APNC" /><span>Fall Conference 2026</span></div>
     </section>
 
-    <!-- 16 Part 5: second video (link to come) -->
-    <section class="slide" data-notes="Then cut to the video. The HUD in 90 Seconds, 2:05, ends on the navy division card and fades to black. Audio is under it at a talk-over level, so talk over it. Click the frame or press K to play and pause.">
-      <div class="head"><div class="eyebrow">Part 5 · A Personal Use Case</div></div>
+    <!-- 16 Metaphor: rapids -->
+    <section class="slide bleed" data-notes="One image. The metaphor is a river and its rapids: a way to understand the traumas of childhood, and the harmful things done to control for the parts that were unwell. Tell it in your own words.">
+      <img src="assets/rapids.jpg" alt="River rapids" />
+      <div class="shade"></div>
+      <div class="word">Metaphor</div>
+      <div class="credit">Firth River, Ivvavik National Park · Wikimedia Commons · CC BY-SA 3.0</div>
+      <div class="foot"><img src="brand/apnc-logo.png" alt="APNC" /><span>Fall Conference 2026</span></div>
+    </section>
+
+    <!-- 17 Language and systems -->
+    <section class="slide statement" data-notes="The system gave me language and systems for how things move through me.">
+      <div class="head"><div class="eyebrow">What I Learned About Myself</div></div>
+      <div class="body"><div class="inner">
+        <h1>It gave me <span class="red">language</span> and <span class="red">systems</span> for how things move through me.</h1>
+      </div></div>
+      <div class="foot"><img src="brand/apnc-logo.png" alt="APNC" /><span>Fall Conference 2026</span></div>
+    </section>
+
+    <!-- 18 I built a system -->
+    <section class="slide statement" data-notes="Through that understanding, I built a system. Then cut to the video.">
+      <div class="head"><div class="eyebrow">What I Learned About Myself</div></div>
+      <div class="body"><div class="inner">
+        <h1>Through that understanding, <span class="red">I built a system.</span></h1>
+        <p class="lead">Here is ninety seconds of it.</p>
+      </div></div>
+      <div class="foot"><img src="brand/apnc-logo.png" alt="APNC" /><span>Fall Conference 2026</span></div>
+    </section>
+
+    <!-- 19 The HUD video -->
+    <section class="slide" data-notes="The HUD in 90 Seconds, 2:05, ends on the navy division card and fades to black. Audio is under it at a talk-over level, so talk over it. Click the frame or press K to play and pause.">
+      <div class="head"><div class="eyebrow">A Personal Use Case</div></div>
       <div class="body"><div class="inner">
         <div class="video" id="video-2">
           <video controls preload="metadata" playsinline poster="assets/hud-video-poster.png" src="https://cmuvomnmaoseccxpeuxq.supabase.co/storage/v1/object/sign/project-files/objectives/fd828cb7-c210-49ca-bf7b-9dc8d08dd0fa/files/The%20HUD%20in%2090%20Seconds%20v5.mp4?token=eyJraWQiOiI0ZjYwZjljZS1hZWEyLTQxNzctYjJkYS05NTkyOTk5NjBlY2MiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJwcm9qZWN0LWZpbGVzL29iamVjdGl2ZXMvZmQ4MjhjYjctYzIxMC00OWNhLWJmN2ItOWRjOGQwOGRkMGZhL2ZpbGVzL1RoZSBIVUQgaW4gOTAgU2Vjb25kcyB2NS5tcDQiLCJzY29wZSI6ImRvd25sb2FkIiwiaWF0IjoxNzkyNTIyODkzLCJleHAiOjE3OTUxMTQ4OTN9.u6BH3HOWKAkDrw6Mpf7iusCLsBTDsgyce5Ag1i0HdrM"></video>
@@ -378,43 +532,35 @@ blockquote { border-left: 4px solid var(--apnc-red); padding-left: 32px; font-si
       <div class="foot"><img src="brand/apnc-logo.png" alt="APNC" /><span>Fall Conference 2026</span></div>
     </section>
 
-    <!-- 17 What to do -->
-    <section class="slide" data-notes="What to do. If you're on the journey, keep going. Come introduce yourself and let's compare notes. If you're trying to lean in and better understand it, there are good resources on the last slide. If you've been AI-Pilled and you want to go deeper, Anthropic Academy.">
+    <!-- 20 What to do -->
+    <section class="slide" data-notes="What to do. If you're on the journey, keep going. Come introduce yourself and let's compare notes. If you're trying to lean in and better understand it, the resources slide is a good first week. If you've been AI-Pilled and want to go deeper, Anthropic Academy.">
       <div class="head"><div class="eyebrow">What To Do</div><h2>Three places you might be <span class="red">standing right now.</span></h2></div>
       <div class="body"><div class="inner">
         <div class="grid cols-3">
           <div class="card"><h3>On the Journey</h3><p class="big">Keep going. Come introduce yourself and let's compare notes.</p></div>
-          <div class="card"><h3>Leaning In</h3><p class="big">Trying to better understand it? Start with the resources on the last slide.</p></div>
-          <div class="card accent"><h3>AI-Pilled</h3><p class="big">Want to go deeper? Anthropic Academy.</p><p style="font-family:var(--mono);font-size:14px;margin-top:14px">academy.claude.com</p></div>
+          <div class="card"><h3>Leaning In</h3><p class="big">Want to understand it better? The resources slide is a good first week.</p></div>
+          <div class="card accent"><h3>AI-Pilled</h3><p class="big">Want to go deeper? Anthropic Academy.</p><p style="font-family:var(--mono);font-size:16px;margin-top:16px">academy.claude.com</p></div>
         </div>
       </div></div>
       <div class="foot"><img src="brand/apnc-logo.png" alt="APNC" /><span>Fall Conference 2026</span></div>
     </section>
 
-    <!-- 18 Bio and contact -->
-    <section class="slide" data-notes="And if we can ever lend a hand. Our passion is in Behavioral Health and we're full nerd level deep in this stuff.">
+    <!-- 21 Bio and contact -->
+    <section class="slide" data-notes="If we can ever lend a hand. Behavioral health is the passion, the machinery is the obsession.">
       <div class="head"><div class="eyebrow">If We Can Ever Lend a Hand</div></div>
       <div class="body"><div class="inner bio">
         <img src="assets/smith-david.jpeg" alt="David Smith" />
         <div>
           <div class="name">David Smith</div>
           <div class="role">Founder and CEO, Third Horizon</div>
-          <p class="lead" style="margin-top:22px;font-size:22px;color:var(--apnc-ink)">Our passion is in Behavioral Health and we're full nerd level deep in this stuff.</p>
+          <p class="line">Behavioral health is the passion. The machinery is the obsession. If we can ever lend a hand, you know where to find us.</p>
           <div class="contact">david.smith@thirdhorizon.co<br /><span>thirdhorizon.co</span></div>
         </div>
       </div></div>
       <div class="foot"><img src="brand/apnc-logo.png" alt="APNC" /><span>Fall Conference 2026</span></div>
     </section>
 
-    <!-- 19 Questions -->
-    <section class="slide" data-notes="Open the floor.">
-      <div class="body"><div class="inner" style="text-align:center">
-        <h1 style="font-size:120px">Questions<span class="red">?</span></h1>
-      </div></div>
-      <div class="foot"><img src="brand/apnc-logo.png" alt="APNC" /><span>Fall Conference 2026</span></div>
-    </section>
-
-    <!-- 20 Resources -->
+    <!-- 22 Resources -->
     <section class="slide" data-notes="Where to find stuff. This deck stays up at the URL on the slide.">
       <div class="head"><div class="eyebrow">Resources</div><h2>Where to <span class="red">find stuff.</span></h2></div>
       <div class="body"><div class="inner">
@@ -428,11 +574,19 @@ blockquote { border-left: 4px solid var(--apnc-red); padding-left: 32px; font-si
       <div class="foot"><img src="brand/apnc-logo.png" alt="APNC" /><span>Fall Conference 2026</span></div>
     </section>
 
+    <!-- 23 Questions -->
+    <section class="slide" data-notes="Open the floor.">
+      <div class="body"><div class="inner" style="text-align:center">
+        <h1 style="font-size:120px">Questions<span class="red">?</span></h1>
+      </div></div>
+      <div class="foot"><img src="brand/apnc-logo.png" alt="APNC" /><span>Fall Conference 2026</span></div>
+    </section>
+
   </div></div>
 
   <div class="nav">
     <button id="prev" aria-label="Previous slide"><svg width="30" height="34" viewBox="0 0 29.4 34"><polygon points="29.4,0 29.4,34 0,17" fill="#e8331c"/></svg></button>
-    <span class="n" id="n">1 / 20</span>
+    <span class="n" id="n">1 / 23</span>
     <button id="next" aria-label="Next slide"><svg width="30" height="34" viewBox="0 0 29.4 34"><polygon points="0,0 0,34 29.4,17" fill="#e8331c"/></svg></button>
   </div>
 </div>
@@ -444,17 +598,25 @@ blockquote { border-left: 4px solid var(--apnc-red); padding-left: 32px; font-si
   const slides = [...document.querySelectorAll('.slide')];
   const N = slides.length;
   const pad = (n) => String(n).padStart(2, '0');
-  let i = 0, notesOn = false;
+  let i = 0, step = 0, notesOn = false;
   const stage = document.getElementById('stage');
   const notes = document.getElementById('notes');
+  const stepsOf = (s) => parseInt(s.dataset.steps || '0', 10);
+  const applyStep = () => {
+    const s = slides[i];
+    [...s.classList].filter((c) => /^step-\d+$/.test(c)).forEach((c) => s.classList.remove(c));
+    if (stepsOf(s)) s.classList.add(`step-${step}`);
+  };
   const fit = () => {
     const wrap = stage.parentElement.getBoundingClientRect();
     const s = Math.min((wrap.width - 64) / 1440, wrap.height / 810, 1.25);
     stage.style.transform = `translate(-50%, -50%) scale(${s})`;
   };
-  const show = (k, push = true) => {
+  const show = (k, push = true, atEnd = false) => {
     i = Math.max(0, Math.min(N - 1, k));
+    step = atEnd ? stepsOf(slides[i]) : 0;
     slides.forEach((s, n) => { s.classList.toggle('on', n === i); if (n !== i) s.querySelectorAll('video').forEach((v) => v.pause()); });
+    applyStep();
     document.getElementById('counter').textContent = `${pad(i + 1)} / ${pad(N)}`;
     document.getElementById('n').textContent = `${i + 1} / ${N}`;
     document.getElementById('prev').disabled = i === 0;
@@ -462,14 +624,16 @@ blockquote { border-left: 4px solid var(--apnc-red); padding-left: 32px; font-si
     document.getElementById('notesText').textContent = slides[i].dataset.notes || '';
     if (push) { try { history.replaceState(null, '', `#${i + 1}`); } catch (e) {} }
   };
+  const next = () => { if (step < stepsOf(slides[i])) { step++; applyStep(); } else show(i + 1); };
+  const prev = () => { if (step > 0) { step--; applyStep(); } else show(i - 1, true, true); };
   const fromHash = () => { const h = parseInt(location.hash.slice(1), 10); show(Number.isFinite(h) ? h - 1 : 0, false); };
-  document.getElementById('prev').onclick = () => show(i - 1);
-  document.getElementById('next').onclick = () => show(i + 1);
+  document.getElementById('prev').onclick = prev;
+  document.getElementById('next').onclick = next;
   window.addEventListener('keydown', (e) => {
     if (e.target && e.target.tagName === 'VIDEO') e.target.blur();
     if (e.key.toLowerCase() === 'k') { const v = slides[i].querySelector('video'); if (v) { v.paused ? v.play() : v.pause(); } return; }
-    if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') { e.preventDefault(); show(i + 1); }
-    else if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); show(i - 1); }
+    if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') { e.preventDefault(); next(); }
+    else if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); prev(); }
     else if (e.key === 'Home') show(0);
     else if (e.key === 'End') show(N - 1);
     else if (e.key.toLowerCase() === 'n') { notesOn = !notesOn; notes.classList.toggle('on', notesOn); }
