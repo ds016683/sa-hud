@@ -368,15 +368,11 @@ blockquote { border-left: 4px solid var(--apnc-red); padding-left: 32px; font-si
     </section>
 
     <!-- 16 Part 5: second video (link to come) -->
-    <section class="slide" data-notes="Then cut to the video.">
+    <section class="slide" data-notes="Then cut to the video. The HUD in 90 Seconds, 2:05, ends on the navy division card and fades to black. Audio is under it at a talk-over level, so talk over it. Click the frame or press K to play and pause.">
       <div class="head"><div class="eyebrow">Part 5 · A Personal Use Case</div></div>
       <div class="body"><div class="inner">
         <div class="video" id="video-2">
-          <div class="ph">
-            <svg viewBox="0 0 72 72" aria-hidden><circle cx="36" cy="36" r="34" fill="none" stroke="#e8331c" stroke-width="3"/><polygon points="28,22 52,36 28,50" fill="#e8331c"/></svg>
-            <b>Video</b>
-            <small>Link to come</small>
-          </div>
+          <video controls preload="metadata" playsinline poster="assets/hud-video-poster.png" src="https://cmuvomnmaoseccxpeuxq.supabase.co/storage/v1/object/sign/project-files/objectives/fd828cb7-c210-49ca-bf7b-9dc8d08dd0fa/files/The%20HUD%20in%2090%20Seconds%20v5.mp4?token=eyJraWQiOiI0ZjYwZjljZS1hZWEyLTQxNzctYjJkYS05NTkyOTk5NjBlY2MiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJwcm9qZWN0LWZpbGVzL29iamVjdGl2ZXMvZmQ4MjhjYjctYzIxMC00OWNhLWJmN2ItOWRjOGQwOGRkMGZhL2ZpbGVzL1RoZSBIVUQgaW4gOTAgU2Vjb25kcyB2NS5tcDQiLCJzY29wZSI6ImRvd25sb2FkIiwiaWF0IjoxNzkyNTIyODkzLCJleHAiOjE3OTUxMTQ4OTN9.u6BH3HOWKAkDrw6Mpf7iusCLsBTDsgyce5Ag1i0HdrM"></video>
         </div>
       </div></div>
       <div class="foot"><img src="brand/apnc-logo.png" alt="APNC" /><span>Fall Conference 2026</span></div>
@@ -441,7 +437,7 @@ blockquote { border-left: 4px solid var(--apnc-red); padding-left: 32px; font-si
   </div>
 </div>
 <div class="notes" id="notes"><div class="k">Notes</div><div id="notesText"></div></div>
-<div class="help">← → space · home end · N notes · F fullscreen · P print</div>
+<div class="help">← → space · home end · K play · N notes · F fullscreen · P print</div>
 
 <script>
 (() => {
@@ -458,7 +454,7 @@ blockquote { border-left: 4px solid var(--apnc-red); padding-left: 32px; font-si
   };
   const show = (k, push = true) => {
     i = Math.max(0, Math.min(N - 1, k));
-    slides.forEach((s, n) => s.classList.toggle('on', n === i));
+    slides.forEach((s, n) => { s.classList.toggle('on', n === i); if (n !== i) s.querySelectorAll('video').forEach((v) => v.pause()); });
     document.getElementById('counter').textContent = `${pad(i + 1)} / ${pad(N)}`;
     document.getElementById('n').textContent = `${i + 1} / ${N}`;
     document.getElementById('prev').disabled = i === 0;
@@ -470,6 +466,8 @@ blockquote { border-left: 4px solid var(--apnc-red); padding-left: 32px; font-si
   document.getElementById('prev').onclick = () => show(i - 1);
   document.getElementById('next').onclick = () => show(i + 1);
   window.addEventListener('keydown', (e) => {
+    if (e.target && e.target.tagName === 'VIDEO') e.target.blur();
+    if (e.key.toLowerCase() === 'k') { const v = slides[i].querySelector('video'); if (v) { v.paused ? v.play() : v.pause(); } return; }
     if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') { e.preventDefault(); show(i + 1); }
     else if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); show(i - 1); }
     else if (e.key === 'Home') show(0);
