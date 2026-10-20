@@ -30,5 +30,12 @@
       "source": "/s/:slug",
       "destination": "/api/share?s=:slug"
     }
+  ],
+  "redirects": [
+    {
+      "source": "/apnc",
+      "destination": "/speeches/apnc-fall-2026-not-scared-prepared/",
+      "permanent": false
+    }
   ]
 }

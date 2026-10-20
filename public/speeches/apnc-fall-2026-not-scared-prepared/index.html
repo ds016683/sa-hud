@@ -29,6 +29,12 @@ body { overflow: hidden; }
 .topbar { display: flex; align-items: center; justify-content: space-between; padding: 16px 32px; }
 .topbar .where { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--apnc-ink-soft); }
 .topbar .where i { width: 6px; height: 6px; border-radius: 50%; background: var(--apnc-red); }
+.fsbtn { border: 1px solid var(--apnc-line); background: var(--apnc-paper); color: var(--apnc-ink); border-radius: 999px; padding: 7px 16px; font-family: var(--sans); font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; cursor: pointer; }
+.fsbtn:hover { border-color: var(--apnc-red); color: var(--apnc-red); }
+:fullscreen .topbar, :fullscreen .nav, :fullscreen .help { display: none !important; }
+:fullscreen .deck { grid-template-rows: minmax(0, 1fr); background: var(--apnc-ink); }
+:fullscreen .stagewrap { background: var(--apnc-ink); }
+:fullscreen .slide { border-radius: 0; border: none; }
 .topbar .counter { font-family: var(--mono); font-size: 12px; font-weight: 600; letter-spacing: .2em; color: rgba(91,86,80,.7); }
 .stagewrap { position: relative; min-height: 0; min-width: 0; overflow: hidden; }
 .stage { position: absolute; left: 50%; top: 50%; width: var(--w); height: var(--h); transform-origin: center; }
@@ -220,7 +226,7 @@ blockquote { border-left: 4px solid var(--apnc-red); padding-left: 32px; font-si
 <div class="deck">
   <div class="topbar">
     <div class="where"><i></i><span id="where">APNC Fall Conference</span></div>
-    <div class="counter" id="counter">01 / 23</div>
+    <div style="display:flex;align-items:center;gap:18px"><button class="fsbtn" id="fsbtn" aria-label="Fullscreen">⤢ Fullscreen</button><div class="counter" id="counter">01 / 23</div></div>
   </div>
 
   <div class="stagewrap"><div class="stage" id="stage">
@@ -604,7 +610,8 @@ blockquote { border-left: 4px solid var(--apnc-red); padding-left: 32px; font-si
   };
   const fit = () => {
     const wrap = stage.parentElement.getBoundingClientRect();
-    const s = Math.min((wrap.width - 64) / 1440, wrap.height / 810, 1.25);
+    const fs = !!document.fullscreenElement;
+    const s = Math.min((wrap.width - (fs ? 0 : 64)) / 1440, wrap.height / 810, fs ? 10 : 1.25);
     stage.style.transform = `translate(-50%, -50%) scale(${s})`;
   };
   const show = (k, push = true, atEnd = false) => {
@@ -622,6 +629,9 @@ blockquote { border-left: 4px solid var(--apnc-red); padding-left: 32px; font-si
   const next = () => { if (step < stepsOf(slides[i])) { step++; applyStep(); } else show(i + 1); };
   const prev = () => { if (step > 0) { step--; applyStep(); } else show(i - 1, true, true); };
   const fromHash = () => { const h = parseInt(location.hash.slice(1), 10); show(Number.isFinite(h) ? h - 1 : 0, false); };
+  const toggleFs = () => { document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen(); };
+  document.getElementById('fsbtn').onclick = toggleFs;
+  document.addEventListener('fullscreenchange', () => setTimeout(fit, 50));
   document.getElementById('prev').onclick = prev;
   document.getElementById('next').onclick = next;
   window.addEventListener('keydown', (e) => {
@@ -632,7 +642,7 @@ blockquote { border-left: 4px solid var(--apnc-red); padding-left: 32px; font-si
     else if (e.key === 'Home') show(0);
     else if (e.key === 'End') show(N - 1);
     else if (e.key.toLowerCase() === 'n') { notesOn = !notesOn; notes.classList.toggle('on', notesOn); }
-    else if (e.key.toLowerCase() === 'f') { document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen(); }
+    else if (e.key.toLowerCase() === 'f') toggleFs();
     else if (e.key.toLowerCase() === 'p') window.print();
   });
   window.addEventListener('hashchange', fromHash);
