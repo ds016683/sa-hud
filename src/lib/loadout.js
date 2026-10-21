@@ -6,7 +6,7 @@
 //   Type      Bounty (1 slot, a quick hit), Contract (2 slots, a standard job),
 //             Mythic (3 slots, several steps, the only type with a steps module)
 //   Equipped  exactly one clock runs at a time
-//   Stamina   free hours before 6 PM Chicago after remaining meetings
+//   Hours     free hours before 6 PM Chicago after remaining meetings (shown, never enforced: David 10/21)
 //   Extract   release: stop the clock, sum the segments, bank the miles
 import { supabase } from './supabase'
 
@@ -95,7 +95,7 @@ export async function fetchLoadout() {
     day, items, board, adhoc, sessions: items.filter(i => i.session),
     equipped: items.find(i => i.equipped) || null,
     slots: { used: board.reduce((n, i) => n + i.slots, 0), max: SLOTS, items: board.length }, heavy: { used: board.filter(i => i.size === 'heavy').length, max: HEAVY_MAX },
-    stamina: { free, loaded, meetingsLeft: Math.round(meetingsLeft * 10) / 10, afterHours: hoursToDayEnd() === 0 },
+    hours: { free, loaded, meetingsLeft: Math.round(meetingsLeft * 10) / 10, afterHours: hoursToDayEnd() === 0 },
     clocksTable: true,
   }
 }
@@ -183,8 +183,8 @@ export async function extract(item, { minutes, note } = {}) {
 // ---- Putting things on the board from the Board page itself -------------------
 export const DAVID = '9d28e8cf-3e35-48d9-a029-1327bd37fdd4'
 
-// Same rules as the server: slots, one Heavy, stamina during the working day.
-export const isStaminaReason = (r) => /^stamina:/.test(String(r))
+// Same rules as the server: slots and one Heavy. The hours rule is gone (David 10/21: no stamina language anywhere).
+export const isStaminaReason = () => false
 export function fitReasons(L, size = 'light', { alreadyLoadedId, adhoc = false, ignoreStamina = false } = {}) {
   const reasons = []
   const already = alreadyLoadedId && L.items.some(i => i.id === alreadyLoadedId)
@@ -194,7 +194,6 @@ export function fitReasons(L, size = 'light', { alreadyLoadedId, adhoc = false, 
   const hours = sz.hours
   const free = SLOTS - L.slots.used
   if (sz.slots > free) reasons.push(`${sz.label} takes ${sz.slots} slot${sz.slots === 1 ? '' : 's'} and the Board has ${free} free (${L.board.map(i => `${i.title} · ${i.slots}`).join(' | ') || 'empty'})`)
-  if (!ignoreStamina && !L.stamina.afterHours && L.stamina.loaded + hours > L.stamina.free) reasons.push(`stamina: ${L.stamina.loaded}h loaded + ${hours}h vs ${L.stamina.free}h free before 6 PM`)
   return reasons
 }
 
@@ -303,7 +302,7 @@ export async function startWithRoom(target, { projectName = null } = {}) {
   const attempt = () => target.type === 'task' ? equipTask(target.task, projectName, { clock: true, ignoreStamina: true }) : equipObjective(target.id, { clock: true, ignoreStamina: true })
   for (let i = 0; i < 4; i++) {
     const r = await attempt()
-    if (r.ok) { const L = await fetchLoadout(); const over = !L.stamina.afterHours && L.stamina.loaded > L.stamina.free; return { ...r, stashed, over_stamina: over ? `${L.stamina.loaded}h loaded vs ${L.stamina.free}h free before 6 PM` : null } }
+    if (r.ok) return { ...r, stashed }
     if (!r.reasons || !r.reasons.some(x => /slot|heavy|mythic/i.test(x))) return { ...r, stashed }
     const L = await fetchLoadout()
     const victim = L.board.filter(b => !b.equipped && !b.meeting && b.id !== target.id).sort((a, b) => String(a.activated_at || '').localeCompare(String(b.activated_at || '')))[0]

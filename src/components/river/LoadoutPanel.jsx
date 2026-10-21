@@ -1,6 +1,6 @@
 // The Board (the Loadout): the one Activity Board, four slots always drawn.
 // Slots 1 to 3 carry planned work (Side Missions, Main Mission tasks), one
-// Heavy at most, one equipped clock, stamina for the rest of the day. Slot 4
+// Heavy at most, one equipped clock, the free hours shown for the rest of the day. Slot 4
 // is the Ad Hoc Slot, Load the Unplanned: the Ambush lives in it (a task or a
 // call, typed into the slot itself, one at a time, dispatched when done).
 // Empty slots stay visible on purpose (David, 10/7: the structure is the point).

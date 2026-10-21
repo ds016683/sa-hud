@@ -337,7 +337,7 @@ function Protocol({ day, session, onClose, onFinished, onChange, onNavigate }) {
       else throw new Error('nothing to start')
       if (!r.ok) { setMsg(`Will not fit: ${r.reasons.join(' · ')}`); return }
       const lo = await fetchLoadout(); setL(lo); if (!first) setFirst(r.id || ref.id)
-      setMsg(`${title || r.title} started${r.stashed?.length ? ` · stashed ${r.stashed.join(', ')} to make room` : ''}${r.over_stamina ? ` · over stamina: ${r.over_stamina}` : ''} (${lo.slots.used}/${SLOTS} slots)`)
+      setMsg(`${title || r.title} started${r.stashed?.length ? ` · stashed ${r.stashed.join(', ')} to make room` : ''} (${lo.slots.used}/${SLOTS} slots)`)
     } catch (e) { setMsg(`Could not start: ${e.message}`); reportSoft(`plan start ${title}`, e) } finally { setBusy(false) }
   }
   const stopRef = async (id, title) => { setBusy(true); try { await holster(id); const lo = await fetchLoadout(); setL(lo); setMsg(`${title} holstered`) } catch (e) { setMsg(`Could not stop: ${e.message}`) } finally { setBusy(false) } }
@@ -498,7 +498,7 @@ function Protocol({ day, session, onClose, onFinished, onChange, onNavigate }) {
         <div style={{ display: 'flex', gap: 28, flexWrap: 'wrap' }}>
           <div><Label>Yesterday</Label><div style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 30, color: '#fff', lineHeight: 1.1 }}>{yday ? `${yday.miles} mi` : '…'}</div><div style={{ fontSize: 11, color: GRAY, fontFamily: MONO, letterSpacing: '0.6px' }}>{yday?.badges?.length ? yday.badges.filter(b => b).slice(0, 6).join(' · ') : 'no badges'}</div></div>
           <div><Label>Today</Label><div style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 30, color: '#fff', lineHeight: 1.1 }}>{events.filter(e => !e.is_all_day).length} meetings</div><div style={{ fontSize: 11, color: GRAY, fontFamily: MONO, letterSpacing: '0.6px' }}>{firstMeeting ? `first at ${fmtTime(firstMeeting.start_at)} · ${firstMeeting.subject}` : 'open calendar'}</div></div>
-          <div><Label>Stamina</Label><div style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 30, color: '#fff', lineHeight: 1.1 }}>{L ? `${L.stamina.free}h` : '…'}</div><div style={{ fontSize: 11, color: GRAY, fontFamily: MONO, letterSpacing: '0.6px' }}>free before 6 PM · {L ? `${L.stamina.meetingsLeft}h of meetings` : ''}</div></div>
+          <div><Label>Free Hours</Label><div style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 30, color: '#fff', lineHeight: 1.1 }}>{L ? `${L.hours.free}h` : '…'}</div><div style={{ fontSize: 11, color: GRAY, fontFamily: MONO, letterSpacing: '0.6px' }}>free before 6 PM · {L ? `${L.hours.meetingsLeft}h of meetings` : ''}</div></div>
           <div><Label>Follow-ups</Label><div style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 30, color: followups.length ? GOLD : '#fff', lineHeight: 1.1 }}>{followups.length}</div><div style={{ fontSize: 11, color: GRAY, fontFamily: MONO, letterSpacing: '0.6px' }}>due or overdue · {queueCount} in the queue</div></div>
         </div>
         <Panel style={{ marginBottom: 0 }}>

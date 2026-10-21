@@ -7,7 +7,7 @@
 //             Mission, split into tasks
 //   Equipped  exactly one item's clock runs at a time; equipping another
 //             holsters the rest
-//   Stamina   free hours left before 6 PM Chicago after the meetings still to
+//   Hours     free hours left before 6 PM Chicago after the meetings still to (shown, never enforced: David 10/21)
 //             come; the loadout's hours can't exceed it
 //   Extract   release: stop the clock, sum the segments, bank the miles
 //
@@ -41,7 +41,7 @@ export function hoursToDayEnd(d = new Date()) {
 
 const isBoardItem = (o) => !(o.tags || []).includes('session')
 
-// Everything on the board, with clocks and stamina.
+// Everything on the board, with clocks and the day's hours.
 export async function loadout() {
   const day = chiToday()
   const nowIso = new Date().toISOString()
@@ -73,14 +73,14 @@ export async function loadout() {
   const board = items.filter(i => !i.session && !i.adhoc)
   const adhoc = items.filter(i => !i.session && i.adhoc)
   const meetingsLeft = events.filter(e => !e.is_all_day && e.end_at > nowIso).reduce((s, e) => s + Math.max(0, (new Date(e.end_at) - Math.max(Date.now(), new Date(e.start_at))) / 3600e3), 0)
-  const stamina = Math.max(0, Math.round((hoursToDayEnd() - meetingsLeft) * 10) / 10)
+  const freeHours = Math.max(0, Math.round((hoursToDayEnd() - meetingsLeft) * 10) / 10)
   const loaded = Math.round(board.reduce((s, i) => s + i.hours, 0) * 10) / 10
   return {
     day, slots: { used: board.reduce((n, i) => n + i.slots, 0), max: SLOTS, items: board.length }, heavy: { used: board.filter(i => i.size === 'heavy').length, max: HEAVY_MAX },
-    stamina: { free_hours: stamina, loaded_hours: loaded, meetings_left_hours: Math.round(meetingsLeft * 10) / 10, day_end: `${DAY_END_HOUR}:00 CT`, after_hours: hoursToDayEnd() === 0, note: hoursToDayEnd() === 0 ? 'After 6 PM: stamina is not enforced, slots and Heavy still are.' : 'Loaded hours must fit within free hours before 6 PM.' },
+    hours: { free_hours: freeHours, loaded_hours: loaded, meetings_left_hours: Math.round(meetingsLeft * 10) / 10, day_end: `${DAY_END_HOUR}:00 CT`, after_hours: hoursToDayEnd() === 0, note: hoursToDayEnd() === 0 ? 'After 6 PM: stamina is not enforced, slots and Heavy still are.' : 'Loaded hours must fit within free hours before 6 PM.' },
     equipped: items.find(i => i.equipped) || null,
     items, sessions: items.filter(i => i.session), adhoc,
-    rules: `${SLOTS} slots of planned work; a Bounty takes 1, a Contract 2, a Mythic all 3. One clock running, loaded hours within stamina. One Ad Hoc slot for the unplanned (impromptu items, calls), which must be dispatched before another lands. Over the limit: stash (park) something first.`,
+    rules: `${SLOTS} slots of planned work; a Bounty takes 1, a Contract 2, a Mythic all 3. One clock running. One Ad Hoc slot for the unplanned (impromptu items, calls), which must be dispatched before another lands. Over the limit: stash (park) something first.`,
   }
 }
 
@@ -99,8 +99,7 @@ export async function checkFit(candidate, { force = false } = {}) {
   if (!already) {
     const need = (SIZES[size] || SIZES.light).slots, free = SLOTS - L.slots.used
     if (need > free) reasons.push(`${(SIZES[size] || SIZES.light).label} takes ${need} slot${need === 1 ? '' : 's'} and the Board has ${free} free: ${L.items.filter(i => !i.session && !i.adhoc).map(i => `${i.title} (${i.slots})`).join(' | ') || 'empty'}`)
-    // Stamina is a working-day rule. After 6 PM the day is his; slots and Heavy still hold.
-    if (hoursToDayEnd() > 0 && L.stamina.loaded_hours + hours > L.stamina.free_hours) reasons.push(`stamina: ${L.stamina.loaded_hours}h loaded + ${hours}h for this vs ${L.stamina.free_hours}h free before ${L.stamina.day_end}`)
+    // The hours rule is gone (David 10/21): slots and one Heavy are the only fit rules.
   }
   return { ok: force || reasons.length === 0, forced: force && reasons.length > 0, reasons, loadout: L }
 }

@@ -127,7 +127,7 @@ function RiverGraphic({ miles, awards }) {
 export default function LandingPage({ onNavigate }) {
   const [ledger, setLedger] = useState(null)       // ascending by awarded_at
   const [board, setBoard] = useState([])           // active objectives
-  const [lo, setLo] = useState(null)               // the Loadout (equipped item, slots, stamina)
+  const [lo, setLo] = useState(null)               // the Loadout (equipped item, slots, hours)
   const [projectByObj, setProjectByObj] = useState({})
   const [now, setNow] = useState(() => Date.now())
   const nav = (id) => { if (typeof onNavigate === 'function') onNavigate(id) }
@@ -326,7 +326,7 @@ export default function LandingPage({ onNavigate }) {
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginTop: 18, paddingTop: 14, borderTop: `1px solid ${PANEL_BORDER}` }}>
             <Stat v={lo ? `${lo.slots.used}/${lo.slots.max}` : '·'} l="Slots loaded" />
-            <Stat v={lo ? `${lo.stamina.loaded}h` : '·'} l={lo ? `Loaded · ${lo.stamina.free}h free` : 'Loaded'} color={lo && lo.stamina.loaded > lo.stamina.free ? RED : GOLD_BRIGHT} />
+            <Stat v={lo ? `${lo.hours.loaded}h` : '·'} l={lo ? `Loaded · ${lo.hours.free}h free` : 'Loaded'} color={lo && lo.hours.loaded > lo.hours.free ? RED : GOLD_BRIGHT} />
             <Stat v={lo ? lo.board.filter(i => !i.equipped).length : '·'} l="Holstered" />
           </div>
 
