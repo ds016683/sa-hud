@@ -6,7 +6,7 @@ import { useEffect, useRef, useState, useCallback } from 'react'
 import { Paperclip, X as XIcon, ExternalLink, Check, Trash2, Upload, Mail } from 'lucide-react'
 import { listLiveFiles, putLiveFile, linkLiveFile, openLiveFile, markFiled, removeLiveFile, noteLiveFile, draftMail, groupVersions, fmtStamp, fmtSize, extOf, requestLiveFile, isRequest, urlOf, isLink, addLiveLink } from '../../lib/livefiles'
 import { INK, INK2, GRAY, PANEL_BORDER, GOLD, BLUE, GREEN, RED, MONO, SERIF, Label, KIND_COLOR, LABEL, PURPLE } from './canon'
-
+import { hudPrompt, hudConfirm } from '../../lib/dialog'
 const EXT_COLOR = { xlsx: GREEN, xls: GREEN, csv: GREEN, pptx: GOLD, ppt: GOLD, key: GOLD, docx: BLUE, doc: BLUE, pdf: RED, md: INK2, txt: INK2, html: BLUE, png: INK2, jpg: INK2, jpeg: INK2 }
 const sbtn = (color = INK2) => ({ display: 'inline-flex', alignItems: 'center', gap: 4, fontFamily: MONO, fontSize: 9, letterSpacing: '1px', textTransform: 'uppercase', padding: '4px 8px', borderRadius: 7, border: `1px solid ${color}66`, background: 'transparent', color, cursor: 'pointer' })
 
@@ -150,7 +150,7 @@ export default function LiveFilesModal({ onClose, filter = null, items = [], onC
                       </div>
                       <div style={{ display: 'flex', gap: 5, alignItems: 'center' }}>
                         <button onClick={() => window.open(r.path, '_blank', 'noopener')} style={{ ...sbtn(PURPLE), background: PURPLE, color: '#0A1B2B', fontWeight: 600 }}><ExternalLink size={10} /> Launch</button>
-                        <button onClick={() => { if (window.confirm(`Done with ${r.name}? The link leaves Live Files.`)) act(() => markFiled(r.id), `Out of play: ${r.name}`) }} title="Done: out of Live Files" style={sbtn(INK2)}><Check size={10} /> Done</button>
+                        <button onClick={async () => { if (await hudConfirm(`Done with ${r.name}? The link leaves Live Files.`)) act(() => markFiled(r.id), `Out of play: ${r.name}`) }} title="Done: out of Live Files" style={sbtn(INK2)}><Check size={10} /> Done</button>
                       </div>
                     </div>
                   )
@@ -167,7 +167,7 @@ export default function LiveFilesModal({ onClose, filter = null, items = [], onC
                         <div style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '0.6px', color: GRAY, marginTop: 2 }}>
                           {fmtStamp(r.created_at)}{r.size ? ` · ${fmtSize(r.size)}` : ''} · {r.source === 'session' ? `Claude${r.session ? ` · ${r.session}` : ''}` : r.source === 'lumen' ? 'Lumen' : 'David'}{isOld ? ' · older version' : ''}
                         </div>
-                        <div onClick={() => { const n = window.prompt('Note on this file', r.note || ''); if (n !== null) act(() => noteLiveFile(r.id, n.trim() || null), 'Note saved') }} style={{ fontSize: 12, color: r.note ? INK2 : GRAY, marginTop: 3, cursor: 'text', fontStyle: r.note ? 'normal' : 'italic' }}>{r.note || 'add a note'}</div>
+                        <div onClick={async () => { const n = await hudPrompt('Note on this file', r.note || ''); if (n !== null) act(() => noteLiveFile(r.id, n.trim() || null), 'Note saved') }} style={{ fontSize: 12, color: r.note ? INK2 : GRAY, marginTop: 3, cursor: 'text', fontStyle: r.note ? 'normal' : 'italic' }}>{r.note || 'add a note'}</div>
                       </div>
                       <div style={{ display: 'flex', gap: 5, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
                         <select value={r.objective_id || ''} onChange={e => act(() => linkLiveFile(r, { objectiveId: e.target.value || null }), e.target.value ? 'Tied to the item' : 'Untied')} title="Tie to a Loadout or Stash item" style={{ background: '#0A1B2B', color: INK2, border: `1px solid ${PANEL_BORDER}`, borderRadius: 7, padding: '3px 6px', fontSize: 11, maxWidth: 170 }}>
@@ -178,8 +178,8 @@ export default function LiveFilesModal({ onClose, filter = null, items = [], onC
                         {urlOf(r) && <button onClick={() => window.open(urlOf(r), '_blank', 'noopener')} title={urlOf(r)} style={sbtn(GREEN)}><ExternalLink size={10} /> Visit</button>}
                         {!isRequest(r) && <button onClick={() => act(async () => { window.open(await openLiveFile(r), '_blank', 'noopener') }, `Opened ${r.name}`)} title={extOf(r.name) === 'html' ? 'The stored file (source); HTML shows as text here' : 'Open the stored file'} style={sbtn(BLUE)}><ExternalLink size={10} /> {extOf(r.name) === 'html' ? 'Source' : 'Open'}</button>}
                         {!isRequest(r) && <button onClick={() => act(async () => { setMsg(`Drafting in Outlook: ${r.name}`); const d = await draftMail(r); if (d.webLink) window.open(d.webLink, '_blank', 'noopener') }, `Draft open in Outlook: ${r.name}`)} title="Open a new Outlook draft with this file attached" style={sbtn(GOLD)}><Mail size={10} /> Mail</button>}
-                        <button onClick={() => { if (window.confirm(`Done with ${r.name}? It leaves Live Files (the bytes stay in storage until the filing system moves them).`)) act(() => markFiled(r.id), `Out of play: ${r.name}`) }} title="Done: out of Live Files" style={sbtn(GREEN)}><Check size={10} /> Done</button>
-                        <button onClick={() => { if (window.confirm(`Delete ${r.name} from storage? This cannot be undone.`)) act(() => removeLiveFile(r), `Deleted ${r.name}`) }} title="Delete the file" style={{ background: 'transparent', border: 'none', color: 'rgba(234,241,248,0.25)', cursor: 'pointer', padding: 3 }}><Trash2 size={12} /></button>
+                        <button onClick={async () => { if (await hudConfirm(`Done with ${r.name}? It leaves Live Files (the bytes stay in storage until the filing system moves them).`)) act(() => markFiled(r.id), `Out of play: ${r.name}`) }} title="Done: out of Live Files" style={sbtn(GREEN)}><Check size={10} /> Done</button>
+                        <button onClick={async () => { if (await hudConfirm(`Delete ${r.name} from storage? This cannot be undone.`)) act(() => removeLiveFile(r), `Deleted ${r.name}`) }} title="Delete the file" style={{ background: 'transparent', border: 'none', color: 'rgba(234,241,248,0.25)', cursor: 'pointer', padding: 3 }}><Trash2 size={12} /></button>
                       </div>
                     </div>
                   )

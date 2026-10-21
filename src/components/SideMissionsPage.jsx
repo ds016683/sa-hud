@@ -10,7 +10,7 @@ import FileAway from './river/FileAway'
 import { fetchObjectives, addObjective, route, binObjective, restoreObjective, purgeObjective, reopenObjective, closeOut, pockets, provenance, realmOf, STATE, TAGS, sizeOf } from '../lib/objectives'
 import { fetchLoadout, SIZES } from '../lib/loadout'
 import { INK, INK2, GRAY, PANEL_BORDER, GOLD, GOLD_BRIGHT, BLUE, GREEN, RED, PURPLE, MONO, S, Panel, Label, chiToday, NORTH_STAR_LABEL, NORTH_STAR_ASK, LABEL } from './river/canon'
-
+import { hudConfirm } from '../lib/dialog'
 const btn = (color = INK2, filled = false, extra = {}) => ({
   display: 'inline-flex', alignItems: 'center', gap: 5, fontFamily: MONO, fontSize: 9.5, letterSpacing: '1px', textTransform: 'uppercase',
   padding: '5px 9px', borderRadius: 8, border: `1px solid ${filled ? color : `${color}66`}`, background: filled ? color : 'transparent', color: filled ? '#0A1B2B' : color, cursor: 'pointer', ...extra,
@@ -145,7 +145,7 @@ export default function SideMissionsPage({ onNavigate }) {
     try {
       const p = await pockets(o.id)
       if (p.carrying) { setFiling({ o, p }); return }
-      if (p.openSteps.length && !window.confirm(`${p.openSteps.length} step(s) still open. Close it out anyway?`)) return
+      if (p.openSteps.length && !await hudConfirm(`${p.openSteps.length} step(s) still open. Close it out anyway?`)) return
       const r = await closeOut(o)
       setMsg(`Released: ${o.title} · ${r.minutes}m${r.personal ? ' · personal' : ''} · miles on the next update`); await refresh()
     } catch (e) { setMsg(`Could not close it out: ${e.message}`) }
@@ -187,7 +187,7 @@ export default function SideMissionsPage({ onNavigate }) {
             <Row key={o.id} o={o} container={container} loadItem={loadItemFor(o)} onOpen={setOpen}
               onRoute={(x, c) => act(() => route(x.id, c), c === 'active' ? `Loaded: ${x.title}` : `${x.title} → ${STATE[c].label}`)}
               onDone={onDone} onBin={(x) => act(() => binObjective(x.id), `Binned: ${x.title}`)}
-              onRestore={(x) => act(() => restoreObjective(x.id), `Restored: ${x.title}`)} onPurge={(x) => { if (window.confirm(`Purge "${x.title}" for good?`)) act(() => purgeObjective(x.id), 'Purged') }}
+              onRestore={(x) => act(() => restoreObjective(x.id), `Restored: ${x.title}`)} onPurge={async (x) => { if (await hudConfirm(`Purge "${x.title}" for good?`)) act(() => purgeObjective(x.id), 'Purged') }}
               onReopen={(x) => act(() => reopenObjective(x.id), `Back in the queue: ${x.title}`)} />
           ))}
         </div>

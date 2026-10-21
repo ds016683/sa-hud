@@ -9,7 +9,7 @@ import { Zap, Phone, Play, Swords, X as XIcon } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { fetchLoadout, addImpromptu, extract, fmtClock, DAVID } from '../../lib/loadout'
 import { INK, INK2, GRAY, PANEL_BORDER, GOLD, GOLD_BRIGHT, BLUE, GREEN, RED, MONO, SERIF, S, Eyebrow, Label, Panel } from './canon'
-
+import { hudPrompt } from '../../lib/dialog'
 const btn = (color = INK2, filled = false) => ({
   display: 'inline-flex', alignItems: 'center', gap: 5, fontFamily: MONO, fontSize: 9.5, letterSpacing: '1px', textTransform: 'uppercase',
   padding: '5px 9px', borderRadius: 8, border: `1px solid ${filled ? color : `${color}66`}`, background: filled ? color : 'transparent',
@@ -139,8 +139,8 @@ export default function AmbushPanel({ onChange }) {
     } catch (e) { setMsg(`Could not add it: ${e.message}`) }
     setBusy(false)
   }
-  const startCall = () => {
-    const who = window.prompt('Who is calling?', '')
+  const startCall = async () => {
+    const who = await hudPrompt('Who is calling?', '')
     if (who === null) return
     start(`Call: ${who.trim() || 'unknown'}`, ['call'])
   }

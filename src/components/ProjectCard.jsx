@@ -4,7 +4,7 @@ import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import InlineName from './InlineName'
 import { getFreshnessTier } from '../hooks/usePortfolio'
-
+import { hudConfirm } from '../lib/dialog'
 const PRIORITY_STYLES = {
   low:    'bg-gray-100 text-gray-500 border-gray-200',
   medium: 'bg-blue-50 text-blue-700 border-blue-200',
@@ -112,7 +112,7 @@ export default function ProjectCard({ project, onUpdate, onPin, onNavigate, arch
                         <Archive size={12} /> Archive
                       </button>
                       <button
-                        onClick={(e) => { e.stopPropagation(); setMenuOpen(false); if (window.confirm(`Permanently delete "${project.name}"?`)) deleteProject(project.id) }}
+                        onClick={async (e) => { e.stopPropagation(); setMenuOpen(false); if (await hudConfirm(`Permanently delete "${project.name}"?`)) deleteProject(project.id) }}
                         className="w-full px-3 py-1.5 text-left text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
                       >
                         <Trash2 size={12} /> Delete

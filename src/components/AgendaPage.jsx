@@ -20,6 +20,7 @@ import {
   INK, INK2, GRAY, NAVY_DEEP, PANEL_BORDER, GOLD, GOLD_BRIGHT, BLUE, PERIWINKLE, PURPLE, GREEN, RED, MONO, SERIF,
   S, Eyebrow, Label, Panel, chiToday, fmtTime, weekday,
 } from './river/canon'
+import { hudPrompt, hudConfirm } from '../lib/dialog'
 
 const fmtFullDay = (day) => day ? new Date(day + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }) : ''
 const fmtShortDay = (day) => day ? new Date(day + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : ''
@@ -134,7 +135,7 @@ function CalendarPanel({events, loading, now, day, refresh, onOpenEvent }) {
   const onStart = async (e) => {
     const other = events.find(x => x.id !== e.id && isRunning(x.session))
     if (other) {
-      if (!window.confirm(`"${other.subject || '(no subject)'}" is still running. Stop it first?`)) return
+      if (!await hudConfirm(`"${other.subject || '(no subject)'}" is still running. Stop it first?`)) return
     }
     setBusyFor(e.id, true); setErr(e.id, null)
     try {
@@ -147,8 +148,8 @@ function CalendarPanel({events, loading, now, day, refresh, onOpenEvent }) {
     }
   }
   const onCancel = async (e) => {
-    const mine = window.confirm(`Was it you who canceled "${e.subject || '(no subject)'}"?\n\nOK = I canceled it (no credit). Cancel = they canceled it (I get credit for the meeting).`)
-    const reason = window.prompt(`Why was "${e.subject || '(no subject)'}" canceled?`, '')
+    const mine = await hudConfirm(`Was it you who canceled "${e.subject || '(no subject)'}"?\n\nOK = I canceled it (no credit). Cancel = they canceled it (I get credit for the meeting).`)
+    const reason = await hudPrompt(`Why was "${e.subject || '(no subject)'}" canceled?`, '')
     if (reason === null) return
     setBusyFor(e.id, true); setErr(e.id, null)
     try {

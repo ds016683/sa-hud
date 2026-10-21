@@ -16,7 +16,7 @@ import YayPage from './river/YayPage'
 import DocView from './river/DocView'
 import ItemDetail from './river/ItemDetail'
 import { INK, INK2, GRAY, PANEL_BORDER, GOLD, GOLD_BRIGHT, BLUE, GREEN, PURPLE, MONO, SERIF, S, Panel, Label, LABEL } from './river/canon'
-
+import { hudConfirm } from '../lib/dialog'
 const btn = (color = INK2, filled = false, extra = {}) => ({ display: 'inline-flex', alignItems: 'center', gap: 5, fontFamily: MONO, fontSize: 9.5, letterSpacing: '1px', textTransform: 'uppercase', padding: '5px 9px', borderRadius: 8, border: `1px solid ${filled ? color : `${color}66`}`, background: filled ? color : 'transparent', color: filled ? '#0A1B2B' : color, cursor: 'pointer', ...extra })
 const KIND = { artifact: ['Brief', FileText, GOLD_BRIGHT], decision: ['Decision', Scale, GOLD], board: ['Board', ListChecks, GREEN], file: ['File', Paperclip, BLUE], summary: ['Close-out', AlignLeft, INK2] }
 const TYPES = ['Bounty', 'Contract', 'Mythic', 'Main Mission task', 'Ad Hoc']
@@ -115,7 +115,7 @@ export default function ArchivePage({ onNavigate }) {
     return { missions: data.missions.filter(keep), loose }
   }, [data, q, realm, type])
 
-  const reopen = async (o) => { if (!window.confirm(`Reopen "${o.title}"? It goes back to Parked; its filings stay here.`)) return; try { await reopenObjective(o.id); setTick(x => x + 1) } catch (e) { setErr(e.message) } }
+  const reopen = async (o) => { if (!await hudConfirm(`Reopen "${o.title}"? It goes back to Parked; its filings stay here.`)) return; try { await reopenObjective(o.id); setTick(x => x + 1) } catch (e) { setErr(e.message) } }
 
   return (
     <div style={S.page}>

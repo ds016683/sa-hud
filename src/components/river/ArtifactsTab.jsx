@@ -6,7 +6,7 @@ import { Save, RefreshCw, User, Eye, X as XIcon } from 'lucide-react'
 import { listArtifacts, readArtifact, writeArtifact } from '../../lib/artifacts'
 import { renderMarkdown } from './MeetingCloseout'
 import { INK, INK2, GRAY, MUTED, PANEL_BORDER, GOLD, GOLD_BRIGHT, BLUE, PERIWINKLE, GREEN, RED, MONO, SERIF, S, Eyebrow, Label, LABEL } from './canon'
-
+import { hudConfirm } from '../../lib/dialog'
 const field = { width: '100%', background: 'rgba(255,255,255,0.04)', border: `1px solid ${PANEL_BORDER}`, borderRadius: 8, color: INK, padding: '9px 11px', fontSize: 13, lineHeight: 1.55, fontFamily: 'inherit', resize: 'vertical', boxSizing: 'border-box' }
 const pill = (active, color = BLUE) => ({
   fontFamily: MONO, fontSize: 9.5, letterSpacing: '1px', textTransform: 'uppercase', padding: '5px 10px', borderRadius: 9999, cursor: 'pointer',
@@ -561,11 +561,11 @@ export default function ArtifactsTab({ project, initialSlug }) {
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
             <Label style={{ marginBottom: 0, marginRight: 4 }}>{cards.length ? 'Interviewee' : 'Artifact'}</Label>
             {cards.map(a => (
-              <button key={a.slug} onClick={() => { if (dirty && !window.confirm('Unsaved edits. Switch anyway?')) return; setSlug(a.slug) }} style={pill(slug === a.slug, GOLD)}>
+              <button key={a.slug} onClick={async () => { if (dirty && !await hudConfirm('Unsaved edits. Switch anyway?')) return; setSlug(a.slug) }} style={pill(slug === a.slug, GOLD)}>
                 <User size={10} style={{ verticalAlign: '-1px', marginRight: 5 }} />{a.slug.replace(/^scorecard-/, '').replace(/-/g, ' ')}
               </button>
             ))}
-            {others.map(a => <button key={a.slug} onClick={() => { if (dirty && !window.confirm('Unsaved edits. Switch anyway?')) return; setSlug(a.slug) }} style={pill(slug === a.slug)}>{a.slug.replace(/^(decision|brief|inventory)-/, '').replace(/-/g, ' ')}</button>)}
+            {others.map(a => <button key={a.slug} onClick={async () => { if (dirty && !await hudConfirm('Unsaved edits. Switch anyway?')) return; setSlug(a.slug) }} style={pill(slug === a.slug)}>{a.slug.replace(/^(decision|brief|inventory)-/, '').replace(/-/g, ' ')}</button>)}
             <span style={{ flex: 1 }} />
             <button onClick={reload} title="Reload from the file store" style={pill(false)}><RefreshCw size={10} style={{ verticalAlign: '-1px', marginRight: 5 }} />Reload</button>
             <button onClick={save} disabled={!dirty || busy} style={{ ...pill(dirty, GREEN), opacity: dirty ? 1 : 0.5 }}><Save size={10} style={{ verticalAlign: '-1px', marginRight: 5 }} />{busy ? 'Saving' : dirty ? 'Save' : 'Saved'}</button>

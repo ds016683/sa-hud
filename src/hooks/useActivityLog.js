@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { hudConfirm } from '../lib/dialog'
 // Activity log uses localStorage directly
 const STORAGE_KEY = 'sa-hud-activity-log'
 
@@ -883,8 +884,8 @@ export const useActivityLog = () => {
   }
 
   // Clear all entries
-  const clearLog = () => {
-    if (window.confirm('Clear entire activity log? This cannot be undone.')) {
+  const clearLog = async () => {
+    if (await hudConfirm('Clear entire activity log? This cannot be undone.')) {
       setEntries([])
     }
   }

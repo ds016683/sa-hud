@@ -8,7 +8,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { FolderOpen, Folder, FileText, Upload, FolderPlus, ArrowRight, Pencil, Trash2, Search, ChevronRight, Inbox, Sparkles, ExternalLink, User, Building2, Car, Archive as ArchiveIcon, Image as ImageIcon } from 'lucide-react'
 import { list, openUrl, upload, makeFolder, move, remove, walk, seedStructure, REALMS, fmtSize } from '../lib/cabinet'
 import { INK, INK2, GRAY, PANEL_BORDER, GOLD, GOLD_BRIGHT, BLUE, RED, PURPLE, MONO, SERIF, S, Panel, Label, LABEL } from './river/canon'
-
+import { hudPrompt, hudConfirm } from '../lib/dialog'
 const btn = (color = INK2, filled = false, extra = {}) => ({ display: 'inline-flex', alignItems: 'center', gap: 5, fontFamily: MONO, fontSize: 9.5, letterSpacing: '1px', textTransform: 'uppercase', padding: '5px 9px', borderRadius: 8, border: `1px solid ${filled ? color : `${color}66`}`, background: filled ? color : 'transparent', color: filled ? '#0A1B2B' : color, cursor: 'pointer', ...extra })
 const field = { background: 'rgba(255,255,255,0.05)', border: `1px solid ${PANEL_BORDER}`, borderRadius: 8, color: INK, padding: '7px 10px', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }
 const fmtWhen = (iso) => iso ? new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : ''
@@ -75,10 +75,10 @@ export default function FileCabinetPage() {
   useEffect(() => { const onFocus = () => refresh(); window.addEventListener('focus', onFocus); const t = setInterval(refresh, 60_000); return () => { window.removeEventListener('focus', onFocus); clearInterval(t) } }, [refresh])
   const act = async (fn, after) => { setBusy(true); try { await fn(); if (after) setMsg(after); await refresh() } catch (e) { setMsg(`Could not do that: ${e.message}`) } finally { setBusy(false) } }
   const open = async (p) => { try { window.open(await openUrl(p), '_blank', 'noopener') } catch (e) { setMsg(`Could not open: ${e.message}`) } }
-  const newFolder = () => { const name = window.prompt('New folder name', ''); if (!name?.trim()) return; act(() => makeFolder(`${path ? path + '/' : ''}${name.trim()}`), `Folder ${name.trim()} made`) }
-  const rename = (f) => { const name = window.prompt('New name', f.name); if (!name?.trim() || name.trim() === f.name) return; act(() => move(f.path, `${path ? path + '/' : ''}${name.trim()}`), `Renamed to ${name.trim()}`) }
-  const moveTo = (f) => { const to = window.prompt('Move to folder (e.g. Personal/Vehicles)', path); if (to === null) return; act(() => move(f.path, `${to.trim().replace(/\/+$/, '')}/${f.name}`), `Moved ${f.name} to ${to.trim() || 'the root'}`) }
-  const del = (f) => { if (!window.confirm(`Remove ${f.name}? This cannot be undone.`)) return; act(() => remove(f.path), `Removed ${f.name}`) }
+  const newFolder = async () => { const name = await hudPrompt('New folder name', ''); if (!name?.trim()) return; act(() => makeFolder(`${path ? path + '/' : ''}${name.trim()}`), `Folder ${name.trim()} made`) }
+  const rename = async (f) => { const name = await hudPrompt('New name', f.name); if (!name?.trim() || name.trim() === f.name) return; act(() => move(f.path, `${path ? path + '/' : ''}${name.trim()}`), `Renamed to ${name.trim()}`) }
+  const moveTo = async (f) => { const to = await hudPrompt('Move to folder (e.g. Personal/Vehicles)', path); if (to === null) return; act(() => move(f.path, `${to.trim().replace(/\/+$/, '')}/${f.name}`), `Moved ${f.name} to ${to.trim() || 'the root'}`) }
+  const del = async (f) => { if (!await hudConfirm(`Remove ${f.name}? This cannot be undone.`)) return; act(() => remove(f.path), `Removed ${f.name}`) }
   const onUpload = (e) => { const files = [...(e.target.files || [])]; e.target.value = ''; if (!files.length) return; act(async () => { for (const f of files) await upload(path, f) }, `${files.length} file${files.length === 1 ? '' : 's'} filed in ${path || 'the root'}`) }
   const search = async () => { const t = q.trim().toLowerCase(); if (!t) { setHits(null); return } setBusy(true); try { const all = await walk('', 5); setHits(all.filter(f => f.path.toLowerCase().includes(t))) } catch (e) { setMsg(`Search failed: ${e.message}`) } finally { setBusy(false) } }
   const crumbs = path ? path.split('/') : []

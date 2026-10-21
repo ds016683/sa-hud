@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { formatEntryNarrative } from '../hooks/useActivityLog'
-
+import { hudConfirm } from '../lib/dialog'
 const ActivityLog = ({ entries, onExport, onClear, onAddNote, onEditNote, onDelete, stats }) => {
   const [showStats, setShowStats] = useState(false)
   const [manualNote, setManualNote] = useState('')
@@ -35,8 +35,8 @@ const ActivityLog = ({ entries, onExport, onClear, onAddNote, onEditNote, onDele
     setEditingNote('')
   }
 
-  const handleDelete = (entryId) => {
-    if (window.confirm('Delete this entry?')) {
+  const handleDelete = async (entryId) => {
+    if (await hudConfirm('Delete this entry?')) {
       onDelete(entryId)
     }
   }

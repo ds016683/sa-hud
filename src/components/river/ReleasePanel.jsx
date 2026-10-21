@@ -6,7 +6,7 @@ import { Play, Square, Gamepad2, Moon, Car } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { chiToday, fmtClock } from '../../lib/loadout'
 import { Instrument, InstrumentGroup, groupMsg } from './Instrument'
-
+import { hudPrompt } from '../../lib/dialog'
 export const RELEASE_TIMERS = [
   { slug: 'gaming', label: 'Gaming', ask: 'Which game?', icon: Gamepad2 },
   { slug: 'nap',    label: 'Nap', icon: Moon },
@@ -40,7 +40,7 @@ export default function ReleasePanel({ onChange }) {
     try {
       if (runningAny) { setMsg(`${runningAny.subject} is already running. Stop it first.`); return }
       let detail = null
-      if (t.ask) { detail = window.prompt(t.ask, '') ; if (detail === null) return; detail = detail.trim() || null }
+      if (t.ask) { detail = await hudPrompt(t.ask, '') ; if (detail === null) return; detail = detail.trim() || null }
       const startedAt = new Date()
       const stamp = startedAt.toISOString().slice(11, 19).replace(/:/g, '')
       const subject = detail ? `${t.label}: ${detail}` : t.label

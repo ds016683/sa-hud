@@ -4,7 +4,7 @@ import useProjects, { freshnessOf } from '../hooks/useProjects'
 import { CLIENTS, clientByKey, laneColor, missionsOf, STATUS_LABEL, STATUS_ORDER } from '../constants/clients'
 import { loadTimeline, saveTimeline, BASELINE } from '../lib/clientTimeline'
 import { INK, INK2, GRAY, LABEL, MUTED, NAVY_DEEP, PANEL_BORDER, PANEL_BG, GOLD, GREEN, BLUE, RED, MONO, SERIF, SubLabel, chiToday } from './river/canon'
-
+import { hudConfirm } from '../lib/dialog'
 // =============================================================================
 // Clients (David, 10/19). A Client card, built like the Main Mission card,
 // gathers a client's Main Missions and its program timeline. The timeline is
@@ -400,7 +400,7 @@ export function ItemModal({ client, item, onClose, onSave, onDelete, busy }) {
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4, borderTop: `1px solid ${PANEL_BORDER}`, paddingTop: 14 }}>
           <button onClick={() => onSave(d)} disabled={busy || !d.title.trim()} style={{ ...S.btnPrimary, opacity: busy || !d.title.trim() ? 0.5 : 1 }}>{busy ? 'Saving…' : isNew ? 'Add To Timeline' : 'Save'}</button>
           <button onClick={onClose} style={S.btnGhost}>Cancel</button>
-          {!isNew && <button onClick={() => { if (window.confirm(`Remove "${d.title}" from the timeline?`)) onDelete(item) }} disabled={busy} style={{ ...S.btnGhost, marginLeft: 'auto', border: '1px solid rgba(232,131,111,0.35)', color: RED }}><Trash2 size={12} /> Remove</button>}
+          {!isNew && <button onClick={async () => { if (await hudConfirm(`Remove "${d.title}" from the timeline?`)) onDelete(item) }} disabled={busy} style={{ ...S.btnGhost, marginLeft: 'auto', border: '1px solid rgba(232,131,111,0.35)', color: RED }}><Trash2 size={12} /> Remove</button>}
           {item?.updated_at && <span style={{ marginLeft: isNew ? 'auto' : 12, fontSize: 10.5, color: MUTED, fontFamily: MONO }}>updated {new Date(item.updated_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>}
         </div>
       </div>

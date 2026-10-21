@@ -21,7 +21,7 @@ import { upsertSession, logToHarvest, hoursBetween } from '../../lib/meetings'
 import { chiToday, fmtClock } from '../../lib/loadout'
 import { INK, INK2, GRAY, PANEL_BORDER, GOLD, GREEN, RED, BLUE, MONO, Label, fmtTime, LABEL } from './canon'
 import { Instrument, InstrumentGroup, groupMsg } from './Instrument'
-
+import { hudPrompt, hudConfirm } from '../../lib/dialog'
 // Add a chore here and it appears as a card. slug is the Harvest note and
 // the session key; label is what David sees. light picks the rule below;
 // group places it (tend = lit dashboard card, timer = plain button).
@@ -155,7 +155,7 @@ export default function RecurringPanel({ onChange }) {
       await closeSpan(r, s, s.started_at, new Date().toISOString(), { personal: s.special_notes === 'personal' })
       if (r.slug === 'bill-pay') {
         // The week closes on David's word (10/14): yes pays 25 and turns the light green until Sunday; no leaves it red.
-        const yes = window.confirm("Ready to Close Out This Week's Bill Pay?")
+        const yes = await hudConfirm("Ready to Close Out This Week's Bill Pay?")
         const { error } = await supabase.from('daily_logs').insert({ day, kind: 'activity', what: yes ? 'bill-pay-closed' : 'bill-pay-declined', value: 1, note: yes ? 'closed on the Console · 25 miles' : 'not ready', source: 'hud', at: new Date().toISOString() })
         if (error) setMsg(`Bill Pay stopped; the week did not record: ${error.message}`)
         else setMsg(yes ? 'Bill Pay closed for the week · 25 miles on the next update' : 'Bill Pay stays open; the light holds red until the week is closed')
@@ -172,7 +172,7 @@ export default function RecurringPanel({ onChange }) {
   }
   // Until the Slack pipe exists, the count is set by hand (or by Lumen).
   const setSlackCount = async () => {
-    const v = window.prompt('Unread Slack messages right now?', lights?.slack?.unread ?? '')
+    const v = await hudPrompt('Unread Slack messages right now?', lights?.slack?.unread ?? '')
     if (v === null || v.trim() === '' || isNaN(Number(v))) return
     const { error } = await supabase.from('daily_logs').insert({ day, kind: 'activity', what: 'slack-unread', value: Number(v), note: 'set on the Board', source: 'hud', at: new Date().toISOString() })
     if (error) { setMsg(`Could not save: ${error.message}`); return }

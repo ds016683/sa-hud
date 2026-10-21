@@ -20,7 +20,7 @@ import { BADGES } from '../constants/collection'
 import { supabase as sbClient2 } from '../lib/supabase'
 import { listArtifacts as listProjArtifacts, readArtifact as readProjArtifact } from '../lib/artifacts'
 import { supabase as sbClient } from '../lib/supabase'
-
+import { hudPrompt, hudConfirm, hudNotice } from '../lib/dialog'
 // =============================================================================
 // STYLE TOKENS (CIP canon, matches ObjectivesPage dark stage)
 // =============================================================================
@@ -169,16 +169,16 @@ function MilestoneRow({ n, project, task, board, api, onNavigate, onBoardChange,
     onBoardChange && onBoardChange({ ...board, phases: nextPhases })
   }
   const toggleStep = (ti) => writeBoard(phases.map((ph, i) => i !== pi ? ph : { ...ph, tasks: ph.tasks.map((t, j) => j !== ti ? t : { ...t, status: t.status === 'done' ? 'open' : 'done' }) }))
-  const addStep = () => {
-    const label = window.prompt('The step', ''); if (!label?.trim()) return
+  const addStep = async () => {
+    const label = await hudPrompt('The step', ''); if (!label?.trim()) return
     const item = { id: `${n}.${steps.length + 1}`, label: label.trim(), status: 'open' }
     if (phase) writeBoard(phases.map((ph, i) => i !== pi ? ph : { ...ph, tasks: [...(ph.tasks || []), item] }))
     else writeBoard([...phases, { title: `${n} · ${stripNum(task.text)}`, task_id: task.id, tasks: [item] }])
   }
   const load = async () => { setBusy(true); try { const r = await equipTask(task, project.name, { clock: false }); setMsg(r.ok ? 'On the Board' : `Will not fit: ${r.reasons.join(' · ')}`); if (r.ok) api.refresh() } catch (e) { setMsg(`Could not load: ${e.message}`) } finally { setBusy(false) } }
   const toStash = async () => { setBusy(true); try { await stashTask(task, project.name); setMsg('In the Stash'); api.refresh() } catch (e) { setMsg(`Could not stash: ${e.message}`) } finally { setBusy(false) } }
-  const rename = async () => { const t = window.prompt('Milestone', stripNum(task.text)); if (!t?.trim()) return; await api.updateTask(project.id, task.id, { text: t.trim() }) }
-  const doneWhen = async () => { const t = window.prompt('Done when…', task.notes || ''); if (t === null) return; await api.updateTask(project.id, task.id, { notes: t.trim() || null }) }
+  const rename = async () => { const t = await hudPrompt('Milestone', stripNum(task.text)); if (!t?.trim()) return; await api.updateTask(project.id, task.id, { text: t.trim() }) }
+  const doneWhen = async () => { const t = await hudPrompt('Done when…', task.notes || ''); if (t === null) return; await api.updateTask(project.id, task.id, { notes: t.trim() || null }) }
 
   return (
     <div style={{ borderTop: `1px solid ${PANEL_BORDER}`, padding: '12px 0', opacity: open ? 1 : 0.55 }}>
@@ -214,9 +214,9 @@ function MilestoneRow({ n, project, task, board, api, onNavigate, onBoardChange,
             {open && <button onClick={doneWhen} style={{ ...S.btnGhost, padding: '4px 9px', fontSize: 10 }}>Done when</button>}
             {open && <button onClick={rename} style={{ ...S.btnGhost, padding: '4px 9px', fontSize: 10 }}>Rename</button>}
             {open
-              ? <button onClick={async () => { if (!window.confirm(`Close milestone ${n}? 10 miles on the next update.`)) return; await api.toggleTask(project.id, task); onAward && onAward({ n, title: stripNum(task.text) }) }} style={{ ...S.btnGhost, padding: '4px 9px', fontSize: 10, color: GOLD, borderColor: 'rgba(230,181,79,0.4)' }}><Check size={10} /> Close milestone</button>
+              ? <button onClick={async () => { if (!await hudConfirm(`Close milestone ${n}? 10 miles on the next update.`)) return; await api.toggleTask(project.id, task); onAward && onAward({ n, title: stripNum(task.text) }) }} style={{ ...S.btnGhost, padding: '4px 9px', fontSize: 10, color: GOLD, borderColor: 'rgba(230,181,79,0.4)' }}><Check size={10} /> Close milestone</button>
               : <button onClick={() => api.toggleTask(project.id, task)} style={{ ...S.btnGhost, padding: '4px 9px', fontSize: 10 }}>Reopen</button>}
-            <button onClick={() => { if (window.confirm('Delete this milestone?')) api.deleteTask(project.id, task.id) }} title="Delete" style={{ background: 'transparent', border: 'none', color: 'rgba(234,241,248,0.25)', cursor: 'pointer', padding: 4 }}><Trash2 size={12} /></button>
+            <button onClick={async () => { if (await hudConfirm('Delete this milestone?')) api.deleteTask(project.id, task.id) }} title="Delete" style={{ background: 'transparent', border: 'none', color: 'rgba(234,241,248,0.25)', cursor: 'pointer', padding: 4 }}><Trash2 size={12} /></button>
           </div>
           {msg && <div style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '1px', textTransform: 'uppercase', color: msg.startsWith('Could') || msg.startsWith('Will') || msg.startsWith('No session') ? RED : msg === 'In the Stash' ? BLUE : GOLD, marginTop: 6 }}>{msg}</div>}
         </div>
@@ -258,7 +258,7 @@ function FilesTab({ project, listFiles, uploadFile, createFolder, fileUrl, delet
   }
 
   const onNewFolder = async () => {
-    const name = window.prompt('Folder name')
+    const name = await hudPrompt('Folder name')
     if (!name || !name.trim()) return
     await createFolder(project.id, path, name.trim().replace(/\//g, '-'))
     load()
@@ -323,7 +323,7 @@ function FilesTab({ project, listFiles, uploadFile, createFolder, fileUrl, delet
           </button>
           <span style={{ fontFamily: MONO, fontSize: 9.5, color: GRAY }}>{fmtSize(f.metadata?.size)}</span>
           <button onClick={() => onOpenFile(f.name)} title="Open / download" style={{ background: 'none', border: 'none', color: BLUE, cursor: 'pointer', padding: 4 }}><Download size={13} /></button>
-          <button onClick={async () => { if (window.confirm(`Delete ${f.name}?`)) { await deleteFile(project.id, path, f.name); load() } }} title="Delete" style={{ background: 'none', border: 'none', color: 'rgba(234,241,248,0.25)', cursor: 'pointer', padding: 4 }}><Trash2 size={13} /></button>
+          <button onClick={async () => { if (await hudConfirm(`Delete ${f.name}?`)) { await deleteFile(project.id, path, f.name); load() } }} title="Delete" style={{ background: 'none', border: 'none', color: 'rgba(234,241,248,0.25)', cursor: 'pointer', padding: 4 }}><Trash2 size={13} /></button>
         </div>
       ))}
     </div>
@@ -528,10 +528,9 @@ function ProjectDetail({ project, board: boardProp, api, onBack, initialTab, ini
         {project.status !== 'completed' && (
           <button
             onClick={async () => {
-              const typed = window.prompt(`Delete "${project.name}"? No miles are awarded; milestones already closed keep theirs. Its artifacts and cabinet stay in the Ledger. Type the mission name to confirm.`, '')
-              if (typed === null) return
-              if (typed.trim().toLowerCase() !== project.name.trim().toLowerCase()) { window.alert('The name did not match; nothing was deleted.'); return }
-              try { await deleteMission(project); await api.refresh(); onBack() } catch (e) { window.alert(`Could not delete: ${e.message}`) }
+              const yes = await hudConfirm({ eyebrow: 'Delete Mission', title: project.name, message: 'Delete this mission? No miles are awarded. Milestones already closed keep theirs. Its artifacts and cabinet stay in the Ledger. It leaves every list.', confirm: 'Delete Mission', danger: true })
+              if (!yes) return
+              try { await deleteMission(project); await api.refresh(); onBack() } catch (e) { await hudNotice(`Could not delete: ${e.message}`) }
             }}
             title="Delete this mission: no miles, gone from every list"
             style={{ ...S.btnGhost, border: '1px solid rgba(232,131,111,0.35)', color: RED, padding: '6px 10px' }}
@@ -545,7 +544,7 @@ function ProjectDetail({ project, board: boardProp, api, onBack, initialTab, ini
         <div style={{ flex: 1, minWidth: 280 }}>
           <h1 style={S.h1}>{project.name}</h1>
           <div style={{ fontSize: 14, lineHeight: 1.6, color: TEXT_DIM, margin: '8px 0 0', maxWidth: '72ch' }}>
-            {project.description ? <span><span style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '1.4px', textTransform: 'uppercase', color: BLUE, marginRight: 8, display: 'block', marginBottom: 2 }}>{NORTH_STAR_LABEL}</span><span style={{ fontFamily: SERIF, fontStyle: 'italic', fontSize: 15.5, color: INK }}>{project.description}</span></span> : <button onClick={async () => { const d = window.prompt(`${NORTH_STAR_LABEL}? One sentence.`, ''); if (d?.trim()) await api.updateProject(project.id, { description: d.trim() }) }} style={{ ...S.btnGhost, padding: '3px 9px', fontSize: 10 }}>Write the Polaris Objective</button>}
+            {project.description ? <span><span style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '1.4px', textTransform: 'uppercase', color: BLUE, marginRight: 8, display: 'block', marginBottom: 2 }}>{NORTH_STAR_LABEL}</span><span style={{ fontFamily: SERIF, fontStyle: 'italic', fontSize: 15.5, color: INK }}>{project.description}</span></span> : <button onClick={async () => { const d = await hudPrompt(`${NORTH_STAR_LABEL}? One sentence.`, ''); if (d?.trim()) await api.updateProject(project.id, { description: d.trim() }) }} style={{ ...S.btnGhost, padding: '3px 9px', fontSize: 10 }}>Write the Polaris Objective</button>}
           </div>
           <div style={S.sub}>
             {[CATEGORY_LABELS[project.category] || project.category, project.key, '100 miles on completion · 10 per milestone'].filter(Boolean).join(' · ')}

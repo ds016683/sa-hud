@@ -4,7 +4,7 @@ import usePortfolio from '../hooks/usePortfolio'
 import ProjectCard from './ProjectCard'
 import CreateProjectModal from './CreateProjectModal'
 import ProjectDetail from './ProjectDetail'
-
+import { hudConfirm } from '../lib/dialog'
 const SECTIONS = [
   { id: 'client',        label: 'Client Projects' },
   { id: 'third-horizon', label: 'Third Horizon Projects' },
@@ -218,7 +218,7 @@ export default function PortfolioPage() {
                         <span className="text-sm text-gray-500 flex-1 truncate">{p.name}</span>
                         <button onClick={() => setDetailProjectId(p.id)} className="text-xs text-gray-400 hover:text-[#009DE0] transition-colors">view</button>
                         <button
-                          onClick={() => { if (window.confirm(`Permanently delete "${p.name}"?`)) deleteProject(p.id) }}
+                          onClick={async () => { if (await hudConfirm(`Permanently delete "${p.name}"?`)) deleteProject(p.id) }}
                           className="p-1 text-gray-300 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"
                           title="Permanently delete"
                         >

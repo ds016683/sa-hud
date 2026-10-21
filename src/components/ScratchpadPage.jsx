@@ -9,7 +9,7 @@ import { Eraser, Undo2, Trash2, Save, Image as ImageIcon, Pen, FilePlus } from '
 import { putLiveFile, listLiveFiles, openLiveFile, fmtStamp } from '../lib/livefiles'
 import { fetchLoadout, fetchStash } from '../lib/loadout'
 import { S, Eyebrow, Serif, Label, INK, INK2, GRAY, GOLD, BLUE, GREEN, RED, PURPLE, MONO, PANEL_BORDER, LABEL } from './river/canon'
-
+import { hudConfirm } from '../lib/dialog'
 const COLORS = [['Ink', '#EAF1F8'], ['Gold', GOLD], ['Blue', BLUE], ['Green', GREEN], ['Red', RED], ['Purple', PURPLE]]
 const WIDTHS = [2, 4, 7, 12]
 const PAPER = '#132B42'
@@ -126,18 +126,18 @@ export default function ScratchpadPage() {
   const up = (e) => { if (!live.current) return; e.preventDefault(); strokes.current.push(live.current); live.current = null; redraw(); touch(); setCount(strokes.current.length) }
   const goPage = (i) => { if (i < 0 || i >= pages.current.length) return; pageIx.current = i; setPageNo(i); setCount(strokes.current.length); redraw(); persist() }
   const addPage = () => { pages.current.push({ strokes: [], bg: null, bgSrc: null }); setPageCount(pages.current.length); goPage(pages.current.length - 1) }
-  const deletePage = () => { if (pages.current.length === 1) { clear(); return } if (!window.confirm(`Delete page ${pageIx.current + 1}?`)) return; pages.current.splice(pageIx.current, 1); dirty.current = true; setPageCount(pages.current.length); goPage(Math.min(pageIx.current, pages.current.length - 1)) }
+  const deletePage = async () => { if (pages.current.length === 1) { clear(); return } if (!await hudConfirm(`Delete page ${pageIx.current + 1}?`)) return; pages.current.splice(pageIx.current, 1); dirty.current = true; setPageCount(pages.current.length); goPage(Math.min(pageIx.current, pages.current.length - 1)) }
   const scrub = () => { pages.current = [{ strokes: [], bg: null, bgSrc: null }]; pageIx.current = 0; dirty.current = false; setPageNo(0); setPageCount(1); setCount(0); redraw(); persist() }
   // New Sketch (David 10/20): scrub working memory. If the sketch is not in Live Files yet, ask to save it first.
   const newSketch = async () => {
     if (hasContent() && dirty.current) {
-      if (window.confirm('This sketch is not in Live Files yet. Save it before starting a new one?')) { const ok = await save(); if (!ok) return }
-      else if (!window.confirm('Discard it and start a new sketch?')) return
+      if (await hudConfirm('This sketch is not in Live Files yet. Save it before starting a new one?')) { const ok = await save(); if (!ok) return }
+      else if (!await hudConfirm('Discard it and start a new sketch?')) return
     }
     scrub(); setMsg('New sketch. Working memory is clear.')
   }
   const undo = () => { strokes.current.pop(); redraw(); touch(); setCount(strokes.current.length) }
-  const clear = () => { if (!strokes.current.length && !bg.current) return; if (!window.confirm('Clear this page?')) return; strokes.current = []; bg.current = null; redraw(); touch(); setCount(strokes.current.length) }
+  const clear = async () => { if (!strokes.current.length && !bg.current) return; if (!await hudConfirm('Clear this page?')) return; strokes.current = []; bg.current = null; redraw(); touch(); setCount(strokes.current.length) }
   const loadImage = (file) => { if (!file || !file.type.startsWith('image/')) return; const rd = new FileReader(); rd.onload = () => { const im = new Image(); im.onload = () => { bg.current = im; redraw(); touch(); setCount(strokes.current.length) }; im.src = rd.result }; rd.readAsDataURL(file) }
   useEffect(() => { const onPaste = (e) => { const f = [...(e.clipboardData?.files || [])].find(x => x.type.startsWith('image/')); if (f) loadImage(f) }; window.addEventListener('paste', onPaste); return () => window.removeEventListener('paste', onPaste) }, [])
 
