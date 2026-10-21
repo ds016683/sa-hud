@@ -67,10 +67,14 @@ export default function LiveFilesModal({ onClose, filter = null, items = [], onC
   const [rows, setRows] = useState(null)
   const [missing, setMissing] = useState(false)
   const [msg, setMsg] = useState(null)
-  const [scope, setScope] = useState(filter?.objectiveId ? 'item' : 'all')
+  // Key rule (David 10/21): a live file is on the Board only while its item is on the
+  // Board (equipped or in the Stash). Files on released or parked-off items stay on the
+  // item's own page (Production). 'all' is the override that shows everything.
+  const [scope, setScope] = useState(filter?.objectiveId ? 'item' : 'board')
   const [dropTarget, setDropTarget] = useState(filter?.objectiveId || '')
   const [olderOpen, setOlderOpen] = useState({})
-  const load = useCallback(() => listLiveFiles(scope === 'item' && filter?.objectiveId ? { objectiveId: filter.objectiveId } : {}).then(r => { setRows(r.rows); setMissing(r.missing) }), [scope, filter])
+  const onBoard = (r) => !r.item || r.item.state === 'active' || r.item.stashed
+  const load = useCallback(() => listLiveFiles(scope === 'item' && filter?.objectiveId ? { objectiveId: filter.objectiveId } : {}).then(r => { setRows(scope === 'board' ? r.rows.filter(onBoard) : r.rows); setMissing(r.missing) }), [scope, filter])
   useEffect(() => { load() }, [load])
   useEffect(() => { const k = (e) => { if (e.key === 'Escape') onClose() }; window.addEventListener('keydown', k); return () => window.removeEventListener('keydown', k) }, [onClose])
   const act = async (fn, ok) => { try { await fn(); setMsg(ok); await load(); onChanged && onChanged() } catch (e) { setMsg(`Could not: ${e.message}`) } }
@@ -92,10 +96,15 @@ export default function LiveFilesModal({ onClose, filter = null, items = [], onC
           <div style={{ flex: 1 }}>
             <Label style={{ marginBottom: 2 }}>Live Files</Label>
             <div style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 20, color: '#fff' }}>
-              {scope === 'item' && filter?.title ? filter.title : 'Everything in play'}
+              {scope === 'item' && filter?.title ? filter.title : scope === 'board' ? 'On the Board' : 'Everything in play'}
               <span style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '1px', color: GRAY, marginLeft: 10 }}>{rows ? `${rows.length} file${rows.length === 1 ? '' : 's'}` : ''}</span>
             </div>
           </div>
+          {!filter?.objectiveId && (
+            <div style={{ display: 'inline-flex', border: `1px solid ${PANEL_BORDER}`, borderRadius: 8, overflow: 'hidden' }} title="On the Board: files whose item is equipped or in the Stash. All: everything in play, including items that came off the Board.">
+              {[['board', 'On the Board'], ['all', 'All']].map(([k, l]) => <button key={k} onClick={() => setScope(k)} style={{ ...sbtn(scope === k ? BLUE : GRAY), border: 'none', borderRadius: 0, background: scope === k ? 'rgba(169,201,232,0.12)' : 'transparent' }}>{l}</button>)}
+            </div>
+          )}
           {filter?.objectiveId && (
             <div style={{ display: 'inline-flex', border: `1px solid ${PANEL_BORDER}`, borderRadius: 8, overflow: 'hidden' }}>
               {[['item', 'This item'], ['all', 'All']].map(([k, l]) => <button key={k} onClick={() => setScope(k)} style={{ ...sbtn(scope === k ? BLUE : GRAY), border: 'none', borderRadius: 0, background: scope === k ? 'rgba(169,201,232,0.12)' : 'transparent' }}>{l}</button>)}
@@ -114,7 +123,7 @@ export default function LiveFilesModal({ onClose, filter = null, items = [], onC
           <LinkForm onAdd={(u, t, n) => act(() => addLiveLink(u, { title: t, note: n, objectiveId: dropTarget || null }), 'Launch link added')} />
         </div>
         {missing && <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '1px', color: GOLD, textTransform: 'uppercase', marginBottom: 10 }}>The live_files table is not in the Ledger yet. Run sql/2026-10-16-live-files.sql.</div>}
-        {rows && !rows.length && !missing && <div style={{ fontSize: 13, color: GRAY, padding: '8px 0 16px' }}>Nothing in play{scope === 'item' ? ' on this item' : ''}. Files a session or Lumen puts in play land here; drop one in above.</div>}
+        {rows && !rows.length && !missing && <div style={{ fontSize: 13, color: GRAY, padding: '8px 0 16px' }}>Nothing in play{scope === 'item' ? ' on this item' : scope === 'board' ? ' on the Board' : ''}. Files a session or Lumen puts in play land here; drop one in above.</div>}
 
         <div style={{ display: 'grid', gap: 14 }}>
           {groups.map(g => (

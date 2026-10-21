@@ -15,7 +15,7 @@ const SKILLS = [
     name: 'APNC Deck',
     skin: 'The APNC Field Hub skin: white paper on warm canvas, one red, Geist. Light, not navy.',
     use: 'Any APNC talk, conference session, or proposal. In a Code session say "use apnc-deck" or "APNC skin".',
-    swatches: ['#E8331C', '#1A1714', '#5B5650', '#F7F5F2', '#E8E3DD'],
+    swatches: ['#E8331C', '#C1281A', '#FDECEA', '#1A1714', '#5B5650', '#FFFFFF', '#F7F5F2', '#E8E3DD'],
     base: '/ai-tools/apnc-deck',
     pptx: 'APNC Deck Template.pptx',
     zip: 'apnc-deck-skill.zip',
@@ -26,7 +26,7 @@ const SKILLS = [
     name: 'Third Horizon Deck (CIP)',
     skin: 'The CIP Executive Summary frame: one navy surface, Lora story beats, Instrument Sans chrome, a single accent, gold for wayfinding only, the confidentiality footer on every slide.',
     use: 'Any Third Horizon deck, investor material, executive summary, or anything "in the TH frame". In a Code session say "use th-deck" or "on brand".',
-    swatches: ['#0F2334', '#F3F1EA', '#9BC2E6', '#F8C761', '#57BE97'],
+    swatches: ['#0F2334', '#0D1D2C', '#16314A', '#F3F1EA', '#3F6E99', '#9BC2E6', '#F8C761', '#57BE97', '#DE7E6E', '#B8822E'],
     base: '/ai-tools/th-deck',
     pptx: 'Third Horizon Deck Template.pptx',
     zip: 'th-deck-skill.zip',
@@ -38,6 +38,7 @@ const btn = (color, filled = false) => ({ display: 'inline-flex', alignItems: 'c
 
 function SkillCard({ k }) {
   const href = (f) => `${k.base}/${encodeURIComponent(f)}`
+  const [open, setOpen] = useState(false)
   return (
     <div style={{ border: `1px solid ${PANEL_BORDER}`, background: PANEL_BG, borderRadius: 12, padding: '18px 20px', marginBottom: 14 }}>
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16, flexWrap: 'wrap' }}>
@@ -48,10 +49,14 @@ function SkillCard({ k }) {
           </div>
           <Serif size={20} style={{ color: INK, lineHeight: 1.3 }}>{k.name}</Serif>
           <div style={{ fontSize: TYPE.body, lineHeight: 1.6, color: INK2, marginTop: 8, maxWidth: 760 }}>{k.skin}</div>
-          <div style={{ fontSize: TYPE.body, lineHeight: 1.6, color: MUTED, marginTop: 6, maxWidth: 760 }}>{k.use}</div>
+          {open && <div style={{ fontSize: TYPE.body, lineHeight: 1.6, color: MUTED, marginTop: 6, maxWidth: 760 }}>{k.use}</div>}
+        </div>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <a href={href(k.pptx)} download title="The PowerPoint template" style={btn(PURPLE, true)}><Presentation size={12} /> PPTX</a>
+          <button onClick={() => setOpen(o => !o)} style={btn(INK2)}>{open ? 'Hide' : 'Open'}</button>
         </div>
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 10, marginTop: 16 }}>
+      {open && <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 10, marginTop: 16 }}>
         <div style={{ padding: '12px 14px', borderRadius: 10, border: `1px solid ${PANEL_BORDER}`, background: 'rgba(255,255,255,0.02)' }}>
           <Label style={{ fontSize: TYPE.subhead }}>PowerPoint Template</Label>
           <div style={{ fontSize: TYPE.meta + 1.5, color: MUTED, lineHeight: 1.5, marginBottom: 10 }}>16:9, the skin's theme colors and fonts, one finished example slide per archetype, a how-to note on every slide. Duplicate a slide, replace the words.</div>
@@ -74,7 +79,7 @@ function SkillCard({ k }) {
             <a href={href('template.html')} download style={btn(INK2)}><Download size={12} /> Download</a>
           </div>
         </div>
-      </div>
+      </div>}
     </div>
   )
 }
