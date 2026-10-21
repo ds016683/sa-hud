@@ -11,6 +11,7 @@
 export const config = { maxDuration: 60, api: { bodyParser: false } }
 
 import { authorized } from './lumen-hud.mjs'
+import { toPdf } from './_topdf.mjs'
 
 const URL_BASE = 'https://cmuvomnmaoseccxpeuxq.supabase.co'
 const BUCKET = 'files'
@@ -25,7 +26,7 @@ async function list(prefix, bucket = BUCKET) {
   const rows = await r.json(); const pre = norm(prefix)
   const folders = [], files = []
   for (const f of rows) {
-    if (f.name === '.keep') continue
+    if (f.name === '.keep' || f.name === '_pdf') continue
     const path = pre ? `${pre}/${f.name}` : f.name
     if (f.id === null) folders.push({ name: f.name, path })
     else files.push({ name: f.name, path, size: f.metadata?.size || 0, type: f.metadata?.mimetype || '', updated_at: f.updated_at })
@@ -50,6 +51,28 @@ export default async function handler(req, res) {
         // The signed path comes back with raw spaces; rebuild it with encoded segments so CSS and <img> accept it.
         const j = await r.json(); const token = String(j.signedURL || '').split('?token=')[1] || ''
         return res.status(200).json({ url: `${URL_BASE}/storage/v1/object/sign/${BUCKET}/${enc(q.path)}?token=${token}` })
+      }
+      if (op === 'pdf') {
+        // A PDF of any file (David 10/21): PDFs pass through; everything else is
+        // rendered once and cached under _pdf/<path>.pdf, then signed like any file.
+        const path = norm(q.path)
+        const sign = async (p) => { const r = await fetch(`${URL_BASE}/storage/v1/object/sign/${BUCKET}/${enc(p)}`, { method: 'POST', headers: { ...hdr(), 'Content-Type': 'application/json' }, body: JSON.stringify({ expiresIn: 600 }) }); if (!r.ok) return null; const j = await r.json(); const token = String(j.signedURL || '').split('?token=')[1] || ''; return `${URL_BASE}/storage/v1/object/sign/${BUCKET}/${enc(p)}?token=${token}` }
+        if (/\.pdf$/i.test(path)) { const u = await sign(path); return u ? res.status(200).json({ url: u, native: true }) : res.status(404).json({ error: 'no such file' }) }
+        const cached = `_pdf/${path}.pdf`
+        const head = await fetch(`${URL_BASE}/storage/v1/object/info/authenticated/${BUCKET}/${enc(cached)}`, { headers: hdr() }).catch(() => null)
+        const src = await fetch(`${URL_BASE}/storage/v1/object/authenticated/${BUCKET}/${enc(path)}`, { headers: hdr() })
+        if (!src.ok) return res.status(404).json({ error: `no such file (${src.status})` })
+        const srcMod = src.headers.get('last-modified') || ''
+        let fresh = false
+        if (head && head.ok) { try { const info = await head.json(); fresh = !srcMod || new Date(info.updated_at || info.last_modified || 0) >= new Date(srcMod) } catch { fresh = false } }
+        if (!fresh) {
+          const bytes = new Uint8Array(await src.arrayBuffer())
+          const out = await toPdf(path, bytes)
+          const up = await fetch(`${URL_BASE}/storage/v1/object/${BUCKET}/${enc(cached)}`, { method: 'POST', headers: { ...hdr(), 'Content-Type': 'application/pdf', 'x-upsert': 'true' }, body: Buffer.from(out) })
+          if (!up.ok) return res.status(500).json({ error: `could not cache the PDF (${up.status})` })
+        }
+        const u = await sign(cached)
+        return u ? res.status(200).json({ url: u, native: false }) : res.status(500).json({ error: 'could not sign the PDF' })
       }
       return res.status(400).json({ error: 'op' })
     }

@@ -24,6 +24,10 @@ async function call(op, { params = {}, body = null, raw = null, type = null } = 
 
 export const list = (prefix = '') => call('list', { params: { prefix: norm(prefix) } })
 export const openUrl = async (path) => (await call('url', { params: { path: norm(path) } })).url
+// A PDF of any file (10/21): PDFs as they are, Office and text files rendered and cached by the door.
+export const pdfUrl = async (path) => (await call('pdf', { params: { path: norm(path) } })).url
+// Open in the native app (10/21): Word, Excel and PowerPoint take a URL through their protocol handlers; anything else opens in the browser.
+export const appUrl = (path, url) => { const e = (String(path).split('.').pop() || '').toLowerCase(); const scheme = ['docx', 'doc'].includes(e) ? 'ms-word' : ['xlsx', 'xls', 'csv'].includes(e) ? 'ms-excel' : ['pptx', 'ppt'].includes(e) ? 'ms-powerpoint' : null; return scheme ? `${scheme}:ofe|u|${url}` : url }
 export async function upload(folder, file) {
   const name = String(file.name || 'file').replace(/[^A-Za-z0-9._ ()-]/g, '_')
   const path = norm(`${norm(folder)}/${name}`)

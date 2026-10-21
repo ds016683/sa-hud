@@ -6,7 +6,7 @@
 // Vehicles" works from WhatsApp.
 import { useCallback, useEffect, useState } from 'react'
 import { FolderOpen, Folder, FileText, Upload, FolderPlus, ArrowRight, Pencil, Trash2, Search, ChevronRight, Inbox, Sparkles, ExternalLink, User, Building2, Car, Archive as ArchiveIcon, Image as ImageIcon } from 'lucide-react'
-import { list, openUrl, upload, makeFolder, move, remove, walk, seedStructure, REALMS, fmtSize } from '../lib/cabinet'
+import { list, openUrl, pdfUrl, appUrl, upload, makeFolder, move, remove, walk, seedStructure, REALMS, fmtSize } from '../lib/cabinet'
 import { INK, INK2, GRAY, PANEL_BORDER, GOLD, GOLD_BRIGHT, BLUE, RED, PURPLE, MONO, SERIF, S, Panel, Label, LABEL } from './river/canon'
 import { hudPrompt, hudConfirm } from '../lib/dialog'
 const btn = (color = INK2, filled = false, extra = {}) => ({ display: 'inline-flex', alignItems: 'center', gap: 5, fontFamily: MONO, fontSize: 9.5, letterSpacing: '1px', textTransform: 'uppercase', padding: '5px 9px', borderRadius: 8, border: `1px solid ${filled ? color : `${color}66`}`, background: filled ? color : 'transparent', color: filled ? '#0A1B2B' : color, cursor: 'pointer', ...extra })
@@ -75,9 +75,10 @@ export default function FileCabinetPage() {
   useEffect(() => { const onFocus = () => refresh(); window.addEventListener('focus', onFocus); const t = setInterval(refresh, 60_000); return () => { window.removeEventListener('focus', onFocus); clearInterval(t) } }, [refresh])
   const act = async (fn, after) => { setBusy(true); try { await fn(); if (after) setMsg(after); await refresh() } catch (e) { setMsg(`Could not do that: ${e.message}`) } finally { setBusy(false) } }
   const open = async (p) => { try { window.open(await openUrl(p), '_blank', 'noopener') } catch (e) { setMsg(`Could not open: ${e.message}`) } }
+  // PDF of any file (David 10/21); Edit opens the native app (Word, Excel, PowerPoint) with the file's signed link.
+  const asPdf = async (f) => { setMsg(`Preparing the PDF of ${f.name}`); try { window.open(await pdfUrl(f.path), '_blank', 'noopener'); setMsg(null) } catch (e) { setMsg(`Could not make a PDF: ${e.message}`) } }
+  const inApp = async (f) => { try { const url = await openUrl(f.path); const target = appUrl(f.path, url); if (target === url) window.open(url, '_blank', 'noopener'); else window.location.href = target } catch (e) { setMsg(`Could not open: ${e.message}`) } }
   const newFolder = async () => { const name = await hudPrompt('New folder name', ''); if (!name?.trim()) return; act(() => makeFolder(`${path ? path + '/' : ''}${name.trim()}`), `Folder ${name.trim()} made`) }
-  const rename = async (f) => { const name = await hudPrompt('New name', f.name); if (!name?.trim() || name.trim() === f.name) return; act(() => move(f.path, `${path ? path + '/' : ''}${name.trim()}`), `Renamed to ${name.trim()}`) }
-  const moveTo = async (f) => { const to = await hudPrompt('Move to folder (e.g. Personal/Vehicles)', path); if (to === null) return; act(() => move(f.path, `${to.trim().replace(/\/+$/, '')}/${f.name}`), `Moved ${f.name} to ${to.trim() || 'the root'}`) }
   const del = async (f) => { if (!await hudConfirm(`Remove ${f.name}? This cannot be undone.`)) return; act(() => remove(f.path), `Removed ${f.name}`) }
   const onUpload = (e) => { const files = [...(e.target.files || [])]; e.target.value = ''; if (!files.length) return; act(async () => { for (const f of files) await upload(path, f) }, `${files.length} file${files.length === 1 ? '' : 's'} filed in ${path || 'the root'}`) }
   const search = async () => { const t = q.trim().toLowerCase(); if (!t) { setHits(null); return } setBusy(true); try { const all = await walk('', 5); setHits(all.filter(f => f.path.toLowerCase().includes(t))) } catch (e) { setMsg(`Search failed: ${e.message}`) } finally { setBusy(false) } }
@@ -156,8 +157,8 @@ export default function FileCabinetPage() {
               <button onClick={() => open(f.path)} style={{ background: 'transparent', border: 'none', color: INK, cursor: 'pointer', textAlign: 'left', fontSize: 13.5, flex: 1, minWidth: 220, padding: 0 }}>{f.name}</button>
               <span style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '0.6px', color: GRAY }}>{fmtSize(f.size)}{f.updated_at ? ` · ${fmtWhen(f.updated_at)}` : ''}</span>
               <div style={{ display: 'flex', gap: 5 }}>
-                <button onClick={() => moveTo(f)} title="Move to another folder" style={btn(INK2)}><ArrowRight size={10} /> Move</button>
-                <button onClick={() => rename(f)} title="Rename" style={{ ...btn(INK2), padding: '5px 7px' }}><Pencil size={10} /></button>
+                <button onClick={() => asPdf(f)} title="A PDF of this file" style={btn(GOLD_BRIGHT)}><FileText size={10} /> PDF</button>
+                <button onClick={() => inApp(f)} title="Open in the native app (Word, Excel, PowerPoint)" style={{ ...btn(INK2), padding: '5px 7px' }}><Pencil size={10} /></button>
                 <button onClick={() => del(f)} title="Remove" style={{ ...btn(RED), padding: '5px 7px' }}><Trash2 size={10} /></button>
               </div>
             </div>
