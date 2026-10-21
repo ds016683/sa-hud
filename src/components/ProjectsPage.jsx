@@ -10,6 +10,8 @@ import ItemDetail from './river/ItemDetail'
 import SessionBoard from './river/SessionBoard'
 import { listShares, archiveShare, archiveSharesFor, shareUrl } from '../lib/shares'
 import { fileProject } from '../lib/archive'
+import { listLiveFiles, markFiled } from '../lib/livefiles'
+import { supabase as sbAuth } from '../lib/supabase'
 import { equipTask, stashTask, deleteMission } from '../lib/loadout'
 import { NORTH_STAR_LABEL, LABEL } from './river/canon'
 import { importProject } from '../lib/cabinet'
@@ -363,6 +365,64 @@ function SharesTab({ project }) {
   )
 }
 
+// The debrief (David 10/21): closing a Main Mission asks the one question, shows
+// what is still open, and files what the mission is carrying before it leaves.
+function CloseMissionModal({ project, tasks, onClose, onDone }) {
+  const [achieved, setAchieved] = useState('')
+  const [files, setFiles] = useState(null)
+  const [fileThem, setFileThem] = useState(true)
+  const [closeOpen, setCloseOpen] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const [err, setErr] = useState(null)
+  const openTasks = (tasks || []).filter(t => t.status !== 'done')
+  useEffect(() => {
+    let on = true
+    const oids = (tasks || []).map(t => t.objective_id).filter(Boolean)
+    Promise.all([listLiveFiles({ projectId: project.id }).catch(() => ({ rows: [] })), ...oids.map(id => listLiveFiles({ objectiveId: id }).catch(() => ({ rows: [] })))])
+      .then(rs => { if (!on) return; const seen = new Set(); setFiles(rs.flatMap(r => r.rows || []).filter(f => !seen.has(f.id) && seen.add(f.id))) })
+    return () => { on = false }
+  }, [project.id, tasks])
+  useEffect(() => { const k = (e) => { if (e.key === 'Escape') onClose() }; window.addEventListener('keydown', k); return () => window.removeEventListener('keydown', k) }, [onClose])
+  const go = async () => {
+    if (!achieved.trim()) { setErr('Answer the question first. One sentence is enough.'); return }
+    setBusy(true); setErr(null)
+    try { await onDone({ achieved: achieved.trim(), closeOpen, fileThem, files: files || [] }) } catch (e) { setErr(e?.message || String(e)); setBusy(false) }
+  }
+  return (
+    <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 70, background: 'rgba(5,14,24,0.74)', display: 'grid', placeItems: 'center', padding: 20 }}>
+      <div onClick={e => e.stopPropagation()} style={{ width: 'min(680px, 100%)', maxHeight: '90vh', overflowY: 'auto', background: '#0E2336', border: `1px solid ${PANEL_BORDER}`, borderRadius: 14, padding: '22px 24px 20px', boxShadow: '0 30px 80px rgba(0,0,0,0.5)' }}>
+        <div style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: 10.5, letterSpacing: '0.14em', textTransform: 'uppercase', color: LABEL, marginBottom: 6 }}>Debrief · Mark Mission Complete</div>
+        <div style={{ fontFamily: "'Lora', Georgia, serif", fontSize: 22, color: '#fff', lineHeight: 1.3 }}>{project.name}</div>
+        {project.description && <div style={{ marginTop: 10, paddingLeft: 12, borderLeft: `2px solid ${LABEL}`, fontFamily: "'Lora', Georgia, serif", fontStyle: 'italic', fontSize: 14.5, color: TEXT_DIM, lineHeight: 1.5 }}>{project.description}</div>}
+        <div style={{ marginTop: 18, fontSize: 14.5, fontWeight: 600, color: '#fff' }}>Is it true? What's different now?</div>
+        <textarea value={achieved} onChange={e => setAchieved(e.target.value)} rows={3} placeholder="In your words. It lands in the Archive as Achieved and on the yay page under the star." style={{ ...S.input, width: '100%', marginTop: 8, resize: 'vertical', lineHeight: 1.5 }} autoFocus />
+        {openTasks.length > 0 && (
+          <div style={{ marginTop: 16, padding: '12px 14px', borderRadius: 10, border: `1px solid ${PANEL_BORDER}`, background: 'rgba(255,255,255,0.025)' }}>
+            <div style={{ fontSize: 13.5, fontWeight: 600, color: GOLD }}>{openTasks.length} milestone{openTasks.length === 1 ? '' : 's'} still open</div>
+            <div style={{ fontSize: 12.5, color: TEXT_DIM, margin: '6px 0 8px', lineHeight: 1.5 }}>{openTasks.map(t => stripNum(t.text)).join(' · ')}</div>
+            <label style={{ display: 'flex', gap: 8, alignItems: 'flex-start', fontSize: 13, color: '#fff', cursor: 'pointer' }}><input type="checkbox" checked={closeOpen} onChange={e => setCloseOpen(e.target.checked)} style={{ marginTop: 3 }} /><span>Close them as done with the mission (each pays its 10). Unchecked, they stay open in the mission's history and pay nothing.</span></label>
+          </div>
+        )}
+        <div style={{ marginTop: 14, padding: '12px 14px', borderRadius: 10, border: `1px solid ${PANEL_BORDER}`, background: 'rgba(255,255,255,0.025)' }}>
+          <div style={{ fontSize: 13.5, fontWeight: 600, color: '#fff' }}>{files === null ? 'Checking Live Files' : files.length ? `${files.length} file${files.length === 1 ? '' : 's'} in play on this mission` : 'Nothing in play on this mission'}</div>
+          {files && files.length > 0 && (
+            <>
+              <div style={{ fontSize: 12.5, color: TEXT_DIM, margin: '6px 0 8px', lineHeight: 1.5 }}>{files.map(f => f.name).join(' · ')}</div>
+              <label style={{ display: 'flex', gap: 8, alignItems: 'flex-start', fontSize: 13, color: '#fff', cursor: 'pointer' }}><input type="checkbox" checked={fileThem} onChange={e => setFileThem(e.target.checked)} style={{ marginTop: 3 }} /><span>File them with the mission and take them out of play (they stay on the mission's pages and in the Archive).</span></label>
+            </>
+          )}
+          <div style={{ fontSize: 12, color: GRAY, marginTop: 8 }}>Artifacts, the latest session board and the mission's cabinet file automatically.</div>
+        </div>
+        {err && <div style={{ marginTop: 10, fontSize: 12.5, color: '#E8836F' }}>{err}</div>}
+        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 18 }}>
+          <button onClick={onClose} disabled={busy} style={S.btnGhost}>Not yet</button>
+          <button onClick={go} disabled={busy} style={{ ...S.btnGhost, border: '1px solid rgba(67,211,146,0.5)', color: '#43D392', opacity: busy ? 0.6 : 1 }}>{busy ? 'Closing' : '✓ Close the mission · 10 miles'}</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function ProjectDetail({ project, board: boardProp, api, onBack, initialTab, initialSlug, onNavigate }) {
   // Milestones first, always (David 10/21). A tab in the hash only sticks when it
   // carries an artifact slug (a deep link from Lumen or a session); otherwise the
@@ -373,6 +433,10 @@ function ProjectDetail({ project, board: boardProp, api, onBack, initialTab, ini
   const [artifactSlug, setArtifactSlug] = useState(initialSlug || null)
   const openArtifact = (slug) => { setArtifactSlug(slug); setTab('artifacts') }
   const [newTask, setNewTask] = useState('')
+  const [closingMission, setClosingMission] = useState(false)
+  const [draft, setDraft] = useState(null)
+  const [drafting, setDrafting] = useState(false)
+  const [draftErr, setDraftErr] = useState(null)
 
   // mission hash (David, 10/17): the open mission and its tab ride the URL so a refresh lands back here.
   useEffect(() => { try { const suffix = ((window.location.hash || '').match(/\/item\/[^/]+$/) || [''])[0]; window.history.replaceState(window.history.state, '', `#/main-missions/${project.id}/${tab}${suffix}`) } catch { /* no-op */ } }, [project.id, tab])
@@ -391,6 +455,51 @@ function ProjectDetail({ project, board: boardProp, api, onBack, initialTab, ini
   const [showHistory, setShowHistory] = useState(false)
   const [award, setAward] = useState(null)
 
+  const closeMission = async ({ achieved, closeOpen, fileThem, files }) => {
+    if (closeOpen) for (const t of (tasks || []).filter(x => x.status !== 'done')) await api.updateTask(project.id, t.id, { status: 'done', done: true, released_at: new Date().toISOString() })
+    const ok = await api.updateProject(project.id, { status: 'completed', archived_at: new Date().toISOString() })
+    try { await archiveSharesFor(project.id) } catch (e) { console.warn('shares archive', e.message) }
+    try { await importProject(project.id, `${project.category === 'personal' ? 'Personal' : 'Third Horizon'}/Missions/${project.name.replace(/[/\\]/g, ' ')}`) } catch (e) { console.warn('cabinet import', e.message) }
+    try {
+      const list = await listProjArtifacts(project.id)
+      const artifacts = await Promise.all(list.map(async a => { const d = await readProjArtifact(project.id, a.slug).catch(() => null); return { slug: a.slug, title: d?.title || a.slug, kind: d?.kind, doc: d } }))
+      const { data: sbs } = await sbClient.from('session_boards').select('id,title,phases').or(`project.eq.${project.key || project.name},project.eq.${project.name}`).order('updated_at', { ascending: false }).limit(1)
+      const boards = (sbs || []).map(b => { const ts = (b.phases || []).flatMap(ph => ph.tasks || []); return { id: b.id, title: b.title, phases: b.phases || [], done: ts.filter(t => t.status === 'done').length, total: ts.length } })
+      await fileProject(project, { artifacts, boards, realm: project.category === 'personal' ? 'personal' : 'third-horizon', achieved })
+    } catch (e) { console.warn('archive', e.message) }
+    if (fileThem) for (const f of files) { try { await markFiled(f.id, `mission:${project.id}`) } catch (e) { console.warn('file', e.message) } }
+    setClosingMission(false)
+    if (ok) onBack()
+  }
+  // Natural language in, an organized milestone out (David 10/21): the door
+  // api/milestone-draft returns a title, a done-when and steps for him to confirm.
+  const organize = async () => {
+    const text = newTask.trim(); if (!text) return
+    setDrafting(true); setDraftErr(null)
+    try {
+      const { data: { session } } = await sbAuth.auth.getSession()
+      const r = await fetch('/api/milestone-draft', { method: 'POST', headers: { Authorization: `Bearer ${session?.access_token || ''}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ text, project: project.name, polaris: project.description || '', existing: (tasks || []).map(t => stripNum(t.text)) }) })
+      const j = await r.json().catch(() => ({}))
+      if (!r.ok || j.error) throw new Error(j.error || `draft ${r.status}`)
+      const n = j.number || (text.match(/^\s*(\d+)\s*[·.:)-]/) || [])[1] || null
+      setDraft({ ...j, number: n ? Number(n) : null })
+    } catch (e) { setDraftErr(e?.message || String(e)) } finally { setDrafting(false) }
+  }
+  const addDraft = async () => {
+    if (!draft?.title?.trim()) return
+    const n = draft.number
+    const t = await api.addTask(project.id, `${n ? `${n} · ` : ''}${draft.title.trim()}`)
+    if (!t) { setDraftErr('Could not add the milestone'); return }
+    if (draft.done_when?.trim()) await api.updateTask(project.id, t.id, { notes: draft.done_when.trim() })
+    const steps = (draft.steps || []).map(s => s.trim()).filter(Boolean)
+    if (steps.length && board?.id) {
+      const num = n || ((tasks || []).length + 1)
+      const nextPhases = [...(board.phases || []), { title: `${num} · ${draft.title.trim()}`, task_id: t.id, tasks: steps.map((s, i) => ({ id: `${num}.${i + 1}`, label: s, status: 'open' })) }]
+      const { error } = await sbClient2.from('session_boards').update({ phases: nextPhases, updated_at: new Date().toISOString() }).eq('id', board.id)
+      if (!error) setBoard({ ...board, phases: nextPhases })
+    }
+    setDraft(null); setNewTask('')
+  }
   const submit = async (e) => {
     e.preventDefault()
     const text = newTask.trim()
@@ -401,26 +510,12 @@ function ProjectDetail({ project, board: boardProp, api, onBack, initialTab, ini
 
   return (
     <div style={S.page}>
+      {closingMission && <CloseMissionModal project={project} tasks={tasks} onClose={() => setClosingMission(false)} onDone={closeMission} />}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, marginBottom: 18, flexWrap: 'wrap' }}>
         <button onClick={onBack} style={S.btnGhost}><ArrowLeft size={13} /> All missions</button>
         {project.status !== 'completed' && !project.archived_at && (
           <button
-            onClick={async () => {
-              if (!window.confirm(`Mark "${project.name}" complete? The River strikes 10 miles on the next update.`)) return
-              const ok = await api.updateProject(project.id, { status: 'completed', archived_at: new Date().toISOString() })
-              try { await archiveSharesFor(project.id) } catch (e) { console.warn('shares archive', e.message) }
-              // The mission's own cabinet moves into the master cabinet under Missions.
-              try { await importProject(project.id, `${project.category === 'personal' ? 'Personal' : 'Third Horizon'}/Missions/${project.name.replace(/[/\\]/g, ' ')}`) } catch (e) { console.warn('cabinet import', e.message) }
-              // File the mission's artifacts and its latest session board in the Archive.
-              try {
-                const list = await listProjArtifacts(project.id)
-                const artifacts = await Promise.all(list.map(async a => { const d = await readProjArtifact(project.id, a.slug).catch(() => null); return { slug: a.slug, title: d?.title || a.slug, kind: d?.kind, doc: d } }))
-                const { data: sbs } = await sbClient.from('session_boards').select('id,title,phases').or(`project.eq.${project.key || project.name},project.eq.${project.name}`).order('updated_at', { ascending: false }).limit(1)
-                const boards = (sbs || []).map(b => { const ts = (b.phases || []).flatMap(ph => ph.tasks || []); return { id: b.id, title: b.title, phases: b.phases || [], done: ts.filter(t => t.status === 'done').length, total: ts.length } })
-                await fileProject(project, { artifacts, boards, realm: project.category === 'personal' ? 'personal' : 'third-horizon' })
-              } catch (e) { console.warn('archive', e.message) }
-              if (ok) onBack()
-            }}
+            onClick={() => setClosingMission(true)}
             title="Whole mission complete: 10 miles on the River"
             style={{ ...S.btnGhost, border: '1px solid rgba(67,211,146,0.5)', color: '#43D392' }}
           >
@@ -481,9 +576,36 @@ function ProjectDetail({ project, board: boardProp, api, onBack, initialTab, ini
               </div>
             )}
             <form onSubmit={submit} style={{ display: 'flex', gap: 8, marginTop: 16, borderTop: `1px solid ${PANEL_BORDER}`, paddingTop: 14 }}>
-              <input value={newTask} onChange={e => setNewTask(e.target.value)} placeholder="Add a milestone (lead with its number to place it): something that will be verifiably true…" style={{ ...S.input, flex: 1 }} />
+              <input value={newTask} onChange={e => setNewTask(e.target.value)} placeholder="Say the milestone in your own words; Organize writes it up, or add it as typed (lead with its number to place it)" style={{ ...S.input, flex: 1 }} />
+              <button type="button" onClick={organize} disabled={drafting || !newTask.trim()} title="Lumen organizes what you typed into a milestone: Title Case, a done-when, three to five steps. You confirm before it lands." style={{ ...S.btnGhost, opacity: drafting || !newTask.trim() ? 0.5 : 1 }}>{drafting ? 'Organizing' : '✦ Organize'}</button>
               <button type="submit" style={S.btnPrimary}><Plus size={13} /> Milestone</button>
             </form>
+            {draftErr && <div style={{ fontSize: 12.5, color: '#E8836F', marginTop: 8 }}>{draftErr}</div>}
+            {draft && (
+              <div style={{ marginTop: 12, padding: '14px 16px', borderRadius: 10, border: `1px solid ${LABEL}66`, background: 'rgba(127,168,212,0.06)' }}>
+                <div style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: 10.5, letterSpacing: '0.14em', textTransform: 'uppercase', color: LABEL, marginBottom: 8 }}>Draft milestone · edit, then add</div>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <input value={draft.number ?? ''} onChange={e => setDraft({ ...draft, number: e.target.value ? Number(e.target.value) : null })} placeholder="#" style={{ ...S.input, width: 56 }} />
+                  <input value={draft.title} onChange={e => setDraft({ ...draft, title: e.target.value })} style={{ ...S.input, flex: 1, fontWeight: 600 }} />
+                </div>
+                <div style={{ fontSize: 11, color: LABEL, margin: '10px 0 4px', fontWeight: 600 }}>Done when</div>
+                <input value={draft.done_when || ''} onChange={e => setDraft({ ...draft, done_when: e.target.value })} style={{ ...S.input, width: '100%' }} />
+                <div style={{ fontSize: 11, color: LABEL, margin: '10px 0 4px', fontWeight: 600 }}>Steps</div>
+                {(draft.steps || []).map((s, i) => (
+                  <div key={i} style={{ display: 'flex', gap: 6, marginBottom: 4 }}>
+                    <span style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: 11, color: GRAY, width: 22, paddingTop: 8 }}>{i + 1}</span>
+                    <input value={s} onChange={e => setDraft({ ...draft, steps: draft.steps.map((x, j) => j === i ? e.target.value : x) })} style={{ ...S.input, flex: 1 }} />
+                    <button type="button" onClick={() => setDraft({ ...draft, steps: draft.steps.filter((_, j) => j !== i) })} style={{ ...S.btnGhost, padding: '4px 8px' }}>✕</button>
+                  </div>
+                ))}
+                <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 10 }}>
+                  <button type="button" onClick={() => setDraft({ ...draft, steps: [...(draft.steps || []), ''] })} style={{ ...S.btnGhost, padding: '4px 9px', fontSize: 10 }}><Plus size={10} /> Step</button>
+                  <button type="button" onClick={() => setDraft(null)} style={S.btnGhost}>Discard</button>
+                  <button type="button" onClick={addDraft} style={S.btnPrimary}><Plus size={13} /> Add This Milestone</button>
+                </div>
+                {!board?.id && (draft.steps || []).length > 0 && <div style={{ fontSize: 11.5, color: GRAY, marginTop: 8 }}>Steps need a session board on this mission; the title and done-when land now, the steps once a session opens its board.</div>}
+              </div>
+            )}
           </div>
         )}
         {tab === 'artifacts' && <ArtifactsTab key={artifactSlug || 'first'} project={project} initialSlug={artifactSlug} />}

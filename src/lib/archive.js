@@ -73,9 +73,11 @@ export async function fileObjective(o, pockets, { realm, summary, picks, notes }
 }
 
 // File a Main Mission's artifacts and latest board when it is marked complete.
-export async function fileProject(project, { artifacts = [], boards = [], realm = 'third-horizon' } = {}) {
+export async function fileProject(project, { artifacts = [], boards = [], realm = 'third-horizon', achieved = null } = {}) {
   const base = { realm, source_kind: 'project', source_id: project.id, source_title: project.name, tags: [] }
   const filed = []
+  // The debrief (David 10/21): his answer to "Is it true? What's different now?" leads the mission's archive.
+  if (achieved && String(achieved).trim()) filed.push(await fileEntry({ ...base, kind: 'summary', title: project.name, summary: String(achieved).trim().slice(0, 4000), body: { achieved: String(achieved).trim().slice(0, 4000), north_star: project.description || null } }))
   for (const a of artifacts) filed.push(await fileEntry({ ...base, kind: a.kind === 'decision' ? 'decision' : 'artifact', title: a.title, summary: a.doc?.question || null, body: a.doc || null, bucket: BUCKET, path: `${project.id}/artifacts/${a.slug}.json` }))
   for (const b of boards) filed.push(await fileEntry({ ...base, kind: 'board', title: b.title, summary: `${b.done}/${b.total} done`, body: { phases: b.phases } }))
   return filed
