@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import {
   LayoutGrid, Network, LogOut, Menu, X, Target, Users,
-  FileText, Wallet, CreditCard, ListChecks, Compass, Waves, CalendarDays, BookOpen, Activity, Award, Wrench, GraduationCap, Sparkles, Archive as ArchiveIcon, FolderOpen, PenTool, Briefcase, Mic } from 'lucide-react'
+  FileText, Wallet, CreditCard, ListChecks, Compass, Waves, CalendarDays, BookOpen, Activity, Award, Wrench, GraduationCap, Sparkles, Archive as ArchiveIcon, FolderOpen, PenTool, Briefcase, Mic, Wand2 } from 'lucide-react'
 import { getSession, onAuthStateChange, signOut } from './lib/auth'
 import { statusFor } from './constants/saDesign'
 import { fetchProtocolState } from './lib/protocol'
@@ -30,6 +30,7 @@ import MaintenancePage from './components/MaintenancePage'
 import LearningPage from './components/LearningPage'
 import ScratchpadPage from './components/ScratchpadPage'
 import SpeechesPage from './components/SpeechesPage'
+import AiToolsPage from './components/AiToolsPage'
 import AnthropicPage from './components/AnthropicPage'
 
 const NAV_ITEMS = [
@@ -51,6 +52,7 @@ const NAV_ITEMS = [
   { id: 'personal-finance', label: 'Personal Finance',      icon: CreditCard,     group: 'RESOURCES' },
   { id: 'network',          label: 'Network',               icon: Users,          group: 'RESOURCES' },
   { id: 'ecosystem',        label: 'Ecosystem',             icon: Network,        group: 'RESOURCES' },
+  { id: 'ai-tools',         label: 'AI Tools',              icon: Wand2,          group: 'RESOURCES' },
   { id: 'mhpi',             label: 'MHPI',                  icon: Compass,        group: 'STRATEGY' },
   { id: 'learning',         label: 'Machine Learning',      icon: GraduationCap,  group: 'LEARNING' },
   { id: 'anthropic',        label: 'Anthropic',             icon: Sparkles,       group: 'LEARNING' },
@@ -278,6 +280,7 @@ export default function App() {
           {active === 'notes'            && <MeetingNotesPage />}
           {active === 'scratchpad'       && <ScratchpadPage />}
           {active === 'speeches'         && <SpeechesPage />}
+          {active === 'ai-tools'         && <AiToolsPage />}
           {active === 'main-missions'    && <ProjectsPage deepLink={params} onNavigate={setRoute} />}
           {active === 'clients'          && <ClientsPage deepLink={params} onNavigate={setRoute} />}
           {active === 'side-missions'    && <SideMissionsPage onNavigate={setRoute} />}

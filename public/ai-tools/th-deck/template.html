@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Third Horizon Deck</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+/* =========================================================================
+   THIRD HORIZON DECK FRAME — self-contained starter (see SKILL.md for canon)
+   One navy surface, one accent, Lora story beats, Instrument Sans chrome.
+   ========================================================================= */
+:root {
+  --navy-feat: #0F2334; --navy-deep: #0D1D2C; --navy-900: #16314A;
+  --ink-1: #F3F1EA; --ink-2: rgba(243,241,234,.68); --ink-3: rgba(243,241,234,.42);
+  --border: rgba(255,255,255,.12); --fill-1: rgba(255,255,255,.05); --fill-2: rgba(255,255,255,.09);
+  --accent-primary: oklch(0.47 0.115 248);
+  --accent-bright:  oklch(0.82 0.109 248);
+  --gold: #F8C761; --pos: #57BE97; --neg: #DE7E6E; --warn: #B8822E;
+  --serif: "Lora", Georgia, "Times New Roman", serif;
+  --sans: "Instrument Sans", -apple-system, "Segoe UI", sans-serif;
+}
+* { box-sizing: border-box; margin: 0; }
+html, body { background: #0A1622; }
+
+/* ---- slide surface: fixed 16:9, nothing scrolls ---- */
+.slide {
+  position: relative; width: 1280px; height: 720px;
+  margin: 24px auto; overflow: hidden;
+  background: var(--navy-feat); color: var(--ink-1);
+  display: flex; flex-direction: column;
+  padding: 44px 66px 46px;
+}
+/* ---- anatomy: headline is a header at the top; the body fills the rest and
+   centers its content in the remaining band; brand + strips live in the
+   footer. No top bar (David 8/20). ---- */
+.head { flex: none; }
+.body { flex: 1; min-height: 0; display: flex; align-items: center; }
+.inner { width: 100%; }
+.center { align-self: center; width: 100%; margin: auto 0; } /* title/divider/closing */
+
+/* ---- type ---- */
+.subhead { font-family: var(--sans); font-size: 10.5px; font-weight: 500; text-transform: uppercase; letter-spacing: .22em; color: var(--accent-bright); margin-top: 12px; } /* BELOW the headline, never above (David 8/20) */
+.blocklabel { font-family: var(--sans); font-size: 10.5px; font-weight: 500; text-transform: uppercase; letter-spacing: .22em; color: var(--accent-bright); margin-bottom: 12px; } /* labels a list/rail inside the body */
+h1.title { font-family: var(--serif); font-size: 35px; font-weight: 500; letter-spacing: -.008em; line-height: 1.1; margin-bottom: 38px; }
+h1.title em { font-style: italic; color: var(--accent-bright); }
+.para { font-family: var(--serif); font-size: 17px; line-height: 1.62; color: var(--ink-2); max-width: 62ch; margin-bottom: 28px; }
+.para b, .para strong { font-weight: 600; color: var(--ink-1); } /* first sentence bold */
+.dropcap::first-letter { float: left; font-size: 3.5em; line-height: .78; padding: 8px 14px 0 0; color: var(--accent-bright); font-weight: 600; }
+
+/* ---- two columns: prose 1.3fr / figure 1fr, middle-aligned ---- */
+.cols { display: grid; grid-template-columns: minmax(0,1.3fr) minmax(0,1fr); gap: 96px; align-items: center; width: 100%; }
+
+/* ---- tile quad / stat tiles ---- */
+.quadLabel { font-family: var(--sans); font-size: 10.5px; font-weight: 500; text-transform: uppercase; letter-spacing: .22em; color: var(--accent-bright); margin-bottom: 18px; }
+.quad { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.cell { background: var(--fill-1); border: 1px solid var(--border); border-radius: 3px; padding: 26px 28px; }
+.cell .v { font-family: var(--serif); font-size: 30px; font-weight: 500; line-height: 1.15; white-space: nowrap; }
+.cell .k { font-family: var(--sans); font-size: 10.5px; text-transform: uppercase; letter-spacing: .1em; color: var(--ink-3); margin-bottom: 10px; }
+.cell .sub { font-family: var(--sans); font-size: 10.8px; color: var(--ink-3); margin-top: 8px; line-height: 1.45; }
+
+/* ---- title & closing slides ---- */
+.titleHeading { font-family: var(--serif); font-size: 56px; font-weight: 500; letter-spacing: -.01em; line-height: 1.08; text-align: center; margin: 30px 0 26px; }
+.titleHeading em { font-style: italic; color: var(--accent-bright); }
+.titleMark { font-family: var(--sans); font-weight: 600; font-size: 12px; letter-spacing: .3em; text-transform: uppercase; text-align: center; }
+.titleKicker { font-family: var(--sans); font-size: 10px; letter-spacing: .22em; text-transform: uppercase; color: var(--accent-bright); text-align: center; margin-bottom: 20px; }
+.titleMeta { font-family: var(--sans); font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-3); text-align: center; margin-top: 24px; }
+.titleRule { width: 200px; height: 1px; background: var(--border); margin: 34px auto; }
+.titleNote { font-family: var(--serif); font-size: 13.5px; color: var(--ink-2); text-align: center; max-width: 60ch; margin: 0 auto; line-height: 1.6; }
+
+/* ---- footer (every slide): arches-only brand + confidentiality line left,
+   one consolidated context/partner/page strip right ---- */
+.fLeft { position: absolute; left: 30px; bottom: 16px; display: flex; align-items: center; gap: 12px; }
+.fArches { height: 13px; width: auto; display: block; opacity: .75; font-family: var(--serif); color: var(--gold); } /* swap for the arches image */
+.legal { font-family: var(--sans); font-size: 7.5px; letter-spacing: .08em; text-transform: uppercase; color: color-mix(in srgb, var(--ink-1) 42%, transparent); white-space: nowrap; }
+.partner { position: absolute; right: 30px; bottom: 16px; font-family: var(--sans); font-size: 7.5px; letter-spacing: .08em; text-transform: uppercase; color: color-mix(in srgb, var(--ink-1) 42%, transparent); white-space: nowrap; }
+
+/* ---- print: one slide per 13.33x7.5in page, chrome-free ---- */
+@page { size: 13.333in 7.5in; margin: 0; }
+@media print {
+  html, body { background: none; }
+  .slide { width: 13.333in; height: 7.5in; margin: 0; page-break-after: always; break-inside: avoid; }
+  /* 1280x720 px = exactly 13.333in x 7.5in at 96dpi, so print is 1:1 with the
+     screen design; no scaling, no overflow surprises. */
+}
+</style>
+</head>
+<body>
+
+<!-- ============ ARCHETYPE: TITLE (whole composition centered) ============ -->
+<section class="slide">
+  <div class="body"><div class="center">
+    <div class="titleKicker">Confidential Investor Materials</div>
+    <div class="titleMark">Third Horizon</div>
+    <h1 class="titleHeading">Strategy you can <em>run on.</em></h1>
+    <div class="titleMeta">Prepared for [Audience] · [Month Year]</div>
+    <div class="titleRule"></div>
+    <p class="titleNote">These materials accompany the interactive application at [url]. The deck is the summary; the application is the record.</p>
+  </div></div>
+  <div class="fLeft"><span class="fArches">⌒⌒⌒</span><span class="legal">Not for Distribution · Confidential &amp; Proprietary Information · Third Horizon</span></div>
+  <div class="partner">[Deck context] · [Partners] · 1</div>
+</section>
+
+<!-- ============ ARCHETYPE: SNAPSHOT (header + centered body) ============ -->
+<section class="slide">
+  <div class="head"><h1 class="title">The firm, <em>at a glance.</em></h1></div>
+  <div class="body"><div class="inner">
+    <div class="cols">
+      <div>
+        <p class="para dropcap"><b>The first sentence carries the slide's whole idea, in bold.</b> The rest of the paragraph supports it in Lora at a comfortable measure, never wider than 62 characters, with the numbers living in the tiles to the right rather than crowding the prose.</p>
+        <p class="para">A second paragraph is optional. Prefer whitespace to a third.</p>
+      </div>
+      <div>
+        <div class="quadLabel">By the Numbers</div>
+        <div class="quad">
+          <div class="cell"><div class="k">Metric One</div><div class="v">$0.0M</div><div class="sub">one-line qualifier</div></div>
+          <div class="cell"><div class="k">Metric Two</div><div class="v">00%</div><div class="sub">one-line qualifier</div></div>
+          <div class="cell"><div class="k">Metric Three</div><div class="v">00</div><div class="sub">one-line qualifier</div></div>
+          <div class="cell"><div class="k">Metric Four</div><div class="v">$0.0M</div><div class="sub">one-line qualifier</div></div>
+        </div>
+      </div>
+    </div>
+  </div></div>
+  <div class="fLeft"><span class="fArches">⌒⌒⌒</span><span class="legal">Not for Distribution · Confidential &amp; Proprietary Information · Third Horizon</span></div>
+  <div class="partner">[Deck context] · [Partners] · 2</div>
+</section>
+
+<!-- ============ ARCHETYPE: CLOSING ============ -->
+<section class="slide">
+  <div class="body"><div class="center">
+    <div class="titleMark">Third Horizon</div>
+    <h1 class="titleHeading">Strategy you can <em>run on.</em></h1>
+    <div class="titleRule"></div>
+    <p class="titleNote">For access to the interactive application, reach out to [name] at [email].</p>
+  </div></div>
+  <div class="fLeft"><span class="fArches">⌒⌒⌒</span><span class="legal">Not for Distribution · Confidential &amp; Proprietary Information · Third Horizon</span></div>
+  <div class="partner">[Deck context] · [Partners] · 3</div>
+</section>
+
+</body>
+</html>
