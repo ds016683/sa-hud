@@ -18,7 +18,7 @@ export const config = { maxDuration: 300 }
 
 import { sb, sbWrite, chiToday } from './_ledger.mjs'
 import { think, remember, alreadySeen } from './_lumen-brain.mjs'
-import { readUnread, markRead, sendMail, mailAllowed } from './_mail.mjs'
+import { readUnread, markRead, sendMail, mailAllowed, isDavid, LUMEN_MAILBOX } from './_mail.mjs'
 import { waSendText, waSendTemplate, davidNumber } from './_wa.mjs'
 
 const chiHour = () => Number(new Intl.DateTimeFormat('en-US', { timeZone: 'America/Chicago', hour: 'numeric', hour12: false }).format(new Date()))
@@ -194,15 +194,42 @@ export default async function handler(req, res) {
         if (answered >= 3) break
         if (await alreadySeen('email', m.id)) continue
         answered++
-        const text = `[EMAIL from David to lumen@thirdhorizon.com. Whatever you reply here is sent back to him as the email reply by the mail door itself; do NOT call send_email to answer this message, that would send it twice. Act with your other tools as needed, then write the reply.]\nSubject: ${m.subject || '(no subject)'}\n\n${String(m.body?.content || m.bodyPreview || '').trim().slice(0, 8000)}`
-        if (dry) { out.push({ kind: 'mail', item: m.subject, would_answer: text.slice(0, 200) }); continue }
-        await remember({ channel: 'email', direction: 'in', kind: 'text', body: text, external_id: m.id, meta: { from, subject: m.subject, conversation: m.conversationId } })
+        // Mail protocols (David 10/21). The fresh part of the message is what he
+        // wrote above any quoted history. "LUMEN" (all caps, case sensitive) invites
+        // Lumen into the thread: he replies, to David alone. "@Lumen" directs him
+        // without joining the thread: no reply there; a new note to David alone,
+        // with what was received quoted, carrying the confirmation or the question.
+        // No trigger: a plain note to Lumen with nobody else on it is answered in
+        // place; anything with other people on it is treated like "@Lumen".
+        const strip = (h) => String(h || '').replace(/<style[\s\S]*?<\/style>/gi, ' ').replace(/<br\s*\/?>/gi, '\n').replace(/<\/(p|div|tr|li)>/gi, '\n').replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/[ \t]+/g, ' ').replace(/\s*\n\s*/g, '\n').trim()
+        const bodyText = m.body?.contentType === 'html' ? strip(m.body.content) : String(m.body?.content || m.bodyPreview || '')
+        const cut = bodyText.search(/\n(From:|On .{6,80} wrote:|-{3,} ?Original|_{5,}|Sent from my)/)
+        const fresh = (cut > 0 ? bodyText.slice(0, cut) : bodyText).trim()
+        const everyone = [...(m.toRecipients || []), ...(m.ccRecipients || [])].map(r => String(r.emailAddress?.address || '').toLowerCase()).filter(a => a && a !== LUMEN_MAILBOX.toLowerCase())
+        const others = everyone.filter(a => !mailAllowed().includes(a))
+        const inThread = /\bLUMEN\b/.test(fresh)
+        const directed = /@lumen\b/i.test(fresh)
+        const mode = inThread ? 'thread' : (directed || others.length) ? 'forward' : 'reply'
+        const text = mode === 'thread'
+          ? `[EMAIL from ${isDavid(from) ? 'David' : from} to lumen@thirdhorizon.com, addressed to you as LUMEN inside a thread${others.length ? ` that also has ${others.join(', ')} on it` : ''}. Your answer is sent as a reply in that thread to the sender ALONE by the mail door itself; nobody else receives it. Do NOT call send_email. Act with your other tools as needed, then answer in plain prose, a little shorter than you would on WhatsApp.]\n\nSubject: ${m.subject || ''}\n\n${fresh.slice(0, 6000)}`
+          : mode === 'forward'
+          ? `[EMAIL from ${isDavid(from) ? 'David' : from} to lumen@thirdhorizon.com, directing you with @Lumen${others.length ? ` in a note that also has ${others.join(', ')} on it` : ''}. You do NOT answer in that thread. The mail door sends your answer to the sender ALONE as a new note with what was received quoted under it. Say what you did, confirm what you understood, or ask the one question you need. Do NOT call send_email. Act with your other tools as needed.]\n\nSubject: ${m.subject || ''}\n\n${fresh.slice(0, 6000)}`
+          : `[EMAIL from ${isDavid(from) ? 'David' : from} to lumen@thirdhorizon.com. Whatever you reply here is sent back to the sender as the email reply by the mail door itself; do NOT call send_email to answer this message, that would send it twice. Act with your other tools as needed, then answer in plain prose, a little shorter than you would on WhatsApp.]\n\nSubject: ${m.subject || ''}\n\n${fresh.slice(0, 6000)}`
+        if (dry) { out.push({ kind: 'mail', item: m.subject, mode, would_answer: text.slice(0, 200) }); continue }
+        await remember({ channel: 'email', direction: 'in', kind: 'text', body: text, external_id: m.id, meta: { from, subject: m.subject, conversation: m.conversationId, mode } })
         let reply
         try { reply = await think({ channel: 'email', text, spoken: false }) } catch (e) { reply = `I hit a wall answering this one: ${String(e.message || e).slice(0, 120)}` }
-        try { await sendMail({ to: from, subject: `Re: ${m.subject || ''}`.trim(), text: reply, replyToId: m.id }) } catch (e) { out.push({ kind: 'mail', item: m.subject, skipped: String(e.message || e).slice(0, 160) }); continue }
+        try {
+          if (mode === 'forward') {
+            const quoted = fresh.split('\n').map(l => `> ${l}`).join('\n')
+            await sendMail({ to: from, subject: `Re: ${m.subject || ''}`.trim(), text: `${reply}\n\n---- What you sent (${m.subject || 'no subject'}${others.length ? `, with ${others.join(', ')} on it` : ''}) ----\n${quoted}` })
+          } else {
+            await sendMail({ to: from, subject: `Re: ${m.subject || ''}`.trim(), text: reply, replyToId: m.id })
+          }
+        } catch (e) { out.push({ kind: 'mail', item: m.subject, skipped: String(e.message || e).slice(0, 160) }); continue }
         await markRead(m.id).catch(() => null)
-        await remember({ channel: 'email', direction: 'out', kind: 'text', body: reply, meta: { to: from, subject: m.subject } })
-        out.push({ kind: 'mail', item: m.subject, sent: true })
+        await remember({ channel: 'email', direction: 'out', kind: 'text', body: reply, meta: { to: from, subject: m.subject, mode } })
+        out.push({ kind: 'mail', item: m.subject, mode, sent: true })
       }
       if (swept) out.push({ kind: 'mail', swept, note: 'backlog and receipts marked read, not answered' })
     }

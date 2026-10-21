@@ -20,13 +20,16 @@ export const __token = () => graphToken()
 export const mailAppConfigured = () => !!(process.env.LUMEN_MAIL_CLIENT_ID && process.env.LUMEN_MAIL_CLIENT_SECRET)
 
 export const LUMEN_MAILBOX = process.env.LUMEN_MAILBOX || 'lumen@thirdhorizon.com'
-export const mailAllowed = () => (process.env.LUMEN_MAIL_ALLOWED || 'david.smith@thirdhorizon.com,david.e.smith8@gmail.com').split(',').map(s => s.trim().toLowerCase()).filter(Boolean)
+export const mailAllowed = () => (process.env.LUMEN_MAIL_ALLOWED || 'david.smith@thirdhorizon.com,david.e.smith8@gmail.com,topher@thirdhorizon.com').split(',').map(s => s.trim().toLowerCase()).filter(Boolean)
+// Mail protocols (David 10/21): only David and Topher may talk to Lumen directly; everyone else, Dacia included, is never answered.
+export const DAVID_ADDRESSES = ['david.smith@thirdhorizon.com', 'david.e.smith8@gmail.com']
+export const isDavid = (addr) => DAVID_ADDRESSES.includes(String(addr || '').toLowerCase())
 const G = 'https://graph.microsoft.com/v1.0'
 const box = () => `${G}/users/${encodeURIComponent(LUMEN_MAILBOX)}`
 
 export async function readUnread(limit = 10) {
   const token = await graphToken()
-  const r = await fetch(`${box()}/mailFolders/inbox/messages?$filter=isRead eq false&$top=${limit}&$select=id,subject,from,toRecipients,receivedDateTime,bodyPreview,body,conversationId,internetMessageId&$orderby=receivedDateTime desc`, { headers: { Authorization: `Bearer ${token}`, Prefer: 'outlook.body-content-type="text"' } })
+  const r = await fetch(`${box()}/mailFolders/inbox/messages?$filter=isRead eq false&$top=${limit}&$select=id,subject,from,toRecipients,ccRecipients,receivedDateTime,bodyPreview,body,conversationId,internetMessageId&$orderby=receivedDateTime desc`, { headers: { Authorization: `Bearer ${token}`, Prefer: 'outlook.body-content-type="text"' } })
   if (!r.ok) throw new Error(`lumen inbox -> ${r.status}: ${(await r.text()).slice(0, 200)}`)
   return (await r.json()).value || []
 }
