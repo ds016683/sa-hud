@@ -13,7 +13,11 @@ export const SPEECHES = [
     time: '4:00 to 5:15pm Eastern',
     venue: 'Wrightsville Beach, NC',
     skin: 'apnc-deck',
-    status: 'deck',   // outline · deck · delivered
+    status: 'delivered',   // outline · deck · delivered
+    delivered: '2026-10-20',
+    // Cross-reference (10/20): the Ledger Side Mission this talk ran under and the client project it is archived to.
+    mission: 'fd828cb7-c210-49ca-bf7b-9dc8d08dd0fa',
+    project: 'Client.APNC',
     description: "Artificial intelligence has arrived in behavioral health, and the conversation about it swings between hype and fear. Neither serves the field. This session takes a clear-eyed look at what AI is, what it is not, and what it cannot do without the expertise of addiction professionals. We will examine the preconceptions that keep the field on the sidelines, what gets missed when fear drives the conversation, and why the real story is bigger than any single tool: connected platforms built on the field's own data, turning workforce, funding, policy, and community information into insight professionals can act on. Attendees will get a first look at the data tools coming to North Carolina's addiction field, built on North Carolina's own data, and leave with a practical frame for engaging AI on the profession's terms.",
     objectives: [
       'Describe how connected, real-time data on the workforce, funding, policy, and community conditions can inform daily practice, program decisions, and advocacy.',
