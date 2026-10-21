@@ -103,6 +103,14 @@ export async function openLiveFile(row) {
   return data.signedUrl
 }
 
+// A download link (10/20): the same signed URL with a Content-Disposition
+// that makes the browser save the file under its own name.
+export async function downloadLiveFile(row) {
+  const { data, error } = await supabase.storage.from(row.bucket || BUCKET).createSignedUrl(row.path, 600, { download: row.name })
+  if (error) throw new Error(error.message)
+  return data.signedUrl
+}
+
 // Leave Live Files: the row remembers where it went; the bytes stay until the
 // filing system moves them (later). For now this is "done with it, out of view".
 export async function markFiled(id, filedTo = null) { await q(supabase.from('live_files').update({ filed_at: new Date().toISOString(), filed_to: filedTo }).eq('id', id).select()) }
