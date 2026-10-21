@@ -364,7 +364,10 @@ function SharesTab({ project }) {
 }
 
 function ProjectDetail({ project, board: boardProp, api, onBack, initialTab, initialSlug, onNavigate }) {
-  const [tab, setTab] = useState(initialTab && ['tasks', 'board', 'artifacts', 'files', 'shares', 'workbench'].includes(initialTab) ? (initialTab === 'board' ? 'tasks' : initialTab) : 'tasks')
+  // Milestones first, always (David 10/21). A tab in the hash only sticks when it
+  // carries an artifact slug (a deep link from Lumen or a session); otherwise the
+  // page opens on Milestones, whatever tab the URL remembered.
+  const [tab, setTab] = useState(initialTab && initialSlug && ['artifacts', 'files', 'shares', 'workbench'].includes(initialTab) ? initialTab : 'tasks')
   const [board, setBoard] = useState(boardProp)
   useEffect(() => { let on = true; Promise.resolve().then(() => { if (on) setBoard(boardProp) }); return () => { on = false } }, [boardProp])
   const [artifactSlug, setArtifactSlug] = useState(initialSlug || null)
