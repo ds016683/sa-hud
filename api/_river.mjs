@@ -175,15 +175,20 @@ export async function computeAwards(day, { closing = false } = {}) {
   // Toastmaster: every real meeting of the day attended, and each one either
   // documented (notes) or closed out. Sessions carry the stamps.
   const now = Date.now()
-  const real = calendar.filter(c => !c.is_all_day).filter(c => new Date(c.end_at).getTime() <= now)
   const byEvent = new Map(sessions.map(x => [x.event_id, x]))
+  // Cancel rule (David 10/21): a meeting canceled by the other side counts as
+  // attended and closed (credit); one David canceled himself leaves the day's
+  // set (no credit, no penalty). The session's special_notes carries the marker.
+  const cancelledBy = (s) => { const m = String(s?.special_notes || '').match(/^Canceled by (them|me)/i); return m ? m[1].toLowerCase() : null }
+  const real = calendar.filter(c => !c.is_all_day).filter(c => new Date(c.end_at).getTime() <= now || cancelledBy(byEvent.get(c.id))).filter(c => cancelledBy(byEvent.get(c.id)) !== 'me')
   const ok = (c) => {
     const s = byEvent.get(c.id)
+    if (cancelledBy(s) === 'them') return true
     const attended = !!(s && (s.attended_at || s.started_at || s.closed_at || s.notes_meeting_id)) || documented(c.subject, meetings)
     const recorded = !!(s && (s.closed_at || s.notes_meeting_id)) || documented(c.subject, meetings)
     return attended && recorded
   }
-  if (real.length >= 1 && real.every(ok) && (closing || real.length === calendar.filter(c => !c.is_all_day).length)) {
+  if (real.length >= 1 && real.every(ok) && (closing || real.length === calendar.filter(c => !c.is_all_day).filter(c => cancelledBy(byEvent.get(c.id)) !== 'me').length)) {
     add('toastmaster', '', `${real.length} of ${real.length} meetings attended and documented or closed out: ${real.map(c => c.subject.trim()).join(', ')}`)
   }
   const davidHours = time.filter(t => (t.person || '').startsWith('David')).reduce((s, t) => s + (t.hours || 0), 0)

@@ -70,8 +70,14 @@ const isRunning = (s) => !!(s?.started_at && !s?.stopped_at)
 // Attendance for a timed event: closed out, attended (attended_at from the
 // timer or Lumen, or a started timer), needs confirmation (ended with no
 // trace), or nothing yet (upcoming or live).
+// Cancel (David 10/21): "If a meeting was canceled, I get credit for the meeting
+// unless I am the one that canceled it." The session carries the marker in
+// special_notes ("Canceled by them: ..." / "Canceled by me: ..."); the River reads it.
+export const cancelledBy = (session) => { const m = String(session?.special_notes || '').match(/^Canceled by (them|me)/i); return m ? m[1].toLowerCase() : null }
 const attendanceState = (event, session, nowMs, notes) => {
   if (!event || event.is_all_day) return null
+  const cb = cancelledBy(session)
+  if (cb) return cb === 'me' ? 'cancelled-me' : 'cancelled-them'
   if (session?.closed_at) return 'closed'
   if (session?.attended_at || session?.started_at || notes) return 'attended'
   const en = event.end_at ? new Date(event.end_at).getTime() : null
@@ -140,6 +146,21 @@ function CalendarPanel({events, loading, now, day, refresh, onOpenEvent }) {
       setBusyFor(e.id, false); refresh()
     }
   }
+  const onCancel = async (e) => {
+    const mine = window.confirm(`Was it you who canceled "${e.subject || '(no subject)'}"?\n\nOK = I canceled it (no credit). Cancel = they canceled it (I get credit for the meeting).`)
+    const reason = window.prompt(`Why was "${e.subject || '(no subject)'}" canceled?`, '')
+    if (reason === null) return
+    setBusyFor(e.id, true); setErr(e.id, null)
+    try {
+      const now = new Date().toISOString()
+      const line = `Canceled by ${mine ? 'me' : 'them'}: ${reason.trim() || '(no reason given)'}`
+      await upsertSession({ event_id: e.id, day, subject: e.subject || null, closed_at: now, attended_at: mine ? null : now, special_notes: [line, e.session?.special_notes].filter(Boolean).join('\n\n') })
+    } catch (err) {
+      setErr(e.id, friendlyError(err))
+    } finally {
+      setBusyFor(e.id, false); refresh()
+    }
+  }
   const onStop = async (e) => {
     setBusyFor(e.id, true); setErr(e.id, null)
     try { await stopSession(e) } catch (err) { setErr(e.id, friendlyError(err)) } finally { setBusyFor(e.id, false); refresh() }
@@ -197,6 +218,8 @@ function CalendarPanel({events, loading, now, day, refresh, onOpenEvent }) {
                     <Check size={11} />{attendance === 'closed' ? `Closed out${hoursText ? ` · ${hoursText}` : ''}` : 'Attended'}
                   </span>
                 )}
+                {attendance === 'cancelled-them' && <span style={attendedChip} title="Canceled by the other side; credited as attended"><Check size={11} />Canceled · credited</span>}
+                {attendance === 'cancelled-me' && <span style={S.chip('rgba(234,241,248,0.08)', GRAY)} title="Canceled by David; no credit">Canceled · by me</span>}
                 {attendance === 'confirm' && (
                   <span onClick={() => setClosing(e.id)} title={CONFIRM_TITLE} style={confirmChip}>
                     <HelpCircle size={11} />Confirm
@@ -208,6 +231,9 @@ function CalendarPanel({events, loading, now, day, refresh, onOpenEvent }) {
                 {/* Timer + close-out controls sit at the right and wrap under the subject on narrow widths. */}
                 {!e.is_all_day && (
                   <span style={{ display: 'inline-flex', gap: 6, marginLeft: 'auto', flexWrap: 'wrap' }}>
+                    {!ses?.started_at && !closed && (
+                      <button disabled={isBusy} onClick={() => onCancel(e)} title="The meeting was canceled: say by whom and why. Canceled by them credits the meeting; canceled by you does not." style={chipBtn(GRAY, 'rgba(255,255,255,0.12)', { opacity: isBusy ? 0.5 : 1 })}>✕ Cancel</button>
+                    )}
                     {!ses?.started_at && !closed && (
                       <button disabled={isBusy} onClick={() => onStart(e)} style={chipBtn(INK2, 'rgba(255,255,255,0.16)', { opacity: isBusy ? 0.5 : 1 })}>⏱ Start</button>
                     )}

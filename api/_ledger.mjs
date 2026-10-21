@@ -462,7 +462,7 @@ export const TOOLS = [
   {
     name: 'close_meeting',
     description: "Close out a calendar meeting: stops a running timer, attaches the Granola notes, records follow-ups (each becomes a Side Mission in Follow Up, due a week out) and special notes. Use when he gives you follow-ups or notes from a meeting, or asks to close one out.",
-    inputSchema: { type: 'object', properties: { subject: { type: 'string' }, follow_ups: { type: 'array', items: { type: 'string' } }, special_notes: { type: 'string' }, day: { type: 'string' } }, required: ['subject'] },
+    inputSchema: { type: 'object', properties: { cancelled_by: { type: 'string', description: "'them' or 'me' when the meeting was canceled: them credits the meeting, me does not" }, reason: { type: 'string', description: 'why it was canceled' }, subject: { type: 'string' }, follow_ups: { type: 'array', items: { type: 'string' } }, special_notes: { type: 'string' }, day: { type: 'string' } }, required: ['subject'] },
   },
   {
     name: 'set_due',
@@ -629,6 +629,11 @@ export const TOOLS = [
     inputSchema: { type: 'object', properties: { query: { type: 'string' } }, required: ['query'] },
   },
   {
+    name: 'sent_proof',
+    description: "Did the note go out? For a follow-up Bounty (\"Follow up with <Name> at <Org>\"), scan David's Sent Items since the item was captured for a message to that person (loose name match, or the org's initials in the recipient domain). Use it before closing such a Bounty, or when David says he sent it; close_out with the proof as achieved.",
+    inputSchema: { type: 'object', properties: { title: { type: 'string' } }, required: ['title'] },
+  },
+  {
     name: 'list_standing_orders',
     description: 'The active standing orders Lumen is holding for David.',
     inputSchema: { type: 'object', properties: {} },
@@ -675,6 +680,40 @@ async function webSearch(query) {
     out.push({ title: htmlToText(m[2]), url: href, snippet: htmlToText(m[3] || '') })
   }
   return { ok: res.ok, status: res.status, query, results: out }
+}
+
+
+// Sent-mail proof (David 10/21, the Stacie case): a follow-up Bounty closes on the
+// evidence that the note went out. Scan Sent Items since the item was captured and
+// match the person loosely (first name with -ie/-ey/-y tolerance, last name, or the
+// org's initials against the recipient's domain: "Advocates for Human Potential"
+// -> ahp -> sgolonka@ahpnet.com).
+const nameKey = (w) => String(w || '').toLowerCase().replace(/[^a-z]/g, '').replace(/(ie|ey|y|i|e)$/, '')
+export async function sentProof(o) {
+  const title = String(o.title || '')
+  const m = title.match(/follow[- ]?up (?:with|to|on) ([^,.;:]+?)(?: at | from | of | @ )([^,.;:]+)?$/i) || title.match(/(?:email|note|write|reply|respond) (?:to )?([^,.;:]+?)(?: at | from | of )([^,.;:]+)?$/i)
+  if (!m) return null
+  const person = m[1].trim(), org = (m[2] || '').trim()
+  const parts = person.split(/\s+/).filter(Boolean)
+  const first = nameKey(parts[0]), last = parts.length > 1 ? nameKey(parts[parts.length - 1]) : null
+  const orgInitials = org ? org.split(/\s+/).filter(w => !['of', 'for', 'the', 'and', '&', 'at'].includes(w.toLowerCase())).map(w => w[0]).join('').toLowerCase() : null
+  const since = (o.captured_at || o.created_at || new Date(Date.now() - 7 * 864e5).toISOString()).slice(0, 19) + 'Z'
+  const token = await graphToken()
+  const qs = `$filter=sentDateTime ge ${since}&$select=id,subject,toRecipients,sentDateTime,bodyPreview&$orderby=sentDateTime desc&$top=50`
+  const res = await fetch(`https://graph.microsoft.com/v1.0/users/${MAILBOX}/mailFolders/sentitems/messages?${qs}`, { headers: { Authorization: `Bearer ${token}` } })
+  if (!res.ok) throw new Error(`sent items -> ${res.status}`)
+  for (const msg of (await res.json()).value || []) {
+    const tos = (msg.toRecipients || []).map(r => ({ name: String(r.emailAddress?.name || ''), addr: String(r.emailAddress?.address || '').toLowerCase() }))
+    const hay = `${msg.subject || ''} ${msg.bodyPreview || ''} ${tos.map(x => x.name).join(' ')}`.toLowerCase()
+    const hayKeys = new Set(hay.replace(/[^a-z\s]/g, ' ').split(/\s+/).map(nameKey).filter(Boolean))
+    const firstHit = first && hayKeys.has(first)
+    const lastHit = last && (hayKeys.has(last) || tos.some(x => x.addr.includes(last)))
+    const domainHit = orgInitials && orgInitials.length >= 2 && tos.some(x => x.addr.split('@')[1]?.startsWith(orgInitials))
+    if ((firstHit && (lastHit || domainHit || !last)) || (lastHit && domainHit)) {
+      return { subject: msg.subject, to: tos.map(x => x.addr).join(', '), at: msg.sentDateTime, message_id: msg.id, person, org }
+    }
+  }
+  return null
 }
 
 export async function callTool(name, args = {}) {
@@ -1124,7 +1163,14 @@ export async function callTool(name, args = {}) {
         await putSession(cur, { ...base, stopped_at: now, hours, harvest_logged: logged })
         return JSON.stringify({ ok: true, stopped: ev.subject, hours, harvest })
       }
-      // close_meeting
+      // close_meeting. Cancel rule (David 10/21): cancelled_by 'them' credits the
+      // meeting (attended + closed); cancelled_by 'me' closes it with no credit.
+      if (args.cancelled_by) {
+        const mine = String(args.cancelled_by).toLowerCase().startsWith('me') || String(args.cancelled_by).toLowerCase().startsWith('david')
+        const line = `Canceled by ${mine ? 'me' : 'them'}: ${String(args.reason || args.special_notes || '').trim() || '(no reason given)'}`
+        await putSession(cur, { ...base, attended_at: mine ? null : (cur?.attended_at || now), closed_at: now, special_notes: [line, cur?.special_notes].filter(Boolean).join('\n\n') })
+        return JSON.stringify({ ok: true, cancelled: ev.subject, by: mine ? 'me' : 'them', credit: !mine, day })
+      }
       let hours = cur?.hours ?? null, harvest = null
       if (cur?.started_at && !cur?.stopped_at) {
         hours = Math.round(((Date.now() - new Date(cur.started_at).getTime()) / 3600e3) * 100) / 100
@@ -1510,6 +1556,11 @@ export async function callTool(name, args = {}) {
       const [os, ps] = await Promise.all([oids.length ? sb(`objectives?select=id,title,state&id=in.(${oids.join(',')})`) : [], pids.length ? sb(`projects?select=id,name&id=in.(${pids.join(',')})`) : []])
       const O = new Map(os.map(o => [o.id, o])), P = new Map(ps.map(p => [p.id, p.name]))
       return JSON.stringify(rows.map(r => ({ name: r.name, version: r.version, size: r.size, when: r.created_at, by: r.source, session: r.session, note: r.note, tied_to: r.objective_id ? { item: O.get(r.objective_id)?.title, state: O.get(r.objective_id)?.state } : r.project_id ? { mission: P.get(r.project_id) } : null, bucket: r.bucket, path: r.path })), null, 2)
+    }
+    case 'sent_proof': {
+      const o = await findObjective(args.title)
+      const proof = await sentProof(o)
+      return JSON.stringify(proof ? { ok: true, found: true, ...proof, suggested_achieved: `Sent "${proof.subject}" to ${proof.to} at ${proof.at}` } : { ok: true, found: false, note: 'no sent message matching the person or org since the item was captured' })
     }
     case 'list_standing_orders': {
       return JSON.stringify(await sb('standing_orders?select=id,text,cadence,next_at,last_fired_at&active=eq.true&order=next_at.asc.nullslast'), null, 2)

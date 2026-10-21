@@ -146,6 +146,22 @@ export default async function handler(req, res) {
           `[PULSE] Evening. ${open.length} of today's meetings ${open.length === 1 ? 'is' : 'are'} not closed out: ${lines.join('; ')}. In ONE short message, name them and ask David to reply once with anything worth keeping (follow-ups, notes) or "none" to close them all as attended. When he answers, use close_meeting per meeting (follow-ups as a list, notes as special_notes); meetings he says he skipped, leave open and say so. Do not ask separate questions per meeting.` }))
       }
     }
+    // ---- follow-up Bounties with proof in Sent Items (David 10/21, the Stacie
+    // case): if he already sent the note, release the Bounty on the evidence and
+    // tell him, instead of the close sweep paying it blind.
+    if ((kind === 'sweep' && chiHour() >= 19 && chiHour() < 21) || kind === 'bounties') {
+      try {
+        const { sentProof, callTool } = await import('./_ledger.mjs')
+        const active = await sb(`objectives?select=id,title,captured_at,effort,tags&state=eq.active&deleted_at=is.null&effort=lte.2`)
+        for (const o of active.filter(x => /follow[- ]?up|email|note|reply|respond/i.test(x.title) && !(x.tags || []).includes('session'))) {
+          const proof = await sentProof(o).catch(() => null)
+          if (!proof || dry) { if (dry && proof) out.push({ kind: 'bounties', dry: true, title: o.title, proof }); continue }
+          const achieved = `Sent "${proof.subject}" to ${proof.to} at ${proof.at}`
+          await callTool('close_out', { title: o.title, achieved, discard: true, note: 'released on sent-mail proof (pulse)' }).catch(() => null)
+          out.push(await say({ kind: 'bounties', day: TODAY, dry, instruction: `[PULSE] The Bounty "${o.title}" is done: David's Sent Items show "${proof.subject}" to ${proof.to} at ${proof.at}. It is released on that proof. Tell him in one line that it closed on the sent note, nothing else.` }))
+        }
+      } catch (e) { out.push({ kind: 'bounties', error: String(e.message || e) }) }
+    }
     // ---- notes landing: when Granola notes for a meeting today reach the
     // Ledger (the sync runs every 30 minutes, so 30 to 60 minutes after the
     // meeting ends), Lumen reads them once, works the board, and sends David
