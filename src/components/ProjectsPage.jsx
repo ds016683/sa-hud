@@ -416,7 +416,7 @@ function CloseMissionModal({ project, tasks, onClose, onDone }) {
         {err && <div style={{ marginTop: 10, fontSize: 12.5, color: '#E8836F' }}>{err}</div>}
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 18 }}>
           <button onClick={onClose} disabled={busy} style={S.btnGhost}>Not yet</button>
-          <button onClick={go} disabled={busy} style={{ ...S.btnGhost, border: '1px solid rgba(67,211,146,0.5)', color: '#43D392', opacity: busy ? 0.6 : 1 }}>{busy ? 'Closing' : '✓ Close the mission · 10 miles'}</button>
+          <button onClick={go} disabled={busy} style={{ ...S.btnGhost, border: '1px solid rgba(67,211,146,0.5)', color: '#43D392', opacity: busy ? 0.6 : 1 }}>{busy ? 'Closing' : '✓ Close the mission · 100 miles'}</button>
         </div>
       </div>
     </div>
@@ -434,6 +434,7 @@ function ProjectDetail({ project, board: boardProp, api, onBack, initialTab, ini
   const openArtifact = (slug) => { setArtifactSlug(slug); setTab('artifacts') }
   const [newTask, setNewTask] = useState('')
   const [closingMission, setClosingMission] = useState(false)
+  const [celebrate, setCelebrate] = useState(null)
   const [draft, setDraft] = useState(null)
   const [drafting, setDrafting] = useState(false)
   const [draftErr, setDraftErr] = useState(null)
@@ -469,7 +470,9 @@ function ProjectDetail({ project, board: boardProp, api, onBack, initialTab, ini
     } catch (e) { console.warn('archive', e.message) }
     if (fileThem) for (const f of files) { try { await markFiled(f.id, `mission:${project.id}`) } catch (e) { console.warn('file', e.message) } }
     setClosingMission(false)
-    if (ok) onBack()
+    // The celebratory moment (David 10/21): the badge, the award, and what is true now.
+    if (ok) setCelebrate({ achieved, closed: closeOpen ? (tasks || []).filter(x => x.status !== 'done').length : 0, total: (tasks || []).length })
+    else onBack()
   }
   // Natural language in, an organized milestone out (David 10/21): the door
   // api/milestone-draft returns a title, a done-when and steps for him to confirm.
@@ -516,7 +519,7 @@ function ProjectDetail({ project, board: boardProp, api, onBack, initialTab, ini
         {project.status !== 'completed' && !project.archived_at && (
           <button
             onClick={() => setClosingMission(true)}
-            title="Whole mission complete: 10 miles on the River"
+            title="Whole mission complete: 100 miles on the River"
             style={{ ...S.btnGhost, border: '1px solid rgba(67,211,146,0.5)', color: '#43D392' }}
           >
             ✓ Mark mission complete
@@ -616,6 +619,23 @@ function ProjectDetail({ project, board: boardProp, api, onBack, initialTab, ini
             listFiles={api.listFiles} uploadFile={api.uploadFile} createFolder={api.createFolder}
             fileUrl={api.fileUrl} deleteFile={api.deleteFile} />
         )}
+      {celebrate && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(5,16,28,0.84)', display: 'grid', placeItems: 'center', zIndex: 80 }}>
+          <div style={{ ...S.panel, width: 'min(560px, 94vw)', textAlign: 'center', padding: '38px 32px 28px', display: 'grid', gap: 12, justifyItems: 'center', border: '1px solid rgba(248,199,97,0.45)', boxShadow: '0 0 90px rgba(248,199,97,0.18)' }}>
+            <BadgeMedallion id="main-mission" size={136} glow />
+            <div style={{ fontFamily: MONO, fontSize: 10.5, letterSpacing: '2.4px', textTransform: 'uppercase', color: GOLD }}>Main Mission Complete</div>
+            <div style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 26, letterSpacing: '-0.01em', color: INK, lineHeight: 1.2 }}>{project.name}</div>
+            <div style={{ fontSize: 13.5, color: TEXT_DIM, lineHeight: 1.5 }}>{BADGES['main-mission'].label} · {BADGES['main-mission'].miles} miles on the River at the next update{celebrate.closed ? ` · ${celebrate.closed} milestone${celebrate.closed === 1 ? '' : 's'} closed with it, ${BADGES['mission-task'].miles} each` : ''}.</div>
+            <div style={{ width: '100%', marginTop: 6, padding: '14px 16px', borderRadius: 10, border: `1px solid ${PANEL_BORDER}`, background: 'rgba(255,255,255,0.03)', textAlign: 'left' }}>
+              <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '1.6px', textTransform: 'uppercase', color: LABEL, marginBottom: 6 }}>What is true now, that was not true before</div>
+              {project.description && <div style={{ fontFamily: SERIF, fontStyle: 'italic', fontSize: 16, color: INK, lineHeight: 1.5 }}>{project.description}</div>}
+              {celebrate.achieved && <div style={{ fontSize: 13.5, color: TEXT_DIM, lineHeight: 1.55, marginTop: project.description ? 10 : 0 }}><span style={{ color: GOLD, fontFamily: MONO, fontSize: 10, letterSpacing: '1.4px', textTransform: 'uppercase', marginRight: 8 }}>Achieved</span>{celebrate.achieved}</div>}
+            </div>
+            <div style={{ fontFamily: SERIF, fontStyle: 'italic', fontSize: 13, color: GRAY }}>{BADGES['main-mission'].lore}</div>
+            <button onClick={() => { setCelebrate(null); onBack() }} style={{ ...S.btnPrimary, marginTop: 6 }}>Continue</button>
+          </div>
+        </div>
+      )}
       {award && (
         <div onClick={() => setAward(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(5,16,28,0.78)', display: 'grid', placeItems: 'center', zIndex: 60 }}>
           <div onClick={e => e.stopPropagation()} style={{ ...S.panel, width: 'min(440px, 92vw)', textAlign: 'center', padding: '34px 28px 26px', display: 'grid', gap: 12, justifyItems: 'center' }}>
