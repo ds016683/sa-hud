@@ -5,7 +5,7 @@
 // what is linked or says plainly that the item doesn't call for it, and
 // offers to attach one from the mission.
 import { useCallback, useEffect, useState } from 'react'
-import { ArrowLeft, Play, Pause, Archive, ExternalLink, FolderOpen, FileText, ListChecks, Mic, Map as MapIcon, Check, Plus, Trash2, Upload, Mail } from 'lucide-react'
+import { ArrowLeft, Play, Pause, Archive, ExternalLink, FolderOpen, FileText, ListChecks, Mic, Map as MapIcon, Check, Plus, Trash2, Upload, Mail, Terminal } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { listArtifacts, readArtifact, writeArtifact } from '../../lib/artifacts'
 import { fetchLoadout, equip, holster, stash, equipObjective, equipTask, fmtClock, SIZES } from '../../lib/loadout'
@@ -106,6 +106,38 @@ async function loadRelated(item) {
 // or marks ticked, the board items closed, what was produced. Still needed:
 // the open gates, the open board items, and Lumen's two or three next steps
 // toward the star (the same brain as the Loadout card, loaded after).
+
+// Sessions (David 10/22): reopen the Claude Code session that worked this item, or
+// copy a terminal command that starts one briefed. The reopen links are launch links
+// in Live Files (claude://claude.ai/epitaxy/local_<session id>) that focus.py leaves on
+// the item; the note carries the resume command. The briefed command is built here.
+const isSessionLink = (r) => isLink(r) && /^claude:\/\//.test(String(r.path || ''))
+function SessionsStrip({ item, links }) {
+  const [copied, setCopied] = useState(null)
+  const copy = async (key, text) => { try { await navigator.clipboard.writeText(text); setCopied(key); setTimeout(() => setCopied(null), 1600) } catch { /* no clipboard */ } }
+  const sessions = (links || []).filter(isSessionLink).sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)))
+  const cwdOf = (r) => (String(r?.note || '').match(/^cd "([^"]+)"/) || [])[1] || null
+  const cwd = cwdOf(sessions[0]) || '~/builds/sa-hud'
+  const oid = item.objective_id || item.id
+  const brief = `cd "${cwd}" && claude "Pick up the ${item.kind || 'Side Mission'} '${String(item.title || '').replace(/"/g, "'")}' (${oid}): read its briefing with get_objectives and list_steps, its files with list_live_files, then continue from Still Needed. Set the focus on it first."`
+  return (
+    <div style={{ marginTop: 14, paddingTop: 12, borderTop: `1px solid ${PANEL_BORDER}` }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+        <span style={{ fontSize: 14.5, fontWeight: 600, color: LABEL }}>Sessions</span>
+        <button onClick={() => copy('brief', brief)} title={brief} style={{ ...btn(BLUE), padding: '5px 10px' }}><Terminal size={11} /> {copied === 'brief' ? 'Copied' : 'Copy a Briefed Start'}</button>
+      </div>
+      {sessions.length === 0 && <div style={{ fontSize: 12.5, color: GRAY, marginTop: 6 }}>No Claude session has worked this item yet. The command above starts one briefed; paste it in a terminal.</div>}
+      {sessions.map(r => (
+        <div key={r.id} style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
+          <span style={{ fontSize: 13, color: INK, flex: 1, minWidth: 200 }}>{String(r.name || '').replace(/^Claude session · /, '')}<span style={{ fontFamily: MONO, fontSize: 10, color: GRAY, marginLeft: 8 }}>{fmtStamp(r.created_at)}</span></span>
+          <a href={r.path} title="Open this session in the Claude desktop app" style={{ ...btn(PURPLE, true), padding: '5px 10px', textDecoration: 'none' }}><ExternalLink size={11} /> Reopen in Claude</a>
+          {r.note && <button onClick={() => copy(r.id, r.note)} title={r.note} style={{ ...btn(INK2), padding: '5px 10px' }}><Terminal size={11} /> {copied === r.id ? 'Copied' : 'Copy Resume Command'}</button>}
+        </div>
+      ))}
+    </div>
+  )
+}
+
 function WhereItStands({ item, rel, task, taskId, linkedBoards }) {
   const [next, setNext] = useState(null)
   const [thinking, setThinking] = useState(false)
@@ -284,6 +316,7 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
                   </div>
 
                   <WhereItStands item={item} rel={rel} task={task} taskId={taskId} linkedBoards={linkedBoards} />
+                  <SessionsStrip item={item} links={requests} />
 
                   {(() => { const seg = (on, color) => ({ ...btn(on ? color : INK2, on), padding: '5px 10px', whiteSpace: 'nowrap', borderRadius: 8 }); const cell = { display: 'grid', gap: 6, alignContent: 'start' }; return (
                     <div style={{ borderTop: `1px solid ${PANEL_BORDER}`, borderBottom: `1px solid ${PANEL_BORDER}`, padding: '14px 0', display: 'grid', gap: 16 }}>
@@ -378,7 +411,7 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
                   <div style={{ marginBottom: 12 }}>
                     <DropZone busy={objBusy} onFiles={(fs) => fs.forEach(f => uploadNow(f))} onPath={(pth) => act(() => requestLiveFile(pth, { objectiveId: obj.id }), 'Requested; the next Claude session on the Mac puts it in play')} />
                   </div>
-                  {requests.filter(isLink).map(r => (
+                  {requests.filter(r => isLink(r) && !isSessionLink(r)).map(r => (
                     <div key={r.id} style={{ ...rowStyle, border: `1px solid ${PURPLE}66`, borderRadius: 10, padding: '10px 12px', margin: '6px 0', background: 'rgba(180,163,232,0.07)' }}><span style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '0.8px', textTransform: 'uppercase', color: PURPLE }}>app</span><span style={{ flex: 1, minWidth: 0 }}><span style={{ fontSize: 14.5, fontWeight: 600, color: INK }}>{r.name}</span>{r.note && <span style={{ display: 'block', fontSize: 12.5, color: INK2, marginTop: 2 }}>{r.note}</span>}<span style={{ display: 'block', fontFamily: MONO, fontSize: 9.5, color: GRAY, marginTop: 3 }}>{r.path}</span></span><button onClick={() => window.open(r.path, '_blank', 'noopener')} style={btn(PURPLE, true)}><ExternalLink size={11} /> Launch</button></div>
                   ))}
                   {requests.filter(isRequest).map(r => (
