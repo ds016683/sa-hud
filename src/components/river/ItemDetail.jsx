@@ -18,11 +18,12 @@ import { recall } from '../../lib/recall'
 import { draftMail, groupVersions, fmtStamp, requestLiveFile, listLiveFiles, isRequest, isLink } from '../../lib/livefiles'
 import { DropZone } from './LiveFiles'
 import WorkbenchTab from './Workbench'
+import PunchlistTab from './Punchlist'
 import { INK, INK2, GRAY, PANEL_BORDER, GOLD, GOLD_BRIGHT, BLUE, GREEN, RED, MONO, SERIF, S, Label, KIND_COLOR, KindIcon, NORTH_STAR_LABEL, NORTH_STAR_ASK, LABEL, PURPLE } from './canon'
 
 const NAVY_DEEP = '#0A1B2B'
-const TABS = ['overview', 'workbench', 'artifacts', 'files', 'notes']
-const TAB_LABEL = { overview: 'Briefing', workbench: 'Workbench', artifacts: 'Artifacts', sessions: 'Sessions', files: 'Production', notes: 'Notes' }
+const TABS = ['overview', 'workbench', 'punchlist', 'artifacts', 'files', 'notes']
+const TAB_LABEL = { overview: 'Briefing', workbench: 'Workbench', punchlist: 'Punchlist', artifacts: 'Artifacts', sessions: 'Sessions', files: 'Production', notes: 'Notes' }
 const STOP = new Set(['the', 'and', 'with', 'for', 'from', 'about', 'notes', 'upload', 'interview', 'call', 'meeting', 'review', 'investigate', 'weekly', 'monthly', 'david', 'smith'])
 const words = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9 ]/g, ' ').split(/\s+/).filter(w => w.length > 2 && !STOP.has(w))
 const chiTime = (iso) => iso ? new Date(iso).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'America/Chicago' }) : ''
@@ -45,7 +46,7 @@ const None = ({ what }) => <div style={{ fontSize: 13, color: GRAY, padding: '14
 
 // Everything the item connects to, loaded once.
 async function loadRelated(item) {
-  const out = { project: null, task: null, artifacts: [], boards: [], projectFiles: [], storeFiles: [], meetings: [], loadout: null, objective: null, steps: [], objArtifacts: [], objFiles: [], objBoards: [] }
+  const out = { project: null, task: null, artifacts: [], boards: [], projectFiles: [], storeFiles: [], meetings: [], loadout: null, objective: null, steps: [], objArtifacts: [], objFiles: [], objBoards: [], punchlist: [] }
   let task = null
   // A Side Mission is an object of its own: the row, its steps, and its pockets.
   if (item.objective_id) {
@@ -54,6 +55,8 @@ async function loadRelated(item) {
       fetchSteps(item.objective_id), listObjectiveArtifacts(item.objective_id), listObjectiveFiles(item.objective_id), listObjectiveBoards(item.objective_id),
     ])
     out.objective = orow?.[0] || null; out.steps = steps; out.objArtifacts = oa; out.objFiles = of; out.objBoards = ob
+    // The Editing Protocol punchlist (10/22): count only; the pill loads the rows.
+    try { const { data: pl } = await supabase.from('edit_punchlist').select('id,status').eq('objective_id', item.objective_id); out.punchlist = pl || [] } catch { out.punchlist = [] }
   }
   if (item.task_id) { const { data } = await supabase.from('project_tasks').select('id,text,notes,status,due_date,project_id,session_ref,objective_id').eq('id', item.task_id).limit(1); task = data?.[0] || null }
   else if (item.objective_id) { const { data } = await supabase.from('project_tasks').select('id,text,notes,status,due_date,project_id,session_ref,objective_id').eq('objective_id', item.objective_id).limit(1); task = data?.[0] || null }
@@ -245,7 +248,7 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
     throw new Error('nothing to load')
   }, 'Timer on')
 
-  const counts = { artifacts: linkedArtifacts.length, sessions: linkedBoards.length, files: (rel?.objFiles?.length || 0) + (rel?.projectFiles.length || 0) + (rel?.storeFiles.filter(f => !f.folder).length || 0), notes: rel?.meetings.length || 0 }
+  const counts = { artifacts: linkedArtifacts.length, sessions: linkedBoards.length, files: (rel?.objFiles?.length || 0) + (rel?.projectFiles.length || 0) + (rel?.storeFiles.filter(f => !f.folder).length || 0), notes: rel?.meetings.length || 0, punchlist: (rel?.punchlist || []).filter(r => r.status !== 'approved').length }
   const obj = rel?.objective || null
   const [stepText, setStepText] = useState('')
   const [objBusy, setObjBusy] = useState(false)
@@ -459,6 +462,8 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
           )}
 
           {rel && tab === 'workbench' && (item.objective_id ? <WorkbenchTab objectiveId={item.objective_id} /> : <None what={{ ...what, thing: 'a workbench' }} />)}
+
+          {rel && tab === 'punchlist' && (item.objective_id ? <PunchlistTab objectiveId={item.objective_id} /> : <None what={{ ...what, thing: 'a punchlist' }} />)}
 
           {rel && tab === 'artifacts' && (
             <div>
