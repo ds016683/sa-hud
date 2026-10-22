@@ -86,6 +86,7 @@ How to be:
 - Canceled meetings (10/21): when David says a meeting was canceled, ask who canceled and why in one breath, then close_meeting with cancelled_by 'them' or 'me' and the reason. Canceled by them credits the meeting (it counts attended for Toastmaster); canceled by him does not. Never mark a canceled meeting attended by any other path.
 - Follow-up Bounties close on proof (10/21): before releasing a Bounty like "Follow up with <Name> at <Org>", run sent_proof; if the note went out, close_out with the proof as achieved (the subject, the recipient, the time). The evening pulse does this on its own and tells him. If he says he sent it and sent_proof finds nothing, say so plainly and ask where it went out from.
 - Live Files (10/16): the files in play right now, on the Board under Live Files, each tied to a Loadout or Stash item when it belongs to one. Anything you write_file or file_attachment lands there on its own; Claude sessions put their products there too (an agenda, a deck, a workbook) instead of David's Desktop. When he asks where a file is, what is live, or what he has on something: list_live_files (by side_mission or project to narrow). The final filing system is not built yet; do not promise where a file will be filed, say it is in Live Files.
+- Sketches and markups (10/22): what David draws on the iPad Scratchpad is saved to Live Files as a PDF (sketch-<stamp>.pdf, one page per sheet). When he asks what his sketch or markup shows, or to look at a photo, a PNG or a PDF page: look_at_file, then describe what you see in plain words. Never describe a file from its name.
 - Processing pays (10/18): when David weighs a milestone and rules it downstream ("move this way downstream", "not a priority"), that is a decision and it pays: complete_project_task with the ruling as the note, and offer to park the content in the mission's "Future Development Ideas" artifact (write_artifact kind brief, slug future-development-ideas, one section per idea). Never delete a milestone he has processed; delete is for mistakes. His words: his brain needs the reward for processing a task, even when the game-time decision is to deprioritize it.
 - Deleting a Main Mission (10/16): delete_project exists for the mission that should never have been one, or was set up twice. Only on David's explicit word, naming it, in the same conversation; confirm the name back in one line first. It pays nothing and the mission leaves every list; closed milestones keep their miles. Finished work is never deleted: that is Mark mission complete on the HUD (100 miles). Staging (10/16): a milestone can sit in the Stash before it is loaded (the HUD's Stash button beside Load); when he asks you to stage one, activate_project_task is wrong, use move_objective parked on its board item once it exists, and tell him the Stash button does the first staging.
 - Working through missions with David (10/8): he wants to do this with you, in the HUD strip or on WhatsApp. Main Missions: get_projects, then per mission ask three things in one breath: keep, park, or retire; which open tasks are true milestones (rewrite the rest with update_project_task, fold small steps into one milestone, add_project_task for missing ones, complete_project_task for anything already true); what the mission's destination is in one line (update the description when he gives it). Aim for five to eight milestones per mission, each a thing that will be verifiably true. Side Missions: get_objectives, then per item: keep, push (set_due), or drop; type (set_size light | medium | heavy, in the canon's words); dates; realm; steps only if it is a Mythic; promote to a Main Mission if it fails the Mythic test. Do it in batches of five or six, confirm what changed in a line each, never a wall. Suggest the type yourself and let him correct you.
@@ -191,7 +192,7 @@ export async function think({ channel = 'whatsapp', text, spoken = false }) {
       break
     }
     messages.push({ role: 'assistant', content: out.content })
-    const results = []
+    const results = [], attach = []
     for (const tu of toolUses) {
       let content, isError = false
       const key = `${tu.name}:${JSON.stringify(tu.input || {})}`
@@ -204,9 +205,13 @@ export async function think({ channel = 'whatsapp', text, spoken = false }) {
       } else {
         try { content = await callTool(tu.name, tu.input || {}) } catch (e) { content = `Tool error: ${e.message}`; isError = true }
       }
+      // look_at_file (16.4): the file rides in the same user message as the
+      // tool_result, as image or document blocks, so the model sees it.
+      if (content && typeof content === 'object' && Array.isArray(content.__attach)) { attach.push(...content.__attach); content = content.text }
       trace.push({ step: step + 1, tool: tu.name, input: JSON.stringify(tu.input || {}).slice(0, 240), ok: !isError, ms: Date.now() - t0, out: String(content).replace(/\s+/g, ' ').slice(0, 160) })
       results.push({ type: 'tool_result', tool_use_id: tu.id, content: String(content).slice(0, 60000), is_error: isError })
     }
+    for (const a of attach) results.push(a)
     if (step + 1 === NUDGE_AT) results.push({ type: 'text', text: `(system: ${MAX_STEPS - NUDGE_AT} tool steps remain in this turn. Finish the one write that matters and reply to David; tell him plainly if something is still undone.)` })
     messages.push({ role: 'user', content: results })
     reply = textParts.join('\n').trim() || reply

@@ -619,6 +619,11 @@ export const TOOLS = [
     inputSchema: { type: 'object', properties: { side_mission: { type: 'string' }, project: { type: 'string' } }, required: [] },
   },
   {
+    name: 'look_at_file',
+    description: "Look at a file with your own eyes (10/22, Milestone 16.4): a sketch or markup David drew on the iPad Scratchpad (a PDF, one page per sheet), a photo, a PNG, a PDF deck or document from Live Files or the file store. name = part of the file name; 'sketch' or 'latest sketch' means the newest sketch. side_mission or project narrows the search. pages = which PDF pages to show, like '1-3' or '2' (default the first 5). The file is placed in front of you in this same turn, after the tool result: then describe what you actually see (what is drawn, written, crossed out, the layout, the words) in David's plain language, the way you would describe a sketch handed across a table. Never answer from the file name alone.",
+    inputSchema: { type: 'object', properties: { name: { type: 'string' }, side_mission: { type: 'string' }, project: { type: 'string' }, pages: { type: 'string' }, path: { type: 'string', description: 'a file-store path from search_files, instead of a Live Files name' } }, required: [] },
+  },
+  {
     name: 'fetch_url',
     description: "Read a web page (10/20): fetch a URL and return its text (title, headings, body, links kept as text), up to about 12k characters, with an optional find to jump to the part that matters. Use it for a conference agenda, a session description, a venue page, a news item, a document David points you at. Not for David's own mail or files (those have their own tools).",
     inputSchema: { type: 'object', properties: { url: { type: 'string' }, find: { type: 'string', description: 'a word or phrase; the excerpt centers on its first match' }, max_chars: { type: 'number' } }, required: ['url'] },
@@ -1564,6 +1569,59 @@ export async function callTool(name, args = {}) {
     }
     case 'list_standing_orders': {
       return JSON.stringify(await sb('standing_orders?select=id,text,cadence,next_at,last_fired_at&active=eq.true&order=next_at.asc.nullslast'), null, 2)
+    }
+    case 'look_at_file': {
+      // Milestone 16.4: the file itself goes in front of the model. The
+      // tool returns { __attach, text }: the brain appends the blocks to the
+      // same user message as the tool_result (image or document blocks).
+      const wantSketch = !args.name || /sketch/i.test(args.name) || /latest/i.test(args.name)
+      let row = null
+      if (args.path) {
+        row = { name: String(args.path).split('/').pop(), bucket: 'files', path: args.path, mime: null }
+      } else {
+        let f = 'superseded_by=is.null&bucket=neq.link&bucket=neq.request'
+        if (args.side_mission) { const o = await findObjective(args.side_mission); f += `&objective_id=eq.${o.id}` }
+        else if (args.project) { const q = esc(args.project); const ps = await sb(`projects?select=id&status=neq.deleted&or=(key.ilike.${encodeURIComponent(q)},name.ilike.${encodeURIComponent(q)})&limit=2`); if (ps.length !== 1) throw new Error(ps.length ? 'ambiguous project' : 'no such project'); f += `&project_id=eq.${ps[0].id}` }
+        const needle = wantSketch ? 'sketch' : esc(args.name)
+        f += `&name=ilike.*${encodeURIComponent(needle)}*`
+        const rows = await sb(`live_files?select=id,name,bucket,path,mime,size,created_at,objective_id,project_id,note&${f}&order=created_at.desc&limit=1`)
+        if (!rows.length) return JSON.stringify({ ok: false, error: `no file in Live Files matching "${needle}"${args.side_mission ? ` on ${args.side_mission}` : ''}; list_live_files shows what is there` })
+        row = rows[0]
+      }
+      const r = await fetch(`${URL_BASE}/storage/v1/object/${row.bucket}/${String(row.path).split('/').map(encodeURIComponent).join('/')}`, { headers: sbHeaders() })
+      if (!r.ok) return JSON.stringify({ ok: false, error: `could not read ${row.name} from storage (${r.status})` })
+      let bytes = Buffer.from(await r.arrayBuffer())
+      const ext = (row.name.split('.').pop() || '').toLowerCase()
+      const mime = row.mime || r.headers.get('content-type') || ({ png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif', webp: 'image/webp', pdf: 'application/pdf' }[ext]) || 'application/octet-stream'
+      const LIMIT = 4.5 * 1024 * 1024
+      let shown = ''
+      if (mime === 'application/pdf') {
+        const { PDFDocument } = await import('pdf-lib')
+        const src = await PDFDocument.load(bytes, { ignoreEncryption: true })
+        const n = src.getPageCount()
+        let want = []
+        const m = String(args.pages || '').match(/^\s*(\d+)\s*(?:-\s*(\d+))?\s*$/)
+        if (m) { const a = Math.max(1, +m[1]), b = Math.min(n, +(m[2] || m[1])); for (let i = a; i <= b; i++) want.push(i) }
+        else want = Array.from({ length: Math.min(n, 5) }, (_, i) => i + 1)
+        if (want.length && want.length < n) {
+          const out = await PDFDocument.create()
+          const copied = await out.copyPages(src, want.map(i => i - 1))
+          copied.forEach(pg => out.addPage(pg))
+          bytes = Buffer.from(await out.save())
+        }
+        shown = `pages ${want[0]}${want.length > 1 ? `-${want[want.length - 1]}` : ''} of ${n}`
+        if (bytes.length > LIMIT) return JSON.stringify({ ok: false, error: `${row.name} is ${(bytes.length / 1048576).toFixed(1)} MB for those pages; ask for fewer pages (it has ${n})` })
+        var attach = [{ type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: bytes.toString('base64') }, title: row.name }]
+      } else if (/^image\//.test(mime)) {
+        if (bytes.length > LIMIT) return JSON.stringify({ ok: false, error: `${row.name} is ${(bytes.length / 1048576).toFixed(1)} MB, too large to show` })
+        shown = 'the image'
+        var attach = [{ type: 'image', source: { type: 'base64', media_type: mime, data: bytes.toString('base64') } }]
+      } else {
+        return JSON.stringify({ ok: false, error: `${row.name} is ${mime}; look_at_file shows images and PDFs. read_file reads documents as text.` })
+      }
+      let tied = ''
+      if (row.objective_id) { const o = await sb(`objectives?select=title,state&id=eq.${row.objective_id}`).catch(() => []); if (o[0]) tied = `, tied to "${o[0].title}" (${o[0].state})` }
+      return { __attach: attach, text: `Showing you ${row.name} (${shown}, ${(bytes.length / 1024).toFixed(0)} KB, saved ${row.created_at ? row.created_at.slice(0, 16).replace('T', ' ') + 'Z' : 'in the file store'}${tied}${row.note ? `; note: ${row.note}` : ''}). It follows this result. Describe what you see.` }
     }
     case 'fetch_url': {
       try { return JSON.stringify(await fetchUrlText(args.url, { find: args.find || null, max: Math.min(Math.max(Number(args.max_chars) || 12000, 2000), 40000) }), null, 1) }
