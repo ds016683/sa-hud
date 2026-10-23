@@ -5,7 +5,7 @@
 // call, typed into the slot itself, one at a time, dispatched when done).
 // Empty slots stay visible on purpose (David, 10/7: the structure is the point).
 import { useEffect, useState, useCallback } from 'react'
-import { Play, Pause, PackageCheck, Archive, X as XIcon, Zap, Phone, Swords } from 'lucide-react'
+import { Play, Pause, PackageCheck, Archive, X as XIcon, Zap, Phone, Swords, ListChecks } from 'lucide-react'
 import BadgeMedallion from '../BadgeArt'
 import RecallModal, { BrainButton } from './Recall'
 import YayPage from './YayPage'
@@ -22,6 +22,8 @@ import { fileAchieved } from '../../lib/archive'
 import { Undo2, ArrowUpToLine, ScrollText, Paperclip } from 'lucide-react'
 import ActivityLogModal from './ActivityLog'
 import LiveFilesModal, { ClipButton } from './LiveFiles'
+import { LiveProtocolsModal } from './Protocols'
+import { liveProtocolCounts } from '../../lib/protocols'
 import { liveCounts } from '../../lib/livefiles'
 import ItemDetail from './ItemDetail'
 import { INK, INK2, GRAY, PANEL_BORDER, GOLD, GOLD_BRIGHT, BLUE, GREEN, RED, MONO, SERIF, S, Eyebrow, Label, Panel, KIND_COLOR, KindChip, NORTH_STAR_LABEL, LABEL } from './canon'
@@ -427,6 +429,10 @@ export default function LoadoutPanel({ onChange, refreshKey = 0, onNavigate, bar
   const [peek, setPeek] = useState(null)
   const [filesOpen, setFilesOpen] = useState(null)   // null | { objectiveId, title } | {}
   const [clips, setClips] = useState({})
+  // Live Protocols (10/23): the window beside Live Files, every item with a protocol on.
+  const [protoOpen, setProtoOpen] = useState(false)
+  const [protoCount, setProtoCount] = useState(0)
+  useEffect(() => { let on = true; liveProtocolCounts().then(c => { if (on) setProtoCount(Object.values(c).reduce((a, b) => a + b, 0)) }).catch(() => {}); return () => { on = false } }, [protoOpen, related])
   const refresh = useCallback(() => Promise.all([fetchLoadout().then(setL), fetchStash().then(setHeld), liveCounts().then(setClips)]).catch(e => console.warn('loadout', e.message)), [])
   useEffect(() => { refresh() }, [refresh, tick, refreshKey])
   useEffect(() => { const t = setInterval(() => setTick(x => x + 1), 30_000); return () => clearInterval(t) }, [])
@@ -464,6 +470,7 @@ export default function LoadoutPanel({ onChange, refreshKey = 0, onNavigate, bar
       {filing && <FileAway objective={filing.o} pockets={filing.p} onClose={() => setFiling(null)} onDone={({ filed, released }) => { const id = filing.o.id; setFiling(null); setMsg(`Filed ${filed.length} to the Archive · extracted ${filing.o.title} · ${released.minutes}m`); logBoard(`Extracted: ${filing.o.title} · filed ${filed.length} to the Archive`); bump(); setYay(id) }} />}
       {recallOf && <RecallModal objectiveId={recallOf.id} taskId={recallOf.task_id || null} title={recallOf.title} onClose={() => setRecallOf(null)} />}
       {logOpen && <ActivityLogModal onClose={() => setLogOpen(false)} />}
+      {protoOpen && <LiveProtocolsModal onClose={() => setProtoOpen(false)} onOpen={(it) => setRelated(it)} />}
       {filesOpen && <LiveFilesModal onClose={() => setFilesOpen(null)} filter={filesOpen.objectiveId ? filesOpen : null} items={[...(L?.items || []).filter(x => !x.meeting).map(x => ({ ...x, stashed: false })), ...held.map(x => ({ ...x, stashed: true }))]} onChanged={refresh} />}
       {peek && <StashPeek it={peek} act={act} clips={clips[peek.id] || 0} onFiles={(x) => { setPeek(null); setFilesOpen({ objectiveId: x.id, title: x.kind === 'Main Mission' ? (x.task_text || x.title).replace(/^\s*\d+\s*[·.:)-]\s*/, '') : x.title }) }} onClose={() => setPeek(null)} onOpenFull={(it) => setRelated({ id: it.id, objective_id: it.id, kind: it.kind, title: it.title, project: it.project, description: it.description, tags: it.tags, size: it.size })} />}
       {yay && <YayPage objectiveId={yay} fresh onClose={() => setYay(null)} onOpenMission={(o) => { setYay(null); setRelated({ id: o.id, objective_id: o.id, kind: (o.tags || []).includes('impromptu') ? 'Ad Hoc' : 'Side Mission', title: o.title, description: o.description, tags: o.tags, size: sizeOf(o) }) }} />}
@@ -519,6 +526,7 @@ export default function LoadoutPanel({ onChange, refreshKey = 0, onNavigate, bar
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 10, flexWrap: 'wrap' }}>
             <button onClick={() => setLogOpen(true)} style={btn(BLUE)}><ScrollText size={11} /> Activity Log</button>
             <button onClick={() => setFilesOpen({})} style={btn(BLUE)}><Paperclip size={11} /> Live Files{Object.values(clips).reduce((a, b) => a + b, 0) ? ` · ${Object.values(clips).reduce((a, b) => a + b, 0)}` : ''}</button>
+            <button onClick={() => setProtoOpen(true)} style={btn(protoCount ? GOLD : BLUE)}><ListChecks size={11} /> Live Protocols{protoCount ? ` · ${protoCount}` : ''}</button>
             {msg && msg.startsWith('Could not') && <span style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '1px', color: RED, textTransform: 'uppercase' }}>{msg}</span>}
           </div>
         </>

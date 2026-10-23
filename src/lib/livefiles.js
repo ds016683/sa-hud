@@ -95,6 +95,16 @@ export async function linkLiveFile(row, { objectiveId = null, projectId = null }
   return dest
 }
 
+// Evidence (David 10/23): the files pinned under the Polaris objective as the proof
+// it was met. Pinning is the only thing that moves a file onto the Briefing.
+export async function pinEvidence(id, on = true) { await q(supabase.from('live_files').update({ evidence: !!on }).eq('id', id).select()) }
+export async function listEvidence({ objectiveId = null, projectId = null } = {}) {
+  let sel = supabase.from('live_files').select('*').eq('evidence', true).is('superseded_by', null).order('created_at', { ascending: false }).limit(100)
+  if (objectiveId) sel = sel.eq('objective_id', objectiveId); else if (projectId) sel = sel.eq('project_id', projectId); else return []
+  const { data, error } = await sel
+  if (error) return []  // the column lands with sql/2026-10-23-live-protocols.sql
+  return data || []
+}
 export async function noteLiveFile(id, note) { await q(supabase.from('live_files').update({ note }).eq('id', id).select()) }
 
 export async function openLiveFile(row) {

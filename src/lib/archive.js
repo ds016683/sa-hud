@@ -3,6 +3,11 @@
 // project-files/archive/<yyyy>/<slug>/... so it outlives the mission that
 // made it. Fails soft until the table exists (sql/2026-10-07-side-missions-archive.sql).
 import { supabase } from './supabase'
+import { listEvidence } from './livefiles'
+
+// The close-out record (David 10/23): Polaris, Achieved, the pinned evidence and the
+// tags lead every archive summary, so the Archive can be queried by what was proven.
+const evidenceOf = async (filter) => (await listEvidence(filter)).map(f => ({ id: f.id, name: f.name, bucket: f.bucket, path: f.path, version: f.version, created_at: f.created_at }))
 
 const BUCKET = 'project-files'
 const slugify = (s) => String(s || 'entry').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 60) || 'entry'
@@ -57,7 +62,8 @@ export async function fileObjective(o, pockets, { realm, summary, picks, notes }
   const root = archiveRoot(o.title)
   const base = { realm, source_kind: 'objective', source_id: o.id, source_title: o.title, tags: (o.tags || []).filter(t => !['personal', 'third-horizon'].includes(t)) }
   const filed = []
-  if (summary && summary.trim()) filed.push(await fileEntry({ ...base, kind: 'summary', title: o.title, summary: summary.trim(), body: { achieved: summary.trim(), north_star: o.north_star || null, description: o.description || null, steps: (pockets.steps || []).map(s => ({ text: s.text, done: s.done })), notes: notes || null } }))
+  const evidence = await evidenceOf({ objectiveId: o.id })
+  if (summary && summary.trim()) filed.push(await fileEntry({ ...base, kind: 'summary', title: o.title, summary: summary.trim(), tags: [...base.tags, ...(evidence.length ? ['evidence'] : [])], body: { achieved: summary.trim(), north_star: o.north_star || null, description: o.description || null, steps: (pockets.steps || []).map(s => ({ text: s.text, done: s.done })), notes: notes || null, evidence } }))
   for (const a of pockets.artifacts.filter(a => picks.artifacts.includes(a.slug))) {
     filed.push(await fileEntry({ ...base, kind: a.kind === 'decision' ? 'decision' : 'artifact', title: a.title, summary: a.doc?.question || a.doc?.summary || null, body: a.doc || null, bucket: BUCKET, path: `${a.root}/artifacts/${a.slug}.json` }))
   }
@@ -76,8 +82,9 @@ export async function fileObjective(o, pockets, { realm, summary, picks, notes }
 export async function fileProject(project, { artifacts = [], boards = [], realm = 'third-horizon', achieved = null } = {}) {
   const base = { realm, source_kind: 'project', source_id: project.id, source_title: project.name, tags: [] }
   const filed = []
+  const evidence = await evidenceOf({ projectId: project.id })
   // The debrief (David 10/21): his answer to "Is it true? What's different now?" leads the mission's archive.
-  if (achieved && String(achieved).trim()) filed.push(await fileEntry({ ...base, kind: 'summary', title: project.name, summary: String(achieved).trim().slice(0, 4000), body: { achieved: String(achieved).trim().slice(0, 4000), north_star: project.description || null } }))
+  if (achieved && String(achieved).trim()) filed.push(await fileEntry({ ...base, kind: 'summary', title: project.name, summary: String(achieved).trim().slice(0, 4000), tags: evidence.length ? ['evidence'] : [], body: { achieved: String(achieved).trim().slice(0, 4000), north_star: project.description || null, evidence } }))
   for (const a of artifacts) filed.push(await fileEntry({ ...base, kind: a.kind === 'decision' ? 'decision' : 'artifact', title: a.title, summary: a.doc?.question || null, body: a.doc || null, bucket: BUCKET, path: `${project.id}/artifacts/${a.slug}.json` }))
   for (const b of boards) filed.push(await fileEntry({ ...base, kind: 'board', title: b.title, summary: `${b.done}/${b.total} done`, body: { phases: b.phases } }))
   return filed
@@ -87,5 +94,6 @@ export async function fileProject(project, { artifacts = [], boards = [], realm 
 // records his answer to "Is it true? What's different now?" for the yay page.
 export async function fileAchieved(item, text) {
   const t = String(text || '').trim(); if (!t) return null
-  return fileEntry({ realm: item.personal ? 'personal' : 'third-horizon', source_kind: 'objective', source_id: item.id, source_title: item.title, tags: [], kind: 'summary', title: item.title, summary: t, body: { achieved: t, north_star: item.north_star || null } })
+  const evidence = await evidenceOf({ objectiveId: item.id })
+  return fileEntry({ realm: item.personal ? 'personal' : 'third-horizon', source_kind: 'objective', source_id: item.id, source_title: item.title, tags: [...((item.tags || []).filter(x => !['personal', 'third-horizon', 'impromptu', 'stashed'].includes(x))), ...(evidence.length ? ['evidence'] : [])], kind: 'summary', title: item.title, summary: t, body: { achieved: t, north_star: item.north_star || null, evidence } })
 }

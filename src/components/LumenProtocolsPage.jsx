@@ -6,7 +6,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { S, Eyebrow, Serif, Label, INK, INK2, GRAY, GOLD, GREEN, RED, MONO, PANEL_BORDER, PANEL_BG, LABEL, MUTED, TYPE } from './river/canon'
 
-const PILLS = [{ id: 'identity', label: 'Identity' }, { id: 'rules', label: 'Rules' }, { id: 'mail', label: 'Mail Protocol' }, { id: 'editing', label: 'Editing Protocol' }]
+const PILLS = [{ id: 'identity', label: 'Identity' }, { id: 'rules', label: 'Rules' }, { id: 'mail', label: 'Mail Protocol' }, { id: 'editing', label: 'Editing Protocol' }, { id: 'briefing', label: 'Briefing Protocol' }]
 
 const Block = ({ title, children }) => (
   <div style={{ border: `1px solid ${PANEL_BORDER}`, background: PANEL_BG, borderRadius: 12, padding: '16px 18px', marginBottom: 12 }}>
@@ -132,7 +132,7 @@ function Editing() {
   return (
     <>
       <Block title="What It Is">
-        The Editing Protocol is the house loop for rapid review of a living deliverable: a proposal deck, a platform page, a document. David drives; the session captures, builds, and proves. Every input he fires, a screenshot with commentary, a one-liner, a mid-turn interjection, becomes a numbered row on the Ledger punchlist. The session makes the change, verifies it, and closes the row with an Inspect record David can approve from the Punchlist pill on the item\u2019s Mission Briefing. Approval is always his. Born on the AMA proposal, October 22, 2026, where it ran ninety-two rows to ship.
+        The Editing Protocol is the house loop for rapid review of a living deliverable: a proposal deck, a platform page, a document. David drives; the session captures, builds, and proves. Every input he fires, a screenshot with commentary, a one-liner, a mid-turn interjection, becomes a numbered row on the Ledger punchlist. The session makes the change, verifies it, and closes the row with an Inspect record David can approve from the Punchlist pill on the item\u2019s Live Protocols pill. Approval is always his. Born on the AMA proposal, October 22, 2026, where it ran ninety-two rows to ship.
       </Block>
       <Block title="The Loop, Per Input">
         <ol style={{ margin: 0, paddingLeft: 18 }}>
@@ -167,13 +167,44 @@ function Editing() {
   )
 }
 
+function Briefing() {
+  const chip = (c) => ({ fontFamily: MONO, fontSize: 11, letterSpacing: '0.08em', padding: '2px 8px', borderRadius: 6, border: `1px solid ${c}66`, color: c, background: `${c}14` })
+  return (
+    <>
+      <Block title="What It Is">
+        The Briefing Protocol inverts the usual direction. David states one objective, a picture to complete (a meeting\u2019s notes and artifacts, a plan, a decision record), and the session takes charge until he ends it. It inventories what it can and cannot see, keeps the gap map itself, and pulls what it needs out of him one item at a time, never a list, so he is not the one mapping the work. Born on the MMA October 19 quarterly, October 23, 2026.
+      </Block>
+      <Block title="The Loop">
+        <ol style={{ margin: 0, paddingLeft: 18 }}>
+          <Li><b style={{ color: INK }}>Inventory first, silently.</b> The Ledger, the file store, the mailbox, Granola and the client tool. The gap map lands as Briefing rows on the item: the need, why it is needed, and who supplies it (David, a file, a tool).</Li>
+          <Li><b style={{ color: INK }}>Open with the picture.</b> What I can see. What I cannot see. The first ask. Nothing else.</Li>
+          <Li><b style={{ color: INK }}>One ask at a time.</b> The row marked as the current ask is the one that only David can supply and that unblocks the most. He answers in chat or straight from the pill; the session records it and asks the next.</Li>
+          <Li><b style={{ color: INK }}>Rulings count.</b> \u201cLeave it\u201d, \u201cdefer to November 10\u201d, \u201cnot needed\u201d closes a row as ruled, with the ruling written where the gap was.</Li>
+          <Li><b style={{ color: INK }}>Hand-offs are rows too.</b> An upload in a tool the session cannot write to, a photo on his phone: the ask names the place and the session hands him the file.</Li>
+          <Li><b style={{ color: INK }}>Protocol off.</b> A four-line close: filled, ruled, left open with an owner, where the record lives. Then the session moves to what he named next.</Li>
+        </ol>
+      </Block>
+      <Block title="Where It Shows">
+        <ul style={{ margin: 0, paddingLeft: 18 }}>
+          <Li><span style={chip(GOLD)}>Live Protocols pill</span> <span style={{ marginLeft: 8 }}>on the item\u2019s Mission Briefing: the rows, the current ask, Answer and Rule in place.</span></Li>
+          <Li><span style={chip(GOLD)}>Live Protocols window</span> <span style={{ marginLeft: 8 }}>on the Board beside Live Files: every item with a protocol on, its open count and the current ask.</span></Li>
+          <Li><span style={chip(GOLD)}>briefing-protocol skill</span> <span style={{ marginLeft: 8 }}>the loop in words, so any Code session runs it the same way.</span></Li>
+        </ul>
+      </Block>
+      <Block title="How To Start One">
+        Say \u201cactivate the Briefing Protocol until \u2026\u201d with the objective in one sentence. The session puts a focus on the Board, writes the gap map, opens with the picture and the first ask, and ends with a progress line, n of m filled. Say \u201cprotocol off\u201d to end it early.
+      </Block>
+    </>
+  )
+}
+
 export default function LumenProtocolsPage() {
   const [pill, setPill] = useState('identity')
   return (
     <div style={S.page}>
       <Eyebrow>SYSTEM · PROTOCOLS</Eyebrow>
       <h1 style={S.h1}>Protocols</h1>
-      <p style={S.sub}>the formal loops the house runs on: Lumen, the mail door, and the editing floor</p>
+      <p style={S.sub}>the formal loops the house runs on: Lumen, the mail door, the editing floor, and the briefing</p>
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', margin: '18px 0 22px' }}>
         {PILLS.map(p => (
           <button key={p.id} onClick={() => setPill(p.id)} style={{ fontSize: 11, letterSpacing: '0.06em', textTransform: 'uppercase', fontFamily: MONO, padding: '7px 14px', borderRadius: 999, cursor: 'pointer', border: `1px solid ${pill === p.id ? 'rgba(230,181,79,0.6)' : PANEL_BORDER}`, background: pill === p.id ? 'rgba(230,181,79,0.12)' : 'rgba(255,255,255,0.03)', color: pill === p.id ? GOLD : INK }}>{p.label}</button>
@@ -183,6 +214,7 @@ export default function LumenProtocolsPage() {
       {pill === 'rules' && <Rules />}
       {pill === 'mail' && <Mail />}
       {pill === 'editing' && <Editing />}
+      {pill === 'briefing' && <Briefing />}
     </div>
   )
 }

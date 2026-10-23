@@ -1,29 +1,33 @@
 // One detail view for every discrete thing on the Board: a Main Mission task,
 // a Side Mission, an impromptu, a Claude session, a calendar event. Laid out
-// like the mission page: title, a line under it, pills across the right
-// (Overview · Artifacts · Sessions · Files · Notes). Every pill either opens
-// what is linked or says plainly that the item doesn't call for it, and
-// offers to attach one from the mission.
+// like the mission page: title, a line under it, four pills across the right
+// (David 10/23: Briefing · Live Protocols · Files · Notes). Every item of every
+// kind carries the same four. Briefing holds Polaris and the evidence pinned
+// under it, Where It Stands, Sessions, the facts and the marks. Live Protocols
+// shows whatever checklist is running on the item. Files is the one place its
+// files live. Notes is the meetings and the item's own notes.
 import { useCallback, useEffect, useState } from 'react'
-import { ArrowLeft, Play, Pause, Archive, ExternalLink, FolderOpen, FileText, ListChecks, Mic, Map as MapIcon, Check, Plus, Trash2, Upload, Mail, Terminal } from 'lucide-react'
+import { ArrowLeft, Play, Pause, Archive, ExternalLink, Mic, Map as MapIcon, Check, Plus, Trash2, Terminal, Star } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { listArtifacts, readArtifact, writeArtifact } from '../../lib/artifacts'
 import { fetchLoadout, equip, holster, stash, equipObjective, equipTask, fmtClock, SIZES } from '../../lib/loadout'
 import DocView from './DocView'
 import { stepsMaxFor } from '../../lib/objectives'
-import { fetchSteps, addStep, toggleStep, removeStep, listObjectiveArtifacts, listObjectiveFiles, uploadObjectiveFile, listObjectiveBoards, provenance, realmOf, setSize, updateObjective } from '../../lib/objectives'
+import { fetchSteps, addStep, toggleStep, removeStep, listObjectiveArtifacts, listObjectiveFiles, listObjectiveBoards, provenance, realmOf, setSize, updateObjective } from '../../lib/objectives'
 import { renderMarkdown } from './MeetingCloseout'
 import SessionBoard from './SessionBoard'
 import { recall } from '../../lib/recall'
-import { draftMail, groupVersions, fmtStamp, requestLiveFile, listLiveFiles, isRequest, isLink } from '../../lib/livefiles'
-import { DropZone } from './LiveFiles'
-import WorkbenchTab from './Workbench'
-import PunchlistTab from './Punchlist'
+import { fmtStamp, listLiveFiles, listEvidence, openLiveFile, isRequest, isLink } from '../../lib/livefiles'
+import ProtocolsTab from './Protocols'
+import { isOpenRow } from '../../lib/protocols'
+import FilesTab from './Files'
 import { INK, INK2, GRAY, PANEL_BORDER, GOLD, GOLD_BRIGHT, BLUE, GREEN, RED, MONO, SERIF, S, Label, KIND_COLOR, KindIcon, NORTH_STAR_LABEL, NORTH_STAR_ASK, LABEL, PURPLE } from './canon'
 
 const NAVY_DEEP = '#0A1B2B'
-const TABS = ['overview', 'workbench', 'punchlist', 'artifacts', 'files', 'notes']
-const TAB_LABEL = { overview: 'Briefing', workbench: 'Workbench', punchlist: 'Punchlist', artifacts: 'Artifacts', sessions: 'Sessions', files: 'Production', notes: 'Notes' }
+const TABS = ['overview', 'protocols', 'files', 'notes']
+const TAB_LABEL = { overview: 'Briefing', protocols: 'Live Protocols', files: 'Files', notes: 'Notes' }
+// Deep links and callers from before 10/23 still name the old pills.
+const LEGACY_TAB = { punchlist: 'protocols', workbench: 'files', artifacts: 'files', production: 'files', sessions: 'overview' }
 const STOP = new Set(['the', 'and', 'with', 'for', 'from', 'about', 'notes', 'upload', 'interview', 'call', 'meeting', 'review', 'investigate', 'weekly', 'monthly', 'david', 'smith'])
 const words = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9 ]/g, ' ').split(/\s+/).filter(w => w.length > 2 && !STOP.has(w))
 const chiTime = (iso) => iso ? new Date(iso).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'America/Chicago' }) : ''
@@ -56,7 +60,9 @@ async function loadRelated(item) {
     ])
     out.objective = orow?.[0] || null; out.steps = steps; out.objArtifacts = oa; out.objFiles = of; out.objBoards = ob
     // The Editing Protocol punchlist (10/22): count only; the pill loads the rows.
-    try { const { data: pl } = await supabase.from('edit_punchlist').select('id,status').eq('objective_id', item.objective_id); out.punchlist = pl || [] } catch { out.punchlist = [] }
+    try { const { data: pl } = await supabase.from('edit_punchlist').select('*').eq('objective_id', item.objective_id); out.punchlist = pl || [] } catch { out.punchlist = [] }
+    // Evidence (10/23): the files pinned under Polaris as the proof the objective was met.
+    try { out.evidence = await listEvidence({ objectiveId: item.objective_id }) } catch { out.evidence = [] }
   }
   if (item.task_id) { const { data } = await supabase.from('project_tasks').select('id,text,notes,status,due_date,project_id,session_ref,objective_id').eq('id', item.task_id).limit(1); task = data?.[0] || null }
   else if (item.objective_id) { const { data } = await supabase.from('project_tasks').select('id,text,notes,status,due_date,project_id,session_ref,objective_id').eq('objective_id', item.objective_id).limit(1); task = data?.[0] || null }
@@ -141,6 +147,29 @@ function SessionsStrip({ item, links }) {
   )
 }
 
+// Evidence (David 10/23): the files pinned under Polaris as the proof the
+// objective was met. They lead the close-out record. Pinning happens in Files.
+function Evidence({ rows, onFiles, say }) {
+  const openRow = async (r) => { try { if (isLink(r)) { window.open(r.path, '_blank', 'noopener'); return } window.open(await openLiveFile(r), '_blank', 'noopener') } catch (e) { say(`Could not open: ${e.message}`) } }
+  return (
+    <div style={{ marginTop: 10, paddingLeft: 14 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: rows.length ? 4 : 0 }}>
+        <Star size={11} color={GOLD_BRIGHT} fill={rows.length ? GOLD_BRIGHT : 'none'} />
+        <span style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '1.2px', textTransform: 'uppercase', color: rows.length ? GOLD_BRIGHT : LABEL }}>Evidence{rows.length ? ` · ${rows.length}` : ''}</span>
+        {!rows.length && <span style={{ fontSize: 12.5, color: GRAY }}>nothing pinned yet; when the thing that proves the star exists, pin it under <button onClick={onFiles} style={{ background: 'transparent', border: 'none', color: BLUE, cursor: 'pointer', padding: 0, fontSize: 12.5, fontFamily: 'inherit' }}>Files</button></span>}
+      </div>
+      {rows.map(r => (
+        <div key={r.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '4px 0' }}>
+          <span style={{ width: 6, height: 6, borderRadius: 99, background: GOLD_BRIGHT, flexShrink: 0 }} />
+          <span style={{ flex: 1, fontSize: 13.5, color: INK, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.name}{r.version > 1 && <span style={{ fontFamily: MONO, fontSize: 9, color: GOLD, marginLeft: 8 }}>v{r.version}</span>}</span>
+          <span style={{ fontFamily: MONO, fontSize: 9.5, color: GRAY }}>{fmtStamp(r.created_at)}</span>
+          <button onClick={() => openRow(r)} style={btn(GOLD_BRIGHT)}><ExternalLink size={11} /> Open</button>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 function WhereItStands({ item, rel, task, taskId, linkedBoards }) {
   const [next, setNext] = useState(null)
   const [thinking, setThinking] = useState(false)
@@ -198,13 +227,11 @@ function WhereItStands({ item, rel, task, taskId, linkedBoards }) {
 }
 
 export default function ItemDetail({ item, onClose, onNavigate, onChange, initialTab = 'overview' }) {
-  const [tab, setTab] = useState(TABS.includes(initialTab) ? initialTab : 'overview')
+  const [tab, setTab] = useState(TABS.includes(initialTab) ? initialTab : (LEGACY_TAB[initialTab] || 'overview'))
   const [rel, setRel] = useState(null)
   const [msg, setMsg] = useState(null)
   const [openNote, setOpenNote] = useState(null)
-  const [boardId, setBoardId] = useState(null)
   const [recentBoards, setRecentBoards] = useState([])
-  const [olderOpen, setOlderOpen] = useState({})
   const [requests, setRequests] = useState([])
   const objKey = item.objective_id || null
   useEffect(() => { let on = true; if (!objKey) { Promise.resolve().then(() => { if (on) setRequests([]) }); return () => { on = false } } listLiveFiles({ objectiveId: objKey }).then(r => { if (on) setRequests((r.rows || []).filter(x => isRequest(x) || isLink(x))) }).catch(() => {}); return () => { on = false } }, [objKey, rel])
@@ -229,10 +256,7 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
 
   const task = rel?.task
   const taskId = item.task_id || task?.id || null
-  const linkedArtifacts = [...(rel?.objArtifacts || []).map(a => ({ ...a, obj: true })), ...(rel?.artifacts || []).filter(a => a.decision || (taskId && a.task_id === taskId))]
-  const otherArtifacts = (rel?.artifacts || []).filter(a => !a.decision && !(taskId && a.task_id === taskId))
   const linkedBoards = [...(rel?.objBoards || []), ...(rel?.boards || []).filter(b => b.linked)]
-  const otherBoards = (rel?.boards || []).filter(b => !b.linked)
   const loaded = rel?.loadout?.items.find(i => i.id === (item.objective_id || item.id)) || null
   const what = { item: item.kind === 'Event' ? 'meeting' : item.kind === 'Main Mission' ? 'task' : item.kind === 'Session' ? 'session' : 'mission' }
 
@@ -240,7 +264,6 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
   const open = async (bucket, path) => { const { data } = await supabase.storage.from(bucket).createSignedUrl(path, 600); if (data?.signedUrl) window.open(data.signedUrl, '_blank', 'noopener') }
   const go = (segs) => { onClose(); onNavigate && onNavigate('main-missions', segs) }
   const attachArtifact = async (slug) => { if (!rel?.project || !taskId) return; const doc = await readArtifact(rel.project.id, slug); await writeArtifact(rel.project.id, slug, { ...doc, task_id: taskId }); setMsg(`Attached ${doc.title || slug}`); load() }
-  const attachBoard = async (b) => { if (!taskId) return; await supabase.from('project_tasks').update({ session_ref: b.id }).eq('id', taskId); setMsg(`Attached ${b.title}`); load() }
   const startTimer = () => act(async () => {
     if (loaded) return equip(loaded.id)
     if (item.objective_id) { const r = await equipObjective(item.objective_id); if (!r.ok) throw new Error(r.reasons.join('; ')) ; return }
@@ -248,7 +271,7 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
     throw new Error('nothing to load')
   }, 'Timer on')
 
-  const counts = { artifacts: linkedArtifacts.length, sessions: linkedBoards.length, files: (rel?.objFiles?.length || 0) + (rel?.projectFiles.length || 0) + (rel?.storeFiles.filter(f => !f.folder).length || 0), notes: rel?.meetings.length || 0, punchlist: (rel?.punchlist || []).filter(r => r.status !== 'approved').length }
+  const counts = { protocols: (rel?.punchlist || []).filter(isOpenRow).length, files: (rel?.objFiles?.length || 0) + (rel?.projectFiles.length || 0) + (rel?.storeFiles.filter(f => !f.folder).length || 0), notes: rel?.meetings.length || 0 }
   const obj = rel?.objective || null
   const [stepText, setStepText] = useState('')
   const [objBusy, setObjBusy] = useState(false)
@@ -259,7 +282,6 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
   useEffect(() => { let on = true; const objArts = (rel?.objArtifacts || []); Promise.all(objArts.map(a => readObjArtifact(a.root || `objectives/${obj?.id}`, a.slug).then(d => [a.slug, d]).catch(() => [a.slug, null]))).then(ps => { if (on) setBriefs(Object.fromEntries(ps)) }); return () => { on = false } }, [rel, obj, readObjArtifact])
   const patchObj = async (patch) => { try { await updateObjective(obj.id, patch); await load(); onChange && onChange() } catch (e) { setMsg(`Could not save: ${e.message}`) } }
   const addStepNow = async () => { const t = stepText.trim(); if (!t || !obj) return; setObjBusy(true); try { const r = await addStep(obj.id, t, (rel.steps || []).length); if (r === null) setMsg('Steps are not set up yet: run sql/2026-10-07-side-missions-archive.sql'); setStepText(''); await load() } catch (e) { setMsg(`Could not add: ${e.message}`) } finally { setObjBusy(false) } }
-  const uploadNow = async (file) => { if (!file || !obj) return; setObjBusy(true); try { await uploadObjectiveFile(obj.id, file); setMsg(`Filed ${file.name}`); await load() } catch (e) { setMsg(`Could not upload: ${e.message}`) } finally { setObjBusy(false) } }
 
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 240, overflowY: 'auto', background: 'linear-gradient(180deg, #0F2A40 0%, #0A1B2B 100%)' }}>
@@ -317,6 +339,7 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
                       ? <textarea autoFocus={editStar} defaultValue={obj.north_star || ''} rows={2} onBlur={e => { const v = e.target.value.trim() || null; setEditStar(false); if (v !== (obj.north_star || null)) patchObj({ north_star: v }) }} placeholder={NORTH_STAR_ASK} style={{ width: '100%', boxSizing: 'border-box', background: 'rgba(255,255,255,0.05)', border: `1px solid ${PANEL_BORDER}`, borderRadius: 8, padding: '10px 12px', color: INK, fontSize: 17, fontFamily: SERIF, fontStyle: 'italic', lineHeight: 1.45, resize: 'vertical' }} />
                       : <div onClick={() => setEditStar(true)} title="Click to edit" style={{ fontFamily: SERIF, fontStyle: 'italic', fontSize: 15.5, lineHeight: 1.5, color: INK, borderLeft: `2px solid ${BLUE}`, paddingLeft: 12, cursor: 'text' }}>{obj.north_star}</div>}
                   </div>
+                  <Evidence rows={rel.evidence || []} onFiles={() => setTab('files')} say={setMsg} />
 
                   <WhereItStands item={item} rel={rel} task={task} taskId={taskId} linkedBoards={linkedBoards} />
                   <SessionsStrip item={item} links={requests} />
@@ -361,23 +384,6 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
                     {max > 0 && Array.isArray(rel.steps) && rel.steps.length >= max && <div style={{ fontSize: 12, color: GRAY, marginTop: 8 }}>{sz === 'heavy' ? 'Five gates is the Mythic’s limit. A sixth means this is a Main Mission: promote it.' : 'Three marks is a Contract’s limit. More than that is a Mythic.'}</div>}
                   </div>
 
-                  {(rel.objArtifacts || []).filter(a => briefs[a.slug]).length > 0 && (
-                    <div>
-                      <Label>Mission Briefing</Label>
-                      <div style={{ display: 'grid', gap: 18 }}>
-                        {(rel.objArtifacts || []).filter(a => briefs[a.slug]).map(a => (
-                          <div key={a.slug} style={{ borderTop: `1px solid ${PANEL_BORDER}`, paddingTop: 12 }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
-                              <FileText size={14} color={GOLD_BRIGHT} />
-                              <div style={{ flex: 1, fontFamily: SERIF, fontWeight: 500, fontSize: 18, color: '#fff' }}>{briefs[a.slug].title || a.title}</div>
-                              <span style={{ fontFamily: MONO, fontSize: 10.5, letterSpacing: '1px', textTransform: 'uppercase', color: LABEL }}>{briefs[a.slug].kind || 'artifact'}{briefs[a.slug].updated_by ? ` · by ${briefs[a.slug].updated_by}` : ''}</span>
-                            </div>
-                            <DocView doc={briefs[a.slug]} />
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
                 </>
               ) })()}
               {!obj && item.kind !== 'Event' && item.kind !== 'Session' && <WhereItStands item={item} rel={rel} task={task} taskId={taskId} linkedBoards={linkedBoards} />}
@@ -408,37 +414,6 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
                   <div><Label>State</Label><div style={{ fontFamily: SERIF, fontSize: 20, color: INK }}>{loaded.equipped ? 'Equipped' : 'Holstered'}</div></div>
                 </div>
               )}
-              {obj && (
-                <div style={{ borderTop: `1px solid ${PANEL_BORDER}`, paddingTop: 14 }}>
-                  <Label>Production Files</Label>
-                  <div style={{ marginBottom: 12 }}>
-                    <DropZone busy={objBusy} onFiles={(fs) => fs.forEach(f => uploadNow(f))} onPath={(pth) => act(() => requestLiveFile(pth, { objectiveId: obj.id }), 'Requested; the next Claude session on the Mac puts it in play')} />
-                  </div>
-                  {requests.filter(r => isLink(r) && !isSessionLink(r)).map(r => (
-                    <div key={r.id} style={{ ...rowStyle, border: `1px solid ${PURPLE}66`, borderRadius: 10, padding: '10px 12px', margin: '6px 0', background: 'rgba(180,163,232,0.07)' }}><span style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '0.8px', textTransform: 'uppercase', color: PURPLE }}>app</span><span style={{ flex: 1, minWidth: 0 }}><span style={{ fontSize: 14.5, fontWeight: 600, color: INK }}>{r.name}</span>{r.note && <span style={{ display: 'block', fontSize: 12.5, color: INK2, marginTop: 2 }}>{r.note}</span>}<span style={{ display: 'block', fontFamily: MONO, fontSize: 9.5, color: GRAY, marginTop: 3 }}>{r.path}</span></span><button onClick={() => window.open(r.path, '_blank', 'noopener')} style={btn(PURPLE, true)}><ExternalLink size={11} /> Launch</button></div>
-                  ))}
-                  {requests.filter(isRequest).map(r => (
-                    <div key={r.id} style={{ ...rowStyle, opacity: 0.85 }}><FileText size={14} color={GOLD} /><span style={{ flex: 1, fontSize: 13.5, color: INK, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={r.path}>{r.name}</span><span style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '1px', textTransform: 'uppercase', color: GOLD }}>waiting for a session on the Mac</span></div>
-                  ))}
-                  {groupVersions(rel.objFiles || [], { timeKey: 'updated_at' }).map(g => {
-                    const FileRow = ({ f, dim = false }) => (
-                      <div key={f.path} style={{ ...rowStyle, opacity: dim ? 0.6 : 1 }}><FileText size={14} color={dim ? GRAY : BLUE} /><span style={{ flex: 1, fontSize: dim ? 12.5 : 13.5, color: dim ? INK2 : INK, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.name}</span><span style={{ fontFamily: MONO, fontSize: 9.5, color: GRAY, whiteSpace: 'nowrap' }}>{fmtStamp(f.updated_at)}</span><button onClick={() => open(f.bucket, f.path)} style={btn(dim ? INK2 : BLUE)}><ExternalLink size={11} /> Open</button><button onClick={() => act(async () => { setMsg(`Drafting in Outlook: ${f.name}`); const d = await draftMail(f); if (d.webLink) window.open(d.webLink, '_blank', 'noopener') }, `Draft open in Outlook: ${f.name}`)} title="Open a new Outlook draft with this file attached" style={btn(dim ? INK2 : GOLD)}><Mail size={11} /> Mail</button></div>
-                    )
-                    return (
-                      <div key={g.key}>
-                        <FileRow f={g.current} />
-                        {g.older.length > 0 && (
-                          <div style={{ paddingLeft: 24 }}>
-                            <button onClick={() => setOlderOpen(o => ({ ...o, [g.key]: !o[g.key] }))} style={{ background: 'transparent', border: 'none', color: LABEL, cursor: 'pointer', fontFamily: MONO, fontSize: 10.5, letterSpacing: '1px', textTransform: 'uppercase', padding: '2px 0 6px' }}>{olderOpen[g.key] ? 'Hide' : 'Show'} {g.older.length} older version{g.older.length === 1 ? '' : 's'}</button>
-                            {olderOpen[g.key] && g.older.map(f => <FileRow key={f.path} f={f} dim />)}
-                          </div>
-                        )}
-                      </div>
-                    )
-                  })}
-                  {!(rel.objFiles || []).length && <div style={{ fontSize: 13, color: GRAY }}>Nothing produced yet. Files a session puts in play for this {what.item} land here (livefile.py put, tied to it), as do files Lumen files to it and anything you drop on the Board's Live Files window tied to it.</div>}
-                </div>
-              )}
               {(() => { const b = linkedBoards[0] || (task ? (rel.boards || [])[0] : null); return b && item.kind !== 'Event' ? (
                 <div style={{ borderTop: `1px solid ${PANEL_BORDER}`, paddingTop: 16 }}>
                   <Label>{taskId ? 'Milestone Board · Claude’s Steps On This Milestone' : 'Session Board'}</Label>
@@ -461,90 +436,19 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
             </div>
           )}
 
-          {rel && tab === 'workbench' && (item.objective_id ? <WorkbenchTab objectiveId={item.objective_id} /> : <None what={{ ...what, thing: 'a workbench' }} />)}
+          {rel && tab === 'protocols' && (item.objective_id ? <ProtocolsTab objectiveId={item.objective_id} /> : <None what={{ ...what, thing: 'a protocol' }} />)}
 
-          {rel && tab === 'punchlist' && (item.objective_id ? <PunchlistTab objectiveId={item.objective_id} /> : <None what={{ ...what, thing: 'a punchlist' }} />)}
-
-          {rel && tab === 'artifacts' && (
-            <div>
-              {linkedArtifacts.map(a => (
-                <div key={a.slug} style={rowStyle}>
-                  <FileText size={14} color={GOLD_BRIGHT} /><span style={{ flex: 1, fontSize: 13.5, color: INK }}>{a.title}{a.decision ? <span style={{ fontFamily: MONO, fontSize: 9, letterSpacing: '1px', color: GOLD, marginLeft: 8, textTransform: 'uppercase' }}>decision</span> : null}</span>
-                  {a.obj
-                    ? <button onClick={async () => { try { setReading({ title: a.title, doc: briefs[a.slug] || await readObjArtifact(a.root, a.slug) }) } catch (e) { setMsg(`Could not read: ${e.message}`) } }} style={btn(GOLD, true)}>Read</button>
-                    : <button onClick={() => go([a.project_id || rel.project.id, 'artifacts', a.slug])} style={btn(GOLD, true)}>Open</button>}
-                </div>
-              ))}
-              {!linkedArtifacts.length && <None what={{ ...what, thing: 'an artifact' }} />}
-              {obj && <div style={{ fontSize: 12, color: GRAY, marginTop: 8 }}>Artifacts for this Side Mission live at project-files/objectives/{obj.id.slice(0, 8)}…/artifacts. Ask Lumen to draft one here (a decision, a scorecard, a brief) and it shows up.</div>}
-              {otherArtifacts.length > 0 && (
-                <div style={{ marginTop: 10 }}>
-                  <Label>On the mission, not attached to this {what.item}</Label>
-                  {otherArtifacts.map(a => (
-                    <div key={a.slug} style={rowStyle}>
-                      <FileText size={14} color={GRAY} /><span style={{ flex: 1, fontSize: 13, color: INK2 }}>{a.title}</span>
-                      <button onClick={() => go([rel.project.id, 'artifacts', a.slug])} style={btn(INK2)}>Open</button>
-                      {taskId && <button onClick={() => attachArtifact(a.slug)} style={btn(GOLD)}>Attach</button>}
-                    </div>
-                  ))}
-                </div>
-              )}
-              {!rel.project && !linkedArtifacts.length && <div style={{ fontSize: 12, color: GRAY }}>Artifacts live on a mission. Ask Lumen to work a decision on this and it shows here, or promote it to a Main Mission task for the mission's artifacts.</div>}
-            </div>
-          )}
-
-          {rel && tab === 'sessions' && (() => {
-            const boards = [...linkedBoards, ...otherBoards]
-            const shown = boards.find(b => b.id === boardId) || linkedBoards[0] || boards[0] || null
-            return (
-              <div>
-                {!shown && <None what={{ ...what, thing: 'a session' }} />}
-                {!shown && !rel.project && <div style={{ fontSize: 12, color: GRAY }}>{obj ? 'A Claude session board that carries this Side Mission (objective_id on its items) shows here.' : "Sessions attach through a mission. Promote this to a Main Mission task and Claude's boards on that mission show here."}</div>}
-                {shown && (
-                  <>
-                    {boards.length > 1 && (
-                      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 16 }}>
-                        {boards.map(b => <button key={b.id} onClick={() => setBoardId(b.id)} style={btn(b.linked ? BLUE : INK2, shown.id === b.id)}>{b.title} · {b.done}/{b.total}</button>)}
-                      </div>
-                    )}
-                    {!shown.linked && (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 14, fontSize: 12.5, color: GRAY }}>
-                        <span>This {what.item} doesn't call for a session of its own. Showing Claude's latest board on the mission.</span>
-                        {taskId && <button onClick={() => attachBoard(shown)} style={btn(BLUE)}>Attach to this {what.item}</button>}
-                      </div>
-                    )}
-                    <SessionBoard key={shown.id} board={shown} onChange={() => onChange && onChange()} />
-                  </>
-                )}
-              </div>
-            )
-          })()}
-
-          {rel && tab === 'files' && (
-            <div>
-              {obj && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
-                  <Label style={{ marginBottom: 0 }}>File cabinet · this Side Mission</Label><span style={{ flex: 1 }} />
-                  <label style={{ ...btn(BLUE), cursor: objBusy ? 'wait' : 'pointer' }}><Upload size={11} /> Upload<input type="file" style={{ display: 'none' }} onChange={e => { uploadNow(e.target.files?.[0]); e.target.value = '' }} /></label>
-                </div>
-              )}
-              {(rel.objFiles || []).map(f => (
-                <div key={f.path} style={rowStyle}><FileText size={14} color={BLUE} /><span style={{ flex: 1, fontSize: 13, color: INK, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.name}</span><button onClick={() => open(f.bucket, f.path)} style={btn(INK2)}>Open</button></div>
-              ))}
-              {rel.projectFiles.map(f => (
-                <div key={f.path} style={rowStyle}><ExternalLink size={14} color={BLUE} /><span style={{ flex: 1, fontSize: 13, color: INK, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.name}</span><button onClick={() => open(f.bucket, f.path)} style={btn(INK2)}>Open</button></div>
-              ))}
-              {rel.storeFiles.length > 0 && <Label style={{ marginTop: 12 }}>Lumen's file store · {rel.project?.name}</Label>}
-              {rel.storeFiles.map(f => (
-                <div key={f.path} style={rowStyle}>{f.folder ? <FolderOpen size={14} color={GRAY} /> : <ExternalLink size={14} color={BLUE} />}<span style={{ flex: 1, fontSize: 13, color: f.folder ? INK2 : INK, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.name}{f.folder ? '/' : ''}</span>{!f.folder && <button onClick={() => open(f.bucket, f.path)} style={btn(INK2)}>Open</button>}</div>
-              ))}
-              {!rel.projectFiles.length && !rel.storeFiles.length && !(rel.objFiles || []).length && <None what={{ ...what, thing: 'files' }} />}
-              {rel.project && <div style={{ marginTop: 12 }}><button onClick={() => go([rel.project.id, 'files'])} style={btn(INK2)}><FolderOpen size={12} /> All mission files</button></div>}
-            </div>
-          )}
+          {rel && tab === 'files' && <FilesTab objectiveId={item.objective_id || null} rel={rel} what={what} open={open} taskId={taskId} onRead={async (a) => { try { setReading({ title: a.title, doc: briefs[a.slug] || await readObjArtifact(a.root, a.slug) }) } catch (e) { setMsg(`Could not read: ${e.message}`) } }} onGo={go} onAttach={attachArtifact} onChanged={load} />}
 
           {rel && tab === 'notes' && (
-            <div>
+            <div style={{ display: 'grid', gap: 18 }}>
+              {obj && (
+                <div>
+                  <Label>Notes On This {what.item === 'task' ? 'Milestone' : 'Mission'}</Label>
+                  <textarea defaultValue={obj.notes || ''} rows={4} onBlur={e => { const v = e.target.value.trim() || null; if (v !== (obj.notes || null)) patchObj({ notes: v }) }} placeholder="A thought with nowhere else to land. Saved when you click away." style={{ width: '100%', boxSizing: 'border-box', background: 'rgba(255,255,255,0.05)', border: `1px solid ${PANEL_BORDER}`, borderRadius: 8, padding: '10px 12px', color: INK, fontSize: 14, fontFamily: 'inherit', lineHeight: 1.6, resize: 'vertical' }} />
+                </div>
+              )}
+              <div>
               {rel.meetings.map(m => (
                 <div key={m.id} style={{ borderTop: `1px solid ${PANEL_BORDER}`, padding: '10px 0' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer' }} onClick={() => setOpenNote(openNote === m.id ? null : m.id)}>
@@ -553,7 +457,8 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
                   {openNote === m.id && <div style={{ marginTop: 10, fontSize: 13, lineHeight: 1.65, color: INK2 }}>{m.summary ? renderMarkdown(m.summary) : <span style={{ color: GRAY }}>No summary stored.</span>}</div>}
                 </div>
               ))}
-              {!rel.meetings.length && <None what={{ ...what, thing: 'notes' }} />}
+              {!rel.meetings.length && <None what={{ ...what, thing: 'meeting notes' }} />}
+              </div>
             </div>
           )}
 
