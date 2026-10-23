@@ -130,13 +130,18 @@ export default function ProtocolsTab({ objectiveId }) {
         const def = PROTOCOLS[g.key] || { label: `${g.key} protocol`, sub: '' }
         const open = g.rows.filter(isOpenRow).length
         const asked = g.rows.find(r => r.status === 'asked')
+        // The progress line (David 10/23): closed = done or ruled, over every row that exists now.
+        const closed = g.rows.filter(r => r.status === 'done' || r.status === 'approved' || r.status === 'ruled').length
+        const pct = g.rows.length ? Math.round(closed / g.rows.length * 100) : 0
+        const bar = '▰'.repeat(Math.round(pct / 10)) + '▱'.repeat(10 - Math.round(pct / 10))
         return (
           <div key={g.key}>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, flexWrap: 'wrap', marginBottom: 2 }}>
               <span style={{ fontFamily: SERIF, fontSize: 18, color: open ? INK : GRAY }}>{def.label}</span>
               <span style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '1.2px', textTransform: 'uppercase', color: open ? LABEL : GRAY }}>{g.rows.length} rows · {open} open{g.key === 'editing' ? ` · ${g.rows.filter(r => r.status === 'flagged').length} flagged` : ` · ${g.rows.filter(r => r.status === 'ruled').length} ruled`}{open ? '' : ' · complete'}</span>
             </div>
-            {def.sub && <div style={{ fontSize: 12.5, color: GRAY, marginBottom: 8 }}>{def.sub}</div>}
+            {def.sub && <div style={{ fontSize: 12.5, color: GRAY, marginBottom: 6 }}>{def.sub}</div>}
+            <div style={{ fontFamily: MONO, fontSize: 12, letterSpacing: '1px', color: pct === 100 ? GREEN : GOLD, marginBottom: 8 }}>{bar} {closed} of {g.rows.length} · {pct}%</div>
             {g.key === 'briefing' && asked && <div style={{ fontSize: 13, color: INK, marginBottom: 8, padding: '8px 12px', border: `1px solid ${BLUE}55`, borderRadius: 8, background: 'rgba(169,201,232,0.07)' }}><span style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '1.2px', textTransform: 'uppercase', color: BLUE, marginRight: 10 }}>The ask</span>{asked.entry}</div>}
             {g.rows.map(r => g.key === 'briefing'
               ? <BriefingRow key={r.id} r={r} onAnswer={answer} onRule={rule} />

@@ -192,7 +192,7 @@ function Briefing() {
         </ul>
       </Block>
       <Block title="How To Start One">
-        Say \u201cactivate the Briefing Protocol until \u2026\u201d with the objective in one sentence. The session puts a focus on the Board, writes the gap map, opens with the picture and the first ask, and ends with a progress line, n of m filled. Say \u201cprotocol off\u201d to end it early.
+        Say \u201cactivate the Briefing Protocol until \u2026\u201d with the objective in one sentence. The session puts a focus on the Board, writes the gap map, opens with the picture and the first ask, and ends every volley with the same progress line, a ten-block bar with the count and the percent (done and ruled both count; an answer that adds rows can move it down), so David can see where he is for his own energy. Say \u201cprotocol off\u201d to end it early.
       </Block>
     </>
   )
