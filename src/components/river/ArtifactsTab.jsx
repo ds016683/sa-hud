@@ -7,6 +7,7 @@ import { listArtifacts, readArtifact, writeArtifact } from '../../lib/artifacts'
 import { renderMarkdown } from './MeetingCloseout'
 import { INK, INK2, GRAY, MUTED, PANEL_BORDER, GOLD, GOLD_BRIGHT, BLUE, PERIWINKLE, GREEN, RED, MONO, SERIF, S, Eyebrow, Label, LABEL } from './canon'
 import { hudConfirm } from '../../lib/dialog'
+import PlanningCanvas from './PlanningCanvas'
 const field = { width: '100%', background: 'rgba(255,255,255,0.04)', border: `1px solid ${PANEL_BORDER}`, borderRadius: 8, color: INK, padding: '9px 11px', fontSize: 13, lineHeight: 1.55, fontFamily: 'inherit', resize: 'vertical', boxSizing: 'border-box' }
 const pill = (active, color = BLUE) => ({
   fontFamily: MONO, fontSize: 9.5, letterSpacing: '1px', textTransform: 'uppercase', padding: '5px 10px', borderRadius: 9999, cursor: 'pointer',
@@ -584,11 +585,15 @@ export default function ArtifactsTab({ project, initialSlug }) {
                     ? <Brief doc={doc} />
                     : doc.kind === 'inventory'
                       ? <Inventory doc={doc} onChange={(d) => { setDoc(d); setDirty(true) }} />
-                      : <pre style={{ fontSize: 12, color: INK2, whiteSpace: 'pre-wrap' }}>{JSON.stringify(doc, null, 2)}</pre>}
+                      : doc.kind === 'plan'
+                        ? <PlanningCanvas project={project} />
+                        : doc.kind === 'timeline'
+                          ? <div style={{ fontSize: 13, color: INK2, lineHeight: 1.6 }}>The program timeline: {Array.isArray(doc.items) ? doc.items.length : 0} items across {doc.client_key || 'this client'}'s lanes. It is drawn as the waterfall on the Clients page, Timeline pill; edit it there.</div>
+                          : <pre style={{ fontSize: 12, color: INK2, whiteSpace: 'pre-wrap' }}>{JSON.stringify(doc, null, 2)}</pre>}
             </>
           )}
           {msg && <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '1px', color: msg.startsWith('Could') ? RED : GOLD_BRIGHT, marginTop: 12, textTransform: 'uppercase' }}>{msg}</div>}
-          <div style={{ fontSize: 11, color: GRAY, marginTop: 14 }}>{doc?.kind === 'decision' ? "Lumen writes the options, the numbers, and his read. Your notes and the verdict are yours; save, and he sees it." : doc?.kind === 'inventory' ? "Claude assembled the files and the version timelines. The picks, the notes and the verdict are yours; save, and the next build reads them." : "Lumen drafts the proposed answers from the interview notes. You edit and rate here, save, then tell Lumen it's final and he ports it to Stephanie's Word template."}</div>
+          <div style={{ fontSize: 11, color: GRAY, marginTop: 14 }}>{doc?.kind === 'plan' ? "The Program Plan: the same canvas as the Planning pill, saved to this artifact as you edit." : doc?.kind === 'timeline' ? "The program timeline is edited on the Clients page." : doc?.kind === 'decision' ? "Lumen writes the options, the numbers, and his read. Your notes and the verdict are yours; save, and he sees it." : doc?.kind === 'inventory' ? "Claude assembled the files and the version timelines. The picks, the notes and the verdict are yours; save, and the next build reads them." : "Lumen drafts the proposed answers from the interview notes. You edit and rate here, save, then tell Lumen it's final and he ports it to Stephanie's Word template."}</div>
         </>
       )}
     </div>
