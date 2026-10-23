@@ -56,7 +56,7 @@ const NAV_ITEMS = [
   { id: 'network',          label: 'Network',               icon: Users,          group: 'RESOURCES' },
   { id: 'ecosystem',        label: 'Ecosystem',             icon: Network,        group: 'RESOURCES' },
   { id: 'ai-tools',         label: 'AI Tools',              icon: Wand2,          group: 'RESOURCES' },
-  { id: 'lumen-protocols',  label: 'Lumen Protocols',       icon: Bot,            group: 'SYSTEM' },
+  { id: 'lumen-protocols',  label: 'Protocols',             icon: Bot,            group: 'SYSTEM' },
   { id: 'mhpi',             label: 'MHPI',                  icon: Compass,        group: 'STRATEGY' },
   { id: 'learning',         label: 'Machine Learning',      icon: GraduationCap,  group: 'LEARNING' },
   { id: 'anthropic',        label: 'Anthropic',             icon: Sparkles,       group: 'LEARNING' },

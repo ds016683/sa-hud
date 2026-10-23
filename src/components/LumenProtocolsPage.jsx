@@ -6,7 +6,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { S, Eyebrow, Serif, Label, INK, INK2, GRAY, GOLD, GREEN, RED, MONO, PANEL_BORDER, PANEL_BG, LABEL, MUTED, TYPE } from './river/canon'
 
-const PILLS = [{ id: 'identity', label: 'Identity' }, { id: 'rules', label: 'Rules' }, { id: 'mail', label: 'Mail Protocols' }]
+const PILLS = [{ id: 'identity', label: 'Identity' }, { id: 'rules', label: 'Rules' }, { id: 'mail', label: 'Mail Protocol' }, { id: 'editing', label: 'Editing Protocol' }]
 
 const Block = ({ title, children }) => (
   <div style={{ border: `1px solid ${PANEL_BORDER}`, background: PANEL_BG, borderRadius: 12, padding: '16px 18px', marginBottom: 12 }}>
@@ -126,13 +126,54 @@ function Mail() {
   )
 }
 
+
+function Editing() {
+  const chip = (c) => ({ fontFamily: MONO, fontSize: 11, letterSpacing: '0.08em', padding: '2px 8px', borderRadius: 6, border: `1px solid ${c}66`, color: c, background: `${c}14` })
+  return (
+    <>
+      <Block title="What It Is">
+        The Editing Protocol is the house loop for rapid review of a living deliverable: a proposal deck, a platform page, a document. David drives; the session captures, builds, and proves. Every input he fires, a screenshot with commentary, a one-liner, a mid-turn interjection, becomes a numbered row on the Ledger punchlist. The session makes the change, verifies it, and closes the row with an Inspect record David can approve from the Punchlist pill on the item\u2019s Mission Briefing. Approval is always his. Born on the AMA proposal, October 22, 2026, where it ran ninety-two rows to ship.
+      </Block>
+      <Block title="The Loop, Per Input">
+        <ol style={{ margin: 0, paddingLeft: 18 }}>
+          <Li><b style={{ color: INK }}>Capture first.</b> Each entry is one checkable change, David\u2019s meaning condensed to a line, before anything is built. Compound messages split into discrete rows.</Li>
+          <Li><b style={{ color: INK }}>Build it.</b> House rules apply: sketch language machine-processed into crisp copy, qualified declaratives, Title Case labels, never an em dash, voice aimed at the reader.</Li>
+          <Li><b style={{ color: INK }}>Verify it.</b> Typecheck or build, render the changed surface, check that the math or layout actually moved.</Li>
+          <Li><b style={{ color: INK }}>Close it</b> with the three Inspect fields, written for a phone: what happened, where to look, what good looks like, plus a link.</Li>
+          <Li><b style={{ color: INK }}>Flag instead of guessing.</b> An ambiguous or conflicting edit turns the row red with one crisp question. Never a silent guess.</Li>
+        </ol>
+      </Block>
+      <Block title="Standing Rules Inside It">
+        <ul style={{ margin: 0, paddingLeft: 18 }}>
+          <Li>Mid-turn messages are normal; they fold into the running batch like any other input.</Li>
+          <Li>Batches commit separately, so the git log reads as the punchlist\u2019s receipt.</Li>
+          <Li>Each batch deploys to a standing draft alias for review; production ships only on David\u2019s word.</Li>
+          <Li>Inline prose passes run through the surface\u2019s Edit Text mode: each slide autosaves as David types, and the session folds the autosaves into source verbatim.</Li>
+          <Li>Knock-on consistency edits ride with the row that triggered them and are named in its Inspect fields.</Li>
+        </ul>
+      </Block>
+      <Block title="The Pieces">
+        <ul style={{ margin: 0, paddingLeft: 18 }}>
+          <Li><span style={chip(GOLD)}>edit_punchlist</span> <span style={{ marginLeft: 8 }}>the Ledger table every row lives on, scoped to the item\u2019s objective.</span></Li>
+          <Li><span style={chip(GREEN)}>punchlist.py</span> <span style={{ marginLeft: 8 }}>the capture helper: add, done, flag, list.</span></Li>
+          <Li><span style={chip(LABEL)}>Punchlist pill</span> <span style={{ marginLeft: 8 }}>on the Mission Briefing: rows, Inspect popups, Approve, flagged rows in red.</span></Li>
+          <Li><span style={chip(GOLD)}>editing-protocol skill</span> <span style={{ marginLeft: 8 }}>the loop in words, so any Code session runs it the same way.</span></Li>
+        </ul>
+      </Block>
+      <Block title="How To Start One">
+        Say \u201cediting protocol\u201d in a Code session, or just start firing edits at a deliverable and ask for the protocol. The session puts a focus on the Board, opens the round, and the Punchlist pill lights on the item\u2019s Mission Briefing. When the pass ends, the session reports what is done, flagged, and waiting on approval, and the deliverable ships on David\u2019s word.
+      </Block>
+    </>
+  )
+}
+
 export default function LumenProtocolsPage() {
   const [pill, setPill] = useState('identity')
   return (
     <div style={S.page}>
-      <Eyebrow>SYSTEM · LUMEN PROTOCOLS</Eyebrow>
-      <h1 style={S.h1}>Lumen Protocols</h1>
-      <p style={S.sub}>who he is, the rules he holds, and how his mail behaves</p>
+      <Eyebrow>SYSTEM · PROTOCOLS</Eyebrow>
+      <h1 style={S.h1}>Protocols</h1>
+      <p style={S.sub}>the formal loops the house runs on: Lumen, the mail door, and the editing floor</p>
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', margin: '18px 0 22px' }}>
         {PILLS.map(p => (
           <button key={p.id} onClick={() => setPill(p.id)} style={{ fontSize: 11, letterSpacing: '0.06em', textTransform: 'uppercase', fontFamily: MONO, padding: '7px 14px', borderRadius: 999, cursor: 'pointer', border: `1px solid ${pill === p.id ? 'rgba(230,181,79,0.6)' : PANEL_BORDER}`, background: pill === p.id ? 'rgba(230,181,79,0.12)' : 'rgba(255,255,255,0.03)', color: pill === p.id ? GOLD : INK }}>{p.label}</button>
@@ -141,6 +182,7 @@ export default function LumenProtocolsPage() {
       {pill === 'identity' && <Identity />}
       {pill === 'rules' && <Rules />}
       {pill === 'mail' && <Mail />}
+      {pill === 'editing' && <Editing />}
     </div>
   )
 }
