@@ -32,6 +32,18 @@ const SKILLS = [
     zip: 'th-deck-skill.zip',
     extras: [],
   },
+  {
+    id: 'th-proposal-deck',
+    name: 'Third Horizon Proposal Deck',
+    skin: 'The gated proposal surface: a URL and an access code instead of a file. CIP canon deck with an ROI calculator, the simplified economics read, a month-scale plan with discrete pricing, and an optional live wireframe, all behind server-side authorization.',
+    use: 'Any client proposal that should ship as a link. In a Code session say "use th-proposal-deck" or "like the AMA proposal". Born on the AMA Independent Practice Data Workshop, 10/23.',
+    swatches: ['#0F2334', '#0D1D2C', '#16314A', '#F3F1EA', '#3F6E99', '#9BC2E6', '#F8C761', '#57BE97', '#DE7E6E'],
+    base: '/ai-tools/th-proposal-deck',
+    pptx: null,
+    zip: 'th-proposal-deck-skill.zip',
+    extras: [],
+    repo: { label: 'th-proposals Repo', url: 'https://github.com/Third-Horizon-Strategies/th-proposals' },
+  },
 ]
 
 const btn = (color, filled = false) => ({ display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: MONO, fontSize: 10.5, letterSpacing: '0.08em', textTransform: 'uppercase', padding: '7px 12px', borderRadius: 999, cursor: 'pointer', border: `1px solid ${filled ? color : `${color}88`}`, background: filled ? `${color}22` : 'transparent', color, textDecoration: 'none' })
@@ -52,16 +64,16 @@ function SkillCard({ k }) {
           {open && <div style={{ fontSize: TYPE.body, lineHeight: 1.6, color: MUTED, marginTop: 6, maxWidth: 760 }}>{k.use}</div>}
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <a href={href(k.pptx)} download title="The PowerPoint template" style={btn(PURPLE, true)}><Presentation size={12} /> PPTX</a>
+          {k.pptx && <a href={href(k.pptx)} download title="The PowerPoint template" style={btn(PURPLE, true)}><Presentation size={12} /> PPTX</a>}
           <button onClick={() => setOpen(o => !o)} style={btn(INK2)}>{open ? 'Hide' : 'Open'}</button>
         </div>
       </div>
       {open && <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 10, marginTop: 16 }}>
-        <div style={{ padding: '12px 14px', borderRadius: 10, border: `1px solid ${PANEL_BORDER}`, background: 'rgba(255,255,255,0.02)' }}>
+        {k.pptx && <div style={{ padding: '12px 14px', borderRadius: 10, border: `1px solid ${PANEL_BORDER}`, background: 'rgba(255,255,255,0.02)' }}>
           <Label style={{ fontSize: TYPE.subhead }}>PowerPoint Template</Label>
           <div style={{ fontSize: TYPE.meta + 1.5, color: MUTED, lineHeight: 1.5, marginBottom: 10 }}>16:9, the skin's theme colors and fonts, one finished example slide per archetype, a how-to note on every slide. Duplicate a slide, replace the words.</div>
           <a href={href(k.pptx)} download style={btn(PURPLE, true)}><Presentation size={12} /> Download PPTX</a>
-        </div>
+        </div>}
         <div style={{ padding: '12px 14px', borderRadius: 10, border: `1px solid ${PANEL_BORDER}`, background: 'rgba(255,255,255,0.02)' }}>
           <Label style={{ fontSize: TYPE.subhead }}>The Skill</Label>
           <div style={{ fontSize: TYPE.meta + 1.5, color: MUTED, lineHeight: 1.5, marginBottom: 10 }}>For Claude Code: unzip into ~/.claude/skills/ and the next session can use it by name. SKILL.md is the canon in words.</div>
@@ -71,14 +83,18 @@ function SkillCard({ k }) {
             {k.extras.map(x => <a key={x.file} href={href(x.file)} target="_blank" rel="noreferrer" style={btn(INK2)}><FileText size={12} /> {x.label}</a>)}
           </div>
         </div>
-        <div style={{ padding: '12px 14px', borderRadius: 10, border: `1px solid ${PANEL_BORDER}`, background: 'rgba(255,255,255,0.02)' }}>
+        {k.repo ? <div style={{ padding: '12px 14px', borderRadius: 10, border: `1px solid ${PANEL_BORDER}`, background: 'rgba(255,255,255,0.02)' }}>
+          <Label style={{ fontSize: TYPE.subhead }}>The Surface</Label>
+          <div style={{ fontSize: TYPE.meta + 1.5, color: MUTED, lineHeight: 1.5, marginBottom: 10 }}>This skill builds on the live proposals surface, not a standalone template: the registry, the slide kinds, the gate and the access suite all live in the repo.</div>
+          <a href={k.repo.url} target="_blank" rel="noreferrer" style={btn(BLUE)}><ExternalLink size={12} /> {k.repo.label}</a>
+        </div> : <div style={{ padding: '12px 14px', borderRadius: 10, border: `1px solid ${PANEL_BORDER}`, background: 'rgba(255,255,255,0.02)' }}>
           <Label style={{ fontSize: TYPE.subhead }}>HTML Template</Label>
           <div style={{ fontSize: TYPE.meta + 1.5, color: MUTED, lineHeight: 1.5, marginBottom: 10 }}>The self-contained deck mini-app the skill builds from: keyboard and hash navigation, notes, fullscreen, print to PDF. Open it to see the archetypes live.</div>
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
             <a href={href('template.html')} target="_blank" rel="noreferrer" style={btn(BLUE)}><ExternalLink size={12} /> Open Template</a>
             <a href={href('template.html')} download style={btn(INK2)}><Download size={12} /> Download</a>
           </div>
-        </div>
+        </div>}
       </div>}
     </div>
   )
