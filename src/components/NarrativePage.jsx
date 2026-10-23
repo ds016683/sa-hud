@@ -3,7 +3,7 @@
 // Chicago). Replaces the old Daily Monitor summary view. Prints cleanly for a
 // three-hole binder (see the @media print block at the bottom).
 import { useState, useEffect, useCallback } from 'react'
-import { RefreshCw, Printer, CheckCircle2, Circle } from 'lucide-react'
+import { RefreshCw, Printer, CheckCircle2, Circle, Scissors, Sparkles, ExternalLink } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import {
   INK, INK2, GRAY, NAVY_DEEP, PANEL_BORDER, GOLD, GOLD_BRIGHT, BLUE, RED, MONO, SERIF,
@@ -43,6 +43,48 @@ const control = (extra = {}) => ({
   color: 'rgba(234,241,248,0.7)', cursor: 'pointer', fontFamily: 'inherit', lineHeight: 1.2,
   ...extra,
 })
+
+// Clips and Passing Thoughts (David 10/23): the day's clippings (a quote, a link,
+// a snippet from the news, shared to Lumen with "clip" or typed here) and the
+// passing thoughts he wants kept. daily_logs kind note, what clip | thought.
+const linkIn = (t) => (String(t || '').match(/https?:\/\/[^\s)]+/) || [])[0] || null
+function NoteArea({ day, what, title, icon, hint, rows, onAdded }) {
+  const [text, setText] = useState('')
+  const [busy, setBusy] = useState(false)
+  const add = async () => {
+    const t = text.trim(); if (!t) return
+    setBusy(true)
+    try { await supabase.from('daily_logs').insert({ day, kind: 'note', what, note: t, source: 'hud', at: new Date().toISOString() }); setText(''); onAdded && onAdded() } finally { setBusy(false) }
+  }
+  return (
+    <div className="np-section" style={{ marginTop: 30 }}>
+      <Eyebrow>{title}{rows.length ? ` · ${rows.length}` : ''}</Eyebrow>
+      {rows.map(r => { const url = linkIn(r.note); return (
+        <div key={r.id} style={{ display: 'flex', gap: 12, padding: '6px 0', alignItems: 'flex-start' }}>
+          <span className="np-dash" style={{ width: 14, height: 2, flexShrink: 0, marginTop: 10, background: what === 'clip' ? BLUE : GOLD, opacity: 0.85 }} />
+          <span style={{ flex: 1, fontSize: 14, lineHeight: 1.6, color: INK, maxWidth: '76ch', whiteSpace: 'pre-wrap' }}>{url ? r.note.replace(url, '').trim() : r.note}{url && <a className="no-print" href={url} target="_blank" rel="noreferrer" title={url} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, marginLeft: 8, color: BLUE, fontFamily: MONO, fontSize: 10, letterSpacing: '0.8px', textTransform: 'uppercase', textDecoration: 'none' }}><ExternalLink size={10} /> source</a>}</span>
+          <span style={{ fontFamily: MONO, fontSize: 9.5, color: GRAY, whiteSpace: 'nowrap', paddingTop: 4 }}>{fmtTime(r.at)}{r.source === 'lumen' ? ' · Lumen' : ''}</span>
+        </div>
+      ) })}
+      {!rows.length && <div style={{ fontSize: 13, color: GRAY, padding: '4px 0' }}>{hint}</div>}
+      <div className="no-print" style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+        <input value={text} onChange={e => setText(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') add() }} placeholder={what === 'clip' ? 'paste a quote or a link, then the source' : 'a passing thought, in your words'} disabled={busy} style={{ flex: 1, background: 'rgba(255,255,255,0.05)', border: `1px solid ${PANEL_BORDER}`, borderRadius: 8, color: INK, padding: '7px 10px', fontSize: 13, fontFamily: 'inherit' }} />
+        <button onClick={add} disabled={busy || !text.trim()} style={control()}>{icon} Add</button>
+      </div>
+    </div>
+  )
+}
+function DayNotes({ day }) {
+  const [rows, setRows] = useState([])
+  const load = useCallback(() => supabase.from('daily_logs').select('id,what,note,at,source').eq('day', day).eq('kind', 'note').in('what', ['clip', 'thought']).order('at', { ascending: true }).then(({ data }) => setRows(Array.isArray(data) ? data : [])), [day])
+  useEffect(() => { load() }, [load])
+  return (
+    <>
+      <NoteArea day={day} what="clip" title="Clips" icon={<Scissors size={12} />} hint="Nothing clipped today. Share a quote, a link or a screenshot to Lumen with the word clip, or add one here." rows={rows.filter(r => r.what === 'clip')} onAdded={load} />
+      <NoteArea day={day} what="thought" title="Passing Thoughts" icon={<Sparkles size={12} />} hint="No passing thoughts kept today. Tell Lumen a thought, or add one here." rows={rows.filter(r => r.what === 'thought')} onAdded={load} />
+    </>
+  )
+}
 
 function Section({ title, children }) {
   return (
@@ -250,6 +292,8 @@ export default function NarrativePage() {
           </div>
         </div>
       )}
+
+      <DayNotes day={day} />
     </div>
   )
 }
