@@ -6,6 +6,7 @@ import {
 import useProjects, { freshnessOf } from '../hooks/useProjects'
 import ArtifactsTab from './river/ArtifactsTab'
 import WorkbenchTab from './river/Workbench'
+import PlanningCanvas from './river/PlanningCanvas'
 import ItemDetail from './river/ItemDetail'
 import SessionBoard from './river/SessionBoard'
 import { listShares, archiveShare, archiveSharesFor, shareUrl } from '../lib/shares'
@@ -427,7 +428,7 @@ function ProjectDetail({ project, board: boardProp, api, onBack, initialTab, ini
   // Milestones first, always (David 10/21). A tab in the hash only sticks when it
   // carries an artifact slug (a deep link from Lumen or a session); otherwise the
   // page opens on Milestones, whatever tab the URL remembered.
-  const [tab, setTab] = useState(initialTab && initialSlug && ['artifacts', 'files', 'shares', 'workbench'].includes(initialTab) ? initialTab : 'tasks')
+  const [tab, setTab] = useState(initialTab && initialSlug && ['artifacts', 'files', 'shares', 'workbench', 'planning'].includes(initialTab) ? initialTab : 'tasks')
   const [board, setBoard] = useState(boardProp)
   useEffect(() => { let on = true; Promise.resolve().then(() => { if (on) setBoard(boardProp) }); return () => { on = false } }, [boardProp])
   const [artifactSlug, setArtifactSlug] = useState(initialSlug || null)
@@ -556,6 +557,7 @@ function ProjectDetail({ project, board: boardProp, api, onBack, initialTab, ini
           <Pill active={tab === 'files'} onClick={() => setTab('files')}>Cabinet</Pill>
           <Pill active={tab === 'shares'} onClick={() => setTab('shares')}>Shares</Pill>
           <Pill active={tab === 'workbench'} onClick={() => setTab('workbench')}>Workbench</Pill>
+          <Pill active={tab === 'planning'} onClick={() => setTab('planning')}>Planning</Pill>
         </div>
       </div>
 
@@ -613,6 +615,7 @@ function ProjectDetail({ project, board: boardProp, api, onBack, initialTab, ini
         {tab === 'artifacts' && <ArtifactsTab key={artifactSlug || 'first'} project={project} initialSlug={artifactSlug} />}
         {tab === 'shares' && <SharesTab project={project} />}
         {tab === 'workbench' && <WorkbenchTab project={project} />}
+        {tab === 'planning' && <PlanningCanvas project={project} />}
         {tab === 'files' && (
           <FilesTab project={project}
             listFiles={api.listFiles} uploadFile={api.uploadFile} createFolder={api.createFolder}

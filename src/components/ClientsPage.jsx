@@ -139,7 +139,7 @@ function Popover({ client, item, flip, top, onEdit, onClose }) {
   )
 }
 
-export function Waterfall({ client, items: rawItems, view = 'simple', onOpen, onAdd, onMove, onDraft }) {
+export function Waterfall({ client, items: rawItems, view = 'simple', onOpen, onAdd, onMove, onDraft, subtitleOf }) {
   const today = chiToday()
   const size = VIEWS[view] || VIEWS.simple
   const [pop, setPop] = useState(null)   // item id with the popover open
@@ -304,7 +304,7 @@ export function Waterfall({ client, items: rawItems, view = 'simple', onOpen, on
                       }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                           <span style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '0.8px', color, whiteSpace: 'nowrap' }}>{it.date_label || dayLabel(it.start_date)}</span>
-                          {it.owner && <span style={{ fontSize: 10, color: MUTED, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>· {it.owner}</span>}
+                          {(subtitleOf ? subtitleOf(it) : it.owner) && <span style={{ fontSize: 10, color: MUTED, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>· {subtitleOf ? subtitleOf(it) : it.owner}</span>}
                           <span style={{ marginLeft: 'auto', width: 6, height: 6, borderRadius: 99, background: STATUS_COLOR[it.status] || MUTED, flexShrink: 0 }} title={STATUS_LABEL[it.status]} />
                         </div>
                         <div style={{ fontSize: 12, lineHeight: 1.25, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', textDecoration: done ? 'line-through' : 'none' }}>{it.title}</div>
@@ -334,8 +334,8 @@ export function Waterfall({ client, items: rawItems, view = 'simple', onOpen, on
 function Field({ label, children, style }) {
   return <label style={{ display: 'block', ...style }}><div style={{ ...S.eyebrow, marginBottom: 5 }}>{label}</div>{children}</label>
 }
-export function ItemModal({ client, item, onClose, onSave, onDelete, busy }) {
-  const [d, setD] = useState(() => ({ lane: client.lanes[0].id, title: '', start_date: '', end_date: '', date_label: '', owner: '', status: 'planned', source: '', notes: '', links: [], ...item }))
+export function ItemModal({ client, item, onClose, onSave, onDelete, busy, extended = false }) {
+  const [d, setD] = useState(() => ({ lane: client.lanes[0].id, title: '', start_date: '', end_date: '', date_label: '', owner: '', status: 'planned', source: '', notes: '', links: [], objective: '', cadence: '', cost: '', ...item }))
   const [link, setLink] = useState({ label: '', url: '' })
   const set = (k) => (e) => setD(prev => ({ ...prev, [k]: e.target.value }))
   const color = laneColor(client, d.lane)
@@ -378,6 +378,13 @@ export function ItemModal({ client, item, onClose, onSave, onDelete, busy }) {
           <Field label="Owner"><input value={d.owner} onChange={set('owner')} placeholder="Who carries it" style={S.input} /></Field>
           <Field label="Source"><input value={d.source} onChange={set('source')} placeholder="Where it came from, e.g. Peter Schultz, October 17 note" style={S.input} /></Field>
         </div>
+        {extended && (
+          <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr 1fr', gap: 10 }}>
+            <Field label="Objective (Strategy View)"><input value={d.objective || ''} onChange={set('objective')} placeholder="What this item makes true" style={S.input} /></Field>
+            <Field label="Cadence (Ops View)"><input value={d.cadence || ''} onChange={set('cadence')} placeholder="Who runs it, how often" style={S.input} /></Field>
+            <Field label="Cost (Budget View)"><input value={d.cost || ''} onChange={set('cost')} placeholder="e.g. $125K per run" style={S.input} /></Field>
+          </div>
+        )}
         <Field label="Notes"><textarea value={d.notes} onChange={set('notes')} rows={4} placeholder="What to know about this item" style={{ ...S.input, resize: 'vertical', lineHeight: 1.5 }} /></Field>
 
         <div>
@@ -530,6 +537,7 @@ function useClientTimeline(client, anchor) {
   const [error, setError] = useState(null)
   const projectId = anchor?.id || null
   const reload = useCallback(async () => {
+    await Promise.resolve()   // off the effect's synchronous path
     if (!projectId) { setLoading(false); return }
     setLoading(true); setError(null)
     try { const r = await loadTimeline(projectId); setItems(r.items); setDoc(r.doc) }
