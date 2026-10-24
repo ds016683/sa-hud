@@ -14,7 +14,7 @@ import { fileProject } from '../lib/archive'
 import { listLiveFiles, markFiled } from '../lib/livefiles'
 import { supabase as sbAuth } from '../lib/supabase'
 import { equipTask, stashTask, deleteMission } from '../lib/loadout'
-import { NORTH_STAR_LABEL, LABEL, alpha } from './river/canon'
+import { NORTH_STAR_LABEL, LABEL, alpha, INK, INK2, NAVY_DEEP, BLUE, GRAY, PANEL_BORDER, PANEL_BG, GOLD, GREEN, RED, PURPLE } from './river/canon'
 import { importProject } from '../lib/cabinet'
 import BadgeMedallion from './BadgeArt'
 import { BADGES } from '../constants/collection'
@@ -25,31 +25,22 @@ import { hudPrompt, hudConfirm, hudNotice } from '../lib/dialog'
 // =============================================================================
 // STYLE TOKENS (CIP canon, matches ObjectivesPage dark stage)
 // =============================================================================
-const INK = '#EAF1F8'
-const NAVY_DEEP = '#0E2336'
-const BLUE = '#A9C9E8'
-const BLUE_DEEP = '#7FA8D4'
-const GRAY = 'rgba(234,241,248,0.45)'
-const TEXT_DIM = 'rgba(234,241,248,0.66)'
-const PANEL_BORDER = 'rgba(255,255,255,0.10)'
-const PANEL_BG = 'rgba(255,255,255,0.035)'
-const GOLD = '#E6B54F'
-const GREEN = '#43D392'
-const RED = '#E06C5F'
-const PURPLE = '#B4A3E8'
+// Canon tokens (Milestone 18 scrub, 10/24): the page's own palette is gone; two local aliases remain.
+const BLUE_DEEP = LABEL
+const TEXT_DIM = INK2
 
 const SERIF = "'Lora', Georgia, serif"
 const MONO = 'var(--font-mono, monospace)'
 
 const S = {
   page: { maxWidth: 1100, margin: '0 auto', padding: '20px 24px 80px', color: INK },
-  h1: { fontSize: 28, fontWeight: 500, margin: 0, color: '#FFFFFF', fontFamily: SERIF, letterSpacing: '-0.01em' },
+  h1: { fontSize: 28, fontWeight: 500, margin: 0, color: INK, fontFamily: SERIF, letterSpacing: '-0.01em' },
   sub: { fontSize: 10, color: LABEL, margin: '6px 0 0', fontFamily: MONO, letterSpacing: '1.4px', textTransform: 'uppercase' },
   panel: { background: PANEL_BG, border: `1px solid ${PANEL_BORDER}`, borderRadius: 12, padding: 16 },
   panelTitle: { fontSize: 10, fontWeight: 600, color: BLUE, textTransform: 'uppercase', letterSpacing: '1.6px', marginBottom: 10, fontFamily: MONO },
   btnPrimary: { background: BLUE, color: NAVY_DEEP, border: 'none', borderRadius: 8, padding: '8px 14px', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', display: 'inline-flex', alignItems: 'center', gap: 6 },
-  btnGhost: { background: 'rgba(255,255,255,0.05)', color: INK, border: `1px solid ${PANEL_BORDER}`, borderRadius: 8, padding: '6px 12px', fontSize: 12, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit', display: 'inline-flex', alignItems: 'center', gap: 6 },
-  input: { width: '100%', padding: '10px 12px', borderRadius: 8, border: `1px solid ${PANEL_BORDER}`, fontSize: 14, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', background: 'rgba(255,255,255,0.07)', color: INK },
+  btnGhost: { background: PANEL_BG, color: INK, border: `1px solid ${PANEL_BORDER}`, borderRadius: 8, padding: '6px 12px', fontSize: 12, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit', display: 'inline-flex', alignItems: 'center', gap: 6 },
+  input: { width: '100%', padding: '10px 12px', borderRadius: 8, border: `1px solid ${PANEL_BORDER}`, fontSize: 14, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', background: alpha(INK, 7), color: INK },
 }
 
 // CIP pill grammar: active = solid baby blue + navy text, inactive = hairline ghost uppercase
@@ -112,17 +103,17 @@ function ProjectCard({ project, onOpen }) {
   const pct = ms.length ? Math.round(closed / ms.length * 100) : 0
   return (
     <button onClick={() => onOpen(project.id)} style={{ ...S.panel, textAlign: 'left', cursor: 'pointer', fontFamily: 'inherit', display: 'flex', flexDirection: 'column', gap: 10, minHeight: 150, width: '100%', transition: 'border-color 120ms' }}
-      onMouseEnter={e => e.currentTarget.style.borderColor = 'rgba(169,201,232,0.4)'} onMouseLeave={e => e.currentTarget.style.borderColor = PANEL_BORDER}>
+      onMouseEnter={e => e.currentTarget.style.borderColor = alpha(BLUE, 40)} onMouseLeave={e => e.currentTarget.style.borderColor = PANEL_BORDER}>
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 17, letterSpacing: '-0.01em', color: INK, lineHeight: 1.3 }}>{project.name}</div>
           {project.description && <div style={{ fontSize: 12.5, lineHeight: 1.5, color: TEXT_DIM, marginTop: 3, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{project.description}</div>}
         </div>
-        <span style={{ fontFamily: MONO, fontSize: 9, letterSpacing: '1px', textTransform: 'uppercase', color: BLUE, border: `1px solid ${alpha(BLUE, 33)}`, borderRadius: 999, padding: '2px 7px', whiteSpace: 'nowrap', flexShrink: 0 }}>{CATEGORY_LABELS[project.category] || project.category}</span>
+        <span style={{ fontFamily: MONO, fontSize: 9, letterSpacing: '1px', textTransform: 'uppercase`, color: BLUE, border: `1px solid ${alpha(BLUE, 33)}`, borderRadius: 999, padding: `2px 7px', whiteSpace: 'nowrap', flexShrink: 0 }}>{CATEGORY_LABELS[project.category] || project.category}</span>
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
         <span style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 14, color: INK }}>{closed} / {ms.length}</span>
-        <span style={{ flex: 1, height: 4, borderRadius: 99, background: 'rgba(255,255,255,0.08)', overflow: 'hidden' }}><span style={{ display: 'block', width: `${pct}%`, height: '100%', background: GOLD }} /></span>
+        <span style={{ flex: 1, height: 4, borderRadius: 99, background: alpha(INK, 8), overflow: 'hidden' }}><span style={{ display: 'block', width: `${pct}%`, height: '100%', background: GOLD }} /></span>
         <span style={{ fontFamily: MONO, fontSize: 10.5, letterSpacing: '1px', textTransform: 'uppercase', color: LABEL }}>milestones{history.length ? ` · ${history.length} earlier` : ''}</span>
       </div>
       <div style={{ marginTop: 'auto' }}>
@@ -146,7 +137,7 @@ function ProjectCard({ project, onOpen }) {
 // closes the Ledger task when an item with its id is done, so only the step
 // that means "the milestone is true" should carry it.
 // =============================================================================
-const Chip = ({ color, children }) => <span style={{ fontFamily: MONO, fontSize: 9, letterSpacing: '1px', textTransform: 'uppercase', color, border: `1px solid ${alpha(color, 33)}`, borderRadius: 999, padding: '2px 7px', whiteSpace: 'nowrap' }}>{children}</span>
+const Chip = ({ color, children }) => <span style={{ fontFamily: MONO, fontSize: 9, letterSpacing: '1px', textTransform: 'uppercase`, color, border: `1px solid ${alpha(color, 33)}`, borderRadius: 999, padding: `2px 7px', whiteSpace: 'nowrap' }}>{children}</span>
 
 function MilestoneRow({ n, project, task, board, api, onNavigate, onBoardChange, onAward, objState }) {
   const open = isOpen(task)
@@ -200,7 +191,7 @@ function MilestoneRow({ n, project, task, board, api, onNavigate, onBoardChange,
               {steps.map((st, ti) => (
                 <button key={st.id || ti} onClick={() => toggleStep(ti)} title={st.status === 'done' ? 'Reopen' : 'Mark done'} style={{ display: 'flex', alignItems: 'flex-start', gap: 9, background: 'transparent', border: 'none', padding: '3px 0', cursor: 'pointer', textAlign: 'left', color: INK }}>
                   {st.status === 'done' ? <span style={{ width: 15, height: 15, borderRadius: 99, background: GREEN, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 2 }}><Check size={10} color={NAVY_DEEP} /></span>
-                    : <span style={{ width: 15, height: 15, borderRadius: 99, border: `1.5px solid ${st.status === 'inmotion' ? GOLD : st.status === 'blocked' ? RED : 'rgba(234,241,248,0.3)'}`, display: 'inline-block', flexShrink: 0, marginTop: 2 }} />}
+                    : <span style={{ width: 15, height: 15, borderRadius: 99, border: `1.5px solid ${st.status === 'inmotion' ? GOLD : st.status === 'blocked' ? RED : alpha(INK, 30)}`, display: 'inline-block', flexShrink: 0, marginTop: 2 }} />}
                   <span style={{ fontFamily: MONO, fontSize: 10, color: GOLD, letterSpacing: '0.5px', paddingTop: 2, flexShrink: 0 }}>{st.id}</span>
                   <span style={{ fontSize: 13, lineHeight: 1.45, color: st.status === 'done' ? GRAY : INK, textDecoration: st.status === 'done' ? 'line-through' : 'none' }}>{st.label}{st.note && <span style={{ display: 'block', fontSize: 12, color: st.status === 'blocked' ? RED : GRAY }}>{st.note}</span>}</span>
                 </button>
@@ -209,15 +200,15 @@ function MilestoneRow({ n, project, task, board, api, onNavigate, onBoardChange,
           )}
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
             <button onClick={() => setExpanded(x => !x)} style={{ ...S.btnGhost, padding: '4px 9px', fontSize: 10 }}>Open</button>
-            {open && !onBoard && <button onClick={load} disabled={busy} style={{ ...S.btnGhost, padding: '4px 9px', fontSize: 10, color: GREEN, borderColor: 'rgba(67,211,146,0.4)' }}>Load</button>}
-            {open && !onBoard && !stashed && <button onClick={toStash} disabled={busy} title="Stage it in the Stash on the Board; no slot, no clock" style={{ ...S.btnGhost, padding: '4px 9px', fontSize: 10, color: BLUE, borderColor: 'rgba(169,201,232,0.4)' }}>Stash</button>}
+            {open && !onBoard && <button onClick={load} disabled={busy} style={{ ...S.btnGhost, padding: '4px 9px', fontSize: 10, color: GREEN, borderColor: alpha(GREEN, 40) }}>Load</button>}
+            {open && !onBoard && !stashed && <button onClick={toStash} disabled={busy} title="Stage it in the Stash on the Board; no slot, no clock" style={{ ...S.btnGhost, padding: '4px 9px', fontSize: 10, color: BLUE, borderColor: alpha(BLUE, 40) }}>Stash</button>}
             {open && <button onClick={addStep} style={{ ...S.btnGhost, padding: '4px 9px', fontSize: 10 }}><Plus size={10} /> Step</button>}
             {open && <button onClick={doneWhen} style={{ ...S.btnGhost, padding: '4px 9px', fontSize: 10 }}>Done when</button>}
             {open && <button onClick={rename} style={{ ...S.btnGhost, padding: '4px 9px', fontSize: 10 }}>Rename</button>}
             {open
-              ? <button onClick={async () => { if (!await hudConfirm(`Close milestone ${n}? 10 miles on the next update.`)) return; await api.toggleTask(project.id, task); onAward && onAward({ n, title: stripNum(task.text) }) }} style={{ ...S.btnGhost, padding: '4px 9px', fontSize: 10, color: GOLD, borderColor: 'rgba(230,181,79,0.4)' }}><Check size={10} /> Close milestone</button>
+              ? <button onClick={async () => { if (!await hudConfirm(`Close milestone ${n}? 10 miles on the next update.`)) return; await api.toggleTask(project.id, task); onAward && onAward({ n, title: stripNum(task.text) }) }} style={{ ...S.btnGhost, padding: '4px 9px', fontSize: 10, color: GOLD, borderColor: alpha(GOLD, 40) }}><Check size={10} /> Close milestone</button>
               : <button onClick={() => api.toggleTask(project.id, task)} style={{ ...S.btnGhost, padding: '4px 9px', fontSize: 10 }}>Reopen</button>}
-            <button onClick={async () => { if (await hudConfirm('Delete this milestone?')) api.deleteTask(project.id, task.id) }} title="Delete" style={{ background: 'transparent', border: 'none', color: 'rgba(234,241,248,0.25)', cursor: 'pointer', padding: 4 }}><Trash2 size={12} /></button>
+            <button onClick={async () => { if (await hudConfirm('Delete this milestone?')) api.deleteTask(project.id, task.id) }} title="Delete" style={{ background: 'transparent', border: 'none', color: alpha(INK, 25), cursor: 'pointer', padding: 4 }}><Trash2 size={12} /></button>
           </div>
           {msg && <div style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '1px', textTransform: 'uppercase', color: msg.startsWith('Could') || msg.startsWith('Will') || msg.startsWith('No session') ? RED : msg === 'In the Stash' ? BLUE : GOLD, marginTop: 6 }}>{msg}</div>}
         </div>
@@ -324,7 +315,7 @@ function FilesTab({ project, listFiles, uploadFile, createFolder, fileUrl, delet
           </button>
           <span style={{ fontFamily: MONO, fontSize: 9.5, color: GRAY }}>{fmtSize(f.metadata?.size)}</span>
           <button onClick={() => onOpenFile(f.name)} title="Open / download" style={{ background: 'none', border: 'none', color: BLUE, cursor: 'pointer', padding: 4 }}><Download size={13} /></button>
-          <button onClick={async () => { if (await hudConfirm(`Delete ${f.name}?`)) { await deleteFile(project.id, path, f.name); load() } }} title="Delete" style={{ background: 'none', border: 'none', color: 'rgba(234,241,248,0.25)', cursor: 'pointer', padding: 4 }}><Trash2 size={13} /></button>
+          <button onClick={async () => { if (await hudConfirm(`Delete ${f.name}?`)) { await deleteFile(project.id, path, f.name); load() } }} title="Delete" style={{ background: 'none', border: 'none', color: alpha(INK, 25), cursor: 'pointer', padding: 4 }}><Trash2 size={13} /></button>
         </div>
       ))}
     </div>
@@ -353,12 +344,12 @@ function SharesTab({ project }) {
             <div style={{ fontSize: 14, color: r.active ? INK : GRAY }}>{r.title || r.slug}{!r.active && <span style={{ fontFamily: MONO, fontSize: 10.5, letterSpacing: '1px', color: LABEL, marginLeft: 8, textTransform: 'uppercase' }}>archived{r.archived_at ? ` · ${String(r.archived_at).slice(0, 10)}` : ''}</span>}</div>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 6, alignItems: 'center' }}>
               <button onClick={() => copy(shareUrl(r.slug), 'Link')} style={{ ...S.btnGhost, fontSize: 11, padding: '4px 10px', fontFamily: MONO }}>{shareUrl(r.slug).replace(/^https?:\/\//, '')}</button>
-              <button onClick={() => copy(r.code, 'Code')} style={{ ...S.btnGhost, fontSize: 11, padding: '4px 10px', fontFamily: MONO, letterSpacing: '2px', color: r.active ? GOLD : GRAY, borderColor: r.active ? 'rgba(230,181,79,0.4)' : PANEL_BORDER }}>{r.code}</button>
+              <button onClick={() => copy(r.code, 'Code')} style={{ ...S.btnGhost, fontSize: 11, padding: '4px 10px', fontFamily: MONO, letterSpacing: '2px', color: r.active ? GOLD : GRAY, borderColor: r.active ? alpha(GOLD, 40) : PANEL_BORDER }}>{r.code}</button>
               <span style={{ fontSize: 11, color: GRAY }}>click to copy · created {String(r.created_at || '').slice(0, 10)}</span>
             </div>
             {r.note && <div style={{ fontSize: 12.5, color: TEXT_DIM, marginTop: 6 }}>{r.note}</div>}
           </div>
-          <button onClick={async () => { await archiveShare(r, r.active); setMsg(r.active ? `Archived ${r.title || r.slug}; the code no longer opens it.` : `Reactivated ${r.title || r.slug}.`); load() }} style={{ ...S.btnGhost, fontSize: 10, padding: '5px 10px', color: r.active ? RED : GREEN, borderColor: r.active ? 'rgba(232,131,111,0.4)' : 'rgba(67,211,146,0.4)' }}>{r.active ? 'Archive' : 'Reactivate'}</button>
+          <button onClick={async () => { await archiveShare(r, r.active); setMsg(r.active ? `Archived ${r.title || r.slug}; the code no longer opens it.` : `Reactivated ${r.title || r.slug}.`); load() }} style={{ ...S.btnGhost, fontSize: 10, padding: '5px 10px', color: r.active ? RED : GREEN, borderColor: r.active ? alpha(RED, 40) : alpha(GREEN, 40) }}>{r.active ? 'Archive' : 'Reactivate'}</button>
         </div>
       ))}
       {msg && <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '1px', color: GOLD, marginTop: 10, textTransform: 'uppercase' }}>{msg}</div>}
@@ -391,20 +382,20 @@ function CloseMissionModal({ project, tasks, onClose, onDone }) {
   }
   return (
     <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 70, background: 'rgba(5,14,24,0.74)', display: 'grid', placeItems: 'center', padding: 20 }}>
-      <div onClick={e => e.stopPropagation()} style={{ width: 'min(680px, 100%)', maxHeight: '90vh', overflowY: 'auto', background: '#0E2336', border: `1px solid ${PANEL_BORDER}`, borderRadius: 14, padding: '22px 24px 20px', boxShadow: '0 30px 80px rgba(0,0,0,0.5)' }}>
+      <div onClick={e => e.stopPropagation()} style={{ width: 'min(680px, 100%)', maxHeight: '90vh', overflowY: 'auto', background: 'var(--hud-surface-raised)', border: `1px solid ${PANEL_BORDER}`, borderRadius: 14, padding: '22px 24px 20px', boxShadow: '0 30px 80px rgba(0,0,0,0.5)' }}>
         <div style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: 10.5, letterSpacing: '0.14em', textTransform: 'uppercase', color: LABEL, marginBottom: 6 }}>Debrief · Mark Mission Complete</div>
         <div style={{ fontFamily: "'Lora', Georgia, serif", fontSize: 22, color: '#fff', lineHeight: 1.3 }}>{project.name}</div>
         {project.description && <div style={{ marginTop: 10, paddingLeft: 12, borderLeft: `2px solid ${LABEL}`, fontFamily: "'Lora', Georgia, serif", fontStyle: 'italic', fontSize: 14.5, color: TEXT_DIM, lineHeight: 1.5 }}>{project.description}</div>}
         <div style={{ marginTop: 18, fontSize: 14.5, fontWeight: 600, color: '#fff' }}>Is it true? What's different now?</div>
         <textarea value={achieved} onChange={e => setAchieved(e.target.value)} rows={3} placeholder="In your words. It lands in the Archive as Achieved and on the yay page under the star." style={{ ...S.input, width: '100%', marginTop: 8, resize: 'vertical', lineHeight: 1.5 }} autoFocus />
         {openTasks.length > 0 && (
-          <div style={{ marginTop: 16, padding: '12px 14px', borderRadius: 10, border: `1px solid ${PANEL_BORDER}`, background: 'rgba(255,255,255,0.025)' }}>
+          <div style={{ marginTop: 16, padding: '12px 14px', borderRadius: 10, border: `1px solid ${PANEL_BORDER}`, background: PANEL_BG }}>
             <div style={{ fontSize: 13.5, fontWeight: 600, color: GOLD }}>{openTasks.length} milestone{openTasks.length === 1 ? '' : 's'} still open</div>
             <div style={{ fontSize: 12.5, color: TEXT_DIM, margin: '6px 0 8px', lineHeight: 1.5 }}>{openTasks.map(t => stripNum(t.text)).join(' · ')}</div>
             <label style={{ display: 'flex', gap: 8, alignItems: 'flex-start', fontSize: 13, color: '#fff', cursor: 'pointer' }}><input type="checkbox" checked={closeOpen} onChange={e => setCloseOpen(e.target.checked)} style={{ marginTop: 3 }} /><span>Close them as done with the mission (each pays its 10). Unchecked, they stay open in the mission's history and pay nothing.</span></label>
           </div>
         )}
-        <div style={{ marginTop: 14, padding: '12px 14px', borderRadius: 10, border: `1px solid ${PANEL_BORDER}`, background: 'rgba(255,255,255,0.025)' }}>
+        <div style={{ marginTop: 14, padding: '12px 14px', borderRadius: 10, border: `1px solid ${PANEL_BORDER}`, background: PANEL_BG }}>
           <div style={{ fontSize: 13.5, fontWeight: 600, color: '#fff' }}>{files === null ? 'Checking Live Files' : files.length ? `${files.length} file${files.length === 1 ? '' : 's'} in play on this mission` : 'Nothing in play on this mission'}</div>
           {files && files.length > 0 && (
             <>
@@ -414,10 +405,10 @@ function CloseMissionModal({ project, tasks, onClose, onDone }) {
           )}
           <div style={{ fontSize: 12, color: GRAY, marginTop: 8 }}>Artifacts, the latest session board and the mission's cabinet file automatically.</div>
         </div>
-        {err && <div style={{ marginTop: 10, fontSize: 12.5, color: '#E8836F' }}>{err}</div>}
+        {err && <div style={{ marginTop: 10, fontSize: 12.5, color: RED }}>{err}</div>}
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 18 }}>
           <button onClick={onClose} disabled={busy} style={S.btnGhost}>Not yet</button>
-          <button onClick={go} disabled={busy} style={{ ...S.btnGhost, border: '1px solid rgba(67,211,146,0.5)', color: '#43D392', opacity: busy ? 0.6 : 1 }}>{busy ? 'Closing' : '✓ Close the mission · 100 miles'}</button>
+          <button onClick={go} disabled={busy} style={{ ...S.btnGhost, border: `1px solid ${alpha(GREEN, 50)}`, color: GREEN, opacity: busy ? 0.6 : 1 }}>{busy ? 'Closing' : '✓ Close the mission · 100 miles'}</button>
         </div>
       </div>
     </div>
@@ -521,7 +512,7 @@ function ProjectDetail({ project, board: boardProp, api, onBack, initialTab, ini
           <button
             onClick={() => setClosingMission(true)}
             title="Whole mission complete: 100 miles on the River"
-            style={{ ...S.btnGhost, border: '1px solid rgba(67,211,146,0.5)', color: '#43D392' }}
+            style={{ ...S.btnGhost, border: `1px solid ${alpha(GREEN, 50)}`, color: GREEN }}
           >
             ✓ Mark mission complete
           </button>
@@ -534,7 +525,7 @@ function ProjectDetail({ project, board: boardProp, api, onBack, initialTab, ini
               try { await deleteMission(project); await api.refresh(); onBack() } catch (e) { await hudNotice(`Could not delete: ${e.message}`) }
             }}
             title="Delete this mission: no miles, gone from every list"
-            style={{ ...S.btnGhost, border: '1px solid rgba(232,131,111,0.35)', color: RED, padding: '6px 10px' }}
+            style={{ ...S.btnGhost, border: `1px solid ${alpha(RED, 35)}`, color: RED, padding: '6px 10px' }}
           >
             <Trash2 size={12} /> Delete mission
           </button>
@@ -562,7 +553,7 @@ function ProjectDetail({ project, board: boardProp, api, onBack, initialTab, ini
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '14px 0 0' }}>
-        <span style={{ flex: 1, height: 5, borderRadius: 99, background: 'rgba(255,255,255,0.08)', overflow: 'hidden' }}><span style={{ display: 'block', width: `${pct}%`, height: '100%', background: GOLD }} /></span>
+        <span style={{ flex: 1, height: 5, borderRadius: 99, background: alpha(INK, 8), overflow: 'hidden' }}><span style={{ display: 'block', width: `${pct}%`, height: '100%', background: GOLD }} /></span>
         <span style={{ fontFamily: MONO, fontSize: 10.5, letterSpacing: '1px', textTransform: 'uppercase', color: LABEL }}>{closed} of {tasks.length} closed</span>
       </div>
 
@@ -584,9 +575,9 @@ function ProjectDetail({ project, board: boardProp, api, onBack, initialTab, ini
               <button type="button" onClick={organize} disabled={drafting || !newTask.trim()} title="Lumen organizes what you typed into a milestone: Title Case, a done-when, three to five steps. You confirm before it lands." style={{ ...S.btnGhost, opacity: drafting || !newTask.trim() ? 0.5 : 1 }}>{drafting ? 'Organizing' : '✦ Organize'}</button>
               <button type="submit" style={S.btnPrimary}><Plus size={13} /> Milestone</button>
             </form>
-            {draftErr && <div style={{ fontSize: 12.5, color: '#E8836F', marginTop: 8 }}>{draftErr}</div>}
+            {draftErr && <div style={{ fontSize: 12.5, color: RED, marginTop: 8 }}>{draftErr}</div>}
             {draft && (
-              <div style={{ marginTop: 12, padding: '14px 16px', borderRadius: 10, border: `1px solid ${alpha(LABEL, 40)}`, background: 'rgba(127,168,212,0.06)' }}>
+              <div style={{ marginTop: 12, padding: '14px 16px', borderRadius: 10, border: `1px solid ${alpha(LABEL, 40)}`, background: alpha(LABEL, 6) }}>
                 <div style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: 10.5, letterSpacing: '0.14em', textTransform: 'uppercase', color: LABEL, marginBottom: 8 }}>Draft milestone · edit, then add</div>
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                   <input value={draft.number ?? ''} onChange={e => setDraft({ ...draft, number: e.target.value ? Number(e.target.value) : null })} placeholder="#" style={{ ...S.input, width: 56 }} />
@@ -623,12 +614,12 @@ function ProjectDetail({ project, board: boardProp, api, onBack, initialTab, ini
         )}
       {celebrate && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(5,16,28,0.84)', display: 'grid', placeItems: 'center', zIndex: 80 }}>
-          <div style={{ ...S.panel, width: 'min(560px, 94vw)', textAlign: 'center', padding: '38px 32px 28px', display: 'grid', gap: 12, justifyItems: 'center', border: '1px solid rgba(248,199,97,0.45)', boxShadow: '0 0 90px rgba(248,199,97,0.18)' }}>
+          <div style={{ ...S.panel, width: 'min(560px, 94vw)', textAlign: 'center', padding: '38px 32px 28px', display: 'grid', gap: 12, justifyItems: 'center', border: `1px solid ${alpha(GOLD, 45)}`, boxShadow: `0 0 90px ${alpha(GOLD, 18)}` }}>
             <BadgeMedallion id="main-mission" size={136} glow />
             <div style={{ fontFamily: MONO, fontSize: 10.5, letterSpacing: '2.4px', textTransform: 'uppercase', color: GOLD }}>Main Mission Complete</div>
             <div style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 26, letterSpacing: '-0.01em', color: INK, lineHeight: 1.2 }}>{project.name}</div>
             <div style={{ fontSize: 13.5, color: TEXT_DIM, lineHeight: 1.5 }}>{BADGES['main-mission'].label} · {BADGES['main-mission'].miles} miles on the River at the next update{celebrate.closed ? ` · ${celebrate.closed} milestone${celebrate.closed === 1 ? '' : 's'} closed with it, ${BADGES['mission-task'].miles} each` : ''}.</div>
-            <div style={{ width: '100%', marginTop: 6, padding: '14px 16px', borderRadius: 10, border: `1px solid ${PANEL_BORDER}`, background: 'rgba(255,255,255,0.03)', textAlign: 'left' }}>
+            <div style={{ width: '100%', marginTop: 6, padding: '14px 16px', borderRadius: 10, border: `1px solid ${PANEL_BORDER}`, background: PANEL_BG, textAlign: 'left' }}>
               <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '1.6px', textTransform: 'uppercase', color: LABEL, marginBottom: 6 }}>What is true now, that was not true before</div>
               {project.description && <div style={{ fontFamily: SERIF, fontStyle: 'italic', fontSize: 16, color: INK, lineHeight: 1.5 }}>{project.description}</div>}
               {celebrate.achieved && <div style={{ fontSize: 13.5, color: TEXT_DIM, lineHeight: 1.55, marginTop: project.description ? 10 : 0 }}><span style={{ color: GOLD, fontFamily: MONO, fontSize: 10, letterSpacing: '1.4px', textTransform: 'uppercase', marginRight: 8 }}>Achieved</span>{celebrate.achieved}</div>}
@@ -720,7 +711,7 @@ export default function ProjectsPage({ deepLink = [], onNavigate } = {}) {
         <form onSubmit={create} style={{ ...S.panel, marginTop: 16, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <input autoFocus value={newName} onChange={e => setNewName(e.target.value)} placeholder="Project name" style={{ ...S.input, flex: 1, minWidth: 220 }} />
           <select value={newCat} onChange={e => setNewCat(e.target.value)} style={{ ...S.input, width: 190 }}>
-            {CATEGORY_ORDER.map(c => <option key={c} value={c} style={{ color: '#0E2336' }}>{CATEGORY_LABELS[c]}</option>)}
+            {CATEGORY_ORDER.map(c => <option key={c} value={c} style={{ color: '#0F2334' }}>{CATEGORY_LABELS[c]}</option>)}
           </select>
           <button type="submit" style={S.btnPrimary}>Create</button>
         </form>
