@@ -3,6 +3,7 @@ import {
   LayoutGrid, Network, LogOut, Menu, X, Target, Users,
   FileText, Wallet, CreditCard, ListChecks, Compass, Waves, CalendarDays, BookOpen, Activity, Award, Wrench, GraduationCap, Sparkles, Archive as ArchiveIcon, FolderOpen, PenTool, Briefcase, Mic, Wand2, Bot, PenLine } from 'lucide-react'
 import { getSession, onAuthStateChange, signOut } from './lib/auth'
+import { Sun, Moon } from 'lucide-react'
 import { statusFor } from './constants/saDesign'
 import { fetchProtocolState } from './lib/protocol'
 import useGameState from './hooks/useGameState'
@@ -11,7 +12,7 @@ import ProjectsPage from './components/ProjectsPage'
 import ClientsPage from './components/ClientsPage'
 import ItemDetail from './components/river/ItemDetail'
 import { itemFromObjective } from './lib/loadout'
-import { MissionMark } from './components/river/canon'
+import { MissionMark, alpha } from './components/river/canon'
 import EcosystemPage from './components/EcosystemPage'
 import MeetingNotesPage from './components/MeetingNotesPage'
 import SideMissionsPage from './components/SideMissionsPage'
@@ -157,6 +158,17 @@ function useProtocol() {
   return p
 }
 
+// Dark (CIP navy) or light (CIP paper), remembered. The outputs read best on paper.
+function ThemeToggle() {
+  const [light, setLight] = useState(() => document.documentElement.dataset.theme === 'light')
+  const flip = () => { const next = !light; setLight(next); if (next) document.documentElement.dataset.theme = 'light'; else delete document.documentElement.dataset.theme; try { localStorage.setItem('hud-theme', next ? 'light' : 'dark') } catch { /* no-op */ } }
+  return (
+    <button onClick={flip} title={light ? 'Dark: the CIP navy' : 'Light: the CIP paper'} aria-label="Theme" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 30, height: 30, marginRight: 12, borderRadius: 999, cursor: 'pointer', border: '1px solid rgba(255,255,255,0.18)', background: 'rgba(255,255,255,0.05)', color: 'rgba(243,241,234,0.85)' }}>
+      {light ? <Moon size={13} /> : <Sun size={13} />}
+    </button>
+  )
+}
+
 function Topbar({ active, now, sov, onBack }) {
   const proto = useProtocol()
   const navItem = NAV_ITEMS.find((n) => n.id === active) || {}
@@ -181,13 +193,14 @@ function Topbar({ active, now, sov, onBack }) {
         <div className="ttl">{title}</div>
       </div>
       <div className="spacer"></div>
-      <div className="sa-protocol-pill" title={proto ? `${proto.title}${proto.detail ? ` · ${proto.detail}` : ''}` : 'reading the Ledger'} style={{ borderColor: proto ? `${proto.color}66` : undefined, maxWidth: 420 }}>
-        <span className="dot" style={{ background: proto?.color, boxShadow: proto && proto.id !== 'off' ? `0 0 0 3px ${proto.color}33` : 'none', animation: proto?.blink ? 'rcblink 1s ease-in-out infinite' : 'none' }}></span>
+      <div className="sa-protocol-pill" title={proto ? `${proto.title}${proto.detail ? ` · ${proto.detail}` : ''}` : 'reading the Ledger'} style={{ borderColor: proto ? `${alpha(proto.color, 40)}` : undefined, maxWidth: 420 }}>
+        <span className="dot" style={{ background: proto?.color, boxShadow: proto && proto.id !== 'off' ? `0 0 0 3px ${alpha(proto.color, 20)}` : 'none', animation: proto?.blink ? 'rcblink 1s ease-in-out infinite' : 'none' }}></span>
         <span className="sa-tele">PROTOCOL</span>
         <b style={{ fontSize: '12px', whiteSpace: 'nowrap' }}>{proto ? proto.label : '…'}</b>
         {proto && proto.id !== 'off' && <span style={{ fontSize: 11, color: 'rgba(234,241,248,0.6)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 200 }}>· {proto.title}</span>}
         {proto?.pct != null && <span style={{ display: 'inline-block', width: 54, height: 4, borderRadius: 99, background: 'rgba(255,255,255,0.1)', overflow: 'hidden', marginLeft: 6 }}><span style={{ display: 'block', width: `${proto.pct}%`, height: '100%', background: proto.color }} /></span>}
       </div>
+      <ThemeToggle />
       <div className="sa-mini-sov" title="Sovereignty">
         <span className="sa-tele" style={{ color: 'var(--sa-ink-3)' }}>SOV</span>
         <div className="sa-mini-track"><div className="sa-mini-fill" style={{ width: `${sov}%`, background: st.color }}></div></div>

@@ -8,9 +8,9 @@ import { useCallback, useEffect, useState } from 'react'
 import { FileText, ExternalLink, Mail, Check, Star, FolderOpen } from 'lucide-react'
 import { listLiveFiles, putLiveFile, requestLiveFile, openLiveFile, draftMail, markFiled, groupVersions, fmtStamp, fmtSize, isRequest, urlOf, isLink, addLiveLink, pinEvidence } from '../../lib/livefiles'
 import { DropZone, LinkForm } from './LiveFiles'
-import { INK, INK2, GRAY, PANEL_BORDER, GOLD, GOLD_BRIGHT, BLUE, GREEN, RED, MONO, Label, PURPLE } from './canon'
+import { INK, INK2, GRAY, PANEL_BORDER, GOLD, GOLD_BRIGHT, BLUE, GREEN, RED, MONO, Label, PURPLE, alpha } from './canon'
 import { hudConfirm } from '../../lib/dialog'
-const btn = (color = INK2, filled = false) => ({ display: 'inline-flex', alignItems: 'center', gap: 5, fontFamily: MONO, fontSize: 9.5, letterSpacing: '1px', textTransform: 'uppercase', padding: '5px 9px', borderRadius: 8, border: `1px solid ${filled ? color : `${color}66`}`, background: filled ? color : 'transparent', color: filled ? '#0A1B2B' : color, cursor: 'pointer', flexShrink: 0 })
+const btn = (color = INK2, filled = false) => ({ display: 'inline-flex', alignItems: 'center', gap: 5, fontFamily: MONO, fontSize: 9.5, letterSpacing: '1px', textTransform: 'uppercase', padding: '5px 9px', borderRadius: 8, border: `1px solid ${filled ? color : `${alpha(color, 40)}`}`, background: filled ? color : 'transparent', color: filled ? 'var(--hud-on-accent)' : color, cursor: 'pointer', flexShrink: 0 })
 const rowStyle = { display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0', borderTop: `1px solid ${PANEL_BORDER}` }
 const isSessionLink = (r) => isLink(r) && /^claude:\/\//.test(String(r.path || ''))
 
@@ -35,10 +35,10 @@ export default function FilesTab({ objectiveId, rel, what, open, onRead, onGo, o
   const otherArtifacts = (rel?.artifacts || []).filter(a => !a.decision && !(taskId && a.task_id === taskId))
 
   const FileRow = ({ r, dim = false }) => isLink(r) ? (
-    <div style={{ ...rowStyle, border: `1px solid ${PURPLE}66`, borderRadius: 10, padding: '10px 12px', margin: '6px 0', background: 'rgba(180,163,232,0.07)' }}>
+    <div style={{ ...rowStyle, border: `1px solid ${alpha(PURPLE, 40)}`, borderRadius: 10, padding: '10px 12px', margin: '6px 0', background: 'rgba(180,163,232,0.07)' }}>
       <span style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '0.8px', textTransform: 'uppercase', color: PURPLE }}>app</span>
       <span style={{ flex: 1, minWidth: 0 }}><span style={{ fontSize: 14.5, fontWeight: 600, color: INK }}>{r.name}</span>{r.note && <span style={{ display: 'block', fontSize: 12.5, color: INK2, marginTop: 2 }}>{r.note}</span>}<span style={{ display: 'block', fontFamily: MONO, fontSize: 9.5, color: GRAY, marginTop: 3 }}>{r.path}</span></span>
-      <button onClick={() => pin(r)} title={r.evidence ? 'Pinned as evidence under Polaris' : 'Pin as evidence under Polaris'} style={btn(r.evidence ? GOLD_BRIGHT : INK2, !!r.evidence)}><Star size={11} fill={r.evidence ? '#0A1B2B' : 'none'} /></button>
+      <button onClick={() => pin(r)} title={r.evidence ? 'Pinned as evidence under Polaris' : 'Pin as evidence under Polaris'} style={btn(r.evidence ? GOLD_BRIGHT : INK2, !!r.evidence)}><Star size={11} fill={r.evidence ? 'var(--hud-on-accent)' : 'none'} /></button>
       <button onClick={() => window.open(r.path, '_blank', 'noopener')} style={btn(PURPLE, true)}><ExternalLink size={11} /> Launch</button>
       <button onClick={async () => { if (await hudConfirm(`Done with ${r.name}? The link leaves the Board.`)) act(() => markFiled(r.id), `Out of play: ${r.name}`) }} style={btn(INK2)}><Check size={11} /> Done</button>
     </div>
@@ -48,7 +48,7 @@ export default function FilesTab({ objectiveId, rel, what, open, onRead, onGo, o
       <span title={r.path} style={{ flex: 1, fontSize: dim ? 12.5 : 13.5, color: dim ? INK2 : INK, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.name}{r.version > 1 && <span style={{ fontFamily: MONO, fontSize: 9, letterSpacing: '1px', color: GOLD, marginLeft: 8 }}>v{r.version}</span>}{r.evidence && <span style={{ fontFamily: MONO, fontSize: 9, letterSpacing: '1px', textTransform: 'uppercase', color: GOLD_BRIGHT, marginLeft: 8 }}>evidence</span>}{r.note && <span style={{ fontSize: 12, color: INK2, marginLeft: 10 }}>{r.note}</span>}</span>
       {isRequest(r) && <span style={{ fontFamily: MONO, fontSize: 9, letterSpacing: '1px', textTransform: 'uppercase', color: GOLD }}>waiting for a session on the Mac</span>}
       <span style={{ fontFamily: MONO, fontSize: 9.5, color: GRAY, whiteSpace: 'nowrap' }}>{fmtStamp(r.created_at)}{r.size ? ` · ${fmtSize(r.size)}` : ''}</span>
-      {!dim && !isRequest(r) && <button onClick={() => pin(r)} title={r.evidence ? 'Pinned as evidence under Polaris. Click to unpin.' : 'Pin as evidence under Polaris'} style={btn(r.evidence ? GOLD_BRIGHT : INK2, !!r.evidence)}><Star size={11} fill={r.evidence ? '#0A1B2B' : 'none'} /></button>}
+      {!dim && !isRequest(r) && <button onClick={() => pin(r)} title={r.evidence ? 'Pinned as evidence under Polaris. Click to unpin.' : 'Pin as evidence under Polaris'} style={btn(r.evidence ? GOLD_BRIGHT : INK2, !!r.evidence)}><Star size={11} fill={r.evidence ? 'var(--hud-on-accent)' : 'none'} /></button>}
       {urlOf(r) && <button onClick={() => window.open(urlOf(r), '_blank', 'noopener')} title={urlOf(r)} style={btn(GREEN)}><ExternalLink size={11} /> Visit</button>}
       {!isRequest(r) && <button onClick={() => act(async () => { window.open(await openLiveFile(r), '_blank', 'noopener') }, `Opened ${r.name}`)} style={btn(BLUE)}><ExternalLink size={11} /> {String(r.name).toLowerCase().endsWith('.html') ? 'Source' : 'Open'}</button>}
       {!isRequest(r) && !dim && <button onClick={() => act(async () => { const d = await draftMail(r); if (d.webLink) window.open(d.webLink, '_blank', 'noopener') }, `Draft open in Outlook: ${r.name}`)} title="Open a new Outlook draft with this file attached" style={btn(GOLD)}><Mail size={11} /> Mail</button>}

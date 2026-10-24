@@ -3,7 +3,7 @@ import { Plus, ArrowLeft, ArrowUpRight, RefreshCw, X, Trash2, Link as LinkIcon }
 import useProjects, { freshnessOf } from '../hooks/useProjects'
 import { CLIENTS, clientByKey, laneColor, missionsOf, STATUS_LABEL, STATUS_ORDER } from '../constants/clients'
 import { loadTimeline, saveTimeline, BASELINE } from '../lib/clientTimeline'
-import { INK, INK2, GRAY, LABEL, MUTED, NAVY_DEEP, PANEL_BORDER, PANEL_BG, GOLD, GREEN, BLUE, RED, MONO, SERIF, SubLabel, chiToday } from './river/canon'
+import { INK, INK2, GRAY, LABEL, MUTED, NAVY_DEEP, PANEL_BORDER, PANEL_BG, GOLD, GREEN, BLUE, RED, MONO, SERIF, SubLabel, chiToday, alpha } from './river/canon'
 import { hudConfirm } from '../lib/dialog'
 // =============================================================================
 // Clients (David, 10/19). A Client card, built like the Main Mission card,
@@ -34,7 +34,7 @@ function Pill({ active, children, onClick }) {
     }}>{children}</button>
   )
 }
-const Chip = ({ color, children, style }) => <span style={{ fontFamily: MONO, fontSize: 9, letterSpacing: '1px', textTransform: 'uppercase', color, border: `1px solid ${color}55`, borderRadius: 999, padding: '2px 7px', whiteSpace: 'nowrap', ...style }}>{children}</span>
+const Chip = ({ color, children, style }) => <span style={{ fontFamily: MONO, fontSize: 9, letterSpacing: '1px', textTransform: 'uppercase', color, border: `1px solid ${alpha(color, 33)}`, borderRadius: 999, padding: '2px 7px', whiteSpace: 'nowrap', ...style }}>{children}</span>
 const STATUS_COLOR = { planned: MUTED, in_motion: GOLD, done: GREEN }
 
 // Dates. Items carry ISO days; the waterfall is drawn in UTC day math.
@@ -286,12 +286,12 @@ export function Waterfall({ client, items: rawItems, view = 'simple', onOpen, on
                     {end !== null && end > top
                       ? <div style={{ position: 'absolute', left: 14, top, width: 6, height: Math.max(6, end - top), borderRadius: 3, background: color, opacity: done ? 0.4 : 0.85 }} />
                       : <div style={{ position: 'absolute', left: 11, top: top - 6, width: 12, height: 12, transform: 'rotate(45deg)', borderRadius: 2, background: color, opacity: done ? 0.4 : 1, boxShadow: `0 0 0 2px ${NAVY_DEEP}` }} />}
-                    {cardTop > top + 2 && <div style={{ position: 'absolute', left: 17, top, width: 1, height: cardTop - top + 10, background: `${color}66` }} />}
+                    {cardTop > top + 2 && <div style={{ position: 'absolute', left: 17, top, width: 1, height: cardTop - top + 10, background: `${alpha(color, 40)}` }} />}
                     {view === 'simple' ? (
                       <button onClick={() => tagClick(it)} onDoubleClick={(e) => { e.stopPropagation(); onOpen(it) }} onPointerDown={(e) => startDrag(e, it)}
                         title={`${it.date_label || dayLabel(it.start_date)} · ${it.title}`} style={{
                         position: 'absolute', left: 30, right: 10, top: cardTop, height: size.card, textAlign: 'left', cursor: drag?.id === it.id ? 'grabbing' : 'grab', touchAction: 'none', fontFamily: 'inherit',
-                        background: active ? `${color}22` : 'rgba(255,255,255,0.045)', border: `1px solid ${active ? color : PANEL_BORDER}`, borderLeft: `3px solid ${color}`, borderRadius: 6, padding: '0 8px', color: INK, opacity: done ? 0.6 : 1, overflow: 'hidden', display: 'flex', alignItems: 'center', gap: 7,
+                        background: active ? `${alpha(color, 13)}` : 'rgba(255,255,255,0.045)', border: `1px solid ${active ? color : PANEL_BORDER}`, borderLeft: `3px solid ${color}`, borderRadius: 6, padding: '0 8px', color: INK, opacity: done ? 0.6 : 1, overflow: 'hidden', display: 'flex', alignItems: 'center', gap: 7,
                       }}>
                         <span style={{ fontSize: 11.5, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', textDecoration: done ? 'line-through' : 'none', flex: 1 }}>{it.title}</span>
                         <span style={{ width: 6, height: 6, borderRadius: 99, background: STATUS_COLOR[it.status] || MUTED, flexShrink: 0 }} title={STATUS_LABEL[it.status]} />
@@ -300,7 +300,7 @@ export function Waterfall({ client, items: rawItems, view = 'simple', onOpen, on
                       <button onClick={() => tagClick(it)} onDoubleClick={(e) => { e.stopPropagation(); onOpen(it) }} onPointerDown={(e) => startDrag(e, it)}
                         title={it.title} style={{
                         position: 'absolute', left: 30, right: 10, top: cardTop, height: size.card, textAlign: 'left', cursor: drag?.id === it.id ? 'grabbing' : 'grab', touchAction: 'none', fontFamily: 'inherit',
-                        background: active ? `${color}22` : 'rgba(255,255,255,0.045)', border: `1px solid ${active ? color : PANEL_BORDER}`, borderLeft: `3px solid ${color}`, borderRadius: 8, padding: '5px 8px', color: INK, opacity: done ? 0.6 : 1, overflow: 'hidden', display: 'flex', flexDirection: 'column', gap: 2,
+                        background: active ? `${alpha(color, 13)}` : 'rgba(255,255,255,0.045)', border: `1px solid ${active ? color : PANEL_BORDER}`, borderLeft: `3px solid ${color}`, borderRadius: 8, padding: '5px 8px', color: INK, opacity: done ? 0.6 : 1, overflow: 'hidden', display: 'flex', flexDirection: 'column', gap: 2,
                       }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                           <span style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '0.8px', color, whiteSpace: 'nowrap' }}>{it.date_label || dayLabel(it.start_date)}</span>

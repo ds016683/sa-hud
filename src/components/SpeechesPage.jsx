@@ -6,12 +6,12 @@
 // or project. Registry: src/content/speeches.js. Decks: public/speeches/<slug>/.
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Mic, Calendar, MapPin, Clock, Play, X as XIcon, ExternalLink, Download, Mail, FileText, Upload, Link2, Maximize2 } from 'lucide-react'
-import { S, Eyebrow, Serif, Label, INK, INK2, GRAY, GOLD, GREEN, PURPLE, BLUE, MONO, PANEL_BORDER, PANEL_BG, LABEL, MUTED, TYPE, fmtDay } from './river/canon'
+import { S, Eyebrow, Serif, Label, INK, INK2, GRAY, GOLD, GREEN, PURPLE, BLUE, MONO, PANEL_BORDER, PANEL_BG, LABEL, MUTED, TYPE, fmtDay, alpha } from './river/canon'
 import { listLiveFiles, putLiveFile, openLiveFile, downloadLiveFile, draftMail, fmtStamp, fmtSize, extOf } from '../lib/livefiles'
 import { SPEECHES, deckUrl, STATUS_LABEL } from '../content/speeches'
 
 const STATUS_COLOR = { outline: GOLD, deck: PURPLE, delivered: GREEN }
-const btn = (color, filled = false) => ({ display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: MONO, fontSize: 10.5, letterSpacing: '0.08em', textTransform: 'uppercase', padding: '7px 12px', borderRadius: 999, cursor: 'pointer', border: `1px solid ${filled ? color : `${color}88`}`, background: filled ? `${color}22` : 'transparent', color, textDecoration: 'none' })
+const btn = (color, filled = false) => ({ display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: MONO, fontSize: 10.5, letterSpacing: '0.08em', textTransform: 'uppercase', padding: '7px 12px', borderRadius: 999, cursor: 'pointer', border: `1px solid ${filled ? color : `${alpha(color, 53)}`}`, background: filled ? `${alpha(color, 13)}` : 'transparent', color, textDecoration: 'none' })
 const absDeck = (s) => `${window.location.origin}${deckUrl(s)}`
 
 function useDeckReady(url) {
@@ -82,7 +82,7 @@ function PdfStrip({ s, pdf, refresh, say }) {
   const act = async (fn, done) => { try { await fn(); if (done) say(done) } catch (e) { say(`Could not: ${e?.message || String(e)}`) } }
   return (
     <div onDragOver={e => { e.preventDefault(); setDrag(true) }} onDragLeave={() => setDrag(false)} onDrop={e => { e.preventDefault(); setDrag(false); upload(e.dataTransfer?.files?.[0]) }}
-      style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginTop: 12, padding: '10px 12px', borderRadius: 10, border: `1px ${drag ? 'solid' : 'dashed'} ${drag ? BLUE : PANEL_BORDER}`, background: drag ? `${BLUE}14` : 'rgba(255,255,255,0.02)' }}>
+      style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginTop: 12, padding: '10px 12px', borderRadius: 10, border: `1px ${drag ? 'solid' : 'dashed'} ${drag ? BLUE : PANEL_BORDER}`, background: drag ? `${alpha(BLUE, 8)}` : 'rgba(255,255,255,0.02)' }}>
       <FileText size={16} color={pdf ? GOLD : GRAY} />
       {pdf ? (
         <div style={{ flex: 1, minWidth: 220 }}>

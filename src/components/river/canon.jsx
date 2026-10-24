@@ -3,33 +3,38 @@ import { Target, Zap } from 'lucide-react'
 // deck weight and tracking, mono eyebrows, hairline panels, gold as the single
 // warm accent and periwinkle/blue as the cool one. Every River page imports
 // from here so the surfaces read as one system.
-export const INK = '#EAF1F8'
-export const INK2 = 'rgba(234,241,248,0.66)'
-export const GRAY = 'rgba(234,241,248,0.45)'      // off, closed, disabled, placeholder: never a live label
-export const LABEL = '#7FA8D4'                      // eyebrows and field labels (David, 10/17): distinct, not loud
-export const MUTED = 'rgba(234,241,248,0.78)'      // live secondary text (timestamps, captions, meta)
-export const NAVY_DEEP = '#0E2336'
-export const PANEL_BORDER = 'rgba(255,255,255,0.10)'
-export const PANEL_BG = 'rgba(255,255,255,0.035)'
-export const GOLD = '#E6B54F'
-export const GOLD_BRIGHT = '#F8C761'
-export const BLUE = '#A9C9E8'
-export const PERIWINKLE = '#96A8F0'
-export const PURPLE = '#B4A3E8'
-export const GREEN = '#43D392'
-export const RED = '#E8836F'
-export const MONO = 'var(--font-mono, monospace)'
+export const INK = 'var(--hud-ink)'
+export const INK2 = 'var(--hud-ink-2)'
+export const GRAY = 'var(--hud-ink-3)'      // off, closed, disabled, placeholder: never a live label
+export const LABEL = 'var(--hud-accent)'                      // eyebrows and field labels (David, 10/17): distinct, not loud
+export const MUTED = 'var(--hud-ink-2)'      // live secondary text (timestamps, captions, meta)
+export const NAVY_DEEP = 'var(--hud-on-accent)'
+export const PANEL_BORDER = 'var(--hud-border)'
+export const PANEL_BG = 'var(--hud-fill)'
+export const GOLD = 'var(--hud-gold)'
+export const GOLD_BRIGHT = 'var(--hud-gold)'
+export const BLUE = 'var(--hud-accent)'
+export const PERIWINKLE = 'var(--hud-accent)'
+export const PURPLE = 'var(--hud-accent)'
+export const GREEN = 'var(--hud-pos)'
+export const RED = 'var(--hud-neg)'
+export const MONO = 'var(--font-label, sans-serif)'   // CIP labels: Instrument Sans uppercase (10/24); true mono is MONO_CODE
+export const MONO_CODE = 'var(--font-mono, monospace)'
+export const CAUTION = 'var(--hud-warn)'
+// Alpha on a token (10/24): tokens are CSS variables now, so hex suffixes cannot be
+// appended. alpha(BLUE, 40) is the old `${alpha(BLUE, 40)}`.
+export const alpha = (color, pct) => `color-mix(in srgb, ${color} ${pct}%, transparent)`
 export const SERIF = "'Lora', Georgia, serif"
 
 export const S = {
   page: { maxWidth: 1180, margin: '0 auto', padding: '4px 0 80px', color: INK },
-  h1: { fontSize: 28, fontWeight: 500, margin: 0, color: '#FFFFFF', fontFamily: SERIF, letterSpacing: '-0.01em' },
+  h1: { fontSize: 28, fontWeight: 500, margin: 0, color: INK, fontFamily: SERIF, letterSpacing: '-0.01em' },
   sub: { fontSize: 10.5, color: LABEL, margin: '6px 0 0', fontFamily: MONO, letterSpacing: '1.4px', textTransform: 'uppercase' },
   panel: { background: PANEL_BG, border: `1px solid ${PANEL_BORDER}`, borderRadius: 12, padding: 16, marginBottom: 12 },
   panelTitle: { fontSize: 16, fontWeight: 600, color: LABEL, letterSpacing: '0.1px', marginBottom: 10 },
   chip: (bg, fg) => ({ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 9999, background: bg, color: fg, textTransform: 'uppercase', letterSpacing: '0.05em', whiteSpace: 'nowrap' }),
   source: { fontSize: 10, color: GRAY, marginTop: 10, fontFamily: MONO, letterSpacing: '0.4px' },
-  btnPrimary: { display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: MONO, fontSize: 10, letterSpacing: '1.2px', textTransform: 'uppercase', padding: '8px 14px', borderRadius: 8, border: `1px solid ${GOLD}`, background: GOLD, color: '#0A1B2B', cursor: 'pointer' },
+  btnPrimary: { display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: MONO, fontSize: 10, letterSpacing: '1.2px', textTransform: 'uppercase', padding: '8px 14px', borderRadius: 8, border: `1px solid ${GOLD}`, background: GOLD, color: NAVY_DEEP, cursor: 'pointer' },
   btnGhost: { display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: MONO, fontSize: 10, letterSpacing: '1.2px', textTransform: 'uppercase', padding: '8px 12px', borderRadius: 8, border: `1px solid ${PANEL_BORDER}`, background: 'transparent', color: INK2, cursor: 'pointer' },
 }
 
@@ -39,7 +44,7 @@ export const Eyebrow = ({ children, style }) => (
   </div>
 )
 export const Serif = ({ children, size = 20, style }) => (
-  <div style={{ fontFamily: SERIF, fontSize: size, fontWeight: 500, color: '#fff', letterSpacing: '-0.01em', lineHeight: 1.25, ...style }}>{children}</div>
+  <div style={{ fontFamily: SERIF, fontSize: size, fontWeight: 500, color: INK, letterSpacing: '-0.01em', lineHeight: 1.25, ...style }}>{children}</div>
 )
 export const Body = ({ children, style }) => <div style={{ fontSize: 13, lineHeight: 1.6, color: INK2, ...style }}>{children}</div>
 // Headers are never smaller than the content under them (David, 10/17): a
@@ -49,8 +54,8 @@ export const titleCase = (t) => typeof t === 'string' ? t.replace(/(^|\s)([a-z])
 export const TYPE = { header: 16, subhead: 14.5, body: 13.5, meta: 10.5 }
 export const Label = ({ children, style }) => <div style={{ fontSize: TYPE.header, fontWeight: 600, color: LABEL, letterSpacing: '0.1px', marginBottom: 8, lineHeight: 1.3, ...style }}>{titleCase(children)}</div>
 export const SubLabel = ({ children, color = LABEL, style }) => <div style={{ fontSize: TYPE.subhead, fontWeight: 600, color, marginBottom: 5, ...style }}>{titleCase(children)}</div>
-export const Stat = ({ v, l, color = '#fff' }) => (
-  <div style={{ borderLeft: `2px solid ${BLUE}55`, paddingLeft: 12 }}>
+export const Stat = ({ v, l, color = INK }) => (
+  <div style={{ borderLeft: `2px solid ${alpha(BLUE, 33)}`, paddingLeft: 12 }}>
     <div style={{ fontFamily: SERIF, fontSize: 26, fontWeight: 500, color, lineHeight: 1.1, letterSpacing: '-0.01em' }}>{v}</div>
     <div style={{ fontSize: 11, color: MUTED, marginTop: 3, lineHeight: 1.45 }}>{l}</div>
   </div>
@@ -60,7 +65,7 @@ export const Stat = ({ v, l, color = '#fff' }) => (
 // label-above on narrow screens (see .rail-section in the page CSS).
 export const RailSection = ({ title, children, style }) => (
   <div className="rail-section" style={{ display: 'grid', gridTemplateColumns: '172px minmax(0, 1fr)', gap: 20, alignItems: 'center', marginBottom: 14, ...style }}>
-    <div className="rail-label" style={{ fontFamily: SERIF, fontSize: 22, fontWeight: 500, color: '#fff', letterSpacing: '-0.01em', lineHeight: 1.15 }}>{title}</div>
+    <div className="rail-label" style={{ fontFamily: SERIF, fontSize: 22, fontWeight: 500, color: INK, letterSpacing: '-0.01em', lineHeight: 1.15 }}>{title}</div>
     <div style={{ minWidth: 0 }}>{children}</div>
   </div>
 )
@@ -100,7 +105,7 @@ export function MissionMark({ size = 14, color = 'currentColor', style }) {
 export const KindIcon = ({ kind, size = 11, color }) => kind === 'Main Mission' ? <MissionMark size={size} color={color} /> : kind === 'Side Mission' ? <Target size={size} color={color} /> : kind === 'Ad Hoc' ? <Zap size={size} color={color} /> : null
 export const KindChip = ({ kind }) => {
   const c = KIND_COLOR[kind] || INK2
-  return <span style={{ ...S.chip('transparent', c), border: `1px solid ${c}55`, fontFamily: MONO, fontSize: 9, letterSpacing: '1px', padding: '2px 7px', display: 'inline-flex', alignItems: 'center', gap: 5 }}><KindIcon kind={kind} color={c} />{kind}</span>
+  return <span style={{ ...S.chip('transparent', c), border: `1px solid ${alpha(c, 33)}`, fontFamily: MONO, fontSize: 9, letterSpacing: '1px', padding: '2px 7px', display: 'inline-flex', alignItems: 'center', gap: 5 }}><KindIcon kind={kind} color={c} />{kind}</span>
 }
 
 // The Polaris Objective (David, 10/12): one line on every mission, written at

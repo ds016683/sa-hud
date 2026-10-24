@@ -18,8 +18,7 @@ import { fetchLoadout, startWithRoom, holster, sizeOf, SIZES } from '../lib/load
 import ItemDetail from './river/ItemDetail'
 import {
   INK, INK2, GRAY, NAVY_DEEP, PANEL_BORDER, GOLD, GOLD_BRIGHT, BLUE, PERIWINKLE, PURPLE, GREEN, RED, MONO, SERIF,
-  S, Eyebrow, Label, Panel, chiToday, fmtTime, weekday,
-} from './river/canon'
+  S, Eyebrow, Label, Panel, chiToday, fmtTime, weekday, alpha } from './river/canon'
 import { hudPrompt, hudConfirm } from '../lib/dialog'
 
 const fmtFullDay = (day) => day ? new Date(day + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }) : ''
@@ -289,7 +288,7 @@ function CalendarPanel({events, loading, now, day, refresh, onOpenEvent }) {
 const stripNum = (t) => String(t || '').replace(/^\s*\d+\s*[·.:)-]\s*/, '')
 const daysLate = (due, day) => due ? Math.round((new Date(day + 'T12:00:00') - new Date(due + 'T12:00:00')) / 864e5) : null
 const whenText = (due, day) => { const n = daysLate(due, day); if (n === null) return null; if (n > 0) return `${n} day${n === 1 ? '' : 's'} overdue`; if (n === 0) return 'due today'; return `due ${fmtShortDay(due)}` }
-const Tag = ({ color, children }) => <span style={{ ...S.chip('transparent', color), border: `1px solid ${color}55`, fontFamily: MONO, fontSize: 8.5, letterSpacing: '1px', padding: '1px 7px', whiteSpace: 'nowrap' }}>{children}</span>
+const Tag = ({ color, children }) => <span style={{ ...S.chip('transparent', color), border: `1px solid ${alpha(color, 33)}`, fontFamily: MONO, fontSize: 8.5, letterSpacing: '1px', padding: '1px 7px', whiteSpace: 'nowrap' }}>{children}</span>
 
 function WorkPanel({ tasks, projects, objectives, loading, day, refresh, refreshKey, onNavigate, isToday }) {
   const [plan, setPlan] = useState(undefined)
@@ -330,8 +329,8 @@ function WorkPanel({ tasks, projects, objectives, loading, day, refresh, refresh
   }
   const stop = async (id, title) => { setBusy(true); try { await holster(id); setNote(`${title} holstered`); refresh && refresh() } catch (e) { setNote(`Could not stop: ${e.message}`) } finally { setBusy(false) } }
   const StartStop = ({ refx, title, row }) => { const it = loadedItem(refx); return it?.equipped
-    ? <button disabled={busy} onClick={() => stop(it.id, title)} title="Stop the clock" style={chipBtn(GREEN, GREEN, { background: GREEN, color: '#0A1B2B' })}><Pause size={10} /> Stop</button>
-    : <button disabled={busy} onClick={() => start(refx, title, row)} title="Load it and start the clock" style={chipBtn(GREEN, `${GREEN}66`)}><Play size={10} /> Start</button> }
+    ? <button disabled={busy} onClick={() => stop(it.id, title)} title="Stop the clock" style={chipBtn(GREEN, GREEN, { background: GREEN, color: 'var(--hud-on-accent)' })}><Pause size={10} /> Stop</button>
+    : <button disabled={busy} onClick={() => start(refx, title, row)} title="Load it and start the clock" style={chipBtn(GREEN, `${alpha(GREEN, 40)}`)}><Play size={10} /> Start</button> }
   // The queue: everything else calling, most overdue first.
   const activeObj = new Set((objectives || []).filter(o => o.state === 'active').map(o => o.id))
   const queue = [

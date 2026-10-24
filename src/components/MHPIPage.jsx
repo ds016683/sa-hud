@@ -5,6 +5,7 @@
 // Copy is the source documents' own language. Sources are cited on each panel.
 import { useState } from 'react'
 import { Bell, Lock, Globe, FileText, Landmark, Users, Compass, Building2, HeartPulse, Sparkles } from 'lucide-react'
+import { alpha } from './river/canon'
 
 // ---- Canon tokens (same as ObjectivesPage on the dark stage)
 const NAVY = '#EAF1F8'
@@ -50,7 +51,7 @@ const Source = ({ children }) => <div style={S.source}>SOURCE · {children}</div
 
 // Stat tile: big serif number, small label, matching the Monitor scorecard grammar.
 const Stat = ({ v, l, color = '#fff' }) => (
-  <div style={{ borderLeft: `2px solid ${BLUE}55`, paddingLeft: 12 }}>
+  <div style={{ borderLeft: `2px solid ${alpha(BLUE, 33)}`, paddingLeft: 12 }}>
     <div style={{ fontFamily: "'Lora', Georgia, serif", fontSize: 26, fontWeight: 500, color, lineHeight: 1.1, letterSpacing: '-0.01em' }}>{v}</div>
     <div style={{ fontSize: 11, color: GRAY, marginTop: 3, lineHeight: 1.45 }}>{l}</div>
   </div>

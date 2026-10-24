@@ -5,7 +5,7 @@
 // Files are served from public/ai-tools/<skill>/.
 import { useState } from 'react'
 import { FileText, Download, ExternalLink, Presentation, Package, BookOpen } from 'lucide-react'
-import { S, Eyebrow, Serif, Label, INK, INK2, GRAY, GOLD, PURPLE, BLUE, GREEN, MONO, PANEL_BORDER, PANEL_BG, LABEL, MUTED, TYPE } from './river/canon'
+import { S, Eyebrow, Serif, Label, INK, INK2, GRAY, GOLD, PURPLE, BLUE, GREEN, MONO, PANEL_BORDER, PANEL_BG, LABEL, MUTED, TYPE, alpha } from './river/canon'
 
 const PILLS = [{ id: 'skills', label: 'Skills Files' }]
 
@@ -46,7 +46,7 @@ const SKILLS = [
   },
 ]
 
-const btn = (color, filled = false) => ({ display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: MONO, fontSize: 10.5, letterSpacing: '0.08em', textTransform: 'uppercase', padding: '7px 12px', borderRadius: 999, cursor: 'pointer', border: `1px solid ${filled ? color : `${color}88`}`, background: filled ? `${color}22` : 'transparent', color, textDecoration: 'none' })
+const btn = (color, filled = false) => ({ display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: MONO, fontSize: 10.5, letterSpacing: '0.08em', textTransform: 'uppercase', padding: '7px 12px', borderRadius: 999, cursor: 'pointer', border: `1px solid ${filled ? color : `${alpha(color, 53)}`}`, background: filled ? `${alpha(color, 13)}` : 'transparent', color, textDecoration: 'none' })
 
 function SkillCard({ k }) {
   const href = (f) => `${k.base}/${encodeURIComponent(f)}`

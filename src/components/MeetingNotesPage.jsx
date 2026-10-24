@@ -10,7 +10,7 @@ import { supabase } from '../lib/supabase'
 import { matchNotes } from '../lib/meetings'
 import {
   INK, INK2, GRAY, PANEL_BG, PANEL_BORDER, GOLD, GOLD_BRIGHT, BLUE, PERIWINKLE, GREEN, MONO, SERIF,
-  S, Eyebrow, Stat, fmtDay, fmtTime, chiToday, chiDayOf, LABEL } from './river/canon'
+  S, Eyebrow, Stat, fmtDay, fmtTime, chiToday, chiDayOf, LABEL, alpha } from './river/canon'
 
 const DAYS_STEP = 30
 const MAX_ATTENDEES = 4
@@ -160,7 +160,7 @@ function snippetFor(sources, q) {
 
 /* -------------------- tiny markdown renderer -------------------- */
 const INLINE_RE = /(\*\*[^*]+\*\*)|(\[[^\]]+\]\([^)]+\))|(https?:\/\/[^\s)]+)/g
-const linkStyle = { color: PERIWINKLE, textDecoration: 'underline', textDecorationColor: `${PERIWINKLE}66`, textUnderlineOffset: 2 }
+const linkStyle = { color: PERIWINKLE, textDecoration: 'underline', textDecorationColor: `${alpha(PERIWINKLE, 40)}`, textUnderlineOffset: 2 }
 
 function inline(text) {
   const parts = []

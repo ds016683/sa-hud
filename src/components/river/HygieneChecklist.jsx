@@ -6,7 +6,7 @@ import { useState } from 'react'
 import { Check, RotateCcw, X } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { HYGIENE_ITEMS } from '../../constants/hygiene'
-import { S, Panel, Label, GRAY, INK2, GOLD, GREEN, RED, PANEL_BORDER, MONO, chiToday, fmtTime } from './canon'
+import { S, Panel, Label, GRAY, INK2, GOLD, GREEN, RED, PANEL_BORDER, MONO, chiToday, fmtTime, alpha } from './canon'
 
 const CTRL = { fontSize: 12, padding: '7px 10px', borderRadius: 8, border: `1px solid ${PANEL_BORDER}`, background: 'rgba(255,255,255,0.05)', color: '#EAF1F8' }
 const BTN = { ...CTRL, display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer' }
@@ -17,7 +17,7 @@ function CheckBox({ on }) {
   return (
     <span style={{
       width: 18, height: 18, borderRadius: 999, flex: '0 0 18px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-      border: `1px solid ${on ? GREEN : 'rgba(255,255,255,0.25)'}`, background: on ? `${GREEN}22` : 'transparent',
+      border: `1px solid ${on ? GREEN : 'rgba(255,255,255,0.25)'}`, background: on ? `${alpha(GREEN, 13)}` : 'transparent',
     }}>{on && <Check size={12} color={GREEN} />}</span>
   )
 }

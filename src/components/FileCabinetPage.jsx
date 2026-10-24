@@ -7,9 +7,9 @@
 import { useCallback, useEffect, useState } from 'react'
 import { FolderOpen, Folder, FileText, Upload, FolderPlus, ArrowRight, Pencil, Trash2, Search, ChevronRight, Inbox, Sparkles, ExternalLink, User, Building2, Car, Archive as ArchiveIcon, Image as ImageIcon } from 'lucide-react'
 import { list, openUrl, pdfUrl, appUrl, upload, makeFolder, move, remove, walk, seedStructure, REALMS, fmtSize } from '../lib/cabinet'
-import { INK, INK2, GRAY, PANEL_BORDER, GOLD, GOLD_BRIGHT, BLUE, RED, PURPLE, MONO, SERIF, S, Panel, Label, LABEL } from './river/canon'
+import { INK, INK2, GRAY, PANEL_BORDER, GOLD, GOLD_BRIGHT, BLUE, RED, PURPLE, MONO, SERIF, S, Panel, Label, LABEL, alpha } from './river/canon'
 import { hudPrompt, hudConfirm } from '../lib/dialog'
-const btn = (color = INK2, filled = false, extra = {}) => ({ display: 'inline-flex', alignItems: 'center', gap: 5, fontFamily: MONO, fontSize: 9.5, letterSpacing: '1px', textTransform: 'uppercase', padding: '5px 9px', borderRadius: 8, border: `1px solid ${filled ? color : `${color}66`}`, background: filled ? color : 'transparent', color: filled ? '#0A1B2B' : color, cursor: 'pointer', ...extra })
+const btn = (color = INK2, filled = false, extra = {}) => ({ display: 'inline-flex', alignItems: 'center', gap: 5, fontFamily: MONO, fontSize: 9.5, letterSpacing: '1px', textTransform: 'uppercase', padding: '5px 9px', borderRadius: 8, border: `1px solid ${filled ? color : `${alpha(color, 40)}`}`, background: filled ? color : 'transparent', color: filled ? 'var(--hud-on-accent)' : color, cursor: 'pointer', ...extra })
 const field = { background: 'rgba(255,255,255,0.05)', border: `1px solid ${PANEL_BORDER}`, borderRadius: 8, color: INK, padding: '7px 10px', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }
 const fmtWhen = (iso) => iso ? new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : ''
 const realmColor = (path) => path.startsWith('Personal') ? GOLD : path.startsWith('Third Horizon') ? PURPLE : path.startsWith('inbox') ? BLUE : INK2
@@ -24,7 +24,7 @@ export const CARS = { current: 'Personal/Vehicles/Current', past: 'Personal/Vehi
 
 function Door({ d, onOpen }) {
   return (
-    <button onClick={() => onOpen(d.path)} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 14, height: 180, borderRadius: 16, cursor: 'pointer', border: `1px solid ${d.color}55`, background: `${d.color}0d`, color: INK }}>
+    <button onClick={() => onOpen(d.path)} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 14, height: 180, borderRadius: 16, cursor: 'pointer', border: `1px solid ${alpha(d.color, 33)}`, background: `${alpha(d.color, 5)}`, color: INK }}>
       <d.Icon size={40} color={d.color} strokeWidth={1.4} />
       <span style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 20, letterSpacing: '-0.01em' }}>{d.label}</span>
     </button>
@@ -32,7 +32,7 @@ function Door({ d, onOpen }) {
 }
 function IconTile({ Icon: TileIcon, label, sub, color, onOpen }) {
   return (
-    <button onClick={onOpen} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 10, height: 140, borderRadius: 14, cursor: 'pointer', border: `1px solid ${color}55`, background: `${color}0d`, color: INK }}>
+    <button onClick={onOpen} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 10, height: 140, borderRadius: 14, cursor: 'pointer', border: `1px solid ${alpha(color, 33)}`, background: `${alpha(color, 5)}`, color: INK }}>
       <TileIcon size={30} color={color} strokeWidth={1.4} />
       <span style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 16 }}>{label}</span>
       {sub && <span style={{ fontFamily: MONO, fontSize: 10.5, letterSpacing: '0.8px', color: LABEL, textTransform: 'uppercase' }}>{sub}</span>}
@@ -45,7 +45,7 @@ function CarCard({ folder, onOpen, tick }) {
   const [count, setCount] = useState(null)
   useEffect(() => { let alive = true; (async () => { try { const { files } = await list(folder.path); if (!alive) return; setCount(files.filter(f => f.name !== CARS.cover).length); if (files.some(f => f.name === CARS.cover)) setImg(await openUrl(`${folder.path}/${CARS.cover}`)) } catch { /* no cover */ } })(); return () => { alive = false } }, [folder.path, tick])
   return (
-    <button onClick={() => onOpen(folder.path)} style={{ display: 'flex', flexDirection: 'column', borderRadius: 16, overflow: 'hidden', cursor: 'pointer', border: `1px solid ${GOLD}55`, background: 'rgba(255,255,255,0.03)', color: INK, padding: 0, textAlign: 'left' }}>
+    <button onClick={() => onOpen(folder.path)} style={{ display: 'flex', flexDirection: 'column', borderRadius: 16, overflow: 'hidden', cursor: 'pointer', border: `1px solid ${alpha(GOLD, 33)}`, background: 'rgba(255,255,255,0.03)', color: INK, padding: 0, textAlign: 'left' }}>
       <div style={{ height: 190, background: img ? `url("${img}") center/cover no-repeat` : 'rgba(255,255,255,0.04)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         {!img && <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, color: GRAY }}><ImageIcon size={26} strokeWidth={1.4} /><span style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '0.8px', textTransform: 'uppercase' }}>send Lumen a photo for the cover</span></div>}
       </div>

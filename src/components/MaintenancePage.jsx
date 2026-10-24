@@ -10,7 +10,7 @@ import { HYGIENE_ITEMS, HYGIENE_KEYS } from '../constants/hygiene'
 import { MEDICATIONS, dueOn } from '../constants/medications'
 import HygieneChecklist from './river/HygieneChecklist'
 import RegimenChecklist from './river/RegimenChecklist'
-import { S, Eyebrow, Panel, Stat, Label, GRAY, INK2, GOLD, GREEN, BLUE, PURPLE, PERIWINKLE, RED, PANEL_BORDER, MONO, chiToday, fmtTime, LABEL } from './river/canon'
+import { S, Eyebrow, Panel, Stat, Label, GRAY, INK2, GOLD, GREEN, BLUE, PURPLE, PERIWINKLE, RED, PANEL_BORDER, MONO, chiToday, fmtTime, LABEL, alpha } from './river/canon'
 
 // ---------- constants ----------
 const TOP_PILLS = [
@@ -364,7 +364,7 @@ function WorkoutCard({ w }) {
       </div>
       {groups.map(g => (
         <div key={g.id} style={{ display: 'flex', gap: 12, alignItems: 'flex-start', marginBottom: 6 }}>
-          <span style={{ ...S.chip(`${g.color}22`, g.color), marginTop: 4, minWidth: 48, justifyContent: 'center' }}>{g.label}</span>
+          <span style={{ ...S.chip(`${alpha(g.color, 13)}`, g.color), marginTop: 4, minWidth: 48, justifyContent: 'center' }}>{g.label}</span>
           <table style={{ borderCollapse: 'collapse', flex: 1 }}>
             <tbody>
               {g.rows.map((e, i) => (

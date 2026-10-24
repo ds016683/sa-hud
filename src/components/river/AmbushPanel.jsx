@@ -8,12 +8,12 @@ import { useCallback, useEffect, useState } from 'react'
 import { Zap, Phone, Play, Swords, X as XIcon } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { fetchLoadout, addImpromptu, extract, fmtClock, DAVID } from '../../lib/loadout'
-import { INK, INK2, GRAY, PANEL_BORDER, GOLD, GOLD_BRIGHT, BLUE, GREEN, RED, MONO, SERIF, S, Eyebrow, Label, Panel } from './canon'
+import { INK, INK2, GRAY, PANEL_BORDER, GOLD, GOLD_BRIGHT, BLUE, GREEN, RED, MONO, SERIF, S, Eyebrow, Label, Panel, alpha } from './canon'
 import { hudPrompt } from '../../lib/dialog'
 const btn = (color = INK2, filled = false) => ({
   display: 'inline-flex', alignItems: 'center', gap: 5, fontFamily: MONO, fontSize: 9.5, letterSpacing: '1px', textTransform: 'uppercase',
-  padding: '5px 9px', borderRadius: 8, border: `1px solid ${filled ? color : `${color}66`}`, background: filled ? color : 'transparent',
-  color: filled ? '#0A1B2B' : color, cursor: 'pointer',
+  padding: '5px 9px', borderRadius: 8, border: `1px solid ${filled ? color : `${alpha(color, 40)}`}`, background: filled ? color : 'transparent',
+  color: filled ? 'var(--hud-on-accent)' : color, cursor: 'pointer',
 })
 const field = { width: '100%', background: 'rgba(255,255,255,0.05)', border: `1px solid ${PANEL_BORDER}`, borderRadius: 8, color: INK, padding: '8px 10px', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }
 const RED_ORANGE = '#E8836F'

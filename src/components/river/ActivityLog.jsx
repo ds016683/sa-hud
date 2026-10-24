@@ -4,11 +4,11 @@
 import { useEffect, useMemo, useState } from 'react'
 import { ChevronLeft, ChevronRight, Check, X as XIcon } from 'lucide-react'
 import { fetchDay, build, KINDS, shiftDay } from '../../lib/activity'
-import { INK, GRAY, PANEL_BORDER, GREEN, MONO, SERIF, S, Label, chiToday, fmtTime, fmtDay, LABEL } from './canon'
+import { INK, GRAY, PANEL_BORDER, GREEN, MONO, SERIF, S, Label, chiToday, fmtTime, fmtDay, LABEL, alpha } from './canon'
 
 export const KindChip = ({ kind }) => {
   const c = (KINDS[kind] || KINDS.Activity).color
-  return <span style={{ ...S.chip('transparent', c), border: `1px solid ${c}55`, fontFamily: MONO, fontWeight: 600, fontSize: 9, letterSpacing: '1px', padding: '2px 7px' }}>{kind}</span>
+  return <span style={{ ...S.chip('transparent', c), border: `1px solid ${alpha(c, 33)}`, fontFamily: MONO, fontWeight: 600, fontSize: 9, letterSpacing: '1px', padding: '2px 7px' }}>{kind}</span>
 }
 
 export function TimelineRow({ r, last }) {
@@ -17,7 +17,7 @@ export function TimelineRow({ r, last }) {
     <div style={{ display: 'grid', gridTemplateColumns: '64px 14px 1fr', gap: 10, alignItems: 'start' }}>
       <div style={{ fontFamily: MONO, fontSize: 10.5, color: GRAY, letterSpacing: '0.6px', paddingTop: 5, textAlign: 'right' }}>{fmtTime(r.at)}</div>
       <div style={{ position: 'relative', alignSelf: 'stretch' }}>
-        <div style={{ position: 'absolute', left: 6, top: 8, width: 6, height: 6, borderRadius: 99, background: c, boxShadow: `0 0 0 3px ${c}22` }} />
+        <div style={{ position: 'absolute', left: 6, top: 8, width: 6, height: 6, borderRadius: 99, background: c, boxShadow: `0 0 0 3px ${alpha(c, 13)}` }} />
         {!last && <div style={{ position: 'absolute', left: 8.5, top: 18, bottom: -6, width: 1, background: PANEL_BORDER }} />}
       </div>
       <div style={{ paddingBottom: 14 }}>

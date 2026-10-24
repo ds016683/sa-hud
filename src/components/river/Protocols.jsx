@@ -10,12 +10,12 @@ import { useCallback, useEffect, useState } from 'react'
 import { Check, ExternalLink, AlertTriangle, Eye, X as XIcon, ListChecks } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { hudPrompt } from '../../lib/dialog'
-import { INK, INK2, GRAY, PANEL_BORDER, BLUE, GREEN, RED, GOLD, MONO, SERIF, LABEL, Label } from './canon'
+import { INK, INK2, GRAY, PANEL_BORDER, BLUE, GREEN, RED, GOLD, MONO, SERIF, LABEL, Label, alpha } from './canon'
 
-const NAVY_DEEP = '#0A1B2B'
+const NAVY_DEEP = 'var(--hud-on-accent)'
 const fmtWhen = (iso) => iso ? new Date(iso).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZone: 'America/Chicago' }) : ''
 import { PROTOCOLS, protocolOf, isOpenRow } from '../../lib/protocols'
-const btn = (color = INK2, filled = false) => ({ display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: MONO, fontSize: 9.5, letterSpacing: '1px', textTransform: 'uppercase', padding: '5px 11px', borderRadius: 8, border: `1px solid ${filled ? color : `${color}66`}`, background: filled ? color : 'transparent', color: filled ? NAVY_DEEP : color, cursor: 'pointer', flexShrink: 0 })
+const btn = (color = INK2, filled = false) => ({ display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: MONO, fontSize: 9.5, letterSpacing: '1px', textTransform: 'uppercase', padding: '5px 11px', borderRadius: 8, border: `1px solid ${filled ? color : `${alpha(color, 40)}`}`, background: filled ? color : 'transparent', color: filled ? NAVY_DEEP : color, cursor: 'pointer', flexShrink: 0 })
 
 function Mark({ status }) {
   const base = { width: 18, height: 18, borderRadius: '50%', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }
@@ -91,7 +91,7 @@ function BriefingRow({ r, onAnswer, onRule }) {
         {r.status === 'flagged' && r.flag_reason && <div style={{ fontSize: 12, color: RED, opacity: 0.85, marginTop: 3, lineHeight: 1.5 }}>{r.flag_reason}</div>}
         {answering && (
           <div style={{ marginTop: 8, display: 'grid', gap: 6 }}>
-            <textarea autoFocus value={text} onChange={e => setText(e.target.value)} rows={3} placeholder="Your answer, in your words. The session records it as the fill." style={{ width: '100%', boxSizing: 'border-box', background: 'rgba(255,255,255,0.05)', border: `1px solid ${BLUE}66`, borderRadius: 8, color: INK, padding: '8px 10px', fontSize: 13.5, fontFamily: 'inherit', lineHeight: 1.5, resize: 'vertical' }} />
+            <textarea autoFocus value={text} onChange={e => setText(e.target.value)} rows={3} placeholder="Your answer, in your words. The session records it as the fill." style={{ width: '100%', boxSizing: 'border-box', background: 'rgba(255,255,255,0.05)', border: `1px solid ${alpha(BLUE, 40)}`, borderRadius: 8, color: INK, padding: '8px 10px', fontSize: 13.5, fontFamily: 'inherit', lineHeight: 1.5, resize: 'vertical' }} />
             <div style={{ display: 'flex', gap: 8 }}><button onClick={() => { if (text.trim()) { onAnswer(r, text.trim()); setAnswering(false); setText('') } }} style={btn(GREEN, true)}><Check size={11} /> Save Answer</button><button onClick={() => setAnswering(false)} style={btn(INK2)}>Cancel</button></div>
           </div>
         )}
@@ -142,7 +142,7 @@ export default function ProtocolsTab({ objectiveId }) {
             </div>
             {def.sub && <div style={{ fontSize: 12.5, color: GRAY, marginBottom: 6 }}>{def.sub}</div>}
             <div style={{ fontFamily: MONO, fontSize: 12, letterSpacing: '1px', color: pct === 100 ? GREEN : GOLD, marginBottom: 8 }}>{bar} {closed} of {g.rows.length} · {pct}%</div>
-            {g.key === 'briefing' && asked && <div style={{ fontSize: 13, color: INK, marginBottom: 8, padding: '8px 12px', border: `1px solid ${BLUE}55`, borderRadius: 8, background: 'rgba(169,201,232,0.07)' }}><span style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '1.2px', textTransform: 'uppercase', color: BLUE, marginRight: 10 }}>The ask</span>{asked.entry}</div>}
+            {g.key === 'briefing' && asked && <div style={{ fontSize: 13, color: INK, marginBottom: 8, padding: '8px 12px', border: `1px solid ${alpha(BLUE, 33)}`, borderRadius: 8, background: 'rgba(169,201,232,0.07)' }}><span style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '1.2px', textTransform: 'uppercase', color: BLUE, marginRight: 10 }}>The ask</span>{asked.entry}</div>}
             {g.rows.map(r => g.key === 'briefing'
               ? <BriefingRow key={r.id} r={r} onAnswer={answer} onRule={rule} />
               : <EditingRow key={r.id} r={r} onInspect={setInspect} />)}

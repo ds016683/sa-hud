@@ -8,13 +8,13 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { Eraser, Undo2, Trash2, Save, Image as ImageIcon, Pen, FilePlus } from 'lucide-react'
 import { putLiveFile, listLiveFiles, openLiveFile, fmtStamp } from '../lib/livefiles'
 import { fetchLoadout, fetchStash } from '../lib/loadout'
-import { S, Eyebrow, Serif, Label, INK, INK2, GRAY, GOLD, BLUE, GREEN, RED, PURPLE, MONO, PANEL_BORDER, LABEL } from './river/canon'
+import { S, Eyebrow, Serif, Label, INK, INK2, GRAY, GOLD, BLUE, GREEN, RED, PURPLE, MONO, PANEL_BORDER, LABEL, alpha } from './river/canon'
 import { hudConfirm } from '../lib/dialog'
 const COLORS = [['Ink', '#EAF1F8'], ['Gold', GOLD], ['Blue', BLUE], ['Green', GREEN], ['Red', RED], ['Purple', PURPLE]]
 const WIDTHS = [2, 4, 7, 12]
 const PAPER = '#132B42'
 const LS = 'hud-scratchpad-v1'
-const btn = (color = INK2, on = false) => ({ display: 'inline-flex', alignItems: 'center', gap: 5, fontFamily: MONO, fontSize: 10, letterSpacing: '1px', textTransform: 'uppercase', padding: '7px 10px', borderRadius: 8, border: `1px solid ${on ? color : `${color}55`}`, background: on ? `${color}22` : 'transparent', color, cursor: 'pointer' })
+const btn = (color = INK2, on = false) => ({ display: 'inline-flex', alignItems: 'center', gap: 5, fontFamily: MONO, fontSize: 10, letterSpacing: '1px', textTransform: 'uppercase', padding: '7px 10px', borderRadius: 8, border: `1px solid ${on ? color : `${alpha(color, 33)}`}`, background: on ? `${alpha(color, 13)}` : 'transparent', color, cursor: 'pointer' })
 
 export default function ScratchpadPage() {
   const canvasRef = useRef(null)
@@ -222,7 +222,7 @@ export default function ScratchpadPage() {
       <div style={{ fontSize: 13.5, color: INK2, margin: '6px 0 14px', maxWidth: '72ch' }}>Pencil on the iPad, mouse on the Mac. Drop or paste a screenshot to mark it up. Save collates every page into one PDF in Live Files, tied to an item if you pick one, and the next Claude session is told a sketch is waiting.</div>
 
       <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginBottom: 10 }}>
-        {COLORS.map(([n, c]) => <button key={n} onClick={() => { setColor(c); setEraser(false) }} title={n} style={{ width: 26, height: 26, borderRadius: 99, background: c, border: `2px solid ${color === c && !eraser ? '#fff' : 'transparent'}`, cursor: 'pointer', boxShadow: color === c && !eraser ? `0 0 0 2px ${c}66` : 'none' }} />)}
+        {COLORS.map(([n, c]) => <button key={n} onClick={() => { setColor(c); setEraser(false) }} title={n} style={{ width: 26, height: 26, borderRadius: 99, background: c, border: `2px solid ${color === c && !eraser ? '#fff' : 'transparent'}`, cursor: 'pointer', boxShadow: color === c && !eraser ? `0 0 0 2px ${alpha(c, 40)}` : 'none' }} />)}
         <span style={{ width: 1, height: 22, background: PANEL_BORDER, margin: '0 4px' }} />
         {WIDTHS.map(w => <button key={w} onClick={() => setWidth(w)} title={`${w}px`} style={{ ...btn(width === w ? BLUE : INK2, width === w), padding: '4px 8px' }}><span style={{ display: 'inline-block', width: Math.min(18, w * 2 + 4), height: Math.min(18, w * 2 + 4), borderRadius: 99, background: width === w ? BLUE : INK2 }} /></button>)}
         <span style={{ width: 1, height: 22, background: PANEL_BORDER, margin: '0 4px' }} />
@@ -232,7 +232,7 @@ export default function ScratchpadPage() {
         <label style={btn(BLUE)}><ImageIcon size={12} /> Screenshot<input type="file" accept="image/*" style={{ display: 'none' }} onChange={e => { loadImage(e.target.files?.[0]); e.target.value = '' }} /></label>
         <button onClick={clear} style={btn(RED)}><Trash2 size={12} /> Clear</button>
         <span style={{ flex: 1 }} />
-        <select value={tie} onChange={e => setTie(e.target.value)} style={{ background: '#0A1B2B', color: INK, border: `1px solid ${PANEL_BORDER}`, borderRadius: 8, padding: '6px 8px', fontSize: 12.5, maxWidth: 300 }}>
+        <select value={tie} onChange={e => setTie(e.target.value)} style={{ background: 'var(--hud-on-accent)', color: INK, border: `1px solid ${PANEL_BORDER}`, borderRadius: 8, padding: '6px 8px', fontSize: 12.5, maxWidth: 300 }}>
           <option value="">Tied to nothing yet</option>
           {items.map(it => <option key={it.id} value={it.id}>{it.label}</option>)}
         </select>

@@ -3,7 +3,7 @@ import { Plus, RefreshCw, Save, ChevronRight, X } from 'lucide-react'
 import { readArtifact, writeArtifact } from '../../lib/artifacts'
 import { Waterfall, ItemModal } from '../ClientsPage'
 import { MMA_DOMAINS, PROGRAM_LANE, PLAN_LANES, PLAN_VIEWS } from '../../constants/domains'
-import { INK, INK2, GRAY, LABEL, MUTED, NAVY_DEEP, PANEL_BORDER, BLUE, GREEN, RED, MONO, SERIF, SubLabel } from './canon'
+import { INK, INK2, GRAY, LABEL, MUTED, NAVY_DEEP, PANEL_BORDER, BLUE, GREEN, RED, MONO, SERIF, SubLabel, alpha } from './canon'
 
 // =============================================================================
 // Planning (David, 10/23): the strategy planning waterfall on the Mission Card,
@@ -27,7 +27,7 @@ export function DomainStrip({ counts = {}, active, onPick }) {
       {MMA_DOMAINS.map(d => {
         const Icon = d.icon; const on = active === d.id
         return (
-          <button key={d.id} onClick={() => onPick && onPick(on ? null : d.id)} title={d.line} style={{ textAlign: 'left', cursor: 'pointer', fontFamily: 'inherit', borderRadius: 10, padding: '10px 11px', background: on ? `${d.color}22` : 'rgba(255,255,255,0.03)', border: `1px solid ${on ? d.color : PANEL_BORDER}`, borderTop: `3px solid ${d.color}`, color: INK, display: 'grid', gap: 6 }}>
+          <button key={d.id} onClick={() => onPick && onPick(on ? null : d.id)} title={d.line} style={{ textAlign: 'left', cursor: 'pointer', fontFamily: 'inherit', borderRadius: 10, padding: '10px 11px', background: on ? `${alpha(d.color, 13)}` : 'rgba(255,255,255,0.03)', border: `1px solid ${on ? d.color : PANEL_BORDER}`, borderTop: `3px solid ${d.color}`, color: INK, display: 'grid', gap: 6 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <span style={{ width: 26, height: 26, borderRadius: 7, background: d.color, color: NAVY_DEEP, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><Icon size={14} /></span>
               <span style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '1.4px', color: d.color }}>{d.code} · {d.n}</span>

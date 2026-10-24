@@ -6,7 +6,7 @@ import { X as XIcon, Check, ExternalLink } from 'lucide-react'
 import BadgeMedallion from '../BadgeArt'
 import { missionSummary, fmtDay } from '../../lib/summary'
 import { signedUrl } from '../../lib/archive'
-import { INK, INK2, GRAY, PANEL_BORDER, GOLD, GREEN, BLUE, MONO, SERIF, S, KindIcon, Label, NORTH_STAR_LABEL, LABEL } from './canon'
+import { INK, INK2, GRAY, PANEL_BORDER, GOLD, GREEN, BLUE, MONO, SERIF, S, KindIcon, Label, NORTH_STAR_LABEL, LABEL, alpha } from './canon'
 import DocView from './DocView'
 import SessionBoard from './SessionBoard'
 
@@ -21,7 +21,7 @@ export default function YayPage({ objectiveId, onClose, fresh = false, onOpenMis
   const color = m ? m.color : GOLD
   return (
     <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 300, background: 'rgba(5,16,28,0.86)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16, overflowY: 'auto' }}>
-      <div onClick={e => e.stopPropagation()} style={{ width: 'min(720px, 100%)', maxHeight: '92vh', overflowY: 'auto', background: '#0F2338', border: `1px solid ${color}55`, borderRadius: 16, padding: '34px 32px 26px', boxShadow: `0 0 60px -20px ${color}` }}>
+      <div onClick={e => e.stopPropagation()} style={{ width: 'min(720px, 100%)', maxHeight: '92vh', overflowY: 'auto', background: '#0F2338', border: `1px solid ${alpha(color, 33)}`, borderRadius: 16, padding: '34px 32px 26px', boxShadow: `0 0 60px -20px ${color}` }}>
         {err && <div style={{ fontFamily: MONO, fontSize: 10, color: '#E8836F', letterSpacing: '1px', textTransform: 'uppercase' }}>{err}</div>}
         {!m && !err && <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '1.4px', textTransform: 'uppercase', color: LABEL }}>Reading the Ledger</div>}
         {reading && (
@@ -71,7 +71,7 @@ export default function YayPage({ objectiveId, onClose, fresh = false, onOpenMis
                 <div style={{ display: 'grid', gap: 5 }}>
                   {m.gates.map((g, i) => (
                     <div key={i} style={{ display: 'flex', gap: 10, alignItems: 'flex-start', fontSize: 13.5, color: g.done ? INK2 : GRAY }}>
-                      <span style={{ width: 16, height: 16, borderRadius: 99, flexShrink: 0, marginTop: 2, background: g.done ? GREEN : 'transparent', border: g.done ? 'none' : '1.5px solid rgba(234,241,248,0.3)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>{g.done && <Check size={10} color="#0A1B2B" />}</span>
+                      <span style={{ width: 16, height: 16, borderRadius: 99, flexShrink: 0, marginTop: 2, background: g.done ? GREEN : 'transparent', border: g.done ? 'none' : '1.5px solid rgba(234,241,248,0.3)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>{g.done && <Check size={10} color='var(--hud-on-accent)' />}</span>
                       <span style={{ flex: 1 }}>{g.text}</span>
                       <span style={{ fontFamily: MONO, fontSize: 10, color: GRAY, whiteSpace: 'nowrap' }}>{g.done_at ? fmtDay(g.done_at) : ''}</span>
                     </div>

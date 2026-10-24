@@ -21,9 +21,9 @@ import { fmtStamp, listLiveFiles, listEvidence, openLiveFile, isRequest, isLink 
 import ProtocolsTab from './Protocols'
 import { isOpenRow } from '../../lib/protocols'
 import FilesTab from './Files'
-import { INK, INK2, GRAY, PANEL_BORDER, GOLD, GOLD_BRIGHT, BLUE, GREEN, RED, MONO, SERIF, S, Label, KIND_COLOR, KindIcon, NORTH_STAR_LABEL, NORTH_STAR_ASK, LABEL, PURPLE } from './canon'
+import { INK, INK2, GRAY, PANEL_BORDER, GOLD, GOLD_BRIGHT, BLUE, GREEN, RED, MONO, SERIF, S, Label, KIND_COLOR, KindIcon, NORTH_STAR_LABEL, NORTH_STAR_ASK, LABEL, PURPLE, alpha } from './canon'
 
-const NAVY_DEEP = '#0A1B2B'
+const NAVY_DEEP = 'var(--hud-on-accent)'
 const TABS = ['overview', 'protocols', 'files', 'notes']
 const TAB_LABEL = { overview: 'Briefing', protocols: 'Live Protocols', files: 'Files', notes: 'Notes' }
 // Deep links and callers from before 10/23 still name the old pills.
@@ -43,7 +43,7 @@ function Pill({ active, children, onClick, count }) {
 }
 const btn = (color = INK2, filled = false) => ({
   display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: MONO, fontSize: 9.5, letterSpacing: '1px', textTransform: 'uppercase',
-  padding: '6px 11px', borderRadius: 8, border: `1px solid ${filled ? color : `${color}66`}`, background: filled ? color : 'transparent', color: filled ? NAVY_DEEP : color, cursor: 'pointer',
+  padding: '6px 11px', borderRadius: 8, border: `1px solid ${filled ? color : `${alpha(color, 40)}`}`, background: filled ? color : 'transparent', color: filled ? NAVY_DEEP : color, cursor: 'pointer',
 })
 const rowStyle = { display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0', borderTop: `1px solid ${PANEL_BORDER}` }
 const None = ({ what }) => <div style={{ fontSize: 13, color: GRAY, padding: '14px 0' }}>This {what.item} doesn't call for {what.thing}.</div>
@@ -368,7 +368,7 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
                     {max > 0 && rel.steps === null && <div style={{ fontSize: 12.5, color: GRAY }}>Steps are not set up yet. Run sql/2026-10-07-side-missions-archive.sql in the Ledger and they appear here.</div>}
                     {max > 0 && Array.isArray(rel.steps) && rel.steps.map((st, i) => (
                       <div key={st.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 0', borderTop: `1px solid ${PANEL_BORDER}` }}>
-                        <button onClick={() => toggleStep(st.id, !st.done).then(load)} aria-label={st.done ? 'Undo' : 'Done'} style={{ width: 18, height: 18, borderRadius: 999, border: `1px solid ${st.done ? GREEN : 'rgba(255,255,255,0.3)'}`, background: st.done ? `${GREEN}22` : 'transparent', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>{st.done && <Check size={11} color={GREEN} />}</button>
+                        <button onClick={() => toggleStep(st.id, !st.done).then(load)} aria-label={st.done ? 'Undo' : 'Done'} style={{ width: 18, height: 18, borderRadius: 999, border: `1px solid ${st.done ? GREEN : 'rgba(255,255,255,0.3)'}`, background: st.done ? `${alpha(GREEN, 13)}` : 'transparent', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>{st.done && <Check size={11} color={GREEN} />}</button>
                         <span style={{ fontFamily: MONO, fontSize: 10, color: GOLD, width: 14 }}>{i + 1}</span>
                         <span style={{ flex: 1, fontSize: 14, color: st.done ? GRAY : INK, textDecoration: st.done ? 'line-through' : 'none' }}>{st.text}</span>
                         {st.done_at && <span style={{ fontFamily: MONO, fontSize: 9.5, color: GRAY }}>{chiTime(st.done_at)}</span>}
@@ -425,7 +425,7 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
                   <Label>Session Board</Label>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', fontSize: 13, color: GRAY }}>
                     <span>No Claude board is tied to this {what.item} yet. Tie the session that is working it:</span>
-                    <select defaultValue="" onChange={e => { const b = recentBoards.find(x => x.id === e.target.value); if (b) tieBoard(b) }} style={{ background: '#0A1B2B', color: INK, border: `1px solid ${PANEL_BORDER}`, borderRadius: 7, padding: '4px 8px', fontSize: 12, maxWidth: 360 }}>
+                    <select defaultValue="" onChange={e => { const b = recentBoards.find(x => x.id === e.target.value); if (b) tieBoard(b) }} style={{ background: 'var(--hud-on-accent)', color: INK, border: `1px solid ${PANEL_BORDER}`, borderRadius: 7, padding: '4px 8px', fontSize: 12, maxWidth: 360 }}>
                       <option value="">Pick a recent board…</option>
                       {recentBoards.map(b => <option key={b.id} value={b.id}>{b.project} · {b.title}</option>)}
                     </select>

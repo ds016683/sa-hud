@@ -8,7 +8,7 @@ import { useState } from 'react'
 import { Check, RotateCcw, X } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { MEDICATIONS, dueOn } from '../../constants/medications'
-import { S, Panel, Label, GRAY, INK2, GOLD, GREEN, RED, PERIWINKLE, PANEL_BORDER, MONO, chiToday, fmtTime } from './canon'
+import { S, Panel, Label, GRAY, INK2, GOLD, GREEN, RED, PERIWINKLE, PANEL_BORDER, MONO, chiToday, fmtTime, alpha } from './canon'
 
 const CTRL = { fontSize: 12, padding: '7px 10px', borderRadius: 8, border: `1px solid ${PANEL_BORDER}`, background: 'rgba(255,255,255,0.05)', color: '#EAF1F8' }
 const BTN = { ...CTRL, display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer' }
@@ -33,7 +33,7 @@ function Ring({ on }) {
   return (
     <span style={{
       width: 18, height: 18, borderRadius: 999, flex: '0 0 18px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-      border: `1px solid ${on ? GREEN : 'rgba(255,255,255,0.25)'}`, background: on ? `${GREEN}22` : 'transparent',
+      border: `1px solid ${on ? GREEN : 'rgba(255,255,255,0.25)'}`, background: on ? `${alpha(GREEN, 13)}` : 'transparent',
     }}>{on && <Check size={12} color={GREEN} />}</span>
   )
 }
@@ -141,7 +141,7 @@ export default function RegimenChecklist({ logs, overrides, days, friendly, onCh
                     <span style={{ fontSize: 13.5, color: taken ? INK2 : '#EAF1F8' }}>{med.label}</span>
                     {asNeeded && <span style={S.chip('rgba(255,255,255,0.06)', GRAY)}>as needed</span>}
                     {!asNeeded && !due && !taken && <span style={S.chip('rgba(255,255,255,0.06)', GRAY)}>not today</span>}
-                    {moved && <span title={ov.note || undefined} style={S.chip(`${PERIWINKLE}22`, PERIWINKLE)}>moved</span>}
+                    {moved && <span title={ov.note || undefined} style={S.chip(`${alpha(PERIWINKLE, 13)}`, PERIWINKLE)}>moved</span>}
                   </div>
                   <div style={{ fontSize: 11, color: GRAY, marginTop: 2 }}>{[med.dose, med.route, med.when].filter(Boolean).join(' · ')}</div>
                 </div>
@@ -178,7 +178,7 @@ export default function RegimenChecklist({ logs, overrides, days, friendly, onCh
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                   <input value={moveNote} onChange={e => setMoveNote(e.target.value)} placeholder="Note (optional)" style={{ ...CTRL, flex: '1 1 200px' }} />
                   <button onClick={() => setOverride(med, false)} disabled={busy} style={{ ...BTN, color: due ? '#EAF1F8' : GRAY, opacity: busy ? 0.6 : 1 }}>Not today</button>
-                  <button onClick={() => setOverride(med, true)} disabled={busy} style={{ ...BTN, borderColor: `${PERIWINKLE}80`, color: PERIWINKLE, opacity: busy ? 0.6 : 1 }}>Today instead</button>
+                  <button onClick={() => setOverride(med, true)} disabled={busy} style={{ ...BTN, borderColor: `${alpha(PERIWINKLE, 50)}`, color: PERIWINKLE, opacity: busy ? 0.6 : 1 }}>Today instead</button>
                   {moved && <button onClick={() => setOverride(med, null)} disabled={busy} style={{ ...BTN, color: GRAY, opacity: busy ? 0.6 : 1 }}>Clear override</button>}
                   <button onClick={() => setMoveKey(null)} style={{ ...BTN, color: GRAY }}><X size={14} /></button>
                 </div>

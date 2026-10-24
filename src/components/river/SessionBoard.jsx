@@ -35,7 +35,7 @@ export default function SessionBoard({ board, onChange, compact = false, focusTa
   }
 
   const Mark = ({ t }) => {
-    if (t.status === 'done') return <span style={{ width: 20, height: 20, borderRadius: 99, background: GREEN, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><Check size={12} color="#0A1B2B" strokeWidth={3} /></span>
+    if (t.status === 'done') return <span style={{ width: 20, height: 20, borderRadius: 99, background: GREEN, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><Check size={12} color='var(--hud-on-accent)' strokeWidth={3} /></span>
     if (t.status === 'blocked') return <AlertCircle size={20} color={RED} style={{ flexShrink: 0 }} />
     return <span style={{ width: 20, height: 20, borderRadius: 99, border: `1.5px solid ${t.status === 'inmotion' ? GOLD : 'rgba(234,241,248,0.3)'}`, display: 'inline-block', flexShrink: 0 }} />
   }

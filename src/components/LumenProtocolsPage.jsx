@@ -4,7 +4,7 @@
 // change through Lumen (remember_rule), the persona through a session.
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
-import { S, Eyebrow, Serif, Label, INK, INK2, GRAY, GOLD, GREEN, RED, MONO, PANEL_BORDER, PANEL_BG, LABEL, MUTED, TYPE } from './river/canon'
+import { S, Eyebrow, Serif, Label, INK, INK2, GRAY, GOLD, GREEN, RED, MONO, PANEL_BORDER, PANEL_BG, LABEL, MUTED, TYPE, alpha } from './river/canon'
 
 const PILLS = [{ id: 'identity', label: 'Identity' }, { id: 'rules', label: 'Rules' }, { id: 'mail', label: 'Mail Protocol' }, { id: 'editing', label: 'Editing Protocol' }, { id: 'briefing', label: 'Briefing Protocol' }]
 
@@ -85,7 +85,7 @@ function Rules() {
 }
 
 function Mail() {
-  const chip = (c) => ({ fontFamily: MONO, fontSize: 11, letterSpacing: '0.08em', padding: '2px 8px', borderRadius: 6, border: `1px solid ${c}66`, color: c, background: `${c}14` })
+  const chip = (c) => ({ fontFamily: MONO, fontSize: 11, letterSpacing: '0.08em', padding: '2px 8px', borderRadius: 6, border: `1px solid ${alpha(c, 40)}`, color: c, background: `${alpha(c, 8)}` })
   return (
     <>
       <Block title="Who May Write To Lumen">
@@ -128,7 +128,7 @@ function Mail() {
 
 
 function Editing() {
-  const chip = (c) => ({ fontFamily: MONO, fontSize: 11, letterSpacing: '0.08em', padding: '2px 8px', borderRadius: 6, border: `1px solid ${c}66`, color: c, background: `${c}14` })
+  const chip = (c) => ({ fontFamily: MONO, fontSize: 11, letterSpacing: '0.08em', padding: '2px 8px', borderRadius: 6, border: `1px solid ${alpha(c, 40)}`, color: c, background: `${alpha(c, 8)}` })
   return (
     <>
       <Block title="What It Is">
@@ -168,7 +168,7 @@ function Editing() {
 }
 
 function Briefing() {
-  const chip = (c) => ({ fontFamily: MONO, fontSize: 11, letterSpacing: '0.08em', padding: '2px 8px', borderRadius: 6, border: `1px solid ${c}66`, color: c, background: `${c}14` })
+  const chip = (c) => ({ fontFamily: MONO, fontSize: 11, letterSpacing: '0.08em', padding: '2px 8px', borderRadius: 6, border: `1px solid ${alpha(c, 40)}`, color: c, background: `${alpha(c, 8)}` })
   return (
     <>
       <Block title="What It Is">

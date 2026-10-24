@@ -2,20 +2,20 @@
 // underneath, leaning into the dashboard aesthetic"). One square button per
 // timer or protocol, its reading or icon inside, the light at its corner, the
 // name under it. Groups sit side by side on the Console row.
-import { PANEL_BORDER, GREEN, INK, INK2, GRAY, MONO, SERIF, Label } from './canon'
+import { PANEL_BORDER, GREEN, INK, INK2, GRAY, MONO, SERIF, Label, alpha } from './canon'
 
 export const LEVEL_COLOR = { green: GREEN, gold: '#E6B54F', red: '#E8836F', gray: 'rgba(234,241,248,0.25)' }
 
 export function Instrument({ label, sub, reading, unit, icon, light, running, clock, tone = INK2, onClick, onLightClick, disabled, title, extra, width = 86 }) {
   const lc = light && light.level !== 'gray' ? (LEVEL_COLOR[light.level] || null) : null
   const anim = lc ? (light.blink ? 'inst-breathe-fast' : 'inst-breathe') : ''
-  const border = running ? GREEN : lc ? `${lc}99` : PANEL_BORDER
+  const border = running ? GREEN : lc ? `${alpha(lc, 60)}` : PANEL_BORDER
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width, gap: 6, opacity: disabled && !lc ? 0.45 : 1 }}>
       <button onClick={disabled ? undefined : onClick} title={title || label} className={running ? '' : anim} style={{
         position: 'relative', width: 70, height: 70, borderRadius: 16, cursor: disabled ? 'default' : 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 2, padding: 0,
         border: `1px solid ${border}`, background: running ? 'rgba(67,211,146,0.10)' : 'rgba(255,255,255,0.035)', color: INK,
-        boxShadow: running ? `0 0 0 3px ${GREEN}22` : 'inset 0 1px 0 rgba(255,255,255,0.04)', '--inst-glow': lc || 'transparent',
+        boxShadow: running ? `0 0 0 3px ${alpha(GREEN, 13)}` : 'inset 0 1px 0 rgba(255,255,255,0.04)', '--inst-glow': lc || 'transparent',
       }}>
         {light && onLightClick && <span onClick={(e) => { e.stopPropagation(); onLightClick() }} title={light.text} style={{ position: 'absolute', inset: 0, borderRadius: 16 }} />}
         {reading != null

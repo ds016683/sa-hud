@@ -19,7 +19,7 @@ import { Play, Square, Check, Plane, Pencil, CalendarCheck, Brain, Mail, Hash, R
 import { supabase } from '../../lib/supabase'
 import { upsertSession, logToHarvest, hoursBetween } from '../../lib/meetings'
 import { chiToday, fmtClock } from '../../lib/loadout'
-import { INK, INK2, GRAY, PANEL_BORDER, GOLD, GREEN, RED, BLUE, MONO, Label, fmtTime, LABEL } from './canon'
+import { INK, INK2, GRAY, PANEL_BORDER, GOLD, GREEN, RED, BLUE, MONO, Label, fmtTime, LABEL, alpha } from './canon'
 import { Instrument, InstrumentGroup, groupMsg } from './Instrument'
 import { hudPrompt, hudConfirm } from '../../lib/dialog'
 // Add a chore here and it appears as a card. slug is the Harvest note and
@@ -80,8 +80,8 @@ const chiToIso = (day, hhmm) => {
 
 const btn = (color = INK2, filled = false, extra = {}) => ({
   display: 'inline-flex', alignItems: 'center', gap: 5, fontFamily: MONO, fontSize: 9.5, letterSpacing: '1px', textTransform: 'uppercase',
-  padding: '5px 9px', borderRadius: 8, border: `1px solid ${filled ? color : `${color}66`}`, background: filled ? color : 'transparent',
-  color: filled ? '#0A1B2B' : color, cursor: 'pointer', ...extra,
+  padding: '5px 9px', borderRadius: 8, border: `1px solid ${filled ? color : `${alpha(color, 40)}`}`, background: filled ? color : 'transparent',
+  color: filled ? 'var(--hud-on-accent)' : color, cursor: 'pointer', ...extra,
 })
 const CTRL = { fontFamily: MONO, fontSize: 12, padding: '6px 8px', borderRadius: 8, border: `1px solid ${PANEL_BORDER}`, background: 'rgba(255,255,255,0.05)', color: INK }
 

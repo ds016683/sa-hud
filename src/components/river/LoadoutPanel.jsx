@@ -26,17 +26,17 @@ import { LiveProtocolsModal } from './Protocols'
 import { liveProtocolCounts } from '../../lib/protocols'
 import { liveCounts } from '../../lib/livefiles'
 import ItemDetail from './ItemDetail'
-import { INK, INK2, GRAY, PANEL_BORDER, GOLD, GOLD_BRIGHT, BLUE, GREEN, RED, MONO, SERIF, S, Eyebrow, Label, Panel, KIND_COLOR, KindChip, NORTH_STAR_LABEL, LABEL } from './canon'
+import { INK, INK2, GRAY, PANEL_BORDER, GOLD, GOLD_BRIGHT, BLUE, GREEN, RED, MONO, SERIF, S, Eyebrow, Label, Panel, KIND_COLOR, KindChip, NORTH_STAR_LABEL, LABEL, alpha } from './canon'
 
 const btn = (color = INK2, filled = false) => ({
   display: 'inline-flex', alignItems: 'center', gap: 5, fontFamily: MONO, fontSize: 9.5, letterSpacing: '1px', textTransform: 'uppercase',
-  padding: '5px 9px', borderRadius: 8, border: `1px solid ${filled ? color : `${color}66`}`, background: filled ? color : 'transparent',
-  color: filled ? '#0A1B2B' : color, cursor: 'pointer',
+  padding: '5px 9px', borderRadius: 8, border: `1px solid ${filled ? color : `${alpha(color, 40)}`}`, background: filled ? color : 'transparent',
+  color: filled ? 'var(--hud-on-accent)' : color, cursor: 'pointer',
 })
 
 const SizeChip = ({ size }) => {
   const s = SIZES[size] || SIZES.light
-  return <span style={{ ...S.chip('rgba(255,255,255,0.06)', s.color), border: `1px solid ${s.color}55`, fontFamily: MONO, fontSize: 9, letterSpacing: '1px', padding: '2px 7px' }}>{s.label} · {s.slots} slot{s.slots === 1 ? '' : 's'}</span>
+  return <span style={{ ...S.chip('rgba(255,255,255,0.06)', s.color), border: `1px solid ${alpha(s.color, 33)}`, fontFamily: MONO, fontSize: 9, letterSpacing: '1px', padding: '2px 7px' }}>{s.label} · {s.slots} slot{s.slots === 1 ? '' : 's'}</span>
 }
 
 
@@ -154,7 +154,7 @@ function FilledSlot({ it, n, act, onOpen, onExtract, onRecall, dropFromStash, cl
   const due = fmtDue(it.due_date)
   const late = it.due_date && it.due_date < new Date().toISOString().slice(0, 10)
   return (
-    <div draggable onDragStart={e => { e.dataTransfer.setData('text/plain', dragPayload('loadout', it.id)); e.dataTransfer.effectAllowed = 'move' }} onDragOver={e => { if (dropFromStash) e.preventDefault() }} onDrop={e => { const d = readDrag(e); if (d.kind === 'stash' && dropFromStash) { e.preventDefault(); dropFromStash(d.id) } }} title="Drag to the Stash" style={{ ...slotBox(it.equipped ? BLUE : `${BLUE}66`, it.equipped ? 'rgba(169,201,232,0.08)' : 'rgba(169,201,232,0.035)'), gridColumn: `span ${span}`, cursor: 'grab' }}>
+    <div draggable onDragStart={e => { e.dataTransfer.setData('text/plain', dragPayload('loadout', it.id)); e.dataTransfer.effectAllowed = 'move' }} onDragOver={e => { if (dropFromStash) e.preventDefault() }} onDrop={e => { const d = readDrag(e); if (d.kind === 'stash' && dropFromStash) { e.preventDefault(); dropFromStash(d.id) } }} title="Drag to the Stash" style={{ ...slotBox(it.equipped ? BLUE : `${alpha(BLUE, 40)}`, it.equipped ? 'rgba(169,201,232,0.08)' : 'rgba(169,201,232,0.035)'), gridColumn: `span ${span}`, cursor: 'grab' }}>
       <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
         <BadgeMedallion id={badgeFor(it)} size={50} color={colorOf(it.kind, it.size)} />
         <div style={{ flex: 1, minWidth: 0, display: 'grid', gap: 2 }}>
@@ -189,8 +189,8 @@ function EmptySlot({ n, dropFromStash }) {
   const [over, setOver] = useState(false)
   return (
     <div onDragOver={e => { e.preventDefault(); setOver(true) }} onDragLeave={() => setOver(false)} onDrop={e => { setOver(false); const d = readDrag(e); if (d.kind === 'stash' && dropFromStash) { e.preventDefault(); dropFromStash(d.id) } }}
-      style={{ ...slotBox(over ? GREEN : `${GREEN}99`, over ? 'rgba(67,211,146,0.12)' : 'rgba(67,211,146,0.03)', true), justifyContent: 'center', alignItems: 'center', textAlign: 'center' }}>
-      <Notches from={n - 1} span={1} color={`${GREEN}88`} />
+      style={{ ...slotBox(over ? GREEN : `${alpha(GREEN, 60)}`, over ? 'rgba(67,211,146,0.12)' : 'rgba(67,211,146,0.03)', true), justifyContent: 'center', alignItems: 'center', textAlign: 'center' }}>
+      <Notches from={n - 1} span={1} color={`${alpha(GREEN, 53)}`} />
       <Label style={{ marginBottom: 0, color: GREEN }}>Slot {n} · empty</Label>
       <div style={{ fontFamily: SERIF, fontSize: 15, color: 'rgba(234,241,248,0.4)' }}>Load from what is due</div>
       <div style={{ fontSize: 11, color: GRAY, lineHeight: 1.5 }}>a Side Mission, a Main Mission task, or tell Lumen</div>
@@ -218,7 +218,7 @@ function AdHocSlot({ item, act, onDispatch, onOpen, onChanged, onRecall }) {
   if (item) {
     const since = item.activated_at ? new Date(item.activated_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'America/Chicago' }) : null
     return (
-      <div style={{ ...slotBox(item.equipped ? BLUE : `${BLUE}66`, item.equipped ? 'rgba(169,201,232,0.08)' : 'rgba(169,201,232,0.035)'), minHeight: 0, flex: '1 1 auto' }}>
+      <div style={{ ...slotBox(item.equipped ? BLUE : `${alpha(BLUE, 40)}`, item.equipped ? 'rgba(169,201,232,0.08)' : 'rgba(169,201,232,0.035)'), minHeight: 0, flex: '1 1 auto' }}>
         <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
           <BadgeMedallion id="impromptu" size={50} color={BLUE} />
           <div style={{ flex: 1, minWidth: 0, display: 'grid', gap: 2 }}>
@@ -245,7 +245,7 @@ function AdHocSlot({ item, act, onDispatch, onOpen, onChanged, onRecall }) {
     )
   }
   return (
-    <div style={{ ...slotBox(`${GREEN}99`, 'rgba(67,211,146,0.03)', true), minHeight: 0, flex: '1 1 auto' }}>
+    <div style={{ ...slotBox(`${alpha(GREEN, 60)}`, 'rgba(67,211,146,0.03)', true), minHeight: 0, flex: '1 1 auto' }}>
       <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
         <BadgeMedallion id="impromptu" size={50} color={BLUE} earned={false} />
         <div style={{ flex: 1, minWidth: 0, display: 'grid', gap: 2 }}>
@@ -276,14 +276,14 @@ function StashStack({ items, act, onOpen, dropFromLoadout }) {
   const [over, setOver] = useState(false)
   return (
     <div onDragOver={e => { e.preventDefault(); setOver(true) }} onDragLeave={() => setOver(false)} onDrop={e => { setOver(false); const d = readDrag(e); if (d.kind === 'loadout' && dropFromLoadout) { e.preventDefault(); dropFromLoadout(d.id) } }}
-      style={{ ...slotBox(over ? BLUE : `${BLUE}44`, over ? 'rgba(169,201,232,0.10)' : 'rgba(169,201,232,0.025)'), minHeight: 0, gap: 6, padding: '12px 12px' }}>
+      style={{ ...slotBox(over ? BLUE : `${alpha(BLUE, 27)}`, over ? 'rgba(169,201,232,0.10)' : 'rgba(169,201,232,0.025)'), minHeight: 0, gap: 6, padding: '12px 12px' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
         <Label style={{ marginBottom: 0, color: BLUE }}>Stash</Label><span style={{ flex: 1 }} />
         <span style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '0.8px', color: GRAY }}>{(items || []).length} of {STASH_MAX}</span>
       </div>
       <div style={{ display: 'grid', gap: 4, flex: 1 }}>
         {rows.map((it, i) => it ? (
-          <div key={it.id} draggable onDragStart={e => { e.dataTransfer.setData('text/plain', dragPayload('stash', it.id)); e.dataTransfer.effectAllowed = 'move' }} title="Drag onto the Loadout" style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 8px', borderRadius: 8, border: `1px solid ${BLUE}55`, background: 'rgba(169,201,232,0.06)', minWidth: 0, cursor: 'grab' }}>
+          <div key={it.id} draggable onDragStart={e => { e.dataTransfer.setData('text/plain', dragPayload('stash', it.id)); e.dataTransfer.effectAllowed = 'move' }} title="Drag onto the Loadout" style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 8px', borderRadius: 8, border: `1px solid ${alpha(BLUE, 33)}`, background: 'rgba(169,201,232,0.06)', minWidth: 0, cursor: 'grab' }}>
             <BadgeMedallion id={badgeFor(it)} size={20} color={colorOf(it.kind, it.size)} />
             <div onClick={() => onOpen(it)} title={`${it.title}${it.north_star ? ` · ${it.north_star}` : ''}`} style={{ flex: 1, minWidth: 0, cursor: 'pointer', display: 'grid', gap: 0 }}>
               <div style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 12.5, color: INK, lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{it.kind === 'Main Mission' ? (it.task_text || it.title).replace(/^\s*\d+\s*[·.:)-]\s*/, '') : it.title}</div>
@@ -293,7 +293,7 @@ function StashStack({ items, act, onOpen, dropFromLoadout }) {
             <button onClick={() => act(() => returnToInventory(it.id), `Returned to the inventory: ${it.title}`)} title="Return to the Missions Inventory" style={{ ...btn(INK2), padding: '3px 6px' }}><Undo2 size={10} /></button>
           </div>
         ) : (
-          <div key={`empty-${i}`} style={{ height: 30, borderRadius: 8, border: `1px dashed ${GREEN}55`, display: 'flex', alignItems: 'center', paddingLeft: 10, fontFamily: MONO, fontSize: 8, letterSpacing: '1px', textTransform: 'uppercase', color: `${GREEN}99` }}>{i + 1}</div>
+          <div key={`empty-${i}`} style={{ height: 30, borderRadius: 8, border: `1px dashed ${alpha(GREEN, 33)}`, display: 'flex', alignItems: 'center', paddingLeft: 10, fontFamily: MONO, fontSize: 8, letterSpacing: '1px', textTransform: 'uppercase', color: `${alpha(GREEN, 60)}` }}>{i + 1}</div>
         ))}
       </div>
     </div>
@@ -309,7 +309,7 @@ function StashPeek({ it, act, onClose, onOpenFull, clips = 0, onFiles }) {
   const title = it.kind === 'Main Mission' ? (it.task_text || it.title).replace(/^\s*\d+\s*[·.:)-]\s*/, '') : it.title
   return (
     <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 270, background: 'rgba(5,16,28,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
-      <div onClick={e => e.stopPropagation()} style={{ width: 'min(520px, 100%)', background: '#0F2338', border: `1px solid ${color}55`, borderRadius: 14, padding: '22px 24px', display: 'grid', gap: 14 }}>
+      <div onClick={e => e.stopPropagation()} style={{ width: 'min(520px, 100%)', background: '#0F2338', border: `1px solid ${alpha(color, 33)}`, borderRadius: 14, padding: '22px 24px', display: 'grid', gap: 14 }}>
         <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
           <BadgeMedallion id={badgeFor(it)} size={48} color={color} />
           <div style={{ flex: 1, minWidth: 0 }}>
@@ -377,7 +377,7 @@ function RoutineSlot({ tick, onChanged }) {
   const Icon = chore ? (ROUTINE_ICON[chore.slug] || Zap) : Zap
   // Concurrent chores (Travel, David 10/18): the clock runs while he does other things. No card; a discreet strip.
   if (running && chore?.concurrent) return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', border: `1px solid ${GREEN}55`, borderRadius: 10, background: 'rgba(67,211,146,0.05)', flex: '0 0 auto' }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', border: `1px solid ${alpha(GREEN, 33)}`, borderRadius: 10, background: 'rgba(67,211,146,0.05)', flex: '0 0 auto' }}>
       <style>{`@keyframes trvpulse { 0%,100% { opacity: 1 } 50% { opacity: .2 } } .trv-pulse { animation: trvpulse 1.6s ease-in-out infinite }`}</style>
       <span className="trv-pulse" style={{ width: 7, height: 7, borderRadius: 99, background: GREEN, flexShrink: 0 }} />
       <Icon size={13} color={GREEN} />
@@ -402,7 +402,7 @@ function RoutineSlot({ tick, onChanged }) {
     </div>
   )
   return (
-    <div style={{ ...slotBox(`${GREEN}99`, 'rgba(67,211,146,0.03)', true), minHeight: 0, flex: '0 0 auto' }}>
+    <div style={{ ...slotBox(`${alpha(GREEN, 60)}`, 'rgba(67,211,146,0.03)', true), minHeight: 0, flex: '0 0 auto' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
         <Label style={{ marginBottom: 0, color: GREEN }}>Routine · nothing on</Label>
       </div>
@@ -511,7 +511,7 @@ export default function LoadoutPanel({ onChange, refreshKey = 0, onNavigate, bar
               <Label>Sessions · no slot taken</Label>
               {L.sessions.map(it => (
                 <div key={it.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '5px 0', flexWrap: 'wrap' }}>
-                  {it.equipped && <span style={{ width: 7, height: 7, borderRadius: 99, background: GREEN, boxShadow: `0 0 0 3px ${GREEN}33` }} />}
+                  {it.equipped && <span style={{ width: 7, height: 7, borderRadius: 99, background: GREEN, boxShadow: `0 0 0 3px ${alpha(GREEN, 20)}` }} />}
                   <span onClick={() => setRelated(it)} style={{ fontSize: 13, color: INK2, flex: 1, minWidth: 200, cursor: 'pointer' }}>{it.title}</span>
                   <span style={{ fontFamily: MONO, fontSize: 10, color: it.equipped ? GREEN : GRAY, letterSpacing: '0.6px' }}>{it.equipped ? 'running · ' : 'holstered · '}{fmtClock(it.minutes_today)}</span>
                   {it.equipped

@@ -3,10 +3,10 @@
 import { useEffect, useState } from 'react'
 import { Brain, MessageCircle } from 'lucide-react'
 import { recall, askLumen } from '../../lib/recall'
-import { INK, INK2, GRAY, PANEL_BORDER, BLUE, GOLD, GREEN, RED, MONO, SERIF, S, LABEL } from './canon'
+import { INK, INK2, GRAY, PANEL_BORDER, BLUE, GOLD, GREEN, RED, MONO, SERIF, S, LABEL, alpha } from './canon'
 
 export const BrainButton = ({ onClick, title = 'Recall: what the system knows, and a next step' }) => (
-  <button onClick={onClick} title={title} style={{ width: 28, height: 28, borderRadius: 99, border: `1px solid ${BLUE}66`, background: `${BLUE}14`, color: BLUE, display: 'inline-grid', placeItems: 'center', cursor: 'pointer', flexShrink: 0 }}><Brain size={14} /></button>
+  <button onClick={onClick} title={title} style={{ width: 28, height: 28, borderRadius: 99, border: `1px solid ${alpha(BLUE, 40)}`, background: `${alpha(BLUE, 8)}`, color: BLUE, display: 'inline-grid', placeItems: 'center', cursor: 'pointer', flexShrink: 0 }}><Brain size={14} /></button>
 )
 
 export default function RecallModal({ objectiveId = null, taskId = null, title, onClose }) {

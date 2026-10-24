@@ -5,18 +5,18 @@ import { Fragment, useCallback, useEffect, useState } from 'react'
 import { Save, RefreshCw, User, Eye, X as XIcon } from 'lucide-react'
 import { listArtifacts, readArtifact, writeArtifact } from '../../lib/artifacts'
 import { renderMarkdown } from './MeetingCloseout'
-import { INK, INK2, GRAY, MUTED, PANEL_BORDER, GOLD, GOLD_BRIGHT, BLUE, PERIWINKLE, GREEN, RED, MONO, SERIF, S, Eyebrow, Label, LABEL } from './canon'
+import { INK, INK2, GRAY, MUTED, PANEL_BORDER, GOLD, GOLD_BRIGHT, BLUE, PERIWINKLE, GREEN, RED, MONO, SERIF, S, Eyebrow, Label, LABEL, alpha } from './canon'
 import { hudConfirm } from '../../lib/dialog'
 import PlanningCanvas from './PlanningCanvas'
 const field = { width: '100%', background: 'rgba(255,255,255,0.04)', border: `1px solid ${PANEL_BORDER}`, borderRadius: 8, color: INK, padding: '9px 11px', fontSize: 13, lineHeight: 1.55, fontFamily: 'inherit', resize: 'vertical', boxSizing: 'border-box' }
 const pill = (active, color = BLUE) => ({
   fontFamily: MONO, fontSize: 9.5, letterSpacing: '1px', textTransform: 'uppercase', padding: '5px 10px', borderRadius: 9999, cursor: 'pointer',
-  border: `1px solid ${active ? color : 'rgba(255,255,255,0.16)'}`, background: active ? `${color}22` : 'transparent', color: active ? color : 'rgba(234,241,248,0.7)',
+  border: `1px solid ${active ? color : 'rgba(255,255,255,0.16)'}`, background: active ? `${alpha(color, 13)}` : 'transparent', color: active ? color : 'rgba(234,241,248,0.7)',
 })
 const RATING_COLOR = { 'Exceeds': GREEN, 'Meets': BLUE, 'Below': GOLD, 'Does Not Meet': RED }
 const Req = ({ done }) => <span style={{ ...S.chip('transparent', done ? GREEN : RED), border: `1px solid ${done ? GREEN : RED}55`, fontFamily: MONO, fontSize: 8.5, letterSpacing: '1px', padding: '1px 6px', marginLeft: 8 }}>{done ? 'yours · done' : 'your language · required'}</span>
-const Opt = () => <span style={{ ...S.chip('transparent', GRAY), border: `1px solid ${GRAY}55`, fontFamily: MONO, fontSize: 8.5, letterSpacing: '1px', padding: '1px 6px', marginLeft: 8 }}>optional</span>
-const Lum = () => <span style={{ ...S.chip('transparent', GOLD), border: `1px solid ${GOLD}55`, fontFamily: MONO, fontSize: 8.5, letterSpacing: '1px', padding: '1px 6px', marginLeft: 8 }}>Lumen's draft</span>
+const Opt = () => <span style={{ ...S.chip('transparent', GRAY), border: `1px solid ${alpha(GRAY, 33)}`, fontFamily: MONO, fontSize: 8.5, letterSpacing: '1px', padding: '1px 6px', marginLeft: 8 }}>optional</span>
+const Lum = () => <span style={{ ...S.chip('transparent', GOLD), border: `1px solid ${alpha(GOLD, 33)}`, fontFamily: MONO, fontSize: 8.5, letterSpacing: '1px', padding: '1px 6px', marginLeft: 8 }}>Lumen's draft</span>
 
 // Lumen's read: his interpretation of how the answer lines up with what is
 // being assessed. A side drawer, read-only, clearly his and not David's.
@@ -44,7 +44,7 @@ function ReadDrawer({ title, sub, read, quote, onClose }) {
         {quote && (
           <div style={{ marginTop: 18 }}>
             <Label>What she said, as drafted</Label>
-            <div style={{ fontSize: 12.5, lineHeight: 1.6, color: INK2, whiteSpace: 'pre-wrap', borderLeft: `2px solid ${GOLD}55`, paddingLeft: 12 }}>{quote}</div>
+            <div style={{ fontSize: 12.5, lineHeight: 1.6, color: INK2, whiteSpace: 'pre-wrap', borderLeft: `2px solid ${alpha(GOLD, 33)}`, paddingLeft: 12 }}>{quote}</div>
           </div>
         )}
         <div style={{ fontSize: 11, color: GRAY, marginTop: 20 }}>This is Lumen's interpretation. The rating and the notes on the card are yours to write.</div>
@@ -136,7 +136,7 @@ function Decision({ doc, onChange }) {
       {(doc.assumptions || []).length > 0 && <div style={{ marginBottom: 16 }}><Label>Assumptions</Label>{doc.assumptions.map((x, i) => <div key={i} style={{ fontSize: 12.5, color: INK2, lineHeight: 1.55 }}>· {x}</div>)}</div>}
 
       <Eyebrow style={{ marginBottom: 8 }}>Lumen's read<Lum /></Eyebrow>
-      <div style={{ ...S.panel, padding: '14px 16px', marginBottom: 16, borderLeft: `2px solid ${GOLD}66` }}>
+      <div style={{ ...S.panel, padding: '14px 16px', marginBottom: 16, borderLeft: `2px solid ${alpha(GOLD, 40)}` }}>
         {doc.lumen_read ? <div style={{ fontSize: 13.5, lineHeight: 1.65, color: INK, whiteSpace: 'pre-wrap' }}>{doc.lumen_read}</div> : <div style={{ fontSize: 12.5, color: GRAY }}>Not written yet.</div>}
         {(doc.risks || []).length > 0 && <div style={{ marginTop: 12 }}><Label>Risks</Label>{doc.risks.map((x, i) => <div key={i} style={{ fontSize: 12.5, color: RED, lineHeight: 1.5 }}>· {x}</div>)}</div>}
         {(doc.questions_for_david || []).length > 0 && <div style={{ marginTop: 12 }}><Label>Questions for you</Label>{doc.questions_for_david.map((x, i) => <div key={i} style={{ fontSize: 12.5, color: INK2, lineHeight: 1.5 }}>{i + 1}. {x}</div>)}</div>}
@@ -170,7 +170,7 @@ const byDate = (a, b) => String(a.date || '').localeCompare(String(b.date || '')
 const monthsBetween = (a, b) => { const out = []; if (!a || !b) return out; let [y, m] = String(a).slice(0, 7).split('-').map(Number); const end = String(b).slice(0, 7); for (let i = 0; i < 240; i++) { const k = `${y}-${String(m).padStart(2, '0')}`; out.push(k); if (k >= end) break; m += 1; if (m > 12) { m = 1; y += 1 } } return out }
 const th = { padding: '6px 10px', fontFamily: MONO, fontSize: 10.5, letterSpacing: '1px', color: LABEL, textAlign: 'left', textTransform: 'uppercase', borderBottom: `1px solid ${PANEL_BORDER}` }
 const td = { padding: '8px 10px', borderTop: `1px solid ${PANEL_BORDER}`, fontSize: 13, color: INK, verticalAlign: 'top' }
-const miniChip = (c) => ({ ...S.chip('transparent', c), border: `1px solid ${c}55`, fontFamily: MONO, fontSize: 8.5, letterSpacing: '1px', padding: '1px 6px' })
+const miniChip = (c) => ({ ...S.chip('transparent', c), border: `1px solid ${alpha(c, 33)}`, fontFamily: MONO, fontSize: 8.5, letterSpacing: '1px', padding: '1px 6px' })
 const Cla = () => <span style={{ ...miniChip(GOLD), marginLeft: 8 }}>Claude's draft</span>
 const Pick = ({ done }) => <span style={{ ...miniChip(done ? GREEN : RED), marginLeft: 8 }}>{done ? 'picked' : 'your pick'}</span>
 
@@ -192,7 +192,7 @@ function Timeline({ t }) {
           const n = byMonth[m] || 0
           const trimmed = kept && m < kept
           const h = n ? Math.max(4, Math.round(40 * n / max)) : trimmed ? 10 : 2
-          return <div key={m} title={`${m} · ${n} saves${trimmed ? ' · trimmed from the history' : ''}`} style={{ flex: 1, minWidth: 3, height: h, borderRadius: 2, background: trimmed ? 'transparent' : n ? BLUE : 'rgba(255,255,255,0.18)', border: trimmed ? `1px dashed ${RED}88` : 'none', boxSizing: 'border-box' }} />
+          return <div key={m} title={`${m} · ${n} saves${trimmed ? ' · trimmed from the history' : ''}`} style={{ flex: 1, minWidth: 3, height: h, borderRadius: 2, background: trimmed ? 'transparent' : n ? BLUE : 'rgba(255,255,255,0.18)', border: trimmed ? `1px dashed ${alpha(RED, 53)}` : 'none', boxSizing: 'border-box' }} />
         })}
       </div>
       <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, fontFamily: MONO, fontSize: 9, letterSpacing: '0.6px', color: MUTED, marginTop: 4 }}><span>{months[0]}</span><span><span style={{ color: RED }}>dashed</span> = saves SharePoint no longer keeps</span><span>{months[months.length - 1]}</span></div>
@@ -357,7 +357,7 @@ function Inventory({ doc, onChange }) {
       {doc.read && (
         <>
           <Eyebrow style={{ marginBottom: 8 }}>Claude's read<Cla /></Eyebrow>
-          <div style={{ ...S.panel, padding: '14px 16px', marginBottom: 16, borderLeft: `2px solid ${GOLD}66` }}>
+          <div style={{ ...S.panel, padding: '14px 16px', marginBottom: 16, borderLeft: `2px solid ${alpha(GOLD, 40)}` }}>
             <div style={{ fontSize: 13.5, lineHeight: 1.65, color: INK, whiteSpace: 'pre-wrap' }}>{doc.read}</div>
             {(doc.next_steps || []).length > 0 ? <div style={{ marginTop: 12 }}><Label>What the Frame Would Pull</Label>{doc.next_steps.map((x, i) => <div key={i} style={{ fontSize: 12.5, color: INK2, lineHeight: 1.5 }}>{i + 1}. {x}</div>)}</div> : null}
           </div>
@@ -448,7 +448,7 @@ function Scorecard({ doc, onChange }) {
 
       <Eyebrow style={{ marginBottom: 8 }}>Interview questions · yours are {mine.map(q => q.id).join(' and ') || 'none'}</Eyebrow>
       {(doc.questions || []).map((q, i) => (
-        <div key={q.id} style={{ ...S.panel, padding: '14px 16px', marginBottom: 12, border: `1px solid ${q.mine ? `${GOLD}66` : PANEL_BORDER}`, background: q.mine ? 'rgba(230,181,79,0.05)' : undefined }}>
+        <div key={q.id} style={{ ...S.panel, padding: '14px 16px', marginBottom: 12, border: `1px solid ${q.mine ? `${alpha(GOLD, 40)}` : PANEL_BORDER}`, background: q.mine ? 'rgba(230,181,79,0.05)' : undefined }}>
           <div style={{ display: 'flex', gap: 10, alignItems: 'baseline', flexWrap: 'wrap' }}>
             <span style={{ fontFamily: SERIF, fontSize: 17, fontWeight: 500, color: q.mine ? GOLD_BRIGHT : '#fff' }}>{q.id}</span>
             <span style={{ fontFamily: MONO, fontSize: 9, letterSpacing: '1.2px', color: q.mine ? GOLD : GRAY, textTransform: 'uppercase' }}>{q.panelist}{q.mine ? ' · yours' : ''}</span>
@@ -461,7 +461,7 @@ function Scorecard({ doc, onChange }) {
             {q.mine && (
               <div>
                 <Label>Proposed answer<Lum /></Label>
-                <textarea rows={7} value={q.proposed || ''} onChange={e => set(d => { d.questions[i].proposed = e.target.value; return d })} placeholder="Lumen drafts this from what the candidate said. Edit freely." style={{ ...field, borderColor: `${GOLD}55` }} />
+                <textarea rows={7} value={q.proposed || ''} onChange={e => set(d => { d.questions[i].proposed = e.target.value; return d })} placeholder="Lumen drafts this from what the candidate said. Edit freely." style={{ ...field, borderColor: `${alpha(GOLD, 33)}` }} />
               </div>
             )}
             <div>

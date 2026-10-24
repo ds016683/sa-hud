@@ -17,7 +17,7 @@ import { supabase } from '../lib/supabase'
 import { BADGES, RIVER_TOTAL_MILES, RIVER_START_DAY, WAYPOINTS, whereOnRiver } from '../constants/collection'
 import {
   INK, INK2, GRAY, PANEL_BORDER, GOLD, GOLD_BRIGHT, BLUE, GREEN, RED, MONO, SERIF,
-  S, Eyebrow, Label, Stat, Panel, chiToday, LABEL } from './river/canon'
+  S, Eyebrow, Label, Stat, Panel, chiToday, LABEL, alpha } from './river/canon'
 
 // ---- Helpers ----------------------------------------------------------------
 const DAY_MS = 86400000
@@ -311,13 +311,13 @@ export default function LandingPage({ onNavigate }) {
           ) : lo.equipped ? (
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span style={{ width: 8, height: 8, borderRadius: 99, background: GREEN, boxShadow: `0 0 0 3px ${GREEN}33`, flexShrink: 0 }} />
+                <span style={{ width: 8, height: 8, borderRadius: 99, background: GREEN, boxShadow: `0 0 0 3px ${alpha(GREEN, 20)}`, flexShrink: 0 }} />
                 <div style={{ fontSize: 14, color: INK, lineHeight: 1.4, flex: 1, minWidth: 0 }}>{lo.equipped.title}</div>
               </div>
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
                 <span style={{ ...S.chip('rgba(255,255,255,0.06)', GREEN), textTransform: 'none', fontFamily: MONO }}>{fmtClock(lo.equipped.minutes_today)} today</span>
                 <span style={S.chip('rgba(255,255,255,0.06)', INK2)}>{lo.equipped.kind}</span>
-                {lo.equipped.project ? <span style={S.chip(`${BLUE}22`, BLUE)}>{lo.equipped.project}</span> : null}
+                {lo.equipped.project ? <span style={S.chip(`${alpha(BLUE, 13)}`, BLUE)}>{lo.equipped.project}</span> : null}
               </div>
             </div>
           ) : (

@@ -8,8 +8,7 @@ import { BADGES, RIVER_TOTAL_MILES, RIVER_START_DAY, WAYPOINTS, whereOnRiver } f
 import BadgeMedallion from './BadgeArt'
 import {
   INK, INK2, GRAY, PANEL_BORDER, GOLD, GOLD_BRIGHT, BLUE, MONO, SERIF,
-  S, Eyebrow, Label, Stat, Panel, chiToday, fmtDay,
-} from './river/canon'
+  S, Eyebrow, Label, Stat, Panel, chiToday, fmtDay, alpha } from './river/canon'
 
 // ---- Day helpers (Chicago day strings, YYYY-MM-DD)
 const shiftDay = (day, n) => {
@@ -32,12 +31,12 @@ const CATALOGUE = Object.entries(BADGES).filter(([, b]) => !b.legacy && !b.silen
 
 // ---- Small pieces
 const MilesChip = ({ miles, bright = false }) => (
-  <span style={{ ...S.chip('rgba(248,199,97,0.10)', bright ? GOLD_BRIGHT : GOLD), border: `1px solid ${GOLD}55`, fontFamily: MONO, fontWeight: 600, fontSize: 9.5, letterSpacing: '1px', padding: '2px 8px' }}>
+  <span style={{ ...S.chip('rgba(248,199,97,0.10)', bright ? GOLD_BRIGHT : GOLD), border: `1px solid ${alpha(GOLD, 33)}`, fontFamily: MONO, fontWeight: 600, fontSize: 9.5, letterSpacing: '1px', padding: '2px 8px' }}>
     {fmtMiles(miles)} MI
   </span>
 )
 const RepeatChip = () => (
-  <span style={{ ...S.chip('transparent', BLUE), border: `1px solid ${BLUE}55`, fontFamily: MONO, fontWeight: 600, fontSize: 8.5, letterSpacing: '1px', padding: '1px 7px' }}>repeatable</span>
+  <span style={{ ...S.chip('transparent', BLUE), border: `1px solid ${alpha(BLUE, 33)}`, fontFamily: MONO, fontWeight: 600, fontSize: 8.5, letterSpacing: '1px', padding: '1px 7px' }}>repeatable</span>
 )
 
 function DayControl({ day, onPrev, onNext, canNext }) {
@@ -79,7 +78,7 @@ function BadgeCard({ badge, history, onOpen }) {
       ...S.panel, marginBottom: 0, cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: 10,
       opacity: n > 0 ? 1 : 0.85, transition: 'border-color 160ms',
     }}
-      onMouseEnter={e => { e.currentTarget.style.borderColor = `${GOLD}66` }}
+      onMouseEnter={e => { e.currentTarget.style.borderColor = `${alpha(GOLD, 40)}` }}
       onMouseLeave={e => { e.currentTarget.style.borderColor = PANEL_BORDER }}
     >
       <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>

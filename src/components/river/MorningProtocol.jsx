@@ -19,7 +19,7 @@ import { ArrowLeft, ArrowRight, Check, Sunrise, Moon, Play, Pause, Square, Rocke
 import { supabase, reportSoft } from '../../lib/supabase'
 import { upsertSession, logToHarvest, hoursBetween, startMeetingTimer, stopMeetingTimer } from '../../lib/meetings'
 import { fetchLoadout, equipObjective, equipTask, equip, holster, startWithRoom, resolveObjectiveId, fmtClock, chiToday, SIZES, SLOTS } from '../../lib/loadout'
-import { KIND_COLOR, PURPLE, LABEL } from './canon'
+import { KIND_COLOR, PURPLE, LABEL, alpha } from './canon'
 import { HYGIENE_ITEMS } from '../../constants/hygiene'
 import { GATEWAY_PLAYLIST } from '../../constants/gateway'
 import { MEDICATIONS, dueOn } from '../../constants/medications'
@@ -50,12 +50,12 @@ const rows = (p) => p.then(r => { if (r.error) console.warn('protocol', r.error.
 
 const btn = (color = INK2, filled = false, extra = {}) => ({
   display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: MONO, fontSize: 10, letterSpacing: '1.2px', textTransform: 'uppercase',
-  padding: '8px 14px', borderRadius: 10, border: `1px solid ${filled ? color : `${color}66`}`, background: filled ? color : 'transparent',
-  color: filled ? '#0A1B2B' : color, cursor: 'pointer', ...extra,
+  padding: '8px 14px', borderRadius: 10, border: `1px solid ${filled ? color : `${alpha(color, 40)}`}`, background: filled ? color : 'transparent',
+  color: filled ? 'var(--hud-on-accent)' : color, cursor: 'pointer', ...extra,
 })
 const tile = (on, color = GREEN) => ({
   display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 6, minWidth: 180, flex: '1 1 180px', padding: '12px 14px', borderRadius: 10, cursor: 'pointer', textAlign: 'left',
-  border: `1px solid ${on ? color : PANEL_BORDER}`, background: on ? `${color}14` : 'rgba(255,255,255,0.03)', color: INK,
+  border: `1px solid ${on ? color : PANEL_BORDER}`, background: on ? `${alpha(color, 8)}` : 'rgba(255,255,255,0.03)', color: INK,
 })
 const LEVEL = { green: GREEN, gold: GOLD, red: RED, gray: 'rgba(234,241,248,0.25)' }
 const lightRule = (kind, L) => {
@@ -144,7 +144,7 @@ function LumenStrip({ day, where, onReplied, prompt }) {
       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}><Label style={{ marginBottom: 0 }}>Lumen · same thread as WhatsApp</Label>{prompt && <span style={{ fontSize: 11.5, color: GRAY }}>{prompt}</span>}</div>
       {last.length > 0 && (
         <div style={{ display: 'grid', gap: 6, margin: '10px 0 4px' }}>
-          {last.map(m => <div key={m.id} style={{ fontSize: 13.5, lineHeight: 1.65, color: m.direction === 'in' ? INK2 : INK, paddingLeft: m.direction === 'in' ? 0 : 12, borderLeft: m.direction === 'in' ? 'none' : `2px solid ${BLUE}66`, whiteSpace: 'pre-wrap' }}><span style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '1px', color: GRAY, marginRight: 8 }}>{m.direction === 'in' ? (m.kind === 'audio' ? 'YOU · VOICE' : 'YOU') : 'LUMEN'} · {fmtTime(m.at)}</span>{m.body}</div>)}
+          {last.map(m => <div key={m.id} style={{ fontSize: 13.5, lineHeight: 1.65, color: m.direction === 'in' ? INK2 : INK, paddingLeft: m.direction === 'in' ? 0 : 12, borderLeft: m.direction === 'in' ? 'none' : `2px solid ${alpha(BLUE, 40)}`, whiteSpace: 'pre-wrap' }}><span style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '1px', color: GRAY, marginRight: 8 }}>{m.direction === 'in' ? (m.kind === 'audio' ? 'YOU · VOICE' : 'YOU') : 'LUMEN'} · {fmtTime(m.at)}</span>{m.body}</div>)}
         </div>
       )}
       {busy && <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '1px', color: BLUE, textTransform: 'uppercase', margin: '8px 0 4px' }} className="mp-blink">Lumen is working…</div>}
@@ -186,7 +186,7 @@ function GatewayPlayer({ index, onIndex, onPlayed }) {
   const step = (d) => { if (!playable.length) return; const pos = playable.findIndex(t => t.i === index); const next = playable[(pos + d + playable.length) % playable.length]; onIndex(next.i) }
   const toggle = () => { const a = audio.current; if (!a) return; if (a.paused) a.play().then(() => setPlaying(true)).catch(() => {}); else { a.pause(); setPlaying(false) } }
   return (
-    <div style={{ position: 'fixed', right: 18, bottom: 18, zIndex: 260, width: 300, borderRadius: 14, border: `1px solid ${GOLD}55`, background: 'rgba(16,39,59,0.96)', boxShadow: '0 12px 40px rgba(0,0,0,0.45)', padding: '12px 14px' }}>
+    <div style={{ position: 'fixed', right: 18, bottom: 18, zIndex: 260, width: 300, borderRadius: 14, border: `1px solid ${alpha(GOLD, 33)}`, background: 'rgba(16,39,59,0.96)', boxShadow: '0 12px 40px rgba(0,0,0,0.45)', padding: '12px 14px' }}>
       {src && <audio ref={audio} src={src} onEnded={() => step(1)} onPause={() => setPlaying(false)} onPlay={() => setPlaying(true)} />}
       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
         <Music size={14} color={GOLD} />
@@ -413,7 +413,7 @@ function Protocol({ day, session, onClose, onFinished, onChange, onNavigate }) {
     // 1 Gateway
     if (cur.id === 'gateway') return (
       <div style={{ display: 'grid', gap: 14 }}>
-        {gatewayLog && <div className="mp-step-r" style={{ padding: '18px 22px', borderRadius: 14, border: `1px solid ${GREEN}66`, background: `${GREEN}10`, display: 'flex', alignItems: 'center', gap: 12 }}><Music size={18} color={GREEN} /><div><div style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 20, color: '#fff' }}>{gatewayLog.what}</div><div style={{ fontFamily: MONO, fontSize: 10, color: GRAY, letterSpacing: '0.6px' }}>chosen {fmtTime(gatewayLog.at)} · tap another to change it</div></div></div>}
+        {gatewayLog && <div className="mp-step-r" style={{ padding: '18px 22px', borderRadius: 14, border: `1px solid ${alpha(GREEN, 40)}`, background: `${alpha(GREEN, 6)}`, display: 'flex', alignItems: 'center', gap: 12 }}><Music size={18} color={GREEN} /><div><div style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 20, color: '#fff' }}>{gatewayLog.what}</div><div style={{ fontFamily: MONO, fontSize: 10, color: GRAY, letterSpacing: '0.6px' }}>chosen {fmtTime(gatewayLog.at)} · tap another to change it</div></div></div>}
         {GATEWAY_PLAYLIST.length > 0 ? (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 10 }}>
             {GATEWAY_PLAYLIST.map(t => { const on = gatewayLog?.what === `${t.title} · ${t.artist}`; return (
@@ -447,7 +447,7 @@ function Protocol({ day, session, onClose, onFinished, onChange, onNavigate }) {
             </div>
           )}
           {bodyCurrent ? (
-            <div key={bodyCurrent.key} className="mp-step-r" style={{ padding: '22px 24px', borderRadius: 14, border: `1px solid ${bodyCurrent.color}88`, background: `${bodyCurrent.color}10` }}>
+            <div key={bodyCurrent.key} className="mp-step-r" style={{ padding: '22px 24px', borderRadius: 14, border: `1px solid ${alpha(bodyCurrent.color, 53)}`, background: `${alpha(bodyCurrent.color, 6)}` }}>
               <Label style={{ color: bodyCurrent.color }}>{bodyCurrent.kind === 'hygiene' ? 'Hygiene' : 'Dose due this morning'} · {doneItems.length + 1} of {bodyQueue.length}</Label>
               <div style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 28, color: '#fff', margin: '6px 0 4px', letterSpacing: '-0.01em' }}>{bodyCurrent.label}</div>
               <div style={{ fontSize: 12.5, color: GRAY, marginBottom: 16 }}>{bodyCurrent.sub}</div>
@@ -457,7 +457,7 @@ function Protocol({ day, session, onClose, onFinished, onChange, onNavigate }) {
               </div>
             </div>
           ) : (
-            <div className="mp-step-r" style={{ padding: '22px 24px', borderRadius: 14, border: `1px solid ${GREEN}66`, background: `${GREEN}10` }}>
+            <div className="mp-step-r" style={{ padding: '22px 24px', borderRadius: 14, border: `1px solid ${alpha(GREEN, 40)}`, background: `${alpha(GREEN, 6)}` }}>
               <div style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 24, color: '#fff' }}>{skippedItems.length ? `Body done, ${skippedItems.length} skipped for later.` : 'Body done.'}</div>
               <div style={{ fontSize: 12.5, color: GRAY, marginTop: 4 }}>{skippedItems.length ? skippedItems.map(i => i.label).join(' · ') : 'Everything logged. Moving on.'}</div>
             </div>
@@ -475,7 +475,7 @@ function Protocol({ day, session, onClose, onFinished, onChange, onNavigate }) {
     if (cur.id === 'reflection') return (
       <div style={{ display: 'grid', gap: 14 }}>
         {reflectionLog ? (
-          <div className="mp-step-r" style={{ padding: '22px 24px', borderRadius: 14, border: `1px solid ${BLUE}66`, background: `${BLUE}10` }}>
+          <div className="mp-step-r" style={{ padding: '22px 24px', borderRadius: 14, border: `1px solid ${alpha(BLUE, 40)}`, background: `${alpha(BLUE, 6)}` }}>
             <Label>Logged {fmtTime(reflectionLog.at)} · Morning Reflection strikes at the close</Label>
             <div style={{ ...READ, whiteSpace: 'pre-wrap', marginTop: 6 }}>{reflectionLog.note && reflectionLog.note !== 'Morning Reflection' ? reflectionLog.note : 'Reflection done.'}</div>
             <div style={{ display: 'flex', gap: 8, marginTop: 14 }}><button onClick={() => toggleLog('devotional', 'devotional')} style={btn(INK2)}><RotateCcw size={11} /> Undo</button><button onClick={openDevotional} style={btn(INK2)}><ExternalLink size={11} /> Devotional page</button></div>
@@ -556,15 +556,15 @@ function Protocol({ day, session, onClose, onFinished, onChange, onNavigate }) {
                   <Panel style={{ marginBottom: 0 }}>
                     <Label>Priorities · load onto the Board</Label>
                     {prios.map(p => { const tag = tagOf(p); const it = loadedItem(p.ref); const unplaced = !placed(p); return (
-                      <div key={`${p.rank}-${p.title}`} className={unplaced ? 'mp-pulse' : ''} title={unplaced ? 'No room for this inside normal hours' : undefined} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '8px 6px', margin: '0 -6px', borderTop: `1px solid ${PANEL_BORDER}`, border: unplaced ? `1px solid ${BLUE}55` : undefined }}>
+                      <div key={`${p.rank}-${p.title}`} className={unplaced ? 'mp-pulse' : ''} title={unplaced ? 'No room for this inside normal hours' : undefined} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '8px 6px', margin: '0 -6px', borderTop: `1px solid ${PANEL_BORDER}`, border: unplaced ? `1px solid ${alpha(BLUE, 33)}` : undefined }}>
                         <span style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 18, color: GOLD, width: 18, flexShrink: 0 }}>{p.rank}</span>
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div style={{ fontSize: 13.5, color: INK }}>{p.title}</div>
                           <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginTop: 4 }}>
-                            <span style={{ ...S.chip('transparent', tag.color), border: `1px solid ${tag.color}55`, fontFamily: MONO, fontSize: 8.5, letterSpacing: '1px' }}>{tag.text}</span>
+                            <span style={{ ...S.chip('transparent', tag.color), border: `1px solid ${alpha(tag.color, 33)}`, fontFamily: MONO, fontSize: 8.5, letterSpacing: '1px' }}>{tag.text}</span>
                             {p.block && <span style={{ fontFamily: MONO, fontSize: 9.5, color: GRAY, letterSpacing: '0.6px' }}>at {p.block}</span>}
                             {unplaced && <span style={{ fontFamily: MONO, fontSize: 9.5, color: BLUE, letterSpacing: '0.6px' }}>no room in normal hours</span>}
-                            {it && <span style={{ ...S.chip('transparent', GREEN), border: `1px solid ${GREEN}55`, fontFamily: MONO, fontSize: 8.5, letterSpacing: '1px' }}>{it.equipped ? 'running' : 'loaded'}</span>}
+                            {it && <span style={{ ...S.chip('transparent', GREEN), border: `1px solid ${alpha(GREEN, 33)}`, fontFamily: MONO, fontSize: 8.5, letterSpacing: '1px' }}>{it.equipped ? 'running' : 'loaded'}</span>}
                           </div>
                           {p.why && <div style={{ fontSize: 11.5, color: GRAY, marginTop: 3 }}>{p.why}</div>}
                         </div>
@@ -577,7 +577,7 @@ function Protocol({ day, session, onClose, onFinished, onChange, onNavigate }) {
                 </div>
               </div>
               <div style={{ display: 'flex', gap: 8 }}>
-                <input value={adjust} onChange={e => setAdjust(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && adjust.trim()) runPlan('adjust', adjust.trim()) }} placeholder='Change it in words: "move the Highmark work to 3 PM", "drop Tim until Monday", "make NN2 prep the first priority". Enter applies.' disabled={planBusy} style={{ flex: 1, fontSize: 13.5, padding: '10px 12px', borderRadius: 10, border: `1px solid ${GOLD}55`, background: 'rgba(230,181,79,0.05)', color: INK }} />
+                <input value={adjust} onChange={e => setAdjust(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && adjust.trim()) runPlan('adjust', adjust.trim()) }} placeholder='Change it in words: "move the Highmark work to 3 PM", "drop Tim until Monday", "make NN2 prep the first priority". Enter applies.' disabled={planBusy} style={{ flex: 1, fontSize: 13.5, padding: '10px 12px', borderRadius: 10, border: `1px solid ${alpha(GOLD, 33)}`, background: 'rgba(230,181,79,0.05)', color: INK }} />
                 <button onClick={() => adjust.trim() && runPlan('adjust', adjust.trim())} disabled={planBusy || !adjust.trim()} style={btn(GOLD, true, { opacity: planBusy || !adjust.trim() ? 0.5 : 1 })}><RefreshCw size={12} /> Rewrite</button>
                 <button onClick={() => runPlan('build')} disabled={planBusy} title="Start the plan over from the calendar and your answers" style={btn(INK2)}>Rebuild</button>
               </div>
@@ -596,7 +596,7 @@ function Protocol({ day, session, onClose, onFinished, onChange, onNavigate }) {
                 </div>
                 <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
                   {pick
-                    ? <>{board.some(b => b.id === o.id) ? <span style={{ ...S.chip('transparent', GREEN), border: `1px solid ${GREEN}55`, fontFamily: MONO, fontSize: 8.5, letterSpacing: '1px' }}>loaded</span> : <button disabled={busy} onClick={() => loadRef({ type: 'objective', id: o.id }, o.title)} style={btn(GREEN)}>Load</button>}<button onClick={() => unpick(o)} style={btn(INK2)}>Tomorrow</button></>
+                    ? <>{board.some(b => b.id === o.id) ? <span style={{ ...S.chip('transparent', GREEN), border: `1px solid ${alpha(GREEN, 33)}`, fontFamily: MONO, fontSize: 8.5, letterSpacing: '1px' }}>loaded</span> : <button disabled={busy} onClick={() => loadRef({ type: 'objective', id: o.id }, o.title)} style={btn(GREEN)}>Load</button>}<button onClick={() => unpick(o)} style={btn(INK2)}>Tomorrow</button></>
                     : <><button onClick={() => todayFollow(o)} style={btn(GREEN)}>Pick · load</button><button onClick={() => pushFollow(o, 1)} style={btn(INK2)}>+1d</button><button onClick={() => pushFollow(o, 3)} style={btn(INK2)}>+3d</button><button onClick={() => pushFollow(o, 7)} style={btn(INK2)}>+1w</button><button onClick={() => dropFollow(o)} style={btn(RED)}>Drop</button></>}
                 </div>
               </div>
@@ -640,13 +640,13 @@ function Protocol({ day, session, onClose, onFinished, onChange, onNavigate }) {
         <div style={{ display: 'grid', gap: 14 }}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: 10 }}>
             {SYSTEMS.map(sys => { const r = lightRule(sys.key, lights); const c = LEVEL[r.level]; const mins = workToGreen(sys.key, lights); const running = sysRunning(sys.slug); const s = sysSession(sys.slug); const todayMin = ((Number(s?.hours) || 0) * 60) + (running ? (now - new Date(s.started_at).getTime()) / 60000 : 0); return (
-              <div key={sys.key} style={{ ...tile(running, running ? GREEN : c), cursor: 'default', borderColor: running ? GREEN : `${c}88`, minWidth: 0 }}>
-                <span style={{ display: 'inline-flex', gap: 10, alignItems: 'center', fontSize: 13.5 }}><span className={r.blink ? 'mp-blink' : ''} style={{ width: 10, height: 10, borderRadius: 99, background: c, boxShadow: r.level === 'gray' ? 'none' : `0 0 0 3px ${c}33` }} />{sys.label}</span>
+              <div key={sys.key} style={{ ...tile(running, running ? GREEN : c), cursor: 'default', borderColor: running ? GREEN : `${alpha(c, 53)}`, minWidth: 0 }}>
+                <span style={{ display: 'inline-flex', gap: 10, alignItems: 'center', fontSize: 13.5 }}><span className={r.blink ? 'mp-blink' : ''} style={{ width: 10, height: 10, borderRadius: 99, background: c, boxShadow: r.level === 'gray' ? 'none' : `0 0 0 3px ${alpha(c, 20)}` }} />{sys.label}</span>
                 <span style={{ fontFamily: MONO, fontSize: 10, color: GRAY, letterSpacing: '0.6px' }}>{lights ? r.text : 'reading…'}</span>
                 <span style={{ fontFamily: MONO, fontSize: 10, color: mins === 0 ? GREEN : c, letterSpacing: '0.6px' }}>{mins == null ? 'no estimate' : mins === 0 ? 'green' : `about ${mins} min to green`}</span>
                 {sysChoice === 'now' && (
                   <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 4 }}>
-                    {running ? <button onClick={() => sysStop(sys)} style={btn(GREEN, true)}><Square size={10} fill="#0A1B2B" /> Stop · {fmtClock(todayMin)}</button> : <button onClick={() => sysStart(sys)} style={btn(INK2)}><Play size={10} /> Start{todayMin > 0 ? ` · ${fmtClock(todayMin)} today` : ''}</button>}
+                    {running ? <button onClick={() => sysStop(sys)} style={btn(GREEN, true)}><Square size={10} fill='var(--hud-on-accent)' /> Stop · {fmtClock(todayMin)}</button> : <button onClick={() => sysStart(sys)} style={btn(INK2)}><Play size={10} /> Start{todayMin > 0 ? ` · ${fmtClock(todayMin)} today` : ''}</button>}
                     {sys.key === 'slack' && <button onClick={markSlackClean} style={btn(GOLD)}><Check size={10} /> Mark clean</button>}
                   </div>
                 )}

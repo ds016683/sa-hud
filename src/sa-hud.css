@@ -8,12 +8,49 @@
 @import url('https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400..700;1,400..700&family=Instrument+Serif:ital@0;1&family=Instrument+Sans:ital,wght@0,400..700;1,400..700&family=JetBrains+Mono:wght@400;500;600&display=swap');
 
 :root {
-  --font-serif: 'Instrument Serif', Georgia, serif;
+  --font-serif: 'Lora', Georgia, serif;
   --font-sans: 'Instrument Sans', system-ui, -apple-system, sans-serif;
-  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+  --font-label: 'Instrument Sans', system-ui, -apple-system, sans-serif;   /* eyebrows, labels, chrome (CIP) */
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;                  /* true monospace: ids, commands */
   --ease-out: cubic-bezier(0, 0, 0.2, 1);
-  /* TH primary accent — assumed value (deep blue from the handoff's alt palette); confirm with David */
-  --th-accent-primary: #2E6FB0;
+  --th-accent-primary: #165E98;
+
+  /* ---- HUD tokens (Milestone 18, 10/24): the CIP canon. Dark is the feature
+     navy; light is the CIP paper. canon.jsx points every component here. ---- */
+  --hud-surface:        #0F2334;                 /* feature navy */
+  --hud-surface-deep:   #0D1D2C;                 /* wells, insets */
+  --hud-surface-raised: #16314A;                 /* raised panels */
+  --hud-ink:            #F3F1EA;
+  --hud-ink-2:          rgba(243,241,234,0.68);
+  --hud-ink-3:          rgba(243,241,234,0.42);
+  --hud-border:         rgba(255,255,255,0.12);
+  --hud-fill:           rgba(255,255,255,0.05);
+  --hud-fill-2:         rgba(255,255,255,0.09);
+  --hud-accent:         #8ACAFF;                 /* oklch(0.82 0.109 248), the one cool accent */
+  --hud-accent-deep:    #165E98;                 /* oklch(0.47 0.115 248) */
+  --hud-on-accent:      #0D1D2C;                 /* text on an accent or gold fill */
+  --hud-gold:           #F8C761;                 /* chrome and wayfinding, the running clock */
+  --hud-pos:            #57BE97;
+  --hud-neg:            #DE7E6E;
+  --hud-warn:           #B8822E;
+}
+[data-theme="light"] {
+  --hud-surface:        #FBFAF5;
+  --hud-surface-deep:   #F4F1E8;
+  --hud-surface-raised: #FFFFFF;
+  --hud-ink:            #15242F;
+  --hud-ink-2:          rgba(21,36,47,0.70);
+  --hud-ink-3:          rgba(21,36,47,0.50);
+  --hud-border:         rgba(21,36,47,0.13);
+  --hud-fill:           rgba(21,36,47,0.04);
+  --hud-fill-2:         rgba(21,36,47,0.07);
+  --hud-accent:         #165E98;
+  --hud-accent-deep:    #00478E;
+  --hud-on-accent:      #FFFFFF;
+  --hud-gold:           #946212;                 /* bronze on paper */
+  --hud-pos:            #2F7A4F;
+  --hud-neg:            #A8382F;
+  --hud-warn:           #946212;
 }
 
 /* ===================== sa-hud.css (handoff, verbatim) ===================== */
@@ -31,20 +68,20 @@
   --sa-accent-line:   rgba(248, 199, 97, 0.40);
 
   /* Operator navy shell */
-  --sa-shell-top:     #1F4060;
-  --sa-shell-bot:     #0E2336;
+  --sa-shell-top:     #16314A;
+  --sa-shell-bot:     #0D1D2C;
   --sa-shell-line:    rgba(255,255,255,0.09);
   --sa-shell-fg:      rgba(255,255,255,0.66);
   --sa-shell-fg-hi:   #FFFFFF;
 
   /* Canvas */
-  --sa-canvas:        #F5F7FA;
+  --sa-canvas:        #FBFAF5;
   --sa-surface:       #FFFFFF;
-  --sa-ink:           #1A354A;
-  --sa-ink-2:         rgba(26,53,74,0.62);
-  --sa-ink-3:         rgba(26,53,74,0.42);
-  --sa-border:        #E2E8F0;
-  --sa-border-2:      #CBD5E1;
+  --sa-ink:           #15242F;
+  --sa-ink-2:         rgba(21,36,47,0.70);
+  --sa-ink-3:         rgba(21,36,47,0.50);
+  --sa-border:        rgba(21,36,47,0.13);
+  --sa-border-2:      rgba(21,36,47,0.22);
 
   /* Density (multiplied) */
   --sa-gap:           20px;
@@ -62,19 +99,32 @@
   --tier-c:  #64748B; /* C  */
 }
 
+/* Light (CIP paper) wins over the dark command-center class when the theme is set. */
+[data-theme="light"] .sa-dark, [data-theme="light"].sa-dark {
+  --sa-canvas:   #FBFAF5;
+  --sa-surface:  #FFFFFF;
+  --sa-ink:      #15242F;
+  --sa-ink-2:    rgba(21,36,47,0.70);
+  --sa-ink-3:    rgba(21,36,47,0.50);
+  --sa-border:   rgba(21,36,47,0.13);
+  --sa-border-2: rgba(21,36,47,0.22);
+  --sa-shadow:   0 1px 2px rgba(21,36,47,0.06), 0 1px 3px rgba(21,36,47,0.05);
+  --sa-shadow-lift: 0 10px 28px rgba(21,36,47,0.12);
+}
+
 /* density variants */
 .sa-density-compact { --sa-gap: 14px; --sa-pad: 18px; }
 .sa-density-comfy   { --sa-gap: 28px; --sa-pad: 34px; }
 
 /* DARK / full command-center mode */
 .sa-dark {
-  --sa-canvas:   #0B1A28;
-  --sa-surface:  #10273B;
-  --sa-ink:      #EAF1F8;
-  --sa-ink-2:    rgba(234,241,248,0.66);
-  --sa-ink-3:    rgba(234,241,248,0.42);
-  --sa-border:   rgba(255,255,255,0.10);
-  --sa-border-2: rgba(255,255,255,0.18);
+  --sa-canvas:   #0F2334;
+  --sa-surface:  #16314A;
+  --sa-ink:      #F3F1EA;
+  --sa-ink-2:    rgba(243,241,234,0.68);
+  --sa-ink-3:    rgba(243,241,234,0.42);
+  --sa-border:   rgba(255,255,255,0.12);
+  --sa-border-2: rgba(255,255,255,0.20);
   --sa-shadow:   0 1px 2px rgba(0,0,0,0.35);
   --sa-shadow-lift: 0 12px 30px rgba(0,0,0,0.45);
 }
@@ -92,10 +142,10 @@ body {
 
 /* monospace HUD telemetry label */
 .sa-tele {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  font-weight: 500;
-  letter-spacing: 1.8px;
+  font-family: var(--font-label);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 1.6px;
   text-transform: uppercase;
 }
 .sa-serif { font-family: var(--font-serif); font-weight: 400; }

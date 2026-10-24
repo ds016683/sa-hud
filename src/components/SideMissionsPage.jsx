@@ -9,14 +9,14 @@ import ItemDetail from './river/ItemDetail'
 import FileAway from './river/FileAway'
 import { fetchObjectives, addObjective, route, binObjective, restoreObjective, purgeObjective, reopenObjective, closeOut, pockets, provenance, realmOf, STATE, TAGS, sizeOf } from '../lib/objectives'
 import { fetchLoadout, SIZES } from '../lib/loadout'
-import { INK, INK2, GRAY, PANEL_BORDER, GOLD, GOLD_BRIGHT, BLUE, GREEN, RED, PURPLE, MONO, S, Panel, Label, chiToday, NORTH_STAR_LABEL, NORTH_STAR_ASK, LABEL } from './river/canon'
+import { INK, INK2, GRAY, PANEL_BORDER, GOLD, GOLD_BRIGHT, BLUE, GREEN, RED, PURPLE, MONO, S, Panel, Label, chiToday, NORTH_STAR_LABEL, NORTH_STAR_ASK, LABEL, alpha } from './river/canon'
 import { hudConfirm } from '../lib/dialog'
 const btn = (color = INK2, filled = false, extra = {}) => ({
   display: 'inline-flex', alignItems: 'center', gap: 5, fontFamily: MONO, fontSize: 9.5, letterSpacing: '1px', textTransform: 'uppercase',
-  padding: '5px 9px', borderRadius: 8, border: `1px solid ${filled ? color : `${color}66`}`, background: filled ? color : 'transparent', color: filled ? '#0A1B2B' : color, cursor: 'pointer', ...extra,
+  padding: '5px 9px', borderRadius: 8, border: `1px solid ${filled ? color : `${alpha(color, 40)}`}`, background: filled ? color : 'transparent', color: filled ? 'var(--hud-on-accent)' : color, cursor: 'pointer', ...extra,
 })
 const field = { background: 'rgba(255,255,255,0.05)', border: `1px solid ${PANEL_BORDER}`, borderRadius: 8, color: INK, padding: '8px 10px', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }
-const chip = (fg, border = `${fg}55`) => ({ ...S.chip('transparent', fg), border: `1px solid ${border}`, fontFamily: MONO, fontSize: 9, letterSpacing: '1px', padding: '2px 7px' })
+const chip = (fg, border = `${alpha(fg, 33)}`) => ({ ...S.chip('transparent', fg), border: `1px solid ${border}`, fontFamily: MONO, fontSize: 9, letterSpacing: '1px', padding: '2px 7px' })
 const fmtDay = (d) => d ? new Date(d + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : ''
 const CONTAINERS = ['inbox', 'follow_up', 'waiting', 'foreman', 'parked', 'bin']
 const ICON = { inbox: InboxIcon, follow_up: Bell, waiting: Hourglass, foreman: ArrowUpRight, parked: Flag, released: Check, bin: Trash2 }

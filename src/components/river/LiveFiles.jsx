@@ -5,10 +5,10 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { Paperclip, X as XIcon, ExternalLink, Check, Trash2, Upload, Mail } from 'lucide-react'
 import { listLiveFiles, putLiveFile, linkLiveFile, openLiveFile, markFiled, removeLiveFile, noteLiveFile, draftMail, groupVersions, fmtStamp, fmtSize, extOf, requestLiveFile, isRequest, urlOf, isLink, addLiveLink } from '../../lib/livefiles'
-import { INK, INK2, GRAY, PANEL_BORDER, GOLD, BLUE, GREEN, RED, MONO, SERIF, Label, KIND_COLOR, LABEL, PURPLE } from './canon'
+import { INK, INK2, GRAY, PANEL_BORDER, GOLD, BLUE, GREEN, RED, MONO, SERIF, Label, KIND_COLOR, LABEL, PURPLE, alpha } from './canon'
 import { hudPrompt, hudConfirm } from '../../lib/dialog'
 const EXT_COLOR = { xlsx: GREEN, xls: GREEN, csv: GREEN, pptx: GOLD, ppt: GOLD, key: GOLD, docx: BLUE, doc: BLUE, pdf: RED, md: INK2, txt: INK2, html: BLUE, png: INK2, jpg: INK2, jpeg: INK2 }
-const sbtn = (color = INK2) => ({ display: 'inline-flex', alignItems: 'center', gap: 4, fontFamily: MONO, fontSize: 9, letterSpacing: '1px', textTransform: 'uppercase', padding: '4px 8px', borderRadius: 7, border: `1px solid ${color}66`, background: 'transparent', color, cursor: 'pointer' })
+const sbtn = (color = INK2) => ({ display: 'inline-flex', alignItems: 'center', gap: 4, fontFamily: MONO, fontSize: 9, letterSpacing: '1px', textTransform: 'uppercase', padding: '4px 8px', borderRadius: 7, border: `1px solid ${alpha(color, 40)}`, background: 'transparent', color, cursor: 'pointer' })
 
 // The container (David, 10/17): big enough to drop on, with the two ways in.
 // Drop or choose a file (goes up now), or type a path on the Mac (a session
@@ -19,7 +19,7 @@ export function DropZone({ onFiles, onPath, children, busy = false }) {
   const ref = useRef(null)
   return (
     <div onDragOver={e => { e.preventDefault(); setDrag(true) }} onDragLeave={() => setDrag(false)} onDrop={e => { e.preventDefault(); setDrag(false); if (e.dataTransfer?.files?.length) onFiles([...e.dataTransfer.files]) }}
-      style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 14, padding: '18px 18px', minHeight: 96, border: `1px dashed ${drag ? BLUE : `${BLUE}66`}`, borderRadius: 12, background: drag ? 'rgba(169,201,232,0.10)' : 'rgba(169,201,232,0.03)', transition: 'all .15s' }}>
+      style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 14, padding: '18px 18px', minHeight: 96, border: `1px dashed ${drag ? BLUE : `${alpha(BLUE, 40)}`}`, borderRadius: 12, background: drag ? 'rgba(169,201,232,0.10)' : 'rgba(169,201,232,0.03)', transition: 'all .15s' }}>
       <div onClick={() => ref.current?.click()} style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer' }}>
         <Upload size={22} color={BLUE} />
         <div>
@@ -31,7 +31,7 @@ export function DropZone({ onFiles, onPath, children, busy = false }) {
       <div style={{ display: 'grid', gap: 8 }}>
         <div style={{ fontSize: 12, color: INK2 }}>Or a path on this Mac; the next Claude session puts it in play.</div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-          <input value={path} onChange={e => setPath(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && path.trim()) { onPath(path.trim()); setPath('') } }} placeholder="~/Desktop/…/file.pdf" style={{ flex: 1, minWidth: 180, background: '#0A1B2B', color: INK, border: `1px solid ${PANEL_BORDER}`, borderRadius: 8, padding: '7px 10px', fontSize: 12.5, fontFamily: MONO }} />
+          <input value={path} onChange={e => setPath(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && path.trim()) { onPath(path.trim()); setPath('') } }} placeholder="~/Desktop/…/file.pdf" style={{ flex: 1, minWidth: 180, background: 'var(--hud-on-accent)', color: INK, border: `1px solid ${PANEL_BORDER}`, borderRadius: 8, padding: '7px 10px', fontSize: 12.5, fontFamily: MONO }} />
           <button disabled={busy || !path.trim()} onClick={() => { onPath(path.trim()); setPath('') }} style={{ ...sbtn(BLUE), opacity: path.trim() ? 1 : 0.5 }}>Request</button>
           {children}
         </div>
@@ -45,10 +45,10 @@ export function LinkForm({ onAdd }) {
   const [u, setU] = useState(''); const [t, setT] = useState(''); const [n, setN] = useState(''); const [open, setOpen] = useState(false)
   if (!open) return <button onClick={() => setOpen(true)} style={{ ...sbtn(PURPLE), marginTop: 8 }}>+ Launch link</button>
   return (
-    <div style={{ display: 'grid', gap: 6, marginTop: 8, padding: '10px 12px', border: `1px solid ${PURPLE}55`, borderRadius: 10 }}>
-      <input value={u} onChange={e => setU(e.target.value)} placeholder="https://… the app's address" style={{ background: '#0A1B2B', color: INK, border: `1px solid ${PANEL_BORDER}`, borderRadius: 8, padding: '7px 10px', fontSize: 12.5, fontFamily: MONO }} />
-      <input value={t} onChange={e => setT(e.target.value)} placeholder="Name (what it is)" style={{ background: '#0A1B2B', color: INK, border: `1px solid ${PANEL_BORDER}`, borderRadius: 8, padding: '7px 10px', fontSize: 12.5 }} />
-      <input value={n} onChange={e => setN(e.target.value)} placeholder="One line of description (access code, who it is for)" style={{ background: '#0A1B2B', color: INK, border: `1px solid ${PANEL_BORDER}`, borderRadius: 8, padding: '7px 10px', fontSize: 12.5 }} />
+    <div style={{ display: 'grid', gap: 6, marginTop: 8, padding: '10px 12px', border: `1px solid ${alpha(PURPLE, 33)}`, borderRadius: 10 }}>
+      <input value={u} onChange={e => setU(e.target.value)} placeholder="https://… the app's address" style={{ background: 'var(--hud-on-accent)', color: INK, border: `1px solid ${PANEL_BORDER}`, borderRadius: 8, padding: '7px 10px', fontSize: 12.5, fontFamily: MONO }} />
+      <input value={t} onChange={e => setT(e.target.value)} placeholder="Name (what it is)" style={{ background: 'var(--hud-on-accent)', color: INK, border: `1px solid ${PANEL_BORDER}`, borderRadius: 8, padding: '7px 10px', fontSize: 12.5 }} />
+      <input value={n} onChange={e => setN(e.target.value)} placeholder="One line of description (access code, who it is for)" style={{ background: 'var(--hud-on-accent)', color: INK, border: `1px solid ${PANEL_BORDER}`, borderRadius: 8, padding: '7px 10px', fontSize: 12.5 }} />
       <div style={{ display: 'flex', gap: 6 }}><button disabled={!(u.startsWith('http://') || u.startsWith('https://'))} onClick={() => { onAdd(u.trim(), t.trim() || null, n.trim() || null); setU(''); setT(''); setN(''); setOpen(false) }} style={sbtn(GREEN)}>Add</button><button onClick={() => setOpen(false)} style={sbtn(INK2)}>Cancel</button></div>
     </div>
   )
@@ -56,7 +56,7 @@ export function LinkForm({ onAdd }) {
 
 export function ClipButton({ count, onClick, color = BLUE, title = 'Live Files on this item' }) {
   return (
-    <button onClick={(e) => { e.stopPropagation(); onClick() }} title={title} style={{ display: 'inline-flex', alignItems: 'center', gap: 3, background: 'transparent', border: `1px solid ${count ? `${color}66` : PANEL_BORDER}`, borderRadius: 7, padding: '3px 7px', color: count ? color : GRAY, cursor: 'pointer', fontFamily: MONO, fontSize: 9.5, letterSpacing: '0.6px' }}>
+    <button onClick={(e) => { e.stopPropagation(); onClick() }} title={title} style={{ display: 'inline-flex', alignItems: 'center', gap: 3, background: 'transparent', border: `1px solid ${count ? `${alpha(color, 40)}` : PANEL_BORDER}`, borderRadius: 7, padding: '3px 7px', color: count ? color : GRAY, cursor: 'pointer', fontFamily: MONO, fontSize: 9.5, letterSpacing: '0.6px' }}>
       <Paperclip size={11} />{count ? count : ''}
     </button>
   )
@@ -115,7 +115,7 @@ export default function LiveFilesModal({ onClose, filter = null, items = [], onC
 
         <div style={{ marginBottom: 14 }}>
           <DropZone onFiles={put} onPath={(pth) => act(() => requestLiveFile(pth, { objectiveId: dropTarget || null }), 'Requested; the next session on the Mac puts it in play')}>
-            <select value={dropTarget} onChange={e => setDropTarget(e.target.value)} style={{ background: '#0A1B2B', color: INK, border: `1px solid ${PANEL_BORDER}`, borderRadius: 7, padding: '6px 8px', fontSize: 12, maxWidth: 260 }}>
+            <select value={dropTarget} onChange={e => setDropTarget(e.target.value)} style={{ background: 'var(--hud-on-accent)', color: INK, border: `1px solid ${PANEL_BORDER}`, borderRadius: 7, padding: '6px 8px', fontSize: 12, maxWidth: 260 }}>
               <option value="">Tied to nothing yet</option>
               {items.map(it => <option key={it.id} value={it.id}>{itemLabel(it)}{it.stashed ? ' (Stash)' : ''}</option>)}
             </select>
@@ -141,15 +141,15 @@ export default function LiveFilesModal({ onClose, filter = null, items = [], onC
               <div style={{ display: 'grid', gap: 4 }}>
                 {groupVersions(g.rows, { timeKey: 'created_at', rootKey: 'path' }).map(fam => [fam.current, ...(olderOpen[fam.key] ? fam.older : [])].map((r, idx) => { const isOld = idx > 0
                   if (isLink(r)) return (
-                    <div key={r.id} style={{ display: 'grid', gridTemplateColumns: '44px 1fr auto', gap: 10, alignItems: 'center', padding: '10px 10px', border: `1px solid ${PURPLE}66`, borderRadius: 10, background: 'rgba(180,163,232,0.07)' }}>
-                      <span style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '0.8px', textTransform: 'uppercase', color: PURPLE, border: `1px solid ${PURPLE}66`, borderRadius: 6, padding: '3px 0', textAlign: 'center' }}>app</span>
+                    <div key={r.id} style={{ display: 'grid', gridTemplateColumns: '44px 1fr auto', gap: 10, alignItems: 'center', padding: '10px 10px', border: `1px solid ${alpha(PURPLE, 40)}`, borderRadius: 10, background: 'rgba(180,163,232,0.07)' }}>
+                      <span style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '0.8px', textTransform: 'uppercase', color: PURPLE, border: `1px solid ${alpha(PURPLE, 40)}`, borderRadius: 6, padding: '3px 0', textAlign: 'center' }}>app</span>
                       <div style={{ minWidth: 0 }}>
                         <div style={{ fontSize: 14.5, fontWeight: 600, color: INK }}>{r.name}</div>
                         {r.note && <div style={{ fontSize: 12.5, color: INK2, marginTop: 2 }}>{r.note}</div>}
                         <div style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '0.6px', color: GRAY, marginTop: 3 }}>{r.path} · {fmtStamp(r.created_at)}</div>
                       </div>
                       <div style={{ display: 'flex', gap: 5, alignItems: 'center' }}>
-                        <button onClick={() => window.open(r.path, '_blank', 'noopener')} style={{ ...sbtn(PURPLE), background: PURPLE, color: '#0A1B2B', fontWeight: 600 }}><ExternalLink size={10} /> Launch</button>
+                        <button onClick={() => window.open(r.path, '_blank', 'noopener')} style={{ ...sbtn(PURPLE), background: PURPLE, color: 'var(--hud-on-accent)', fontWeight: 600 }}><ExternalLink size={10} /> Launch</button>
                         <button onClick={async () => { if (await hudConfirm(`Done with ${r.name}? The link leaves Live Files.`)) act(() => markFiled(r.id), `Out of play: ${r.name}`) }} title="Done: out of Live Files" style={sbtn(INK2)}><Check size={10} /> Done</button>
                       </div>
                     </div>
@@ -162,7 +162,7 @@ export default function LiveFilesModal({ onClose, filter = null, items = [], onC
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                           <span onClick={() => { if (!isRequest(r)) act(async () => { window.open(await openLiveFile(r), '_blank', 'noopener') }, `Opened ${r.name}`) }} style={{ fontSize: 13.5, color: INK, cursor: isRequest(r) ? 'default' : 'pointer', wordBreak: 'break-word' }}>{r.name}</span>
                           {r.version > 1 && <span style={{ fontFamily: MONO, fontSize: 9, letterSpacing: '1px', color: GOLD }}>v{r.version}</span>}
-                          {isRequest(r) && <span title={r.path} style={{ fontFamily: MONO, fontSize: 9, letterSpacing: '1px', textTransform: 'uppercase', color: GOLD, border: `1px solid ${GOLD}55`, borderRadius: 999, padding: '1px 7px' }}>waiting for a session on the Mac</span>}
+                          {isRequest(r) && <span title={r.path} style={{ fontFamily: MONO, fontSize: 9, letterSpacing: '1px', textTransform: 'uppercase', color: GOLD, border: `1px solid ${alpha(GOLD, 33)}`, borderRadius: 999, padding: '1px 7px' }}>waiting for a session on the Mac</span>}
                         </div>
                         <div style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '0.6px', color: GRAY, marginTop: 2 }}>
                           {fmtStamp(r.created_at)}{r.size ? ` · ${fmtSize(r.size)}` : ''} · {r.source === 'session' ? `Claude${r.session ? ` · ${r.session}` : ''}` : r.source === 'lumen' ? 'Lumen' : 'David'}{isOld ? ' · older version' : ''}
@@ -170,7 +170,7 @@ export default function LiveFilesModal({ onClose, filter = null, items = [], onC
                         <div onClick={async () => { const n = await hudPrompt('Note on this file', r.note || ''); if (n !== null) act(() => noteLiveFile(r.id, n.trim() || null), 'Note saved') }} style={{ fontSize: 12, color: r.note ? INK2 : GRAY, marginTop: 3, cursor: 'text', fontStyle: r.note ? 'normal' : 'italic' }}>{r.note || 'add a note'}</div>
                       </div>
                       <div style={{ display: 'flex', gap: 5, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-                        <select value={r.objective_id || ''} onChange={e => act(() => linkLiveFile(r, { objectiveId: e.target.value || null }), e.target.value ? 'Tied to the item' : 'Untied')} title="Tie to a Loadout or Stash item" style={{ background: '#0A1B2B', color: INK2, border: `1px solid ${PANEL_BORDER}`, borderRadius: 7, padding: '3px 6px', fontSize: 11, maxWidth: 170 }}>
+                        <select value={r.objective_id || ''} onChange={e => act(() => linkLiveFile(r, { objectiveId: e.target.value || null }), e.target.value ? 'Tied to the item' : 'Untied')} title="Tie to a Loadout or Stash item" style={{ background: 'var(--hud-on-accent)', color: INK2, border: `1px solid ${PANEL_BORDER}`, borderRadius: 7, padding: '3px 6px', fontSize: 11, maxWidth: 170 }}>
                           <option value="">Tie to…</option>
                           {items.map(it => <option key={it.id} value={it.id}>{itemLabel(it)}</option>)}
                           {r.objective_id && !items.some(it => it.id === r.objective_id) && <option value={r.objective_id}>{r.item?.title || 'current item'}</option>}

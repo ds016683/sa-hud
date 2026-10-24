@@ -8,6 +8,7 @@ import {
 import useRelationships from '../hooks/useRelationships'
 import MapView from './relationships/MapView'
 import TripPlannerView from './relationships/TripPlannerView'
+import { alpha } from './river/canon'
 
 // Tag taxonomy
 const TAG_CATEGORIES = {
@@ -877,7 +878,7 @@ function DrillPanel({ person, isNew, onClose, onTogglePin, onHide, onAddTag, onR
                       style={{
                         background: active ? info.color : 'white',
                         color: active ? 'white' : info.color,
-                        border: `1px solid ${info.color}66`,
+                        border: `1px solid ${alpha(info.color, 40)}`,
                         borderRadius: 8, padding: '4px 10px',
                         fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
                       }}
