@@ -2,7 +2,7 @@
 import { useMemo, useState, useEffect } from 'react'
 import { Users, MapPin, ChevronRight, Pin } from 'lucide-react'
 import { ComposableMap, Geographies, Geography, Marker } from 'react-simple-maps'
-import { BLUE, GOLD, GRAY, GREEN, INK, INK2, NAVY_DEEP, PANEL_BG, PANEL_BORDER, PURPLE, RED, alpha } from '../river/canon'
+import { BLUE, GOLD, GRAY, GREEN, INK, INK2, NAVY_DEEP, PANEL_BG, PANEL_BORDER, PURPLE, RED, LABEL, alpha } from '../river/canon'
 
 const NAVY = INK
 const TEXT_DIM = INK2

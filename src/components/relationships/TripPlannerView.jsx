@@ -1,7 +1,7 @@
 // TripPlannerView.jsx — "I'm going to X. Who's there? What's the move?"
 import { useMemo, useState } from 'react'
 import { MapPin, Search, ChevronRight, Pin, Clock, AlertTriangle, Star, TrendingUp } from 'lucide-react'
-import { BLUE, GOLD, GRAY, GREEN, INK, INK2, NAVY_DEEP, PANEL_BG, PANEL_BORDER, PURPLE, RED, alpha } from '../river/canon'
+import { BLUE, GOLD, GRAY, GREEN, INK, INK2, NAVY_DEEP, PANEL_BG, PANEL_BORDER, PURPLE, RED, LABEL, alpha } from '../river/canon'
 
 const NAVY = INK
 const TEXT_DIM = INK2
