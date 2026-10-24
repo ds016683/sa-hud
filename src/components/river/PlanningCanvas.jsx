@@ -1,9 +1,9 @@
-import { useState, useEffect, useCallback } from 'react'
-import { Plus, RefreshCw } from 'lucide-react'
+import { Fragment, useState, useEffect, useCallback } from 'react'
+import { Plus, RefreshCw, Save } from 'lucide-react'
 import { readArtifact, writeArtifact } from '../../lib/artifacts'
 import { Waterfall, ItemModal } from '../ClientsPage'
 import { MMA_DOMAINS, PROGRAM_LANE, PLAN_LANES, PLAN_VIEWS } from '../../constants/domains'
-import { INK, INK2, GRAY, LABEL, MUTED, NAVY_DEEP, PANEL_BORDER, BLUE, RED, MONO, SERIF, SubLabel } from './canon'
+import { INK, INK2, GRAY, LABEL, MUTED, NAVY_DEEP, PANEL_BORDER, BLUE, GREEN, RED, MONO, SERIF, SubLabel } from './canon'
 
 // =============================================================================
 // Planning (David, 10/23): the strategy planning waterfall on the Mission Card,
@@ -41,11 +41,59 @@ export function DomainStrip({ counts = {}, active, onPick }) {
   )
 }
 
+// 2027 Domains (David, 10/24): the first surface. Each domain with its chosen
+// iconography, its name, its definition, and a place for the TH Lead and the
+// MMA Lead. Definitions and leads are saved on the plan artifact (doc.domains).
+export function DomainsSurface({ domains = {}, onSave, busy }) {
+  const [d, setD] = useState(domains)
+  const [dirty, setDirty] = useState(false)
+  useEffect(() => { let on = true; Promise.resolve().then(() => { if (on) { setD(domains); setDirty(false) } }); return () => { on = false } }, [domains])
+  const get = (id, k, fallback = '') => (d[id] && d[id][k] != null ? d[id][k] : fallback)
+  const set = (id, k) => (e) => { setD(prev => ({ ...prev, [id]: { ...(prev[id] || {}), [k]: e.target.value } })); setDirty(true) }
+  const input = { width: '100%', padding: '7px 9px', borderRadius: 7, border: `1px solid ${PANEL_BORDER}`, fontSize: 12.5, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', background: 'rgba(255,255,255,0.06)', color: INK }
+  const eyebrow = { fontFamily: MONO, fontSize: 9.5, letterSpacing: '1.4px', textTransform: 'uppercase', color: LABEL }
+  return (
+    <div style={{ display: 'grid', gap: 10 }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap' }}>
+        <div style={{ flex: 1, minWidth: 280 }}>
+          <SubLabel style={{ marginBottom: 2 }}>2027 Domains</SubLabel>
+          <div style={{ fontSize: 12.5, color: INK2, lineHeight: 1.5 }}>The seven domains of the 2027 work: the construct for the contract and for how the work is managed. Iconography, name, definition, and the lead on each side.</div>
+        </div>
+        <button onClick={() => onSave(d)} disabled={!dirty || busy} style={{ ...btnPrimary, opacity: dirty ? 1 : 0.5 }}><Save size={13} /> {busy ? 'Saving…' : dirty ? 'Save' : 'Saved'}</button>
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: '56px 1.1fr 2.2fr 1fr 1fr', gap: 0, border: `1px solid ${PANEL_BORDER}`, borderRadius: 12, overflow: 'hidden' }}>
+        {['', 'Domain', 'Definition', 'TH Lead', 'MMA Lead'].map((h, i) => <div key={i} style={{ ...eyebrow, padding: '10px 12px', background: 'rgba(255,255,255,0.04)', borderBottom: `1px solid ${PANEL_BORDER}` }}>{h}</div>)}
+        {MMA_DOMAINS.map((dom, i) => {
+          const Icon = dom.icon; const last = i === MMA_DOMAINS.length - 1
+          const cell = { padding: '12px 12px', borderBottom: last ? 'none' : `1px solid ${PANEL_BORDER}`, display: 'flex', flexDirection: 'column', gap: 6, justifyContent: 'flex-start' }
+          return (
+            <Fragment key={dom.id}>
+              <div style={{ ...cell, alignItems: 'center', justifyContent: 'center', borderLeft: `3px solid ${dom.color}` }}>
+                <span style={{ width: 34, height: 34, borderRadius: 9, background: dom.color, color: NAVY_DEEP, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}><Icon size={17} /></span>
+              </div>
+              <div style={cell}>
+                <span style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '1.4px', color: dom.color }}>{dom.code} · {dom.n}</span>
+                <span style={{ fontFamily: SERIF, fontSize: 16, fontWeight: 500, color: INK, lineHeight: 1.2 }}>{dom.id}</span>
+              </div>
+              <div style={cell}>
+                <textarea value={get(dom.id, 'definition', dom.line)} onChange={set(dom.id, 'definition')} rows={3} style={{ ...input, resize: 'vertical', lineHeight: 1.45 }} />
+              </div>
+              <div style={cell}><input value={get(dom.id, 'th_lead')} onChange={set(dom.id, 'th_lead')} placeholder="Name" style={input} /></div>
+              <div style={cell}><input value={get(dom.id, 'mma_lead')} onChange={set(dom.id, 'mma_lead')} placeholder="Name" style={input} /></div>
+            </Fragment>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 export default function PlanningCanvas({ project }) {
   const [doc, setDoc] = useState(null)
   const [items, setItems] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const [surface, setSurface] = useState('domains')
   const [view, setView] = useState('strategy')
   const [mode, setMode] = useState('simple')
   const [pick, setPick] = useState(null)
@@ -69,6 +117,11 @@ export default function PlanningCanvas({ project }) {
       await writeArtifact(project.id, SLUG, d); setDoc(d); setItems(d.items); setModal(null)
     } catch (e) { setError(e.message) } finally { setBusy(false) }
   }
+  const saveDomains = async (domains) => {
+    setBusy(true); setError(null)
+    try { const d = { ...(doc || {}), title: 'Program Plan', kind: 'plan', lanes: PLAN_LANES.map(l => l.id), items, domains }; await writeArtifact(project.id, SLUG, d); setDoc(d) }
+    catch (e) { setError(e.message) } finally { setBusy(false) }
+  }
   const saveItem = (d) => persist(d.id ? items.map(i => i.id === d.id ? { ...i, ...d, updated_at: new Date().toISOString() } : i) : [...items, { ...d, position: items.length }])
   const deleteItem = (it) => persist(items.filter(i => i.id !== it.id))
   const moveItem = (it, patch) => persist(items.map(i => i.id === it.id ? { ...i, ...patch } : i))
@@ -79,6 +132,15 @@ export default function PlanningCanvas({ project }) {
 
   return (
     <div style={{ display: 'grid', gap: 14 }}>
+      {/* Surfaces: tabs for the work we take somewhere else (David, 10/24). */}
+      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', paddingBottom: 10, borderBottom: `1px solid ${PANEL_BORDER}` }}>
+        <span style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '1.4px', textTransform: 'uppercase', color: LABEL, marginRight: 6 }}>Surfaces</span>
+        <Pill active={surface === 'domains'} onClick={() => setSurface('domains')}>2027 Domains</Pill>
+        <Pill active={surface === 'plan'} onClick={() => setSurface('plan')}>Program Plan</Pill>
+      </div>
+      {error && surface === 'domains' && <div style={{ fontSize: 12.5, color: RED }}>{error}</div>}
+      {surface === 'domains' && <DomainsSurface domains={doc?.domains || {}} onSave={saveDomains} busy={busy} />}
+      {surface === 'plan' && (<>
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap' }}>
         <div style={{ flex: 1, minWidth: 280 }}>
           <SubLabel style={{ marginBottom: 2 }}>Program Plan</SubLabel>
@@ -109,6 +171,7 @@ export default function PlanningCanvas({ project }) {
         <Waterfall client={client} items={shown} view={mode} subtitleOf={mode === 'detailed' ? subtitle : undefined} onOpen={(it) => setModal({ item: it })} onAdd={(lane) => setModal({ item: { lane } })} onMove={moveItem} onDraft={(lane, start_date) => setModal({ item: { lane, start_date } })} />
       )}
       {modal && <ItemModal client={client} item={modal.item} busy={busy} extended onClose={() => setModal(null)} onSave={saveItem} onDelete={deleteItem} />}
+      </>)}
     </div>
   )
 }
