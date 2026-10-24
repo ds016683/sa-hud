@@ -166,7 +166,7 @@ export function LiveProtocolsModal({ onClose, onOpen }) {
       if (error) { if (on) setList('missing'); return }
       const open = (data || []).filter(isOpenRow)
       const oids = [...new Set(open.map(r => r.objective_id))]
-      const { data: objs } = oids.length ? await supabase.from('objectives').select('id,title,state,tags,description,north_star,effort').in('id', oids) : { data: [] }
+      const { data: objs } = oids.length ? await supabase.from('objectives').select('id,title,state,tags,description,north_star,effort').in('id', oids).is('deleted_at', null).neq('state', 'released') : { data: [] }
       const O = new Map((objs || []).map(o => [o.id, o]))
       const groups = []
       for (const r of open) {

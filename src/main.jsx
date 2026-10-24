@@ -3,8 +3,10 @@ import { createRoot } from 'react-dom/client'
 import './index.css'
 import './sa-hud.css'
 import App from './App.jsx'
-// Theme (Milestone 18): dark is the CIP feature navy, light is the CIP paper. Applied before first paint.
-try { const t = localStorage.getItem('hud-theme'); if (t === 'light') document.documentElement.dataset.theme = 'light' } catch { /* default dark */ }
+// Theme (Milestone 18): dark, the CIP feature navy. The CIP paper tokens stay in sa-hud.css under
+// [data-theme="light"] for when the scrub (18.3) has cleared the pages' own navy; the switch was
+// pulled 10/24 (David) until then. Any stored light preference is cleared so no one is stuck in it.
+try { localStorage.removeItem('hud-theme'); delete document.documentElement.dataset.theme } catch { /* no-op */ }
 import { supabase } from './lib/supabase'
 
 // A blank page tells nobody anything. Any render crash shows its message on
