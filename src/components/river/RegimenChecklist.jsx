@@ -8,9 +8,9 @@ import { useState } from 'react'
 import { Check, RotateCcw, X } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { MEDICATIONS, dueOn } from '../../constants/medications'
-import { S, Panel, Label, GRAY, INK2, GOLD, GREEN, RED, PERIWINKLE, PANEL_BORDER, MONO, chiToday, fmtTime, alpha } from './canon'
+import { S, Panel, Label, GRAY, INK2, GOLD, GREEN, RED, PERIWINKLE, PANEL_BORDER, MONO, chiToday, fmtTime, alpha, INK } from './canon'
 
-const CTRL = { fontSize: 12, padding: '7px 10px', borderRadius: 8, border: `1px solid ${PANEL_BORDER}`, background: 'rgba(255,255,255,0.05)', color: '#EAF1F8' }
+const CTRL = { fontSize: 12, padding: '7px 10px', borderRadius: 8, border: `1px solid ${PANEL_BORDER}`, background: 'rgba(255,255,255,0.05)', color: INK }
 const BTN = { ...CTRL, display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer' }
 const TEXT_BTN = { background: 'none', border: 'none', cursor: 'pointer', fontFamily: MONO, fontSize: 10, color: GRAY, padding: '2px 4px', letterSpacing: '0.06em' }
 const OV_ERR = 'Overrides table not created yet (run the 9/26 SQL).'
@@ -110,7 +110,7 @@ export default function RegimenChecklist({ logs, overrides, days, friendly, onCh
   return (
     <Panel title="Medication · today">
       <div style={{ fontSize: 13, color: INK2, marginBottom: 12 }}>
-        <span style={{ color: allDue ? GOLD : '#EAF1F8', fontWeight: 600 }}>{N} of {M} due today</span>
+        <span style={{ color: allDue ? GOLD : INK, fontWeight: 600 }}>{N} of {M} due today</span>
         <span style={{ color: GRAY }}> · 0.5 mi per dose · all due doses strike On Regimen (2 mi)</span>
         {extra > 0 && <span style={{ color: GRAY }}> · {extra} extra</span>}
       </div>
@@ -138,7 +138,7 @@ export default function RegimenChecklist({ logs, overrides, days, friendly, onCh
                 <Ring on={taken} />
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                    <span style={{ fontSize: 13.5, color: taken ? INK2 : '#EAF1F8' }}>{med.label}</span>
+                    <span style={{ fontSize: 13.5, color: taken ? INK2 : INK }}>{med.label}</span>
                     {asNeeded && <span style={S.chip('rgba(255,255,255,0.06)', GRAY)}>as needed</span>}
                     {!asNeeded && !due && !taken && <span style={S.chip('rgba(255,255,255,0.06)', GRAY)}>not today</span>}
                     {moved && <span title={ov.note || undefined} style={S.chip(`${alpha(PERIWINKLE, 13)}`, PERIWINKLE)}>moved</span>}
@@ -177,7 +177,7 @@ export default function RegimenChecklist({ logs, overrides, days, friendly, onCh
                 </div>
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                   <input value={moveNote} onChange={e => setMoveNote(e.target.value)} placeholder="Note (optional)" style={{ ...CTRL, flex: '1 1 200px' }} />
-                  <button onClick={() => setOverride(med, false)} disabled={busy} style={{ ...BTN, color: due ? '#EAF1F8' : GRAY, opacity: busy ? 0.6 : 1 }}>Not today</button>
+                  <button onClick={() => setOverride(med, false)} disabled={busy} style={{ ...BTN, color: due ? INK : GRAY, opacity: busy ? 0.6 : 1 }}>Not today</button>
                   <button onClick={() => setOverride(med, true)} disabled={busy} style={{ ...BTN, borderColor: `${alpha(PERIWINKLE, 50)}`, color: PERIWINKLE, opacity: busy ? 0.6 : 1 }}>Today instead</button>
                   {moved && <button onClick={() => setOverride(med, null)} disabled={busy} style={{ ...BTN, color: GRAY, opacity: busy ? 0.6 : 1 }}>Clear override</button>}
                   <button onClick={() => setMoveKey(null)} style={{ ...BTN, color: GRAY }}><X size={14} /></button>

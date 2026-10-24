@@ -2,8 +2,7 @@
 // icon in a circle. Gold line art on navy, double-ring frame, CIP canon.
 // Sizes: 20 (inline chip), 34 (scorecard), 72 (ceremony/library detail).
 
-const GOLD = '#F8C761'
-const GOLD_DEEP = '#E6B54F'
+const GOLD_DEEP = GOLD
 
 // Emblems are drawn in a 48x48 space, centered around (24, 26) under the frame.
 const EMBLEMS = {
@@ -201,6 +200,7 @@ const GENERIC = (
 )
 
 import { BADGES, badgeTier, TIER_COLORS } from '../constants/collection'
+import { GOLD } from './river/canon'
 const hexA = (hex, a) => { const n = parseInt(hex.slice(1), 16); return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})` }
 
 export default function BadgeMedallion({ id, size = 34, earned = true, glow = false, color = null }) {

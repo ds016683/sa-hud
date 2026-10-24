@@ -2,22 +2,17 @@
 import { useMemo, useState, useEffect } from 'react'
 import { Users, MapPin, ChevronRight, Pin } from 'lucide-react'
 import { ComposableMap, Geographies, Geography, Marker } from 'react-simple-maps'
+import { BLUE, GOLD, GRAY, GREEN, INK, INK2, NAVY_DEEP, PANEL_BG, PANEL_BORDER, PURPLE, RED, alpha } from '../river/canon'
 
-const NAVY = '#002C77'
-const BLUE = '#009DE0'
-const GOLD = '#D4A106'
-const GRAY = '#8096B2'
-const LABEL = '#7FA8D4'
-const TEXT_DIM = '#565656'
-const PANEL_BORDER = '#E2E8F0'
-
+const NAVY = INK
+const TEXT_DIM = INK2
 const S = {
-  panel: { background: 'white', border: `1px solid ${PANEL_BORDER}`, borderRadius: 12, padding: 14, boxShadow: '0 1px 2px rgba(0,0,0,0.04)' },
+  panel: { background: PANEL_BG, border: `1px solid ${PANEL_BORDER}`, borderRadius: 12, padding: 14, boxShadow: 'none' },
   chip: (bg, fg) => ({ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 9999, background: bg, color: fg, textTransform: 'uppercase', letterSpacing: '0.05em' }),
 }
 
 function avatarColor(name) {
-  const colors = ['#0EA5E9', '#7C3AED', '#DC2626', '#0F766E', '#D97706', '#0369A1', '#BE185D', '#15803D']
+  const colors = [BLUE, PURPLE, RED, GREEN, GOLD, BLUE, RED, GREEN]
   let h = 0
   for (const c of (name || '')) h = (h * 31 + c.charCodeAt(0)) >>> 0
   return colors[h % colors.length]
@@ -96,7 +91,7 @@ export default function MapView({ people, onSelectPerson }) {
   const maxByState = Math.max(1, ...Object.values(byState))
   const stateColor = (code) => {
     const n = byState[code] || 0
-    if (n === 0) return '#F1F5F9'
+    if (n === 0) return NAVY_DEEP
     if (selectedState === code) return NAVY
     const intensity = Math.min(1, n / maxByState)
     // Blend white → navy
@@ -126,7 +121,7 @@ export default function MapView({ people, onSelectPerson }) {
                   key={geo.rsmKey}
                   geography={geo}
                   fill={stateColor(code)}
-                  stroke="#FFFFFF"
+                  stroke="${NAVY_DEEP}"
                   strokeWidth={0.5}
                   onClick={() => {
                     setSelectedState(prev => prev === code ? null : code)
@@ -136,7 +131,7 @@ export default function MapView({ people, onSelectPerson }) {
                   onMouseLeave={() => setHoveredState(null)}
                   style={{
                     default: { outline: 'none', cursor: count > 0 ? 'pointer' : 'default' },
-                    hover: { fill: count > 0 ? BLUE : '#E2E8F0', outline: 'none', cursor: count > 0 ? 'pointer' : 'default' },
+                    hover: { fill: count > 0 ? BLUE : PANEL_BORDER, outline: 'none', cursor: count > 0 ? 'pointer' : 'default' },
                     pressed: { fill: NAVY, outline: 'none' },
                   }}
                 />
@@ -171,7 +166,7 @@ export default function MapView({ people, onSelectPerson }) {
 
         {/* Legend */}
         <div style={{ position: 'absolute', bottom: 10, right: 14, display: 'flex', alignItems: 'center', gap: 6, fontSize: 10, color: GRAY }}>
-          <div style={{ width: 16, height: 8, background: '#F1F5F9', borderRadius: 2 }} />
+          <div style={{ width: 16, height: 8, background: PANEL_BG, borderRadius: 2 }} />
           <span>fewer</span>
           <div style={{ width: 16, height: 8, background: 'rgb(51,82,138)', borderRadius: 2 }} />
           <span>more</span>
@@ -209,7 +204,7 @@ export default function MapView({ people, onSelectPerson }) {
                   borderBottom: `1px solid ${PANEL_BORDER}`, cursor: 'pointer',
                 }}
               >
-                <div style={{ width: 30, height: 30, borderRadius: '50%', background: avatarColor(p.full_name), color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, flexShrink: 0 }}>
+                <div style={{ width: 30, height: 30, borderRadius: '50%', background: avatarColor(p.full_name), color: NAVY_DEEP, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, flexShrink: 0 }}>
                   {initials(p.full_name)}
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
@@ -223,7 +218,7 @@ export default function MapView({ people, onSelectPerson }) {
                   </div>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2 }}>
-                  <span style={{ ...S.chip('#DBEAFE', '#1D4ED8') }}>{p.contact_count || 0}</span>
+                  <span style={{ ...S.chip(alpha(BLUE, 15), INK) }}>{p.contact_count || 0}</span>
                   <span style={{ fontSize: 10, color: GRAY }}>{relativeDate(p.last_contact_at)}</span>
                 </div>
                 <ChevronRight size={14} color={GRAY} />

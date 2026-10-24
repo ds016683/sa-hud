@@ -1,27 +1,28 @@
 import { useState, useEffect, useMemo } from 'react'
 import { ChevronDown, ExternalLink, Search, Calendar } from 'lucide-react'
+import { BLUE, GOLD, GRAY, GREEN, INK, NAVY_DEEP, PANEL_BG, PURPLE, alpha } from './river/canon'
 
 const SUPA_URL = 'https://cmuvomnmaoseccxpeuxq.supabase.co'
 const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNtdXZvbW5tYW9zZWNjeHBldXhxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU0MDM5NjMsImV4cCI6MjA5MDk3OTk2M30.s_sIdbTqE5NdMhi-ZfiWTpneswGvi2U4bmNgNWF22UY'
 
 const TH = {
-  darkBlue:    '#1A3A5C',
+  darkBlue:    INK,
   mediumBlue:  '#2B6CB0',
-  gold:        '#D4A017',
-  lightGoldBg: '#FFFBF0',
-  lightBlueBg: '#EBF4FF',
-  gray:        '#6B7280',
-  white:       '#FFFFFF',
+  gold:        GOLD,
+  lightGoldBg: alpha(GOLD, 15),
+  lightBlueBg: alpha(BLUE, 15),
+  gray:        GRAY,
+  white:       NAVY_DEEP,
 }
 
 const MEETING_TYPE_COLORS = {
-  'one-on-one':       { bg: '#E8F5E9', color: '#2E7D32' },
-  'team-meeting':     { bg: '#E3F2FD', color: '#1565C0' },
-  'client-call':      { bg: TH.lightGoldBg, color: '#B45309' },
-  'external-intro':   { bg: '#F3E5F5', color: '#6A1B9A' },
-  'coaching':         { bg: '#FFF3E0', color: '#E65100' },
-  'demo-prep':        { bg: '#E8EAF6', color: '#283593' },
-  'strategy-session': { bg: '#FCE4EC', color: '#880E4F' },
+  'one-on-one':       { bg: alpha(GREEN, 15), color: GREEN },
+  'team-meeting':     { bg: alpha(BLUE, 15), color: '#1565C0' },
+  'client-call':      { bg: TH.lightGoldBg, color: GOLD },
+  'external-intro':   { bg: alpha(PURPLE, 15), color: '#6A1B9A' },
+  'coaching':         { bg: alpha(GOLD, 15), color: GOLD },
+  'demo-prep':        { bg: alpha(PURPLE, 15), color: '#283593' },
+  'strategy-session': { bg: alpha(PURPLE, 15), color: PURPLE },
 }
 
 function formatDate(dateStr) {
@@ -99,7 +100,7 @@ function extractTranscriptUrl(meeting) {
 
 const MeetingCard = ({ meeting }) => {
   const [open, setOpen] = useState(false)
-  const typeStyle = MEETING_TYPE_COLORS[meeting.meeting_type] || { bg: '#F3F4F6', color: TH.gray }
+  const typeStyle = MEETING_TYPE_COLORS[meeting.meeting_type] || { bg: PANEL_BG, color: TH.gray }
   const transcriptUrl = extractTranscriptUrl(meeting)
 
   const attendeeList = (() => {
@@ -117,7 +118,7 @@ const MeetingCard = ({ meeting }) => {
       <button
         onClick={() => setOpen(!open)}
         style={{
-          width: '100%', padding: '12px 14px', background: '#fafbfc', border: 'none',
+          width: '100%', padding: '12px 14px', background: PANEL_BG, border: 'none',
           cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10, fontSize: 13,
         }}
       >
@@ -234,7 +235,7 @@ export default function MeetingsPage() {
     <div style={{
       padding: '32px 32px 48px',
       maxWidth: 860, margin: '0 auto',
-      fontFamily: 'Arial, Helvetica, sans-serif',
+      fontFamily: 'inherit',
     }}>
       {/* Header */}
       <div style={{ marginBottom: 24 }}>
@@ -244,7 +245,7 @@ export default function MeetingsPage() {
           {!loading && (
             <span style={{
               fontSize: 11, fontWeight: 600, color: TH.gray,
-              background: '#F3F4F6', padding: '2px 8px', borderRadius: 12,
+              background: PANEL_BG, padding: '2px 8px', borderRadius: 12,
             }}>
               {filtered.length} / {meetings.length}
             </span>

@@ -6,6 +6,7 @@ import { Card, SecHead, TheoAv } from './sa/SaUi'
 import useActivityLog, { formatEntryNarrative } from '../hooks/useActivityLog'
 import NotePrompt from './NotePrompt'
 import { supabaseUrl, supabaseAnonKey } from '../lib/supabase'
+import { BLUE, GREEN, RED } from './river/canon'
 
 // Skill definitions — cost/cooldown model lifted verbatim from HorizontalSkills.jsx
 const SKILLS = [
@@ -31,9 +32,9 @@ const SHADOW_NAMES = Object.fromEntries(shadowDefs.map(s => [s.id, s.name]))
 
 const LOG_TONES = {
   skill: 'var(--sa-accent)',
-  shadow: '#A8382F',
-  sovereignty: '#2F7A4F',
-  loop: '#4DA3FF',
+  shadow: RED,
+  sovereignty: GREEN,
+  loop: BLUE,
   session: 'var(--sa-border-2)',
   checkin: 'var(--sa-border-2)',
   manual: 'var(--sa-border-2)',
@@ -98,7 +99,7 @@ function Hero({ sov, onCommit, greeting, currentLoop }) {
 
       <svg className="sa-rapids" viewBox="0 0 1200 64" preserveAspectRatio="none" aria-hidden="true">
         <path d="M0 40 C 120 12, 220 12, 340 40 S 560 68, 680 40 S 900 12, 1020 40 S 1180 56, 1200 44" fill="none" stroke="var(--sa-accent)" strokeWidth="1.5" opacity="0.7" />
-        <path d="M0 52 C 140 30, 260 30, 380 52 S 600 74, 720 52 S 940 30, 1060 52 L 1200 52" fill="none" stroke="#4DA3FF" strokeWidth="1" opacity="0.4" />
+        <path d="M0 52 C 140 30, 260 30, 380 52 S 600 74, 720 52 S 940 30, 1060 52 L 1200 52" fill="none" stroke="${BLUE}" strokeWidth="1" opacity="0.4" />
       </svg>
     </section>
   )
@@ -184,7 +185,7 @@ function ShadowScan({ shadows, onShadowChange }) {
   const levels = ['low', 'med', 'high']
   return (
     <Card icon={Moon} eyebrow="DIAGNOSTICS" title="Shadow Scan"
-      right={<span className="sa-tele eyebrow" style={{ color: activeCount ? '#A8382F' : 'var(--sa-ink-3)' }}>{activeCount} ACTIVE</span>}>
+      right={<span className="sa-tele eyebrow" style={{ color: activeCount ? RED : 'var(--sa-ink-3)' }}>{activeCount} ACTIVE</span>}>
       {shadowDefs.map((s) => {
         const cur = shadows?.[s.id] || null
         return (
@@ -286,7 +287,7 @@ function SkillsPanel({ sovereignty, setSovereignty, onSkillActivate }) {
 
   return (
     <Card icon={Zap} eyebrow="ACTIVE SKILLS" title="Activatable Moves" sub="Each carries a Sovereignty cost."
-      right={notice && <span className="sa-tele eyebrow" style={{ color: notice.kind === 'warn' ? '#A8382F' : '#2F7A4F' }}>{notice.text}</span>}>
+      right={notice && <span className="sa-tele eyebrow" style={{ color: notice.kind === 'warn' ? RED : GREEN }}>{notice.text}</span>}>
       {SKILLS.map((s) => (
         <div className="sa-skill" key={s.id}>
           <div className="sa-skill-top">

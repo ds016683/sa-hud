@@ -6,11 +6,10 @@ import BadgeMedallion from './BadgeArt'
 
 const chiToday = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Chicago', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date())
 import { supabase } from '../lib/supabase'
+import { GOLD, GREEN, INK, NAVY_DEEP, RED, PERIWINKLE } from './river/canon'
 
-const SECTION_BLUE = '#1F4060'
-const GOLD = '#F8C761'
-const GOLD_DEEP = '#E6B54F'
-const PERIWINKLE = '#96A8F0' // CIP's single cool accent
+const SECTION_BLUE = INK
+const GOLD_DEEP = GOLD
 
 // Ledger sources feeding the composer. key must match source_counts keys.
 const SOURCES = [
@@ -37,7 +36,7 @@ function fmtDay(day) {
 // (navy stage, Lora at deck weight/tracking, gold triangle eyebrows, hairline panels).
 function themeOf(cip) {
   return {
-    ink: cip ? '#EAF1F8' : 'var(--sa-ink)',
+    ink: cip ? INK : 'var(--sa-ink)',
     ink2: cip ? 'rgba(234,241,248,0.66)' : 'var(--sa-ink-2)',
     ink3: cip ? 'rgba(234,241,248,0.42)' : 'var(--sa-ink-3)',
     border: cip ? 'rgba(255,255,255,0.10)' : 'var(--sa-border)',
@@ -51,7 +50,7 @@ function themeOf(cip) {
       fontSize: '12px', padding: '6px 12px', borderRadius: '8px', cursor: 'pointer',
       border: `1px solid ${cip ? 'rgba(255,255,255,0.22)' : 'var(--sa-border-2)'}`,
       background: cip ? 'rgba(255,255,255,0.05)' : 'var(--sa-surface)',
-      color: cip ? '#EAF1F8' : 'var(--sa-ink-2)', ...extra,
+      color: cip ? INK : 'var(--sa-ink-2)', ...extra,
     }),
   }
 }
@@ -123,7 +122,7 @@ function MintingOverlay({ mint, onDone }) {
   return (
     <div onClick={() => stage >= finalStage ? onDone() : setStage(s => Math.min(finalStage, s + 1))} style={{
       position: 'fixed', inset: 0, zIndex: 300, cursor: 'pointer',
-      background: 'radial-gradient(ellipse at 50% 35%, #16324A 0%, #0A1B2B 70%)',
+      background: 'radial-gradient(ellipse at 50% 35%, ${INK} 0%, ${INK} 70%)',
       display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24,
     }}>
       <div style={{ maxWidth: 560, width: '100%', textAlign: 'center' }}>
@@ -167,7 +166,7 @@ function MintingOverlay({ mint, onDone }) {
         {stage >= gradeStage && (
           <div style={{ margin: '26px 0 8px', animation: 'haulDrop 700ms both' }}>
             <span className="sa-serif" style={{
-              fontSize: 96, fontWeight: 500, lineHeight: 1, color: g === 'S' ? GOLD : '#FFFFFF',
+              fontSize: 96, fontWeight: 500, lineHeight: 1, color: g === 'S' ? GOLD : NAVY_DEEP,
               textShadow: g === 'S' ? '0 0 34px rgba(248,199,97,0.55)' : '0 0 24px rgba(150,168,240,0.3)',
             }}>{g}</span>
             <div className="sa-tele" style={{ color: GOLD, letterSpacing: '2px', fontSize: 11, marginTop: 10 }}>
@@ -211,7 +210,7 @@ function HaulOverlay({ haul, onClose }) {
           SINCE {String(haul.sinceLabel).toUpperCase()}
         </div>
         <div className="sa-serif" style={{
-          fontSize: '34px', fontWeight: 500, letterSpacing: '-0.01em', color: '#FFFFFF',
+          fontSize: '34px', fontWeight: 500, letterSpacing: '-0.01em', color: NAVY_DEEP,
           textAlign: 'center', margin: '6px 0 26px',
           animation: 'haulDrop 500ms cubic-bezier(0.2,0.9,0.3,1) both',
         }}>
@@ -238,7 +237,7 @@ function HaulOverlay({ haul, onClose }) {
                 <>
                   <BadgeMedallion id={d.id} size={46} glow />
                   <span style={{ flex: 1 }}>
-                    <span className="sa-tele" style={{ display: 'block', fontSize: '9px', letterSpacing: '1.6px', color: '#F8C761' }}>BADGE EARNED · {B?.track?.toUpperCase()}</span>
+                    <span className="sa-tele" style={{ display: 'block', fontSize: '9px', letterSpacing: '1.6px', color: GOLD }}>BADGE EARNED · {B?.track?.toUpperCase()}</span>
                     <span className="sa-serif" style={{ fontSize: '17px', fontWeight: 500, color: '#fff' }}>{B?.label || d.id}</span>
                     <span style={{ display: 'block', fontSize: '12px', color: 'rgba(234,241,248,0.6)', fontStyle: 'italic' }}>{B?.lore || B?.desc}</span>
                     {(haul.badge_evidence || {})[d.id] && (
@@ -251,8 +250,8 @@ function HaulOverlay({ haul, onClose }) {
               )
             })() : (
               <>
-                <span style={{ width: '8px', height: '8px', borderRadius: '2px', flexShrink: 0, background: '#F8C761', boxShadow: '0 0 10px rgba(248,199,97,0.5)' }} />
-                <span style={{ fontSize: '14px', lineHeight: 1.5, color: '#EAF1F8' }}>{d.text}</span>
+                <span style={{ width: '8px', height: '8px', borderRadius: '2px', flexShrink: 0, background: GOLD, boxShadow: '0 0 10px rgba(248,199,97,0.5)' }} />
+                <span style={{ fontSize: '14px', lineHeight: 1.5, color: INK }}>{d.text}</span>
               </>
             )}
           </div>
@@ -293,7 +292,7 @@ function SuggestionList({ items, onTriage, cip, T }) {
               background: cip ? 'rgba(255,255,255,0.07)' : 'var(--sa-surface)', color: T.ink, outline: 'none',
             }} />
           <button onClick={() => { if (draft.trim()) { onTriage(o, 'accept', draft.trim()); setEditing(null) } }} title="Save and queue"
-            style={{ background: 'none', border: 'none', color: '#43D392', cursor: 'pointer', padding: '4px', marginTop: '2px' }}><CheckCircle2 size={16} /></button>
+            style={{ background: 'none', border: 'none', color: GREEN, cursor: 'pointer', padding: '4px', marginTop: '2px' }}><CheckCircle2 size={16} /></button>
           <button onClick={() => setEditing(null)} title="Cancel"
             style={{ background: 'none', border: 'none', color: T.ink3, cursor: 'pointer', padding: '4px', marginTop: '2px' }}><X size={15} /></button>
         </>
@@ -306,11 +305,11 @@ function SuggestionList({ items, onTriage, cip, T }) {
             )}
           </span>
           <button onClick={() => onTriage(o, 'accept')} title="Queue it: graduates to the Objectives inbox"
-            style={{ background: 'none', border: 'none', color: '#43D392', cursor: 'pointer', padding: '3px', flexShrink: 0 }}><CheckCircle2 size={16} /></button>
+            style={{ background: 'none', border: 'none', color: GREEN, cursor: 'pointer', padding: '3px', flexShrink: 0 }}><CheckCircle2 size={16} /></button>
           <button onClick={() => { setEditing(o.id); setDraft(o.title) }} title="Amend the wording, then queue"
             style={{ background: 'none', border: 'none', color: cip ? PERIWINKLE : SECTION_BLUE, cursor: 'pointer', padding: '3px', flexShrink: 0, fontSize: '13px', lineHeight: 1 }}>✎</button>
           <button onClick={() => onTriage(o, 'dismiss')} title="Dismiss: never suggested again"
-            style={{ background: 'none', border: 'none', color: '#E06C5F', cursor: 'pointer', padding: '3px', flexShrink: 0 }}><X size={16} /></button>
+            style={{ background: 'none', border: 'none', color: RED, cursor: 'pointer', padding: '3px', flexShrink: 0 }}><X size={16} /></button>
         </>
       )}
     </div>
@@ -332,7 +331,7 @@ function BadgeDetailModal({ id, evidence, onClose }) {
     }}>
       <div onClick={e => e.stopPropagation()} style={{
         maxWidth: 440, width: '100%', cursor: 'default', textAlign: 'center',
-        background: '#10273B', border: '1px solid rgba(248,199,97,0.4)',
+        background: 'var(--hud-surface-raised)', border: '1px solid rgba(248,199,97,0.4)',
         borderRadius: 14, padding: '34px 30px 28px',
         animation: 'haulDrop 420ms cubic-bezier(0.2,0.9,0.3,1) both',
       }}>
@@ -344,7 +343,7 @@ function BadgeDetailModal({ id, evidence, onClose }) {
         <div style={{ fontSize: 13, color: 'rgba(234,241,248,0.6)', fontStyle: 'italic', marginTop: 6 }}>{B.lore}</div>
         <div style={{ margin: '20px 0 0', paddingTop: 18, borderTop: '1px solid rgba(248,199,97,0.25)' }}>
           <div className="sa-tele" style={{ fontSize: 9, letterSpacing: '2px', color: PERIWINKLE }}>STRUCK BY</div>
-          <div style={{ fontSize: 14.5, lineHeight: 1.6, color: '#EAF1F8', marginTop: 8 }}>
+          <div style={{ fontSize: 14.5, lineHeight: 1.6, color: INK, marginTop: 8 }}>
             {evidence || 'This run predates citations; the rule that struck it is below.'}
           </div>
           <div style={{ fontSize: 12, color: 'rgba(234,241,248,0.5)', marginTop: 12 }}>{B.desc}</div>
@@ -385,7 +384,7 @@ function Scorecard({ sc, cip, T }) {
         {tiles.map((t) => (
           <div key={t.label} style={{ borderLeft: `2px solid ${cip ? 'rgba(248,199,97,0.45)' : 'rgba(31,64,96,0.25)'}`, paddingLeft: '12px' }}>
             <div className="sa-tele" style={{ fontSize: '9.5px', letterSpacing: '1.4px', color: cip ? PERIWINKLE : 'var(--sa-ink-3)' }}>{t.label}</div>
-            <div className="sa-serif" style={{ fontSize: '28px', lineHeight: 1.15, marginTop: '2px', fontWeight: 500, letterSpacing: '-0.01em', color: cip ? '#FFFFFF' : SECTION_BLUE }}>
+            <div className="sa-serif" style={{ fontSize: '28px', lineHeight: 1.15, marginTop: '2px', fontWeight: 500, letterSpacing: '-0.01em', color: cip ? NAVY_DEEP : SECTION_BLUE }}>
               {t.value ?? 0}
             </div>
             <div style={{ fontSize: '11px', color: T.ink3, marginTop: '1px' }}>{t.sub}</div>
@@ -405,7 +404,7 @@ function Scorecard({ sc, cip, T }) {
                 cursor: 'pointer', fontFamily: 'inherit',
               }}>
                 <BadgeMedallion id={id} size={28} />
-                <span className="sa-tele" style={{ fontSize: '9.5px', letterSpacing: '1.2px', color: cip ? '#EAF1F8' : SECTION_BLUE }}>{B.label.toUpperCase()}</span>
+                <span className="sa-tele" style={{ fontSize: '9.5px', letterSpacing: '1.2px', color: cip ? INK : SECTION_BLUE }}>{B.label.toUpperCase()}</span>
               </button>
             )
           })}
@@ -447,15 +446,12 @@ export default function DailyPerformancePage() {
   const [confirmClose, setConfirmClose] = useState(false)
   const [closing, setClosing] = useState(false)
   const [mint, setMint] = useState(null) // {day, miles, badges, signal} during the ceremony
-  const [cip, setCip] = useState(() => {
-    try { return localStorage.getItem('dp-theme') === 'cip' } catch { return false }
-  })
+  const cip = true // Milestone 18 (10/24): one theme, the canon; the Light/CIP pill folded into the HUD
   const T = themeOf(cip)
 
   // The full-bleed navy stage lives on .sa-main; App listens for this event.
   useEffect(() => {
     window.dispatchEvent(new CustomEvent('dp-cip', { detail: cip }))
-    try { localStorage.setItem('dp-theme', cip ? 'cip' : 'light') } catch { /* ignore */ }
   }, [cip])
 
   const load = useCallback(async () => {
@@ -585,21 +581,8 @@ export default function DailyPerformancePage() {
     setSaving(false)
   }
 
-  const themePill = (
-    <div style={{ display: 'inline-flex', borderRadius: '999px', overflow: 'hidden', border: `1px solid ${T.border2}` }}>
-      {[['light', 'Light'], ['cip', 'CIP']].map(([id, label]) => {
-        const on = (id === 'cip') === cip
-        return (
-          <button key={id} onClick={() => setCip(id === 'cip')} style={{
-            fontSize: '11px', letterSpacing: '0.04em', padding: '5px 13px', border: 'none', cursor: 'pointer',
-            background: on ? (cip ? GOLD : SECTION_BLUE) : 'transparent',
-            color: on ? (cip ? '#16324A' : '#fff') : T.ink3,
-            fontWeight: on ? 600 : 400,
-          }}>{label}</button>
-        )
-      })}
-    </div>
-  )
+  const themePill = null
+
 
   if (rows === null) {
     return <div className="sa-tele" style={{ color: T.ink3, padding: '40px' }}>LOADING…</div>
@@ -618,11 +601,11 @@ export default function DailyPerformancePage() {
             marginTop: '22px', display: 'inline-flex', alignItems: 'center', gap: '6px',
             fontSize: '13px', fontWeight: 600, padding: '9px 18px', borderRadius: '8px', border: 'none',
             cursor: running ? 'default' : 'pointer', fontFamily: 'inherit',
-            background: cip ? GOLD : SECTION_BLUE, color: cip ? '#16324A' : '#fff', opacity: running ? 0.6 : 1,
+            background: cip ? GOLD : SECTION_BLUE, color: cip ? INK : '#fff', opacity: running ? 0.6 : 1,
           }}>
             <RefreshCw size={14} /> {running ? 'Running…' : 'Run Update'}
           </button>
-          {runError && <div className="sa-tele" style={{ color: '#E06C5F', marginTop: '12px' }}>UPDATE FAILED · {runError.toUpperCase()}</div>}
+          {runError && <div className="sa-tele" style={{ color: RED, marginTop: '12px' }}>UPDATE FAILED · {runError.toUpperCase()}</div>}
         </div>
       </div>
     )
@@ -682,7 +665,7 @@ export default function DailyPerformancePage() {
           display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24,
         }}>
           <div onClick={e => e.stopPropagation()} style={{
-            maxWidth: 420, width: '100%', background: '#10273B', border: '1px solid rgba(248,199,97,0.4)',
+            maxWidth: 420, width: '100%', background: 'var(--hud-surface-raised)', border: '1px solid rgba(248,199,97,0.4)',
             borderRadius: 14, padding: 30, textAlign: 'center',
           }}>
             <div className="sa-serif" style={{ fontSize: 24, fontWeight: 500, color: '#fff' }}>Close the Day?</div>
@@ -695,7 +678,7 @@ export default function DailyPerformancePage() {
                 color: 'rgba(234,241,248,0.7)', fontSize: 13, cursor: 'pointer', fontFamily: 'inherit',
               }}>Not yet</button>
               <button onClick={closeDay} style={{
-                padding: '9px 20px', borderRadius: 8, border: 'none', background: GOLD, color: '#16324A',
+                padding: '9px 20px', borderRadius: 8, border: 'none', background: GOLD, color: INK,
                 fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
               }}>Close the Day</button>
             </div>
@@ -711,7 +694,7 @@ export default function DailyPerformancePage() {
               <Clock size={12} /> AS OF {fmtTime(row.generated_at).toUpperCase()} · {closing ? 'MINTING THE DAY, THE FINAL SWEEP IS RUNNING…' : running ? 'COMPOSING THE UPDATE, GIVE IT A MINUTE OR TWO…' : 'MANUAL · HIT RUN UPDATE TO REGENERATE'}
             </div>
             {runError && (
-              <div className="sa-tele" style={{ color: '#E06C5F', marginTop: '6px' }}>UPDATE FAILED · {runError.toUpperCase()}</div>
+              <div className="sa-tele" style={{ color: RED, marginTop: '6px' }}>UPDATE FAILED · {runError.toUpperCase()}</div>
             )}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
@@ -719,7 +702,7 @@ export default function DailyPerformancePage() {
             {rows.length > 1 && (
               <select value={sel} onChange={(e) => setSel(Number(e.target.value))} style={T.controlStyle()}>
                 {rows.map((r, i) => (
-                  <option key={r.id} value={i} style={cip ? { color: '#1A354A' } : undefined}>
+                  <option key={r.id} value={i} style={cip ? { color: INK } : undefined}>
                     {fmtDay(r.day)} · {fmtTime(r.generated_at)}
                   </option>
                 ))}
@@ -733,7 +716,7 @@ export default function DailyPerformancePage() {
               fontSize: '12px', fontWeight: 600, padding: '6px 14px', borderRadius: '8px', border: 'none',
               cursor: running ? 'default' : 'pointer', fontFamily: 'inherit',
               background: running ? (cip ? 'rgba(230,181,79,0.35)' : 'rgba(31,64,96,0.4)') : (cip ? GOLD : SECTION_BLUE),
-              color: running ? (cip ? 'rgba(22,50,74,0.7)' : 'rgba(255,255,255,0.7)') : (cip ? '#16324A' : '#fff'),
+              color: running ? (cip ? 'rgba(22,50,74,0.7)' : 'rgba(255,255,255,0.7)') : (cip ? INK : '#fff'),
             }}>
               <RefreshCw size={13} style={running ? { animation: 'spin 1.2s linear infinite' } : undefined} />
               {running ? 'Running…' : 'Run Update'}
@@ -744,7 +727,7 @@ export default function DailyPerformancePage() {
               border: `1px solid ${cip ? GOLD : SECTION_BLUE}`,
               cursor: closing ? 'default' : 'pointer', fontFamily: 'inherit',
               background: closing ? 'rgba(248,199,97,0.35)' : 'transparent',
-              color: closing ? '#16324A' : (cip ? GOLD : SECTION_BLUE),
+              color: closing ? INK : (cip ? GOLD : SECTION_BLUE),
             }}>
               <BookMarked size={13} style={closing ? { animation: 'spin 1.4s linear infinite' } : undefined} />
               {closing ? 'Minting…' : 'Close the Day'}
@@ -796,9 +779,9 @@ export default function DailyPerformancePage() {
 
       {/* Follow-ups coming up — the amber nudge as target dates approach */}
       {((row.scorecard || {}).follow_ups || []).length > 0 && (
-        <div className={`col-12 ${T.cardClass}`} style={{ ...T.cardStyle, borderLeft: '3px solid #E0985C' }}>
+        <div className={`col-12 ${T.cardClass}`} style={{ ...T.cardStyle, borderLeft: `3px solid ${GOLD}` }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-            <Bell size={15} style={{ color: '#E0985C' }} />
+            <Bell size={15} style={{ color: GOLD }} />
             <SectionHeader cip={cip}>Follow-Ups Coming Up</SectionHeader>
           </div>
           {((row.scorecard || {}).follow_ups || []).map((f, i) => {
@@ -810,11 +793,11 @@ export default function DailyPerformancePage() {
                 })()
             return (
               <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 0', borderTop: i ? `1px solid ${T.border}` : 'none' }}>
-                <Bell size={14} style={{ color: '#E0985C', flexShrink: 0 }} />
+                <Bell size={14} style={{ color: GOLD, flexShrink: 0 }} />
                 <span style={{ flex: 1, fontSize: '14px', lineHeight: 1.5, color: T.ink }}>{f.text}</span>
                 <span className="sa-tele" style={{
                   fontSize: '9px', letterSpacing: '1px', padding: '3px 9px', borderRadius: '999px', whiteSpace: 'nowrap',
-                  color: '#E0985C', background: 'rgba(224,152,92,0.14)', border: '1px solid rgba(224,152,92,0.4)',
+                  color: GOLD, background: 'rgba(224,152,92,0.14)', border: '1px solid rgba(224,152,92,0.4)',
                 }}>
                   {new Date(f.follow_up_date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }).toUpperCase()} · {label.toUpperCase()}
                 </span>
@@ -848,11 +831,11 @@ export default function DailyPerformancePage() {
               }}>
                 {t.done
                   ? <CheckCircle2 size={17} style={{ color: GOLD_DEEP, flexShrink: 0, marginTop: '1px' }} />
-                  : <Circle size={17} style={{ color: t.overdue ? '#E06C5F' : T.border2, flexShrink: 0, marginTop: '1px' }} />}
-                <span style={{ fontSize: '14px', lineHeight: 1.5, color: !t.done && t.overdue ? '#E06C5F' : undefined, textDecoration: t.done ? 'line-through' : 'none', textDecorationColor: cip ? 'rgba(255,255,255,0.3)' : undefined }}>
+                  : <Circle size={17} style={{ color: t.overdue ? RED : T.border2, flexShrink: 0, marginTop: '1px' }} />}
+                <span style={{ fontSize: '14px', lineHeight: 1.5, color: !t.done && t.overdue ? RED : undefined, textDecoration: t.done ? 'line-through' : 'none', textDecorationColor: cip ? 'rgba(255,255,255,0.3)' : undefined }}>
                   {t.text}
                   {!t.done && t.overdue && t.due_date && (
-                    <span className="sa-tele" style={{ fontSize: '8.5px', letterSpacing: '1px', color: '#E06C5F', marginLeft: '8px' }}>
+                    <span className="sa-tele" style={{ fontSize: '8.5px', letterSpacing: '1px', color: RED, marginLeft: '8px' }}>
                       DUE {new Date(t.due_date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }).toUpperCase()}
                     </span>
                   )}
@@ -860,14 +843,14 @@ export default function DailyPerformancePage() {
               </button>
               {onBoard && (
                 <span className="sa-tele" title="Active on the Objectives board · board clock running" style={{
-                  fontSize: '8.5px', letterSpacing: '1.2px', color: '#43D392', flexShrink: 0, marginTop: '4px',
+                  fontSize: '8.5px', letterSpacing: '1.2px', color: GREEN, flexShrink: 0, marginTop: '4px',
                 }}>ON BOARD</span>
               )}
               {playable && (
                 <button onClick={() => playMustDo(obj)} title="Play: activate on the Objectives board and start its clock" style={{
                   width: '22px', height: '22px', borderRadius: '50%', flexShrink: 0, cursor: 'pointer',
                   border: `1px solid ${cip ? 'rgba(67,211,146,0.5)' : 'rgba(31,64,96,0.35)'}`,
-                  background: 'transparent', color: cip ? '#43D392' : SECTION_BLUE,
+                  background: 'transparent', color: cip ? GREEN : SECTION_BLUE,
                   display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: 0,
                 }}><Play size={11} style={{ marginLeft: '1px' }} /></button>
               )}

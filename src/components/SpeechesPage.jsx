@@ -6,7 +6,7 @@
 // or project. Registry: src/content/speeches.js. Decks: public/speeches/<slug>/.
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Mic, Calendar, MapPin, Clock, Play, X as XIcon, ExternalLink, Download, Mail, FileText, Upload, Link2, Maximize2 } from 'lucide-react'
-import { S, Eyebrow, Serif, Label, INK, INK2, GRAY, GOLD, GREEN, PURPLE, BLUE, MONO, PANEL_BORDER, PANEL_BG, LABEL, MUTED, TYPE, fmtDay, alpha } from './river/canon'
+import { BLUE, Eyebrow, GOLD, GRAY, GREEN, INK, INK2, LABEL, Label, MONO, MUTED, PANEL_BG, PANEL_BORDER, PURPLE, RED, S, Serif, TYPE, alpha, fmtDay } from './river/canon'
 import { listLiveFiles, putLiveFile, openLiveFile, downloadLiveFile, draftMail, fmtStamp, fmtSize, extOf } from '../lib/livefiles'
 import { SPEECHES, deckUrl, STATUS_LABEL } from '../content/speeches'
 
@@ -45,7 +45,7 @@ function LaunchModal({ s, onClose }) {
   const copy = async () => { try { await navigator.clipboard.writeText(url); setCopied(true); setTimeout(() => setCopied(false), 1800) } catch { /* no clipboard */ } }
   return (
     <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 60, background: 'rgba(5,14,24,0.72)', display: 'grid', placeItems: 'center', padding: 20 }}>
-      <div onClick={e => e.stopPropagation()} style={{ width: 'min(560px, 100%)', background: '#0E2336', border: `1px solid ${PANEL_BORDER}`, borderRadius: 14, padding: '22px 24px 20px', boxShadow: '0 30px 80px rgba(0,0,0,0.5)' }}>
+      <div onClick={e => e.stopPropagation()} style={{ width: 'min(560px, 100%)', background: 'var(--hud-surface-raised)', border: `1px solid ${PANEL_BORDER}`, borderRadius: 14, padding: '22px 24px 20px', boxShadow: '0 30px 80px rgba(0,0,0,0.5)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
           <div>
             <div style={{ fontFamily: MONO, fontSize: TYPE.meta, letterSpacing: '0.14em', textTransform: 'uppercase', color: LABEL, marginBottom: 6 }}>Launch</div>
@@ -157,7 +157,7 @@ export default function SpeechesPage() {
       <Eyebrow>MONITOR · SPEECHES</Eyebrow>
       <h1 style={S.h1}>Speeches</h1>
       <p style={S.sub}>the talks, each with its deck and the PDF that rides with it</p>
-      {msg && <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '1px', textTransform: 'uppercase', color: msg.startsWith('Could') ? '#E8836F' : GOLD, margin: '12px 0 0' }}>{msg}</div>}
+      {msg && <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '1px', textTransform: 'uppercase', color: msg.startsWith('Could') ? RED : GOLD, margin: '12px 0 0' }}>{msg}</div>}
       <div style={{ marginTop: 20 }}>
         {sorted.map(s => <SpeechCard key={s.slug} s={s} say={say} />)}
         {!sorted.length && <div style={{ color: GRAY, fontSize: TYPE.body }}>No speeches yet.</div>}

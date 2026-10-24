@@ -19,14 +19,12 @@ import { ArrowLeft, ArrowRight, Check, Sunrise, Moon, Play, Pause, Square, Rocke
 import { supabase, reportSoft } from '../../lib/supabase'
 import { upsertSession, logToHarvest, hoursBetween, startMeetingTimer, stopMeetingTimer } from '../../lib/meetings'
 import { fetchLoadout, equipObjective, equipTask, equip, holster, startWithRoom, resolveObjectiveId, fmtClock, chiToday, SIZES, SLOTS } from '../../lib/loadout'
-import { KIND_COLOR, PURPLE, LABEL, alpha } from './canon'
+import { KIND_COLOR, PURPLE, LABEL, alpha, INK, INK2, GRAY, PANEL_BORDER, GOLD, GOLD_BRIGHT, GREEN, RED, BLUE, MONO, SERIF, S, Label as BaseLabel, Panel, fmtTime } from './canon'
 import { HYGIENE_ITEMS } from '../../constants/hygiene'
 import { GATEWAY_PLAYLIST } from '../../constants/gateway'
 import { MEDICATIONS, dueOn } from '../../constants/medications'
-import { INK, INK2, GRAY, PANEL_BORDER, GOLD, GOLD_BRIGHT, GREEN, RED, BLUE, MONO, SERIF, S, Label as BaseLabel, Panel, fmtTime } from './canon'
 
 // Protocol labels read in the baby blue (David, 10/8).
-const Label = ({ children, style }) => <BaseLabel style={{ color: BLUE, ...style }}>{children}</BaseLabel>
 const READ = { fontFamily: 'inherit', fontWeight: 400, fontSize: 14.5, lineHeight: 1.7, color: INK }
 import { Instrument, InstrumentGroup, groupMsg } from './Instrument'
 
@@ -690,7 +688,7 @@ function Protocol({ day, session, onClose, onFinished, onChange, onNavigate }) {
 
   const stripPrompt = cur.id === 'digest' ? 'answer his questions here' : cur.id === 'plan' ? 'or talk the day through with him' : null
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 250, overflowY: 'auto', background: 'linear-gradient(180deg, #0F2A40 0%, #0A1B2B 100%)' }}>
+    <div style={{ position: 'fixed', inset: 0, zIndex: 250, overflowY: 'auto', background: 'linear-gradient(180deg, #0F2A40 0%, ${INK} 100%)' }}>
       <style>{`
         @keyframes mp-in-r { from { opacity: 0; transform: translateX(28px) } to { opacity: 1; transform: none } }
         @keyframes mp-in-l { from { opacity: 0; transform: translateX(-28px) } to { opacity: 1; transform: none } }

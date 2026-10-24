@@ -15,9 +15,7 @@ import { fetchLoadout, fmtClock } from '../lib/loadout'
 import { HaulOverlay, MintingOverlay } from './river/RiverOverlays'
 import { supabase } from '../lib/supabase'
 import { BADGES, RIVER_TOTAL_MILES, RIVER_START_DAY, WAYPOINTS, whereOnRiver } from '../constants/collection'
-import {
-  INK, INK2, GRAY, PANEL_BORDER, GOLD, GOLD_BRIGHT, BLUE, GREEN, RED, MONO, SERIF,
-  S, Eyebrow, Label, Stat, Panel, chiToday, LABEL, alpha } from './river/canon'
+import { BLUE, Eyebrow, GOLD, GOLD_BRIGHT, GRAY, GREEN, INK, INK2, LABEL, Label, MONO, PANEL_BORDER, Panel, RED, S, SERIF, Stat, alpha, chiToday } from './river/canon'
 
 // ---- Helpers ----------------------------------------------------------------
 const DAY_MS = 86400000
@@ -106,7 +104,7 @@ function RiverGraphic({ miles, awards }) {
         const ty = crowded ? w.y - 14 : w.y + 22
         return (
           <g key={w.label}>
-            <circle cx={w.x} cy={w.y} r={end ? 5 : 3.5} fill={passed ? GOLD : '#0E2336'} stroke={passed ? GOLD_BRIGHT : 'rgba(255,255,255,0.35)'} strokeWidth="1.5" />
+            <circle cx={w.x} cy={w.y} r={end ? 5 : 3.5} fill={passed ? GOLD : INK} stroke={passed ? GOLD_BRIGHT : 'rgba(255,255,255,0.35)'} strokeWidth="1.5" />
             <text x={w.x} y={ty} textAnchor={anchor} fill={end ? INK2 : GRAY} fontFamily={MONO} fontSize={end ? 11 : 9} letterSpacing="1">{(w.short || w.label).toUpperCase()}</text>
           </g>
         )
@@ -115,7 +113,7 @@ function RiverGraphic({ miles, awards }) {
       {geom ? (
         <g>
           <circle className="river-glow" cx={geom.marker.x} cy={geom.marker.y} r="18" fill="url(#river-glow-grad)" />
-          <circle className="river-marker" cx={geom.marker.x} cy={geom.marker.y} r="6.5" fill={GOLD_BRIGHT} stroke="#0E2336" strokeWidth="2" />
+          <circle className="river-marker" cx={geom.marker.x} cy={geom.marker.y} r="6.5" fill={GOLD_BRIGHT} stroke="${INK}" strokeWidth="2" />
           <text x={geom.marker.x} y={geom.marker.y - 16} textAnchor="middle" fill={GOLD_BRIGHT} fontFamily={MONO} fontSize="10" letterSpacing="1">{fmtMiles(miles)} MI</text>
         </g>
       ) : null}

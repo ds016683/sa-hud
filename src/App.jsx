@@ -11,7 +11,7 @@ import ProjectsPage from './components/ProjectsPage'
 import ClientsPage from './components/ClientsPage'
 import ItemDetail from './components/river/ItemDetail'
 import { itemFromObjective } from './lib/loadout'
-import { MissionMark, alpha } from './components/river/canon'
+import { GOLD, MissionMark, alpha } from './components/river/canon'
 import EcosystemPage from './components/EcosystemPage'
 import MeetingNotesPage from './components/MeetingNotesPage'
 import SideMissionsPage from './components/SideMissionsPage'
@@ -110,7 +110,7 @@ function Sidebar({ active, onChange, onSignOut }) {
               <path d="M12 9 C 8.5 7.5, 6.5 5.2, 5.5 2.8 C 9 3.2, 10.9 5.4, 12 9 Z" fill="rgba(255,255,255,0.9)" strokeWidth="0.6" />
               <path d="M21 15 C 24.2 13.8, 26.4 11.8, 27.6 9.4 C 24.2 9.7, 22.2 11.7, 21 15 Z" fill="rgba(255,255,255,0.65)" strokeWidth="0.6" />
             </g>
-            <path d="M12 17.5 C 15 16.5, 17 14.8, 18.2 12.6 C 15.1 12.9, 13.2 14.6, 12 17.5 Z" fill="#F8C761" stroke="#F8C761" strokeWidth="0.6" opacity="0.95" />
+            <path d="M12 17.5 C 15 16.5, 17 14.8, 18.2 12.6 C 15.1 12.9, 13.2 14.6, 12 17.5 Z" fill="${GOLD}" stroke="${GOLD}" strokeWidth="0.6" opacity="0.95" />
           </svg>
           <div className="sa-brand-wm">Sovereign<br />Architect</div>
           <div className="sa-brand-sub">Command Center</div>

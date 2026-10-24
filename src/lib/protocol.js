@@ -9,18 +9,19 @@
 //   Off         nothing running
 import { supabase } from './supabase'
 import { chiToday, SIZES, sizeOf } from './loadout'
+import { BLUE, GOLD, GREEN, PURPLE, RED } from '../components/river/canon'
 
 const q = (p) => p.then(r => (Array.isArray(r.data) ? r.data : []))
 const readStep = (day) => { try { const v = Number(localStorage.getItem(`mp-step:${day}`)); return Number.isFinite(v) ? v : 0 } catch { return 0 } }
 
 export const PROTOCOLS = {
-  emergency: { label: 'Emergency', color: '#E8836F', blink: true },
-  meeting:   { label: 'In a meeting', color: '#A9C9E8' },
-  morning:   { label: 'Working the morning', color: '#F8C761' },
-  evening:   { label: 'Working the evening', color: '#96A8F0' },
+  emergency: { label: 'Emergency', color: RED, blink: true },
+  meeting:   { label: 'In a meeting', color: BLUE },
+  morning:   { label: 'Working the morning', color: GOLD },
+  evening:   { label: 'Working the evening', color: PURPLE },
   travel:    { label: 'On the road', color: '#5FC9C0' },
-  mission:   { label: 'In mission', color: '#43D392' },
-  rest:      { label: 'Resting', color: '#B4A3E8' },
+  mission:   { label: 'In mission', color: GREEN },
+  rest:      { label: 'Resting', color: PURPLE },
   off:       { label: 'Off protocol', color: 'rgba(234,241,248,0.35)' },
 }
 

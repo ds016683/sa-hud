@@ -1,5 +1,5 @@
 // House dialogs (David 10/21): "a different style for when we need to prompt for
-import { alpha } from '../components/river/canon'
+import { INK, INK2, PURPLE, RED, alpha, LABEL, SERIF } from '../components/river/canon'
 // an input. Bigger entry block and different colors." One overlay for the three
 // browser boxes, promise-based so callers read like the natives they replace:
 //   const text = await hudPrompt({ title, message, placeholder, value, multiline })  // null on cancel
@@ -9,8 +9,9 @@ import { alpha } from '../components/river/canon'
 // an entry block that is a real textarea at 15px. Enter submits a single-line
 // prompt, Cmd/Ctrl+Enter a multiline one, Escape cancels. Built on the DOM so
 // any handler can call it, inside React or not.
-const NAVY = '#0E2336', INK = '#EAF1F8', INK2 = 'rgba(234,241,248,0.72)', LABEL = '#7FA8D4', PERI = '#96A8F0', RED = '#E8836F', BORDER = 'rgba(255,255,255,0.12)'
-const MONO = 'var(--font-mono, ui-monospace, monospace)', SERIF = "'Lora', Georgia, serif", SANS = 'inherit'
+// Canon tokens (Milestone 18): the dialogs read the same variables as every page.
+const NAVY = INK, PERI = PURPLE, BORDER = 'var(--hud-border)'
+const MONO = 'var(--font-label, sans-serif)', SANS = 'inherit'
 
 function open({ kind, title, message, placeholder = '', value = '', multiline = false, confirm, cancel = 'Cancel', danger = false, eyebrow }) {
   return new Promise((resolve) => {

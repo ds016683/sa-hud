@@ -6,9 +6,9 @@ import { useState } from 'react'
 import { Check, RotateCcw, X } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { HYGIENE_ITEMS } from '../../constants/hygiene'
-import { S, Panel, Label, GRAY, INK2, GOLD, GREEN, RED, PANEL_BORDER, MONO, chiToday, fmtTime, alpha } from './canon'
+import { S, Panel, Label, GRAY, INK2, GOLD, GREEN, RED, PANEL_BORDER, MONO, chiToday, fmtTime, alpha, INK } from './canon'
 
-const CTRL = { fontSize: 12, padding: '7px 10px', borderRadius: 8, border: `1px solid ${PANEL_BORDER}`, background: 'rgba(255,255,255,0.05)', color: '#EAF1F8' }
+const CTRL = { fontSize: 12, padding: '7px 10px', borderRadius: 8, border: `1px solid ${PANEL_BORDER}`, background: 'rgba(255,255,255,0.05)', color: INK }
 const BTN = { ...CTRL, display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer' }
 const TOTAL = HYGIENE_ITEMS.length
 
@@ -67,7 +67,7 @@ export default function HygieneChecklist({ logs, days, keyOf, friendly, onChange
   return (
     <Panel title="Hygiene · today">
       <div style={{ fontSize: 13, color: INK2, marginBottom: 12 }}>
-        <span style={{ color: n === TOTAL ? GOLD : '#EAF1F8', fontWeight: 600 }}>{n} of {TOTAL} today</span>
+        <span style={{ color: n === TOTAL ? GOLD : INK, fontWeight: 600 }}>{n} of {TOTAL} today</span>
         <span style={{ color: GRAY }}> · 0.25 mi each · all six strike Hygiene (3 mi)</span>
       </div>
       {err && <div style={{ color: RED, fontFamily: MONO, fontSize: 11, margin: '0 0 8px' }}>{err}</div>}
@@ -85,7 +85,7 @@ export default function HygieneChecklist({ logs, days, keyOf, friendly, onChange
               style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 0', cursor: done ? 'default' : 'pointer' }}
             >
               <CheckBox on={done} />
-              <span style={{ flex: 1, fontSize: 13.5, color: done ? INK2 : '#EAF1F8' }}>
+              <span style={{ flex: 1, fontSize: 13.5, color: done ? INK2 : INK }}>
                 {item.label}
                 {item.optional && <span style={{ color: GRAY, fontSize: 11, marginLeft: 8 }}>optional</span>}
               </span>

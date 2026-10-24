@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { ChevronDown, Calendar, Mic, FileText, CheckSquare, Copy, Check } from 'lucide-react'
+import { GOLD, GRAY, GREEN, INK, INK2, NAVY_DEEP, PANEL_BG, alpha } from './river/canon'
 
 // Lightweight markdown renderer: ### -> bold heading, ** -> bold, - bullet lines
 const MarkdownBlock = ({ text }) => {
@@ -12,7 +13,7 @@ const MarkdownBlock = ({ text }) => {
     if (/^#{1,3}\s/.test(line)) {
       const content = line.replace(/^#{1,3}\s+/, '')
       elements.push(
-        <div key={i} style={{ fontWeight: 700, color: '#1A3A5C', fontSize: 12, marginTop: 14, marginBottom: 4 }}>
+        <div key={i} style={{ fontWeight: 700, color: INK, fontSize: 12, marginTop: 14, marginBottom: 4 }}>
           {content}
         </div>
       )
@@ -38,7 +39,7 @@ const MarkdownBlock = ({ text }) => {
         <div key={i} style={{ marginTop: 8, marginBottom: 4 }}>
           {label && <span style={{ fontSize: 11, color: '#666', marginRight: 6 }}>{label}</span>}
           <a href={url} target="_blank" rel="noopener noreferrer" style={{
-            fontSize: 11, color: '#1A3A5C', fontWeight: 600,
+            fontSize: 11, color: INK, fontWeight: 600,
             textDecoration: 'underline', wordBreak: 'break-all'
           }}>{url}</a>
         </div>
@@ -57,12 +58,12 @@ const SUPA_URL = 'https://cmuvomnmaoseccxpeuxq.supabase.co'
 const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNtdXZvbW5tYW9zZWNjeHBldXhxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU0MDM5NjMsImV4cCI6MjA5MDk3OTk2M30.s_sIdbTqE5NdMhi-ZfiWTpneswGvi2U4bmNgNWF22UY'
 
 const TH = {
-  darkBlue: '#1A3A5C',
+  darkBlue: INK,
   mediumBlue: '#234D8B',
-  gold: '#F8C762',
-  lightBlueBg: '#E8F0F8',
-  lightGoldBg: '#FDF5E6',
-  gray: '#6F7072',
+  gold: GOLD,
+  lightBlueBg: NAVY_DEEP,
+  lightGoldBg: alpha(GOLD, 15),
+  gray: GRAY,
   white: '#fff',
 }
 
@@ -94,7 +95,7 @@ const TabButtons = ({ activeTab, setActiveTab, tabs }) => (
           cursor: 'pointer',
           fontSize: 14,
           fontWeight: 600,
-          background: activeTab === tab.id ? TH.darkBlue : '#f0f0f0',
+          background: activeTab === tab.id ? TH.darkBlue : NAVY_DEEP,
           color: activeTab === tab.id ? TH.white : '#999',
           transition: 'all 0.2s ease',
         }}
@@ -226,10 +227,10 @@ const CallCard = ({ call }) => {
   const [open, setOpen] = useState(false)
 
   const routingStyle = () => {
-    if (!call.routing) return { background: '#f0f0f0', color: TH.gray }
+    if (!call.routing) return { background: PANEL_BG, color: TH.gray }
     const r = call.routing.toLowerCase()
-    if (r === 'internal') return { background: '#e8f5e9', color: '#2e7d32' }
-    if (r === 'snmi') return { background: TH.lightGoldBg, color: '#b45309' }
+    if (r === 'internal') return { background: alpha(GREEN, 15), color: GREEN }
+    if (r === 'snmi') return { background: TH.lightGoldBg, color: GOLD }
     return { background: TH.lightBlueBg, color: TH.mediumBlue }
   }
 
@@ -238,7 +239,7 @@ const CallCard = ({ call }) => {
       <button
         onClick={() => setOpen(!open)}
         style={{
-          width: '100%', padding: '12px 14px', background: '#fafbfc', border: 'none',
+          width: '100%', padding: '12px 14px', background: PANEL_BG, border: 'none',
           cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 12, fontSize: 13,
         }}
       >
@@ -408,12 +409,12 @@ export default function DailyBriefingsPage() {
   ]
 
   return (
-    <div style={{ maxWidth: 900, margin: '0 auto', padding: '24px 16px', fontFamily: 'Arial, Helvetica, sans-serif' }}>
+    <div style={{ maxWidth: 900, margin: '0 auto', padding: '24px 16px', fontFamily: 'inherit' }}>
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
         <div>
           <h1 style={{ fontSize: 20, fontWeight: 700, color: TH.darkBlue, margin: 0 }}>Daily Briefings</h1>
-          <p style={{ fontSize: 13, color: '#8096B2', margin: '2px 0 0' }}>Prepared by Lumen &mdash; Third Horizon</p>
+          <p style={{ fontSize: 13, color: INK2, margin: '2px 0 0' }}>Prepared by Lumen &mdash; Third Horizon</p>
         </div>
       </div>
 

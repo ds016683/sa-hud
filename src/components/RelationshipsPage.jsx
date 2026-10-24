@@ -8,14 +8,14 @@ import {
 import useRelationships from '../hooks/useRelationships'
 import MapView from './relationships/MapView'
 import TripPlannerView from './relationships/TripPlannerView'
-import { alpha } from './river/canon'
+import { BLUE, GOLD, GRAY, GREEN, INK, INK2, NAVY_DEEP, PANEL_BG, PANEL_BORDER, PURPLE, RED, alpha, LABEL } from './river/canon'
 
 // Tag taxonomy
 const TAG_CATEGORIES = {
   type: {
     label: 'Type',
-    color: '#7C3AED',
-    bg: '#F3E8FF',
+    color: PURPLE,
+    bg: alpha(PURPLE, 15),
     options: [
       { key: 'type:personal', label: 'Personal' },
       { key: 'type:thirdhorizon', label: 'Third Horizon' },
@@ -23,8 +23,8 @@ const TAG_CATEGORIES = {
   },
   interest: {
     label: 'Interest',
-    color: '#0369A1',
-    bg: '#DBEAFE',
+    color: BLUE,
+    bg: alpha(BLUE, 15),
     options: [
       { key: 'interest:intelligence', label: 'Intelligence' },
       { key: 'interest:potential-business', label: 'Potential Business' },
@@ -42,32 +42,27 @@ function tagMeta(tag) {
     const opt = info.options.find(o => o.key === tag)
     if (opt) return { category: cat, label: opt.label, color: info.color, bg: info.bg }
   }
-  return { category: 'custom', label: tag, color: '#565656', bg: '#F1F5F9' }
+  return { category: 'custom', label: tag, color: INK2, bg: PANEL_BG }
 }
 
-const NAVY = '#002C77'
-const BLUE = '#009DE0'
-const GOLD = '#D4A106'
-const GRAY = '#8096B2'
-const LABEL = '#7FA8D4'
-const TEXT_DIM = '#565656'
-const PANEL_BORDER = '#E2E8F0'
-const PAGE_BG = '#F7F9FC'
-const MINT = '#F0FDF4'
-const MINT_BORDER = '#86EFAC'
+const NAVY = INK
+const TEXT_DIM = INK2
+const PAGE_BG = NAVY_DEEP
+const MINT = alpha(GREEN, 15)
+const MINT_BORDER = alpha(GREEN, 40)
 
 const S = {
-  page: { maxWidth: 1200, margin: '0 auto', padding: '20px 16px 80px', fontFamily: 'Arial, Helvetica, sans-serif', color: NAVY },
+  page: { maxWidth: 1200, margin: '0 auto', padding: '20px 16px 80px', fontFamily: 'inherit', color: NAVY },
   h1: { fontSize: 22, fontWeight: 700, margin: 0, color: NAVY },
   sub: { fontSize: 12, color: GRAY, margin: '2px 0 0' },
-  panel: { background: 'white', border: `1px solid ${PANEL_BORDER}`, borderRadius: 12, padding: 14, boxShadow: '0 1px 2px rgba(0,0,0,0.04)' },
+  panel: { background: PANEL_BG, border: `1px solid ${PANEL_BORDER}`, borderRadius: 12, padding: 14, boxShadow: 'none' },
   input: { padding: '8px 12px', borderRadius: 8, border: `1px solid ${PANEL_BORDER}`, fontSize: 13, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' },
-  btnGhost: { background: 'white', color: NAVY, border: `1px solid ${PANEL_BORDER}`, borderRadius: 8, padding: '6px 10px', fontSize: 12, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit', display: 'inline-flex', alignItems: 'center', gap: 4 },
-  btnPrimary: { background: NAVY, color: 'white', border: 'none', borderRadius: 8, padding: '8px 14px', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' },
+  btnGhost: { background: PANEL_BG, color: NAVY, border: `1px solid ${PANEL_BORDER}`, borderRadius: 8, padding: '6px 10px', fontSize: 12, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit', display: 'inline-flex', alignItems: 'center', gap: 4 },
+  btnPrimary: { background: NAVY, color: NAVY_DEEP, border: 'none', borderRadius: 8, padding: '8px 14px', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' },
   chip: (bg, fg, border) => ({ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 9999, background: bg, color: fg, border: border ? `1px solid ${border}` : 'none', textTransform: 'uppercase', letterSpacing: '0.05em' }),
   pillBtn: (active) => ({
-    background: active ? NAVY : 'white',
-    color: active ? 'white' : NAVY,
+    background: active ? NAVY : NAVY_DEEP,
+    color: active ? NAVY_DEEP : NAVY,
     border: `1px solid ${active ? NAVY : PANEL_BORDER}`,
     borderRadius: 9999,
     padding: '4px 10px',
@@ -80,7 +75,7 @@ const S = {
 
 // ---------- helpers ----------
 function avatarColor(name) {
-  const colors = ['#0EA5E9', '#7C3AED', '#DC2626', '#0F766E', '#D97706', '#0369A1', '#BE185D', '#15803D']
+  const colors = [BLUE, PURPLE, RED, GREEN, GOLD, BLUE, RED, GREEN]
   let h = 0
   for (const c of (name || '')) h = (h * 31 + c.charCodeAt(0)) >>> 0
   return colors[h % colors.length]
@@ -210,7 +205,7 @@ export default function RelationshipsPage() {
           <button
             onClick={() => setDrillId('new')}
             style={{
-              background: GOLD, color: 'white', border: 'none', borderRadius: 8,
+              background: GOLD, color: NAVY_DEEP, border: 'none', borderRadius: 8,
               padding: '8px 14px', fontSize: 12, fontWeight: 700, cursor: 'pointer',
               fontFamily: 'inherit', display: 'inline-flex', alignItems: 'center', gap: 5,
               boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
@@ -219,7 +214,7 @@ export default function RelationshipsPage() {
           >
             <Plus size={14} /> Add Contact
           </button>
-          <div style={{ display: 'flex', gap: 4, background: 'white', border: `1px solid ${PANEL_BORDER}`, borderRadius: 10, padding: 3 }}>
+          <div style={{ display: 'flex', gap: 4, background: PANEL_BG, border: `1px solid ${PANEL_BORDER}`, borderRadius: 10, padding: 3 }}>
           {[
             { id: 'directory', label: 'Directory', icon: Users },
             { id: 'map', label: 'Map', icon: Map },
@@ -229,7 +224,7 @@ export default function RelationshipsPage() {
               onClick={() => setView(v.id)}
               style={{
                 background: view === v.id ? NAVY : 'transparent',
-                color: view === v.id ? 'white' : NAVY,
+                color: view === v.id ? NAVY_DEEP : NAVY,
                 border: 'none', borderRadius: 8, padding: '6px 12px',
                 fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
                 display: 'inline-flex', alignItems: 'center', gap: 5,
@@ -301,7 +296,7 @@ export default function RelationshipsPage() {
                         onClick={() => setActiveTag(active ? null : opt.key)}
                         style={{
                           background: active ? info.color : info.bg,
-                          color: active ? 'white' : info.color,
+                          color: active ? NAVY_DEEP : info.color,
                           border: `1px solid ${active ? info.color : info.color + '44'}`,
                           borderRadius: 8, padding: '5px 10px',
                           fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
@@ -382,7 +377,7 @@ export default function RelationshipsPage() {
 
           {/* Bulk action bar */}
           {selectedIds.size > 0 && (
-            <div style={{ ...S.panel, marginBottom: 10, background: '#FEF9E7', borderColor: GOLD, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+            <div style={{ ...S.panel, marginBottom: 10, background: alpha(GOLD, 15), borderColor: GOLD, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
               <div style={{ fontSize: 12, fontWeight: 600, color: NAVY }}>
                 {selectedIds.size} selected
               </div>
@@ -449,7 +444,7 @@ export default function RelationshipsPage() {
                         display: 'grid',
                         gridTemplateColumns: '32px 1fr 180px 100px 100px 32px',
                         gap: 8, padding: '10px 14px', borderBottom: `1px solid ${PANEL_BORDER}`,
-                        background: isSel ? MINT : 'white',
+                        background: isSel ? MINT : NAVY_DEEP,
                         cursor: 'pointer',
                         alignItems: 'center',
                       }}
@@ -459,7 +454,7 @@ export default function RelationshipsPage() {
                         <input type="checkbox" checked={isSel} readOnly style={{ cursor: 'pointer' }} />
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
-                        <div style={{ width: 28, height: 28, borderRadius: '50%', background: avatarColor(p.full_name), color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, flexShrink: 0 }}>
+                        <div style={{ width: 28, height: 28, borderRadius: '50%', background: avatarColor(p.full_name), color: NAVY_DEEP, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, flexShrink: 0 }}>
                           {initials(p.full_name)}
                         </div>
                         <div style={{ minWidth: 0, flex: 1 }}>
@@ -477,8 +472,8 @@ export default function RelationshipsPage() {
                       <div style={{ fontSize: 12, color: TEXT_DIM }}>{relativeDate(p.last_contact_at)}</div>
                       <div style={{ fontSize: 12, color: TEXT_DIM, display: 'flex', alignItems: 'center', gap: 6 }}>
                         <span style={S.chip(
-                          s === 'strong' ? '#DCFCE7' : s === 'known' ? '#DBEAFE' : '#F1F5F9',
-                          s === 'strong' ? '#15803D' : s === 'known' ? '#1D4ED8' : GRAY,
+                          s === 'strong' ? alpha(GREEN, 15) : s === 'known' ? alpha(BLUE, 15) : NAVY_DEEP,
+                          s === 'strong' ? GREEN : s === 'known' ? INK : GRAY,
                         )}>{p.contact_count || 0}</span>
                       </div>
                       <div><ChevronRight size={14} color={GRAY} /></div>
@@ -638,14 +633,14 @@ function DrillPanel({ person, isNew, onClose, onTogglePin, onHide, onAddTag, onR
     <div
       style={{
         position: 'fixed', top: 0, right: 0, bottom: 0, width: 'min(540px, 95vw)',
-        background: 'white', borderLeft: `1px solid ${PANEL_BORDER}`, boxShadow: '-8px 0 24px rgba(0,0,0,0.08)',
-        padding: 20, overflowY: 'auto', zIndex: 100, fontFamily: 'Arial, Helvetica, sans-serif',
+        background: PANEL_BG, borderLeft: `1px solid ${PANEL_BORDER}`, boxShadow: '-8px 0 24px rgba(0,0,0,0.08)',
+        padding: 20, overflowY: 'auto', zIndex: 100, fontFamily: 'inherit',
       }}
       onClick={e => e.stopPropagation()}
     >
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: 16 }}>
-        <div style={{ width: 48, height: 48, borderRadius: '50%', background: avatarColor(form.full_name || 'New Contact'), color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, fontWeight: 700, flexShrink: 0 }}>
+        <div style={{ width: 48, height: 48, borderRadius: '50%', background: avatarColor(form.full_name || 'New Contact'), color: NAVY_DEEP, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, fontWeight: 700, flexShrink: 0 }}>
           {isNew && !form.full_name ? <Plus size={20} /> : initials(form.full_name || person?.full_name)}
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
@@ -693,17 +688,17 @@ function DrillPanel({ person, isNew, onClose, onTogglePin, onHide, onAddTag, onR
           <button
             onClick={handleSaveProfile}
             disabled={saving}
-            style={{ background: NAVY, color: 'white', border: 'none', borderRadius: 8, padding: '8px 14px', fontSize: 12, fontWeight: 700, cursor: saving ? 'wait' : 'pointer', fontFamily: 'inherit', display: 'inline-flex', alignItems: 'center', gap: 5 }}
+            style={{ background: NAVY, color: NAVY_DEEP, border: 'none', borderRadius: 8, padding: '8px 14px', fontSize: 12, fontWeight: 700, cursor: saving ? 'wait' : 'pointer', fontFamily: 'inherit', display: 'inline-flex', alignItems: 'center', gap: 5 }}
           >
             <Check size={14} /> {saving ? 'Saving…' : (isNew ? 'Create contact' : 'Save changes')}
           </button>
           <button
             onClick={handleCancelEdit}
-            style={{ background: 'white', color: NAVY, border: `1px solid ${PANEL_BORDER}`, borderRadius: 8, padding: '8px 14px', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}
+            style={{ background: PANEL_BG, color: NAVY, border: `1px solid ${PANEL_BORDER}`, borderRadius: 8, padding: '8px 14px', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}
           >
             Cancel
           </button>
-          {saveError && <span style={{ color: '#DC2626', fontSize: 11 }}>{saveError}</span>}
+          {saveError && <span style={{ color: RED, fontSize: 11 }}>{saveError}</span>}
         </div>
       )}
 
@@ -833,7 +828,7 @@ function DrillPanel({ person, isNew, onClose, onTogglePin, onHide, onAddTag, onR
         </div>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, alignItems: 'center' }}>
           {(person.target_lists || []).map(l => (
-            <span key={l} style={{ ...S.chip('#EEF2F7', NAVY), padding: '4px 10px' }}>
+            <span key={l} style={{ ...S.chip(NAVY_DEEP, NAVY), padding: '4px 10px' }}>
               📋 {l}
               <button onClick={() => onRemoveFromList(l)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: NAVY, marginLeft: 4 }}><X size={10} /></button>
             </span>
@@ -876,8 +871,8 @@ function DrillPanel({ person, isNew, onClose, onTogglePin, onHide, onAddTag, onR
                         else onAddTag(opt.key)
                       }}
                       style={{
-                        background: active ? info.color : 'white',
-                        color: active ? 'white' : info.color,
+                        background: active ? info.color: NAVY_DEEP,
+                        color: active ? NAVY_DEEP : info.color,
                         border: `1px solid ${alpha(info.color, 40)}`,
                         borderRadius: 8, padding: '4px 10px',
                         fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
@@ -897,7 +892,7 @@ function DrillPanel({ person, isNew, onClose, onTogglePin, onHide, onAddTag, onR
           <div style={{ fontSize: 10.5, color: LABEL, fontWeight: 700, marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Custom</div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, alignItems: 'center' }}>
             {(person.tags || []).filter(t => !t.includes(':')).map(t => (
-              <span key={t} style={{ ...S.chip('#F1F5F9', TEXT_DIM), padding: '4px 10px' }}>
+              <span key={t} style={{ ...S.chip(NAVY_DEEP, TEXT_DIM), padding: '4px 10px' }}>
                 #{t}
                 <button onClick={() => onRemoveTag(t)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: TEXT_DIM, marginLeft: 4 }}><X size={10} /></button>
               </span>
@@ -945,12 +940,12 @@ function DrillPanel({ person, isNew, onClose, onTogglePin, onHide, onAddTag, onR
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxHeight: 400, overflowY: 'auto' }}>
             {interactions.map(i => (
-              <div key={i.id} style={{ padding: '8px 10px', borderRadius: 6, background: '#F7F9FC' }}>
+              <div key={i.id} style={{ padding: '8px 10px', borderRadius: 6, background: PANEL_BG }}>
                 <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
                   <span style={{ fontSize: 10, color: GRAY, fontWeight: 600, minWidth: 50, marginTop: 1 }}>
                     {new Date(i.occurred_at).toLocaleDateString([], { month: 'short', day: 'numeric' })}
                   </span>
-                  <span style={{ ...S.chip(i.direction === 'in' ? '#DBEAFE' : '#FEF3C7', i.direction === 'in' ? '#1D4ED8' : '#92400E'), padding: '1px 6px', fontSize: 9 }}>
+                  <span style={{ ...S.chip(i.direction === 'in' ? alpha(BLUE, 15) : alpha(GOLD, 15), i.direction === 'in' ? INK : GOLD), padding: '1px 6px', fontSize: 9 }}>
                     {i.direction === 'in' ? 'in' : 'out'}
                   </span>
                   <span style={{ fontSize: 12, color: NAVY, flex: 1, lineHeight: 1.3, fontWeight: 600 }}>
@@ -970,7 +965,7 @@ function DrillPanel({ person, isNew, onClose, onTogglePin, onHide, onAddTag, onR
 
       {/* Footer: Hide */}
       <div style={{ marginTop: 20, paddingTop: 14, borderTop: `1px solid ${PANEL_BORDER}` }}>
-        <button style={{ ...S.btnGhost, color: '#DC2626', borderColor: '#FECACA' }} onClick={onHide}>
+        <button style={{ ...S.btnGhost, color: RED, borderColor: alpha(RED, 40) }} onClick={onHide}>
           <EyeOff size={12} /> Hide from list
         </button>
       </div>

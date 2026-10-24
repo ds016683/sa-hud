@@ -6,9 +6,7 @@ import { ChevronLeft, ChevronRight, X as XIcon } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { BADGES, RIVER_TOTAL_MILES, RIVER_START_DAY, WAYPOINTS, whereOnRiver } from '../constants/collection'
 import BadgeMedallion from './BadgeArt'
-import {
-  INK, INK2, GRAY, PANEL_BORDER, GOLD, GOLD_BRIGHT, BLUE, MONO, SERIF,
-  S, Eyebrow, Label, Stat, Panel, chiToday, fmtDay, alpha } from './river/canon'
+import { BLUE, Eyebrow, GOLD, GOLD_BRIGHT, GRAY, INK, INK2, Label, MONO, PANEL_BORDER, Panel, S, SERIF, Stat, alpha, chiToday, fmtDay } from './river/canon'
 
 // ---- Day helpers (Chicago day strings, YYYY-MM-DD)
 const shiftDay = (day, n) => {
@@ -138,7 +136,7 @@ function DayGrid({ history }) {
               return (
                 <div key={d} title={`${shortDay(d)}: ${n ? `struck ${n}x` : 'not struck'}`} style={{
                   height: 22, borderRadius: 5, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontFamily: MONO, fontSize: 9.5, color: n ? '#16324A' : GRAY,
+                  fontFamily: MONO, fontSize: 9.5, color: n ? INK : GRAY,
                   background: n ? (n > 1 ? GOLD_BRIGHT : GOLD) : 'rgba(255,255,255,0.04)',
                   border: `1px solid ${n ? 'transparent' : PANEL_BORDER}`, opacity: n ? 1 : 0.8,
                 }}>{n > 1 ? n : d.slice(8).replace(/^0/, '')}</div>
@@ -168,14 +166,14 @@ function RouteBar({ miles }) {
           const tx = align === 'left' ? '0' : align === 'right' ? '-100%' : '-50%'
           return (
             <div key={wp.label} style={{ position: 'absolute', left: `${x}%`, top: 6 }}>
-              <div style={{ width: 9, height: 9, borderRadius: '50%', marginLeft: -4.5, background: reached ? GOLD_BRIGHT : '#10273B', border: `1.5px solid ${reached ? GOLD_BRIGHT : 'rgba(255,255,255,0.28)'}`, boxShadow: reached ? '0 0 8px rgba(248,199,97,0.5)' : 'none' }} />
+              <div style={{ width: 9, height: 9, borderRadius: '50%', marginLeft: -4.5, background: reached ? GOLD_BRIGHT : INK, border: `1.5px solid ${reached ? GOLD_BRIGHT : 'rgba(255,255,255,0.28)'}`, boxShadow: reached ? '0 0 8px rgba(248,199,97,0.5)' : 'none' }} />
               <div title={`${wp.label} · mile ${wp.at.toLocaleString()}`} style={{ position: 'absolute', top: 14, left: 0, transform: `translateX(${tx})`, whiteSpace: 'nowrap', fontFamily: MONO, fontSize: 9, letterSpacing: '0.6px', color: reached ? GOLD_BRIGHT : GRAY, textTransform: 'uppercase' }}>
                 {wp.short}
               </div>
             </div>
           )
         })}
-        <div style={{ position: 'absolute', left: `${pct}%`, top: 4, width: 13, height: 13, marginLeft: -6.5, borderRadius: '50%', background: GOLD_BRIGHT, boxShadow: '0 0 12px rgba(248,199,97,0.7)', border: '2px solid #10273B' }} />
+        <div style={{ position: 'absolute', left: `${pct}%`, top: 4, width: 13, height: 13, marginLeft: -6.5, borderRadius: '50%', background: GOLD_BRIGHT, boxShadow: '0 0 12px rgba(248,199,97,0.7)', border: `2px solid ${INK}` }} />
       </div>
       <div style={{ ...S.source, marginTop: 24, display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
         <span>RIVER · {pct.toFixed(pct < 1 ? 2 : 1)}% of the way · past {w.last.label.toUpperCase()}</span>
@@ -202,7 +200,7 @@ function HistoryModal({ badgeId, history, onClose }) {
     }}>
       <div onClick={e => e.stopPropagation()} style={{
         maxWidth: 520, width: '100%', maxHeight: '80vh', overflowY: 'auto', cursor: 'default',
-        background: '#10273B', border: `1px solid ${PANEL_BORDER}`, borderRadius: 14, padding: '24px 26px 22px',
+        background: 'var(--hud-surface-raised)', border: `1px solid ${PANEL_BORDER}`, borderRadius: 14, padding: '24px 26px 22px',
       }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14 }}>
           <BadgeMedallion id={badgeId} size={64} earned={history.length > 0} glow={history.length > 0} />

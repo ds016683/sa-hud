@@ -1,30 +1,26 @@
 // TripPlannerView.jsx — "I'm going to X. Who's there? What's the move?"
 import { useMemo, useState } from 'react'
 import { MapPin, Search, ChevronRight, Pin, Clock, AlertTriangle, Star, TrendingUp } from 'lucide-react'
+import { BLUE, GOLD, GRAY, GREEN, INK, INK2, NAVY_DEEP, PANEL_BG, PANEL_BORDER, PURPLE, RED, alpha } from '../river/canon'
 
-const NAVY = '#002C77'
-const BLUE = '#009DE0'
-const GOLD = '#D4A106'
-const GRAY = '#8096B2'
-const LABEL = '#7FA8D4'
-const TEXT_DIM = '#565656'
-const PANEL_BORDER = '#E2E8F0'
-const PAGE_BG = '#F7F9FC'
+const NAVY = INK
+const TEXT_DIM = INK2
+const PAGE_BG = NAVY_DEEP
 
 const S = {
-  panel: { background: 'white', border: `1px solid ${PANEL_BORDER}`, borderRadius: 12, padding: 14, boxShadow: '0 1px 2px rgba(0,0,0,0.04)' },
+  panel: { background: PANEL_BG, border: `1px solid ${PANEL_BORDER}`, borderRadius: 12, padding: 14, boxShadow: 'none' },
   input: { padding: '10px 14px', borderRadius: 8, border: `1px solid ${PANEL_BORDER}`, fontSize: 14, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' },
   chip: (bg, fg) => ({ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 9999, background: bg, color: fg, textTransform: 'uppercase', letterSpacing: '0.05em' }),
-  btnGhost: { background: 'white', color: NAVY, border: `1px solid ${PANEL_BORDER}`, borderRadius: 8, padding: '4px 10px', fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' },
+  btnGhost: { background: PANEL_BG, color: NAVY, border: `1px solid ${PANEL_BORDER}`, borderRadius: 8, padding: '4px 10px', fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' },
   pillBtn: (active) => ({
-    background: active ? NAVY : 'white', color: active ? 'white' : NAVY,
+    background: active ? NAVY : NAVY_DEEP, color: active ? NAVY_DEEP : NAVY,
     border: `1px solid ${active ? NAVY : PANEL_BORDER}`, borderRadius: 9999,
     padding: '6px 12px', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
   }),
 }
 
 function avatarColor(name) {
-  const colors = ['#0EA5E9', '#7C3AED', '#DC2626', '#0F766E', '#D97706', '#0369A1', '#BE185D', '#15803D']
+  const colors = [BLUE, PURPLE, RED, GREEN, GOLD, BLUE, RED, GREEN]
   let h = 0
   for (const c of (name || '')) h = (h * 31 + c.charCodeAt(0)) >>> 0
   return colors[h % colors.length]
@@ -56,11 +52,11 @@ function suggestMove(person) {
 
   // High priority: client + stale = check-in needed
   if (tags.includes('interest:client') && d > 60) {
-    return { kind: 'check-in', urgency: 'high', label: 'Client check-in', icon: AlertTriangle, color: '#DC2626', detail: `Last touch ${d}d ago — overdue` }
+    return { kind: 'check-in', urgency: 'high', label: 'Client check-in', icon: AlertTriangle, color: RED, detail: `Last touch ${d}d ago — overdue` }
   }
   // Potential business + stale = re-engage
   if (tags.includes('interest:potential-business') && d > 45) {
-    return { kind: 'reengage', urgency: 'high', label: 'Re-engage prospect', icon: TrendingUp, color: '#D97706', detail: `${d}d cold — momentum slipping` }
+    return { kind: 'reengage', urgency: 'high', label: 'Re-engage prospect', icon: TrendingUp, color: GOLD, detail: `${d}d cold — momentum slipping` }
   }
   // Strong relationship + stale = catch up
   if (c >= 15 && d > 180) {
@@ -216,7 +212,7 @@ export default function TripPlannerView({ people, onSelectPerson }) {
                       borderBottom: `1px solid ${PANEL_BORDER}`, cursor: 'pointer',
                     }}
                   >
-                    <div style={{ width: 36, height: 36, borderRadius: '50%', background: avatarColor(person.full_name), color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700, flexShrink: 0 }}>
+                    <div style={{ width: 36, height: 36, borderRadius: '50%', background: avatarColor(person.full_name), color: NAVY_DEEP, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700, flexShrink: 0 }}>
                       {initials(person.full_name)}
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
@@ -238,7 +234,7 @@ export default function TripPlannerView({ people, onSelectPerson }) {
                       )}
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 3 }}>
-                      <span style={{ ...S.chip('#DBEAFE', '#1D4ED8') }}>{person.contact_count || 0}</span>
+                      <span style={{ ...S.chip(alpha(BLUE, 15), INK) }}>{person.contact_count || 0}</span>
                       <span style={{ fontSize: 10, color: GRAY }}>{relativeDate(person.last_contact_at)}</span>
                     </div>
                     <ChevronRight size={14} color={GRAY} />
@@ -269,15 +265,15 @@ export default function TripPlannerView({ people, onSelectPerson }) {
           ) : (
             <>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 6, marginBottom: 14 }}>
-                <div style={{ background: '#FEE2E2', padding: 10, borderRadius: 8, textAlign: 'center' }}>
-                  <div style={{ fontSize: 22, fontWeight: 700, color: '#DC2626' }}>{moveBuckets.high.length}</div>
-                  <div style={{ fontSize: 9, color: '#DC2626', fontWeight: 700, textTransform: 'uppercase' }}>high</div>
+                <div style={{ background: alpha(RED, 15), padding: 10, borderRadius: 8, textAlign: 'center' }}>
+                  <div style={{ fontSize: 22, fontWeight: 700, color: RED }}>{moveBuckets.high.length}</div>
+                  <div style={{ fontSize: 9, color: RED, fontWeight: 700, textTransform: 'uppercase' }}>high</div>
                 </div>
-                <div style={{ background: '#FEF3C7', padding: 10, borderRadius: 8, textAlign: 'center' }}>
-                  <div style={{ fontSize: 22, fontWeight: 700, color: '#D97706' }}>{moveBuckets.medium.length}</div>
-                  <div style={{ fontSize: 9, color: '#D97706', fontWeight: 700, textTransform: 'uppercase' }}>medium</div>
+                <div style={{ background: alpha(GOLD, 15), padding: 10, borderRadius: 8, textAlign: 'center' }}>
+                  <div style={{ fontSize: 22, fontWeight: 700, color: GOLD }}>{moveBuckets.medium.length}</div>
+                  <div style={{ fontSize: 9, color: GOLD, fontWeight: 700, textTransform: 'uppercase' }}>medium</div>
                 </div>
-                <div style={{ background: '#F1F5F9', padding: 10, borderRadius: 8, textAlign: 'center' }}>
+                <div style={{ background: PANEL_BG, padding: 10, borderRadius: 8, textAlign: 'center' }}>
                   <div style={{ fontSize: 22, fontWeight: 700, color: GRAY }}>{moveBuckets.low.length}</div>
                   <div style={{ fontSize: 10.5, color: LABEL, fontWeight: 700, textTransform: 'uppercase' }}>low</div>
                 </div>
@@ -285,7 +281,7 @@ export default function TripPlannerView({ people, onSelectPerson }) {
 
               {moveBuckets.high.length > 0 && (
                 <div style={{ marginBottom: 12 }}>
-                  <div style={{ fontSize: 10, fontWeight: 700, color: '#DC2626', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6 }}>
+                  <div style={{ fontSize: 10, fontWeight: 700, color: RED, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6 }}>
                     Don't skip
                   </div>
                   {moveBuckets.high.slice(0, 5).map(({ person, move }) => (
@@ -300,7 +296,7 @@ export default function TripPlannerView({ people, onSelectPerson }) {
 
               {moveBuckets.medium.length > 0 && (
                 <div>
-                  <div style={{ fontSize: 10, fontWeight: 700, color: '#D97706', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6 }}>
+                  <div style={{ fontSize: 10, fontWeight: 700, color: GOLD, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6 }}>
                     Worth a coffee
                   </div>
                   {moveBuckets.medium.slice(0, 5).map(({ person, move }) => (

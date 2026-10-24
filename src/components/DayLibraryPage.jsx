@@ -4,12 +4,9 @@ import { PageHead } from './sa/SaUi'
 import { supabase } from '../lib/supabase'
 import { BADGES, milesGrade, signalTier } from '../constants/collection'
 import BadgeMedallion from './BadgeArt'
+import { BLUE, GOLD, GREEN, INK, INK2, PERIWINKLE } from './river/canon'
 
-const GOLD = '#F8C761'
-const PERIWINKLE = '#96A8F0'
 const LINE = 'rgba(255,255,255,0.10)'
-const INK = 'rgba(255,255,255,0.92)'
-const INK2 = 'rgba(255,255,255,0.66)'
 const INK3 = 'rgba(255,255,255,0.42)'
 
 const panel = {
@@ -69,7 +66,7 @@ function ScoringDashboard({ days, onClose }) {
     }}>
       <div onClick={e => e.stopPropagation()} style={{
         maxWidth: 780, width: '100%', maxHeight: '88vh', overflowY: 'auto', cursor: 'default',
-        background: '#10273B', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 14, padding: 28,
+        background: 'var(--hud-surface-raised)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 14, padding: 28,
       }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
           <div style={{ flex: 1 }}>
@@ -195,9 +192,9 @@ export default function DayLibraryPage() {
               <button key={id} onClick={() => setShowChart(id === 'chart')} style={{
                 padding: '5px 16px', borderRadius: 999, cursor: 'pointer', fontFamily: 'var(--font-mono, monospace)',
                 fontSize: 10, fontWeight: 600, letterSpacing: '1.2px', textTransform: 'uppercase',
-                background: on ? '#A9C9E8' : 'transparent',
-                color: on ? '#0E2336' : INK2,
-                border: on ? '1px solid #A9C9E8' : `1px solid ${LINE}`,
+                background: on ? BLUE : 'transparent',
+                color: on ? INK : INK2,
+                border: on ? `1px solid ${BLUE}` : `1px solid ${LINE}`,
               }}>{label}</button>
             )
           })}
@@ -262,7 +259,7 @@ export default function DayLibraryPage() {
                           width: 30, height: 30, borderRadius: '50%', flexShrink: 0,
                           display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                           fontSize: 14.5, fontWeight: 500,
-                          color: g === 'S' ? '#16324A' : GOLD,
+                          color: g === 'S' ? INK : GOLD,
                           background: g === 'S' ? GOLD : 'rgba(248,199,97,0.10)',
                           border: `1.5px ${tier ? tier.ring : 'solid'} rgba(248,199,97,${g === 'S' ? 1 : 0.6})`,
                           opacity: tier ? tier.opacity : 1,
@@ -342,7 +339,7 @@ export default function DayLibraryPage() {
                 {(row.must_do || []).map((t, i) => (
                   <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '5.5px 0' }}>
                     {t.done
-                      ? <CheckCircle2 size={16} style={{ color: '#5FBF8A', flexShrink: 0, marginTop: 2 }} />
+                      ? <CheckCircle2 size={16} style={{ color: GREEN, flexShrink: 0, marginTop: 2 }} />
                       : <Circle size={16} style={{ color: 'rgba(255,255,255,0.3)', flexShrink: 0, marginTop: 2 }} />}
                     <span style={{
                       fontSize: 14, lineHeight: 1.5,

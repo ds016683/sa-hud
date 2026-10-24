@@ -9,14 +9,15 @@
 //   Hours     free hours before 6 PM Chicago after remaining meetings (shown, never enforced: David 10/21)
 //   Extract   release: stop the clock, sum the segments, bank the miles
 import { supabase } from './supabase'
+import { BLUE, GOLD, PURPLE } from '../components/river/canon'
 
 export const SLOTS = 3
 export const HEAVY_MAX = 1
 export const DAY_END_HOUR = 18
 export const SIZES = {
-  light:  { label: 'Bounty',  slots: 1, hours: 1, effort: 1, color: '#E6B54F', sub: 'one discrete action with a clear finish, under an hour: an email, a call, a read-and-reply · 1 slot · 4 miles' },
-  medium: { label: 'Contract',  slots: 2, hours: 4, effort: 3, color: '#A9C9E8', sub: 'a standard piece of work with a deliverable: a review, a concept paper, a research pass · 2 slots · 15 miles · up to three marks, unpaid' },
-  heavy:  { label: 'Mythic', slots: 3, hours: 8, effort: 5, color: '#B4A3E8', sub: 'several ordered gates done within days, five at most, 10 miles each · 3 slots · 50 miles + 10 per gate' },
+  light:  { label: 'Bounty',  slots: 1, hours: 1, effort: 1, color: GOLD, sub: 'one discrete action with a clear finish, under an hour: an email, a call, a read-and-reply · 1 slot · 4 miles' },
+  medium: { label: 'Contract',  slots: 2, hours: 4, effort: 3, color: BLUE, sub: 'a standard piece of work with a deliverable: a review, a concept paper, a research pass · 2 slots · 15 miles · up to three marks, unpaid' },
+  heavy:  { label: 'Mythic', slots: 3, hours: 8, effort: 5, color: PURPLE, sub: 'several ordered gates done within days, five at most, 10 miles each · 3 slots · 50 miles + 10 per gate' },
 }
 export const slotsOf = (o) => SIZES[sizeOf(o)].slots
 export const sizeOf = (o) => { const e = Number(o?.effort) || 1; return e >= 4 ? 'heavy' : e === 3 ? 'medium' : 'light' }

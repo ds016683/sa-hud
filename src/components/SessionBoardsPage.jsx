@@ -2,13 +2,9 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { RefreshCw } from 'lucide-react'
 import { PageHead } from './sa/SaUi'
 import { supabase } from '../lib/supabase'
+import { GOLD, GREEN, INK, INK2, RED } from './river/canon'
 
-const GOLD = '#F8C761'
-const GREEN = '#5FBF8A'
-const RED = '#E06C5F'
 const LINE = 'rgba(255,255,255,0.10)'
-const INK = 'rgba(255,255,255,0.92)'
-const INK2 = 'rgba(255,255,255,0.62)'
 const INK3 = 'rgba(255,255,255,0.40)'
 
 function fmtTime(ts) {
@@ -36,7 +32,7 @@ function Glyph({ status }) {
       <span style={{ ...base, background: GREEN, borderColor: GREEN }}>
         <span style={{
           position: 'absolute', left: 4.5, top: 1.5, width: 4, height: 8,
-          border: 'solid #0E2336', borderWidth: '0 2px 2px 0', transform: 'rotate(42deg)',
+          border: 'solid ${INK}', borderWidth: '0 2px 2px 0', transform: 'rotate(42deg)',
         }} />
       </span>
     )
@@ -158,10 +154,10 @@ export default function SessionBoardsPage({ deepLink = [] } = {}) {
                     fontSize: 12.5, fontWeight: on ? 600 : 400, letterSpacing: '0.01em',
                     border: `1px solid ${on ? GOLD : 'rgba(255,255,255,0.16)'}`,
                     background: on ? GOLD : 'rgba(255,255,255,0.04)',
-                    color: on ? '#16324A' : INK2,
+                    color: on ? INK : INK2,
                   }}
                 >
-                  {live && <span className="sb-pulse" style={{ width: 7, height: 7, borderRadius: '50%', background: on ? '#16324A' : GREEN }} />}
+                  {live && <span className="sb-pulse" style={{ width: 7, height: 7, borderRadius: '50%', background: on ? INK : GREEN }} />}
                   {r.project}
                   <span style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: 10.5, opacity: 0.75 }}>{s.done}/{s.total}</span>
                 </button>
@@ -200,7 +196,7 @@ export default function SessionBoardsPage({ deepLink = [] } = {}) {
                   >
                     <Glyph status={t.status} />
                     <span style={{ fontSize: 13.5, lineHeight: 1.5 }}>
-                      <span style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: 10.5, color: '#E6B54F', marginRight: 8, letterSpacing: '0.5px' }}>{t.id}</span>
+                      <span style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: 10.5, color: GOLD, marginRight: 8, letterSpacing: '0.5px' }}>{t.id}</span>
                       <span style={{
                         color: t.status === 'done' ? INK3 : t.status === 'inmotion' ? INK : INK2,
                         textDecoration: t.status === 'done' ? 'line-through' : 'none',

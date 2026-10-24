@@ -10,7 +10,7 @@ import { HYGIENE_ITEMS, HYGIENE_KEYS } from '../constants/hygiene'
 import { MEDICATIONS, dueOn } from '../constants/medications'
 import HygieneChecklist from './river/HygieneChecklist'
 import RegimenChecklist from './river/RegimenChecklist'
-import { S, Eyebrow, Panel, Stat, Label, GRAY, INK2, GOLD, GREEN, BLUE, PURPLE, PERIWINKLE, RED, PANEL_BORDER, MONO, chiToday, fmtTime, LABEL, alpha } from './river/canon'
+import { BLUE, Eyebrow, GOLD, GRAY, GREEN, INK, INK2, LABEL, Label, MONO, PANEL_BORDER, PERIWINKLE, PURPLE, Panel, RED, S, Stat, alpha, chiToday, fmtTime } from './river/canon'
 
 // ---------- constants ----------
 const TOP_PILLS = [
@@ -37,7 +37,7 @@ const PILL_CATS = {
 const CAT_COLOR = { health: GOLD, exercise: GOLD, hygiene: GREEN, spiritual: PURPLE, family: PERIWINKLE, content: BLUE, other: BLUE }
 const CAT_LABEL = { health: 'Health', exercise: 'Exercise', hygiene: 'Hygiene', spiritual: 'Spiritual', family: 'Family', content: 'Content', other: 'Other' }
 
-const CTRL = { fontSize: 12, padding: '7px 10px', borderRadius: 8, border: `1px solid ${PANEL_BORDER}`, background: 'rgba(255,255,255,0.05)', color: '#EAF1F8' }
+const CTRL = { fontSize: 12, padding: '7px 10px', borderRadius: 8, border: `1px solid ${PANEL_BORDER}`, background: 'rgba(255,255,255,0.05)', color: INK }
 const BTN = { ...CTRL, display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer' }
 const ERR_STYLE = { color: RED, fontFamily: MONO, fontSize: 11, margin: '8px 0' }
 
@@ -107,7 +107,7 @@ function PillRow({ options, value, onPick, small = false, style }) {
             padding: small ? '5px 11px' : '7px 14px', borderRadius: 999, cursor: 'pointer',
             border: `1px solid ${on ? 'rgba(230,181,79,0.6)' : PANEL_BORDER}`,
             background: on ? 'rgba(230,181,79,0.12)' : 'rgba(255,255,255,0.03)',
-            color: on ? GOLD : '#EAF1F8',
+            color: on ? GOLD : INK,
           }}>{o.label}</button>
         )
       })}
@@ -184,7 +184,7 @@ function LogTable14({ cols, rows, blank = 'No logs in the last 14 days.' }) {
         <tbody>
           {rows.map(r => (
             <tr key={r.day}>
-              {cols.map(c => <td key={c.key} style={{ ...td, whiteSpace: c.key === 'day' ? 'nowrap' : 'normal', color: c.key === 'day' ? '#EAF1F8' : INK2 }}>{c.render(r)}</td>)}
+              {cols.map(c => <td key={c.key} style={{ ...td, whiteSpace: c.key === 'day' ? 'nowrap' : 'normal', color: c.key === 'day' ? INK : INK2 }}>{c.render(r)}</td>)}
             </tr>
           ))}
         </tbody>
@@ -358,7 +358,7 @@ function WorkoutCard({ w }) {
   return (
     <div style={{ padding: '12px 0', borderTop: `1px solid ${PANEL_BORDER}` }}>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 8 }}>
-        <span style={{ fontSize: 13.5, color: '#EAF1F8' }}>{shortDay(w.day)}</span>
+        <span style={{ fontSize: 13.5, color: INK }}>{shortDay(w.day)}</span>
         {num(w.minutes) !== null && <span style={{ fontFamily: MONO, fontSize: 11, color: GOLD }}>{fmtNum(num(w.minutes))} min</span>}
         <span style={{ fontFamily: MONO, fontSize: 10, color: GRAY }}>{ex.length} exercise{ex.length === 1 ? '' : 's'}</span>
       </div>
@@ -369,7 +369,7 @@ function WorkoutCard({ w }) {
             <tbody>
               {g.rows.map((e, i) => (
                 <tr key={i}>
-                  <td style={{ ...td, color: '#EAF1F8', width: '45%' }}>{e.name}</td>
+                  <td style={{ ...td, color: INK, width: '45%' }}>{e.name}</td>
                   <td style={{ ...td, fontFamily: MONO, whiteSpace: 'nowrap' }}>{num(e.weight_lbs) !== null ? `${fmtNum(num(e.weight_lbs))} lb` : ''}</td>
                   <td style={{ ...td, fontFamily: MONO, whiteSpace: 'nowrap' }}>{Array.isArray(e.sets) ? e.sets.join(' · ') : ''}</td>
                 </tr>

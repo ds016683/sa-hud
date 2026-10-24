@@ -8,9 +8,9 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { Eraser, Undo2, Trash2, Save, Image as ImageIcon, Pen, FilePlus } from 'lucide-react'
 import { putLiveFile, listLiveFiles, openLiveFile, fmtStamp } from '../lib/livefiles'
 import { fetchLoadout, fetchStash } from '../lib/loadout'
-import { S, Eyebrow, Serif, Label, INK, INK2, GRAY, GOLD, BLUE, GREEN, RED, PURPLE, MONO, PANEL_BORDER, LABEL, alpha } from './river/canon'
+import { BLUE, Eyebrow, GOLD, GRAY, GREEN, INK, INK2, LABEL, Label, MONO, PANEL_BORDER, PURPLE, RED, S, Serif, alpha } from './river/canon'
 import { hudConfirm } from '../lib/dialog'
-const COLORS = [['Ink', '#EAF1F8'], ['Gold', GOLD], ['Blue', BLUE], ['Green', GREEN], ['Red', RED], ['Purple', PURPLE]]
+const COLORS = [['Ink', INK], ['Gold', GOLD], ['Blue', BLUE], ['Green', GREEN], ['Red', RED], ['Purple', PURPLE]]
 const WIDTHS = [2, 4, 7, 12]
 const PAPER = '#132B42'
 const LS = 'hud-scratchpad-v1'

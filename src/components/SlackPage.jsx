@@ -1,56 +1,57 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { Hash, Lock, MessageCircle, Users, Send, Check, Archive, ExternalLink, AtSign, Inbox, Paperclip, RefreshCw, X, BookOpen, Eraser } from 'lucide-react'
 import { supabase } from '../lib/supabase'
+import { BLUE, GOLD, GRAY, GREEN, INK, INK2, NAVY_DEEP, PANEL_BG, PANEL_BORDER, RED } from './river/canon'
 
 const S = {
-  page: { maxWidth: 1400, margin: '0 auto', padding: '24px 16px', fontFamily: 'Arial, Helvetica, sans-serif' },
+  page: { maxWidth: 1400, margin: '0 auto', padding: '24px 16px', fontFamily: 'inherit' },
   header: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 },
-  h1: { fontSize: 20, fontWeight: 700, color: '#002C77', margin: 0 },
-  sub: { fontSize: 13, color: '#8096B2', margin: '2px 0 0' },
-  refreshBtn: { display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 14px', background: 'white', color: '#002C77', border: '1px solid #CBD8E8', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'Arial, Helvetica, sans-serif' },
+  h1: { fontSize: 20, fontWeight: 700, color: INK, margin: 0 },
+  sub: { fontSize: 13, color: INK2, margin: '2px 0 0' },
+  refreshBtn: { display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 14px', background: PANEL_BG, color: INK, border: `1px solid ${PANEL_BORDER}`, borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' },
   filterRow: { display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 16 },
   filterBtn: (active) => ({
     padding: '5px 14px', borderRadius: 9999, border: '1px solid', fontSize: 12, cursor: 'pointer',
-    fontFamily: 'Arial, Helvetica, sans-serif', fontWeight: active ? 600 : 500,
-    background: active ? '#002C77' : 'white',
-    color: active ? 'white' : '#334E85',
-    borderColor: active ? '#002C77' : '#CBD8E8',
+    fontFamily: 'inherit', fontWeight: active ? 600 : 500,
+    background: active ? INK : NAVY_DEEP,
+    color: active ? NAVY_DEEP : INK2,
+    borderColor: active ? INK : PANEL_BORDER,
     display: 'inline-flex', alignItems: 'center', gap: 5, transition: 'all 0.15s',
   }),
   body: { display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 16, alignItems: 'start' },
   bodyOneCol: { display: 'block' },
-  list: { background: 'white', borderRadius: 10, border: '1px solid #E2E8F0', overflow: 'hidden', maxHeight: 'calc(100vh - 200px)', overflowY: 'auto' },
+  list: { background: PANEL_BG, borderRadius: 10, border: `1px solid ${PANEL_BORDER}`, overflow: 'hidden', maxHeight: 'calc(100vh - 200px)', overflowY: 'auto' },
   row: (selected, unread) => ({
     padding: '12px 16px',
-    borderBottom: '1px solid #EEF2F7',
+    borderBottom: `1px solid ${PANEL_BG}`,
     cursor: 'pointer',
-    background: selected ? 'rgba(0,157,224,0.08)' : (unread ? 'white' : '#F7F9FC'),
-    borderLeft: selected ? '3px solid #009DE0' : '3px solid transparent',
+    background: selected ? 'rgba(0,157,224,0.08)' : (unread ? NAVY_DEEP : NAVY_DEEP),
+    borderLeft: selected ? `3px solid ${BLUE}` : '3px solid transparent',
     transition: 'background 0.1s',
   }),
   rowTop: { display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 },
-  channelTag: { display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 600, color: '#002C77', background: '#EEF2F7', padding: '2px 7px', borderRadius: 4, border: '1px solid #CBD8E8', whiteSpace: 'nowrap', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis' },
-  mentionDot: { width: 8, height: 8, borderRadius: '50%', background: '#D4A106', flexShrink: 0 },
-  rowMeta: { fontSize: 11, color: '#8096B2', marginLeft: 'auto', whiteSpace: 'nowrap' },
-  rowAuthor: { fontSize: 13, fontWeight: 700, color: '#002C77' },
-  rowPreview: (unread) => ({ fontSize: 13, color: unread ? '#202E47' : '#566778', lineHeight: 1.4, marginTop: 2, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }),
-  empty: { padding: 40, textAlign: 'center', color: '#8096B2', fontSize: 13 },
-  detail: { background: 'white', borderRadius: 10, border: '1px solid #E2E8F0', padding: 20, position: 'sticky', top: 16 },
+  channelTag: { display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 600, color: INK, background: PANEL_BG, padding: '2px 7px', borderRadius: 4, border: `1px solid ${PANEL_BORDER}`, whiteSpace: 'nowrap', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis' },
+  mentionDot: { width: 8, height: 8, borderRadius: '50%', background: GOLD, flexShrink: 0 },
+  rowMeta: { fontSize: 11, color: INK2, marginLeft: 'auto', whiteSpace: 'nowrap' },
+  rowAuthor: { fontSize: 13, fontWeight: 700, color: INK },
+  rowPreview: (unread) => ({ fontSize: 13, color: unread ? INK : GRAY, lineHeight: 1.4, marginTop: 2, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }),
+  empty: { padding: 40, textAlign: 'center', color: INK2, fontSize: 13 },
+  detail: { background: PANEL_BG, borderRadius: 10, border: `1px solid ${PANEL_BORDER}`, padding: 20, position: 'sticky', top: 16 },
   detailHead: { display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 12, gap: 8 },
-  detailTitle: { fontSize: 15, fontWeight: 700, color: '#002C77', margin: 0, lineHeight: 1.4 },
-  detailMeta: { fontSize: 12, color: '#8096B2', marginTop: 4 },
-  detailText: { fontSize: 14, color: '#202E47', lineHeight: 1.55, whiteSpace: 'pre-wrap', wordBreak: 'break-word', padding: '12px 0', borderTop: '1px solid #EEF2F7', borderBottom: '1px solid #EEF2F7', margin: '12px 0' },
+  detailTitle: { fontSize: 15, fontWeight: 700, color: INK, margin: 0, lineHeight: 1.4 },
+  detailMeta: { fontSize: 12, color: INK2, marginTop: 4 },
+  detailText: { fontSize: 14, color: INK, lineHeight: 1.55, whiteSpace: 'pre-wrap', wordBreak: 'break-word', padding: '12px 0', borderTop: `1px solid ${PANEL_BG}`, borderBottom: `1px solid ${PANEL_BG}`, margin: '12px 0' },
   actionRow: { display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16 },
-  actionBtn: { display: 'inline-flex', alignItems: 'center', gap: 5, padding: '6px 12px', background: 'white', color: '#334E85', border: '1px solid #CBD8E8', borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'Arial, Helvetica, sans-serif' },
-  primaryBtn: { display: 'inline-flex', alignItems: 'center', gap: 5, padding: '6px 14px', background: '#002C77', color: 'white', border: '1px solid #002C77', borderRadius: 6, fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'Arial, Helvetica, sans-serif' },
-  actionBtnPrimary: { display: 'inline-flex', alignItems: 'center', gap: 5, padding: '6px 12px', background: '#002C77', color: 'white', border: '1px solid #002C77', borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'Arial, Helvetica, sans-serif' },
+  actionBtn: { display: 'inline-flex', alignItems: 'center', gap: 5, padding: '6px 12px', background: PANEL_BG, color: INK2, border: `1px solid ${PANEL_BORDER}`, borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' },
+  primaryBtn: { display: 'inline-flex', alignItems: 'center', gap: 5, padding: '6px 14px', background: BLUE, color: NAVY_DEEP, border: `1px solid ${INK}`, borderRadius: 6, fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' },
+  actionBtnPrimary: { display: 'inline-flex', alignItems: 'center', gap: 5, padding: '6px 12px', background: BLUE, color: NAVY_DEEP, border: `1px solid ${INK}`, borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' },
   replyArea: { marginTop: 8 },
-  replyLabel: { fontSize: 11, color: '#8096B2', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 },
-  textarea: { width: '100%', minHeight: 80, maxHeight: 240, padding: 10, fontSize: 13, fontFamily: 'Arial, Helvetica, sans-serif', border: '1px solid #CBD8E8', borderRadius: 6, resize: 'vertical', boxSizing: 'border-box', color: '#202E47' },
+  replyLabel: { fontSize: 11, color: INK2, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 },
+  textarea: { width: '100%', minHeight: 80, maxHeight: 240, padding: 10, fontSize: 13, fontFamily: 'inherit', border: `1px solid ${PANEL_BORDER}`, borderRadius: 6, resize: 'vertical', boxSizing: 'border-box', color: INK },
   replyFoot: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 8 },
-  replyHint: { fontSize: 11, color: '#8096B2' },
-  sendBtn: (disabled) => ({ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 16px', background: disabled ? '#CBD8E8' : '#009DE0', color: 'white', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: disabled ? 'not-allowed' : 'pointer', fontFamily: 'Arial, Helvetica, sans-serif' }),
-  toast: (kind) => ({ position: 'fixed', bottom: 24, right: 24, zIndex: 1000, padding: '10px 16px', borderRadius: 8, fontSize: 13, fontFamily: 'Arial, Helvetica, sans-serif', color: 'white', background: kind === 'err' ? '#B91C1C' : '#059669', boxShadow: '0 6px 16px rgba(0,0,0,0.15)' }),
+  replyHint: { fontSize: 11, color: INK2 },
+  sendBtn: (disabled) => ({ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 16px', background: disabled ? PANEL_BORDER : BLUE, color: NAVY_DEEP, border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: disabled ? 'not-allowed' : 'pointer', fontFamily: 'inherit' }),
+  toast: (kind) => ({ position: 'fixed', bottom: 24, right: 24, zIndex: 1000, padding: '10px 16px', borderRadius: 8, fontSize: 13, fontFamily: 'inherit', color: NAVY_DEEP, background: kind === 'err' ? RED : GREEN, boxShadow: '0 6px 16px rgba(0,0,0,0.15)' }),
 }
 
 const FILTERS = [
@@ -285,8 +286,8 @@ export default function SlackPage() {
                     {row.channel_name}
                   </span>
                   {row.has_mention && <span style={S.mentionDot} title="Mention" />}
-                  {row.has_files && <Paperclip size={11} color="#8096B2" />}
-                  {row.replied_at && <span style={{ fontSize: 10, color: '#059669', fontWeight: 600 }}>REPLIED</span>}
+                  {row.has_files && <Paperclip size={11} color="${INK2}" />}
+                  {row.replied_at && <span style={{ fontSize: 10, color: GREEN, fontWeight: 600 }}>REPLIED</span>}
                   <span style={S.rowMeta}>{relTime(row.ts)}</span>
                 </div>
                 <div style={S.rowAuthor}>{row.user_name}</div>
@@ -301,13 +302,13 @@ export default function SlackPage() {
             <div style={S.detailHead}>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-                  {Icon && <Icon size={14} color="#002C77" />}
-                  <span style={{ fontSize: 13, fontWeight: 700, color: '#002C77' }}>{selected.channel_name}</span>
+                  {Icon && <Icon size={14} color="${INK}" />}
+                  <span style={{ fontSize: 13, fontWeight: 700, color: INK }}>{selected.channel_name}</span>
                 </div>
                 <h2 style={S.detailTitle}>{selected.user_name}</h2>
                 <div style={S.detailMeta}>{new Date(selected.ts).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'America/Chicago' })} CT</div>
               </div>
-              <button onClick={() => setSelected(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#8096B2', padding: 4 }}>
+              <button onClick={() => setSelected(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: INK2, padding: 4 }}>
                 <X size={18} />
               </button>
             </div>

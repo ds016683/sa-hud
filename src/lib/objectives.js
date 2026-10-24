@@ -11,15 +11,16 @@
 import { supabase } from './supabase'
 import { DAVID, effortOf, sizeOf, equipObjective, holster, extract as extractItem } from './loadout'
 import { listArtifacts, readArtifact } from './artifacts'
+import { BLUE, GOLD, GREEN, PURPLE } from '../components/river/canon'
 
 export const STATES = [
-  { key: 'inbox',     label: 'Inbox',     color: '#E6B54F' },
-  { key: 'follow_up', label: 'Follow Up', color: '#E0985C' },
-  { key: 'waiting',   label: 'Waiting',   color: '#A9C9E8' },
-  { key: 'foreman',   label: 'Delegated', color: '#B4A3E8' },
+  { key: 'inbox',     label: 'Inbox',     color: GOLD },
+  { key: 'follow_up', label: 'Follow Up', color: GOLD },
+  { key: 'waiting',   label: 'Waiting',   color: BLUE },
+  { key: 'foreman',   label: 'Delegated', color: PURPLE },
   { key: 'parked',    label: 'In Queue',  color: '#9DB0C1' },
-  { key: 'active',    label: 'On the Board', color: '#43D392' },
-  { key: 'released',  label: 'Released',  color: '#7FA8D4' },
+  { key: 'active',    label: 'On the Board', color: GREEN },
+  { key: 'released',  label: 'Released',  color: BLUE },
 ]
 export const STATE = Object.fromEntries(STATES.map(s => [s.key, s]))
 export const TAGS = {

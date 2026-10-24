@@ -2,9 +2,9 @@
 // underneath, leaning into the dashboard aesthetic"). One square button per
 // timer or protocol, its reading or icon inside, the light at its corner, the
 // name under it. Groups sit side by side on the Console row.
-import { PANEL_BORDER, GREEN, INK, INK2, GRAY, MONO, SERIF, Label, alpha } from './canon'
+import { PANEL_BORDER, GREEN, INK, INK2, GRAY, MONO, SERIF, Label, alpha, GOLD, RED } from './canon'
 
-export const LEVEL_COLOR = { green: GREEN, gold: '#E6B54F', red: '#E8836F', gray: 'rgba(234,241,248,0.25)' }
+export const LEVEL_COLOR = { green: GREEN, gold: GOLD, red: RED, gray: 'rgba(234,241,248,0.25)' }
 
 export function Instrument({ label, sub, reading, unit, icon, light, running, clock, tone = INK2, onClick, onLightClick, disabled, title, extra, width = 86 }) {
   const lc = light && light.level !== 'gray' ? (LEVEL_COLOR[light.level] || null) : null
@@ -47,4 +47,4 @@ export function InstrumentGroup({ label, children, divider = false, footer }) {
   )
 }
 
-export const groupMsg = (msg, bad) => msg ? <div style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '0.8px', color: bad ? '#E8836F' : '#F8C761', textTransform: 'uppercase', maxWidth: 420, lineHeight: 1.5 }}>{msg}</div> : null
+export const groupMsg = (msg, bad) => msg ? <div style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '0.8px', color: bad ? RED : GOLD, textTransform: 'uppercase', maxWidth: 420, lineHeight: 1.5 }}>{msg}</div> : null

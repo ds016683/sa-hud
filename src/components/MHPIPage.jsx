@@ -5,26 +5,16 @@
 // Copy is the source documents' own language. Sources are cited on each panel.
 import { useState } from 'react'
 import { Bell, Lock, Globe, FileText, Landmark, Users, Compass, Building2, HeartPulse, Sparkles } from 'lucide-react'
-import { alpha } from './river/canon'
+import { BLUE, GOLD, GRAY, GREEN, INK, INK2, NAVY_DEEP, PANEL_BG, PANEL_BORDER, PURPLE, alpha, LABEL } from './river/canon'
 
 // ---- Canon tokens (same as ObjectivesPage on the dark stage)
-const NAVY = '#EAF1F8'
-const NAVY_DEEP = '#0E2336'
-const GRAY = 'rgba(234,241,248,0.45)'
-const LABEL = '#7FA8D4'
-const INK2 = 'rgba(234,241,248,0.66)'
-const PANEL_BORDER = 'rgba(255,255,255,0.10)'
-const PANEL_BG = 'rgba(255,255,255,0.035)'
-const GOLD = '#E6B54F'
-const BLUE = '#A9C9E8'
-const PURPLE = '#B4A3E8'
-const GREEN = '#43D392'
+const NAVY = INK
 const TKF = 'The Kennedy Forum'
 const TH = 'Third Horizon'
 
 const S = {
   page: { maxWidth: 1040, margin: '0 auto', padding: '4px 0 80px', fontFamily: 'inherit', color: NAVY },
-  h1: { fontSize: 28, fontWeight: 500, margin: 0, color: '#FFFFFF', fontFamily: "'Lora', Georgia, serif", letterSpacing: '-0.01em' },
+  h1: { fontSize: 28, fontWeight: 500, margin: 0, color: NAVY_DEEP, fontFamily: "'Lora', Georgia, serif", letterSpacing: '-0.01em' },
   sub: { fontSize: 10, color: LABEL, margin: '6px 0 0', fontFamily: 'var(--font-mono, monospace)', letterSpacing: '1.4px', textTransform: 'uppercase' },
   panel: { background: PANEL_BG, border: `1px solid ${PANEL_BORDER}`, borderRadius: 12, padding: 16, marginBottom: 12 },
   panelTitle: { fontSize: 10, fontWeight: 600, color: BLUE, textTransform: 'uppercase', letterSpacing: '1.6px', marginBottom: 10, fontFamily: 'var(--font-mono, monospace)' },

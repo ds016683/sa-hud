@@ -5,7 +5,7 @@
 // Files are served from public/ai-tools/<skill>/.
 import { useState } from 'react'
 import { FileText, Download, ExternalLink, Presentation, Package, BookOpen } from 'lucide-react'
-import { S, Eyebrow, Serif, Label, INK, INK2, GRAY, GOLD, PURPLE, BLUE, GREEN, MONO, PANEL_BORDER, PANEL_BG, LABEL, MUTED, TYPE, alpha } from './river/canon'
+import { BLUE, Eyebrow, GOLD, GRAY, GREEN, INK, INK2, LABEL, Label, MONO, MUTED, NAVY_DEEP, PANEL_BG, PANEL_BORDER, PURPLE, RED, S, Serif, TYPE, alpha } from './river/canon'
 
 const PILLS = [{ id: 'skills', label: 'Skills Files' }]
 
@@ -15,7 +15,7 @@ const SKILLS = [
     name: 'APNC Deck',
     skin: 'The APNC Field Hub skin: white paper on warm canvas, one red, Geist. Light, not navy.',
     use: 'Any APNC talk, conference session, or proposal. In a Code session say "use apnc-deck" or "APNC skin".',
-    swatches: ['#E8331C', '#C1281A', '#FDECEA', '#1A1714', '#5B5650', '#FFFFFF', '#F7F5F2', '#E8E3DD'],
+    swatches: ['#E8331C', '#C1281A', alpha(RED, 15), '#1A1714', '#5B5650', NAVY_DEEP, NAVY_DEEP, '#E8E3DD'],
     base: '/ai-tools/apnc-deck',
     pptx: 'APNC Deck Template.pptx',
     zip: 'apnc-deck-skill.zip',
@@ -26,7 +26,7 @@ const SKILLS = [
     name: 'Third Horizon Deck (CIP)',
     skin: 'The CIP Executive Summary frame: one navy surface, Lora story beats, Instrument Sans chrome, a single accent, gold for wayfinding only, the confidentiality footer on every slide.',
     use: 'Any Third Horizon deck, investor material, executive summary, or anything "in the TH frame". In a Code session say "use th-deck" or "on brand".',
-    swatches: ['#0F2334', '#0D1D2C', '#16314A', '#F3F1EA', '#3F6E99', '#9BC2E6', '#F8C761', '#57BE97', '#DE7E6E', '#B8822E'],
+    swatches: [INK, INK, INK, INK, BLUE, BLUE, GOLD, GREEN, RED, '#B8822E'],
     base: '/ai-tools/th-deck',
     pptx: 'Third Horizon Deck Template.pptx',
     zip: 'th-deck-skill.zip',
@@ -37,7 +37,7 @@ const SKILLS = [
     name: 'Third Horizon Proposal Deck',
     skin: 'The gated proposal surface: a URL and an access code instead of a file. CIP canon deck with an ROI calculator, the simplified economics read, a month-scale plan with discrete pricing, and an optional live wireframe, all behind server-side authorization.',
     use: 'Any client proposal that should ship as a link. In a Code session say "use th-proposal-deck" or "like the AMA proposal". Born on the AMA Independent Practice Data Workshop, 10/23.',
-    swatches: ['#0F2334', '#0D1D2C', '#16314A', '#F3F1EA', '#3F6E99', '#9BC2E6', '#F8C761', '#57BE97', '#DE7E6E'],
+    swatches: [INK, INK, INK, INK, BLUE, BLUE, GOLD, GREEN, RED],
     base: '/ai-tools/th-proposal-deck',
     pptx: null,
     zip: 'th-proposal-deck-skill.zip',
