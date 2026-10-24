@@ -50,7 +50,7 @@ export function DomainsSurface({ domains = {}, onSave, busy }) {
   useEffect(() => { let on = true; Promise.resolve().then(() => { if (on) { setD(domains); setDirty(false) } }); return () => { on = false } }, [domains])
   const get = (id, k, fallback = '') => (d[id] && d[id][k] != null ? d[id][k] : fallback)
   const set = (id, k) => (e) => { setD(prev => ({ ...prev, [id]: { ...(prev[id] || {}), [k]: e.target.value } })); setDirty(true) }
-  const input = { width: '100%', padding: '7px 9px', borderRadius: 7, border: `1px solid ${PANEL_BORDER}`, fontSize: 12.5, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', background: 'rgba(255,255,255,0.06)', color: INK }
+  const input = { width: '100%', minWidth: 0, padding: '7px 9px', borderRadius: 7, border: `1px solid ${PANEL_BORDER}`, fontSize: 12.5, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', background: 'rgba(255,255,255,0.06)', color: INK }
   const eyebrow = { fontFamily: MONO, fontSize: 9.5, letterSpacing: '1.4px', textTransform: 'uppercase', color: LABEL }
   return (
     <div style={{ display: 'grid', gap: 10 }}>
@@ -61,11 +61,12 @@ export function DomainsSurface({ domains = {}, onSave, busy }) {
         </div>
         <button onClick={() => onSave(d)} disabled={!dirty || busy} style={{ ...btnPrimary, opacity: dirty ? 1 : 0.5 }}><Save size={13} /> {busy ? 'Saving…' : dirty ? 'Save' : 'Saved'}</button>
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: '56px 1.1fr 2.2fr 1fr 1fr', gap: 0, border: `1px solid ${PANEL_BORDER}`, borderRadius: 12, overflow: 'hidden' }}>
+      <div style={{ overflowX: 'auto' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '56px minmax(150px, 1.1fr) minmax(240px, 2.2fr) minmax(130px, 1fr) minmax(130px, 1fr)', gap: 0, border: `1px solid ${PANEL_BORDER}`, borderRadius: 12, overflow: 'hidden', minWidth: 760 }}>
         {['', 'Domain', 'Definition', 'TH Lead', 'MMA Lead'].map((h, i) => <div key={i} style={{ ...eyebrow, padding: '10px 12px', background: 'rgba(255,255,255,0.04)', borderBottom: `1px solid ${PANEL_BORDER}` }}>{h}</div>)}
         {MMA_DOMAINS.map((dom, i) => {
           const Icon = dom.icon; const last = i === MMA_DOMAINS.length - 1
-          const cell = { padding: '12px 12px', borderBottom: last ? 'none' : `1px solid ${PANEL_BORDER}`, display: 'flex', flexDirection: 'column', gap: 6, justifyContent: 'flex-start' }
+          const cell = { padding: '12px 12px', minWidth: 0, borderBottom: last ? 'none' : `1px solid ${PANEL_BORDER}`, display: 'flex', flexDirection: 'column', gap: 6, justifyContent: 'flex-start' }
           return (
             <Fragment key={dom.id}>
               <div style={{ ...cell, alignItems: 'center', justifyContent: 'center', borderLeft: `3px solid ${dom.color}` }}>
@@ -83,6 +84,7 @@ export function DomainsSurface({ domains = {}, onSave, busy }) {
             </Fragment>
           )
         })}
+      </div>
       </div>
     </div>
   )
@@ -131,7 +133,7 @@ export default function PlanningCanvas({ project }) {
   const subtitle = (it) => (it[v.field] ? it[v.field] : (view === 'strategy' ? it.date_label : ''))
 
   return (
-    <div style={{ display: 'grid', gap: 14 }}>
+    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 14 }}>
       {/* Surfaces: tabs for the work we take somewhere else (David, 10/24). */}
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', paddingBottom: 10, borderBottom: `1px solid ${PANEL_BORDER}` }}>
         <span style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '1.4px', textTransform: 'uppercase', color: LABEL, marginRight: 6 }}>Surfaces</span>
