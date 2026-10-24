@@ -2,7 +2,7 @@
 import { StrictMode, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import { Waterfall, ItemModal } from '../src/components/ClientsPage'
-import { DomainStrip, DomainsSurface } from '../src/components/river/PlanningCanvas'
+import { DomainStrip, DomainsSurface, DomainFlowSurface } from '../src/components/river/PlanningCanvas'
 import { MMA_DOMAINS, PLAN_LANES, PLAN_VIEWS } from '../src/constants/domains'
 import seedDoc from '../public/plans/mma-2027-program-plan.json'
 
@@ -15,6 +15,7 @@ function App() {
   const pill = (on) => ({ padding: '5px 14px', borderRadius: 999, background: on ? '#A9C9E8' : 'transparent', color: on ? '#0E2336' : '#EAF1F8', border: '1px solid rgba(255,255,255,0.2)', cursor: 'pointer', fontFamily: 'monospace', fontSize: 10, letterSpacing: 1, textTransform: 'uppercase' })
   return (
     <div style={{ maxWidth: 1100, boxSizing: 'border-box', margin: '0 auto', padding: 24, color: '#EAF1F8', fontFamily: 'Instrument Sans, system-ui, sans-serif', display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 14 }}>
+      <DomainFlowSurface dom={MMA_DOMAINS[0]} data={(seedDoc.domains || {})[MMA_DOMAINS[0].id] || {}} onSave={() => {}} busy={false} />
       <DomainsSurface domains={{}} onSave={() => {}} busy={false} />
       <DomainStrip counts={Object.fromEntries(MMA_DOMAINS.map(d => [d.id, items.filter(i => i.lane === d.id).length]))} active={pick} onPick={setPick} />
       <div style={{ display: 'flex', gap: 6 }}>{PLAN_VIEWS.map(x => <button key={x.id} onClick={() => setView(x.id)} style={pill(view === x.id)}>{x.label}</button>)}<span style={{ width: 12 }} />{['simple', 'detailed'].map(m => <button key={m} onClick={() => setMode(m)} style={pill(mode === m)}>{m}</button>)}</div>

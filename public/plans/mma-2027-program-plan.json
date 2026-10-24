@@ -663,5 +663,136 @@
   }
  ],
  "updated_at": "2026-10-23T19:56:40.131707+00:00",
- "updated_by": "session (claude), the October 19 record"
+ "updated_by": "session (claude), the October 19 record",
+ "domains": {
+  "Data Production": {
+   "definition": "The national production and the two releases a year, run inside Third Horizon.",
+   "th_lead": "",
+   "mma_lead": "",
+   "truths": [
+    {
+     "id": "d3a1d71f-e1b2-4452-8f0f-3469ae111f9a",
+     "anchor": "2026-11-30",
+     "label": "By Nov 30",
+     "text": "V11 is delivered to MMA, the last data Handl receives, and NetNav 2.0 launches on it.",
+     "measure": "MMA confirms receipt of the v11 tables; the 2.0 pilot group reads v11 in January.",
+     "activities": [
+      {
+       "id": "b3ce57cf-6be3-463f-b82f-51cef1ebd937",
+       "text": "V11 ingestion through delivery (ingestion began October 12; final network list reconciled)",
+       "owner": "Chris Kalvig",
+       "accountable": "",
+       "done": false
+      },
+      {
+       "id": "002c4012-ab55-4d07-97bf-13357835ec55",
+       "text": "Flagged network plans ingested except Health Payment Systems (no accessible rate data)",
+       "owner": "Chris Hart",
+       "accountable": "",
+       "done": false
+      }
+     ]
+    },
+    {
+     "id": "4673bb8c-498f-4bad-8597-505c60664772",
+     "anchor": "2027-01-15",
+     "label": "By the top of the year",
+     "text": "Third Horizon operates from one unified dataset: a single post-processing source for all production rates and utilization metrics, replacing the separate MMA and Starset National scripts.",
+     "measure": "Production rates and utilization metrics for MMA and national come from one post-processing run; the MMA-specific reference tables and steerage elements are the only branch.",
+     "activities": [
+      {
+       "id": "65fa3ae2-294f-416d-82cc-f44e1d417e92",
+       "text": "Master data table timeline agreed with Park",
+       "owner": "Chris Kalvig",
+       "accountable": "",
+       "done": false
+      },
+      {
+       "id": "95dc3812-f181-4db8-8ac8-451d9e8ef54d",
+       "text": "Codebase updated to run unified post-processing from a single source",
+       "owner": "Chris Kalvig · Calvin Lomax",
+       "accountable": "",
+       "done": false
+      }
+     ]
+    },
+    {
+     "id": "fbe51b08-bc7f-46bf-bf11-8b5ff013638d",
+     "anchor": "2027-05-17",
+     "label": "By May 17",
+     "text": "v12 is ready May 4 and live May 17 after a two-week test, with the outpatient imputation fix in it.",
+     "measure": "Data available in the system May 4; 20 to 30 producers used it for two weeks and every flag was resolved or explained; go-live May 17.",
+     "activities": [
+      {
+       "id": "9db2a455-ec79-415c-a797-f57f7de75328",
+       "text": "Ingest the March postings (nationals early March, Blues end of March) with the new fields and provider taxonomy",
+       "owner": "Chris Kalvig",
+       "accountable": "",
+       "done": false
+      },
+      {
+       "id": "c0a9c524-0121-44d9-a174-558f0da19c54",
+       "text": "Outpatient imputation variability fixed",
+       "owner": "Chris Hart",
+       "accountable": "",
+       "done": false
+      },
+      {
+       "id": "000c44ad-d526-49f0-bcdf-46b20e75dae0",
+       "text": "Two-week smoke test with 20 to 30 producers, plus the automated variability checks",
+       "owner": "Tanner Johnson · Alex Meyer",
+       "accountable": "",
+       "done": false
+      }
+     ]
+    },
+    {
+     "id": "ccb48f64-824f-4f44-8813-44e778835ce9",
+     "anchor": "2027-10-18",
+     "label": "By Oct 18",
+     "text": "The second release is ready October 5 and live October 18, ahead of the late-year RFP window.",
+     "measure": "Data available October 5; the test window closed clean; go-live October 18.",
+     "activities": [
+      {
+       "id": "0d4e5e3a-35ed-495f-826c-23ca1370c112",
+       "text": "Second national ingestion and post-processing",
+       "owner": "Chris Kalvig",
+       "accountable": "",
+       "done": false
+      },
+      {
+       "id": "3183b61d-29e0-4ab6-926b-e8a1ee729a58",
+       "text": "Two-week smoke test",
+       "owner": "Tanner Johnson · Alex Meyer",
+       "accountable": "",
+       "done": false
+      }
+     ]
+    },
+    {
+     "id": "be96159d-2641-45f7-8dea-08741f4e36a5",
+     "anchor": "",
+     "label": "Standing",
+     "text": "Data fidelity stays high and is measured, release by release, so regions first never means data second.",
+     "measure": "Each release passes the shared checklist: data accuracy, reconciliation of the data with the code scripts, release readiness, with named sign-off on both sides.",
+     "activities": [
+      {
+       "id": "8d5111d7-180d-471e-855b-f9c3bede3c19",
+       "text": "QA process drafted for Chicago, November 9: application workflows, data accuracy, release readiness",
+       "owner": "Tanner Johnson · Chris Kalvig",
+       "accountable": "",
+       "done": false
+      },
+      {
+       "id": "d323dc75-b1cd-40c5-83a8-e6316087fb34",
+       "text": "Shared release checklist with named sign-off agreed with Arindam and Carrie",
+       "owner": "",
+       "accountable": "",
+       "done": false
+      }
+     ]
+    }
+   ]
+  }
+ }
 }
