@@ -5,6 +5,7 @@
 import { useState, useEffect } from 'react'
 import { Wallet, ArrowDownCircle, ArrowUpCircle, Loader2, AlertCircle } from 'lucide-react'
 import { supabase } from '../lib/supabase'
+import { BLUE, GREEN, INK, INK2, NAVY_DEEP, PANEL_BG, PANEL_BORDER, RED, alpha } from './river/canon'
 
 const fmtUSD = (n) => {
   if (n == null || isNaN(n)) return '—'
@@ -19,43 +20,43 @@ const fmtDate = (iso) => {
 
 const S = {
   wrap: { display: 'flex', flexDirection: 'column', gap: 16 },
-  loading: { display: 'flex', alignItems: 'center', gap: 8, color: '#647A9B', padding: 24, justifyContent: 'center' },
-  error: { display: 'flex', alignItems: 'center', gap: 8, color: '#A8341E', background: '#FEEAE5', padding: 12, borderRadius: 8, border: '1px solid #F5C2B6' },
-  empty: { padding: 24, color: '#647A9B', textAlign: 'center', background: 'white', borderRadius: 10, border: '1px solid #E4EBF3' },
+  loading: { display: 'flex', alignItems: 'center', gap: 8, color: INK2, padding: 24, justifyContent: 'center' },
+  error: { display: 'flex', alignItems: 'center', gap: 8, color: RED, background: alpha(RED, 15), padding: 12, borderRadius: 8, border: `1px solid ${alpha(RED, 40)}` },
+  empty: { padding: 24, color: INK2, textAlign: 'center', background: PANEL_BG, borderRadius: 10, border: `1px solid ${PANEL_BORDER}` },
   accountGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 12 },
   card: {
-    background: 'white', borderRadius: 10, padding: 16, border: '1px solid #E4EBF3',
+    background: PANEL_BG, borderRadius: 10, padding: 16, border: `1px solid ${PANEL_BORDER}`,
     cursor: 'pointer', transition: 'all 0.15s',
   },
-  cardActive: { borderColor: '#009DE0', boxShadow: '0 0 0 2px rgba(0,157,224,0.15)' },
-  cardName: { fontSize: 13, fontWeight: 700, color: '#0F1E37', marginBottom: 2 },
-  cardSub: { fontSize: 10, color: '#647A9B', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12 },
+  cardActive: { borderColor: BLUE, boxShadow: '0 0 0 2px rgba(0,157,224,0.15)' },
+  cardName: { fontSize: 13, fontWeight: 700, color: INK, marginBottom: 2 },
+  cardSub: { fontSize: 10, color: INK2, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12 },
   balRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 4 },
-  balLabel: { fontSize: 11, color: '#647A9B' },
-  balCurrent: { fontSize: 22, fontWeight: 700, color: '#0F1E37' },
-  balAvail: { fontSize: 13, color: '#1B7F3A', fontWeight: 600 },
-  txWrap: { background: 'white', borderRadius: 10, border: '1px solid #E4EBF3', overflow: 'hidden' },
+  balLabel: { fontSize: 11, color: INK2 },
+  balCurrent: { fontSize: 22, fontWeight: 700, color: INK },
+  balAvail: { fontSize: 13, color: GREEN, fontWeight: 600 },
+  txWrap: { background: PANEL_BG, borderRadius: 10, border: `1px solid ${PANEL_BORDER}`, overflow: 'hidden' },
   txHeader: {
-    padding: '12px 16px', background: '#F6F9FC', borderBottom: '1px solid #E4EBF3',
-    fontSize: 11, color: '#647A9B', textTransform: 'uppercase', letterSpacing: 1, fontWeight: 700,
+    padding: '12px 16px', background: PANEL_BG, borderBottom: `1px solid ${PANEL_BORDER}`,
+    fontSize: 11, color: INK2, textTransform: 'uppercase', letterSpacing: 1, fontWeight: 700,
     display: 'flex', justifyContent: 'space-between', alignItems: 'center',
   },
   txRow: {
     display: 'grid', gridTemplateColumns: '70px 1fr 110px 100px', alignItems: 'center',
-    padding: '10px 16px', borderBottom: '1px solid #F0F4F8', gap: 12, fontSize: 13,
+    padding: '10px 16px', borderBottom: `1px solid ${PANEL_BG}`, gap: 12, fontSize: 13,
   },
-  txDate: { color: '#647A9B', fontSize: 11, fontWeight: 600 },
-  txMerchant: { color: '#0F1E37', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
-  txCat: { fontSize: 10, color: '#647A9B', background: '#F0F4F8', padding: '3px 8px', borderRadius: 999, justifySelf: 'start' },
+  txDate: { color: INK2, fontSize: 11, fontWeight: 600 },
+  txMerchant: { color: INK, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
+  txCat: { fontSize: 10, color: INK2, background: PANEL_BG, padding: '3px 8px', borderRadius: 999, justifySelf: 'start' },
   txAmt: (positive) => ({
-    textAlign: 'right', fontWeight: 700, color: positive ? '#1B7F3A' : '#0F1E37',
+    textAlign: 'right', fontWeight: 700, color: positive ? GREEN : INK,
     fontVariantNumeric: 'tabular-nums',
   }),
   filterBar: { display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' },
   chip: (active) => ({
     padding: '4px 10px', borderRadius: 999, fontSize: 11, cursor: 'pointer',
-    background: active ? '#0F1E37' : 'white', color: active ? 'white' : '#334E85',
-    border: `1px solid ${active ? '#0F1E37' : '#CBD8E8'}`, fontWeight: 600,
+    background: active ? INK : NAVY_DEEP, color: active ? NAVY_DEEP : INK2,
+    border: `1px solid ${active ? INK : PANEL_BORDER}`, fontWeight: 600,
   }),
 }
 
@@ -113,15 +114,15 @@ export default function BankingActivity({ scope = 'th' }) {
   return (
     <div style={S.wrap}>
       {/* Total card */}
-      <div style={{ ...S.card, background: '#0F1E37', color: 'white', cursor: 'default' }}>
+      <div style={{ ...S.card, background: BLUE, color: NAVY_DEEP, cursor: 'default' }}>
         <div style={{ ...S.cardSub, color: 'rgba(255,255,255,0.5)' }}>Total · {accounts.length} account{accounts.length > 1 ? 's' : ''}</div>
         <div style={S.balRow}>
           <span style={{ ...S.balLabel, color: 'rgba(255,255,255,0.6)' }}>Current</span>
-          <span style={{ ...S.balCurrent, color: 'white' }}>{fmtUSD(totalCurrent)}</span>
+          <span style={{ ...S.balCurrent, color: NAVY_DEEP }}>{fmtUSD(totalCurrent)}</span>
         </div>
         <div style={S.balRow}>
           <span style={{ ...S.balLabel, color: 'rgba(255,255,255,0.6)' }}>Available</span>
-          <span style={{ ...S.balAvail, color: '#7CE5A1' }}>{fmtUSD(totalAvail)}</span>
+          <span style={{ ...S.balAvail, color: alpha(GREEN, 40) }}>{fmtUSD(totalAvail)}</span>
         </div>
       </div>
 
@@ -156,13 +157,13 @@ export default function BankingActivity({ scope = 'th' }) {
           <span>Transactions {selectedAccount !== 'all' && '· filtered'}</span>
           <div style={S.filterBar}>
             <span style={S.chip(selectedAccount === 'all')} onClick={() => setSelectedAccount('all')}>All</span>
-            <span style={{ color: '#647A9B', fontSize: 11, textTransform: 'none', letterSpacing: 0 }}>
+            <span style={{ color: INK2, fontSize: 11, textTransform: 'none', letterSpacing: 0 }}>
               {filteredTxs.length} shown
             </span>
           </div>
         </div>
         {filteredTxs.length === 0 ? (
-          <div style={{ padding: 32, textAlign: 'center', color: '#647A9B', fontSize: 13 }}>
+          <div style={{ padding: 32, textAlign: 'center', color: INK2, fontSize: 13 }}>
             No transactions{selectedAccount !== 'all' ? ' for this account' : ''}.
           </div>
         ) : (
@@ -179,7 +180,7 @@ export default function BankingActivity({ scope = 'th' }) {
                   {tx.category && <span style={S.txCat}>{tx.category}</span>}
                 </div>
                 <div style={S.txAmt(positive)}>
-                  {positive ? <ArrowUpCircle size={12} style={{ display: 'inline', marginRight: 4, verticalAlign: 'middle' }} /> : <ArrowDownCircle size={12} style={{ display: 'inline', marginRight: 4, verticalAlign: 'middle', color: '#A8341E' }} />}
+                  {positive ? <ArrowUpCircle size={12} style={{ display: 'inline', marginRight: 4, verticalAlign: 'middle' }} /> : <ArrowDownCircle size={12} style={{ display: 'inline', marginRight: 4, verticalAlign: 'middle', color: RED }} />}
                   {fmtUSD(amt)}
                 </div>
               </div>

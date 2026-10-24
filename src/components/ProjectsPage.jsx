@@ -109,7 +109,7 @@ function ProjectCard({ project, onOpen }) {
           <div style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 17, letterSpacing: '-0.01em', color: INK, lineHeight: 1.3 }}>{project.name}</div>
           {project.description && <div style={{ fontSize: 12.5, lineHeight: 1.5, color: TEXT_DIM, marginTop: 3, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{project.description}</div>}
         </div>
-        <span style={{ fontFamily: MONO, fontSize: 9, letterSpacing: '1px', textTransform: 'uppercase`, color: BLUE, border: `1px solid ${alpha(BLUE, 33)}`, borderRadius: 999, padding: `2px 7px', whiteSpace: 'nowrap', flexShrink: 0 }}>{CATEGORY_LABELS[project.category] || project.category}</span>
+        <span style={{ fontFamily: MONO, fontSize: 9, letterSpacing: '1px', textTransform: 'uppercase', color: BLUE, border: `1px solid ${alpha(BLUE, 33)}`, borderRadius: 999, padding: '2px 7px', whiteSpace: 'nowrap', flexShrink: 0 }}>{CATEGORY_LABELS[project.category] || project.category}</span>
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
         <span style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 14, color: INK }}>{closed} / {ms.length}</span>
@@ -137,7 +137,7 @@ function ProjectCard({ project, onOpen }) {
 // closes the Ledger task when an item with its id is done, so only the step
 // that means "the milestone is true" should carry it.
 // =============================================================================
-const Chip = ({ color, children }) => <span style={{ fontFamily: MONO, fontSize: 9, letterSpacing: '1px', textTransform: 'uppercase`, color, border: `1px solid ${alpha(color, 33)}`, borderRadius: 999, padding: `2px 7px', whiteSpace: 'nowrap' }}>{children}</span>
+const Chip = ({ color, children }) => <span style={{ fontFamily: MONO, fontSize: 9, letterSpacing: '1px', textTransform: 'uppercase', color, border: `1px solid ${alpha(color, 33)}`, borderRadius: 999, padding: '2px 7px', whiteSpace: 'nowrap' }}>{children}</span>
 
 function MilestoneRow({ n, project, task, board, api, onNavigate, onBoardChange, onAward, objState }) {
   const open = isOpen(task)

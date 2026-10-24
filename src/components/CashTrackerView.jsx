@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react'
 import { ChevronRight, ChevronDown } from 'lucide-react'
+import { BLUE, GRAY, GREEN, INK, INK2, NAVY_DEEP, PANEL_BG, PANEL_BORDER, RED, alpha } from './river/canon'
 
 // ─── Column structure ────────────────────────────────────────────────────────
 // Cash Tracker is bi-monthly (15th + EOM per month). 2026 cols: AA–AX
@@ -257,40 +258,40 @@ function fmt(n, compact = false) {
 
 const S = {
   tbl:     { width: '100%', borderCollapse: 'collapse', fontSize: 12 },
-  thL:     { textAlign: 'left', padding: '8px 12px', background: '#F7FAFD', borderBottom: '2px solid #E2E8F0', color: '#334E85', fontWeight: 700, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.04em', position: 'sticky', top: 0, whiteSpace: 'nowrap', minWidth: 220 },
-  thN:     { textAlign: 'right', padding: '8px 10px', background: '#F7FAFD', borderBottom: '2px solid #E2E8F0', color: '#334E85', fontWeight: 700, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.04em', whiteSpace: 'nowrap' },
-  tdL:     (indent) => ({ padding: `6px 12px 6px ${12 + indent * 14}px`, borderBottom: '1px solid #F0F4F9', color: '#334E85', whiteSpace: 'nowrap', fontSize: 12 }),
-  tdN:     (neg) => ({ padding: '6px 10px', borderBottom: '1px solid #F0F4F9', textAlign: 'right', color: neg ? '#C53030' : '#1A2B47', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', fontSize: 12 }),
-  tdNT:    (neg) => ({ padding: '6px 10px', borderBottom: '1px solid #F0F4F9', textAlign: 'right', color: neg ? '#C53030' : '#334E85', fontWeight: 700, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', fontSize: 12, background: '#F7FAFD', borderLeft: '1px solid #E2E8F0' }),
+  thL:     { textAlign: 'left', padding: '8px 12px', background: PANEL_BG, borderBottom: `2px solid ${PANEL_BORDER}`, color: INK2, fontWeight: 700, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.04em', position: 'sticky', top: 0, whiteSpace: 'nowrap', minWidth: 220 },
+  thN:     { textAlign: 'right', padding: '8px 10px', background: PANEL_BG, borderBottom: `2px solid ${PANEL_BORDER}`, color: INK2, fontWeight: 700, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.04em', whiteSpace: 'nowrap' },
+  tdL:     (indent) => ({ padding: `6px 12px 6px ${12 + indent * 14}px`, borderBottom: `1px solid ${PANEL_BG}`, color: INK2, whiteSpace: 'nowrap', fontSize: 12 }),
+  tdN:     (neg) => ({ padding: '6px 10px', borderBottom: `1px solid ${PANEL_BG}`, textAlign: 'right', color: neg ? RED : INK, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', fontSize: 12 }),
+  tdNT:    (neg) => ({ padding: '6px 10px', borderBottom: `1px solid ${PANEL_BG}`, textAlign: 'right', color: neg ? RED : INK2, fontWeight: 700, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', fontSize: 12, background: PANEL_BG, borderLeft: `1px solid ${PANEL_BORDER}` }),
   secHdr:  (tone) => {
-    const tones = { blue: '#002C77', green: '#0D4A2F', red: '#4A1010', gray: '#1B2A4A', cash: '#1A3A2A' }
-    return { padding: '9px 12px', background: tones[tone] || tones.blue, color: 'white', fontWeight: 700, fontSize: 12, whiteSpace: 'nowrap', userSelect: 'none', cursor: 'pointer' }
+    const tones = { blue: INK, green: GREEN, red: RED, gray: INK, cash: GREEN }
+    return { padding: '9px 12px', background: tones[tone] || tones.blue, color: NAVY_DEEP, fontWeight: 700, fontSize: 12, whiteSpace: 'nowrap', userSelect: 'none', cursor: 'pointer' }
   },
   secHdrN: (tone) => {
-    const tones = { blue: '#002C77', green: '#0D4A2F', red: '#4A1010', gray: '#1B2A4A', cash: '#1A3A2A' }
-    return { padding: '9px 10px', background: tones[tone] || tones.blue, color: 'white', fontWeight: 700, fontSize: 12, textAlign: 'right', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }
+    const tones = { blue: INK, green: GREEN, red: RED, gray: INK, cash: GREEN }
+    return { padding: '9px 10px', background: tones[tone] || tones.blue, color: NAVY_DEEP, fontWeight: 700, fontSize: 12, textAlign: 'right', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }
   },
-  catHdr:  { padding: '8px 12px 8px 26px', background: '#EFF4FB', color: '#1A2B47', fontWeight: 700, fontSize: 12, whiteSpace: 'nowrap', userSelect: 'none', cursor: 'pointer', borderBottom: '1px solid #E2E8F0' },
-  catHdrN: { padding: '8px 10px', background: '#EFF4FB', color: '#334E85', fontWeight: 700, fontSize: 12, textAlign: 'right', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', borderBottom: '1px solid #E2E8F0' },
+  catHdr:  { padding: '8px 12px 8px 26px', background: PANEL_BG, color: INK, fontWeight: 700, fontSize: 12, whiteSpace: 'nowrap', userSelect: 'none', cursor: 'pointer', borderBottom: `1px solid ${PANEL_BORDER}` },
+  catHdrN: { padding: '8px 10px', background: PANEL_BG, color: INK2, fontWeight: 700, fontSize: 12, textAlign: 'right', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', borderBottom: `1px solid ${PANEL_BORDER}` },
   balRow:  (type) => ({
     padding: '11px 12px', fontWeight: 800, fontSize: 13,
-    background: type === 'begin' ? '#002C77' : type === 'end' ? '#001A3D' : '#F7FAFD',
-    color: type === 'begin' ? 'white' : type === 'end' ? 'white' : '#002C77',
-    whiteSpace: 'nowrap', borderTop: type === 'end' ? '3px solid #009DE0' : 'none',
+    background: type === 'begin' ? INK : type === 'end' ? INK : NAVY_DEEP,
+    color: type === 'begin' ? NAVY_DEEP : type === 'end' ? NAVY_DEEP : INK,
+    whiteSpace: 'nowrap', borderTop: type === 'end' ? `3px solid ${BLUE}` : 'none',
   }),
   balRowN: (val, type) => ({
     padding: '11px 10px', fontWeight: 800, fontSize: 12, textAlign: 'right',
-    background: type === 'begin' ? '#002C77' : type === 'end' ? '#001A3D' : '#F7FAFD',
+    background: type === 'begin' ? INK : type === 'end' ? INK : NAVY_DEEP,
     color: type === 'end'
-      ? (val < 0 ? '#FC8181' : '#68D391')
-      : type === 'begin' ? 'white'
-      : (val < 0 ? '#C53030' : '#002C77'),
+      ? (val < 0 ? alpha(RED, 40) : alpha(GREEN, 40))
+      : type === 'begin' ? NAVY_DEEP
+      : (val < 0 ? RED : INK),
     fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap',
-    borderTop: type === 'end' ? '3px solid #009DE0' : 'none',
+    borderTop: type === 'end' ? `3px solid ${BLUE}` : 'none',
   }),
-  spacer: { height: 6, background: '#E2E8F0' },
-  pipeHdr: { padding: '8px 12px 8px 26px', background: '#0D4A2F', color: '#86EFAC', fontWeight: 700, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.04em', whiteSpace: 'nowrap', userSelect: 'none', cursor: 'pointer' },
-  pipeHdrN:{ padding: '8px 10px', background: '#0D4A2F', color: '#86EFAC', fontWeight: 700, fontSize: 12, textAlign: 'right', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' },
+  spacer: { height: 6, background: PANEL_BORDER },
+  pipeHdr: { padding: '8px 12px 8px 26px', background: GREEN, color: alpha(GREEN, 40), fontWeight: 700, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.04em', whiteSpace: 'nowrap', userSelect: 'none', cursor: 'pointer' },
+  pipeHdrN:{ padding: '8px 10px', background: GREEN, color: alpha(GREEN, 40), fontWeight: 700, fontSize: 12, textAlign: 'right', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' },
 }
 
 // ─── Main component ───────────────────────────────────────────────────────────
@@ -385,23 +386,23 @@ export default function CashTrackerView({ cashTracker, pipelineForecast }) {
           { label: 'Total Cash Out', val: totalCashOut, sub: '2026 projected', neg: false },
           { label: 'End of Year (Projected)', val: endYearBal, sub: 'Dec 31 2026', neg: endYearBal < 0 },
         ].map(({ label, val, sub, neg }) => (
-          <div key={label} style={{ background: neg ? '#FFF5F5' : 'white', border: `1px solid ${neg ? '#FED7D7' : '#E2E8F0'}`, borderRadius: 10, padding: 14 }}>
-            <div style={{ fontSize: 11, color: '#8096B2', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>{label}</div>
-            <div style={{ fontSize: 22, fontWeight: 700, color: neg ? '#C53030' : '#002C77', fontVariantNumeric: 'tabular-nums' }}>{fmt(val, true)}</div>
-            <div style={{ fontSize: 11, color: '#565656', marginTop: 4 }}>{sub}</div>
+          <div key={label} style={{ background: neg ? alpha(RED, 15) : NAVY_DEEP, border: `1px solid ${neg ? alpha(RED, 15) : PANEL_BORDER}`, borderRadius: 10, padding: 14 }}>
+            <div style={{ fontSize: 11, color: INK2, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>{label}</div>
+            <div style={{ fontSize: 22, fontWeight: 700, color: neg ? RED : INK, fontVariantNumeric: 'tabular-nums' }}>{fmt(val, true)}</div>
+            <div style={{ fontSize: 11, color: INK2, marginTop: 4 }}>{sub}</div>
           </div>
         ))}
       </div>
 
       {/* ── Pipeline toggle ─────────────────────────────────────────────── */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16, padding: '10px 14px', background: 'white', border: '1px solid #E2E8F0', borderRadius: 10 }}>
-        <span style={{ fontSize: 11, color: '#64748B', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Pipeline Overlay</span>
-        <span style={{ fontSize: 11, color: '#8096B2' }}>30-day lag · Jun CM → Jul cash, Jul → Aug, Aug → Sep, Sep → Oct, Oct → Nov, Nov → Dec</span>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16, padding: '10px 14px', background: PANEL_BG, border: `1px solid ${PANEL_BORDER}`, borderRadius: 10 }}>
+        <span style={{ fontSize: 11, color: GRAY, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Pipeline Overlay</span>
+        <span style={{ fontSize: 11, color: INK2 }}>30-day lag · Jun CM → Jul cash, Jul → Aug, Aug → Sep, Sep → Oct, Oct → Nov, Nov → Dec</span>
         <span style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 8, cursor: 'pointer', userSelect: 'none' }} onClick={() => setShowPipeline(v => !v)}>
-          <span style={{ width: 36, height: 20, borderRadius: 9999, background: showPipeline ? '#009DE0' : '#CBD8E8', position: 'relative', transition: 'background 0.2s', flexShrink: 0, display: 'inline-block' }}>
-            <span style={{ position: 'absolute', top: 2, left: showPipeline ? 18 : 2, width: 16, height: 16, borderRadius: '50%', background: 'white', transition: 'left 0.2s', boxShadow: '0 1px 2px rgba(0,0,0,0.2)' }} />
+          <span style={{ width: 36, height: 20, borderRadius: 9999, background: showPipeline ? BLUE : PANEL_BORDER, position: 'relative', transition: 'background 0.2s', flexShrink: 0, display: 'inline-block' }}>
+            <span style={{ position: 'absolute', top: 2, left: showPipeline ? 18 : 2, width: 16, height: 16, borderRadius: '50%', background: PANEL_BG, transition: 'left 0.2s', boxShadow: '0 1px 2px rgba(0,0,0,0.2)' }} />
           </span>
-          <span style={{ fontSize: 12, color: showPipeline ? '#009DE0' : '#94A3B8', fontWeight: 700 }}>{showPipeline ? 'ON' : 'OFF'}</span>
+          <span style={{ fontSize: 12, color: showPipeline ? BLUE : GRAY, fontWeight: 700 }}>{showPipeline ? 'ON' : 'OFF'}</span>
         </span>
       </div>
 
@@ -414,16 +415,16 @@ export default function CashTrackerView({ cashTracker, pipelineForecast }) {
               {CT_MONTHS.filter(m => visiblePeriods.some(p => p.month === m.label)).map(m => {
                 const periodCount = visiblePeriods.filter(p => p.month === m.label).length
                 return (
-                  <th key={m.label} colSpan={periodCount} style={{ ...S.thN, borderLeft: '2px solid #CBD8E8', background: '#EFF4FC', fontSize: 11 }}>
+                  <th key={m.label} colSpan={periodCount} style={{ ...S.thN, borderLeft: `2px solid ${PANEL_BORDER}`, background: PANEL_BG, fontSize: 11 }}>
                     {m.full}
                   </th>
                 )
               })}
-              <th rowSpan={2} style={{ ...S.thN, borderLeft: '2px solid #CBD8E8', background: '#EFF4FC' }}>Total</th>
+              <th rowSpan={2} style={{ ...S.thN, borderLeft: `2px solid ${PANEL_BORDER}`, background: PANEL_BG }}>Total</th>
             </tr>
             <tr>
               {visiblePeriods.map(p => (
-                <th key={p.col} style={{ ...S.thN, borderLeft: p.half === '1H' ? '2px solid #CBD8E8' : undefined, fontSize: 10, color: '#8096B2', background: p.half === '2H' ? '#F7FAFD' : '#EFF4FC' }}>
+                <th key={p.col} style={{ ...S.thN, borderLeft: p.half === '1H' ? `2px solid ${PANEL_BORDER}` : undefined, fontSize: 10, color: INK2, background: p.half === '2H' ? NAVY_DEEP : NAVY_DEEP }}>
                   {p.half}
                 </th>
               ))}
@@ -481,16 +482,16 @@ export default function CashTrackerView({ cashTracker, pipelineForecast }) {
                     const destLabel = PIPELINE_LAG_DEST_LABEL[r.payload?.month_label]
                     const cm = r.payload?.total_contribution_margin || 0
                     return (
-                      <tr key={r.row_index} style={{ background: '#F0FDF4' }}>
-                        <td style={{ ...S.tdL(2), color: '#166534', fontSize: 11 }}>
+                      <tr key={r.row_index} style={{ background: alpha(GREEN, 15) }}>
+                        <td style={{ ...S.tdL(2), color: GREEN, fontSize: 11 }}>
                           {r.payload?.month_label} accrual → {destLabel}
                         </td>
                         {visiblePeriods.map(p => (
-                          <td key={p.col} style={{ ...S.tdN(false), color: '#166534', fontSize: 11, borderLeft: p.half === '1H' ? '2px solid #E2E8F0' : undefined }}>
+                          <td key={p.col} style={{ ...S.tdN(false), color: GREEN, fontSize: 11, borderLeft: p.half === '1H' ? `2px solid ${PANEL_BORDER}` : undefined }}>
                             {p.col === destCol ? fmt(cm) : ''}
                           </td>
                         ))}
-                        <td style={{ ...S.tdNT(false), color: '#166534', fontSize: 11 }}>{fmt(cm)}</td>
+                        <td style={{ ...S.tdNT(false), color: GREEN, fontSize: 11 }}>{fmt(cm)}</td>
                       </tr>
                     )
                   })
@@ -513,7 +514,7 @@ export default function CashTrackerView({ cashTracker, pipelineForecast }) {
                     </td>
                     {visiblePeriods.map(p => {
                       const v = groupPeriodVal(clients, p)
-                      return <td key={p.col} style={{ ...S.catHdrN, borderLeft: p.half === '1H' ? '2px solid #CBD8E8' : undefined }}>{v ? fmt(v) : ''}</td>
+                      return <td key={p.col} style={{ ...S.catHdrN, borderLeft: p.half === '1H' ? `2px solid ${PANEL_BORDER}` : undefined }}>{v ? fmt(v) : ''}</td>
                     })}
                     <td style={S.catHdrN}>{areaTotal ? fmt(areaTotal) : '—'}</td>
                   </tr>
@@ -523,11 +524,11 @@ export default function CashTrackerView({ cashTracker, pipelineForecast }) {
                     const lt = lineTotal(row)
                     if (lt === 0 && visiblePeriods.every(p => !linePeriod(row, p))) return null
                     return (
-                      <tr key={row} style={{ background: 'white' }}>
+                      <tr key={row} style={{ background: PANEL_BG }}>
                         <td style={S.tdL(2)}>{label}</td>
                         {visiblePeriods.map(p => {
                           const v = linePeriod(row, p)
-                          return <td key={p.col} style={{ ...S.tdN(false), borderLeft: p.half === '1H' ? '2px solid #E2E8F0' : undefined }}>{v ? fmt(v) : ''}</td>
+                          return <td key={p.col} style={{ ...S.tdN(false), borderLeft: p.half === '1H' ? `2px solid ${PANEL_BORDER}` : undefined }}>{v ? fmt(v) : ''}</td>
                         })}
                         <td style={S.tdNT(false)}>{lt ? fmt(lt) : '—'}</td>
                       </tr>
@@ -566,7 +567,7 @@ export default function CashTrackerView({ cashTracker, pipelineForecast }) {
                     </td>
                     {visiblePeriods.map(p => {
                       const v = groupPeriodVal(cat.lines, p)
-                      return <td key={p.col} style={{ ...S.catHdrN, borderLeft: p.half === '1H' ? '2px solid #CBD8E8' : undefined }}>{v ? fmt(v) : ''}</td>
+                      return <td key={p.col} style={{ ...S.catHdrN, borderLeft: p.half === '1H' ? `2px solid ${PANEL_BORDER}` : undefined }}>{v ? fmt(v) : ''}</td>
                     })}
                     <td style={S.catHdrN}>{catTotal ? fmt(catTotal) : '—'}</td>
                   </tr>
@@ -574,11 +575,11 @@ export default function CashTrackerView({ cashTracker, pipelineForecast }) {
                     const lt = lineTotal(row)
                     if (lt === 0 && visiblePeriods.every(p => !linePeriod(row, p))) return null
                     return (
-                      <tr key={row} style={{ background: 'white' }}>
+                      <tr key={row} style={{ background: PANEL_BG }}>
                         <td style={S.tdL(2)}>{label}</td>
                         {visiblePeriods.map(p => {
                           const v = linePeriod(row, p)
-                          return <td key={p.col} style={{ ...S.tdN(false), borderLeft: p.half === '1H' ? '2px solid #E2E8F0' : undefined }}>{v ? fmt(v) : ''}</td>
+                          return <td key={p.col} style={{ ...S.tdN(false), borderLeft: p.half === '1H' ? `2px solid ${PANEL_BORDER}` : undefined }}>{v ? fmt(v) : ''}</td>
                         })}
                         <td style={S.tdNT(false)}>{lt ? fmt(lt) : '—'}</td>
                       </tr>
@@ -607,7 +608,7 @@ export default function CashTrackerView({ cashTracker, pipelineForecast }) {
           </tbody>
         </table>
       </div>
-      <div style={{ padding: '8px 12px', fontSize: 10, color: '#94A3B8', borderTop: '1px solid #F0F4F9', marginTop: 0 }}>
+      <div style={{ padding: '8px 12px', fontSize: 10, color: GRAY, borderTop: `1px solid ${PANEL_BG}`, marginTop: 0 }}>
         Beginning/ending cash = Row 216 (Anticipated 15-Day Balance). 1H = mid-month (15th), 2H = end-of-month — matches Cash Tracker column schema. Pipeline lagged 30 days from Notion accrual months, lands in 2H of destination month.
       </div>
     </div>

@@ -6,20 +6,21 @@ import { useState, useCallback, useEffect } from 'react'
 import { usePlaidLink } from 'react-plaid-link'
 import { Link as LinkIcon, RefreshCw, AlertCircle, Loader2 } from 'lucide-react'
 import { supabase, supabaseUrl, supabaseAnonKey } from '../lib/supabase'
+import { BLUE, GREEN, INK, INK2, NAVY_DEEP, PANEL_BG, PANEL_BORDER, RED } from './river/canon'
 
 const FN_BASE = `${supabaseUrl}/functions/v1`
 
 const S = {
   wrap: { display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
-  meta: { display: 'flex', flexDirection: 'column', alignItems: 'flex-end', fontSize: 10, color: '#647A9B', lineHeight: 1.3, marginRight: 4 },
-  metaOk: { color: '#1B7F3A' },
-  metaErr: { color: '#A8341E', display: 'inline-flex', alignItems: 'center', gap: 4 },
+  meta: { display: 'flex', flexDirection: 'column', alignItems: 'flex-end', fontSize: 10, color: INK2, lineHeight: 1.3, marginRight: 4 },
+  metaOk: { color: GREEN },
+  metaErr: { color: RED, display: 'inline-flex', alignItems: 'center', gap: 4 },
   btn: (primary) => ({
     display: 'inline-flex', alignItems: 'center', gap: 6,
-    padding: '7px 12px', border: `1px solid ${primary ? '#009DE0' : '#CBD8E8'}`,
+    padding: '7px 12px', border: `1px solid ${primary ? BLUE : PANEL_BORDER}`,
     borderRadius: 8,
-    background: primary ? '#009DE0' : 'white',
-    color: primary ? 'white' : '#334E85',
+    background: primary ? BLUE : NAVY_DEEP,
+    color: primary ? NAVY_DEEP : INK2,
     fontSize: 12, fontWeight: 600, cursor: 'pointer',
   }),
   btnDisabled: { opacity: 0.5, cursor: 'not-allowed' },
@@ -28,19 +29,19 @@ const S = {
     display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999,
   },
   modal: {
-    background: 'white', borderRadius: 12, padding: 24, maxWidth: 440, width: '90%',
+    background: PANEL_BG, borderRadius: 12, padding: 24, maxWidth: 440, width: '90%',
     boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
   },
-  modalH: { margin: 0, fontSize: 18, color: '#0F1E37', fontWeight: 700 },
-  modalSub: { fontSize: 12, color: '#647A9B', marginTop: 6, marginBottom: 20, lineHeight: 1.5 },
+  modalH: { margin: 0, fontSize: 18, color: INK, fontWeight: 700 },
+  modalSub: { fontSize: 12, color: INK2, marginTop: 6, marginBottom: 20, lineHeight: 1.5 },
   scopeGrid: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 },
   scopeBtn: (color) => ({
     padding: 18, border: `2px solid ${color}`, borderRadius: 10,
-    background: 'white', color, fontSize: 14, fontWeight: 700, cursor: 'pointer',
+    background: PANEL_BG, color, fontSize: 14, fontWeight: 700, cursor: 'pointer',
   }),
   cancel: {
     marginTop: 12, width: '100%', padding: 8, background: 'transparent', border: 'none',
-    color: '#647A9B', fontSize: 12, cursor: 'pointer',
+    color: INK2, fontSize: 12, cursor: 'pointer',
   },
 }
 
@@ -225,8 +226,8 @@ export default function PlaidActionsBar({ scope = 'personal', onSyncComplete }) 
               personal and TH accounts at the same bank, link them separately.
             </p>
             <div style={S.scopeGrid}>
-              <button onClick={() => confirmScope('personal')} style={S.scopeBtn('#334E85')}>Personal</button>
-              <button onClick={() => confirmScope('th')} style={S.scopeBtn('#009DE0')}>Third Horizon</button>
+              <button onClick={() => confirmScope('personal')} style={S.scopeBtn(INK2)}>Personal</button>
+              <button onClick={() => confirmScope('th')} style={S.scopeBtn(BLUE)}>Third Horizon</button>
             </div>
             <button
               onClick={() => { setShowScopeModal(false); setPendingPublicToken(null) }}

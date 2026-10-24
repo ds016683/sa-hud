@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase'
 import PlaidActionsBar from './PlaidActionsBar'
 import BankingActivity from './BankingActivity'
 import CashTrackerView from './CashTrackerView'
+import { BLUE, GOLD, GRAY, GREEN, INK, INK2, NAVY_DEEP, PANEL_BG, PANEL_BORDER, RED, alpha } from './river/canon'
 
 // ─── Month definitions ────────────────────────────────────────────────────────
 const MONTHS_2026 = [
@@ -129,10 +130,10 @@ const FINANCING_ROW = 197  // Financing Expenses (factoring, interest)
 
 // ─── Probability config ───────────────────────────────────────────────────────
 const PROB_CONFIG = {
-  'Near Close': { color: '#16A34A', bg: '#DCFCE7', border: '#86EFAC', label: 'Near Close' },
-  'High':       { color: '#0369A1', bg: '#E0F2FE', border: '#7DD3FC', label: 'High'       },
-  'Medium':     { color: '#D97706', bg: '#FEF3C7', border: '#FCD34D', label: 'Medium'     },
-  'Low':        { color: '#6B7280', bg: '#F3F4F6', border: '#D1D5DB', label: 'Low'        },
+  'Near Close': { color: GREEN, bg: alpha(GREEN, 15), border: alpha(GREEN, 40), label: 'Near Close' },
+  'High':       { color: BLUE, bg: alpha(BLUE, 15), border: alpha(BLUE, 40), label: 'High'       },
+  'Medium':     { color: GOLD, bg: alpha(GOLD, 15), border: alpha(GOLD, 40), label: 'Medium'     },
+  'Low':        { color: GRAY, bg: PANEL_BG, border: GRAY, label: 'Low'        },
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -173,42 +174,42 @@ function rowVal(row, col) {
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 const S = {
-  page:      { maxWidth: 1280, margin: '0 auto', padding: '24px 16px', fontFamily: 'Arial, Helvetica, sans-serif' },
+  page:      { maxWidth: 1280, margin: '0 auto', padding: '24px 16px', fontFamily: 'inherit' },
   header:    { display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, flexWrap: 'wrap', gap: 12 },
-  h1:        { fontSize: 20, fontWeight: 700, color: '#002C77', margin: 0, display: 'flex', alignItems: 'center', gap: 10 },
-  sub:       { fontSize: 13, color: '#8096B2', margin: '2px 0 0' },
-  badge:     { display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 10px', borderRadius: 9999, background: '#EEF2F7', color: '#334E85', fontSize: 11, fontWeight: 600, border: '1px solid #CBD8E8' },
-  syncPill:  (s) => ({ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 10px', borderRadius: 9999, fontSize: 11, fontWeight: 600, background: s === 'ok' ? '#E6F4EA' : '#FFF4E0', color: s === 'ok' ? '#1E7C3A' : '#9A6400', border: `1px solid ${s === 'ok' ? '#B7E1C2' : '#F2D592'}` }),
+  h1:        { fontSize: 20, fontWeight: 700, color: INK, margin: 0, display: 'flex', alignItems: 'center', gap: 10 },
+  sub:       { fontSize: 13, color: INK2, margin: '2px 0 0' },
+  badge:     { display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 10px', borderRadius: 9999, background: PANEL_BG, color: INK2, fontSize: 11, fontWeight: 600, border: `1px solid ${PANEL_BORDER}` },
+  syncPill:  (s) => ({ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 10px', borderRadius: 9999, fontSize: 11, fontWeight: 600, background: s === 'ok' ? alpha(GREEN, 15) : alpha(GOLD, 15), color: s === 'ok' ? GREEN : GOLD, border: `1px solid ${s === 'ok' ? alpha(GREEN, 40) : alpha(GOLD, 40)}` }),
   pillRow:   { display: 'flex', gap: 6, marginBottom: 16, flexWrap: 'wrap' },
-  pill:      (a) => ({ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 9999, border: '1px solid', fontSize: 13, cursor: 'pointer', fontWeight: a ? 600 : 500, background: a ? '#002C77' : 'white', color: a ? 'white' : '#334E85', borderColor: a ? '#002C77' : '#CBD8E8', transition: 'all 0.15s' }),
-  card:      { background: 'white', border: '1px solid #E2E8F0', borderRadius: 12, boxShadow: '0 1px 3px rgba(0,0,0,0.06)', overflow: 'hidden', marginBottom: 20 },
-  cardHdr:   { padding: '14px 16px', borderBottom: '1px solid #E2E8F0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 },
-  cardTitle: { fontSize: 13, fontWeight: 700, color: '#002C77', textTransform: 'uppercase', letterSpacing: '0.08em', display: 'flex', alignItems: 'center', gap: 8 },
+  pill:      (a) => ({ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 9999, border: '1px solid', fontSize: 13, cursor: 'pointer', fontWeight: a ? 600 : 500, background: a ? INK : NAVY_DEEP, color: a ? NAVY_DEEP : INK2, borderColor: a ? INK : PANEL_BORDER, transition: 'all 0.15s' }),
+  card:      { background: PANEL_BG, border: `1px solid ${PANEL_BORDER}`, borderRadius: 12, boxShadow: 'none', overflow: 'hidden', marginBottom: 20 },
+  cardHdr:   { padding: '14px 16px', borderBottom: `1px solid ${PANEL_BORDER}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 },
+  cardTitle: { fontSize: 13, fontWeight: 700, color: INK, textTransform: 'uppercase', letterSpacing: '0.08em', display: 'flex', alignItems: 'center', gap: 8 },
   metricGrid:{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12, padding: 16 },
-  metric:    (neg) => ({ background: neg ? '#FFF5F5' : '#F7FAFD', border: `1px solid ${neg ? '#FED7D7' : '#E2E8F0'}`, borderRadius: 10, padding: 14 }),
-  mLabel:    { fontSize: 11, color: '#8096B2', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 },
-  mValue:    (neg) => ({ fontSize: 22, fontWeight: 700, color: neg ? '#C53030' : '#002C77', fontVariantNumeric: 'tabular-nums' }),
-  mSub:      { fontSize: 11, color: '#565656', marginTop: 4 },
+  metric:    (neg) => ({ background: neg ? alpha(RED, 15) : NAVY_DEEP, border: `1px solid ${neg ? alpha(RED, 15) : PANEL_BORDER}`, borderRadius: 10, padding: 14 }),
+  mLabel:    { fontSize: 11, color: INK2, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 },
+  mValue:    (neg) => ({ fontSize: 22, fontWeight: 700, color: neg ? RED : INK, fontVariantNumeric: 'tabular-nums' }),
+  mSub:      { fontSize: 11, color: INK2, marginTop: 4 },
   toggleWrap:{ display: 'inline-flex', alignItems: 'center', gap: 8, cursor: 'pointer', userSelect: 'none' },
-  toggleTrack:(on) => ({ width: 36, height: 20, borderRadius: 9999, background: on ? '#009DE0' : '#CBD8E8', position: 'relative', transition: 'background 0.2s', flexShrink: 0 }),
-  toggleThumb:(on) => ({ position: 'absolute', top: 2, left: on ? 18 : 2, width: 16, height: 16, borderRadius: '50%', background: 'white', transition: 'left 0.2s', boxShadow: '0 1px 2px rgba(0,0,0,0.2)' }),
+  toggleTrack:(on) => ({ width: 36, height: 20, borderRadius: 9999, background: on ? BLUE : PANEL_BORDER, position: 'relative', transition: 'background 0.2s', flexShrink: 0 }),
+  toggleThumb:(on) => ({ position: 'absolute', top: 2, left: on ? 18 : 2, width: 16, height: 16, borderRadius: '50%', background: PANEL_BG, transition: 'left 0.2s', boxShadow: '0 1px 2px rgba(0,0,0,0.2)' }),
   tbl:       { width: '100%', borderCollapse: 'collapse', fontSize: 12 },
-  thLabel:   { textAlign: 'left', padding: '9px 12px', background: '#F7FAFD', borderBottom: '2px solid #E2E8F0', color: '#334E85', fontWeight: 700, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.04em', position: 'sticky', top: 0, whiteSpace: 'nowrap' },
-  thNum:     { textAlign: 'right', padding: '9px 12px', background: '#F7FAFD', borderBottom: '2px solid #E2E8F0', color: '#334E85', fontWeight: 700, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.04em', whiteSpace: 'nowrap' },
-  empty:     { padding: 40, textAlign: 'center', color: '#8096B2', fontSize: 13 },
-  errBox:    { padding: 16, background: '#FCE8E8', border: '1px solid #F2B5B5', borderRadius: 10, color: '#A02323', fontSize: 13, display: 'flex', gap: 10, alignItems: 'flex-start', marginBottom: 16 },
+  thLabel:   { textAlign: 'left', padding: '9px 12px', background: PANEL_BG, borderBottom: `2px solid ${PANEL_BORDER}`, color: INK2, fontWeight: 700, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.04em', position: 'sticky', top: 0, whiteSpace: 'nowrap' },
+  thNum:     { textAlign: 'right', padding: '9px 12px', background: PANEL_BG, borderBottom: `2px solid ${PANEL_BORDER}`, color: INK2, fontWeight: 700, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.04em', whiteSpace: 'nowrap' },
+  empty:     { padding: 40, textAlign: 'center', color: INK2, fontSize: 13 },
+  errBox:    { padding: 16, background: alpha(RED, 15), border: `1px solid ${alpha(RED, 40)}`, borderRadius: 10, color: RED, fontSize: 13, display: 'flex', gap: 10, alignItems: 'flex-start', marginBottom: 16 },
 }
 
 // ─── Table row components ─────────────────────────────────────────────────────
 function SectionHeaderRow({ label, months, values, onClick, expanded, indent = 0, tone = 'default' }) {
   const tones = {
-    default:  { bg: '#002C77', text: 'white',   subText: 'rgba(255,255,255,0.75)' },
-    revenue:  { bg: '#0A3D62', text: 'white',   subText: 'rgba(255,255,255,0.75)' },
-    expense:  { bg: '#1B2A4A', text: 'white',   subText: 'rgba(255,255,255,0.75)' },
-    pipeline: { bg: '#0D4A2F', text: 'white',   subText: 'rgba(255,255,255,0.75)' },
-    netincome:{ bg: '#003366', text: 'white',   subText: 'rgba(255,255,255,0.75)' },
-    subtotal: { bg: '#EFF6FC', text: '#002C77', subText: '#4A6FA5' },
-    category: { bg: '#F4F7FB', text: '#1A2B47', subText: '#4A6FA5' },
+    default:  { bg: BLUE, text: NAVY_DEEP,   subText: 'rgba(255,255,255,0.75)' },
+    revenue:  { bg: BLUE, text: NAVY_DEEP,   subText: 'rgba(255,255,255,0.75)' },
+    expense:  { bg: BLUE, text: NAVY_DEEP,   subText: 'rgba(255,255,255,0.75)' },
+    pipeline: { bg: GREEN, text: NAVY_DEEP,   subText: 'rgba(255,255,255,0.75)' },
+    netincome:{ bg: BLUE, text: NAVY_DEEP,   subText: 'rgba(255,255,255,0.75)' },
+    subtotal: { bg: PANEL_BG, text: INK, subText: BLUE },
+    category: { bg: PANEL_BG, text: INK, subText: BLUE },
   }
   const t = tones[tone] || tones.default
   const tdStyle = { padding: '9px 12px', background: t.bg, color: t.text, fontWeight: 700, fontSize: 12, whiteSpace: 'nowrap', cursor: onClick ? 'pointer' : 'default' }
@@ -233,21 +234,21 @@ function SectionHeaderRow({ label, months, values, onClick, expanded, indent = 0
 }
 
 function LineRow({ label, months, values, indent = 1, muted = false, tag = null }) {
-  const tdBase = { borderBottom: '1px solid #F0F4F9', whiteSpace: 'nowrap' }
-  const labelStyle = { ...tdBase, padding: `6px 12px 6px ${12 + indent * 14}px`, color: muted ? '#94A3B8' : '#334E85', fontSize: 12 }
-  const numStyle = { ...tdBase, padding: '6px 12px', textAlign: 'right', color: muted ? '#94A3B8' : '#1A2B47', fontVariantNumeric: 'tabular-nums', fontSize: 12 }
+  const tdBase = { borderBottom: `1px solid ${PANEL_BG}`, whiteSpace: 'nowrap' }
+  const labelStyle = { ...tdBase, padding: `6px 12px 6px ${12 + indent * 14}px`, color: muted ? GRAY : INK2, fontSize: 12 }
+  const numStyle = { ...tdBase, padding: '6px 12px', textAlign: 'right', color: muted ? GRAY : INK, fontVariantNumeric: 'tabular-nums', fontSize: 12 }
   return (
-    <tr style={{ background: indent % 2 === 0 ? '#FAFCFE' : 'white' }}>
+    <tr style={{ background: indent % 2 === 0 ? NAVY_DEEP : NAVY_DEEP }}>
       <td style={labelStyle}>
         {label}
         {tag && (
-          <span style={{ marginLeft: 8, padding: '1px 6px', borderRadius: 9999, fontSize: 10, fontWeight: 700, background: PROB_CONFIG[tag]?.bg || '#F3F4F6', color: PROB_CONFIG[tag]?.color || '#6B7280', border: `1px solid ${PROB_CONFIG[tag]?.border || '#D1D5DB'}` }}>
+          <span style={{ marginLeft: 8, padding: '1px 6px', borderRadius: 9999, fontSize: 10, fontWeight: 700, background: PROB_CONFIG[tag]?.bg || NAVY_DEEP, color: PROB_CONFIG[tag]?.color || GRAY, border: `1px solid ${PROB_CONFIG[tag]?.border || GRAY}` }}>
             {PROB_CONFIG[tag]?.label || tag}
           </span>
         )}
       </td>
       {months.map(m => (
-        <td key={m.col} style={{ ...numStyle, ...(m.isTotal ? { borderLeft: '1px solid #E2E8F0', background: '#F7FAFD', fontWeight: 600, color: '#334E85' } : {}) }}>
+        <td key={m.col} style={{ ...numStyle, ...(m.isTotal ? { borderLeft: `1px solid ${PANEL_BORDER}`, background: PANEL_BG, fontWeight: 600, color: INK2 } : {}) }}>
           {values[m.col] ? fmt(values[m.col]) : ''}
         </td>
       ))}
@@ -258,7 +259,7 @@ function LineRow({ label, months, values, indent = 1, muted = false, tag = null 
 function DividerRow({ label, months, style = {} }) {
   return (
     <tr style={{ height: 4, ...style }}>
-      <td colSpan={months.length + 1} style={{ background: '#E2E8F0', padding: 0 }} />
+      <td colSpan={months.length + 1} style={{ background: PANEL_BORDER, padding: 0 }} />
     </tr>
   )
 }
@@ -266,7 +267,7 @@ function DividerRow({ label, months, style = {} }) {
 function SpacerRow({ months }) {
   return (
     <tr style={{ height: 8 }}>
-      <td colSpan={months.length + 1} style={{ background: '#F7FAFD' }} />
+      <td colSpan={months.length + 1} style={{ background: PANEL_BG }} />
     </tr>
   )
 }
@@ -274,14 +275,14 @@ function SpacerRow({ months }) {
 function NetIncomeRow({ label, months, values }) {
   return (
     <tr>
-      <td style={{ padding: '14px 12px', background: '#001A3D', color: 'white', fontWeight: 800, fontSize: 14, letterSpacing: '0.04em', borderTop: '3px solid #009DE0' }}>
+      <td style={{ padding: '14px 12px', background: BLUE, color: NAVY_DEEP, fontWeight: 800, fontSize: 14, letterSpacing: '0.04em', borderTop: `3px solid ${BLUE}` }}>
         {label}
       </td>
       {months.map(m => {
         const v = values[m.col]
         const neg = typeof v === 'number' && v < 0
         return (
-          <td key={m.col} style={{ padding: '14px 12px', background: '#001A3D', textAlign: 'right', fontWeight: 800, fontSize: 13, fontVariantNumeric: 'tabular-nums', color: neg ? '#FC8181' : '#68D391', borderTop: '3px solid #009DE0', ...(m.isTotal ? { borderLeft: '1px solid rgba(0,157,224,0.3)' } : {}) }}>
+          <td key={m.col} style={{ padding: '14px 12px', background: BLUE, textAlign: 'right', fontWeight: 800, fontSize: 13, fontVariantNumeric: 'tabular-nums', color: neg ? alpha(RED, 40) : alpha(GREEN, 40), borderTop: `3px solid ${BLUE}`, ...(m.isTotal ? { borderLeft: '1px solid rgba(0,157,224,0.3)' } : {}) }}>
             {v ? fmt(v) : '—'}
           </td>
         )
@@ -461,7 +462,7 @@ export default function CompanyFinancePage() {
       {/* ── Header ─────────────────────────────────────────────────────── */}
       <div style={S.header}>
         <div>
-          <h1 style={S.h1}><Wallet size={22} color="#009DE0" /> Company Finance</h1>
+          <h1 style={S.h1}><Wallet size={22} color="${BLUE}" /> Company Finance</h1>
           <p style={S.sub}>Third Horizon Strategies — Live Pro Forma</p>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
@@ -517,9 +518,9 @@ export default function CompanyFinancePage() {
           <div style={S.card}>
             <div style={S.cardHdr}>
               <div style={S.cardTitle}><TrendingUp size={14} /> 2026 Summary</div>
-              <div style={{ fontSize: 11, color: '#8096B2' }}>
+              <div style={{ fontSize: 11, color: INK2 }}>
                 Jan–Apr: NetSuite actuals · May–Dec: Pro forma projections
-                {showPipeline && <span style={{ marginLeft: 8, color: '#009DE0', fontWeight: 700 }}>+ Pipeline overlay ON</span>}
+                {showPipeline && <span style={{ marginLeft: 8, color: BLUE, fontWeight: 700 }}>+ Pipeline overlay ON</span>}
               </div>
             </div>
             <div style={S.metricGrid}>
@@ -529,9 +530,9 @@ export default function CompanyFinancePage() {
                 <div style={S.mSub}>2026 contracted</div>
               </div>
               {showPipeline && (
-                <div style={{ ...S.metric(false), background: '#EFF9FF', border: '1px solid #BAE6FD' }}>
-                  <div style={{ ...S.mLabel, color: '#0369A1' }}>Pipeline Revenue</div>
-                  <div style={{ ...S.mValue(false), color: '#0369A1' }}>{fmtK(pipelineMonthTotals[totalCol])}</div>
+                <div style={{ ...S.metric(false), background: alpha(BLUE, 15), border: `1px solid ${alpha(BLUE, 40)}` }}>
+                  <div style={{ ...S.mLabel, color: BLUE }}>Pipeline Revenue</div>
+                  <div style={{ ...S.mValue(false), color: BLUE }}>{fmtK(pipelineMonthTotals[totalCol])}</div>
                   <div style={S.mSub}>{pipelineDeals.length} active deals · weighted CM</div>
                 </div>
               )}
@@ -554,9 +555,9 @@ export default function CompanyFinancePage() {
               <div style={S.cardTitle}><Layers size={14} /> 2026 Profit & Loss</div>
               {year === 2026 && (
                 <span style={S.toggleWrap} onClick={() => setShowPipeline(v => !v)}>
-                  <span style={{ fontSize: 11, color: '#64748B', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Pipeline Overlay</span>
+                  <span style={{ fontSize: 11, color: GRAY, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Pipeline Overlay</span>
                   <span style={S.toggleTrack(showPipeline)}><span style={S.toggleThumb(showPipeline)} /></span>
-                  <span style={{ fontSize: 12, color: showPipeline ? '#009DE0' : '#94A3B8', fontWeight: 700 }}>{showPipeline ? 'ON' : 'OFF'}</span>
+                  <span style={{ fontSize: 12, color: showPipeline ? BLUE : GRAY, fontWeight: 700 }}>{showPipeline ? 'ON' : 'OFF'}</span>
                 </span>
               )}
             </div>
@@ -567,7 +568,7 @@ export default function CompanyFinancePage() {
                   <tr>
                     <th style={{ ...S.thLabel, minWidth: 240 }}>Line Item</th>
                     {months.map(m => (
-                      <th key={m.col} style={{ ...S.thNum, ...(m.isTotal ? { borderLeft: '1px solid #CBD8E8', background: '#EFF4FC' } : {}), ...(m.isActual ? { color: '#16A34A' } : {}) }}>
+                      <th key={m.col} style={{ ...S.thNum, ...(m.isTotal ? { borderLeft: `1px solid ${PANEL_BORDER}`, background: PANEL_BG } : {}), ...(m.isActual ? { color: GREEN } : {}) }}>
                         {m.label}{m.isActual ? '*' : ''}
                       </th>
                     ))}
@@ -643,7 +644,7 @@ export default function CompanyFinancePage() {
                 </tbody>
               </table>
             </div>
-            <div style={{ padding: '8px 16px', fontSize: 10, color: '#94A3B8', borderTop: '1px solid #F0F4F9' }}>
+            <div style={{ padding: '8px 16px', fontSize: 10, color: GRAY, borderTop: `1px solid ${PANEL_BG}` }}>
               * Jan–Apr marked with asterisk = NetSuite actuals. May–Dec = Pro Forma projections. Expense sub-lines = Pro Forma throughout.
             </div>
           </div>
@@ -657,7 +658,7 @@ export default function CompanyFinancePage() {
         <div style={S.card}>
           <div style={S.cardHdr}>
             <div style={S.cardTitle}><Layers size={14} /> 2026 Cash Tracker</div>
-            <div style={{ fontSize: 11, color: '#8096B2' }}>
+            <div style={{ fontSize: 11, color: INK2 }}>
               Bi-monthly → monthly · {cashTracker.length} rows
               {pfSync?.last_synced_at ? ` · synced ${fmtTime(pfSync.last_synced_at)}` : ''}
             </div>
