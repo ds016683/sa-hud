@@ -7,7 +7,7 @@
 // shows whatever checklist is running on the item. Files is the one place its
 // files live. Notes is the meetings and the item's own notes.
 import { useCallback, useEffect, useState } from 'react'
-import { ArrowLeft, Play, Pause, Archive, ExternalLink, Mic, Map as MapIcon, Check, Plus, Trash2, Terminal, Star } from 'lucide-react'
+import { ArrowLeft, Play, Pause, Archive, ExternalLink, Mic, Map as MapIcon, Check, Plus, Trash2, Terminal, Star, CornerLeftUp } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { listArtifacts, readArtifact, writeArtifact } from '../../lib/artifacts'
 import { fetchLoadout, equip, holster, stash, equipObjective, equipTask, fmtClock, SIZES } from '../../lib/loadout'
@@ -209,11 +209,13 @@ function WhereItStands({ item, rel, task, taskId, linkedBoards }) {
   return (
     <div style={{ borderTop: `1px solid ${PANEL_BORDER}`, paddingTop: 14 }}>
       <Label>Where It Stands</Label>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 22 }}>
-        <div>
-          <div style={{ fontSize: 14.5, fontWeight: 600, color: GREEN, marginBottom: 5 }}>Done</div>
-          {done.length ? done.map((r, i) => <Row key={i} r={r} color={GREEN} />) : <div style={{ fontSize: 13, color: GRAY, padding: '4px 0' }}>Nothing ticked, closed or produced yet.</div>}
-        </div>
+      <div style={{ display: 'grid', gridTemplateColumns: done.length ? 'repeat(auto-fit, minmax(280px, 1fr))' : '1fr', gap: 22 }}>
+        {done.length > 0 && (
+          <div>
+            <div style={{ fontSize: 14.5, fontWeight: 600, color: GREEN, marginBottom: 5 }}>Done</div>
+            {done.map((r, i) => <Row key={i} r={r} color={GREEN} />)}
+          </div>
+        )}
         <div>
           <div style={{ fontSize: 14.5, fontWeight: 600, color: GOLD, marginBottom: 5 }}>Still Needed</div>
           {needed.map((r, i) => <Row key={i} r={r} color={r.kind === 'blocked' ? RED : GOLD} />)}
@@ -313,7 +315,9 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
           <div style={{ minWidth: 0, flex: 1 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 8 }}>
               <span style={{ fontSize: 15, fontWeight: 600, color: KIND_COLOR[item.kind] || INK2, display: 'inline-flex', alignItems: 'center', gap: 7 }}><KindIcon kind={item.kind} size={14} />{item.kind}</span>
-              {(rel?.project || item.project) && <span style={{ fontSize: 15, fontWeight: 600, color: INK }}>· {rel?.project?.name || item.project}</span>}
+              {(rel?.project || item.project) && (rel?.project
+                ? <button onClick={() => go([rel.project.id])} title="Up to the mission card" style={{ background: 'transparent', border: 'none', padding: 0, cursor: 'pointer', fontSize: 15, fontWeight: 600, color: INK, fontFamily: 'inherit', display: 'inline-flex', alignItems: 'center', gap: 6, borderBottom: `1px dashed ${LABEL}66` }}>· {rel.project.name} <CornerLeftUp size={12} color={LABEL} /></button>
+                : <span style={{ fontSize: 15, fontWeight: 600, color: INK }}>· {item.project}</span>)}
               {task && <span style={{ fontSize: 15, fontWeight: 600, color: INK2 }}>· Milestone{String(task.text || '').match(/^\s*(\d+)\s*[·.:)-]/) ? ` ${String(task.text).match(/^\s*(\d+)\s*[·.:)-]/)[1]}` : ''}</span>}
               {item.size && !task && <span style={{ fontSize: 15, fontWeight: 600, color: INK2 }}>· {SIZES[item.size]?.label || item.size}</span>}
               {item.event && <span style={{ fontSize: 15, fontWeight: 600, color: INK2 }}>· {chiTime(item.event.start_at)}</span>}
@@ -347,8 +351,9 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
                   {(() => { const seg = (on, color) => ({ ...btn(on ? color : INK2, on), padding: '5px 10px', whiteSpace: 'nowrap', borderRadius: 8 }); const cell = { display: 'grid', gap: 6, alignContent: 'start' }; return (
                     <div style={{ borderTop: `1px solid ${PANEL_BORDER}`, borderBottom: `1px solid ${PANEL_BORDER}`, padding: '14px 0', display: 'grid', gap: 16 }}>
                       <div style={{ display: 'flex', gap: 28, flexWrap: 'wrap', alignItems: 'flex-start' }}>
-                        <div style={cell}><Label style={{ marginBottom: 0 }}>Domain</Label><div style={{ display: 'flex', gap: 4 }}>{[['third-horizon', 'Third Horizon'], ['personal', 'Personal']].map(([k, l]) => <button key={k} onClick={() => patchObj({ tags: [...new Set([...(obj.tags || []).filter(t => t !== 'personal'), ...(k === 'personal' ? ['personal'] : [])])] })} style={seg(realm === k, k === 'personal' ? GOLD : BLUE)}>{l}</button>)}</div></div>
-                        <div style={cell}><Label style={{ marginBottom: 0 }}>Type</Label><div style={{ display: 'flex', gap: 4 }}>{Object.entries(SIZES).map(([k, sdef]) => <button key={k} onClick={() => setSize(obj.id, k).then(load)} title={sdef.sub} style={seg(sz === k, sdef.color)}>{sdef.label}</button>)}</div></div>
+                        {!task && <div style={cell}><Label style={{ marginBottom: 0 }}>Domain</Label><div style={{ display: 'flex', gap: 4 }}>{[['third-horizon', 'Third Horizon'], ['personal', 'Personal']].map(([k, l]) => <button key={k} onClick={() => patchObj({ tags: [...new Set([...(obj.tags || []).filter(t => t !== 'personal'), ...(k === 'personal' ? ['personal'] : [])])] })} style={seg(realm === k, k === 'personal' ? GOLD : BLUE)}>{l}</button>)}</div></div>}
+                        {!task && <div style={cell}><Label style={{ marginBottom: 0 }}>Type</Label><div style={{ display: 'flex', gap: 4 }}>{Object.entries(SIZES).map(([k, sdef]) => <button key={k} onClick={() => setSize(obj.id, k).then(load)} title={sdef.sub} style={seg(sz === k, sdef.color)}>{sdef.label}</button>)}</div></div>}
+                        {task && <div style={cell}><Label style={{ marginBottom: 0 }}>Milestone</Label><div style={{ fontSize: 13, color: INK2, paddingTop: 6 }}>10 miles at close{task.status === 'done' ? ' · closed' : ''}</div></div>}
                         <div style={cell}><Label style={{ marginBottom: 0 }}>Due</Label><input type="date" value={obj.due_date || ''} onChange={e => patchObj({ due_date: e.target.value || null })} style={{ ...field, width: 150 }} /></div>
                         <div style={cell}><Label style={{ marginBottom: 0 }}>Follow Up</Label><input type="date" value={obj.follow_up_date || ''} onChange={e => patchObj({ follow_up_date: e.target.value || null })} style={{ ...field, width: 150 }} /></div>
                         <div style={{ ...cell, flex: 1, minWidth: 180 }}><Label style={{ marginBottom: 0 }}>Who</Label><input defaultValue={obj.stakeholder || ''} onBlur={e => { if ((e.target.value || '') !== (obj.stakeholder || '')) patchObj({ stakeholder: e.target.value || null }) }} placeholder="the person this is for or with" style={{ ...field, fontFamily: 'inherit', fontSize: 13, width: '100%', maxWidth: 320 }} /></div>
@@ -362,7 +367,7 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
 
                   {(item.description || obj.description) && <div><Label>Back Story</Label><div style={{ fontSize: 14.5, lineHeight: 1.65, color: INK, whiteSpace: 'pre-wrap' }}>{item.description || obj.description}</div></div>}
 
-                  <div>
+                  {!task && <div>
                     <Label>{sz === 'heavy' ? 'Gates · Mythic Tasks, 10 Miles Each, Five At Most' : sz === 'medium' ? 'Marks · What Has To Happen, Three At Most' : 'Marks'}</Label>
                     {max === 0 && <div style={{ fontSize: 13, color: GRAY }}>A Bounty is one action and carries no marks.</div>}
                     {max > 0 && rel.steps === null && <div style={{ fontSize: 12.5, color: GRAY }}>Steps are not set up yet. Run sql/2026-10-07-side-missions-archive.sql in the Ledger and they appear here.</div>}
@@ -382,7 +387,7 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
                       </div>
                     )}
                     {max > 0 && Array.isArray(rel.steps) && rel.steps.length >= max && <div style={{ fontSize: 12, color: GRAY, marginTop: 8 }}>{sz === 'heavy' ? 'Five gates is the Mythic’s limit. A sixth means this is a Main Mission: promote it.' : 'Three marks is a Contract’s limit. More than that is a Mythic.'}</div>}
-                  </div>
+                  </div>}
 
                 </>
               ) })()}
