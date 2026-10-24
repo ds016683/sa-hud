@@ -90,26 +90,36 @@ export function DomainsSurface({ domains = {}, onSave, busy, onOpen }) {
   )
 }
 
-// A domain's flow (David, 10/24): the key things that need to be true by
-// different times in the year (the strategy, a lexicon for the work); under
-// each truth, what needs to happen, who makes sure it happens, who is
-// accountable that they did, and how we will measure the thing being true.
-const blankTruth = () => ({ id: newId(), anchor: '', label: '', text: '', measure: '', activities: [] })
-const blankActivity = () => ({ id: newId(), text: '', owner: '', accountable: '', done: false })
+// A domain's flow (David, 10/24): one Polaris statement for the domain; the
+// key things that need to be true by different times in the year (the
+// strategy, a lexicon for the work); under each truth, the big things that
+// have to happen for it to be true, each with one accountable person; and
+// how we measure the thing being true. The Operations view explodes each big
+// thing into a little project planner: tasks, people, data-related costs.
+// The Budget face comes later.
+const blankTruth = () => ({ id: newId(), anchor: '', label: '', text: '', measure: '', big: [] })
+const blankBig = () => ({ id: newId(), text: '', accountable: '', people: '', data_costs: '', tasks: [] })
+const blankTask = () => ({ id: newId(), text: '', owner: '', due: '', done: false })
+const FLOW_VIEWS = [{ id: 'strategy', label: 'Strategy' }, { id: 'ops', label: 'Operations' }]
 
 export function DomainFlowSurface({ dom, data = {}, onSave, busy }) {
+  const [polaris, setPolaris] = useState(data.polaris || '')
   const [truths, setTruths] = useState(data.truths || [])
   const [dirty, setDirty] = useState(false)
   const [anchor, setAnchor] = useState('all')
-  useEffect(() => { let on = true; Promise.resolve().then(() => { if (on) { setTruths(data.truths || []); setDirty(false) } }); return () => { on = false } }, [data.truths])
+  const [view, setView] = useState('strategy')
+  const [open, setOpen] = useState({})   // big thing id -> expanded in Operations
+  useEffect(() => { let on = true; Promise.resolve().then(() => { if (on) { setTruths(data.truths || []); setPolaris(data.polaris || ''); setDirty(false) } }); return () => { on = false } }, [data.truths, data.polaris])
   const patch = (fn) => { setTruths(prev => fn(prev)); setDirty(true) }
   const setT = (id, k, v) => patch(prev => prev.map(t => t.id === id ? { ...t, [k]: v } : t))
-  const setA = (tid, aid, k, v) => patch(prev => prev.map(t => t.id === tid ? { ...t, activities: t.activities.map(a => a.id === aid ? { ...a, [k]: v } : a) } : t))
+  const setB = (tid, bid, k, v) => patch(prev => prev.map(t => t.id === tid ? { ...t, big: t.big.map(b => b.id === bid ? { ...b, [k]: v } : b) } : t))
+  const setK = (tid, bid, kid, k, v) => patch(prev => prev.map(t => t.id === tid ? { ...t, big: t.big.map(b => b.id === bid ? { ...b, tasks: b.tasks.map(x => x.id === kid ? { ...x, [k]: v } : x) } : b) } : t))
   const input = { width: '100%', minWidth: 0, padding: '6px 8px', borderRadius: 7, border: `1px solid ${PANEL_BORDER}`, fontSize: 12.5, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', background: 'rgba(255,255,255,0.06)', color: INK }
   const eyebrow = { fontFamily: MONO, fontSize: 9.5, letterSpacing: '1.4px', textTransform: 'uppercase', color: LABEL }
   const labels = [...new Set(truths.map(t => t.label).filter(Boolean))]
   const shown = truths.filter(t => anchor === 'all' || t.label === anchor).sort((a, b) => String(a.anchor || '9999').localeCompare(String(b.anchor || '9999')))
   const Icon = dom.icon
+  const ops = view === 'ops'
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 12 }}>
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap' }}>
@@ -117,21 +127,24 @@ export function DomainFlowSurface({ dom, data = {}, onSave, busy }) {
         <div style={{ flex: 1, minWidth: 260 }}>
           <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '1.4px', color: dom.color }}>{dom.code} · {dom.n}</div>
           <div style={{ fontFamily: SERIF, fontSize: 20, fontWeight: 500, color: INK, lineHeight: 1.2 }}>{dom.id}</div>
-          <div style={{ fontSize: 12.5, color: INK2, lineHeight: 1.5, marginTop: 4 }}>{data.definition || dom.line}</div>
+          <div style={{ ...eyebrow, marginTop: 8 }}>Polaris Objective</div>
+          <textarea value={polaris} onChange={e => { setPolaris(e.target.value); setDirty(true) }} rows={2} placeholder="At the end of 2027, Third Horizon will have…" style={{ ...input, fontFamily: SERIF, fontStyle: 'italic', fontSize: 15, lineHeight: 1.4, resize: 'vertical', marginTop: 4 }} />
         </div>
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
           <button onClick={() => patch(prev => [...prev, blankTruth()])} style={btnGhost}><Plus size={12} /> Truth</button>
-          <button onClick={() => onSave({ ...data, truths })} disabled={!dirty || busy} style={{ ...btnPrimary, opacity: dirty ? 1 : 0.5 }}><Save size={13} /> {busy ? 'Saving…' : dirty ? 'Save' : 'Saved'}</button>
+          <button onClick={() => onSave({ ...data, polaris, truths })} disabled={!dirty || busy} style={{ ...btnPrimary, opacity: dirty ? 1 : 0.5 }}><Save size={13} /> {busy ? 'Saving…' : dirty ? 'Save' : 'Saved'}</button>
         </div>
       </div>
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
-        <span style={{ ...eyebrow, marginRight: 4 }}>What Must Be True</span>
+        {FLOW_VIEWS.map(x => <Pill key={x.id} active={view === x.id} onClick={() => setView(x.id)}>{x.label}</Pill>)}
+        <span style={{ width: 1, height: 18, background: PANEL_BORDER, margin: '0 4px' }} />
+        <span style={{ ...eyebrow, marginRight: 2 }}>By When</span>
         <Pill active={anchor === 'all'} onClick={() => setAnchor('all')}>All · {truths.length}</Pill>
         {labels.map(l => <Pill key={l} active={anchor === l} onClick={() => setAnchor(l)}>{l}</Pill>)}
       </div>
       {shown.length === 0 && <div style={{ fontSize: 12.5, color: GRAY, padding: '14px 0' }}>No truths yet. Add the first one: a thing that will be verifiably true by a time in the year.</div>}
       {shown.map(t => (
-        <div key={t.id} style={{ borderLeft: `3px solid ${dom.color}`, border: `1px solid ${PANEL_BORDER}`, borderLeftWidth: 3, borderLeftColor: dom.color, borderRadius: 10, padding: '12px 14px', display: 'grid', gap: 10, background: 'rgba(255,255,255,0.025)' }}>
+        <div key={t.id} style={{ border: `1px solid ${PANEL_BORDER}`, borderLeft: `3px solid ${dom.color}`, borderRadius: 10, padding: '12px 14px', display: 'grid', gap: 10, background: 'rgba(255,255,255,0.025)' }}>
           <div style={{ display: 'grid', gridTemplateColumns: '150px minmax(0, 1fr) auto', gap: 10, alignItems: 'start' }}>
             <div style={{ display: 'grid', gap: 4 }}>
               <span style={eyebrow}>By When</span>
@@ -139,25 +152,45 @@ export function DomainFlowSurface({ dom, data = {}, onSave, busy }) {
               <input type="date" value={t.anchor || ''} onChange={e => setT(t.id, 'anchor', e.target.value)} style={{ ...input, fontSize: 11 }} />
             </div>
             <div style={{ display: 'grid', gap: 4 }}>
-              <span style={eyebrow}>The Thing That Is True</span>
+              <span style={eyebrow}>What Must Be True</span>
               <textarea value={t.text} onChange={e => setT(t.id, 'text', e.target.value)} rows={2} placeholder="One sentence, verifiable" style={{ ...input, fontFamily: SERIF, fontSize: 15, lineHeight: 1.35, resize: 'vertical' }} />
               <span style={{ ...eyebrow, marginTop: 4 }}>How We Measure It Being True</span>
               <input value={t.measure} onChange={e => setT(t.id, 'measure', e.target.value)} placeholder="The evidence that settles it" style={input} />
             </div>
             <button onClick={() => patch(prev => prev.filter(x => x.id !== t.id))} title="Remove this truth" style={{ background: 'none', border: 'none', color: MUTED, cursor: 'pointer', padding: 4 }}><X size={14} /></button>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'minmax(220px, 2fr) minmax(120px, 1fr) minmax(120px, 1fr) 28px 24px', gap: 8, alignItems: 'center' }}>
-            <span style={eyebrow}>What Needs To Happen</span><span style={eyebrow}>Who Makes It Happen</span><span style={eyebrow}>Who Is Accountable</span><span style={{ ...eyebrow, textAlign: 'center' }}>Done</span><span />
-            {(t.activities || []).map(a => (
-              <Fragment key={a.id}>
-                <input value={a.text} onChange={e => setA(t.id, a.id, 'text', e.target.value)} placeholder="The activity" style={{ ...input, opacity: a.done ? 0.6 : 1, textDecoration: a.done ? 'line-through' : 'none' }} />
-                <input value={a.owner} onChange={e => setA(t.id, a.id, 'owner', e.target.value)} placeholder="Name" style={input} />
-                <input value={a.accountable} onChange={e => setA(t.id, a.id, 'accountable', e.target.value)} placeholder="Name" style={input} />
-                <input type="checkbox" checked={!!a.done} onChange={e => setA(t.id, a.id, 'done', e.target.checked)} style={{ justifySelf: 'center', accentColor: dom.color }} />
-                <button onClick={() => patch(prev => prev.map(x => x.id === t.id ? { ...x, activities: x.activities.filter(y => y.id !== a.id) } : x))} title="Remove" style={{ background: 'none', border: 'none', color: MUTED, cursor: 'pointer', padding: 2 }}><X size={12} /></button>
+          <div style={{ display: 'grid', gridTemplateColumns: ops ? '20px minmax(220px, 2fr) minmax(130px, 1fr) 24px' : 'minmax(220px, 2fr) minmax(130px, 1fr) 24px', gap: 8, alignItems: 'center' }}>
+            {ops && <span />}<span style={eyebrow}>The Big Things That Have To Happen</span><span style={eyebrow}>Accountable</span><span />
+            {(t.big || []).map(b => (
+              <Fragment key={b.id}>
+                {ops && <button onClick={() => setOpen(o => ({ ...o, [b.id]: !o[b.id] }))} title={open[b.id] ? 'Fold' : 'Explode into tasks'} style={{ background: 'none', border: 'none', color: dom.color, cursor: 'pointer', padding: 0, transform: open[b.id] ? 'rotate(90deg)' : 'none', transition: 'transform 120ms' }}><ChevronRight size={14} /></button>}
+                <input value={b.text} onChange={e => setB(t.id, b.id, 'text', e.target.value)} placeholder="A big thing, in one line" style={input} />
+                <input value={b.accountable} onChange={e => setB(t.id, b.id, 'accountable', e.target.value)} placeholder="One name" style={input} />
+                <button onClick={() => patch(prev => prev.map(x => x.id === t.id ? { ...x, big: x.big.filter(y => y.id !== b.id) } : x))} title="Remove" style={{ background: 'none', border: 'none', color: MUTED, cursor: 'pointer', padding: 2 }}><X size={12} /></button>
+                {ops && open[b.id] && (
+                  <div style={{ gridColumn: '1 / -1', marginLeft: 28, padding: '10px 12px', borderRadius: 8, border: `1px dashed ${PANEL_BORDER}`, display: 'grid', gap: 8, background: 'rgba(255,255,255,0.02)' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 8 }}>
+                      <label style={{ display: 'grid', gap: 3 }}><span style={eyebrow}>People</span><input value={b.people || ''} onChange={e => setB(t.id, b.id, 'people', e.target.value)} placeholder="Who works it, how much of them" style={input} /></label>
+                      <label style={{ display: 'grid', gap: 3 }}><span style={eyebrow}>Data-Related Costs</span><input value={b.data_costs || ''} onChange={e => setB(t.id, b.id, 'data_costs', e.target.value)} placeholder="Sources, compute, licenses" style={input} /></label>
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(200px, 2fr) minmax(110px, 1fr) 128px 24px 22px', gap: 6, alignItems: 'center' }}>
+                      <span style={eyebrow}>Task</span><span style={eyebrow}>Who</span><span style={eyebrow}>Due</span><span style={{ ...eyebrow, textAlign: 'center' }}>Done</span><span />
+                      {(b.tasks || []).map(k => (
+                        <Fragment key={k.id}>
+                          <input value={k.text} onChange={e => setK(t.id, b.id, k.id, 'text', e.target.value)} placeholder="The task" style={{ ...input, opacity: k.done ? 0.6 : 1, textDecoration: k.done ? 'line-through' : 'none' }} />
+                          <input value={k.owner} onChange={e => setK(t.id, b.id, k.id, 'owner', e.target.value)} placeholder="Name" style={input} />
+                          <input type="date" value={k.due || ''} onChange={e => setK(t.id, b.id, k.id, 'due', e.target.value)} style={{ ...input, fontSize: 11 }} />
+                          <input type="checkbox" checked={!!k.done} onChange={e => setK(t.id, b.id, k.id, 'done', e.target.checked)} style={{ justifySelf: 'center', accentColor: dom.color }} />
+                          <button onClick={() => patch(prev => prev.map(x => x.id === t.id ? { ...x, big: x.big.map(y => y.id === b.id ? { ...y, tasks: y.tasks.filter(z => z.id !== k.id) } : y) } : x))} title="Remove" style={{ background: 'none', border: 'none', color: MUTED, cursor: 'pointer', padding: 2 }}><X size={12} /></button>
+                        </Fragment>
+                      ))}
+                      <button onClick={() => patch(prev => prev.map(x => x.id === t.id ? { ...x, big: x.big.map(y => y.id === b.id ? { ...y, tasks: [...(y.tasks || []), blankTask()] } : y) } : x))} style={{ ...btnGhost, padding: '3px 8px', fontSize: 11, justifySelf: 'start', gridColumn: '1 / -1' }}><Plus size={11} /> Task</button>
+                    </div>
+                  </div>
+                )}
               </Fragment>
             ))}
-            <button onClick={() => patch(prev => prev.map(x => x.id === t.id ? { ...x, activities: [...(x.activities || []), blankActivity()] } : x))} style={{ ...btnGhost, padding: '4px 9px', fontSize: 11, justifySelf: 'start', gridColumn: '1 / -1' }}><Plus size={11} /> Activity</button>
+            <button onClick={() => patch(prev => prev.map(x => x.id === t.id ? { ...x, big: [...(x.big || []), blankBig()] } : x))} style={{ ...btnGhost, padding: '4px 9px', fontSize: 11, justifySelf: 'start', gridColumn: '1 / -1' }}><Plus size={11} /> Big Thing</button>
           </div>
         </div>
       ))}
