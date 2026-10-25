@@ -283,7 +283,7 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
   const addStepNow = async () => { const t = stepText.trim(); if (!t || !obj) return; setObjBusy(true); try { const r = await addStep(obj.id, t, (rel.steps || []).length); if (r === null) setMsg('Steps are not set up yet: run sql/2026-10-07-side-missions-archive.sql'); setStepText(''); await load() } catch (e) { setMsg(`Could not add: ${e.message}`) } finally { setObjBusy(false) } }
 
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 240, overflowY: 'auto', background: 'linear-gradient(180deg, #0F2A40 0%, ${INK} 100%)' }}>
+    <div style={{ position: 'fixed', inset: 0, zIndex: 240, overflowY: 'auto', background: 'linear-gradient(180deg, var(--hud-surface) 0%, var(--hud-surface-deep) 100%)' }}>
       {reading && (
         <div onClick={() => setReading(null)} style={{ position: 'fixed', inset: 0, zIndex: 250, background: 'rgba(5,16,28,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
           <div onClick={e => e.stopPropagation()} style={{ width: 'min(760px, 100%)', maxHeight: '88vh', overflowY: 'auto', background: 'var(--hud-surface-raised)', border: `1px solid ${PANEL_BORDER}`, borderRadius: 14, padding: '24px 26px', display: 'grid', gap: 14 }}>

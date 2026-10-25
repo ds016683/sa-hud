@@ -462,7 +462,7 @@ export default function CompanyFinancePage() {
       {/* ── Header ─────────────────────────────────────────────────────── */}
       <div style={S.header}>
         <div>
-          <h1 style={S.h1}><Wallet size={22} color="${BLUE}" /> Company Finance</h1>
+          <h1 style={S.h1}><Wallet size={22} color={BLUE} /> Company Finance</h1>
           <p style={S.sub}>Third Horizon Strategies — Live Pro Forma</p>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>

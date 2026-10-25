@@ -689,7 +689,7 @@ function Protocol({ day, session, onClose, onFinished, onChange, onNavigate }) {
 
   const stripPrompt = cur.id === 'digest' ? 'answer his questions here' : cur.id === 'plan' ? 'or talk the day through with him' : null
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 250, overflowY: 'auto', background: 'linear-gradient(180deg, #0F2A40 0%, ${INK} 100%)' }}>
+    <div style={{ position: 'fixed', inset: 0, zIndex: 250, overflowY: 'auto', background: 'linear-gradient(180deg, var(--hud-surface) 0%, var(--hud-surface-deep) 100%)' }}>
       <style>{`
         @keyframes mp-in-r { from { opacity: 0; transform: translateX(28px) } to { opacity: 1; transform: none } }
         @keyframes mp-in-l { from { opacity: 0; transform: translateX(-28px) } to { opacity: 1; transform: none } }

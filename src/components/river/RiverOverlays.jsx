@@ -77,7 +77,7 @@ export function MintingOverlay({ mint, onDone }) {
   const dayLabel = new Date(mint.day + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })
   const pct = Math.min(100, (Number(mint.total) || 0) / RIVER_TOTAL_MILES * 100)
   return (
-    <div onClick={() => stage >= finalStage ? onDone() : setStage(s => Math.min(finalStage, s + 1))} style={{ position: 'fixed', inset: 0, zIndex: 300, cursor: 'pointer', background: 'radial-gradient(ellipse at 50% 35%, ${INK} 0%, ${INK} 70%)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+    <div onClick={() => stage >= finalStage ? onDone() : setStage(s => Math.min(finalStage, s + 1))} style={{ position: 'fixed', inset: 0, zIndex: 300, cursor: 'pointer', background: 'radial-gradient(ellipse at 50% 35%, var(--hud-surface-raised) 0%, var(--hud-surface) 70%)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
       <div style={{ maxWidth: 560, width: '100%', textAlign: 'center' }}>
         <div style={{ fontFamily: MONO, color: PERIWINKLE, letterSpacing: '3px', fontSize: 10, animation: 'haulDrop 600ms both' }}>CLOSING THE DAY</div>
         <div style={{ fontFamily: SERIF, fontSize: 36, fontWeight: 500, letterSpacing: '-0.01em', color: '#fff', margin: '8px 0 34px', animation: 'haulDrop 700ms 200ms both' }}>{dayLabel}</div>
@@ -88,7 +88,7 @@ export function MintingOverlay({ mint, onDone }) {
             <span style={{ fontFamily: SERIF, fontSize: 84, fontWeight: 500, lineHeight: 1, color: GOLD_BRIGHT, textShadow: '0 0 34px rgba(248,199,97,0.45)' }}>{fmt(mint.miles)}</span>
             <div style={{ fontFamily: MONO, color: GOLD_BRIGHT, letterSpacing: '2px', fontSize: 11, marginTop: 10 }}>MILES TRAVELED DOWN THE RIVER</div>
             <div style={{ margin: '18px auto 0', maxWidth: 380, height: 6, borderRadius: 3, background: 'rgba(255,255,255,0.10)', overflow: 'hidden' }}>
-              <div style={{ width: `${pct}%`, height: '100%', background: 'linear-gradient(90deg, ${GOLD}, ${GOLD})', transition: 'width 1.2s ease-out' }} />
+              <div style={{ width: `${pct}%`, height: '100%', background: `linear-gradient(90deg, ${GOLD}, ${GOLD})`, transition: 'width 1.2s ease-out' }} />
             </div>
             <div style={{ fontFamily: MONO, color: 'rgba(234,241,248,0.5)', letterSpacing: '1.6px', fontSize: 9.5, marginTop: 8 }}>{fmt(mint.total)} OF {RIVER_TOTAL_MILES.toLocaleString()} · {fmt(whereOnRiver(mint.total).toNext)} TO {whereOnRiver(mint.total).next.label.toUpperCase()}</div>
             {crossed((Number(mint.total) || 0) - (Number(mint.miles) || 0), mint.total).map(c => (

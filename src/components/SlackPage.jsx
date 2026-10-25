@@ -286,7 +286,7 @@ export default function SlackPage() {
                     {row.channel_name}
                   </span>
                   {row.has_mention && <span style={S.mentionDot} title="Mention" />}
-                  {row.has_files && <Paperclip size={11} color="${INK2}" />}
+                  {row.has_files && <Paperclip size={11} color={INK2} />}
                   {row.replied_at && <span style={{ fontSize: 10, color: GREEN, fontWeight: 600 }}>REPLIED</span>}
                   <span style={S.rowMeta}>{relTime(row.ts)}</span>
                 </div>
@@ -302,7 +302,7 @@ export default function SlackPage() {
             <div style={S.detailHead}>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-                  {Icon && <Icon size={14} color="${INK}" />}
+                  {Icon && <Icon size={14} color={INK} />}
                   <span style={{ fontSize: 13, fontWeight: 700, color: INK }}>{selected.channel_name}</span>
                 </div>
                 <h2 style={S.detailTitle}>{selected.user_name}</h2>

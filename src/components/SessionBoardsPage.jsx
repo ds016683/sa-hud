@@ -32,7 +32,7 @@ function Glyph({ status }) {
       <span style={{ ...base, background: GREEN, borderColor: GREEN }}>
         <span style={{
           position: 'absolute', left: 4.5, top: 1.5, width: 4, height: 8,
-          border: 'solid ${INK}', borderWidth: '0 2px 2px 0', transform: 'rotate(42deg)',
+          border: `solid ${INK}`, borderWidth: '0 2px 2px 0', transform: 'rotate(42deg)',
         }} />
       </span>
     )

@@ -65,7 +65,7 @@ export default function ProjectCard({ project, onUpdate, onPin, onNavigate, arch
               {project.pinned && (
                 <span className="text-amber-500 text-xs flex-shrink-0" title="Active focus project">&#9733;</span>
               )}
-              <h3 className="text-sm font-semibold leading-tight text-[${INK}] truncate">
+              <h3 className={`text-sm font-semibold leading-tight text-[${INK}] truncate`}>
                 <InlineName name={project.name} onRename={(name) => onUpdate(project.id, { name })} />
               </h3>
             </div>
@@ -74,14 +74,14 @@ export default function ProjectCard({ project, onUpdate, onPin, onNavigate, arch
               <button
                 onClick={(e) => { e.stopPropagation(); onPin(project.id) }}
                 className="p-1.5 rounded-md hover:bg-gray-100 transition-colors"
-                style={{ color: project.pinned ? "#F59E0B" : "${PANEL_BORDER}" }}
+                style={{ color: project.pinned ? "#F59E0B" : `${PANEL_BORDER}` }}
                 title={project.pinned ? "Deactivate (move to inactive)" : "Activate (pin to top)"}
               >
                 <Pin size={12} className={project.pinned ? 'fill-current text-amber-500' : ''} />
               </button>
               <button
                 onClick={(e) => { e.stopPropagation(); onNavigate(project.id) }}
-                className="p-1 rounded hover:bg-gray-100 text-gray-400 hover:text-[${BLUE}] transition-colors"
+                className={`p-1 rounded hover:bg-gray-100 text-gray-400 hover:text-[${BLUE}] transition-colors`}
                 title="View details"
               >
                 <ArrowUpRight size={12} />

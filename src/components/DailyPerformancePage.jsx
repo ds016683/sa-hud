@@ -122,7 +122,7 @@ function MintingOverlay({ mint, onDone }) {
   return (
     <div onClick={() => stage >= finalStage ? onDone() : setStage(s => Math.min(finalStage, s + 1))} style={{
       position: 'fixed', inset: 0, zIndex: 300, cursor: 'pointer',
-      background: 'radial-gradient(ellipse at 50% 35%, ${INK} 0%, ${INK} 70%)',
+      background: 'radial-gradient(ellipse at 50% 35%, var(--hud-surface-raised) 0%, var(--hud-surface) 70%)',
       display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24,
     }}>
       <div style={{ maxWidth: 560, width: '100%', textAlign: 'center' }}>

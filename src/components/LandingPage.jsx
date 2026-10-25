@@ -113,7 +113,7 @@ function RiverGraphic({ miles, awards }) {
       {geom ? (
         <g>
           <circle className="river-glow" cx={geom.marker.x} cy={geom.marker.y} r="18" fill="url(#river-glow-grad)" />
-          <circle className="river-marker" cx={geom.marker.x} cy={geom.marker.y} r="6.5" fill={GOLD_BRIGHT} stroke="${INK}" strokeWidth="2" />
+          <circle className="river-marker" cx={geom.marker.x} cy={geom.marker.y} r="6.5" fill={GOLD_BRIGHT} stroke={INK} strokeWidth="2" />
           <text x={geom.marker.x} y={geom.marker.y - 16} textAnchor="middle" fill={GOLD_BRIGHT} fontFamily={MONO} fontSize="10" letterSpacing="1">{fmtMiles(miles)} MI</text>
         </g>
       ) : null}

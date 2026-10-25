@@ -121,7 +121,7 @@ export default function MapView({ people, onSelectPerson }) {
                   key={geo.rsmKey}
                   geography={geo}
                   fill={stateColor(code)}
-                  stroke="${NAVY_DEEP}"
+                  stroke={NAVY_DEEP}
                   strokeWidth={0.5}
                   onClick={() => {
                     setSelectedState(prev => prev === code ? null : code)
