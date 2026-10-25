@@ -485,7 +485,7 @@ export default function AgendaPage({ onNavigate } = {}) {
             <LoadoutPanel bare onChange={refresh} refreshKey={refreshKey} onNavigate={onNavigate} />
           </Panel>
           <Panel heading="Console" style={{ marginBottom: 12 }}>
-            <div className="console-row" style={{ display: 'flex', gap: 0, flexWrap: 'wrap', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+            <div className="console-row" style={{ display: 'flex', gap: 0, flexWrap: 'wrap', alignItems: 'flex-start', justifyContent: 'center', rowGap: 18 }}>
               <ProtocolsPanel onChange={refresh} onNavigate={onNavigate} />
               <RecurringPanel onChange={refresh} />
               <ReleasePanel onChange={refresh} />
