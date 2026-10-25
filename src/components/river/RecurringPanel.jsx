@@ -22,6 +22,7 @@ import { chiToday, fmtClock } from '../../lib/loadout'
 import { INK, INK2, GRAY, PANEL_BORDER, GOLD, GREEN, RED, BLUE, MONO, Label, fmtTime, LABEL, alpha } from './canon'
 import { Instrument, InstrumentGroup, groupMsg } from './Instrument'
 import { hudPrompt, hudConfirm } from '../../lib/dialog'
+import { useConsoleRun, blockedBy } from '../../lib/consoleRun'
 // Add a chore here and it appears as a card. slug is the Harvest note and
 // the session key; label is what David sees. light picks the rule below;
 // group places it (tend = lit dashboard card, timer = plain button).
@@ -116,6 +117,7 @@ export default function RecurringPanel({ onChange }) {
   useEffect(() => { Promise.resolve().then(() => { refresh(); pullLights() }) }, [refresh, pullLights])
   useEffect(() => { const t = setInterval(() => { setNow(Date.now()); pullLights() }, 60_000); return () => clearInterval(t) }, [pullLights])
 
+  const consoleRun = useConsoleRun()
   const byId = new Map(sessions.map(s => [s.event_id, s]))
   const isRunning = (s) => !!(s && s.started_at && !s.stopped_at)
   // The one-at-a-time rule ignores Travel (and Travel ignores it).
@@ -128,6 +130,8 @@ export default function RecurringPanel({ onChange }) {
     try {
       const other = r.concurrent ? null : runningOther(r.slug)
       if (other) { setMsg(`${other.subject} is already running. Stop it first.`); return }
+      const blocked = r.concurrent ? null : blockedBy(consoleRun.running, eid(day, r.slug))
+      if (blocked) { setMsg(blocked); return }
       await upsertSession({ event_id: eid(day, r.slug), day, subject: r.label, started_at: new Date().toISOString(), stopped_at: null })
       setMsg(`${r.label} started`); await refresh(); onChange && onChange()
     } catch (e) { setMsg(`Could not start: ${e.message}`) }

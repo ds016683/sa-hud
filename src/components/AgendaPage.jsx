@@ -487,6 +487,7 @@ export default function AgendaPage({ onNavigate } = {}) {
           <Panel heading="Console" style={{ marginBottom: 12 }}>
             {/* The Stash (David 10/25): off the Loadout, a tall column down the Console's right side; the instrument
                 groups wrap into two tight rows beside it. LoadoutPanel renders the Stash here through a portal. */}
+            <ConsoleRunProvider tick={refreshKey}>
             <div className="console-grid" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 320px', gap: 30, alignItems: 'start' }}>
               <div className="console-row" style={{ display: 'flex', gap: 0, flexWrap: 'wrap', alignItems: 'flex-start', justifyContent: 'space-around', rowGap: 30, alignContent: 'flex-start', padding: '6px 0' }}>
                 <ProtocolsPanel onChange={refresh} onNavigate={onNavigate} />
@@ -495,6 +496,7 @@ export default function AgendaPage({ onNavigate } = {}) {
               </div>
               <div id="console-stash" style={{ minWidth: 0 }} />
             </div>
+            </ConsoleRunProvider>
             <style>{`@media (max-width: 980px) { .console-grid { grid-template-columns: minmax(0, 1fr) !important } }`}</style>
           </Panel>
         </>

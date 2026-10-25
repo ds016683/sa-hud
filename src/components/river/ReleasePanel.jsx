@@ -7,6 +7,7 @@ import { supabase } from '../../lib/supabase'
 import { chiToday, fmtClock } from '../../lib/loadout'
 import { Instrument, InstrumentGroup, groupMsg } from './Instrument'
 import { hudPrompt } from '../../lib/dialog'
+import { useConsoleRun, blockedBy } from '../../lib/consoleRun'
 export const RELEASE_TIMERS = [
   { slug: 'gaming', label: 'Gaming', ask: 'Which game?', icon: Gamepad2 },
   { slug: 'nap',    label: 'Nap', icon: Moon },
@@ -25,6 +26,7 @@ export default function ReleasePanel({ onChange }) {
   const [now, setNow] = useState(() => Date.now())
   const [msg, setMsg] = useState(null)
   const day = chiToday()
+  const consoleRun = useConsoleRun()
   const refresh = useCallback(async () => {
     const { data } = await supabase.from('meeting_sessions').select('event_id,subject,started_at,stopped_at,hours').eq('day', day).like('event_id', 'personal:%')
     setRows(Array.isArray(data) ? data : [])
@@ -39,6 +41,8 @@ export default function ReleasePanel({ onChange }) {
   const start = async (t) => {
     try {
       if (runningAny) { setMsg(`${runningAny.subject} is already running. Stop it first.`); return }
+      const blocked = blockedBy(consoleRun.running, null)
+      if (blocked) { setMsg(blocked); return }
       let detail = null
       if (t.ask) { detail = await hudPrompt(t.ask, '') ; if (detail === null) return; detail = detail.trim() || null }
       const startedAt = new Date()

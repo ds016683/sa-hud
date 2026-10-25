@@ -3,6 +3,7 @@
 // timer or protocol, its reading or icon inside, the light at its corner, the
 // name under it. Groups sit side by side on the Console row.
 import { PANEL_BORDER, GREEN, INK, INK2, GRAY, MONO, SERIF, Label, alpha, GOLD, RED } from './canon'
+import { useConsoleRun } from '../../lib/consoleRun'
 
 export const LEVEL_COLOR = { green: GREEN, gold: GOLD, red: RED, gray: 'rgba(234,241,248,0.25)' }
 
@@ -10,12 +11,15 @@ export function Instrument({ label, sub, reading, unit, icon, light, running, cl
   const lc = light && light.level !== 'gray' ? (LEVEL_COLOR[light.level] || null) : null
   const anim = lc ? (light.blink ? 'inst-breathe-fast' : 'inst-breathe') : ''
   const border = running ? GREEN : lc ? `${alpha(lc, 60)}` : PANEL_BORDER
+  // One on at a time (David 10/25): when something else on the Console is on, this one dulls, hue kept.
+  const { running: consoleRun } = useConsoleRun()
+  const dulled = !!consoleRun && !running
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width, gap: 6, opacity: disabled && !lc ? 0.45 : 1 }}>
-      <button onClick={disabled ? undefined : onClick} title={title || label} className={running ? '' : anim} style={{
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width, gap: 6, opacity: disabled && !lc ? 0.45 : dulled ? 0.42 : 1, transition: 'opacity .35s ease', filter: dulled ? 'saturate(0.85)' : 'none' }}>
+      <button onClick={disabled ? undefined : onClick} title={title || label} className={running ? 'inst-on' : anim} style={{
         position: 'relative', width: 80, height: 80, borderRadius: 20, cursor: disabled ? 'default' : 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 2, padding: 0,
-        border: `1px solid ${border}`, background: running ? 'rgba(67,211,146,0.10)' : 'rgba(255,255,255,0.035)', color: INK,
-        boxShadow: running ? `0 0 0 3px ${alpha(GREEN, 13)}` : 'inset 0 1px 0 rgba(255,255,255,0.04)', '--inst-glow': lc || 'transparent',
+        border: running ? `2px solid ${GREEN}` : `1px solid ${border}`, background: running ? alpha(GREEN, 16) : 'rgba(255,255,255,0.035)', color: INK,
+        boxShadow: running ? `0 0 0 4px ${alpha(GREEN, 14)}, 0 0 28px ${alpha(GREEN, 30)}` : 'inset 0 1px 0 rgba(255,255,255,0.04)', '--inst-glow': lc || 'transparent', transition: 'box-shadow .35s ease, border-color .35s ease, background .35s ease',
       }}>
         {light && onLightClick && <span onClick={(e) => { e.stopPropagation(); onLightClick() }} title={light.text} style={{ position: 'absolute', inset: 0, borderRadius: 20 }} />}
         {reading != null
@@ -23,7 +27,7 @@ export function Instrument({ label, sub, reading, unit, icon, light, running, cl
           : <span style={{ color: running ? GREEN : tone, display: 'inline-flex' }}>{icon}</span>}
         <span style={{ fontFamily: MONO, fontSize: 8.5, letterSpacing: '0.8px', textTransform: 'uppercase', color: running ? GREEN : GRAY }}>{running ? clock : unit || ''}</span>
       </button>
-      <div style={{ fontSize: 12, color: INK, textAlign: 'center', lineHeight: 1.2, whiteSpace: 'nowrap' }}>{label}</div>
+      <div style={{ fontSize: 12, color: running ? GREEN : INK, fontWeight: running ? 600 : 400, textAlign: 'center', lineHeight: 1.2, whiteSpace: 'nowrap' }}>{label}</div>
       <div title={typeof sub === 'string' ? sub : undefined} style={{ fontFamily: MONO, fontSize: 8.5, letterSpacing: '0.6px', color: lc && !running ? lc : GRAY, textAlign: 'center', maxWidth: width + 6, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: -2, minHeight: 11 }}>{sub || ''}</div>
       {extra}
     </div>
@@ -34,6 +38,8 @@ export const INSTRUMENT_CSS = `
 @keyframes inst-breathe { 0%,100% { box-shadow: 0 0 0 0 transparent, inset 0 1px 0 rgba(255,255,255,0.04) } 50% { box-shadow: 0 0 12px 2px color-mix(in srgb, var(--inst-glow) 45%, transparent), inset 0 1px 0 rgba(255,255,255,0.04) } }
 @keyframes inst-breathe-fast { 0%,100% { box-shadow: 0 0 0 0 transparent } 50% { box-shadow: 0 0 14px 3px color-mix(in srgb, var(--inst-glow) 70%, transparent) } }
 .inst-breathe { animation: inst-breathe 2.6s ease-in-out infinite } .inst-breathe-fast { animation: inst-breathe-fast 1.1s ease-in-out infinite }
+@keyframes inst-on { 0%,100% { box-shadow: 0 0 0 4px color-mix(in srgb, var(--hud-pos) 14%, transparent), 0 0 22px color-mix(in srgb, var(--hud-pos) 26%, transparent) } 50% { box-shadow: 0 0 0 5px color-mix(in srgb, var(--hud-pos) 20%, transparent), 0 0 34px color-mix(in srgb, var(--hud-pos) 42%, transparent) } }
+.inst-on { animation: inst-on 2.2s ease-in-out infinite }
 `
 
 export function InstrumentGroup({ label, children, divider = false, footer }) {

@@ -17,6 +17,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { ArrowLeft, ArrowRight, Check, Sunrise, Moon, Play, Pause, Square, Rocket, Send, ExternalLink, SkipForward, SkipBack, RotateCcw, Mic, Music, Sparkles, RefreshCw, ListMusic, X as XIcon } from 'lucide-react'
 import { supabase, reportSoft } from '../../lib/supabase'
+import { useConsoleRun, blockedBy } from '../../lib/consoleRun'
 import { upsertSession, logToHarvest, hoursBetween, startMeetingTimer, stopMeetingTimer } from '../../lib/meetings'
 import { fetchLoadout, equipObjective, equipTask, equip, holster, startWithRoom, resolveObjectiveId, fmtClock, chiToday, SIZES, SLOTS } from '../../lib/loadout'
 import { KIND_COLOR, PURPLE, LABEL, alpha, INK, INK2, GRAY, PANEL_BORDER, GOLD, GOLD_BRIGHT, GREEN, RED, BLUE, MONO, SERIF, S, Label as BaseLabel, Panel, fmtTime } from './canon'
@@ -750,9 +751,12 @@ export default function ProtocolsPanel({ onChange, onNavigate }) {
 
   const running = !!(session?.started_at && !session?.stopped_at)
   const done = !!(session?.stopped_at)
+  const consoleRun = useConsoleRun()
   const start = async () => {
     try {
       if (!running) {
+        const blocked = blockedBy(consoleRun.running, eid(day))
+        if (blocked) { setMsg(blocked); return }
         const { data } = await supabase.from('meeting_sessions').select('event_id,started_at,stopped_at').eq('day', day).like('event_id', 'adhoc:%').is('stopped_at', null).not('started_at', 'is', null)
         const other = (data || []).find(s => s.event_id !== eid(day) && !s.event_id.endsWith(':travel'))
         if (other) { setMsg(`${other.event_id.split(':').pop()} is running. Stop it first.`); return }
