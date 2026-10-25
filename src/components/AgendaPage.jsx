@@ -490,6 +490,8 @@ export default function AgendaPage({ onNavigate } = {}) {
               <RecurringPanel onChange={refresh} />
               <ReleasePanel onChange={refresh} />
             </div>
+            {/* The Stash (David 10/25): off the Loadout, onto the Console, wider cards. LoadoutPanel renders it here through a portal. */}
+            <div id="console-stash" style={{ marginTop: 20 }} />
           </Panel>
         </>
       )}
