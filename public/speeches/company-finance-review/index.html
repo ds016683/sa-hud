@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Company Finance Review Deck</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+/* =========================================================================
+   THIRD HORIZON DECK FRAME (th-deck, the CIP Executive Summary canon)
+   One navy surface, one accent, Lora story beats, Instrument Sans chrome.
+   In-app shell borrowed from the APNC deck mini-app: scaled stage, gold
+   triangle nav, notes, fullscreen, print. The slide itself is canon.
+   ========================================================================= */
+:root {
+  --navy-feat: #0F2334; --navy-deep: #0D1D2C; --navy-900: #16314A; --canvas: #0A1622;
+  --ink-1: #F3F1EA; --ink-2: rgba(243,241,234,.68); --ink-3: rgba(243,241,234,.42);
+  --border: rgba(255,255,255,.12); --fill-1: rgba(255,255,255,.05); --fill-2: rgba(255,255,255,.09);
+  --accent-primary: oklch(0.47 0.115 248);
+  --accent-bright:  oklch(0.82 0.109 248);
+  --gold: #F8C761; --pos: #57BE97; --neg: #DE7E6E; --warn: #B8822E;
+  --serif: "Lora", Georgia, "Times New Roman", serif;
+  --sans: "Instrument Sans", -apple-system, "Segoe UI", sans-serif;
+  --w: 1280px; --h: 720px;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; margin: 0; }
+html, body { background: var(--canvas); color: var(--ink-1); font-family: var(--sans); height: 100%; }
+body { overflow: hidden; }
+
+/* ---- the app: one slide visible, scaled to fit the window ---- */
+.deck { position: fixed; inset: 0; display: grid; grid-template-rows: auto minmax(0, 1fr) auto; grid-template-columns: minmax(0, 1fr); }
+.topbar { display: flex; align-items: center; justify-content: space-between; padding: 14px 32px; }
+.topbar .where { display: flex; align-items: center; gap: 8px; font-size: 10.5px; font-weight: 500; letter-spacing: .22em; text-transform: uppercase; color: var(--ink-3); }
+.topbar .where i { width: 6px; height: 6px; border-radius: 50%; background: var(--gold); }
+.fsbtn { border: 1px solid var(--border); background: var(--fill-1); color: var(--ink-2); border-radius: 999px; padding: 7px 16px; font-family: var(--sans); font-size: 10.5px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; cursor: pointer; }
+.fsbtn:hover { border-color: var(--accent-bright); color: var(--ink-1); }
+.fsbtn:focus-visible, .nav button:focus-visible { outline: 2px solid var(--accent-bright); outline-offset: 2px; }
+:fullscreen .topbar, :fullscreen .nav, :fullscreen .help { display: none !important; }
+:fullscreen .deck { grid-template-rows: minmax(0, 1fr); background: var(--navy-feat); }
+:fullscreen .stagewrap { background: var(--navy-feat); }
+.topbar .counter { font-family: var(--sans); font-size: 10.5px; letter-spacing: .22em; color: var(--ink-3); font-variant-numeric: tabular-nums; }
+.stagewrap { position: relative; min-height: 0; min-width: 0; overflow: hidden; }
+.stage { position: absolute; left: 50%; top: 50%; width: var(--w); height: var(--h); transform-origin: center; }
+
+/* ---- slide surface: fixed 16:9 at 1280x720, nothing scrolls ---- */
+.slide { position: absolute; inset: 0; display: none; flex-direction: column; background: var(--navy-feat); color: var(--ink-1); padding: 44px 66px 46px; overflow: hidden; }
+.slide.on { display: flex; }
+.head { flex: none; }
+.body { flex: 1; min-height: 0; display: flex; align-items: center; }
+.inner { width: 100%; }
+.center { align-self: center; width: 100%; margin: auto 0; }
+
+/* ---- type ---- */
+.subhead { font-family: var(--sans); font-size: 10.5px; font-weight: 500; text-transform: uppercase; letter-spacing: .22em; color: var(--accent-bright); margin-top: 12px; }
+.blocklabel { font-family: var(--sans); font-size: 10.5px; font-weight: 500; text-transform: uppercase; letter-spacing: .22em; color: var(--accent-bright); margin-bottom: 12px; }
+h1.title { font-family: var(--serif); font-size: 35px; font-weight: 500; letter-spacing: -.008em; line-height: 1.1; }
+h1.title em { font-style: italic; color: var(--accent-bright); }
+.para { font-family: var(--serif); font-size: 17px; line-height: 1.62; color: var(--ink-2); max-width: 62ch; margin-bottom: 28px; }
+.para b, .para strong { font-weight: 600; color: var(--ink-1); }
+
+/* ---- data table ---- */
+.data { width: 100%; border-collapse: collapse; font-family: var(--sans); font-size: 12.5px; font-variant-numeric: tabular-nums; }
+.data th, .data td { padding: 6px 9px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+.data th { font-size: 10.5px; font-weight: 500; letter-spacing: .13em; text-transform: uppercase; color: var(--ink-3); text-align: right; padding-bottom: 9px; }
+.data th:first-child { text-align: left; }
+.data tr.sub th { font-size: 8.5px; letter-spacing: .1em; color: var(--ink-3); padding-top: 0; padding-bottom: 7px; border-bottom: 1px solid var(--border); }
+.data thead tr:first-child th { border-bottom: 0; padding-bottom: 2px; }
+.data th:last-child, .data td:last-child { padding-left: 18px; border-left: 1px solid var(--border); }
+.data td { text-align: right; color: var(--ink-2); }
+.data td:first-child { text-align: left; color: var(--ink-2); }
+.data td.indent:first-child { padding-left: 24px; }
+.data tr.group td:first-child { font-size: 10.5px; font-weight: 500; letter-spacing: .13em; text-transform: uppercase; color: var(--accent-bright); padding-top: 13px; }
+.data tr.group td { border-bottom: 0; }
+.data tr.total td { font-weight: 600; color: var(--ink-1); background: var(--fill-1); border-top: 1px solid rgba(255,255,255,.22); }
+.data tr.net td { font-weight: 600; color: var(--ink-1); }
+.data tr.net.final td { font-family: var(--serif); font-size: 14px; background: var(--fill-2); border-top: 1px solid rgba(255,255,255,.22); border-bottom: 0; }
+.data td.neg { color: var(--neg); }
+.data tr.total td.neg, .data tr.net td.neg { color: var(--neg); }
+.data td.tot { color: var(--ink-1); }
+.srcline { font-family: var(--sans); font-size: 10.5px; letter-spacing: .04em; color: var(--ink-3); margin-top: 14px; line-height: 1.5; }
+
+/* ---- footer (every slide): arches-only brand + confidentiality line left, one consolidated context strip right ---- */
+.fLeft { position: absolute; left: 30px; bottom: 16px; display: flex; align-items: center; gap: 12px; }
+.fArches { height: 13px; width: auto; display: block; color: var(--ink-1); } /* the three arches, drawn from the brand mark; color is the frame's ink */
+.legal { font-family: var(--sans); font-size: 7.5px; letter-spacing: .08em; text-transform: uppercase; color: color-mix(in srgb, var(--ink-1) 42%, transparent); white-space: nowrap; }
+.partner { position: absolute; right: 30px; bottom: 16px; font-family: var(--sans); font-size: 7.5px; letter-spacing: .08em; text-transform: uppercase; color: color-mix(in srgb, var(--ink-1) 42%, transparent); white-space: nowrap; }
+
+/* ---- nav: gold triangles, in-app only ---- */
+.nav { display: flex; align-items: center; justify-content: center; gap: 32px; padding: 10px 0 22px; }
+.nav button { background: none; border: none; cursor: pointer; padding: 6px; transition: transform .15s, opacity .15s; }
+.nav button:hover { transform: scale(1.1); }
+.nav button[disabled] { opacity: .2; cursor: default; transform: none; }
+.nav .n { width: 96px; text-align: center; font-family: var(--sans); font-size: 11px; letter-spacing: .12em; color: var(--ink-3); font-variant-numeric: tabular-nums; }
+
+/* ---- presenter notes (press N) ---- */
+.notes { position: fixed; left: 32px; right: 32px; bottom: 76px; display: none; background: var(--navy-900); color: var(--ink-1); border: 1px solid var(--border); border-radius: 6px; padding: 18px 24px; font-family: var(--serif); font-size: 15px; line-height: 1.6; max-height: 34vh; overflow: auto; box-shadow: 0 20px 60px rgba(0,0,0,.45); z-index: 5; }
+.notes.on { display: block; }
+.notes .k { font-family: var(--sans); font-size: 10px; font-weight: 500; letter-spacing: .22em; text-transform: uppercase; color: var(--accent-bright); margin-bottom: 6px; }
+.help { position: fixed; left: 32px; bottom: 28px; font-family: var(--sans); font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-3); }
+
+/* ---- print: one slide per 13.33x7.5in page, chrome-free ---- */
+@page { size: 13.333in 7.5in; margin: 0; }
+@media print {
+  body { overflow: visible; background: none; }
+  .deck { position: static; display: block; }
+  .topbar, .nav, .notes, .help { display: none !important; }
+  .stagewrap { padding: 0; display: block; overflow: visible; }
+  .stage { position: static; width: 13.333in; height: 7.5in; transform: none !important; }
+  .slide { display: flex !important; position: relative; inset: auto; width: 13.333in; height: 7.5in; page-break-after: always; break-inside: avoid; }
+}
+</style>
+</head>
+<body>
+
+<div class="deck">
+  <div class="topbar">
+    <div class="where"><i></i><span id="where">Company Finance Review</span></div>
+    <div style="display:flex;align-items:center;gap:18px"><button class="fsbtn" id="fsbtn" aria-label="Fullscreen">⤢ Fullscreen</button><div class="counter" id="counter">01 / 01</div></div>
+  </div>
+
+  <div class="stagewrap"><div class="stage" id="stage">
+
+    <!-- 01 The pro forma, January through September -->
+    <section class="slide" data-notes="The live pro forma's January through September 2026 columns, read from the SharePoint Finance Binder on October 25 (2025 Pro Forma.xlsx, sheet PRO FORMA 2026). The sheet labels January through April Actual and May through September Projected. Base Revenue $6,111,194 year to date, Expenses $6,121,335, Net Income ($10,141); Forecasted Revenue equals Base Revenue through September. The six practice-area sections sum to $5,977,954, $133,240 below the Base Revenue row, which the sheet carries as its own values. The prior cut of this slide showed the NetSuite income statement from the September financial package (revenue $5,991,568, net loss $319,452); this cut shows the pro forma's own rows.">
+      <div class="head">
+        <h1 class="title">January through September, <em>as the books closed.</em></h1>
+        <div class="subhead">The Pro Forma · January to September Columns · Finance Binder, Read October 25</div>
+      </div>
+      <div class="body"><div class="inner">
+        <table class="data" id="pf"></table>
+        <div class="srcline">Dollars, as the sheet carries them. Source: SharePoint Finance Binder, 2025 Pro Forma.xlsx, sheet PRO FORMA 2026, 2026 block, read October 25, 2026. Actual and Projected are the sheet's own column labels; the Jan to Sep column sums the nine monthly cells. The practice-area rows are the sheet's section rows; Base Revenue, Forecasted Revenue, Expenses and Net Income are its own rows.</div>
+      </div></div>
+      <div class="fLeft"><svg class="fArches" viewBox="-100 -100 444 118" aria-hidden="true"><g fill="currentColor" fill-opacity=".72"><path d="M-98.55 17A100 100 0 1 1 98.55 17A99.06 99.06 0 0 0 -98.55 17Z"/><path transform="translate(122 0)" d="M-98.55 17A100 100 0 1 1 98.55 17A99.06 99.06 0 0 0 -98.55 17Z"/><path transform="translate(244 0)" d="M-98.55 17A100 100 0 1 1 98.55 17A99.06 99.06 0 0 0 -98.55 17Z"/></g></svg><span class="legal">Not for Distribution · Confidential &amp; Proprietary Information · Third Horizon</span></div>
+      <div class="partner">Company Finance Review · Pro Forma 2026 · 1</div>
+    </section>
+
+  </div></div>
+
+  <div class="nav">
+    <button id="prev" aria-label="Previous slide"><svg width="26" height="30" viewBox="0 0 29.4 34"><polygon points="29.4,0 29.4,34 0,17" fill="#F8C761"/></svg></button>
+    <span class="n" id="n">1 / 1</span>
+    <button id="next" aria-label="Next slide"><svg width="26" height="30" viewBox="0 0 29.4 34"><polygon points="0,0 0,34 29.4,17" fill="#F8C761"/></svg></button>
+  </div>
+</div>
+<div class="notes" id="notes"><div class="k">Notes</div><div id="notesText"></div></div>
+<div class="help">← → space · home end · N notes · F fullscreen · P print</div>
+
+<script>
+(() => {
+  // ---- the table: the live pro forma's January through September 2026 columns, dollars ----
+  // Source: SharePoint THS Finance Binder, 2025 Pro Forma.xlsx, sheet PRO FORMA 2026 (2026 block, columns U to AC),
+  // read October 25, 2026. Row labels are the sheet's own. The Jan to Sep column sums the nine monthly cells.
+  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep"];
+  const monthLabels = ["Actual", "Actual", "Actual", "Actual", "Projected", "Projected", "Projected", "Projected", "Projected"];
+  const rows = [{"g": "Revenue"}, {"l": "BEH - Behavioral Health", "v": [256346, 217730, 217243, 295991, 245837, 238905, 302532, 266930, 274453], "s": 2315968, "i": 1}, {"l": "PAD - Payment Design & Analytics", "v": [30033, 37922, 45983, 40193, 27583, 39752, 58033, 35139, 57500], "s": 372137, "i": 1}, {"l": "MAR - Market Analytics", "v": [240792, 308292, 144125, 209713, 258006, 334423, 246980, 221564, 275514], "s": 2239407, "i": 1}, {"l": "WWB - Workplace Well-Being", "v": [7500, 2500, 32500, 40000, 51500, 48825, 3825, 5525, 11325], "s": 203500, "i": 1}, {"l": "CMH - Community Health", "v": [55238, 66905, 156905, 58905, 66148, 97896, 89396, 82062, 18687], "s": 692142, "i": 1}, {"l": "Third Horizon - General", "v": [8333, 7500, 7500, 32500, 22500, 20425, 9541, 37500, 9000], "s": 154799, "i": 1}, {"l": "Base Revenue", "v": [618910, 662015, 602946, 770017, 671574, 780225, 710307, 648720, 646479], "s": 6111194, "t": 1}, {"l": "Forecasted Revenue", "v": [618910, 662015, 602946, 770017, 671574, 780225, 710307, 648720, 646479], "s": 6111194, "n": 1}, {"l": "Expenses", "v": [677213, 674453, 617627, 703203, 706557, 720641, 722660, 669959, 629022], "s": 6121335, "t": 1}, {"l": "Net Income", "v": [-58303, -12438, -14681, 66814, -34983, 59584, -12353, -21239, 17457], "s": -10141, "n": 1, "f": 1}];
+  const fmt = (x) => (x < 0 ? "(" + Math.abs(x).toLocaleString("en-US") + ")" : x.toLocaleString("en-US"));
+  const cell = (x, tot) => `<td class="${x < 0 ? "neg" : ""}${tot ? " tot" : ""}">${fmt(x)}</td>`;
+  let html = `<thead><tr><th></th>${months.map((m) => `<th>${m}</th>`).join("")}<th>Jan to Sep</th></tr>`;
+  html += `<tr class="sub"><th></th>${monthLabels.map((m) => `<th>${m}</th>`).join("")}<th></th></tr></thead><tbody>`;
+  for (const r of rows) {
+    if (r.g) { html += `<tr class="group"><td colspan="11">${r.g}</td></tr>`; continue; }
+    const cls = [r.t ? "total" : "", r.n ? "net" : "", r.f ? "final" : ""].join(" ").trim();
+    html += `<tr class="${cls}"><td class="${r.i ? "indent" : ""}">${r.l}</td>${r.v.map((x) => cell(x)).join("")}${cell(r.s, true)}</tr>`;
+  }
+  document.getElementById("pf").innerHTML = html + "</tbody>";
+
+  // ---- the frame ----
+  const slides = [...document.querySelectorAll('.slide')];
+  const N = slides.length;
+  const pad = (n) => String(n).padStart(2, '0');
+  let i = 0, notesOn = false;
+  const stage = document.getElementById('stage');
+  const notes = document.getElementById('notes');
+  const fit = () => {
+    const wrap = stage.parentElement.getBoundingClientRect();
+    const fs = !!document.fullscreenElement;
+    const s = Math.min((wrap.width - (fs ? 0 : 64)) / 1280, wrap.height / 720, fs ? 10 : 1.4);
+    stage.style.transform = `translate(-50%, -50%) scale(${s})`;
+  };
+  const show = (k, push = true) => {
+    i = Math.max(0, Math.min(N - 1, k));
+    slides.forEach((s, n) => s.classList.toggle('on', n === i));
+    document.getElementById('counter').textContent = `${pad(i + 1)} / ${pad(N)}`;
+    document.getElementById('n').textContent = `${i + 1} / ${N}`;
+    document.getElementById('prev').disabled = i === 0;
+    document.getElementById('next').disabled = i === N - 1;
+    document.getElementById('notesText').textContent = slides[i].dataset.notes || '';
+    if (push) { try { history.replaceState(null, '', `#${i + 1}`); } catch (e) {} }
+  };
+  const next = () => show(i + 1);
+  const prev = () => show(i - 1);
+  const fromHash = () => { const h = parseInt(location.hash.slice(1), 10); show(Number.isFinite(h) ? h - 1 : 0, false); };
+  const toggleFs = () => { try { document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen().catch(() => {}); } catch (e) {} };
+  document.getElementById('fsbtn').onclick = toggleFs;
+  document.addEventListener('fullscreenchange', () => setTimeout(fit, 50));
+  document.getElementById('prev').onclick = prev;
+  document.getElementById('next').onclick = next;
+  window.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') { e.preventDefault(); next(); }
+    else if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); prev(); }
+    else if (e.key === 'Home') show(0);
+    else if (e.key === 'End') show(N - 1);
+    else if (e.key.toLowerCase() === 'n') { notesOn = !notesOn; notes.classList.toggle('on', notesOn); }
+    else if (e.key.toLowerCase() === 'f') toggleFs();
+    else if (e.key.toLowerCase() === 'p') window.print();
+  });
+  window.addEventListener('hashchange', fromHash);
+  window.addEventListener('resize', fit);
+  fit(); fromHash();
+})();
+</script>
+
+</body>
+</html>
