@@ -6,24 +6,24 @@ import { PANEL_BORDER, GREEN, INK, INK2, GRAY, MONO, SERIF, Label, alpha, GOLD, 
 
 export const LEVEL_COLOR = { green: GREEN, gold: GOLD, red: RED, gray: 'rgba(234,241,248,0.25)' }
 
-export function Instrument({ label, sub, reading, unit, icon, light, running, clock, tone = INK2, onClick, onLightClick, disabled, title, extra, width = 78 }) {
+export function Instrument({ label, sub, reading, unit, icon, light, running, clock, tone = INK2, onClick, onLightClick, disabled, title, extra, width = 96 }) {
   const lc = light && light.level !== 'gray' ? (LEVEL_COLOR[light.level] || null) : null
   const anim = lc ? (light.blink ? 'inst-breathe-fast' : 'inst-breathe') : ''
   const border = running ? GREEN : lc ? `${alpha(lc, 60)}` : PANEL_BORDER
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width, gap: 6, opacity: disabled && !lc ? 0.45 : 1 }}>
       <button onClick={disabled ? undefined : onClick} title={title || label} className={running ? '' : anim} style={{
-        position: 'relative', width: 62, height: 62, borderRadius: 14, cursor: disabled ? 'default' : 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 2, padding: 0,
+        position: 'relative', width: 80, height: 80, borderRadius: 20, cursor: disabled ? 'default' : 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 2, padding: 0,
         border: `1px solid ${border}`, background: running ? 'rgba(67,211,146,0.10)' : 'rgba(255,255,255,0.035)', color: INK,
         boxShadow: running ? `0 0 0 3px ${alpha(GREEN, 13)}` : 'inset 0 1px 0 rgba(255,255,255,0.04)', '--inst-glow': lc || 'transparent',
       }}>
-        {light && onLightClick && <span onClick={(e) => { e.stopPropagation(); onLightClick() }} title={light.text} style={{ position: 'absolute', inset: 0, borderRadius: 14 }} />}
+        {light && onLightClick && <span onClick={(e) => { e.stopPropagation(); onLightClick() }} title={light.text} style={{ position: 'absolute', inset: 0, borderRadius: 20 }} />}
         {reading != null
-          ? <span style={{ fontFamily: SERIF, fontSize: 21, lineHeight: 1, color: reading === '—' ? GRAY : '#fff' }}>{reading}</span>
+          ? <span style={{ fontFamily: SERIF, fontSize: 26, lineHeight: 1, color: reading === '—' ? GRAY : '#fff' }}>{reading}</span>
           : <span style={{ color: running ? GREEN : tone, display: 'inline-flex' }}>{icon}</span>}
         <span style={{ fontFamily: MONO, fontSize: 8.5, letterSpacing: '0.8px', textTransform: 'uppercase', color: running ? GREEN : GRAY }}>{running ? clock : unit || ''}</span>
       </button>
-      <div style={{ fontSize: 11, color: INK, textAlign: 'center', lineHeight: 1.2, whiteSpace: 'nowrap' }}>{label}</div>
+      <div style={{ fontSize: 12, color: INK, textAlign: 'center', lineHeight: 1.2, whiteSpace: 'nowrap' }}>{label}</div>
       <div title={typeof sub === 'string' ? sub : undefined} style={{ fontFamily: MONO, fontSize: 8.5, letterSpacing: '0.6px', color: lc && !running ? lc : GRAY, textAlign: 'center', maxWidth: width + 6, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: -2, minHeight: 11 }}>{sub || ''}</div>
       {extra}
     </div>
@@ -38,10 +38,10 @@ export const INSTRUMENT_CSS = `
 
 export function InstrumentGroup({ label, children, divider = false, footer }) {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 10, padding: divider ? '0 0 0 22px' : 0, marginLeft: divider ? 22 : 0, borderLeft: divider ? `1px solid ${PANEL_BORDER}` : 'none' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 10, padding: divider ? '0 0 0 26px' : 0, marginLeft: divider ? 26 : 0, borderLeft: divider ? `1px solid ${PANEL_BORDER}` : 'none' }}>
       <style>{INSTRUMENT_CSS}</style>
       <Label style={{ marginBottom: 0, textAlign: 'center' }}>{label}</Label>
-      <div style={{ display: 'flex', gap: 4, alignItems: 'flex-start', justifyContent: 'center' }}>{children}</div>
+      <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start', justifyContent: 'center' }}>{children}</div>
       {footer}
     </div>
   )

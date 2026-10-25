@@ -75,7 +75,7 @@ export default function ReleasePanel({ onChange }) {
         const liveMin = running ? (now - new Date(r.started_at).getTime()) / 60000 : 0
         const todayMin = runsFor(t.slug).filter(x => x.stopped_at).reduce((s, x) => s + (Number(x.hours) || 0) * 60, 0) + liveMin
         const Icon = running ? Square : (t.icon || Play)
-        return <Instrument key={t.slug} label={running ? r.subject : t.label} sub={running ? 'tap to stop' : todayMin > 0 ? `${fmtClock(todayMin)} today` : ''} icon={<Icon size={20} />} running={running} clock={fmtClock(liveMin)} tone={TEAL} onClick={() => running ? stop(t) : start(t)} />
+        return <Instrument key={t.slug} label={running ? r.subject : t.label} sub={running ? 'tap to stop' : todayMin > 0 ? `${fmtClock(todayMin)} today` : ''} icon={<Icon size={24} />} running={running} clock={fmtClock(liveMin)} tone={TEAL} onClick={() => running ? stop(t) : start(t)} />
       })}
     </InstrumentGroup>
   )

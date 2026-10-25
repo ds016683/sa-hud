@@ -224,7 +224,7 @@ export default function RecurringPanel({ onChange }) {
       <InstrumentGroup label="Tending" divider>
         {RECURRING.filter(r => r.group === 'tend').map(r => {
           const s = byId.get(eid(day, r.slug)); const running = isRunning(s); const mins = minutesOf(s)
-          if (!r.light) { const Icon = running ? Square : (r.icon || Play); return <Instrument key={r.slug} label={r.label} sub={running ? 'tap to stop' : mins > 0 ? `${fmtClock(mins)} today` : ''} icon={<Icon size={20} />} running={running} clock={fmtClock(mins)} onClick={() => running ? stop(r) : start(r)} /> }
+          if (!r.light) { const Icon = running ? Square : (r.icon || Play); return <Instrument key={r.slug} label={r.label} sub={running ? 'tap to stop' : mins > 0 ? `${fmtClock(mins)} today` : ''} icon={<Icon size={24} />} running={running} clock={fmtClock(mins)} onClick={() => running ? stop(r) : start(r)} /> }
           const rule = RULES[r.light](lights)
           // The light carries the state (David, 10/14); words only when there is no reading or something is being overlooked.
           const sub = running ? 'tap to stop' : !lights ? 'reading…' : rule.level === 'gray' ? 'no reading' : rule.blink ? 'something is being overlooked' : (mins > 0 ? `${fmtClock(mins)} today` : '')
@@ -239,9 +239,9 @@ export default function RecurringPanel({ onChange }) {
         {RECURRING.filter(r => r.group === 'timer' && !r.travel).map(r => {
           const s = byId.get(eid(day, r.slug)); const running = isRunning(s); const mins = minutesOf(s)
           const Icon = running ? Square : (r.icon || Play)
-          return <Instrument key={r.slug} label={r.label} sub={running ? 'tap to stop' : mins > 0 ? `${fmtClock(mins)} today` : ''} icon={<Icon size={20} />} running={running} clock={fmtClock(mins)} onClick={() => running ? stop(r) : start(r)} />
+          return <Instrument key={r.slug} label={r.label} sub={running ? 'tap to stop' : mins > 0 ? `${fmtClock(mins)} today` : ''} icon={<Icon size={24} />} running={running} clock={fmtClock(mins)} onClick={() => running ? stop(r) : start(r)} />
         })}
-        <Instrument label="Travel" sub={travelSub} title={travelTitle} icon={travelRunning ? <Square size={20} /> : <Plane size={20} />} running={travelRunning} clock={fmtClock(travelMin)} tone={BLUE} onClick={travelTap}
+        <Instrument label="Travel" sub={travelSub} title={travelTitle} icon={travelRunning ? <Square size={24} /> : <Plane size={24} />} running={travelRunning} clock={fmtClock(travelMin)} tone={BLUE} onClick={travelTap}
           light={nextLeg && !travelRunning ? { level: legState === 'live' ? 'green' : 'gold', text: travelTitle } : null}
           extra={<span onClick={openTravelEdit} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontFamily: MONO, fontSize: 10.5, letterSpacing: '1px', textTransform: 'uppercase', color: LABEL, cursor: 'pointer' }}><Pencil size={9} /> edit span</span>} />
       </InstrumentGroup>

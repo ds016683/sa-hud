@@ -138,7 +138,7 @@ export async function clockedMinutes(objectiveId) {
 // leaves the board (parked, clock holstered) and wears the 'stashed' tag so
 // it sits in the stack instead of the Missions Inventory. Load puts it back
 // on the board; Return sends it to the inventory.
-export const STASH_MAX = 10
+export const STASH_MAX = 5   // David 10/25: five uniform slots on the Console
 export async function fetchStash() {
   const rows = await q(supabase.from('objectives').select('id,title,tags,effort,due_date,description,north_star,captured_at,updated_at').eq('state', 'parked').contains('tags', ['stashed']).is('deleted_at', null).order('updated_at', { ascending: false }))
   const links = rows.length ? await q(supabase.from('project_tasks').select('id,objective_id,project_id,text').in('objective_id', rows.map(r => r.id))) : []

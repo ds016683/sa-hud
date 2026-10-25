@@ -768,8 +768,8 @@ export default function ProtocolsPanel({ onChange, onNavigate }) {
   return (
     <InstrumentGroup label="Protocols" footer={groupMsg(msg, msg && msg.startsWith('Could not'))}>
       {open && <Protocol day={day} session={session} onClose={() => { setOpen(false); refresh() }} onFinished={finished} onChange={onChange} onNavigate={onNavigate} />}
-      <Instrument label="Morning" sub={running ? 'tap to resume' : done ? `${fmtTime(session.stopped_at)} · ${fmtClock(liveMin)}` : (protocolLight('morning', now) ? { green: 'begin the day', gold: 'running late', red: 'overdue' }[protocolLight('morning', now).level] : 'from 5:00 AM')} icon={done ? <Check size={20} /> : <Sunrise size={20} />} running={running} clock={fmtClock(liveMin)} tone={done ? GREEN : GOLD} onClick={start} light={!done && !running ? protocolLight('morning', now) : null} />
-      <Instrument label="Evening" sub={protocolLight('evening', now) ? { green: 'close the day', gold: 'running late', red: 'overdue' }[protocolLight('evening', now).level] : 'from 6:00 PM'} icon={<Moon size={20} />} tone={BLUE} disabled light={protocolLight('evening', now)} />
+      <Instrument label="Morning" sub={running ? 'tap to resume' : done ? `${fmtTime(session.stopped_at)} · ${fmtClock(liveMin)}` : (protocolLight('morning', now) ? { green: 'begin the day', gold: 'running late', red: 'overdue' }[protocolLight('morning', now).level] : 'from 5:00 AM')} icon={done ? <Check size={24} /> : <Sunrise size={24} />} running={running} clock={fmtClock(liveMin)} tone={done ? GREEN : GOLD} onClick={start} light={!done && !running ? protocolLight('morning', now) : null} />
+      <Instrument label="Evening" sub={protocolLight('evening', now) ? { green: 'close the day', gold: 'running late', red: 'overdue' }[protocolLight('evening', now).level] : 'from 6:00 PM'} icon={<Moon size={24} />} tone={BLUE} disabled light={protocolLight('evening', now)} />
     </InstrumentGroup>
   )
 }

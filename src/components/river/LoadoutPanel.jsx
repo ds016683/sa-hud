@@ -278,7 +278,7 @@ function StashStack({ items, act, onOpen, dropFromLoadout, wide = false, column 
   const [over, setOver] = useState(false)
   return (
     <div onDragOver={e => { e.preventDefault(); setOver(true) }} onDragLeave={() => setOver(false)} onDrop={e => { setOver(false); const d = readDrag(e); if (d.kind === 'loadout' && dropFromLoadout) { e.preventDefault(); dropFromLoadout(d.id) } }}
-      style={{ ...slotBox(over ? BLUE : `${alpha(BLUE, 27)}`, over ? 'rgba(169,201,232,0.10)' : 'rgba(169,201,232,0.025)'), minHeight: 0, gap: tall ? 8 : 6, padding: tall ? '14px 14px' : '12px 12px', height: column ? '100%' : undefined, boxSizing: 'border-box' }}>
+      style={{ ...slotBox(over ? BLUE : `${alpha(BLUE, 27)}`, over ? 'rgba(169,201,232,0.10)' : 'rgba(169,201,232,0.025)'), minHeight: 0, gap: tall ? 8 : 6, padding: tall ? '14px 14px' : '12px 12px', boxSizing: 'border-box', alignSelf: 'start' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
         <Label style={{ marginBottom: 0, color: BLUE }}>Stash</Label><span style={{ flex: 1 }} />
         
@@ -286,7 +286,7 @@ function StashStack({ items, act, onOpen, dropFromLoadout, wide = false, column 
       </div>
       <div style={{ display: 'grid', gap: wide ? 8 : 4, flex: 1, gridTemplateColumns: wide ? 'repeat(auto-fill, minmax(230px, 1fr))' : undefined, alignContent: 'start' }}>
         {rows.map((it, i) => it ? (
-          <div key={it.id} draggable onDragStart={e => { e.dataTransfer.setData('text/plain', dragPayload('stash', it.id)); e.dataTransfer.effectAllowed = 'move' }} title="Drag onto the Loadout" style={{ display: 'flex', alignItems: tall ? 'flex-start' : 'center', gap: 8, padding: tall ? '9px 10px' : '4px 8px', borderRadius: 8, border: `1px solid ${alpha(BLUE, 33)}`, background: 'rgba(169,201,232,0.06)', minWidth: 0, cursor: 'grab' }}>
+          <div key={it.id} draggable onDragStart={e => { e.dataTransfer.setData('text/plain', dragPayload('stash', it.id)); e.dataTransfer.effectAllowed = 'move' }} title="Drag onto the Loadout" style={{ display: 'flex', alignItems: 'center', gap: 8, height: tall ? 64 : undefined, boxSizing: 'border-box', padding: tall ? '8px 10px' : '4px 8px', borderRadius: 8, border: `1px solid ${alpha(BLUE, 33)}`, background: 'rgba(169,201,232,0.06)', minWidth: 0, cursor: 'grab' }}>
             <BadgeMedallion id={badgeFor(it)} size={20} color={colorOf(it.kind, it.size)} />
             <div onClick={() => onOpen(it)} title={`${it.title}${it.north_star ? ` · ${it.north_star}` : ''}`} style={{ flex: 1, minWidth: 0, cursor: 'pointer', display: 'grid', gap: 0 }}>
               <div style={tall ? { fontFamily: SERIF, fontWeight: 500, fontSize: 13.5, color: INK, lineHeight: 1.25, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' } : { fontFamily: SERIF, fontWeight: 500, fontSize: 12.5, color: INK, lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{it.kind === 'Main Mission' ? (it.task_text || it.title).replace(/^\s*\d+\s*[·.:)-]\s*/, '') : it.title}</div>
@@ -296,7 +296,7 @@ function StashStack({ items, act, onOpen, dropFromLoadout, wide = false, column 
             <button onClick={() => act(() => returnToInventory(it.id), `Returned to the inventory: ${it.title}`)} title="Return to the Missions Inventory" style={{ ...btn(INK2), padding: '3px 6px' }}><Undo2 size={10} /></button>
           </div>
         ) : (
-          <div key={`empty-${i}`} style={{ height: tall ? 46 : 30, borderRadius: 8, border: `1px dashed ${alpha(GREEN, 33)}`, display: 'flex', alignItems: 'center', paddingLeft: 10, fontFamily: MONO, fontSize: 8, letterSpacing: '1px', textTransform: 'uppercase', color: `${alpha(GREEN, 60)}` }}>{i + 1}</div>
+          <div key={`empty-${i}`} style={{ height: tall ? 64 : 30, boxSizing: 'border-box', borderRadius: 8, border: `1px dashed ${alpha(GREEN, 33)}`, display: 'flex', alignItems: 'center', paddingLeft: 10, fontFamily: MONO, fontSize: 8, letterSpacing: '1px', textTransform: 'uppercase', color: `${alpha(GREEN, 60)}` }}>{i + 1}</div>
         ))}
       </div>
     </div>
@@ -513,23 +513,7 @@ export default function LoadoutPanel({ onChange, refreshKey = 0, onNavigate, bar
             </div>
           )}
 
-          {L.sessions.length > 0 && (
-            <div style={{ marginTop: 12, borderTop: `1px solid ${PANEL_BORDER}`, paddingTop: 8 }}>
-              <Label>Sessions · no slot taken</Label>
-              {L.sessions.map(it => (
-                <div key={it.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '5px 0', flexWrap: 'wrap' }}>
-                  {it.equipped && <span style={{ width: 7, height: 7, borderRadius: 99, background: GREEN, boxShadow: `0 0 0 3px ${alpha(GREEN, 20)}` }} />}
-                  <span onClick={() => setRelated(it)} style={{ fontSize: 13, color: INK2, flex: 1, minWidth: 200, cursor: 'pointer' }}>{it.title}</span>
-                  <span style={{ fontFamily: MONO, fontSize: 10, color: it.equipped ? GREEN : GRAY, letterSpacing: '0.6px' }}>{it.equipped ? 'running · ' : 'holstered · '}{fmtClock(it.minutes_today)}</span>
-                  {it.equipped
-                    ? <button onClick={() => act(() => holster(it.id), `Timer off: ${it.title}`)} style={btn(GREEN, true)}><Pause size={11} /> Timer on</button>
-                    : <button onClick={() => act(() => equip(it.id), `Timer on: ${it.title}`)} style={btn(INK2)}><Play size={11} /> Timer off</button>}
-                  <button onClick={() => act(() => stash(it.id), `Suspended: ${it.title}`)} style={btn(INK2)}><Archive size={11} /> Suspend</button>
-                  <button onClick={() => setOpen(it)} style={btn(GOLD)}><PackageCheck size={11} /> Extract</button>
-                </div>
-              ))}
-            </div>
-          )}
+          {/* Sessions holder removed from the Board (David 10/25); a session's item still carries its clock on the Activity Board. */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 10, flexWrap: 'wrap' }}>
             <button onClick={() => setLogOpen(true)} style={btn(BLUE)}><ScrollText size={11} /> Activity Log</button>
             <button onClick={() => setFilesOpen({})} style={btn(BLUE)}><Paperclip size={11} /> Live Files{Object.values(clips).reduce((a, b) => a + b, 0) ? ` · ${Object.values(clips).reduce((a, b) => a + b, 0)}` : ''}</button>
