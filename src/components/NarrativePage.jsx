@@ -5,6 +5,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { RefreshCw, Printer, CheckCircle2, Circle, Scissors, Sparkles, ExternalLink } from 'lucide-react'
 import { supabase } from '../lib/supabase'
+import MilesAnalytics from './AnalyticsPage'
 import {
   INK, INK2, GRAY, NAVY_DEEP, PANEL_BORDER, GOLD, GOLD_BRIGHT, BLUE, RED, MONO, SERIF,
   S, Eyebrow, chiToday, fmtTime, fmtDay, weekday, LABEL } from './river/canon'
@@ -110,6 +111,9 @@ export default function NarrativePage() {
   const [row, setRow] = useState(null)            // latest row for the day
   const [count, setCount] = useState(0)           // updates written that day
   const [loading, setLoading] = useState(true)
+  // Narrative and Analytics (David 10/25): two views of the same day on one page.
+  const [view, setView] = useState(() => { try { return localStorage.getItem('narrative-view') === 'analytics' ? 'analytics' : 'narrative' } catch { return 'narrative' } })
+  const pickView = (v) => { setView(v); try { localStorage.setItem('narrative-view', v) } catch { /* no-op */ } }
   const [error, setError] = useState(null)
 
   const loadDays = useCallback(async () => {
@@ -173,13 +177,24 @@ export default function NarrativePage() {
 
       {/* Header */}
       <div style={{ marginBottom: 18 }}>
-        <Eyebrow>Narrative</Eyebrow>
-        <h1 style={S.h1}>{weekday(day)}&rsquo;s Narrative</h1>
-        <div style={S.sub}>{subLine}</div>
-        {error && <div className="no-print" style={{ ...S.sub, color: RED, marginTop: 6 }}>UPDATE FAILED · {error}</div>}
+        <Eyebrow>Narrative and Analytics</Eyebrow>
+        <div style={{ display: 'flex', alignItems: 'flex-end', gap: 16, flexWrap: 'wrap' }}>
+          <h1 style={{ ...S.h1, flex: 1, minWidth: 240 }}>{weekday(day)}&rsquo;s {view === 'analytics' ? 'Miles' : 'Narrative'}</h1>
+          <div className="no-print" style={{ display: 'inline-flex', border: `1px solid ${PANEL_BORDER}`, borderRadius: 999, overflow: 'hidden', marginBottom: 4 }}>
+            {[['narrative', 'Narrative'], ['analytics', 'Analytics']].map(([id, label]) => (
+              <button key={id} onClick={() => pickView(id)} style={{ fontFamily: MONO, fontSize: 10.5, letterSpacing: '0.1em', textTransform: 'uppercase', padding: '7px 16px', border: 'none', cursor: 'pointer', background: view === id ? 'rgba(138,202,255,0.15)' : 'transparent', color: view === id ? INK : INK2 }}>{label}</button>
+            ))}
+          </div>
+        </div>
+        {view === 'narrative' && <div style={S.sub}>{subLine}</div>}
+        {view === 'analytics' && <div style={S.sub}>the composition of the day's miles, and the same data over time</div>}
+        {error && view === 'narrative' && <div className="no-print" style={{ ...S.sub, color: RED, marginTop: 6 }}>UPDATE FAILED · {error}</div>}
       </div>
 
+      {view === 'analytics' && <MilesAnalytics day={day} onDay={setDay} />}
+
       {/* Controls */}
+      {view === 'narrative' && <>
       <div className="no-print" style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 14 }}>
         <select value={day} onChange={(e) => setDay(e.target.value)} style={control({ paddingRight: 10, appearance: 'auto' })}>
           {dayOptions.map((d) => (
@@ -294,6 +309,7 @@ export default function NarrativePage() {
       )}
 
       <DayNotes day={day} />
+      </>}
     </div>
   )
 }
