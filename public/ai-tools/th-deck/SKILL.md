@@ -87,6 +87,14 @@ them from Google Fonts with real fallbacks (Georgia / -apple-system).
 - Brand lives in the FOOTER, not a top bar (David 8/20): the three arches
   alone, no spelled-out wordmark, bottom-left at ~13px tall, followed by the
   confidentiality line. The top of the slide belongs to the headline.
+- The arches are an inline SVG, never a glyph stand-in and never thin strokes:
+  three overlapping crescents drawn from the brand mark. Each crescent is an
+  outer circle of radius 1 and an inner circle of radius 0.99 centered 0.27
+  below it, so the tips land at y 0.17; the three centers sit 1.22 apart. The
+  fill is currentColor at .72 opacity, so the overlaps stack denser as in the
+  mark, and the color is the frame's ink (`--ink-1`), never gold. Copy the
+  `<svg class="fArches">` block from `references/template.html` verbatim into
+  every slide's footer; the `.fArches` rule sizes it (13px tall).
 - Confidentiality line, bottom-left beside the arches, every slide, verbatim:
   `Not for Distribution · Confidential & Proprietary Information · Third Horizon`
   (7.5px at 1280 scale, uppercase, 0.08em, ink at 42% opacity).
