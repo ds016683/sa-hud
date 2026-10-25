@@ -485,13 +485,17 @@ export default function AgendaPage({ onNavigate } = {}) {
             <LoadoutPanel bare onChange={refresh} refreshKey={refreshKey} onNavigate={onNavigate} />
           </Panel>
           <Panel heading="Console" style={{ marginBottom: 12 }}>
-            <div className="console-row" style={{ display: 'flex', gap: 0, flexWrap: 'wrap', alignItems: 'flex-start', justifyContent: 'center', rowGap: 18 }}>
-              <ProtocolsPanel onChange={refresh} onNavigate={onNavigate} />
-              <RecurringPanel onChange={refresh} />
-              <ReleasePanel onChange={refresh} />
+            {/* The Stash (David 10/25): off the Loadout, a tall column down the Console's right side; the instrument
+                groups wrap into two tight rows beside it. LoadoutPanel renders the Stash here through a portal. */}
+            <div className="console-grid" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 300px', gap: 26, alignItems: 'stretch' }}>
+              <div className="console-row" style={{ display: 'flex', gap: 0, flexWrap: 'wrap', alignItems: 'flex-start', justifyContent: 'flex-start', rowGap: 22, alignContent: 'flex-start' }}>
+                <ProtocolsPanel onChange={refresh} onNavigate={onNavigate} />
+                <RecurringPanel onChange={refresh} />
+                <ReleasePanel onChange={refresh} />
+              </div>
+              <div id="console-stash" style={{ minWidth: 0 }} />
             </div>
-            {/* The Stash (David 10/25): off the Loadout, onto the Console, wider cards. LoadoutPanel renders it here through a portal. */}
-            <div id="console-stash" style={{ marginTop: 20 }} />
+            <style>{`@media (max-width: 980px) { .console-grid { grid-template-columns: minmax(0, 1fr) !important } }`}</style>
           </Panel>
         </>
       )}

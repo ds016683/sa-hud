@@ -271,31 +271,32 @@ function AdHocSlot({ item, act, onDispatch, onOpen, onChanged, onRecall }) {
 // Each row is the item's vitals as a header: badge, title, kind, type. Click
 // opens its page. Load puts it on the Loadout; Return sends it to the
 // Missions Inventory.
-function StashStack({ items, act, onOpen, dropFromLoadout, wide = false }) {
+function StashStack({ items, act, onOpen, dropFromLoadout, wide = false, column = false }) {
+  const tall = wide || column
   const rows = [...(items || []).slice(0, STASH_MAX)]
   while (rows.length < STASH_MAX) rows.push(null)
   const [over, setOver] = useState(false)
   return (
     <div onDragOver={e => { e.preventDefault(); setOver(true) }} onDragLeave={() => setOver(false)} onDrop={e => { setOver(false); const d = readDrag(e); if (d.kind === 'loadout' && dropFromLoadout) { e.preventDefault(); dropFromLoadout(d.id) } }}
-      style={{ ...slotBox(over ? BLUE : `${alpha(BLUE, 27)}`, over ? 'rgba(169,201,232,0.10)' : 'rgba(169,201,232,0.025)'), minHeight: 0, gap: wide ? 10 : 6, padding: wide ? '14px 16px' : '12px 12px' }}>
+      style={{ ...slotBox(over ? BLUE : `${alpha(BLUE, 27)}`, over ? 'rgba(169,201,232,0.10)' : 'rgba(169,201,232,0.025)'), minHeight: 0, gap: tall ? 8 : 6, padding: tall ? '14px 14px' : '12px 12px', height: column ? '100%' : undefined, boxSizing: 'border-box' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
         <Label style={{ marginBottom: 0, color: BLUE }}>Stash</Label><span style={{ flex: 1 }} />
-        {wide && <span style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '0.8px', color: GRAY, marginRight: 12 }}>drag a card onto the Loadout, or Load</span>}
+        
         <span style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '0.8px', color: GRAY }}>{(items || []).length} of {STASH_MAX}</span>
       </div>
-      <div style={{ display: 'grid', gap: wide ? 8 : 4, flex: 1, gridTemplateColumns: wide ? 'repeat(auto-fill, minmax(230px, 1fr))' : undefined }}>
+      <div style={{ display: 'grid', gap: wide ? 8 : 4, flex: 1, gridTemplateColumns: wide ? 'repeat(auto-fill, minmax(230px, 1fr))' : undefined, alignContent: 'start' }}>
         {rows.map((it, i) => it ? (
-          <div key={it.id} draggable onDragStart={e => { e.dataTransfer.setData('text/plain', dragPayload('stash', it.id)); e.dataTransfer.effectAllowed = 'move' }} title="Drag onto the Loadout" style={{ display: 'flex', alignItems: wide ? 'flex-start' : 'center', gap: 8, padding: wide ? '10px 10px' : '4px 8px', borderRadius: 8, border: `1px solid ${alpha(BLUE, 33)}`, background: 'rgba(169,201,232,0.06)', minWidth: 0, cursor: 'grab' }}>
+          <div key={it.id} draggable onDragStart={e => { e.dataTransfer.setData('text/plain', dragPayload('stash', it.id)); e.dataTransfer.effectAllowed = 'move' }} title="Drag onto the Loadout" style={{ display: 'flex', alignItems: tall ? 'flex-start' : 'center', gap: 8, padding: tall ? '9px 10px' : '4px 8px', borderRadius: 8, border: `1px solid ${alpha(BLUE, 33)}`, background: 'rgba(169,201,232,0.06)', minWidth: 0, cursor: 'grab' }}>
             <BadgeMedallion id={badgeFor(it)} size={20} color={colorOf(it.kind, it.size)} />
             <div onClick={() => onOpen(it)} title={`${it.title}${it.north_star ? ` · ${it.north_star}` : ''}`} style={{ flex: 1, minWidth: 0, cursor: 'pointer', display: 'grid', gap: 0 }}>
-              <div style={wide ? { fontFamily: SERIF, fontWeight: 500, fontSize: 13.5, color: INK, lineHeight: 1.25, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' } : { fontFamily: SERIF, fontWeight: 500, fontSize: 12.5, color: INK, lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{it.kind === 'Main Mission' ? (it.task_text || it.title).replace(/^\s*\d+\s*[·.:)-]\s*/, '') : it.title}</div>
+              <div style={tall ? { fontFamily: SERIF, fontWeight: 500, fontSize: 13.5, color: INK, lineHeight: 1.25, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' } : { fontFamily: SERIF, fontWeight: 500, fontSize: 12.5, color: INK, lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{it.kind === 'Main Mission' ? (it.task_text || it.title).replace(/^\s*\d+\s*[·.:)-]\s*/, '') : it.title}</div>
               <div style={{ fontFamily: MONO, fontSize: 8, letterSpacing: '1px', textTransform: 'uppercase', color: colorOf(it.kind, it.size), whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{it.kind === 'Main Mission' ? `Main Mission · ${it.project || ''}` : `${it.kind} · ${SIZES[it.size]?.label || ''}`}</div>
             </div>
             <button onClick={() => act(async () => { const r = await equipObjective(it.id, { clock: true, ignoreStamina: true }); if (!r.ok) throw new Error(r.reasons.join(' · ')) }, `Loaded: ${it.title} · timer on`)} title="Load onto the Loadout" style={{ ...btn(BLUE), padding: '3px 6px' }}><ArrowUpToLine size={10} /></button>
             <button onClick={() => act(() => returnToInventory(it.id), `Returned to the inventory: ${it.title}`)} title="Return to the Missions Inventory" style={{ ...btn(INK2), padding: '3px 6px' }}><Undo2 size={10} /></button>
           </div>
         ) : (
-          <div key={`empty-${i}`} style={{ height: wide ? 58 : 30, borderRadius: 8, border: `1px dashed ${alpha(GREEN, 33)}`, display: 'flex', alignItems: 'center', paddingLeft: 10, fontFamily: MONO, fontSize: 8, letterSpacing: '1px', textTransform: 'uppercase', color: `${alpha(GREEN, 60)}` }}>{i + 1}</div>
+          <div key={`empty-${i}`} style={{ height: tall ? 46 : 30, borderRadius: 8, border: `1px dashed ${alpha(GREEN, 33)}`, display: 'flex', alignItems: 'center', paddingLeft: 10, fontFamily: MONO, fontSize: 8, letterSpacing: '1px', textTransform: 'uppercase', color: `${alpha(GREEN, 60)}` }}>{i + 1}</div>
         ))}
       </div>
     </div>
@@ -493,7 +494,7 @@ export default function LoadoutPanel({ onChange, refreshKey = 0, onNavigate, bar
             </div>
             {!stashNode && <StashStack items={held} act={act} onOpen={setPeek} dropFromLoadout={(id) => act(() => stash(id), 'Stashed from the Loadout')} />}
           </div>
-          {stashNode && createPortal(<StashStack wide items={held} act={act} onOpen={setPeek} dropFromLoadout={(id) => act(() => stash(id), 'Stashed from the Loadout')} />, stashNode)}
+          {stashNode && createPortal(<StashStack column items={held} act={act} onOpen={setPeek} dropFromLoadout={(id) => act(() => stash(id), 'Stashed from the Loadout')} />, stashNode)}
           {(layout.overflow.length > 0 || L.adhoc.length > 1) && (
             <div style={{ marginTop: 12, borderTop: `1px solid ${PANEL_BORDER}`, paddingTop: 8 }}>
               {layout.overflow.map(it => (
