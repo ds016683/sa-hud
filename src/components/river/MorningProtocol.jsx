@@ -20,6 +20,7 @@ import { supabase, reportSoft } from '../../lib/supabase'
 import { upsertSession, logToHarvest, hoursBetween, startMeetingTimer, stopMeetingTimer } from '../../lib/meetings'
 import { fetchLoadout, equipObjective, equipTask, equip, holster, startWithRoom, resolveObjectiveId, fmtClock, chiToday, SIZES, SLOTS } from '../../lib/loadout'
 import { KIND_COLOR, PURPLE, LABEL, alpha, INK, INK2, GRAY, PANEL_BORDER, GOLD, GOLD_BRIGHT, GREEN, RED, BLUE, MONO, SERIF, S, Label as BaseLabel, Panel, fmtTime } from './canon'
+const Label = ({ children, style }) => <BaseLabel style={{ color: BLUE, ...style }}>{children}</BaseLabel>
 import { HYGIENE_ITEMS } from '../../constants/hygiene'
 import { GATEWAY_PLAYLIST } from '../../constants/gateway'
 import { MEDICATIONS, dueOn } from '../../constants/medications'
