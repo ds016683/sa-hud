@@ -14,6 +14,7 @@ for (const f of files) {
   for (const m of s.matchAll(/import\s+(?:(\w+)\s*,?\s*)?(?:\{([^}]*)\})?\s*from/g)) { if (m[1]) defined.add(m[1]); if (m[2]) for (const x of m[2].split(',')) { const n = x.trim().split(/\s+as\s+/).pop(); if (n) defined.add(n) } }
   for (const m of s.matchAll(/^\s*(?:export\s+)?(?:default\s+)?(?:function|const|let|class)\s+([A-Z]\w*)/gm)) defined.add(m[1])
   for (const m of s.matchAll(/(?:const|let)\s+\{([^}]*)\}\s*=/g)) for (const x of m[1].split(',')) { const n = x.trim().split(':').pop().trim(); if (n) defined.add(n) }
+  for (const m of s.matchAll(/(?:const|let)\s+\[([^\]]*)\]\s*=/g)) for (const x of m[1].split(',')) { const n = x.trim(); if (n) defined.add(n) }
   // local aliases: `const Icon = running ? Square : Play`, `({ icon: Icon })`, `Icon = `
   for (const m of s.matchAll(/\b([A-Z]\w*)\s*=[^=>]/g)) defined.add(m[1])
   for (const m of s.matchAll(/:\s*([A-Z]\w*)\s*[,}=]/g)) defined.add(m[1])
