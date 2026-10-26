@@ -662,7 +662,7 @@
       "position": 35
     }
   ],
-  "updated_at": "2026-10-26T17:19:28.585310+00:00",
+  "updated_at": "2026-10-26T17:30:04.024024+00:00",
   "updated_by": "session (claude), the October 19 record",
   "domains": {
     "Data Production": {
@@ -693,7 +693,8 @@
               "data_costs": "",
               "tasks": []
             }
-          ]
+          ],
+          "stream": "pr"
         },
         {
           "id": "4673bb8c-498f-4bad-8597-505c60664772",
@@ -718,7 +719,8 @@
               "data_costs": "",
               "tasks": []
             }
-          ]
+          ],
+          "stream": "pr"
         },
         {
           "id": "fbe51b08-bc7f-46bf-bf11-8b5ff013638d",
@@ -751,7 +753,8 @@
               "data_costs": "",
               "tasks": []
             }
-          ]
+          ],
+          "stream": "pr"
         },
         {
           "id": "ccb48f64-824f-4f44-8813-44e778835ce9",
@@ -776,7 +779,8 @@
               "data_costs": "",
               "tasks": []
             }
-          ]
+          ],
+          "stream": "pr"
         }
       ],
       "polaris": "At the end of 2027, Third Horizon will have delivered high quality market pricing data, on schedule and in a construct that can work with MMA's data delivery system(s).",
@@ -802,7 +806,14 @@
           }
         ],
         "seeded_from": "the Standing truth (10/26); rewrite to reflect the whole domain"
-      }
+      },
+      "streams": [
+        {
+          "id": "pr",
+          "code": "PR",
+          "name": "Production"
+        }
+      ]
     },
     "Regional Engagement": {
       "definition": "The national paper, market reports, the quarterly town hall, the Raleigh pilot, Thresholds, regional reporting, real-time analytics support.",
