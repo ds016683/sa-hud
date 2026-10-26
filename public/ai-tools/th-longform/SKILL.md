@@ -62,6 +62,30 @@ the page moves together. Build both runs from one function of a boolean in
 the content file (the finance review's `page2Blocks(on)`); never hand-maintain
 two copies. Born for the purple assumptions on the finance review, 10/25.
 
+## Live data from a workbook (10/26)
+
+A page can read a SharePoint workbook at request time instead of a committed
+data file. The pattern (references/live/): `sharepoint.ts` (Graph app-only
+token, the item's eTag and bytes; ids and the client secret from the
+environment, SHAREPOINT_TENANT_ID, SHAREPOINT_CLIENT_ID,
+SHAREPOINT_CLIENT_SECRET, SHAREPOINT_SITE_ID, SHAREPOINT_PROFORMA_ITEM, set on
+the Vercel project with `vercel env add`, the secret piped from the vault,
+never written to the repo), `finance-live.ts` (one exceljs parser that turns
+the sheet into DocRow shapes, with the sheet's bold, font and fill read for
+sections and flags), `finance-source.ts` (an eTag check at most once a minute,
+the workbook re-read only when it changed, the result held in memory per
+server instance, a committed snapshot as the fallback), `route.ts` (the
+refresh route the cron calls; it answers with the source stamp, never the
+figures) and `vercel.json` (the every-minute cron; Vercel runs crons on the
+production deployment only, so a preview alias relies on the request-time
+check). The content file exports a builder of the live data
+(`buildFinanceReviewPages(live)`) and the route calls it after
+`financeLive()`; the registry keeps the snapshot build for its type. Each live
+page carries a source line: version, saved when and by whom, read when. The
+snapshot script (`scripts/finance-snapshot.ts`, run with
+`node --experimental-strip-types`) writes the fallback from a local copy with
+the same parser, so the two can never drift.
+
 ## Block kinds (content/doc.ts)
 
 | kind | what it is |
