@@ -11,10 +11,10 @@ import ItemDetail from './river/ItemDetail'
 import SessionBoard from './river/SessionBoard'
 import { listShares, archiveShare, archiveSharesFor, shareUrl } from '../lib/shares'
 import { fileProject } from '../lib/archive'
-import { listLiveFiles, markFiled } from '../lib/livefiles'
+import { listLiveFiles, markFiled, listEvidence, openLiveFile } from '../lib/livefiles'
 import { supabase as sbAuth } from '../lib/supabase'
 import { equipTask, stashTask, deleteMission } from '../lib/loadout'
-import { NORTH_STAR_LABEL, LABEL, alpha, INK, INK2, NAVY_DEEP, BLUE, GRAY, PANEL_BORDER, PANEL_BG, GOLD, GREEN, SUCCESS, RED, PURPLE } from './river/canon'
+import { NORTH_STAR_LABEL, LABEL, alpha, INK, INK2, NAVY_DEEP, BLUE, GRAY, PANEL_BORDER, PANEL_BG, GOLD, GREEN, SUCCESS, RED, PURPLE, CARD_PILLS, CardPill, Label as CanonLabel } from './river/canon'
 import { importProject } from '../lib/cabinet'
 import BadgeMedallion from './BadgeArt'
 import { BADGES } from '../constants/collection'
@@ -438,11 +438,38 @@ function CloseMissionModal({ project, tasks, onClose, onDone }) {
   )
 }
 
+// Notes (10/26): the mission's own notes, newest first, from project_notes.
+function ProjectNotes({ project }) {
+  const [rows, setRows] = useState(null)
+  const [text, setText] = useState('')
+  const load = useCallback(() => sbClient2.from('project_notes').select('id,text,created_at').eq('project_id', project.id).order('created_at', { ascending: false }).limit(200).then(({ data }) => setRows(Array.isArray(data) ? data : [])), [project.id])
+  useEffect(() => { load() }, [load])
+  const add = async () => { const t = text.trim(); if (!t) return; await sbClient2.from('project_notes').insert({ project_id: project.id, text: t }); setText(''); load() }
+  return (
+    <div style={{ display: 'grid', gap: 14 }}>
+      <div style={{ display: 'flex', gap: 8 }}>
+        <textarea value={text} onChange={e => setText(e.target.value)} rows={3} placeholder="A note on this mission: commentary, a table in words, a thing to remember." style={{ flex: 1, background: 'rgba(255,255,255,0.05)', border: `1px solid ${PANEL_BORDER}`, borderRadius: 8, color: INK, padding: '10px 12px', fontSize: 14, fontFamily: 'inherit', lineHeight: 1.6, resize: 'vertical' }} />
+        <button onClick={add} disabled={!text.trim()} style={{ ...S.btnGhost, alignSelf: 'flex-end' }}>Add</button>
+      </div>
+      {rows === null && <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '1.4px', textTransform: 'uppercase', color: GRAY }}>Reading</div>}
+      {rows && !rows.length && <div style={{ fontSize: 13, color: GRAY }}>No notes on this mission yet.</div>}
+      {(rows || []).map(n => (
+        <div key={n.id} style={{ borderTop: `1px solid ${PANEL_BORDER}`, padding: '10px 0' }}>
+          <div style={{ fontSize: 14, lineHeight: 1.6, color: INK, whiteSpace: 'pre-wrap' }}>{n.text}</div>
+          <div style={{ fontFamily: MONO, fontSize: 9.5, color: GRAY, marginTop: 4 }}>{new Date(n.created_at).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZone: 'America/Chicago' })}</div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 function ProjectDetail({ project, board: boardProp, api, onBack, initialTab, initialSlug, onNavigate }) {
   // Milestones first, always (David 10/21). A tab in the hash only sticks when it
   // carries an artifact slug (a deep link from Lumen or a session); otherwise the
   // page opens on Milestones, whatever tab the URL remembered.
-  const [tab, setTab] = useState(initialTab && initialSlug && ['artifacts', 'files', 'shares', 'workbench', 'planning'].includes(initialTab) ? initialTab : 'tasks')
+  // The card canon (10/26): five pills, the old names still open the right one.
+  const LEGACY = { tasks: 'briefing', artifacts: 'files', shares: 'files', planning: 'workbench', cabinet: 'files' }
+  const [tab, setTab] = useState(CARD_PILLS.some(([id]) => id === initialTab) ? initialTab : (LEGACY[initialTab] || 'briefing'))
   const [board, setBoard] = useState(boardProp)
   useEffect(() => { let on = true; Promise.resolve().then(() => { if (on) setBoard(boardProp) }); return () => { on = false } }, [boardProp])
   const [artifactSlug, setArtifactSlug] = useState(initialSlug || null)
@@ -459,6 +486,8 @@ function ProjectDetail({ project, board: boardProp, api, onBack, initialTab, ini
   const { plan, history } = planOf(project)
   const tasks = plan.map(p => p.t)
   const [objState, setObjState] = useState({})
+  const [evidence, setEvidence] = useState([])
+  useEffect(() => { let on = true; listEvidence({ projectId: project.id }).then(r => { if (on) setEvidence(r) }).catch(() => {}); return () => { on = false } }, [project.id, tab])
   const objIds = tasks.map(t => t.objective_id).filter(Boolean).sort().join(',')
   useEffect(() => {
     let on = true
@@ -567,12 +596,7 @@ function ProjectDetail({ project, board: boardProp, api, onBack, initialTab, ini
           </div>
         </div>
         <div style={{ display: 'flex', gap: 6, paddingTop: 6, flexWrap: 'wrap' }}>
-          <Pill active={tab === 'tasks'} onClick={() => setTab('tasks')}>Milestones · {tasks.length}</Pill>
-          <Pill active={tab === 'artifacts'} onClick={() => setTab('artifacts')}>Artifacts</Pill>
-          <Pill active={tab === 'files'} onClick={() => setTab('files')}>Cabinet</Pill>
-          <Pill active={tab === 'shares'} onClick={() => setTab('shares')}>Shares</Pill>
-          <Pill active={tab === 'workbench'} onClick={() => setTab('workbench')}>Workbench</Pill>
-          <Pill active={tab === 'planning'} onClick={() => setTab('planning')}>Planning</Pill>
+          {CARD_PILLS.map(([id, label]) => <CardPill key={id} active={tab === id} onClick={() => setTab(id)} count={id === 'briefing' ? tasks.length : id === 'polaris' ? evidence.length : 0}>{label}</CardPill>)}
         </div>
       </div>
 
@@ -582,7 +606,7 @@ function ProjectDetail({ project, board: boardProp, api, onBack, initialTab, ini
       </div>
 
       <div style={{ ...S.panel, marginTop: 20 }}>
-        {tab === 'tasks' && (
+        {tab === 'briefing' && (
           <div>
             {!tasks.length && <div style={{ fontSize: 13, color: GRAY, padding: '10px 0' }}>No milestones yet. Add the first one below: a thing that will be verifiably true.</div>}
             {plan.map(({ t, n }) => <MilestoneRow key={t.id} n={n} project={project} task={t} board={board} api={api} onNavigate={onNavigate} onBoardChange={setBoard} onAward={setAward} objState={objState} />)}
@@ -627,14 +651,39 @@ function ProjectDetail({ project, board: boardProp, api, onBack, initialTab, ini
             )}
           </div>
         )}
-        {tab === 'artifacts' && <ArtifactsTab key={artifactSlug || 'first'} project={project} initialSlug={artifactSlug} />}
-        {tab === 'shares' && <SharesTab project={project} />}
-        {tab === 'workbench' && <WorkbenchTab project={project} />}
-        {tab === 'planning' && <PlanningCanvas project={project} />}
+        {tab === 'workbench' && (
+          <div style={{ display: 'grid', gap: 30 }}>
+            <div><CanonLabel>In Play</CanonLabel><WorkbenchTab project={project} /></div>
+            <div><CanonLabel>Planning</CanonLabel><PlanningCanvas project={project} /></div>
+          </div>
+        )}
         {tab === 'files' && (
-          <FilesTab project={project}
-            listFiles={api.listFiles} uploadFile={api.uploadFile} createFolder={api.createFolder}
-            fileUrl={api.fileUrl} deleteFile={api.deleteFile} />
+          <div style={{ display: 'grid', gap: 30 }}>
+            <div><CanonLabel>Cabinet</CanonLabel><FilesTab project={project} listFiles={api.listFiles} uploadFile={api.uploadFile} createFolder={api.createFolder} fileUrl={api.fileUrl} deleteFile={api.deleteFile} /></div>
+            <div><CanonLabel>Artifacts</CanonLabel><ArtifactsTab key={artifactSlug || 'first'} project={project} initialSlug={artifactSlug} /></div>
+            <div><CanonLabel>Shares</CanonLabel><SharesTab project={project} /></div>
+          </div>
+        )}
+        {tab === 'notes' && <ProjectNotes project={project} />}
+        {tab === 'polaris' && (
+          <div style={{ display: 'grid', gap: 22 }}>
+            <div>
+              <CanonLabel style={{ color: BLUE }}>{NORTH_STAR_LABEL}</CanonLabel>
+              <textarea defaultValue={project.description || ''} rows={3} onBlur={e => { const v = e.target.value.trim() || null; if (v !== (project.description || null)) api.updateProject(project.id, { description: v }) }} placeholder="What will be true when this mission is done? One sentence." style={{ width: '100%', boxSizing: 'border-box', background: 'rgba(255,255,255,0.05)', border: `1px solid ${PANEL_BORDER}`, borderRadius: 8, padding: '10px 12px', color: INK, fontSize: 17, fontFamily: SERIF, fontStyle: 'italic', lineHeight: 1.45, resize: 'vertical' }} />
+            </div>
+            <div>
+              <CanonLabel>Evidence{evidence.length ? ` · ${evidence.length}` : ''}</CanonLabel>
+              {!evidence.length && <div style={{ fontSize: 13, color: GRAY }}>Nothing pinned yet. When the thing that proves the objective exists, pin it with the star on the Workbench and it shows here.</div>}
+              {evidence.map(f => (
+                <div key={f.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 0', borderTop: `1px solid ${PANEL_BORDER}` }}>
+                  <span style={{ width: 6, height: 6, borderRadius: 99, background: GOLD, flexShrink: 0 }} />
+                  <span style={{ flex: 1, fontSize: 13.5, color: INK, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.name}{f.version > 1 ? <span style={{ fontFamily: MONO, fontSize: 9, color: GOLD, marginLeft: 8 }}>v{f.version}</span> : null}</span>
+                  <button onClick={async () => { try { window.open(f.bucket === 'link' ? f.path : await openLiveFile(f), '_blank', 'noopener') } catch { /* no-op */ } }} style={{ ...S.btnGhost, padding: '4px 9px', fontSize: 10 }}>Open</button>
+                </div>
+              ))}
+            </div>
+            {project.status === 'completed' && <div style={{ fontFamily: MONO, fontSize: 10.5, letterSpacing: '1.2px', textTransform: 'uppercase', color: GREEN }}>Complete{project.archived_at ? ` · ${String(project.archived_at).slice(0, 10)}` : ''}</div>}
+          </div>
         )}
       {celebrate && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(5,16,28,0.84)', display: 'grid', placeItems: 'center', zIndex: 80 }}>

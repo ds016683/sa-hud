@@ -14,7 +14,7 @@ const btn = (color = INK2, filled = false) => ({ display: 'inline-flex', alignIt
 const rowStyle = { display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0', borderTop: `1px solid ${PANEL_BORDER}` }
 const isSessionLink = (r) => isLink(r) && /^claude:\/\//.test(String(r.path || ''))
 
-export default function FilesTab({ objectiveId, rel, what, open, onRead, onGo, onAttach, taskId, onChanged }) {
+export default function FilesTab({ objectiveId, rel, what, open, onRead, onGo, onAttach, taskId, onChanged, inPlay = true }) {
   const [rows, setRows] = useState(null)
   const [filed, setFiled] = useState([])
   const [msg, setMsg] = useState(null)
@@ -58,7 +58,7 @@ export default function FilesTab({ objectiveId, rel, what, open, onRead, onGo, o
 
   return (
     <div style={{ display: 'grid', gap: 22 }}>
-      {objectiveId && (
+      {objectiveId && inPlay && (
         <div>
           <Label>In Play</Label>
           <div style={{ fontSize: 13, color: INK2, marginBottom: 12, lineHeight: 1.5 }}>The files on this {what.item} right now, one current version each. Sessions and Lumen put files here as they produce them; drop one in, or point at a path on the Mac. The star pins a file under Polaris as the evidence the objective was met.</div>

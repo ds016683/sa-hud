@@ -4,11 +4,11 @@
 // version each, the drop-or-path container on top. It gets more canonical as
 // we go; for now it is the mission's Live Files, nothing more.
 import { useCallback, useEffect, useState } from 'react'
-import { FileText, ExternalLink, Mail, Check } from 'lucide-react'
+import { FileText, ExternalLink, Mail, Check, Star } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
-import { listLiveFiles, putLiveFile, requestLiveFile, openLiveFile, draftMail, markFiled, groupVersions, fmtStamp, fmtSize, isRequest, urlOf, isLink, addLiveLink } from '../../lib/livefiles'
+import { listLiveFiles, putLiveFile, requestLiveFile, openLiveFile, draftMail, markFiled, groupVersions, fmtStamp, fmtSize, isRequest, urlOf, isLink, addLiveLink, pinEvidence } from '../../lib/livefiles'
 import { DropZone, LinkForm } from './LiveFiles'
-import { INK, INK2, GRAY, PANEL_BORDER, GOLD, BLUE, GREEN, RED, MONO, Label, KIND_COLOR, PURPLE, alpha } from './canon'
+import { INK, INK2, GRAY, PANEL_BORDER, GOLD, BLUE, GREEN, RED, MONO, Label, KIND_COLOR, PURPLE, alpha, GOLD_BRIGHT } from './canon'
 import { hudConfirm } from '../../lib/dialog'
 const btn = (color = INK2, filled = false) => ({ display: 'inline-flex', alignItems: 'center', gap: 5, fontFamily: MONO, fontSize: 9.5, letterSpacing: '1px', textTransform: 'uppercase', padding: '5px 9px', borderRadius: 8, border: `1px solid ${filled ? color : `${alpha(color, 40)}`}`, background: filled ? color : 'transparent', color: filled ? 'var(--hud-on-accent)' : color, cursor: 'pointer' })
 const rowStyle = { display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0', borderTop: `1px solid ${PANEL_BORDER}` }
@@ -49,6 +49,7 @@ export default function WorkbenchTab({ project = null, objectiveId = null }) {
       <span title={r.path} style={{ flex: 1, fontSize: dim ? 12.5 : 13.5, color: dim ? INK2 : INK, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.name}{r.version > 1 && <span style={{ fontFamily: MONO, fontSize: 9, letterSpacing: '1px', color: GOLD, marginLeft: 8 }}>v{r.version}</span>}{r.note && <span style={{ fontSize: 12, color: INK2, marginLeft: 10 }}>{r.note}</span>}</span>
       {isRequest(r) && <span style={{ fontFamily: MONO, fontSize: 9, letterSpacing: '1px', textTransform: 'uppercase', color: GOLD }}>waiting for a session on the Mac</span>}
       <span style={{ fontFamily: MONO, fontSize: 9.5, color: GRAY, whiteSpace: 'nowrap' }}>{fmtStamp(r.created_at)}{r.size ? ` · ${fmtSize(r.size)}` : ''}</span>
+      {!dim && !isRequest(r) && <button onClick={() => act(() => pinEvidence(r.id, !r.evidence), r.evidence ? `Unpinned ${r.name}` : `Pinned to Polaris: ${r.name}`)} title={r.evidence ? 'Pinned to Polaris as evidence. Click to unpin.' : 'Pin to Polaris as evidence'} style={btn(r.evidence ? GOLD_BRIGHT : INK2, !!r.evidence)}><Star size={11} fill={r.evidence ? '#0A1B2B' : 'none'} /></button>}
       {urlOf(r) && <button onClick={() => window.open(urlOf(r), '_blank', 'noopener')} title={urlOf(r)} style={btn(GREEN)}><ExternalLink size={11} /> Visit</button>}
       {!isRequest(r) && <button onClick={() => act(async () => { window.open(await openLiveFile(r), '_blank', 'noopener') }, `Opened ${r.name}`)} style={btn(BLUE)}><ExternalLink size={11} /> {String(r.name).toLowerCase().endsWith('.html') ? 'Source' : 'Open'}</button>}
       {!isRequest(r) && <button onClick={() => act(async () => { const d = await draftMail(r); if (d.webLink) window.open(d.webLink, '_blank', 'noopener') }, `Draft open in Outlook: ${r.name}`)} title="Open a new Outlook draft with this file attached" style={btn(GOLD)}><Mail size={11} /> Mail</button>}
@@ -57,7 +58,6 @@ export default function WorkbenchTab({ project = null, objectiveId = null }) {
   )
   return (
     <div>
-      <Label>Workbench</Label>
       <div style={{ fontSize: 13, color: INK2, marginBottom: 12, lineHeight: 1.5 }}>{objectiveId ? 'What is live on this item: the files in play, one current version each. Sessions and Lumen put files here as they produce them; drop one in, or point at a path on the Mac.' : 'What is live on this mission: files in play on the mission itself and on its milestones. Sessions and Lumen put files here as they produce them; drop one in, or point at a path on the Mac.'}</div>
       <div style={{ marginBottom: 14 }}>
         <DropZone busy={busy} onFiles={(fs) => fs.forEach(f => act(() => putLiveFile(f, objectiveId ? { objectiveId } : { projectId: project.id }), `In play: ${f.name}`))} onPath={(pth) => act(() => requestLiveFile(pth, objectiveId ? { objectiveId } : { projectId: project.id }), 'Requested; the next Claude session on the Mac puts it in play')} />

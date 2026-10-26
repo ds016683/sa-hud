@@ -21,25 +21,17 @@ import { fmtStamp, listLiveFiles, listEvidence, openLiveFile, isRequest, isLink 
 import ProtocolsTab from './Protocols'
 import { isOpenRow } from '../../lib/protocols'
 import FilesTab from './Files'
-import { INK, INK2, GRAY, PANEL_BORDER, GOLD, GOLD_BRIGHT, BLUE, GREEN, SUCCESS, RED, MONO, SERIF, S, Label, KIND_COLOR, KindIcon, NORTH_STAR_LABEL, NORTH_STAR_ASK, LABEL, PURPLE, alpha, NAVY_DEEP } from './canon'
+import WorkbenchTab from './Workbench'
+import { INK, INK2, GRAY, PANEL_BORDER, GOLD, GOLD_BRIGHT, BLUE, GREEN, SUCCESS, RED, MONO, SERIF, S, Label, KIND_COLOR, KindIcon, NORTH_STAR_LABEL, NORTH_STAR_ASK, LABEL, PURPLE, alpha, NAVY_DEEP, CARD_PILLS, CardPill } from './canon'
 
-const TABS = ['overview', 'protocols', 'files', 'notes']
-const TAB_LABEL = { overview: 'Briefing', protocols: 'Live Protocols', files: 'Files', notes: 'Notes' }
+const TABS = CARD_PILLS.map(([id]) => id)
+const TAB_LABEL = Object.fromEntries(CARD_PILLS)
 // Deep links and callers from before 10/23 still name the old pills.
-const LEGACY_TAB = { punchlist: 'protocols', workbench: 'files', artifacts: 'files', production: 'files', sessions: 'overview' }
+const LEGACY_TAB = { overview: 'briefing', protocols: 'workbench', punchlist: 'workbench', artifacts: 'files', production: 'files', sessions: 'briefing' }
 const STOP = new Set(['the', 'and', 'with', 'for', 'from', 'about', 'notes', 'upload', 'interview', 'call', 'meeting', 'review', 'investigate', 'weekly', 'monthly', 'david', 'smith'])
 const words = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9 ]/g, ' ').split(/\s+/).filter(w => w.length > 2 && !STOP.has(w))
 const chiTime = (iso) => iso ? new Date(iso).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'America/Chicago' }) : ''
 
-function Pill({ active, children, onClick, count }) {
-  return (
-    <button onClick={onClick} style={{
-      padding: '5px 14px', borderRadius: 999, cursor: 'pointer', fontFamily: MONO, fontSize: 10, fontWeight: 600, letterSpacing: '1.2px', textTransform: 'uppercase',
-      background: active ? BLUE : 'transparent', color: active ? NAVY_DEEP : 'rgba(234,241,248,0.66)', border: active ? `1px solid ${BLUE}` : `1px solid ${PANEL_BORDER}`,
-      display: 'inline-flex', alignItems: 'center', gap: 6,
-    }}>{children}{count > 0 && <span style={{ fontSize: 9, opacity: 0.8 }}>· {count}</span>}</button>
-  )
-}
 const btn = (color = INK2, filled = false) => ({
   display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: MONO, fontSize: 9.5, letterSpacing: '1px', textTransform: 'uppercase',
   padding: '6px 11px', borderRadius: 8, border: `1px solid ${filled ? color : `${alpha(color, 40)}`}`, background: filled ? color : 'transparent', color: filled ? NAVY_DEEP : color, cursor: 'pointer',
@@ -226,7 +218,7 @@ function WhereItStands({ item, rel, task, taskId, linkedBoards }) {
 }
 
 export default function ItemDetail({ item, onClose, onNavigate, onChange, initialTab = 'overview' }) {
-  const [tab, setTab] = useState(TABS.includes(initialTab) ? initialTab : (LEGACY_TAB[initialTab] || 'overview'))
+  const [tab, setTab] = useState(TABS.includes(initialTab) ? initialTab : (LEGACY_TAB[initialTab] || 'briefing'))
   const [rel, setRel] = useState(null)
   const [msg, setMsg] = useState(null)
   const [openNote, setOpenNote] = useState(null)
@@ -270,7 +262,7 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
     throw new Error('nothing to load')
   }, 'Timer on')
 
-  const counts = { protocols: (rel?.punchlist || []).filter(isOpenRow).length, files: (rel?.objFiles?.length || 0) + (rel?.projectFiles.length || 0) + (rel?.storeFiles.filter(f => !f.folder).length || 0), notes: rel?.meetings.length || 0 }
+  const counts = { workbench: (rel?.punchlist || []).filter(isOpenRow).length, polaris: (rel?.evidence || []).length, files: (rel?.objFiles?.length || 0) + (rel?.projectFiles.length || 0) + (rel?.storeFiles.filter(f => !f.folder).length || 0), notes: rel?.meetings.length || 0 }
   const obj = rel?.objective || null
   const [stepText, setStepText] = useState('')
   const [objBusy, setObjBusy] = useState(false)
@@ -319,27 +311,20 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
               <span style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '1.4px', textTransform: 'uppercase', color: LABEL, marginLeft: 4 }}>Mission Briefing</span>
             </div>
             <h1 style={{ ...S.h1, marginBottom: 6, fontSize: String(item.title || '').length > 70 ? 22 : 28, lineHeight: 1.25 }}>{task ? String(item.title || '').replace(/^\s*\d+\s*[·.:)-]\s*/, '') : item.title}</h1>
+            {obj?.north_star && <div onClick={() => setTab('polaris')} title="Polaris" style={{ fontFamily: SERIF, fontStyle: 'italic', fontSize: 14.5, color: INK2, lineHeight: 1.45, maxWidth: '72ch', cursor: 'pointer' }}>{obj.north_star}</div>}
           </div>
           <div style={{ display: 'flex', gap: 6, paddingBottom: 4, flexWrap: 'wrap' }}>
-            {TABS.map(t => <Pill key={t} active={tab === t} onClick={() => setTab(t)} count={counts[t]}>{TAB_LABEL[t]}</Pill>)}
+            {TABS.map(t => <CardPill key={t} active={tab === t} onClick={() => setTab(t)} count={counts[t]}>{TAB_LABEL[t]}</CardPill>)}
           </div>
         </div>
 
         <div style={{ ...S.panel, marginTop: 20 }}>
           {!rel && <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '1.4px', textTransform: 'uppercase', color: LABEL, padding: '10px 0' }}>Reading the Ledger</div>}
 
-          {rel && tab === 'overview' && (
+          {rel && tab === 'briefing' && (
             <div style={{ display: 'grid', gap: 22 }}>
               {obj && (() => { const prov = provenance(obj); const sz = SIZES[item.size] ? item.size : 'light'; const realm = realmOf(obj); const max = stepsMaxFor(sz); const field = { background: 'rgba(255,255,255,0.05)', border: `1px solid ${PANEL_BORDER}`, borderRadius: 8, color: INK, padding: '6px 9px', fontFamily: MONO, fontSize: 12, height: 32, width: '100%', boxSizing: 'border-box' }; return (
                 <>
-                  <div>
-                    <Label style={{ color: BLUE }}>{NORTH_STAR_LABEL}</Label>
-                    {editStar || !obj.north_star
-                      ? <textarea autoFocus={editStar} defaultValue={obj.north_star || ''} rows={2} onBlur={e => { const v = e.target.value.trim() || null; setEditStar(false); if (v !== (obj.north_star || null)) patchObj({ north_star: v }) }} placeholder={NORTH_STAR_ASK} style={{ width: '100%', boxSizing: 'border-box', background: 'rgba(255,255,255,0.05)', border: `1px solid ${PANEL_BORDER}`, borderRadius: 8, padding: '10px 12px', color: INK, fontSize: 17, fontFamily: SERIF, fontStyle: 'italic', lineHeight: 1.45, resize: 'vertical' }} />
-                      : <div onClick={() => setEditStar(true)} title="Click to edit" style={{ fontFamily: SERIF, fontStyle: 'italic', fontSize: 15.5, lineHeight: 1.5, color: INK, borderLeft: `2px solid ${BLUE}`, paddingLeft: 12, cursor: 'text' }}>{obj.north_star}</div>}
-                  </div>
-                  <Evidence rows={rel.evidence || []} onFiles={() => setTab('files')} say={setMsg} />
-
                   <WhereItStands item={item} rel={rel} task={task} taskId={taskId} linkedBoards={linkedBoards} />
                   <SessionsStrip item={item} links={requests} />
 
@@ -435,9 +420,30 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
             </div>
           )}
 
-          {rel && tab === 'protocols' && (item.objective_id ? <ProtocolsTab objectiveId={item.objective_id} /> : <None what={{ ...what, thing: 'a protocol' }} />)}
+          {rel && tab === 'workbench' && (item.objective_id ? (
+            <div style={{ display: 'grid', gap: 28 }}>
+              <div><Label>In Play</Label><WorkbenchTab objectiveId={item.objective_id} /></div>
+              <div><Label>Live Protocols</Label><ProtocolsTab objectiveId={item.objective_id} /></div>
+            </div>
+          ) : <None what={{ ...what, thing: 'a workbench' }} />)}
 
-          {rel && tab === 'files' && <FilesTab objectiveId={item.objective_id || null} rel={rel} what={what} open={open} taskId={taskId} onRead={async (a) => { try { setReading({ title: a.title, doc: briefs[a.slug] || await readObjArtifact(a.root, a.slug) }) } catch (e) { setMsg(`Could not read: ${e.message}`) } }} onGo={go} onAttach={attachArtifact} onChanged={load} />}
+          {rel && tab === 'polaris' && (obj ? (
+            <div style={{ display: 'grid', gap: 22 }}>
+              <>
+                  <div>
+                    <Label style={{ color: BLUE }}>{NORTH_STAR_LABEL}</Label>
+                    {editStar || !obj.north_star
+                      ? <textarea autoFocus={editStar} defaultValue={obj.north_star || ''} rows={2} onBlur={e => { const v = e.target.value.trim() || null; setEditStar(false); if (v !== (obj.north_star || null)) patchObj({ north_star: v }) }} placeholder={NORTH_STAR_ASK} style={{ width: '100%', boxSizing: 'border-box', background: 'rgba(255,255,255,0.05)', border: `1px solid ${PANEL_BORDER}`, borderRadius: 8, padding: '10px 12px', color: INK, fontSize: 17, fontFamily: SERIF, fontStyle: 'italic', lineHeight: 1.45, resize: 'vertical' }} />
+                      : <div onClick={() => setEditStar(true)} title="Click to edit" style={{ fontFamily: SERIF, fontStyle: 'italic', fontSize: 15.5, lineHeight: 1.5, color: INK, borderLeft: `2px solid ${BLUE}`, paddingLeft: 12, cursor: 'text' }}>{obj.north_star}</div>}
+                  </div>
+                  <Evidence rows={rel.evidence || []} onFiles={() => setTab('workbench')} say={setMsg} />
+
+              </>
+              {obj.state === 'released' && <div style={{ fontFamily: MONO, fontSize: 10.5, letterSpacing: '1.2px', textTransform: 'uppercase', color: GREEN }}>Released{obj.released_at ? ` · ${obj.released_at.slice(0, 10)}` : ''}</div>}
+            </div>
+          ) : <None what={{ ...what, thing: 'a Polaris of its own' }} />)}
+
+          {rel && tab === 'files' && <FilesTab inPlay={false} objectiveId={item.objective_id || null} rel={rel} what={what} open={open} taskId={taskId} onRead={async (a) => { try { setReading({ title: a.title, doc: briefs[a.slug] || await readObjArtifact(a.root, a.slug) }) } catch (e) { setMsg(`Could not read: ${e.message}`) } }} onGo={go} onAttach={attachArtifact} onChanged={load} />}
 
           {rel && tab === 'notes' && (
             <div style={{ display: 'grid', gap: 18 }}>

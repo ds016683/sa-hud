@@ -115,3 +115,21 @@ export const KindChip = ({ kind }) => {
 // (the first letter of each word capitalized), David's cannon 10/13.
 export const NORTH_STAR_LABEL = "Polaris Objective"   // David, 10/18: the one line every mission steers by (was "What Will Be True, That Wasn't True Before")
 export const NORTH_STAR_ASK = "Polaris Objective: what will be true when this is done? One sentence."
+
+// The card canon (David 10/26): every Main Mission, Side Mission and Milestone page
+// carries the same five pills in the same order. Briefing is where it stands.
+// Workbench is what is being built: the files in play, the live protocol rows, the
+// plan. Files is the filed and source material: the cabinet, the artifacts, the
+// shares. Notes is your own notes and the meetings. Polaris is the objective and the
+// evidence pinned under it. A file in play lives on the Workbench, a filed one on
+// Files, a pinned one shows on Polaris too. docs/CARD-CANON.md says it in full.
+export const CARD_PILLS = [['briefing', 'Briefing'], ['workbench', 'Workbench'], ['files', 'Files'], ['notes', 'Notes'], ['polaris', 'Polaris']]
+export function CardPill({ active, children, onClick, count }) {
+  return (
+    <button onClick={onClick} style={{
+      padding: '5px 14px', borderRadius: 999, cursor: 'pointer', fontFamily: MONO, fontSize: 10, fontWeight: 600, letterSpacing: '1.2px', textTransform: 'uppercase',
+      background: active ? BLUE : 'transparent', color: active ? NAVY_DEEP : 'rgba(234,241,248,0.66)', border: active ? `1px solid ${BLUE}` : `1px solid ${PANEL_BORDER}`,
+      display: 'inline-flex', alignItems: 'center', gap: 6,
+    }}>{children}{count > 0 && <span style={{ fontSize: 9, opacity: 0.8 }}>· {count}</span>}</button>
+  )
+}
