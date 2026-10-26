@@ -44,6 +44,18 @@ const SKILLS = [
     extras: [],
     repo: { label: 'th-proposals Repo', url: 'https://github.com/Third-Horizon-Strategies/th-proposals' },
   },
+  {
+    id: 'th-longform',
+    name: 'Third Horizon Long-Form Document',
+    skin: 'The proposal chassis read as a document: the same bar and contents rail, but each entry is a page the reader scrolls, prose anchored, with tables that open to their lines and their reasoning, charts with hover readouts, embedded documents, and a Next at the very foot of every page.',
+    use: 'Any review, memo, working paper, brief or report that should read like a document rather than flip like a deck. In a Code session say "use th-longform" or "like the finance review". Born on the Company Finance Review, 10/25.',
+    swatches: [INK, INK, INK, INK, BLUE, BLUE, GOLD, GREEN, RED],
+    base: '/ai-tools/th-longform',
+    pptx: null,
+    zip: 'th-longform-skill.zip',
+    extras: [],
+    repo: { label: 'th-proposals Repo', url: 'https://github.com/Third-Horizon-Strategies/th-proposals' },
+  },
 ]
 
 const btn = (color, filled = false) => ({ display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: MONO, fontSize: 10.5, letterSpacing: '0.08em', textTransform: 'uppercase', padding: '7px 12px', borderRadius: 999, cursor: 'pointer', border: `1px solid ${filled ? color : `${alpha(color, 53)}`}`, background: filled ? `${alpha(color, 13)}` : 'transparent', color, textDecoration: 'none' })
@@ -114,7 +126,7 @@ export default function AiToolsPage() {
       </div>
       {pill === 'skills' && (
         <>
-          <div style={{ fontSize: TYPE.body, color: INK2, lineHeight: 1.6, maxWidth: 820, marginBottom: 16 }}>Two deck skins, packaged three ways: the Claude Code skill, the HTML template it builds from, and a PowerPoint template with the same tokens for anyone working in slides by hand.</div>
+          <div style={{ fontSize: TYPE.body, color: INK2, lineHeight: 1.6, maxWidth: 820, marginBottom: 16 }}>The deck skins, the proposal deck and the long-form document, packaged three ways: the Claude Code skill, the HTML template it builds from, and a PowerPoint template with the same tokens for anyone working in slides by hand.</div>
           {SKILLS.map(k => <SkillCard key={k.id} k={k} />)}
           <div style={{ fontSize: TYPE.meta + 1.5, color: GRAY, fontFamily: MONO }}>Fonts: Geist for APNC, Lora and Instrument Sans for Third Horizon, all free on Google Fonts. The PPTX falls back to Calibri and Georgia until they are installed.</div>
         </>
