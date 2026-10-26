@@ -1,8 +1,46 @@
 // Artifacts on a project: structured work products the HUD renders and David
 // edits in place. Lumen drafts into them, David finishes them here, Lumen
 // ports them out as a Word file. First kind: the interview scorecard.
-import { Fragment, useCallback, useEffect, useState } from 'react'
+import { Component, Fragment, useCallback, useEffect, useState } from 'react'
 import { Save, RefreshCw, User, Eye, X as XIcon } from 'lucide-react'
+
+// A text field as a string, whatever a writer saved. Lumen once wrote the
+// inventory's next_steps as character maps ({0: 'F', 1: 'o', ...}), which React
+// refuses to render and the whole mission page hit a wall (10/26). Strings pass
+// through; a character map is re-joined; anything else reads as its JSON.
+export const textOf = (x) => {
+  if (x == null) return ''
+  if (typeof x === 'string') return x
+  if (typeof x === 'number' || typeof x === 'boolean') return String(x)
+  if (Array.isArray(x)) return x.map(textOf).join(' ')
+  if (typeof x === 'object') {
+    const keys = Object.keys(x)
+    if (keys.length && keys.every(k => /^\d+$/.test(k))) return keys.map(Number).sort((a, b) => a - b).map(k => textOf(x[k])).join('')
+    return JSON.stringify(x)
+  }
+  return String(x)
+}
+
+// One artifact failing to render shows its own notice; the list and the other
+// artifacts stay usable (the app-level boundary used to take the whole page).
+export class ArtifactBoundary extends Component {
+  constructor(props) { super(props); this.state = { error: null } }
+  static getDerivedStateFromError(error) { return { error } }
+  componentDidCatch(error) { try { console.error('artifact render', error) } catch { /* no-op */ } }
+  componentDidUpdate(prev) { if (prev.resetKey !== this.props.resetKey && this.state.error) this.setState({ error: null }) }
+  render() {
+    if (this.state.error) {
+      return (
+        <div style={{ padding: '16px 18px', border: `1px solid ${alpha(RED, 40)}`, borderRadius: 10, background: alpha(RED, 6) }}>
+          <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '1.2px', textTransform: 'uppercase', color: RED, marginBottom: 6 }}>This artifact could not render</div>
+          <div style={{ fontSize: 13, color: INK2, lineHeight: 1.55 }}>{String(this.state.error && (this.state.error.message || this.state.error)).slice(0, 400)}</div>
+          <div style={{ fontSize: 11.5, color: GRAY, marginTop: 8 }}>The file is intact in storage; the other artifacts still open. Claude can read the error from the console.</div>
+        </div>
+      )
+    }
+    return this.props.children
+  }
+}
 import { listArtifacts, readArtifact, writeArtifact } from '../../lib/artifacts'
 import { renderMarkdown } from './MeetingCloseout'
 import { INK, INK2, GRAY, MUTED, PANEL_BORDER, GOLD, GOLD_BRIGHT, BLUE, PERIWINKLE, GREEN, SUCCESS, RED, MONO, SERIF, S, Eyebrow, Label, LABEL, alpha } from './canon'
@@ -90,7 +128,7 @@ function Decision({ doc, onChange }) {
   const cell = { padding: '8px 10px', borderTop: `1px solid ${PANEL_BORDER}`, fontSize: 13, color: INK, verticalAlign: 'top' }
   return (
     <div>
-      {doc.question && <div style={{ fontFamily: SERIF, fontSize: 18, fontWeight: 500, color: '#fff', lineHeight: 1.4, marginBottom: 8 }}>{doc.question}</div>}
+      {doc.question && <div style={{ fontFamily: SERIF, fontSize: 18, fontWeight: 500, color: '#fff', lineHeight: 1.4, marginBottom: 8 }}>{textOf(doc.question)}</div>}
       {doc.context && <div style={{ fontSize: 13, lineHeight: 1.6, color: INK2, marginBottom: 16, whiteSpace: 'pre-wrap' }}>{doc.context}</div>}
 
       {options.length > 0 && (
@@ -221,8 +259,8 @@ function Inventory({ doc, onChange }) {
   const cov = COVERAGE[g?.coverage] || [GRAY, g?.coverage || '']
   return (
     <div>
-      {doc.question && <div style={{ fontFamily: SERIF, fontSize: 18, fontWeight: 500, color: '#fff', lineHeight: 1.4, marginBottom: 8 }}>{doc.question}</div>}
-      {doc.summary && <div style={{ fontSize: 13, lineHeight: 1.6, color: INK2, marginBottom: 14, whiteSpace: 'pre-wrap' }}>{doc.summary}</div>}
+      {doc.question && <div style={{ fontFamily: SERIF, fontSize: 18, fontWeight: 500, color: '#fff', lineHeight: 1.4, marginBottom: 8 }}>{textOf(doc.question)}</div>}
+      {doc.summary && <div style={{ fontSize: 13, lineHeight: 1.6, color: INK2, marginBottom: 14, whiteSpace: 'pre-wrap' }}>{textOf(doc.summary)}</div>}
 
       {(doc.stores || []).length > 0 && (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 10, marginBottom: 16 }}>
@@ -358,8 +396,8 @@ function Inventory({ doc, onChange }) {
         <>
           <Eyebrow style={{ marginBottom: 8 }}>Claude's read<Cla /></Eyebrow>
           <div style={{ ...S.panel, padding: '14px 16px', marginBottom: 16, borderLeft: `2px solid ${alpha(GOLD, 40)}` }}>
-            <div style={{ fontSize: 13.5, lineHeight: 1.65, color: INK, whiteSpace: 'pre-wrap' }}>{doc.read}</div>
-            {(doc.next_steps || []).length > 0 ? <div style={{ marginTop: 12 }}><Label>What the Frame Would Pull</Label>{doc.next_steps.map((x, i) => <div key={i} style={{ fontSize: 12.5, color: INK2, lineHeight: 1.5 }}>{i + 1}. {x}</div>)}</div> : null}
+            <div style={{ fontSize: 13.5, lineHeight: 1.65, color: INK, whiteSpace: 'pre-wrap' }}>{textOf(doc.read)}</div>
+            {(doc.next_steps || []).length > 0 ? <div style={{ marginTop: 12 }}><Label>What the Frame Would Pull</Label>{doc.next_steps.map((x, i) => <div key={i} style={{ fontSize: 12.5, color: INK2, lineHeight: 1.5 }}>{i + 1}. {textOf(x)}</div>)}</div> : null}
           </div>
         </>
       )}
@@ -577,6 +615,7 @@ export default function ArtifactsTab({ project, initialSlug }) {
                 <div style={{ fontFamily: SERIF, fontSize: 22, fontWeight: 500, color: '#fff', letterSpacing: '-0.01em' }}>{doc.title || slug}</div>
                 <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '1px', color: GRAY }}>{doc.updated_at ? `updated ${new Date(doc.updated_at).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZone: 'America/Chicago' })}` : ''}{doc.updated_by ? ` · ${String(doc.updated_by).split(' ')[0]}` : ''}</div>
               </div>
+              <ArtifactBoundary resetKey={`${slug}:${doc.updated_at || ''}`}>
               {doc.kind === 'scorecard'
                 ? <Scorecard doc={doc} onChange={(d) => { setDoc(d); setDirty(true) }} />
                 : doc.kind === 'decision'
@@ -590,6 +629,7 @@ export default function ArtifactsTab({ project, initialSlug }) {
                         : doc.kind === 'timeline'
                           ? <div style={{ fontSize: 13, color: INK2, lineHeight: 1.6 }}>The program timeline: {Array.isArray(doc.items) ? doc.items.length : 0} items across {doc.client_key || 'this client'}'s lanes. It is drawn as the waterfall on the Clients page, Timeline pill; edit it there.</div>
                           : <pre style={{ fontSize: 12, color: INK2, whiteSpace: 'pre-wrap' }}>{JSON.stringify(doc, null, 2)}</pre>}
+              </ArtifactBoundary>
             </>
           )}
           {msg && <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '1px', color: msg.startsWith('Could') ? RED : GOLD_BRIGHT, marginTop: 12, textTransform: 'uppercase' }}>{msg}</div>}
