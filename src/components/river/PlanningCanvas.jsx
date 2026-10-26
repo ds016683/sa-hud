@@ -3,7 +3,7 @@ import { Plus, RefreshCw, Save, ChevronRight, X } from 'lucide-react'
 import { readArtifact, writeArtifact } from '../../lib/artifacts'
 import { Waterfall, ItemModal } from '../ClientsPage'
 import { MMA_DOMAINS, PROGRAM_LANE, PLAN_LANES, PLAN_VIEWS } from '../../constants/domains'
-import { INK, INK2, GRAY, LABEL, MUTED, NAVY_DEEP, PANEL_BORDER, BLUE, GREEN, RED, MONO, SERIF, SubLabel, alpha } from './canon'
+import { INK, INK2, GRAY, LABEL, MUTED, NAVY_DEEP, PANEL_BORDER, PANEL_BG, BLUE, SUCCESS, RED, MONO, SERIF, SubLabel, alpha } from './canon'
 
 // =============================================================================
 // Planning (David, 10/23): the strategy planning waterfall on the Mission Card,
@@ -12,12 +12,17 @@ import { INK, INK2, GRAY, LABEL, MUTED, NAVY_DEEP, PANEL_BORDER, BLUE, GREEN, RE
 // program-plan artifact; the artifact ports back to the Master Tracker later.
 // =============================================================================
 const SLUG = 'program-plan'
+const VIOLET = SUCCESS   // the medallion purple: the view pills, Strategy / Operations / Budget (David, 10/26)
 const btnPrimary = { background: BLUE, color: NAVY_DEEP, border: 'none', borderRadius: 8, padding: '8px 14px', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', display: 'inline-flex', alignItems: 'center', gap: 6 }
-const btnGhost = { background: 'rgba(255,255,255,0.05)', color: INK, border: `1px solid ${PANEL_BORDER}`, borderRadius: 8, padding: '6px 12px', fontSize: 12, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit', display: 'inline-flex', alignItems: 'center', gap: 6 }
+const btnGhost = { background: PANEL_BG, color: INK, border: `1px solid ${PANEL_BORDER}`, borderRadius: 8, padding: '6px 12px', fontSize: 12, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit', display: 'inline-flex', alignItems: 'center', gap: 6 }
 const newId = () => (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`)
+const num = (v) => { const n = parseFloat(String(v ?? '').replace(/[^0-9.-]/g, '')); return Number.isFinite(n) ? n : 0 }
+const money = (n) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n || 0)
 
-function Pill({ active, children, onClick, title }) {
-  return <button onClick={onClick} title={title} style={{ padding: '5px 14px', borderRadius: 999, cursor: 'pointer', fontFamily: MONO, fontSize: 10, fontWeight: 600, letterSpacing: '1.2px', textTransform: 'uppercase', background: active ? BLUE : 'transparent', color: active ? NAVY_DEEP : INK2, border: active ? `1px solid ${BLUE}` : `1px solid ${PANEL_BORDER}` }}>{children}</button>
+// Pills: blue for places and filters, purple for the views of a plan (David, 10/26); small for the second row.
+function Pill({ active, children, onClick, title, tone = 'blue', small = false }) {
+  const fill = tone === 'purple' ? VIOLET : BLUE
+  return <button onClick={onClick} title={title} style={{ padding: small ? '4px 11px' : '5px 14px', borderRadius: 999, cursor: 'pointer', fontFamily: MONO, fontSize: small ? 9.5 : 10, fontWeight: 600, letterSpacing: '1.2px', textTransform: 'uppercase', background: active ? fill : 'transparent', color: active ? NAVY_DEEP : (tone === 'purple' ? fill : INK2), border: `1px solid ${active ? fill : tone === 'purple' ? alpha(fill, 55) : PANEL_BORDER}`, display: 'inline-flex', alignItems: 'center', gap: 6 }}>{children}</button>
 }
 
 // The seven identities, as a strip above the canvas.
@@ -27,7 +32,7 @@ export function DomainStrip({ counts = {}, active, onPick }) {
       {MMA_DOMAINS.map(d => {
         const Icon = d.icon; const on = active === d.id
         return (
-          <button key={d.id} onClick={() => onPick && onPick(on ? null : d.id)} title={d.line} style={{ textAlign: 'left', cursor: 'pointer', fontFamily: 'inherit', borderRadius: 10, padding: '10px 11px', background: on ? `${alpha(d.color, 13)}` : 'rgba(255,255,255,0.03)', border: `1px solid ${on ? d.color : PANEL_BORDER}`, borderTop: `3px solid ${d.color}`, color: INK, display: 'grid', gap: 6 }}>
+          <button key={d.id} onClick={() => onPick && onPick(on ? null : d.id)} title={d.line} style={{ textAlign: 'left', cursor: 'pointer', fontFamily: 'inherit', borderRadius: 10, padding: '10px 11px', background: on ? `${alpha(d.color, 13)}` : PANEL_BG, border: `1px solid ${on ? d.color : PANEL_BORDER}`, borderTop: `3px solid ${d.color}`, color: INK, display: 'grid', gap: 6 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <span style={{ width: 26, height: 26, borderRadius: 7, background: d.color, color: NAVY_DEEP, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><Icon size={14} /></span>
               <span style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '1.4px', color: d.color }}>{d.code} · {d.n}</span>
@@ -50,7 +55,7 @@ export function DomainsSurface({ domains = {}, onSave, busy, onOpen }) {
   useEffect(() => { let on = true; Promise.resolve().then(() => { if (on) { setD(domains); setDirty(false) } }); return () => { on = false } }, [domains])
   const get = (id, k, fallback = '') => (d[id] && d[id][k] != null ? d[id][k] : fallback)
   const set = (id, k) => (e) => { setD(prev => ({ ...prev, [id]: { ...(prev[id] || {}), [k]: e.target.value } })); setDirty(true) }
-  const input = { width: '100%', minWidth: 0, padding: '7px 9px', borderRadius: 7, border: `1px solid ${PANEL_BORDER}`, fontSize: 12.5, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', background: 'rgba(255,255,255,0.06)', color: INK }
+  const input = { width: '100%', minWidth: 0, padding: '7px 9px', borderRadius: 7, border: `1px solid ${PANEL_BORDER}`, fontSize: 12.5, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', background: PANEL_BG, color: INK }
   const eyebrow = { fontFamily: MONO, fontSize: 9.5, letterSpacing: '1.4px', textTransform: 'uppercase', color: LABEL }
   return (
     <div style={{ display: 'grid', gap: 10 }}>
@@ -63,7 +68,7 @@ export function DomainsSurface({ domains = {}, onSave, busy, onOpen }) {
       </div>
       <div style={{ overflowX: 'auto' }}>
       <div style={{ display: 'grid', gridTemplateColumns: '56px minmax(150px, 1.1fr) minmax(240px, 2.2fr) minmax(130px, 1fr) minmax(130px, 1fr)', gap: 0, border: `1px solid ${PANEL_BORDER}`, borderRadius: 12, overflow: 'hidden', minWidth: 760 }}>
-        {['', 'Domain', 'Definition', 'TH Lead', 'MMA Lead'].map((h, i) => <div key={i} style={{ ...eyebrow, padding: '10px 12px', background: 'rgba(255,255,255,0.04)', borderBottom: `1px solid ${PANEL_BORDER}` }}>{h}</div>)}
+        {['', 'Domain', 'Definition', 'TH Lead', 'MMA Lead'].map((h, i) => <div key={i} style={{ ...eyebrow, padding: '10px 12px', background: PANEL_BG, borderBottom: `1px solid ${PANEL_BORDER}` }}>{h}</div>)}
         {MMA_DOMAINS.map((dom, i) => {
           const Icon = dom.icon; const last = i === MMA_DOMAINS.length - 1
           const cell = { padding: '12px 12px', minWidth: 0, borderBottom: last ? 'none' : `1px solid ${PANEL_BORDER}`, display: 'flex', flexDirection: 'column', gap: 6, justifyContent: 'flex-start' }
@@ -94,13 +99,33 @@ export function DomainsSurface({ domains = {}, onSave, busy, onOpen }) {
 // key things that need to be true by different times in the year (the
 // strategy, a lexicon for the work); under each truth, the big things that
 // have to happen for it to be true, each with one accountable person; and
-// how we measure the thing being true. The Operations view explodes each big
-// thing into a little project planner: tasks, people, data-related costs.
-// The Budget face comes later.
+// how we measure the thing being true. Strategy reads as a flow down a spine
+// (David, 10/26). The Operations view explodes each big thing into a little
+// project planner: tasks, people, data-related costs. Budget prices each big
+// thing and sums them up the flow.
 const blankTruth = () => ({ id: newId(), anchor: '', label: '', text: '', measure: '', big: [] })
-const blankBig = () => ({ id: newId(), text: '', accountable: '', people: '', data_costs: '', tasks: [] })
+const blankBig = () => ({ id: newId(), text: '', accountable: '', people: '', data_costs: '', cost: '', tasks: [] })
 const blankTask = () => ({ id: newId(), text: '', owner: '', due: '', done: false })
-const FLOW_VIEWS = [{ id: 'strategy', label: 'Strategy' }, { id: 'ops', label: 'Operations' }]
+const FLOW_VIEWS = [{ id: 'strategy', label: 'Strategy' }, { id: 'ops', label: 'Operations' }, { id: 'budget', label: 'Budget' }]
+
+// The spine of the Strategy flow: a node on the left with its time, a line down to the next.
+function Rail({ color, first, last, children }) {
+  return (
+    <div style={{ position: 'relative', paddingRight: 26, paddingBottom: 22, paddingTop: 4, display: 'grid', gap: 4, alignContent: 'start', minWidth: 0, textAlign: 'right' }}>
+      {!(first && last) && <span style={{ position: 'absolute', right: 5, top: first ? 14 : 0, bottom: last ? 'auto' : 0, height: last ? 14 : 'auto', width: 2, background: alpha(color, 38) }} />}
+      <span style={{ position: 'absolute', right: 0, top: 8, width: 12, height: 12, borderRadius: '50%', background: color, boxShadow: `0 0 0 3px ${alpha(color, 22)}` }} />
+      {children}
+    </div>
+  )
+}
+function Body({ color, children }) {
+  return (
+    <div style={{ position: 'relative', paddingBottom: 22, paddingLeft: 18, minWidth: 0 }}>
+      <span style={{ position: 'absolute', left: 0, top: 14, width: 18, height: 2, background: alpha(color, 38) }} />
+      {children}
+    </div>
+  )
+}
 
 export function DomainFlowSurface({ dom, data = {}, onSave, busy }) {
   const [polaris, setPolaris] = useState(data.polaris || '')
@@ -114,12 +139,85 @@ export function DomainFlowSurface({ dom, data = {}, onSave, busy }) {
   const setT = (id, k, v) => patch(prev => prev.map(t => t.id === id ? { ...t, [k]: v } : t))
   const setB = (tid, bid, k, v) => patch(prev => prev.map(t => t.id === tid ? { ...t, big: t.big.map(b => b.id === bid ? { ...b, [k]: v } : b) } : t))
   const setK = (tid, bid, kid, k, v) => patch(prev => prev.map(t => t.id === tid ? { ...t, big: t.big.map(b => b.id === bid ? { ...b, tasks: b.tasks.map(x => x.id === kid ? { ...x, [k]: v } : x) } : b) } : t))
-  const input = { width: '100%', minWidth: 0, padding: '6px 8px', borderRadius: 7, border: `1px solid ${PANEL_BORDER}`, fontSize: 12.5, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', background: 'rgba(255,255,255,0.06)', color: INK }
+  const rmTruth = (tid) => patch(prev => prev.filter(x => x.id !== tid))
+  const addBig = (tid) => patch(prev => prev.map(x => x.id === tid ? { ...x, big: [...(x.big || []), blankBig()] } : x))
+  const rmBig = (tid, bid) => patch(prev => prev.map(x => x.id === tid ? { ...x, big: x.big.filter(y => y.id !== bid) } : x))
+  const addTask = (tid, bid) => patch(prev => prev.map(x => x.id === tid ? { ...x, big: x.big.map(y => y.id === bid ? { ...y, tasks: [...(y.tasks || []), blankTask()] } : y) } : x))
+  const rmTask = (tid, bid, kid) => patch(prev => prev.map(x => x.id === tid ? { ...x, big: x.big.map(y => y.id === bid ? { ...y, tasks: y.tasks.filter(z => z.id !== kid) } : y) } : x))
+  const input = { width: '100%', minWidth: 0, padding: '6px 8px', borderRadius: 7, border: `1px solid ${PANEL_BORDER}`, fontSize: 12.5, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', background: PANEL_BG, color: INK }
+  const quiet = { ...input, border: '1px solid transparent' }   // in the flow, a field reads as text until you touch it
   const eyebrow = { fontFamily: MONO, fontSize: 9.5, letterSpacing: '1.4px', textTransform: 'uppercase', color: LABEL }
+  const card = { border: `1px solid ${PANEL_BORDER}`, borderLeft: `3px solid ${dom.color}`, borderRadius: 10, padding: '12px 14px', display: 'grid', gap: 8, background: PANEL_BG }
   const labels = [...new Set(truths.map(t => t.label).filter(Boolean))]
   const shown = truths.filter(t => anchor === 'all' || t.label === anchor).sort((a, b) => String(a.anchor || '9999').localeCompare(String(b.anchor || '9999')))
   const Icon = dom.icon
-  const ops = view === 'ops'
+  const flow = view === 'strategy', ops = view === 'ops', budget = view === 'budget'
+  const subtotal = (t) => (t.big || []).reduce((s, b) => s + num(b.cost), 0)
+  const total = truths.reduce((s, t) => s + subtotal(t), 0)
+  const removeBtn = { background: 'none', border: 'none', color: MUTED, cursor: 'pointer', padding: 2 }
+
+  // One truth's big things in the Operations and Budget views (a grid; Operations explodes a row into its planner).
+  const bigGrid = (t) => {
+    const cols = ops ? '20px minmax(220px, 2fr) minmax(130px, 1fr) 24px' : 'minmax(220px, 2fr) minmax(130px, 1fr) 120px 24px'
+    return (
+      <div style={{ display: 'grid', gridTemplateColumns: cols, gap: 8, alignItems: 'center' }}>
+        {ops && <span />}<span style={eyebrow}>The Big Things That Have To Happen</span><span style={eyebrow}>Accountable</span>{budget && <span style={{ ...eyebrow, textAlign: 'right' }}>Cost</span>}<span />
+        {(t.big || []).map(b => (
+          <Fragment key={b.id}>
+            {ops && <button onClick={() => setOpen(o => ({ ...o, [b.id]: !o[b.id] }))} title={open[b.id] ? 'Fold' : 'Explode into tasks'} style={{ background: 'none', border: 'none', color: dom.color, cursor: 'pointer', padding: 0, transform: open[b.id] ? 'rotate(90deg)' : 'none', transition: 'transform 120ms' }}><ChevronRight size={14} /></button>}
+            <input value={b.text} onChange={e => setB(t.id, b.id, 'text', e.target.value)} placeholder="A big thing, in one line" style={input} />
+            <input value={b.accountable} onChange={e => setB(t.id, b.id, 'accountable', e.target.value)} placeholder="One name" style={input} />
+            {budget && <input value={b.cost || ''} onChange={e => setB(t.id, b.id, 'cost', e.target.value)} placeholder="$" inputMode="decimal" style={{ ...input, textAlign: 'right', fontFamily: MONO, fontSize: 12, color: VIOLET }} />}
+            <button onClick={() => rmBig(t.id, b.id)} title="Remove" style={removeBtn}><X size={12} /></button>
+            {ops && open[b.id] && (
+              <div style={{ gridColumn: '1 / -1', marginLeft: 28, padding: '10px 12px', borderRadius: 8, border: `1px dashed ${PANEL_BORDER}`, display: 'grid', gap: 8, background: PANEL_BG }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 8 }}>
+                  <label style={{ display: 'grid', gap: 3 }}><span style={eyebrow}>People</span><input value={b.people || ''} onChange={e => setB(t.id, b.id, 'people', e.target.value)} placeholder="Who works it, how much of them" style={input} /></label>
+                  <label style={{ display: 'grid', gap: 3 }}><span style={eyebrow}>Data-Related Costs</span><input value={b.data_costs || ''} onChange={e => setB(t.id, b.id, 'data_costs', e.target.value)} placeholder="Sources, compute, licenses" style={input} /></label>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'minmax(200px, 2fr) minmax(110px, 1fr) 128px 24px 22px', gap: 6, alignItems: 'center' }}>
+                  <span style={eyebrow}>Task</span><span style={eyebrow}>Who</span><span style={eyebrow}>Due</span><span style={{ ...eyebrow, textAlign: 'center' }}>Done</span><span />
+                  {(b.tasks || []).map(k => (
+                    <Fragment key={k.id}>
+                      <input value={k.text} onChange={e => setK(t.id, b.id, k.id, 'text', e.target.value)} placeholder="The task" style={{ ...input, opacity: k.done ? 0.6 : 1, textDecoration: k.done ? 'line-through' : 'none' }} />
+                      <input value={k.owner} onChange={e => setK(t.id, b.id, k.id, 'owner', e.target.value)} placeholder="Name" style={input} />
+                      <input type="date" value={k.due || ''} onChange={e => setK(t.id, b.id, k.id, 'due', e.target.value)} style={{ ...input, fontSize: 11 }} />
+                      <input type="checkbox" checked={!!k.done} onChange={e => setK(t.id, b.id, k.id, 'done', e.target.checked)} style={{ justifySelf: 'center', accentColor: dom.color }} />
+                      <button onClick={() => rmTask(t.id, b.id, k.id)} title="Remove" style={removeBtn}><X size={12} /></button>
+                    </Fragment>
+                  ))}
+                  <button onClick={() => addTask(t.id, b.id)} style={{ ...btnGhost, padding: '3px 8px', fontSize: 11, justifySelf: 'start', gridColumn: '1 / -1' }}><Plus size={11} /> Task</button>
+                </div>
+              </div>
+            )}
+          </Fragment>
+        ))}
+        <button onClick={() => addBig(t.id)} style={{ ...btnGhost, padding: '4px 9px', fontSize: 11, justifySelf: 'start', gridColumn: budget ? '1 / 3' : '1 / -1' }}><Plus size={11} /> Big Thing</button>
+        {budget && <><span style={{ ...eyebrow, textAlign: 'right', color: VIOLET }}>Subtotal · {money(subtotal(t))}</span><span /></>}
+      </div>
+    )
+  }
+
+  // One truth's big things in the Strategy flow: a small tree under the truth.
+  const bigTree = (t) => (
+    <div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(120px, 170px) 20px', gap: 8, paddingLeft: 20 }}>
+        <span style={eyebrow}>The Big Things That Have To Happen</span><span style={eyebrow}>Accountable</span><span />
+      </div>
+      <div style={{ marginLeft: 6, marginTop: 4, borderLeft: `2px solid ${alpha(dom.color, 35)}`, paddingLeft: 12, display: 'grid', gap: 4 }}>
+        {(t.big || []).map(b => (
+          <div key={b.id} style={{ position: 'relative', display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(120px, 170px) 20px', gap: 8, alignItems: 'center' }}>
+            <span style={{ position: 'absolute', left: -12, top: '50%', width: 10, height: 2, background: alpha(dom.color, 35) }} />
+            <input value={b.text} onChange={e => setB(t.id, b.id, 'text', e.target.value)} placeholder="A big thing, in one line" style={quiet} />
+            <input value={b.accountable} onChange={e => setB(t.id, b.id, 'accountable', e.target.value)} placeholder="One name" style={{ ...quiet, fontSize: 11.5, fontWeight: 600, color: dom.color }} />
+            <button onClick={() => rmBig(t.id, b.id)} title="Remove" style={removeBtn}><X size={12} /></button>
+          </div>
+        ))}
+        <button onClick={() => addBig(t.id)} style={{ ...btnGhost, padding: '3px 8px', fontSize: 11, justifySelf: 'start', marginTop: 2 }}><Plus size={11} /> Big Thing</button>
+      </div>
+    </div>
+  )
+
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 12 }}>
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap' }}>
@@ -127,8 +225,10 @@ export function DomainFlowSurface({ dom, data = {}, onSave, busy }) {
         <div style={{ flex: 1, minWidth: 260 }}>
           <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '1.4px', color: dom.color }}>{dom.code} · {dom.n}</div>
           <div style={{ fontFamily: SERIF, fontSize: 20, fontWeight: 500, color: INK, lineHeight: 1.2 }}>{dom.id}</div>
-          <div style={{ ...eyebrow, marginTop: 8 }}>Polaris Objective</div>
-          <textarea value={polaris} onChange={e => { setPolaris(e.target.value); setDirty(true) }} rows={2} placeholder="At the end of 2027, Third Horizon will have…" style={{ ...input, fontFamily: SERIF, fontStyle: 'italic', fontSize: 15, lineHeight: 1.4, resize: 'vertical', marginTop: 4 }} />
+          {!flow && <>
+            <div style={{ ...eyebrow, marginTop: 8 }}>Polaris Objective</div>
+            <textarea value={polaris} onChange={e => { setPolaris(e.target.value); setDirty(true) }} rows={2} placeholder="At the end of 2027, Third Horizon will have…" style={{ ...input, fontFamily: SERIF, fontStyle: 'italic', fontSize: 15, lineHeight: 1.4, resize: 'vertical', marginTop: 4 }} />
+          </>}
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
           <button onClick={() => patch(prev => [...prev, blankTruth()])} style={btnGhost}><Plus size={12} /> Truth</button>
@@ -136,15 +236,57 @@ export function DomainFlowSurface({ dom, data = {}, onSave, busy }) {
         </div>
       </div>
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
-        {FLOW_VIEWS.map(x => <Pill key={x.id} active={view === x.id} onClick={() => setView(x.id)}>{x.label}</Pill>)}
+        {FLOW_VIEWS.map(x => <Pill key={x.id} tone="purple" active={view === x.id} onClick={() => setView(x.id)}>{x.label}</Pill>)}
         <span style={{ width: 1, height: 18, background: PANEL_BORDER, margin: '0 4px' }} />
         <span style={{ ...eyebrow, marginRight: 2 }}>By When</span>
         <Pill active={anchor === 'all'} onClick={() => setAnchor('all')}>All · {truths.length}</Pill>
         {labels.map(l => <Pill key={l} active={anchor === l} onClick={() => setAnchor(l)}>{l}</Pill>)}
+        {budget && <span style={{ marginLeft: 'auto', fontFamily: MONO, fontSize: 10, fontWeight: 600, letterSpacing: '1.2px', textTransform: 'uppercase', color: VIOLET, padding: '5px 12px', borderRadius: 999, border: `1px solid ${alpha(VIOLET, 55)}` }}>Total · {money(total)}</span>}
       </div>
-      {shown.length === 0 && <div style={{ fontSize: 12.5, color: GRAY, padding: '14px 0' }}>No truths yet. Add the first one: a thing that will be verifiably true by a time in the year.</div>}
-      {shown.map(t => (
-        <div key={t.id} style={{ border: `1px solid ${PANEL_BORDER}`, borderLeft: `3px solid ${dom.color}`, borderRadius: 10, padding: '12px 14px', display: 'grid', gap: 10, background: 'rgba(255,255,255,0.025)' }}>
+      {!flow && shown.length === 0 && <div style={{ fontSize: 12.5, color: GRAY, padding: '14px 0' }}>No truths yet. Add the first one: a thing that will be verifiably true by a time in the year.</div>}
+
+      {/* Strategy: the flow down. Polaris at the head of the spine, then each truth at its time, each with the big things under it. */}
+      {flow && (
+        <div style={{ display: 'grid', gridTemplateColumns: '164px minmax(0, 1fr)' }}>
+          <Rail color={dom.color} first last={shown.length === 0}>
+            <span style={{ ...eyebrow, color: dom.color }}>Polaris</span>
+            <span style={{ fontSize: 11, color: MUTED }}>End Of 2027</span>
+          </Rail>
+          <Body color={dom.color}>
+            <div style={{ ...card, background: alpha(dom.color, 7) }}>
+              <span style={eyebrow}>Polaris Objective</span>
+              <textarea value={polaris} onChange={e => { setPolaris(e.target.value); setDirty(true) }} rows={2} placeholder="At the end of 2027, Third Horizon will have…" style={{ ...quiet, fontFamily: SERIF, fontStyle: 'italic', fontSize: 16, lineHeight: 1.45, resize: 'vertical', background: 'transparent' }} />
+            </div>
+          </Body>
+          {shown.length === 0 && <><div /><div style={{ fontSize: 12.5, color: GRAY, paddingLeft: 18 }}>No truths yet. Add the first one: a thing that will be verifiably true by a time in the year.</div></>}
+          {shown.map((t, i) => (
+            <Fragment key={t.id}>
+              <Rail color={dom.color} last={i === shown.length - 1}>
+                <input value={t.label} onChange={e => setT(t.id, 'label', e.target.value)} placeholder="By when" style={{ ...quiet, textAlign: 'right', fontFamily: MONO, fontSize: 11, fontWeight: 600, letterSpacing: '0.8px', textTransform: 'uppercase', color: dom.color, padding: '4px 6px' }} />
+                <input type="date" value={t.anchor || ''} onChange={e => setT(t.id, 'anchor', e.target.value)} style={{ ...quiet, textAlign: 'right', fontSize: 11, padding: '3px 6px', color: MUTED }} />
+              </Rail>
+              <Body color={dom.color}>
+                <div style={card}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={eyebrow}>What Must Be True</span>
+                    <button onClick={() => rmTruth(t.id)} title="Remove this truth" style={{ ...removeBtn, marginLeft: 'auto' }}><X size={14} /></button>
+                  </div>
+                  <textarea value={t.text} onChange={e => setT(t.id, 'text', e.target.value)} rows={2} placeholder="One sentence, verifiable" style={{ ...quiet, fontFamily: SERIF, fontSize: 15.5, lineHeight: 1.4, resize: 'vertical', padding: '4px 8px' }} />
+                  {bigTree(t)}
+                  <div style={{ borderTop: `1px dashed ${PANEL_BORDER}`, paddingTop: 8, display: 'grid', gap: 3 }}>
+                    <span style={eyebrow}>How We Measure It Being True</span>
+                    <input value={t.measure} onChange={e => setT(t.id, 'measure', e.target.value)} placeholder="The evidence that settles it" style={{ ...quiet, fontSize: 12.5, color: INK2 }} />
+                  </div>
+                </div>
+              </Body>
+            </Fragment>
+          ))}
+        </div>
+      )}
+
+      {/* Operations and Budget: the same truths as cards, the big things as a working grid. */}
+      {!flow && shown.map(t => (
+        <div key={t.id} style={card}>
           <div style={{ display: 'grid', gridTemplateColumns: '150px minmax(0, 1fr) auto', gap: 10, alignItems: 'start' }}>
             <div style={{ display: 'grid', gap: 4 }}>
               <span style={eyebrow}>By When</span>
@@ -157,41 +299,9 @@ export function DomainFlowSurface({ dom, data = {}, onSave, busy }) {
               <span style={{ ...eyebrow, marginTop: 4 }}>How We Measure It Being True</span>
               <input value={t.measure} onChange={e => setT(t.id, 'measure', e.target.value)} placeholder="The evidence that settles it" style={input} />
             </div>
-            <button onClick={() => patch(prev => prev.filter(x => x.id !== t.id))} title="Remove this truth" style={{ background: 'none', border: 'none', color: MUTED, cursor: 'pointer', padding: 4 }}><X size={14} /></button>
+            <button onClick={() => rmTruth(t.id)} title="Remove this truth" style={{ ...removeBtn, padding: 4 }}><X size={14} /></button>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: ops ? '20px minmax(220px, 2fr) minmax(130px, 1fr) 24px' : 'minmax(220px, 2fr) minmax(130px, 1fr) 24px', gap: 8, alignItems: 'center' }}>
-            {ops && <span />}<span style={eyebrow}>The Big Things That Have To Happen</span><span style={eyebrow}>Accountable</span><span />
-            {(t.big || []).map(b => (
-              <Fragment key={b.id}>
-                {ops && <button onClick={() => setOpen(o => ({ ...o, [b.id]: !o[b.id] }))} title={open[b.id] ? 'Fold' : 'Explode into tasks'} style={{ background: 'none', border: 'none', color: dom.color, cursor: 'pointer', padding: 0, transform: open[b.id] ? 'rotate(90deg)' : 'none', transition: 'transform 120ms' }}><ChevronRight size={14} /></button>}
-                <input value={b.text} onChange={e => setB(t.id, b.id, 'text', e.target.value)} placeholder="A big thing, in one line" style={input} />
-                <input value={b.accountable} onChange={e => setB(t.id, b.id, 'accountable', e.target.value)} placeholder="One name" style={input} />
-                <button onClick={() => patch(prev => prev.map(x => x.id === t.id ? { ...x, big: x.big.filter(y => y.id !== b.id) } : x))} title="Remove" style={{ background: 'none', border: 'none', color: MUTED, cursor: 'pointer', padding: 2 }}><X size={12} /></button>
-                {ops && open[b.id] && (
-                  <div style={{ gridColumn: '1 / -1', marginLeft: 28, padding: '10px 12px', borderRadius: 8, border: `1px dashed ${PANEL_BORDER}`, display: 'grid', gap: 8, background: 'rgba(255,255,255,0.02)' }}>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 8 }}>
-                      <label style={{ display: 'grid', gap: 3 }}><span style={eyebrow}>People</span><input value={b.people || ''} onChange={e => setB(t.id, b.id, 'people', e.target.value)} placeholder="Who works it, how much of them" style={input} /></label>
-                      <label style={{ display: 'grid', gap: 3 }}><span style={eyebrow}>Data-Related Costs</span><input value={b.data_costs || ''} onChange={e => setB(t.id, b.id, 'data_costs', e.target.value)} placeholder="Sources, compute, licenses" style={input} /></label>
-                    </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(200px, 2fr) minmax(110px, 1fr) 128px 24px 22px', gap: 6, alignItems: 'center' }}>
-                      <span style={eyebrow}>Task</span><span style={eyebrow}>Who</span><span style={eyebrow}>Due</span><span style={{ ...eyebrow, textAlign: 'center' }}>Done</span><span />
-                      {(b.tasks || []).map(k => (
-                        <Fragment key={k.id}>
-                          <input value={k.text} onChange={e => setK(t.id, b.id, k.id, 'text', e.target.value)} placeholder="The task" style={{ ...input, opacity: k.done ? 0.6 : 1, textDecoration: k.done ? 'line-through' : 'none' }} />
-                          <input value={k.owner} onChange={e => setK(t.id, b.id, k.id, 'owner', e.target.value)} placeholder="Name" style={input} />
-                          <input type="date" value={k.due || ''} onChange={e => setK(t.id, b.id, k.id, 'due', e.target.value)} style={{ ...input, fontSize: 11 }} />
-                          <input type="checkbox" checked={!!k.done} onChange={e => setK(t.id, b.id, k.id, 'done', e.target.checked)} style={{ justifySelf: 'center', accentColor: dom.color }} />
-                          <button onClick={() => patch(prev => prev.map(x => x.id === t.id ? { ...x, big: x.big.map(y => y.id === b.id ? { ...y, tasks: y.tasks.filter(z => z.id !== k.id) } : y) } : x))} title="Remove" style={{ background: 'none', border: 'none', color: MUTED, cursor: 'pointer', padding: 2 }}><X size={12} /></button>
-                        </Fragment>
-                      ))}
-                      <button onClick={() => patch(prev => prev.map(x => x.id === t.id ? { ...x, big: x.big.map(y => y.id === b.id ? { ...y, tasks: [...(y.tasks || []), blankTask()] } : y) } : x))} style={{ ...btnGhost, padding: '3px 8px', fontSize: 11, justifySelf: 'start', gridColumn: '1 / -1' }}><Plus size={11} /> Task</button>
-                    </div>
-                  </div>
-                )}
-              </Fragment>
-            ))}
-            <button onClick={() => patch(prev => prev.map(x => x.id === t.id ? { ...x, big: [...(x.big || []), blankBig()] } : x))} style={{ ...btnGhost, padding: '4px 9px', fontSize: 11, justifySelf: 'start', gridColumn: '1 / -1' }}><Plus size={11} /> Big Thing</button>
-          </div>
+          {bigGrid(t)}
         </div>
       ))}
     </div>
@@ -204,6 +314,7 @@ export default function PlanningCanvas({ project }) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [surface, setSurface] = useState('domains')
+  const [opened, setOpened] = useState([])   // domains opened this visit: the second row of pills (David, 10/26)
   const [view, setView] = useState('strategy')
   const [mode, setMode] = useState('simple')
   const [pick, setPick] = useState(null)
@@ -235,23 +346,34 @@ export default function PlanningCanvas({ project }) {
   const saveItem = (d) => persist(d.id ? items.map(i => i.id === d.id ? { ...i, ...d, updated_at: new Date().toISOString() } : i) : [...items, { ...d, position: items.length }])
   const deleteItem = (it) => persist(items.filter(i => i.id !== it.id))
   const moveItem = (it, patch) => persist(items.map(i => i.id === it.id ? { ...i, ...patch } : i))
+  const openDomain = (id) => { setOpened(o => o.includes(id) ? o : [...o, id]); setSurface(`domain:${id}`) }
   const shown = pick ? items.filter(i => i.lane === pick || i.lane === PROGRAM_LANE.id) : items
   const counts = Object.fromEntries(MMA_DOMAINS.map(d => [d.id, items.filter(i => i.lane === d.id).length]))
   const openDom = surface.startsWith('domain:') ? MMA_DOMAINS.find(d => d.id === surface.slice(7)) || null : null
   const v = PLAN_VIEWS.find(x => x.id === view)
   const subtitle = (it) => (it[v.field] ? it[v.field] : (view === 'strategy' ? it.date_label : ''))
+  const eyebrow = { fontFamily: MONO, fontSize: 9.5, letterSpacing: '1.4px', textTransform: 'uppercase', color: LABEL, marginRight: 6 }
 
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 14 }}>
-      {/* Surfaces: tabs for the work we take somewhere else (David, 10/24). */}
-      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', paddingBottom: 10, borderBottom: `1px solid ${PANEL_BORDER}` }}>
-        <span style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '1.4px', textTransform: 'uppercase', color: LABEL, marginRight: 6 }}>Surfaces</span>
-        <Pill active={surface === 'domains'} onClick={() => setSurface('domains')}>2027 Domains</Pill>
-        <Pill active={surface === 'plan'} onClick={() => setSurface('plan')}>Program Plan</Pill>
-        {openDom && <Pill active={surface === `domain:${openDom.id}`} onClick={() => setSurface(`domain:${openDom.id}`)}><span style={{ display: 'inline-block', width: 7, height: 7, borderRadius: 2, background: openDom.color, marginRight: 6, verticalAlign: '1px' }} />{openDom.id}</Pill>}
+      {/* Surfaces: tabs for the work we take somewhere else (David, 10/24); the domains opened sit on a smaller second row (10/26). */}
+      <div style={{ display: 'grid', gap: 8, paddingBottom: 10, borderBottom: `1px solid ${PANEL_BORDER}` }}>
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+          <span style={eyebrow}>Surfaces</span>
+          <Pill active={surface === 'domains'} onClick={() => setSurface('domains')}>2027 Domains</Pill>
+          <Pill active={surface === 'plan'} onClick={() => setSurface('plan')}>Program Plan</Pill>
+        </div>
+        {opened.length > 0 && (
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+            <span style={eyebrow}>Open</span>
+            {opened.map(id => { const d = MMA_DOMAINS.find(x => x.id === id); return d ? (
+              <Pill key={id} small active={surface === `domain:${id}`} onClick={() => setSurface(`domain:${id}`)}><span style={{ display: 'inline-block', width: 7, height: 7, borderRadius: 2, background: d.color }} />{d.id}</Pill>
+            ) : null })}
+          </div>
+        )}
       </div>
       {error && surface !== 'plan' && <div style={{ fontSize: 12.5, color: RED }}>{error}</div>}
-      {surface === 'domains' && <DomainsSurface domains={doc?.domains || {}} onSave={saveDomains} busy={busy} onOpen={(id) => setSurface(`domain:${id}`)} />}
+      {surface === 'domains' && <DomainsSurface domains={doc?.domains || {}} onSave={saveDomains} busy={busy} onOpen={openDomain} />}
       {openDom && surface === `domain:${openDom.id}` && <DomainFlowSurface dom={openDom} data={(doc?.domains || {})[openDom.id] || {}} busy={busy} onSave={(d) => saveDomains({ ...(doc?.domains || {}), [openDom.id]: d })} />}
       {surface === 'plan' && (<>
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap' }}>
@@ -266,7 +388,7 @@ export default function PlanningCanvas({ project }) {
       </div>
       <DomainStrip counts={counts} active={pick} onPick={setPick} />
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
-        {PLAN_VIEWS.map(x => <Pill key={x.id} active={view === x.id} onClick={() => setView(x.id)} title={x.hint}>{x.label}</Pill>)}
+        {PLAN_VIEWS.map(x => <Pill key={x.id} tone="purple" active={view === x.id} onClick={() => setView(x.id)} title={x.hint}>{x.label}</Pill>)}
         <span style={{ width: 1, height: 18, background: PANEL_BORDER, margin: '0 4px' }} />
         <Pill active={mode === 'simple'} onClick={() => setMode('simple')}>Simple</Pill>
         <Pill active={mode === 'detailed'} onClick={() => setMode('detailed')}>Detailed</Pill>

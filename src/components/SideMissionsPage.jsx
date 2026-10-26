@@ -130,7 +130,9 @@ export default function SideMissionsPage({ onNavigate }) {
   useEffect(() => { Promise.resolve().then(refresh) }, [refresh])
   const pick = (c) => { setContainer(c); try { localStorage.setItem('sm-container', c) } catch { /* no-op */ } }
 
-  const live = useMemo(() => (rows || []).filter(o => !o.deleted_at), [rows])
+  // Side Missions only (David 10/26): a promoted milestone is a Main Mission's item and a
+  // session item is the Board's; neither belongs on this page.
+  const live = useMemo(() => (rows || []).filter(o => !o.deleted_at && !(o.tags || []).includes('mission-task') && !(o.tags || []).includes('session')), [rows])
   const bin = useMemo(() => (rows || []).filter(o => o.deleted_at), [rows])
   const active = live.filter(o => o.state === 'active' && !(o.tags || []).includes('session'))
   const counts = Object.fromEntries(CONTAINERS.map(c => [c, c === 'bin' ? bin.length : c === 'released' ? live.filter(o => o.state === 'released').length : live.filter(o => o.state === c).length]))
