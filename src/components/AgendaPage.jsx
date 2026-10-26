@@ -8,6 +8,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { ChevronLeft, ChevronRight, CalendarDays, Check, HelpCircle, Play, Pause, X as XIcon } from 'lucide-react'
 import { supabase, reportSoft } from '../lib/supabase'
+import { ConsoleRunProvider } from '../lib/consoleRun'
 import { matchNotes, hoursBetween, upsertSession, logToHarvest } from '../lib/meetings'
 import MeetingCloseout, { renderMarkdown, CloseoutBlock, friendlyError, fmtHours } from './river/MeetingCloseout'
 import LoadoutPanel from './river/LoadoutPanel'
