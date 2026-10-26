@@ -153,6 +153,7 @@ export function DomainFlowSurface({ dom, data = {}, onSave, busy }) {
   const [fin, setFin] = useState(data.final || blankFinal())
   const [dirty, setDirty] = useState(false)
   const [view, setView] = useState('strategy')
+  const [stream, setStream] = useState('all')   // a domain with streams (Regional Engagement's five) can be read one stream at a time
   const [open, setOpen] = useState({})   // big thing id -> expanded in Operations
   useEffect(() => { let on = true; Promise.resolve().then(() => { if (on) { setTruths(data.truths || []); setPolaris(data.polaris || ''); setFin(data.final || blankFinal()); setDirty(false) } }); return () => { on = false } }, [data.truths, data.polaris, data.final])
   // Every truth, the Final included, is edited through one set of helpers: the Final is addressed by the id 'final'.
@@ -172,7 +173,12 @@ export function DomainFlowSurface({ dom, data = {}, onSave, busy }) {
   const quiet = { width: '100%', maxWidth: '100%', minWidth: 0, boxSizing: 'border-box', fontFamily: 'inherit', color: INK, resize: 'none', padding: '3px 7px', margin: '0 -7px', fontSize: 13.5 }
   const eyebrow = { fontFamily: MONO, fontSize: 9.5, letterSpacing: '1.4px', textTransform: 'uppercase', color: LABEL }
   const card = { border: `1px solid ${PANEL_BORDER}`, borderLeft: `3px solid ${dom.color}`, borderRadius: 10, padding: '12px 14px', display: 'grid', gap: 8, background: PANEL_BG }
-  const shown = [...truths].sort((a, b) => String(a.anchor || '9999').localeCompare(String(b.anchor || '9999')))
+  const streams = Array.isArray(data.streams) ? data.streams : []
+  const streamOf = (id) => streams.find(x => x.id === id) || null
+  // Numbered down the whole domain in time order, so a truth keeps its number when one stream is picked.
+  const ordered = [...truths].sort((a, b) => String(a.anchor || '9999').localeCompare(String(b.anchor || '9999'))).map((t, i) => ({ t, n: i + 1 }))
+  const shown = stream === 'all' ? ordered : ordered.filter(x => x.t.stream === stream)
+  const chip = { justifySelf: 'end', fontFamily: MONO, fontSize: 9.5, fontWeight: 700, letterSpacing: '1px', color: dom.color, border: `1px solid ${alpha(dom.color, 55)}`, borderRadius: 999, padding: '1px 7px', marginTop: 3 }
   const Icon = dom.icon
   const flow = view === 'strategy', ops = view === 'ops', budget = view === 'budget'
   const subtotal = (t) => (t.big || []).reduce((s, b) => s + num(b.cost), 0)
@@ -268,7 +274,7 @@ export function DomainFlowSurface({ dom, data = {}, onSave, busy }) {
           <div style={{ fontFamily: SERIF, fontSize: 22, fontWeight: 500, color: INK, lineHeight: 1.2 }}>{dom.id}</div>
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <button onClick={() => patch(prev => [...prev, blankTruth()])} style={btnGhost}><Plus size={12} /> Truth</button>
+          <button onClick={() => patch(prev => [...prev, { ...blankTruth(), stream: stream === 'all' ? '' : stream }])} style={btnGhost}><Plus size={12} /> Truth</button>
           <button onClick={() => onSave({ ...data, polaris, truths, final: fin })} disabled={!dirty || busy} style={{ ...btnPrimary, opacity: dirty ? 1 : 0.5 }}><Save size={13} /> {busy ? 'Saving…' : dirty ? 'Save' : 'Saved'}</button>
         </div>
       </div>
@@ -276,6 +282,14 @@ export function DomainFlowSurface({ dom, data = {}, onSave, busy }) {
         {FLOW_VIEWS.map(x => <Pill key={x.id} color={dom.color} active={view === x.id} onClick={() => setView(x.id)}>{x.label}</Pill>)}
         {budget && <span style={{ marginLeft: 'auto', fontFamily: MONO, fontSize: 10, fontWeight: 600, letterSpacing: '1.2px', textTransform: 'uppercase', color: dom.color, padding: '5px 12px', borderRadius: 999, border: `1px solid ${alpha(dom.color, 55)}` }}>Total · {money(total)}</span>}
       </div>
+      {/* Streams (David, 10/26): a domain that carries several streams reads them all on one spine, or one at a time. Polaris and the Final stay domain-wide. */}
+      {streams.length > 0 && (
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', marginTop: -6 }}>
+          <span style={{ ...eyebrow, marginRight: 4 }}>Streams</span>
+          <Pill small color={dom.color} active={stream === 'all'} onClick={() => setStream('all')}>All · {truths.length}</Pill>
+          {streams.map(x => <Pill key={x.id} small color={dom.color} active={stream === x.id} onClick={() => setStream(x.id)}>{x.name} · {truths.filter(t => t.stream === x.id).length}</Pill>)}
+        </div>
+      )}
 
       {/* The key, stated once: a numbered node is a thing that must be true at a key moment; a keyed line under it is a big thing that has to happen; the flag is the Final, true of the whole domain. */}
       <div style={{ display: 'flex', gap: 26, alignItems: 'center', flexWrap: 'wrap', paddingLeft: RAIL_W + 26, marginTop: 2 }}>
@@ -302,17 +316,19 @@ export function DomainFlowSurface({ dom, data = {}, onSave, busy }) {
             </div>
           )}
         </Body>
-        {shown.map((t, i) => {
-          const n = i + 1
+        {shown.map(({ t, n }) => {
+          const st = streamOf(t.stream)
           return (
           <Fragment key={t.id}>
             <Rail color={dom.color} node={<Node color={dom.color} n={n} />}>
               {flow ? (<>
                 <textarea className="plan-quiet" value={t.label} onChange={e => setT(t.id, 'label', e.target.value.replace(/\n/g, ' '))} rows={rowsAuto(t.label, 16)} placeholder="By when" style={{ ...quiet, textAlign: 'right', fontFamily: MONO, fontSize: 11, fontWeight: 600, letterSpacing: '0.8px', textTransform: 'uppercase', lineHeight: 1.35, color: dom.color, padding: '4px 7px', margin: '2px -7px 0 0', width: 'calc(100% + 7px)' }} />
                 {t.anchor && <span style={{ fontSize: 11.5, color: MUTED }}>{fmtAnchor(t.anchor)}</span>}
+                {st && <span style={chip} title={st.name}>{st.code}</span>}
               </>) : (<>
                 <textarea value={t.label} onChange={e => setT(t.id, 'label', e.target.value.replace(/\n/g, ' '))} rows={rowsAuto(t.label, 16)} placeholder="e.g. By Nov 30" style={{ ...input, fieldSizing: 'content', textAlign: 'right', fontFamily: MONO, fontSize: 11, fontWeight: 600, letterSpacing: '0.8px', textTransform: 'uppercase', lineHeight: 1.35, color: dom.color, marginTop: 2, resize: 'none' }} />
                 <input type="date" value={t.anchor || ''} onChange={e => setT(t.id, 'anchor', e.target.value)} style={{ ...input, textAlign: 'right', fontSize: 11, color: MUTED }} />
+                {streams.length > 0 && <select value={t.stream || ''} onChange={e => setT(t.id, 'stream', e.target.value)} style={{ ...input, fontSize: 11, color: dom.color, fontWeight: 600 }}><option value="">No stream</option>{streams.map(x => <option key={x.id} value={x.id}>{x.code} · {x.name}</option>)}</select>}
               </>)}
             </Rail>
             <Body color={dom.color}>{truthBody(t, n, false)}</Body>

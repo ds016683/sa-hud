@@ -662,7 +662,7 @@
       "position": 35
     }
   ],
-  "updated_at": "2026-10-26T14:55:44.880177+00:00",
+  "updated_at": "2026-10-26T17:19:28.585310+00:00",
   "updated_by": "session (claude), the October 19 record",
   "domains": {
     "Data Production": {
@@ -849,7 +849,8 @@
               "data_costs": "",
               "tasks": []
             }
-          ]
+          ],
+          "stream": "pi"
         },
         {
           "id": "re-t2",
@@ -890,14 +891,15 @@
               "data_costs": "",
               "tasks": []
             }
-          ]
+          ],
+          "stream": "pi"
         },
         {
           "id": "re-t3",
           "label": "After Pilots",
           "anchor": "",
-          "text": "The 10 levers are distilled from the pilots into a model, and the national paper applies the general learnings to the national data set.",
-          "measure": "The model exists as a deliverable of one workstream; the national paper is published publicly and pulls inbound calls.",
+          "text": "The 10 levers are distilled from the pilots into a model.",
+          "measure": "The model exists as a deliverable of one workstream.",
           "big": [
             {
               "id": "re-t3-b1",
@@ -906,7 +908,18 @@
               "people": "",
               "data_costs": "",
               "tasks": []
-            },
+            }
+          ],
+          "stream": "pi"
+        },
+        {
+          "id": "re-t3b",
+          "label": "After Pilots",
+          "anchor": "",
+          "stream": "mr",
+          "text": "The national paper applies the general learnings from the pilots to the national data set.",
+          "measure": "The national paper is published publicly and pulls inbound calls.",
+          "big": [
             {
               "id": "re-t3-b2",
               "text": "National paper on the 10 levers (the national number in the billions), published publicly to pull inbound calls",
@@ -940,37 +953,60 @@
               "data_costs": "",
               "tasks": []
             }
+          ],
+          "stream": "mr"
+        },
+        {
+          "id": "re-t6",
+          "label": "Quarterly",
+          "anchor": "",
+          "stream": "th",
+          "text": "A quarterly regional town hall runs, quarterly for the moment, for cost and the regions’ attention.",
+          "measure": "",
+          "big": []
+        },
+        {
+          "id": "re-t7",
+          "label": "In 2027",
+          "anchor": "",
+          "stream": "rr",
+          "text": "Stronger regional reporting and back-end usage analytics for the regions, defined differently from the 2026 v10.2 production reporting.",
+          "measure": "Adoption, usage, and leverage tracked by region and by office and driven explicitly.",
+          "big": [
+            {
+              "id": "re-t7-b1",
+              "text": "Define the 2027 regional reporting (Handl's reporting package is a start)",
+              "accountable": "",
+              "people": "",
+              "data_costs": "",
+              "cost": "",
+              "tasks": []
+            },
+            {
+              "id": "re-t7-b2",
+              "text": "Alex's utilization dashboard as the source: logins and reports by region and nationally",
+              "accountable": "",
+              "people": "",
+              "data_costs": "",
+              "cost": "",
+              "tasks": []
+            }
           ]
+        },
+        {
+          "id": "re-t8",
+          "label": "In 2027",
+          "anchor": "",
+          "stream": "as",
+          "text": "Real-time analytics support: a person a producer can call when they hit a wall mid-analysis.",
+          "measure": "",
+          "big": []
         }
       ],
       "final": {
         "text": "The regions are engaged on a cadence, regions first and everything else tertiary: a quarterly town hall, stronger regional reporting defined for 2027, and real-time analytics support.",
         "measure": "Adoption, usage, and leverage tracked by region and by office and driven explicitly; Alex's utilization dashboard is the source.",
         "big": [
-          {
-            "id": "re-t5-b1",
-            "text": "Quarterly regional town hall (quarterly for the moment, for cost and the regions' attention)",
-            "accountable": "",
-            "people": "",
-            "data_costs": "",
-            "tasks": []
-          },
-          {
-            "id": "re-t5-b2",
-            "text": "Stronger regional reporting and back-end usage analytics for the regions, defined differently from the 2026 v10.2 production reporting (Handl's reporting package is a start)",
-            "accountable": "",
-            "people": "",
-            "data_costs": "",
-            "tasks": []
-          },
-          {
-            "id": "re-t5-b3",
-            "text": "Real-time analytics support: a person a producer can call when they hit a wall mid-analysis",
-            "accountable": "",
-            "people": "",
-            "data_costs": "",
-            "tasks": []
-          },
           {
             "id": "re-t5-b4",
             "text": "The super user in the chair runs the ten moves proactively on every client rather than waiting to be asked (East with Zibby is the example)",
@@ -981,7 +1017,34 @@
           }
         ],
         "seeded_from": "the Standing truth (10/26); rewrite to reflect the whole domain"
-      }
+      },
+      "streams": [
+        {
+          "id": "th",
+          "code": "TH",
+          "name": "Town Hall"
+        },
+        {
+          "id": "mr",
+          "code": "MR",
+          "name": "Market Reports"
+        },
+        {
+          "id": "pi",
+          "code": "PI",
+          "name": "Pilots"
+        },
+        {
+          "id": "rr",
+          "code": "RR",
+          "name": "Regional Reporting"
+        },
+        {
+          "id": "as",
+          "code": "AS",
+          "name": "Analytics Support"
+        }
+      ]
     }
   }
 }
