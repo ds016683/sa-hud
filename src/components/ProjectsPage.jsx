@@ -106,38 +106,46 @@ function planOf(project) {
 }
 const nowMilestone = (plan) => plan.find(({ t }) => isOpen(t) && t.objective_id) || plan.find(({ t }) => isOpen(t)) || null
 
+// The ring (David 10/26): x of x closed, drawn once and grown on mount.
+function ProgressRing({ closed, total, size = 56, stroke = 5, color = GOLD }) {
+  const [on, setOn] = useState(false)
+  useEffect(() => { const t = setTimeout(() => setOn(true), 20); return () => clearTimeout(t) }, [])
+  const r = (size - stroke) / 2, c = 2 * Math.PI * r
+  const pct = total ? closed / total : 0
+  return (
+    <div style={{ position: 'relative', width: size, height: size, flexShrink: 0 }}>
+      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={{ transform: 'rotate(-90deg)', display: 'block' }}>
+        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={alpha(INK, 8)} strokeWidth={stroke} />
+        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={color} strokeWidth={stroke} strokeLinecap="round" strokeDasharray={c} strokeDashoffset={on ? c * (1 - pct) : c} style={{ transition: 'stroke-dashoffset .9s cubic-bezier(0.2, 0.8, 0.2, 1)' }} />
+      </svg>
+      <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', fontFamily: SERIF, fontSize: size > 48 ? 13 : 11, color: INK, lineHeight: 1 }}>{closed}<span style={{ color: GRAY, fontSize: '0.75em', margin: '0 1px' }}>/</span>{total}</div>
+    </div>
+  )
+}
+
 function ProjectCard({ project, onOpen, hot = false, compact = false }) {
-  const { plan, history } = planOf(project)
+  const { plan } = planOf(project)
   const ms = plan.map(p => p.t)
   const closed = ms.filter(t => !isOpen(t)).length
   const nowP = nowMilestone(plan)
   const now = nowP?.t || null
-  const next = now ? ms.find(t => isOpen(t) && t.id !== now.id) : null
   const blocked = ms.filter(t => isOpen(t) && isBlocked(t)).length
   const fresh = freshnessOf(project.last_activity_at)
   const freshColor = fresh === 'fresh' ? GREEN : fresh === 'warning' ? GOLD : GRAY
   const lastTouch = project.last_activity_at ? new Date(project.last_activity_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'never'
-  const pct = ms.length ? Math.round(closed / ms.length * 100) : 0
   return (
-    <button onClick={() => onOpen(project.id)} style={{ ...S.panel, textAlign: 'left', cursor: 'pointer', fontFamily: 'inherit', display: 'flex', flexDirection: 'column', gap: compact ? 6 : 10, minHeight: compact ? 0 : 150, width: '100%', transition: 'border-color 120ms', borderLeft: hot ? `3px solid ${GOLD}` : undefined, background: hot ? `linear-gradient(180deg, ${alpha(GOLD, 6)}, transparent 60%), ${PANEL_BG}` : compact ? 'transparent' : PANEL_BG, padding: compact ? '12px 14px' : 16 }}
+    <button onClick={() => onOpen(project.id)} style={{ ...S.panel, textAlign: 'left', cursor: 'pointer', fontFamily: 'inherit', display: 'flex', flexDirection: 'column', gap: compact ? 10 : 14, minHeight: 0, width: '100%', transition: 'border-color 120ms', borderLeft: hot ? `3px solid ${GOLD}` : undefined, background: hot ? `linear-gradient(180deg, ${alpha(GOLD, 6)}, transparent 60%), ${PANEL_BG}` : compact ? 'transparent' : PANEL_BG, padding: compact ? '14px 16px' : '18px 18px 16px' }}
       onMouseEnter={e => e.currentTarget.style.borderColor = alpha(BLUE, 40)} onMouseLeave={e => e.currentTarget.style.borderColor = PANEL_BORDER}>
-      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+        <ProgressRing closed={closed} total={ms.length} size={compact ? 44 : 56} stroke={compact ? 4 : 5} />
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 17, letterSpacing: '-0.01em', color: INK, lineHeight: 1.3 }}>{project.name}</div>
-          {project.description && !compact && <div style={{ fontSize: 12.5, lineHeight: 1.5, color: TEXT_DIM, marginTop: 3, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{project.description}</div>}
+          <div style={{ fontFamily: SERIF, fontWeight: 500, fontSize: compact ? 16 : 18, letterSpacing: '-0.01em', color: INK, lineHeight: 1.25 }}>{project.name}</div>
+          <div style={{ fontFamily: MONO, fontSize: 9, letterSpacing: '1px', textTransform: 'uppercase', color: BLUE, marginTop: 4 }}>{CATEGORY_LABELS[project.category] || project.category}</div>
         </div>
-        <span style={{ fontFamily: MONO, fontSize: 9, letterSpacing: '1px', textTransform: 'uppercase', color: BLUE, border: `1px solid ${alpha(BLUE, 33)}`, borderRadius: 999, padding: '2px 7px', whiteSpace: 'nowrap', flexShrink: 0 }}>{CATEGORY_LABELS[project.category] || project.category}</span>
       </div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-        <span style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 14, color: INK }}>{closed} / {ms.length}</span>
-        <span style={{ flex: 1, height: 4, borderRadius: 99, background: alpha(INK, 8), overflow: 'hidden' }}><span style={{ display: 'block', width: `${pct}%`, height: '100%', background: GOLD }} /></span>
-        <span style={{ fontFamily: MONO, fontSize: 10.5, letterSpacing: '1px', textTransform: 'uppercase', color: LABEL }}>milestones{history.length ? ` · ${history.length} earlier` : ''}</span>
-      </div>
-      <div style={{ marginTop: 'auto' }}>
-        {now ? <div style={{ fontSize: 12.5, color: INK, lineHeight: 1.4 }}><span style={{ color: now.objective_id ? GREEN : GOLD, fontFamily: MONO, fontSize: 9.5, letterSpacing: '1px', textTransform: 'uppercase', marginRight: 6 }}>{now.objective_id ? 'on the board' : 'now'}</span>{nowP.n} · {stripNum(now.text)}</div>
-          : <div style={{ fontSize: 12.5, color: GRAY }}>{ms.length ? 'Every milestone closed.' : 'No milestones yet.'}</div>}
-        {next && <div style={{ fontSize: 11.5, color: GRAY, marginTop: 3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>next · {stripNum(next.text)}</div>}
-      </div>
+      {now
+        ? <div style={{ fontSize: 13, color: INK, lineHeight: 1.4, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}><span style={{ color: now.objective_id ? GREEN : GOLD, fontFamily: MONO, fontSize: 9.5, letterSpacing: '1px', textTransform: 'uppercase', marginRight: 6 }}>{now.objective_id ? 'on the board' : 'now'}</span>{stripNum(now.text)}</div>
+        : <div style={{ fontSize: 12.5, color: GRAY }}>{ms.length ? 'Every milestone closed.' : 'No milestones yet.'}</div>}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, fontFamily: MONO, fontSize: 10.5, letterSpacing: '0.8px', color: LABEL, textTransform: 'uppercase' }}>
         {blocked > 0 && <span style={{ color: RED, display: 'inline-flex', alignItems: 'center', gap: 4 }}><Hand size={10} /> {blocked} on David</span>}
         <span style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 6 }}><span style={{ width: 7, height: 7, borderRadius: 99, background: freshColor }} />touched {lastTouch}</span>
