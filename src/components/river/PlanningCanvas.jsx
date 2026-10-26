@@ -58,7 +58,7 @@ export function DomainsSurface({ domains = {}, onSave, busy, onOpen }) {
   const input = { width: '100%', minWidth: 0, padding: '7px 9px', borderRadius: 7, border: `1px solid ${PANEL_BORDER}`, fontSize: 12.5, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', background: PANEL_BG, color: INK }
   const eyebrow = { fontFamily: MONO, fontSize: 9.5, letterSpacing: '1.4px', textTransform: 'uppercase', color: LABEL }
   return (
-    <div style={{ display: 'grid', gap: 10 }}>
+    <div style={{ display: 'grid', gap: 12 }}>
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap' }}>
         <div style={{ flex: 1, minWidth: 280 }}>
           <SubLabel style={{ marginBottom: 2 }}>2027 Domains</SubLabel>
@@ -98,30 +98,37 @@ export function DomainsSurface({ domains = {}, onSave, busy, onOpen }) {
 // A domain's flow (David, 10/24): one Polaris statement for the domain; the
 // key things that need to be true by different times in the year (the
 // strategy, a lexicon for the work); under each truth, the big things that
-// have to happen for it to be true, each with one accountable person; and
-// how we measure the thing being true. Strategy reads as a flow down a spine
-// (David, 10/26). The Operations view explodes each big thing into a little
-// project planner: tasks, people, data-related costs. Budget prices each big
-// thing and sums them up the flow.
+// have to happen for it to be true. Three views on one spine (David, 10/26):
+// Strategy is illustrative, the statements and the big things alone;
+// Operations adds the working fields (how it is measured, who is accountable,
+// people, data-related costs, tasks); Budget prices each big thing and sums
+// up the flow. Same spine in every view, so the eye finds the same truth in
+// the same place when it switches.
 const blankTruth = () => ({ id: newId(), anchor: '', label: '', text: '', measure: '', big: [] })
 const blankBig = () => ({ id: newId(), text: '', accountable: '', people: '', data_costs: '', cost: '', tasks: [] })
 const blankTask = () => ({ id: newId(), text: '', owner: '', due: '', done: false })
 const FLOW_VIEWS = [{ id: 'strategy', label: 'Strategy' }, { id: 'ops', label: 'Operations' }, { id: 'budget', label: 'Budget' }]
+const fmtAnchor = (iso) => iso ? new Date(iso + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : ''
+const rowsFor = (s, per) => Math.max(1, Math.ceil(((s || '').length + 1) / per))
+// Quiet fields: in the Strategy flow a field reads as text and only shows its box when touched.
+const QUIET_CSS = '.plan-quiet{background:transparent;border:1px solid transparent;border-radius:7px;outline:none;transition:background 120ms,border-color 120ms}.plan-quiet:hover{background:var(--hud-fill)}.plan-quiet:focus{background:var(--hud-fill);border-color:var(--hud-border)}.plan-quiet::placeholder{color:var(--hud-ink-3)}.plan-quiet-btn{background:none;border:none;cursor:pointer;font-family:inherit;padding:3px 6px;border-radius:6px;display:inline-flex;align-items:center;gap:5px}.plan-quiet-btn:hover{background:var(--hud-fill)}'
 
-// The spine of the Strategy flow: a node on the left with its time, a line down to the next.
-function Rail({ color, first, last, children }) {
+// The spine: a node on the left with its time, a line down to the next. The head node carries the domain glyph.
+function Rail({ color, first, last, head, children }) {
   return (
-    <div style={{ position: 'relative', paddingRight: 26, paddingBottom: 22, paddingTop: 4, display: 'grid', gap: 4, alignContent: 'start', minWidth: 0, textAlign: 'right' }}>
-      {!(first && last) && <span style={{ position: 'absolute', right: 5, top: first ? 14 : 0, bottom: last ? 'auto' : 0, height: last ? 14 : 'auto', width: 2, background: alpha(color, 38) }} />}
-      <span style={{ position: 'absolute', right: 0, top: 8, width: 12, height: 12, borderRadius: '50%', background: color, boxShadow: `0 0 0 3px ${alpha(color, 22)}` }} />
+    <div style={{ position: 'relative', paddingRight: 30, paddingBottom: 32, paddingTop: 2, display: 'grid', gap: 3, alignContent: 'start', minWidth: 0, textAlign: 'right' }}>
+      {!(first && last) && <span style={{ position: 'absolute', right: 6, top: first ? 16 : 0, bottom: last ? 'auto' : 0, height: last ? 16 : 'auto', width: 2, background: alpha(color, 38) }} />}
+      {head
+        ? <span style={{ position: 'absolute', right: -7, top: 1, width: 28, height: 28, borderRadius: '50%', background: color, color: NAVY_DEEP, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', boxShadow: `0 0 0 4px ${alpha(color, 20)}` }}>{head}</span>
+        : <span style={{ position: 'absolute', right: 0, top: 8, width: 14, height: 14, borderRadius: '50%', background: color, boxShadow: `0 0 0 4px ${alpha(color, 20)}` }} />}
       {children}
     </div>
   )
 }
 function Body({ color, children }) {
   return (
-    <div style={{ position: 'relative', paddingBottom: 22, paddingLeft: 18, minWidth: 0 }}>
-      <span style={{ position: 'absolute', left: 0, top: 14, width: 18, height: 2, background: alpha(color, 38) }} />
+    <div style={{ position: 'relative', paddingBottom: 32, paddingLeft: 24, minWidth: 0 }}>
+      <span style={{ position: 'absolute', left: 0, top: 14, width: 24, height: 2, background: alpha(color, 38) }} />
       {children}
     </div>
   )
@@ -131,7 +138,6 @@ export function DomainFlowSurface({ dom, data = {}, onSave, busy }) {
   const [polaris, setPolaris] = useState(data.polaris || '')
   const [truths, setTruths] = useState(data.truths || [])
   const [dirty, setDirty] = useState(false)
-  const [anchor, setAnchor] = useState('all')
   const [view, setView] = useState('strategy')
   const [open, setOpen] = useState({})   // big thing id -> expanded in Operations
   useEffect(() => { let on = true; Promise.resolve().then(() => { if (on) { setTruths(data.truths || []); setPolaris(data.polaris || ''); setDirty(false) } }); return () => { on = false } }, [data.truths, data.polaris])
@@ -145,18 +151,31 @@ export function DomainFlowSurface({ dom, data = {}, onSave, busy }) {
   const addTask = (tid, bid) => patch(prev => prev.map(x => x.id === tid ? { ...x, big: x.big.map(y => y.id === bid ? { ...y, tasks: [...(y.tasks || []), blankTask()] } : y) } : x))
   const rmTask = (tid, bid, kid) => patch(prev => prev.map(x => x.id === tid ? { ...x, big: x.big.map(y => y.id === bid ? { ...y, tasks: y.tasks.filter(z => z.id !== kid) } : y) } : x))
   const input = { width: '100%', minWidth: 0, padding: '6px 8px', borderRadius: 7, border: `1px solid ${PANEL_BORDER}`, fontSize: 12.5, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', background: PANEL_BG, color: INK }
-  const quiet = { ...input, border: '1px solid transparent' }   // in the flow, a field reads as text until you touch it
+  const quiet = { width: '100%', minWidth: 0, boxSizing: 'border-box', fontFamily: 'inherit', color: INK, resize: 'none', padding: '3px 7px', margin: '0 -7px', fontSize: 13.5 }
   const eyebrow = { fontFamily: MONO, fontSize: 9.5, letterSpacing: '1.4px', textTransform: 'uppercase', color: LABEL }
   const card = { border: `1px solid ${PANEL_BORDER}`, borderLeft: `3px solid ${dom.color}`, borderRadius: 10, padding: '12px 14px', display: 'grid', gap: 8, background: PANEL_BG }
-  const labels = [...new Set(truths.map(t => t.label).filter(Boolean))]
-  const shown = truths.filter(t => anchor === 'all' || t.label === anchor).sort((a, b) => String(a.anchor || '9999').localeCompare(String(b.anchor || '9999')))
+  const shown = [...truths].sort((a, b) => String(a.anchor || '9999').localeCompare(String(b.anchor || '9999')))
   const Icon = dom.icon
   const flow = view === 'strategy', ops = view === 'ops', budget = view === 'budget'
   const subtotal = (t) => (t.big || []).reduce((s, b) => s + num(b.cost), 0)
   const total = truths.reduce((s, t) => s + subtotal(t), 0)
   const removeBtn = { background: 'none', border: 'none', color: MUTED, cursor: 'pointer', padding: 2 }
 
-  // One truth's big things in the Operations and Budget views (a grid; Operations explodes a row into its planner).
+  // Strategy: the big things as a tree under the truth, text alone.
+  const bigTree = (t) => (
+    <div style={{ marginTop: 6, marginLeft: 1, borderLeft: `2px solid ${alpha(dom.color, 35)}`, paddingLeft: 18, display: 'grid', gap: 1 }}>
+      <span style={{ ...eyebrow, fontSize: 9, marginBottom: 3 }}>The Big Things That Have To Happen</span>
+      {(t.big || []).map(b => (
+        <div key={b.id} style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+          <span style={{ position: 'absolute', left: -18, top: '50%', width: 11, height: 2, background: alpha(dom.color, 35) }} />
+          <textarea className="plan-quiet" value={b.text} onChange={e => setB(t.id, b.id, 'text', e.target.value)} rows={rowsFor(b.text, 118)} placeholder="A big thing, in one line" style={{ ...quiet, color: INK2, lineHeight: 1.45, width: 'calc(100% + 14px)' }} />
+        </div>
+      ))}
+      <button className="plan-quiet-btn" onClick={() => addBig(t.id)} style={{ color: MUTED, fontSize: 11.5, justifySelf: 'start', marginLeft: -6, marginTop: 2 }}><Plus size={11} /> Big Thing</button>
+    </div>
+  )
+
+  // Operations and Budget: the big things as a working grid (Operations explodes a row into its planner).
   const bigGrid = (t) => {
     const cols = ops ? '20px minmax(220px, 2fr) minmax(130px, 1fr) 24px' : 'minmax(220px, 2fr) minmax(130px, 1fr) 120px 24px'
     return (
@@ -166,7 +185,7 @@ export function DomainFlowSurface({ dom, data = {}, onSave, busy }) {
           <Fragment key={b.id}>
             {ops && <button onClick={() => setOpen(o => ({ ...o, [b.id]: !o[b.id] }))} title={open[b.id] ? 'Fold' : 'Explode into tasks'} style={{ background: 'none', border: 'none', color: dom.color, cursor: 'pointer', padding: 0, transform: open[b.id] ? 'rotate(90deg)' : 'none', transition: 'transform 120ms' }}><ChevronRight size={14} /></button>}
             <input value={b.text} onChange={e => setB(t.id, b.id, 'text', e.target.value)} placeholder="A big thing, in one line" style={input} />
-            <input value={b.accountable} onChange={e => setB(t.id, b.id, 'accountable', e.target.value)} placeholder="One name" style={input} />
+            <input value={b.accountable} onChange={e => setB(t.id, b.id, 'accountable', e.target.value)} placeholder="One name" style={{ ...input, color: dom.color, fontWeight: 600 }} />
             {budget && <input value={b.cost || ''} onChange={e => setB(t.id, b.id, 'cost', e.target.value)} placeholder="$" inputMode="decimal" style={{ ...input, textAlign: 'right', fontFamily: MONO, fontSize: 12, color: VIOLET }} />}
             <button onClick={() => rmBig(t.id, b.id)} title="Remove" style={removeBtn}><X size={12} /></button>
             {ops && open[b.id] && (
@@ -198,112 +217,81 @@ export function DomainFlowSurface({ dom, data = {}, onSave, busy }) {
     )
   }
 
-  // One truth's big things in the Strategy flow: a small tree under the truth.
-  const bigTree = (t) => (
-    <div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(120px, 170px) 20px', gap: 8, paddingLeft: 20 }}>
-        <span style={eyebrow}>The Big Things That Have To Happen</span><span style={eyebrow}>Accountable</span><span />
-      </div>
-      <div style={{ marginLeft: 6, marginTop: 4, borderLeft: `2px solid ${alpha(dom.color, 35)}`, paddingLeft: 12, display: 'grid', gap: 4 }}>
-        {(t.big || []).map(b => (
-          <div key={b.id} style={{ position: 'relative', display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(120px, 170px) 20px', gap: 8, alignItems: 'center' }}>
-            <span style={{ position: 'absolute', left: -12, top: '50%', width: 10, height: 2, background: alpha(dom.color, 35) }} />
-            <input value={b.text} onChange={e => setB(t.id, b.id, 'text', e.target.value)} placeholder="A big thing, in one line" style={quiet} />
-            <input value={b.accountable} onChange={e => setB(t.id, b.id, 'accountable', e.target.value)} placeholder="One name" style={{ ...quiet, fontSize: 11.5, fontWeight: 600, color: dom.color }} />
-            <button onClick={() => rmBig(t.id, b.id)} title="Remove" style={removeBtn}><X size={12} /></button>
-          </div>
-        ))}
-        <button onClick={() => addBig(t.id)} style={{ ...btnGhost, padding: '3px 8px', fontSize: 11, justifySelf: 'start', marginTop: 2 }}><Plus size={11} /> Big Thing</button>
-      </div>
-    </div>
-  )
-
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 12 }}>
-      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap' }}>
-        <span style={{ width: 38, height: 38, borderRadius: 10, background: dom.color, color: NAVY_DEEP, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><Icon size={19} /></span>
+    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 18 }}>
+      <style>{QUIET_CSS}</style>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
+        <span style={{ width: 40, height: 40, borderRadius: 11, background: dom.color, color: NAVY_DEEP, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><Icon size={20} /></span>
         <div style={{ flex: 1, minWidth: 260 }}>
           <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '1.4px', color: dom.color }}>{dom.code} · {dom.n}</div>
-          <div style={{ fontFamily: SERIF, fontSize: 20, fontWeight: 500, color: INK, lineHeight: 1.2 }}>{dom.id}</div>
-          {!flow && <>
-            <div style={{ ...eyebrow, marginTop: 8 }}>Polaris Objective</div>
-            <textarea value={polaris} onChange={e => { setPolaris(e.target.value); setDirty(true) }} rows={2} placeholder="At the end of 2027, Third Horizon will have…" style={{ ...input, fontFamily: SERIF, fontStyle: 'italic', fontSize: 15, lineHeight: 1.4, resize: 'vertical', marginTop: 4 }} />
-          </>}
+          <div style={{ fontFamily: SERIF, fontSize: 22, fontWeight: 500, color: INK, lineHeight: 1.2 }}>{dom.id}</div>
         </div>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           <button onClick={() => patch(prev => [...prev, blankTruth()])} style={btnGhost}><Plus size={12} /> Truth</button>
           <button onClick={() => onSave({ ...data, polaris, truths })} disabled={!dirty || busy} style={{ ...btnPrimary, opacity: dirty ? 1 : 0.5 }}><Save size={13} /> {busy ? 'Saving…' : dirty ? 'Save' : 'Saved'}</button>
         </div>
       </div>
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
         {FLOW_VIEWS.map(x => <Pill key={x.id} tone="purple" active={view === x.id} onClick={() => setView(x.id)}>{x.label}</Pill>)}
-        <span style={{ width: 1, height: 18, background: PANEL_BORDER, margin: '0 4px' }} />
-        <span style={{ ...eyebrow, marginRight: 2 }}>By When</span>
-        <Pill active={anchor === 'all'} onClick={() => setAnchor('all')}>All · {truths.length}</Pill>
-        {labels.map(l => <Pill key={l} active={anchor === l} onClick={() => setAnchor(l)}>{l}</Pill>)}
         {budget && <span style={{ marginLeft: 'auto', fontFamily: MONO, fontSize: 10, fontWeight: 600, letterSpacing: '1.2px', textTransform: 'uppercase', color: VIOLET, padding: '5px 12px', borderRadius: 999, border: `1px solid ${alpha(VIOLET, 55)}` }}>Total · {money(total)}</span>}
       </div>
-      {!flow && shown.length === 0 && <div style={{ fontSize: 12.5, color: GRAY, padding: '14px 0' }}>No truths yet. Add the first one: a thing that will be verifiably true by a time in the year.</div>}
 
-      {/* Strategy: the flow down. Polaris at the head of the spine, then each truth at its time, each with the big things under it. */}
-      {flow && (
-        <div style={{ display: 'grid', gridTemplateColumns: '164px minmax(0, 1fr)' }}>
-          <Rail color={dom.color} first last={shown.length === 0}>
-            <span style={{ ...eyebrow, color: dom.color }}>Polaris</span>
-            <span style={{ fontSize: 11, color: MUTED }}>End Of 2027</span>
-          </Rail>
-          <Body color={dom.color}>
+      {/* One spine, three views. Polaris at the head, then each truth at its time, the big things under it. */}
+      <div style={{ display: 'grid', gridTemplateColumns: '172px minmax(0, 1fr)', marginTop: 4 }}>
+        <Rail color={dom.color} first last={shown.length === 0} head={<Icon size={14} />}>
+          <span style={{ ...eyebrow, color: dom.color, marginTop: 7 }}>Polaris</span>
+          <span style={{ fontSize: 11.5, color: MUTED }}>End Of 2027</span>
+        </Rail>
+        <Body color={dom.color}>
+          {flow ? (
+            <div style={{ display: 'grid', gap: 4, paddingTop: 4 }}>
+              <span style={eyebrow}>Polaris Objective</span>
+              <textarea className="plan-quiet" value={polaris} onChange={e => { setPolaris(e.target.value); setDirty(true) }} rows={rowsFor(polaris, 92)} placeholder="At the end of 2027, Third Horizon will have…" style={{ ...quiet, fontFamily: SERIF, fontStyle: 'italic', fontSize: 18, lineHeight: 1.45 }} />
+            </div>
+          ) : (
             <div style={{ ...card, background: alpha(dom.color, 7) }}>
               <span style={eyebrow}>Polaris Objective</span>
-              <textarea value={polaris} onChange={e => { setPolaris(e.target.value); setDirty(true) }} rows={2} placeholder="At the end of 2027, Third Horizon will have…" style={{ ...quiet, fontFamily: SERIF, fontStyle: 'italic', fontSize: 16, lineHeight: 1.45, resize: 'vertical', background: 'transparent' }} />
+              <textarea value={polaris} onChange={e => { setPolaris(e.target.value); setDirty(true) }} rows={2} placeholder="At the end of 2027, Third Horizon will have…" style={{ ...input, fontFamily: SERIF, fontStyle: 'italic', fontSize: 15, lineHeight: 1.4, resize: 'vertical', background: 'transparent', border: '1px solid transparent' }} />
             </div>
-          </Body>
-          {shown.length === 0 && <><div /><div style={{ fontSize: 12.5, color: GRAY, paddingLeft: 18 }}>No truths yet. Add the first one: a thing that will be verifiably true by a time in the year.</div></>}
-          {shown.map((t, i) => (
-            <Fragment key={t.id}>
-              <Rail color={dom.color} last={i === shown.length - 1}>
-                <input value={t.label} onChange={e => setT(t.id, 'label', e.target.value)} placeholder="By when" style={{ ...quiet, textAlign: 'right', fontFamily: MONO, fontSize: 11, fontWeight: 600, letterSpacing: '0.8px', textTransform: 'uppercase', color: dom.color, padding: '4px 6px' }} />
-                <input type="date" value={t.anchor || ''} onChange={e => setT(t.id, 'anchor', e.target.value)} style={{ ...quiet, textAlign: 'right', fontSize: 11, padding: '3px 6px', color: MUTED }} />
-              </Rail>
-              <Body color={dom.color}>
+          )}
+        </Body>
+        {shown.length === 0 && <><div /><div style={{ fontSize: 12.5, color: GRAY, paddingLeft: 24 }}>No truths yet. Add the first one: a thing that will be verifiably true by a time in the year.</div></>}
+        {shown.map((t, i) => (
+          <Fragment key={t.id}>
+            <Rail color={dom.color} last={i === shown.length - 1}>
+              {flow ? (<>
+                <textarea className="plan-quiet" value={t.label} onChange={e => setT(t.id, 'label', e.target.value.replace(/\n/g, ' '))} rows={rowsFor(t.label, 17)} placeholder="By when" style={{ ...quiet, textAlign: 'right', fontFamily: MONO, fontSize: 11, fontWeight: 600, letterSpacing: '0.8px', textTransform: 'uppercase', lineHeight: 1.35, color: dom.color, padding: '4px 7px', margin: '2px -7px 0 0', width: 'calc(100% + 7px)' }} />
+                {t.anchor && <span style={{ fontSize: 11.5, color: MUTED, paddingRight: 0 }}>{fmtAnchor(t.anchor)}</span>}
+              </>) : (<>
+                <textarea value={t.label} onChange={e => setT(t.id, 'label', e.target.value.replace(/\n/g, ' '))} rows={rowsFor(t.label, 17)} placeholder="e.g. By Nov 30" style={{ ...input, textAlign: 'right', fontFamily: MONO, fontSize: 11, fontWeight: 600, letterSpacing: '0.8px', textTransform: 'uppercase', lineHeight: 1.35, color: dom.color, marginTop: 2, resize: 'none' }} />
+                <input type="date" value={t.anchor || ''} onChange={e => setT(t.id, 'anchor', e.target.value)} style={{ ...input, textAlign: 'right', fontSize: 11, color: MUTED }} />
+              </>)}
+            </Rail>
+            <Body color={dom.color}>
+              {flow ? (
+                <div style={{ display: 'grid', gap: 4, paddingTop: 4 }}>
+                  <span style={eyebrow}>What Must Be True</span>
+                  <textarea className="plan-quiet" value={t.text} onChange={e => setT(t.id, 'text', e.target.value)} rows={rowsFor(t.text, 96)} placeholder="One sentence, verifiable" style={{ ...quiet, fontFamily: SERIF, fontSize: 17, lineHeight: 1.4 }} />
+                  {bigTree(t)}
+                </div>
+              ) : (
                 <div style={card}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <span style={eyebrow}>What Must Be True</span>
                     <button onClick={() => rmTruth(t.id)} title="Remove this truth" style={{ ...removeBtn, marginLeft: 'auto' }}><X size={14} /></button>
                   </div>
-                  <textarea value={t.text} onChange={e => setT(t.id, 'text', e.target.value)} rows={2} placeholder="One sentence, verifiable" style={{ ...quiet, fontFamily: SERIF, fontSize: 15.5, lineHeight: 1.4, resize: 'vertical', padding: '4px 8px' }} />
-                  {bigTree(t)}
-                  <div style={{ borderTop: `1px dashed ${PANEL_BORDER}`, paddingTop: 8, display: 'grid', gap: 3 }}>
+                  <textarea value={t.text} onChange={e => setT(t.id, 'text', e.target.value)} rows={2} placeholder="One sentence, verifiable" style={{ ...input, fontFamily: SERIF, fontSize: 15, lineHeight: 1.35, resize: 'vertical' }} />
+                  <div style={{ display: 'grid', gap: 3 }}>
                     <span style={eyebrow}>How We Measure It Being True</span>
-                    <input value={t.measure} onChange={e => setT(t.id, 'measure', e.target.value)} placeholder="The evidence that settles it" style={{ ...quiet, fontSize: 12.5, color: INK2 }} />
+                    <input value={t.measure} onChange={e => setT(t.id, 'measure', e.target.value)} placeholder="The evidence that settles it" style={input} />
                   </div>
+                  <div style={{ borderTop: `1px dashed ${PANEL_BORDER}`, paddingTop: 8 }}>{bigGrid(t)}</div>
                 </div>
-              </Body>
-            </Fragment>
-          ))}
-        </div>
-      )}
-
-      {/* Operations and Budget: the same truths as cards, the big things as a working grid. */}
-      {!flow && shown.map(t => (
-        <div key={t.id} style={card}>
-          <div style={{ display: 'grid', gridTemplateColumns: '150px minmax(0, 1fr) auto', gap: 10, alignItems: 'start' }}>
-            <div style={{ display: 'grid', gap: 4 }}>
-              <span style={eyebrow}>By When</span>
-              <input value={t.label} onChange={e => setT(t.id, 'label', e.target.value)} placeholder="e.g. By Nov 30" style={{ ...input, fontFamily: MONO, fontSize: 11, letterSpacing: '0.6px', color: dom.color }} />
-              <input type="date" value={t.anchor || ''} onChange={e => setT(t.id, 'anchor', e.target.value)} style={{ ...input, fontSize: 11 }} />
-            </div>
-            <div style={{ display: 'grid', gap: 4 }}>
-              <span style={eyebrow}>What Must Be True</span>
-              <textarea value={t.text} onChange={e => setT(t.id, 'text', e.target.value)} rows={2} placeholder="One sentence, verifiable" style={{ ...input, fontFamily: SERIF, fontSize: 15, lineHeight: 1.35, resize: 'vertical' }} />
-              <span style={{ ...eyebrow, marginTop: 4 }}>How We Measure It Being True</span>
-              <input value={t.measure} onChange={e => setT(t.id, 'measure', e.target.value)} placeholder="The evidence that settles it" style={input} />
-            </div>
-            <button onClick={() => rmTruth(t.id)} title="Remove this truth" style={{ ...removeBtn, padding: 4 }}><X size={14} /></button>
-          </div>
-          {bigGrid(t)}
-        </div>
-      ))}
+              )}
+            </Body>
+          </Fragment>
+        ))}
+      </div>
     </div>
   )
 }
@@ -352,19 +340,19 @@ export default function PlanningCanvas({ project }) {
   const openDom = surface.startsWith('domain:') ? MMA_DOMAINS.find(d => d.id === surface.slice(7)) || null : null
   const v = PLAN_VIEWS.find(x => x.id === view)
   const subtitle = (it) => (it[v.field] ? it[v.field] : (view === 'strategy' ? it.date_label : ''))
-  const eyebrow = { fontFamily: MONO, fontSize: 9.5, letterSpacing: '1.4px', textTransform: 'uppercase', color: LABEL, marginRight: 6 }
+  const eyebrow = { fontFamily: MONO, fontSize: 9.5, letterSpacing: '1.4px', textTransform: 'uppercase', color: LABEL, marginRight: 6, minWidth: 64 }
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 14 }}>
+    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 24 }}>
       {/* Surfaces: tabs for the work we take somewhere else (David, 10/24); the domains opened sit on a smaller second row (10/26). */}
-      <div style={{ display: 'grid', gap: 8, paddingBottom: 10, borderBottom: `1px solid ${PANEL_BORDER}` }}>
-        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+      <div style={{ display: 'grid', gap: 12, paddingBottom: 16, borderBottom: `1px solid ${PANEL_BORDER}` }}>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
           <span style={eyebrow}>Surfaces</span>
           <Pill active={surface === 'domains'} onClick={() => setSurface('domains')}>2027 Domains</Pill>
           <Pill active={surface === 'plan'} onClick={() => setSurface('plan')}>Program Plan</Pill>
         </div>
         {opened.length > 0 && (
-          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
             <span style={eyebrow}>Open</span>
             {opened.map(id => { const d = MMA_DOMAINS.find(x => x.id === id); return d ? (
               <Pill key={id} small active={surface === `domain:${id}`} onClick={() => setSurface(`domain:${id}`)}><span style={{ display: 'inline-block', width: 7, height: 7, borderRadius: 2, background: d.color }} />{d.id}</Pill>
