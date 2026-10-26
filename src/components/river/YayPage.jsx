@@ -6,7 +6,7 @@ import { X as XIcon, Check, ExternalLink } from 'lucide-react'
 import BadgeMedallion from '../BadgeArt'
 import { missionSummary, fmtDay } from '../../lib/summary'
 import { signedUrl } from '../../lib/archive'
-import { INK, INK2, GRAY, PANEL_BORDER, GOLD, GREEN, BLUE, MONO, SERIF, S, KindIcon, Label, NORTH_STAR_LABEL, LABEL, alpha, RED } from './canon'
+import { INK, INK2, GRAY, PANEL_BORDER, GOLD, GREEN, SUCCESS, BLUE, MONO, SERIF, S, KindIcon, Label, NORTH_STAR_LABEL, LABEL, alpha, RED } from './canon'
 import DocView from './DocView'
 import SessionBoard from './SessionBoard'
 
@@ -71,7 +71,7 @@ export default function YayPage({ objectiveId, onClose, fresh = false, onOpenMis
                 <div style={{ display: 'grid', gap: 5 }}>
                   {m.gates.map((g, i) => (
                     <div key={i} style={{ display: 'flex', gap: 10, alignItems: 'flex-start', fontSize: 13.5, color: g.done ? INK2 : GRAY }}>
-                      <span style={{ width: 16, height: 16, borderRadius: 99, flexShrink: 0, marginTop: 2, background: g.done ? GREEN : 'transparent', border: g.done ? 'none' : '1.5px solid rgba(234,241,248,0.3)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>{g.done && <Check size={10} color='var(--hud-on-accent)' />}</span>
+                      <span style={{ width: 16, height: 16, borderRadius: 99, flexShrink: 0, marginTop: 2, background: g.done ? SUCCESS : 'transparent', border: g.done ? 'none' : '1.5px solid rgba(234,241,248,0.3)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>{g.done && <Check size={10} color='var(--hud-on-accent)' />}</span>
                       <span style={{ flex: 1 }}>{g.text}</span>
                       <span style={{ fontFamily: MONO, fontSize: 10, color: GRAY, whiteSpace: 'nowrap' }}>{g.done_at ? fmtDay(g.done_at) : ''}</span>
                     </div>

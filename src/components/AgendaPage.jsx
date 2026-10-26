@@ -17,7 +17,7 @@ import ProtocolsPanel from './river/MorningProtocol'
 import { fetchLoadout, startWithRoom, holster, sizeOf, SIZES } from '../lib/loadout'
 import ItemDetail from './river/ItemDetail'
 import {
-  INK, INK2, GRAY, NAVY_DEEP, PANEL_BORDER, GOLD, GOLD_BRIGHT, BLUE, PERIWINKLE, PURPLE, GREEN, RED, MONO, SERIF,
+  INK, INK2, GRAY, NAVY_DEEP, PANEL_BORDER, GOLD, GOLD_BRIGHT, BLUE, PERIWINKLE, PURPLE, GREEN, SUCCESS, RED, MONO, SERIF,
   S, Eyebrow, Label, Panel, chiToday, fmtTime, weekday, alpha } from './river/canon'
 import { hudPrompt, hudConfirm } from '../lib/dialog'
 
@@ -84,7 +84,7 @@ const attendanceState = (event, session, nowMs, notes) => {
   return en != null && en <= nowMs ? 'confirm' : null
 }
 const CONFIRM_TITLE = 'Not confirmed attended. Start the timer, close it out, or tell Lumen.'
-const attendedChip = S.chip('rgba(67,211,146,0.16)', GREEN)
+const attendedChip = S.chip(alpha(SUCCESS, 16), SUCCESS)
 const confirmChip = { ...S.chip('rgba(230,181,79,0.16)', GOLD_BRIGHT), cursor: 'pointer' }
 const fmtElapsed = (startedAt, nowMs) => {
   const m = Math.max(0, Math.floor((nowMs - new Date(startedAt).getTime()) / 60000))

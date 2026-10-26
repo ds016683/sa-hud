@@ -4,10 +4,10 @@
 // filed here; no editing, mailing or publishing from this page yet.
 import { useEffect, useState } from 'react'
 import { PenLine, Calendar, ChevronDown, ChevronUp, ExternalLink } from 'lucide-react'
-import { S, Eyebrow, Serif, INK, INK2, GRAY, GOLD, GREEN, PURPLE, MONO, PANEL_BORDER, PANEL_BG, LABEL, MUTED, TYPE, fmtDay, alpha } from './river/canon'
+import { S, Eyebrow, Serif, INK, INK2, GRAY, GOLD, GREEN, SUCCESS, PURPLE, MONO, PANEL_BORDER, PANEL_BG, LABEL, MUTED, TYPE, fmtDay, alpha } from './river/canon'
 import { WRITINGS, writingUrl, STATUS_LABEL } from '../content/writings'
 
-const STATUS_COLOR = { draft: GOLD, final: PURPLE, published: GREEN }
+const STATUS_COLOR = { draft: GOLD, final: PURPLE, published: SUCCESS }
 const btn = (color) => ({ display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: MONO, fontSize: 10.5, letterSpacing: '0.08em', textTransform: 'uppercase', padding: '7px 12px', borderRadius: 999, cursor: 'pointer', border: `1px solid ${alpha(color, 53)}`, background: 'transparent', color, textDecoration: 'none' })
 
 // Inline emphasis only: *italic* and **bold**. Everything else is plain text.

@@ -6,7 +6,7 @@ import BadgeMedallion from './BadgeArt'
 
 const chiToday = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Chicago', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date())
 import { supabase } from '../lib/supabase'
-import { GOLD, GREEN, INK, NAVY_DEEP, RED, PERIWINKLE } from './river/canon'
+import { GOLD, GREEN, SUCCESS, INK, NAVY_DEEP, RED, PERIWINKLE } from './river/canon'
 
 const SECTION_BLUE = INK
 const GOLD_DEEP = GOLD
@@ -292,7 +292,7 @@ function SuggestionList({ items, onTriage, cip, T }) {
               background: cip ? 'rgba(255,255,255,0.07)' : 'var(--sa-surface)', color: T.ink, outline: 'none',
             }} />
           <button onClick={() => { if (draft.trim()) { onTriage(o, 'accept', draft.trim()); setEditing(null) } }} title="Save and queue"
-            style={{ background: 'none', border: 'none', color: GREEN, cursor: 'pointer', padding: '4px', marginTop: '2px' }}><CheckCircle2 size={16} /></button>
+            style={{ background: 'none', border: 'none', color: SUCCESS, cursor: 'pointer', padding: '4px', marginTop: '2px' }}><CheckCircle2 size={16} /></button>
           <button onClick={() => setEditing(null)} title="Cancel"
             style={{ background: 'none', border: 'none', color: T.ink3, cursor: 'pointer', padding: '4px', marginTop: '2px' }}><X size={15} /></button>
         </>
@@ -305,7 +305,7 @@ function SuggestionList({ items, onTriage, cip, T }) {
             )}
           </span>
           <button onClick={() => onTriage(o, 'accept')} title="Queue it: graduates to the Objectives inbox"
-            style={{ background: 'none', border: 'none', color: GREEN, cursor: 'pointer', padding: '3px', flexShrink: 0 }}><CheckCircle2 size={16} /></button>
+            style={{ background: 'none', border: 'none', color: SUCCESS, cursor: 'pointer', padding: '3px', flexShrink: 0 }}><CheckCircle2 size={16} /></button>
           <button onClick={() => { setEditing(o.id); setDraft(o.title) }} title="Amend the wording, then queue"
             style={{ background: 'none', border: 'none', color: cip ? PERIWINKLE : SECTION_BLUE, cursor: 'pointer', padding: '3px', flexShrink: 0, fontSize: '13px', lineHeight: 1 }}>✎</button>
           <button onClick={() => onTriage(o, 'dismiss')} title="Dismiss: never suggested again"

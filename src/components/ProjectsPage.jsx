@@ -14,7 +14,7 @@ import { fileProject } from '../lib/archive'
 import { listLiveFiles, markFiled } from '../lib/livefiles'
 import { supabase as sbAuth } from '../lib/supabase'
 import { equipTask, stashTask, deleteMission } from '../lib/loadout'
-import { NORTH_STAR_LABEL, LABEL, alpha, INK, INK2, NAVY_DEEP, BLUE, GRAY, PANEL_BORDER, PANEL_BG, GOLD, GREEN, RED, PURPLE } from './river/canon'
+import { NORTH_STAR_LABEL, LABEL, alpha, INK, INK2, NAVY_DEEP, BLUE, GRAY, PANEL_BORDER, PANEL_BG, GOLD, GREEN, SUCCESS, RED, PURPLE } from './river/canon'
 import { importProject } from '../lib/cabinet'
 import BadgeMedallion from './BadgeArt'
 import { BADGES } from '../constants/collection'
@@ -175,11 +175,11 @@ function MilestoneRow({ n, project, task, board, api, onNavigate, onBoardChange,
   return (
     <div style={{ borderTop: `1px solid ${PANEL_BORDER}`, padding: '12px 0', opacity: open ? 1 : 0.55 }}>
       <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
-        <span style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 22, lineHeight: 1, color: open ? (onBoard ? GREEN : GOLD) : GREEN, width: 26, flexShrink: 0, paddingTop: 2 }}>{n}</span>
+        <span style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 22, lineHeight: 1, color: open ? (onBoard ? GREEN : GOLD) : SUCCESS, width: 26, flexShrink: 0, paddingTop: 2 }}>{n}</span>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
             <span onClick={() => setExpanded(x => !x)} title="Open this milestone" style={{ fontSize: 15, lineHeight: 1.4, color: open ? INK : GRAY, textDecoration: open ? 'none' : 'line-through', cursor: 'pointer', flex: 1, minWidth: 220 }}>{stripNum(task.text)}</span>
-            {!open && <Chip color={GREEN}>closed{task.released_at ? ` ${new Date(task.released_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}` : ''} · 10 mi</Chip>}
+            {!open && <Chip color={SUCCESS}>closed{task.released_at ? ` ${new Date(task.released_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}` : ''} · 10 mi</Chip>}
             {open && onBoard && <Chip color={GREEN}>on the board</Chip>}
             {stashed && <Chip color={BLUE}>in the stash</Chip>}
             {open && blocked && <Chip color={RED}>blocked · needs David</Chip>}
@@ -190,7 +190,7 @@ function MilestoneRow({ n, project, task, board, api, onNavigate, onBoardChange,
             <div style={{ marginTop: 8, display: 'grid', gap: 2 }}>
               {steps.map((st, ti) => (
                 <button key={st.id || ti} onClick={() => toggleStep(ti)} title={st.status === 'done' ? 'Reopen' : 'Mark done'} style={{ display: 'flex', alignItems: 'flex-start', gap: 9, background: 'transparent', border: 'none', padding: '3px 0', cursor: 'pointer', textAlign: 'left', color: INK }}>
-                  {st.status === 'done' ? <span style={{ width: 15, height: 15, borderRadius: 99, background: GREEN, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 2 }}><Check size={10} color={NAVY_DEEP} /></span>
+                  {st.status === 'done' ? <span style={{ width: 15, height: 15, borderRadius: 99, background: SUCCESS, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 2 }}><Check size={10} color={NAVY_DEEP} /></span>
                     : <span style={{ width: 15, height: 15, borderRadius: 99, border: `1.5px solid ${st.status === 'inmotion' ? GOLD : st.status === 'blocked' ? RED : alpha(INK, 30)}`, display: 'inline-block', flexShrink: 0, marginTop: 2 }} />}
                   <span style={{ fontFamily: MONO, fontSize: 10, color: GOLD, letterSpacing: '0.5px', paddingTop: 2, flexShrink: 0 }}>{st.id}</span>
                   <span style={{ fontSize: 13, lineHeight: 1.45, color: st.status === 'done' ? GRAY : INK, textDecoration: st.status === 'done' ? 'line-through' : 'none' }}>{st.label}{st.note && <span style={{ display: 'block', fontSize: 12, color: st.status === 'blocked' ? RED : GRAY }}>{st.note}</span>}</span>
@@ -408,7 +408,7 @@ function CloseMissionModal({ project, tasks, onClose, onDone }) {
         {err && <div style={{ marginTop: 10, fontSize: 12.5, color: RED }}>{err}</div>}
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 18 }}>
           <button onClick={onClose} disabled={busy} style={S.btnGhost}>Not yet</button>
-          <button onClick={go} disabled={busy} style={{ ...S.btnGhost, border: `1px solid ${alpha(GREEN, 50)}`, color: GREEN, opacity: busy ? 0.6 : 1 }}>{busy ? 'Closing' : '✓ Close the mission · 100 miles'}</button>
+          <button onClick={go} disabled={busy} style={{ ...S.btnGhost, border: `1px solid ${alpha(SUCCESS, 50)}`, color: SUCCESS, opacity: busy ? 0.6 : 1 }}>{busy ? 'Closing' : '✓ Close the mission · 100 miles'}</button>
         </div>
       </div>
     </div>
@@ -512,7 +512,7 @@ function ProjectDetail({ project, board: boardProp, api, onBack, initialTab, ini
           <button
             onClick={() => setClosingMission(true)}
             title="Whole mission complete: 100 miles on the River"
-            style={{ ...S.btnGhost, border: `1px solid ${alpha(GREEN, 50)}`, color: GREEN }}
+            style={{ ...S.btnGhost, border: `1px solid ${alpha(SUCCESS, 50)}`, color: SUCCESS }}
           >
             ✓ Mark mission complete
           </button>
@@ -566,7 +566,7 @@ function ProjectDetail({ project, board: boardProp, api, onBack, initialTab, ini
               <div style={{ borderTop: `1px solid ${PANEL_BORDER}`, padding: '10px 0 0' }}>
                 <button onClick={() => setShowHistory(x => !x)} style={{ ...S.btnGhost, padding: '4px 9px', fontSize: 10 }}>{showHistory ? 'Hide' : 'Show'} earlier work · {history.length} closed before this plan</button>
                 {showHistory && history.map(t => (
-                  <div key={t.id} style={{ display: 'flex', gap: 10, padding: '6px 0', fontSize: 13, color: GRAY, textDecoration: 'line-through', opacity: 0.7 }}><Check size={12} color={GREEN} style={{ flexShrink: 0, marginTop: 3 }} /><span>{t.text}</span></div>
+                  <div key={t.id} style={{ display: 'flex', gap: 10, padding: '6px 0', fontSize: 13, color: GRAY, textDecoration: 'line-through', opacity: 0.7 }}><Check size={12} color={SUCCESS} style={{ flexShrink: 0, marginTop: 3 }} /><span>{t.text}</span></div>
                 ))}
               </div>
             )}

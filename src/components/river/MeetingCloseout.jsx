@@ -12,7 +12,7 @@ import { useEffect, useState } from 'react'
 import { Check } from 'lucide-react'
 import { upsertSession, createFollowUps } from '../../lib/meetings'
 import {
-  INK, INK2, GRAY, NAVY_DEEP, PANEL_BORDER, GOLD, GOLD_BRIGHT, BLUE, PERIWINKLE, GREEN, RED, MONO, SERIF,
+  INK, INK2, GRAY, NAVY_DEEP, PANEL_BORDER, GOLD, GOLD_BRIGHT, BLUE, PERIWINKLE, GREEN, SUCCESS, RED, MONO, SERIF,
   Eyebrow, Label, fmtTime, LABEL } from './canon'
 
 // ---- Errors ------------------------------------------------------------------
@@ -200,12 +200,12 @@ export default function MeetingCloseout({ event, day, onStop, onCancel, onSaved 
         </div>
 
         {error && <div style={{ fontFamily: MONO, fontSize: 10.5, color: RED, marginTop: 12, letterSpacing: '0.4px' }}>{error}</div>}
-        {done && <div style={{ fontFamily: MONO, fontSize: 10.5, color: GREEN, marginTop: 12, letterSpacing: '0.4px' }}>{done}</div>}
+        {done && <div style={{ fontFamily: MONO, fontSize: 10.5, color: SUCCESS, marginTop: 12, letterSpacing: '0.4px' }}>{done}</div>}
 
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 16, flexWrap: 'wrap' }}>
           <button onClick={onCancel} disabled={saving || !!done} style={btn({ opacity: saving || done ? 0.5 : 1 })}>Cancel</button>
           <button onClick={save} disabled={saving || !!done} style={btn({
-            background: done ? GREEN : GOLD, borderColor: done ? GREEN : GOLD_BRIGHT, color: NAVY_DEEP, opacity: saving ? 0.7 : 1, cursor: saving || done ? 'default' : 'pointer',
+            background: done ? SUCCESS : GOLD, borderColor: done ? SUCCESS : GOLD_BRIGHT, color: NAVY_DEEP, opacity: saving ? 0.7 : 1, cursor: saving || done ? 'default' : 'pointer',
           })}>{saving ? 'Saving…' : done ? 'Closed' : 'Close out meeting'}</button>
         </div>
       </div>

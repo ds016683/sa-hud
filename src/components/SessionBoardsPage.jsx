@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { RefreshCw } from 'lucide-react'
 import { PageHead } from './sa/SaUi'
 import { supabase } from '../lib/supabase'
-import { GOLD, GREEN, INK, INK2, RED } from './river/canon'
+import { GOLD, GREEN, SUCCESS, INK, INK2, RED } from './river/canon'
 
 const LINE = 'rgba(255,255,255,0.10)'
 const INK3 = 'rgba(255,255,255,0.40)'
@@ -29,7 +29,7 @@ function Glyph({ status }) {
   }
   if (status === 'done') {
     return (
-      <span style={{ ...base, background: GREEN, borderColor: GREEN }}>
+      <span style={{ ...base, background: SUCCESS, borderColor: SUCCESS }}>
         <span style={{
           position: 'absolute', left: 4.5, top: 1.5, width: 4, height: 8,
           border: `solid ${INK}`, borderWidth: '0 2px 2px 0', transform: 'rotate(42deg)',
@@ -212,7 +212,7 @@ export default function SessionBoardsPage({ deepLink = [] } = {}) {
 
           {/* Legend + contract */}
           <div className="sa-tele" style={{ display: 'flex', gap: 18, flexWrap: 'wrap', color: INK3, borderTop: `1px solid ${LINE}`, marginTop: 34, paddingTop: 12 }}>
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><i style={{ width: 8, height: 8, borderRadius: '50%', background: GREEN, display: 'inline-block' }} />DONE</span>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><i style={{ width: 8, height: 8, borderRadius: '50%', background: SUCCESS, display: 'inline-block' }} />DONE</span>
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><i style={{ width: 8, height: 8, borderRadius: '50%', background: GOLD, display: 'inline-block' }} />IN MOTION</span>
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><i style={{ width: 8, height: 8, borderRadius: '50%', background: RED, display: 'inline-block' }} />WAITING ON DAVID</span>
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><i style={{ width: 8, height: 8, borderRadius: '50%', background: 'rgba(255,255,255,0.3)', display: 'inline-block' }} />OPEN</span>

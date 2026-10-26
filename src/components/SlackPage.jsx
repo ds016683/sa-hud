@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { Hash, Lock, MessageCircle, Users, Send, Check, Archive, ExternalLink, AtSign, Inbox, Paperclip, RefreshCw, X, BookOpen, Eraser } from 'lucide-react'
 import { supabase } from '../lib/supabase'
-import { BLUE, GOLD, GRAY, GREEN, INK, INK2, NAVY_DEEP, PANEL_BG, PANEL_BORDER, RED } from './river/canon'
+import { BLUE, GOLD, GRAY, GREEN, SUCCESS, INK, INK2, NAVY_DEEP, PANEL_BG, PANEL_BORDER, RED } from './river/canon'
 
 const S = {
   page: { maxWidth: 1400, margin: '0 auto', padding: '24px 16px', fontFamily: 'inherit' },
@@ -51,7 +51,7 @@ const S = {
   replyFoot: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 8 },
   replyHint: { fontSize: 11, color: INK2 },
   sendBtn: (disabled) => ({ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 16px', background: disabled ? PANEL_BORDER : BLUE, color: NAVY_DEEP, border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: disabled ? 'not-allowed' : 'pointer', fontFamily: 'inherit' }),
-  toast: (kind) => ({ position: 'fixed', bottom: 24, right: 24, zIndex: 1000, padding: '10px 16px', borderRadius: 8, fontSize: 13, fontFamily: 'inherit', color: NAVY_DEEP, background: kind === 'err' ? RED : GREEN, boxShadow: '0 6px 16px rgba(0,0,0,0.15)' }),
+  toast: (kind) => ({ position: 'fixed', bottom: 24, right: 24, zIndex: 1000, padding: '10px 16px', borderRadius: 8, fontSize: 13, fontFamily: 'inherit', color: NAVY_DEEP, background: kind === 'err' ? RED : SUCCESS, boxShadow: '0 6px 16px rgba(0,0,0,0.15)' }),
 }
 
 const FILTERS = [
@@ -287,7 +287,7 @@ export default function SlackPage() {
                   </span>
                   {row.has_mention && <span style={S.mentionDot} title="Mention" />}
                   {row.has_files && <Paperclip size={11} color={INK2} />}
-                  {row.replied_at && <span style={{ fontSize: 10, color: GREEN, fontWeight: 600 }}>REPLIED</span>}
+                  {row.replied_at && <span style={{ fontSize: 10, color: SUCCESS, fontWeight: 600 }}>REPLIED</span>}
                   <span style={S.rowMeta}>{relTime(row.ts)}</span>
                 </div>
                 <div style={S.rowAuthor}>{row.user_name}</div>

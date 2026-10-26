@@ -3,7 +3,7 @@ import { Plus, ArrowLeft, ArrowUpRight, RefreshCw, X, Trash2, Link as LinkIcon }
 import useProjects, { freshnessOf } from '../hooks/useProjects'
 import { CLIENTS, clientByKey, laneColor, missionsOf, STATUS_LABEL, STATUS_ORDER } from '../constants/clients'
 import { loadTimeline, saveTimeline, BASELINE } from '../lib/clientTimeline'
-import { INK, INK2, GRAY, LABEL, MUTED, NAVY_DEEP, PANEL_BORDER, PANEL_BG, GOLD, GREEN, BLUE, RED, MONO, SERIF, SubLabel, chiToday, alpha } from './river/canon'
+import { INK, INK2, GRAY, LABEL, MUTED, NAVY_DEEP, PANEL_BORDER, PANEL_BG, GOLD, GREEN, SUCCESS, BLUE, RED, MONO, SERIF, SubLabel, chiToday, alpha } from './river/canon'
 import { hudConfirm } from '../lib/dialog'
 // =============================================================================
 // Clients (David, 10/19). A Client card, built like the Main Mission card,
@@ -35,7 +35,7 @@ function Pill({ active, children, onClick }) {
   )
 }
 const Chip = ({ color, children, style }) => <span style={{ fontFamily: MONO, fontSize: 9, letterSpacing: '1px', textTransform: 'uppercase', color, border: `1px solid ${alpha(color, 33)}`, borderRadius: 999, padding: '2px 7px', whiteSpace: 'nowrap', ...style }}>{children}</span>
-const STATUS_COLOR = { planned: MUTED, in_motion: GOLD, done: GREEN }
+const STATUS_COLOR = { planned: MUTED, in_motion: GOLD, done: SUCCESS }
 
 // Dates. Items carry ISO days; the waterfall is drawn in UTC day math.
 const DAY = 86_400_000
@@ -488,7 +488,7 @@ function ClientDetail({ client, anchor, missions, tl, onBack, initialTab, onNavi
                     </div>
                   </div>
                   <span style={{ fontFamily: MONO, fontSize: 10.5, letterSpacing: '1px', textTransform: 'uppercase', color: LABEL, whiteSpace: 'nowrap' }}>{ms.length - open.length} / {ms.length}</span>
-                  {m.status === 'completed' && <Chip color={GREEN}>Complete</Chip>}
+                  {m.status === 'completed' && <Chip color={SUCCESS}>Complete</Chip>}
                   <button onClick={() => onNavigate && onNavigate('main-missions', [m.id])} style={S.btnGhost}>Open <ArrowUpRight size={12} /></button>
                 </div>
               )

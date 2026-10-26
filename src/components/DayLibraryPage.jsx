@@ -4,7 +4,7 @@ import { PageHead } from './sa/SaUi'
 import { supabase } from '../lib/supabase'
 import { BADGES, milesGrade, signalTier } from '../constants/collection'
 import BadgeMedallion from './BadgeArt'
-import { BLUE, GOLD, GREEN, INK, INK2, PERIWINKLE } from './river/canon'
+import { BLUE, GOLD, GREEN, SUCCESS, INK, INK2, PERIWINKLE } from './river/canon'
 
 const LINE = 'rgba(255,255,255,0.10)'
 const INK3 = 'rgba(255,255,255,0.42)'
@@ -339,7 +339,7 @@ export default function DayLibraryPage() {
                 {(row.must_do || []).map((t, i) => (
                   <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '5.5px 0' }}>
                     {t.done
-                      ? <CheckCircle2 size={16} style={{ color: GREEN, flexShrink: 0, marginTop: 2 }} />
+                      ? <CheckCircle2 size={16} style={{ color: SUCCESS, flexShrink: 0, marginTop: 2 }} />
                       : <Circle size={16} style={{ color: 'rgba(255,255,255,0.3)', flexShrink: 0, marginTop: 2 }} />}
                     <span style={{
                       fontSize: 14, lineHeight: 1.5,

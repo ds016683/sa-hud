@@ -31,6 +31,7 @@
   --hud-on-accent:      #0D1D2C;                 /* text on an accent or gold fill */
   --hud-gold:           #F8C761;                 /* chrome and wayfinding, the running clock */
   --hud-pos:            #57BE97;
+  --hud-success:        #B4A3E8;                 /* done, closed, achieved: the Main Mission medallion purple (David, 10/25) */
   --hud-neg:            #DE7E6E;
   --hud-warn:           #B8822E;
 }
@@ -49,6 +50,7 @@
   --hud-on-accent:      #FFFFFF;
   --hud-gold:           #946212;                 /* bronze on paper */
   --hud-pos:            #2F7A4F;
+  --hud-success:        #5F4DAB;                 /* the same purple, deepened for paper */
   --hud-neg:            #A8382F;
   --hud-warn:           #946212;
 }

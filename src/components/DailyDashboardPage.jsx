@@ -6,7 +6,7 @@ import { Card, SecHead, TheoAv } from './sa/SaUi'
 import useActivityLog, { formatEntryNarrative } from '../hooks/useActivityLog'
 import NotePrompt from './NotePrompt'
 import { supabaseUrl, supabaseAnonKey } from '../lib/supabase'
-import { BLUE, GREEN, RED } from './river/canon'
+import { BLUE, GREEN, SUCCESS, RED } from './river/canon'
 
 // Skill definitions — cost/cooldown model lifted verbatim from HorizontalSkills.jsx
 const SKILLS = [
@@ -287,7 +287,7 @@ function SkillsPanel({ sovereignty, setSovereignty, onSkillActivate }) {
 
   return (
     <Card icon={Zap} eyebrow="ACTIVE SKILLS" title="Activatable Moves" sub="Each carries a Sovereignty cost."
-      right={notice && <span className="sa-tele eyebrow" style={{ color: notice.kind === 'warn' ? RED : GREEN }}>{notice.text}</span>}>
+      right={notice && <span className="sa-tele eyebrow" style={{ color: notice.kind === 'warn' ? RED : SUCCESS }}>{notice.text}</span>}>
       {SKILLS.map((s) => (
         <div className="sa-skill" key={s.id}>
           <div className="sa-skill-top">

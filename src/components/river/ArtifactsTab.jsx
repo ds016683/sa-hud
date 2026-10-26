@@ -5,7 +5,7 @@ import { Fragment, useCallback, useEffect, useState } from 'react'
 import { Save, RefreshCw, User, Eye, X as XIcon } from 'lucide-react'
 import { listArtifacts, readArtifact, writeArtifact } from '../../lib/artifacts'
 import { renderMarkdown } from './MeetingCloseout'
-import { INK, INK2, GRAY, MUTED, PANEL_BORDER, GOLD, GOLD_BRIGHT, BLUE, PERIWINKLE, GREEN, RED, MONO, SERIF, S, Eyebrow, Label, LABEL, alpha } from './canon'
+import { INK, INK2, GRAY, MUTED, PANEL_BORDER, GOLD, GOLD_BRIGHT, BLUE, PERIWINKLE, GREEN, SUCCESS, RED, MONO, SERIF, S, Eyebrow, Label, LABEL, alpha } from './canon'
 import { hudConfirm } from '../../lib/dialog'
 import PlanningCanvas from './PlanningCanvas'
 const field = { width: '100%', background: 'rgba(255,255,255,0.04)', border: `1px solid ${PANEL_BORDER}`, borderRadius: 8, color: INK, padding: '9px 11px', fontSize: 13, lineHeight: 1.55, fontFamily: 'inherit', resize: 'vertical', boxSizing: 'border-box' }
@@ -14,7 +14,7 @@ const pill = (active, color = BLUE) => ({
   border: `1px solid ${active ? color : 'rgba(255,255,255,0.16)'}`, background: active ? `${alpha(color, 13)}` : 'transparent', color: active ? color : 'rgba(234,241,248,0.7)',
 })
 const RATING_COLOR = { 'Exceeds': GREEN, 'Meets': BLUE, 'Below': GOLD, 'Does Not Meet': RED }
-const Req = ({ done }) => <span style={{ ...S.chip('transparent', done ? GREEN : RED), border: `1px solid ${done ? GREEN : RED}55`, fontFamily: MONO, fontSize: 8.5, letterSpacing: '1px', padding: '1px 6px', marginLeft: 8 }}>{done ? 'yours · done' : 'your language · required'}</span>
+const Req = ({ done }) => <span style={{ ...S.chip('transparent', done ? SUCCESS : RED), border: `1px solid ${done ? SUCCESS : RED}55`, fontFamily: MONO, fontSize: 8.5, letterSpacing: '1px', padding: '1px 6px', marginLeft: 8 }}>{done ? 'yours · done' : 'your language · required'}</span>
 const Opt = () => <span style={{ ...S.chip('transparent', GRAY), border: `1px solid ${alpha(GRAY, 33)}`, fontFamily: MONO, fontSize: 8.5, letterSpacing: '1px', padding: '1px 6px', marginLeft: 8 }}>optional</span>
 const Lum = () => <span style={{ ...S.chip('transparent', GOLD), border: `1px solid ${alpha(GOLD, 33)}`, fontFamily: MONO, fontSize: 8.5, letterSpacing: '1px', padding: '1px 6px', marginLeft: 8 }}>Lumen's draft</span>
 
@@ -172,7 +172,7 @@ const th = { padding: '6px 10px', fontFamily: MONO, fontSize: 10.5, letterSpacin
 const td = { padding: '8px 10px', borderTop: `1px solid ${PANEL_BORDER}`, fontSize: 13, color: INK, verticalAlign: 'top' }
 const miniChip = (c) => ({ ...S.chip('transparent', c), border: `1px solid ${alpha(c, 33)}`, fontFamily: MONO, fontSize: 8.5, letterSpacing: '1px', padding: '1px 6px' })
 const Cla = () => <span style={{ ...miniChip(GOLD), marginLeft: 8 }}>Claude's draft</span>
-const Pick = ({ done }) => <span style={{ ...miniChip(done ? GREEN : RED), marginLeft: 8 }}>{done ? 'picked' : 'your pick'}</span>
+const Pick = ({ done }) => <span style={{ ...miniChip(done ? SUCCESS : RED), marginLeft: 8 }}>{done ? 'picked' : 'your pick'}</span>
 
 // One file's save history: a bar per month of its life, dashed where
 // SharePoint has already trimmed the versions (it keeps the last 500).
@@ -409,7 +409,7 @@ function Scorecard({ doc, onChange }) {
     <div>
       {drawer && <ReadDrawer {...drawer} onClose={() => setDrawer(null)} />}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 16, padding: '10px 14px', border: `1px solid ${PANEL_BORDER}`, borderRadius: 10, background: 'rgba(255,255,255,0.03)' }}>
-        <span style={{ fontFamily: SERIF, fontSize: 18, fontWeight: 500, color: done === req.length ? GREEN : '#fff' }}>{done} / {req.length}</span>
+        <span style={{ fontFamily: SERIF, fontSize: 18, fontWeight: 500, color: done === req.length ? SUCCESS : '#fff' }}>{done} / {req.length}</span>
         <span style={{ fontSize: 12, color: INK2 }}>required fields in your language</span>
         <span style={{ flex: 1 }} />
         <span style={{ fontSize: 11, color: GRAY }}><span style={{ color: RED }}>red</span> = yours, required · <span style={{ color: GOLD }}>gold</span> = Lumen's draft, edit freely · <span style={{ color: GRAY }}>gray</span> = optional</span>

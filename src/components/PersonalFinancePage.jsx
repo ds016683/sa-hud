@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, Component } from 'react'
 import { Wallet, Calendar, ListChecks, RefreshCw, AlertCircle, ArrowUpRight, ArrowDownRight, BarChart2, Check, Clock, ChevronDown, ChevronRight, DollarSign } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import PlaidActionsBar from './PlaidActionsBar'
-import { BLUE, GOLD, GREEN, INK, INK2, NAVY_DEEP, PANEL_BG, PANEL_BORDER, PURPLE, RED, alpha } from './river/canon'
+import { BLUE, GOLD, GREEN, SUCCESS, INK, INK2, NAVY_DEEP, PANEL_BG, PANEL_BORDER, PURPLE, RED, alpha } from './river/canon'
 
 class ErrorBoundary extends Component {
   constructor(props) { super(props); this.state = { error: null } }
@@ -75,7 +75,7 @@ const S = {
     const map = {
       pending: { bg: alpha(GOLD, 15), fg: GOLD, border: alpha(GOLD, 40) },
       scheduled: { bg: PANEL_BG, fg: INK, border: alpha(BLUE, 40) },
-      paid: { bg: alpha(GREEN, 15), fg: GREEN, border: alpha(GREEN, 40) },
+      paid: { bg: alpha(SUCCESS, 15), fg: SUCCESS, border: alpha(SUCCESS, 40) },
       overdue: { bg: alpha(RED, 15), fg: RED, border: alpha(RED, 40) },
       upcoming: { bg: alpha(PURPLE, 15), fg: PURPLE, border: alpha(PURPLE, 40) },
     }
@@ -502,16 +502,16 @@ function BillsTab({ bills }) {
                   const d = daysUntil(b.due_on)
                   const effectiveStatus = cs.cleared ? 'paid' : (b.status !== 'paid' && d !== null && d < 0) ? 'overdue' : b.status
                   return (
-                    <tr key={payee} style={cs.cleared ? { background: alpha(GREEN, 15) } : {}}>
+                    <tr key={payee} style={cs.cleared ? { background: alpha(SUCCESS, 15) } : {}}>
                       <td style={S.tdLabel}>
-                        {cs.cleared && <Check size={13} style={{ color: GREEN, marginRight: 5, verticalAlign: 'middle' }} />}
+                        {cs.cleared && <Check size={13} style={{ color: SUCCESS, marginRight: 5, verticalAlign: 'middle' }} />}
                         {payee}
                       </td>
                       <td style={S.td}>{cs.cadence}</td>
                       <td style={S.td}>{cycleLabel(cs.cadence)}</td>
                       <td style={S.td}>
                         {cs.cleared
-                          ? <span style={{ color: GREEN, fontWeight: 700, fontSize: 12 }}>✓ Cleared</span>
+                          ? <span style={{ color: SUCCESS, fontWeight: 700, fontSize: 12 }}>✓ Cleared</span>
                           : <span style={{ color: effectiveStatus === 'overdue' ? RED : GOLD, fontWeight: 600, fontSize: 12 }}>Pending</span>
                         }
                       </td>

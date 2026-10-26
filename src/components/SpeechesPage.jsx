@@ -6,11 +6,11 @@
 // or project. Registry: src/content/speeches.js. Decks: public/speeches/<slug>/.
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Mic, Calendar, MapPin, Clock, Play, X as XIcon, ExternalLink, Download, Mail, FileText, Upload, Link2, Maximize2 } from 'lucide-react'
-import { BLUE, Eyebrow, GOLD, GRAY, GREEN, INK, INK2, LABEL, Label, MONO, MUTED, PANEL_BG, PANEL_BORDER, PURPLE, RED, S, Serif, TYPE, alpha, fmtDay } from './river/canon'
+import { BLUE, Eyebrow, GOLD, GRAY, GREEN, SUCCESS, INK, INK2, LABEL, Label, MONO, MUTED, PANEL_BG, PANEL_BORDER, PURPLE, RED, S, Serif, TYPE, alpha, fmtDay } from './river/canon'
 import { listLiveFiles, putLiveFile, openLiveFile, downloadLiveFile, draftMail, fmtStamp, fmtSize, extOf } from '../lib/livefiles'
 import { SPEECHES, deckUrl, STATUS_LABEL } from '../content/speeches'
 
-const STATUS_COLOR = { outline: GOLD, deck: PURPLE, delivered: GREEN }
+const STATUS_COLOR = { outline: GOLD, deck: PURPLE, delivered: SUCCESS }
 const btn = (color, filled = false) => ({ display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: MONO, fontSize: 10.5, letterSpacing: '0.08em', textTransform: 'uppercase', padding: '7px 12px', borderRadius: 999, cursor: 'pointer', border: `1px solid ${filled ? color : `${alpha(color, 53)}`}`, background: filled ? `${alpha(color, 13)}` : 'transparent', color, textDecoration: 'none' })
 const absDeck = (s) => `${window.location.origin}${deckUrl(s)}`
 

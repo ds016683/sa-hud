@@ -20,7 +20,7 @@ import { supabase, reportSoft } from '../../lib/supabase'
 import { useConsoleRun, blockedBy } from '../../lib/consoleRun'
 import { upsertSession, logToHarvest, hoursBetween, startMeetingTimer, stopMeetingTimer } from '../../lib/meetings'
 import { fetchLoadout, equipObjective, equipTask, equip, holster, startWithRoom, resolveObjectiveId, fmtClock, chiToday, SIZES, SLOTS } from '../../lib/loadout'
-import { KIND_COLOR, PURPLE, LABEL, alpha, INK, INK2, GRAY, PANEL_BORDER, GOLD, GOLD_BRIGHT, GREEN, RED, BLUE, MONO, SERIF, S, Label as BaseLabel, Panel, fmtTime } from './canon'
+import { KIND_COLOR, PURPLE, LABEL, alpha, INK, INK2, GRAY, PANEL_BORDER, GOLD, GOLD_BRIGHT, GREEN, SUCCESS, RED, BLUE, MONO, SERIF, S, Label as BaseLabel, Panel, fmtTime } from './canon'
 const Label = ({ children, style }) => <BaseLabel style={{ color: BLUE, ...style }}>{children}</BaseLabel>
 import { HYGIENE_ITEMS } from '../../constants/hygiene'
 import { GATEWAY_PLAYLIST } from '../../constants/gateway'
@@ -53,7 +53,7 @@ const btn = (color = INK2, filled = false, extra = {}) => ({
   padding: '8px 14px', borderRadius: 10, border: `1px solid ${filled ? color : `${alpha(color, 40)}`}`, background: filled ? color : 'transparent',
   color: filled ? 'var(--hud-on-accent)' : color, cursor: 'pointer', ...extra,
 })
-const tile = (on, color = GREEN) => ({
+const tile = (on, color = SUCCESS) => ({
   display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 6, minWidth: 180, flex: '1 1 180px', padding: '12px 14px', borderRadius: 10, cursor: 'pointer', textAlign: 'left',
   border: `1px solid ${on ? color : PANEL_BORDER}`, background: on ? `${alpha(color, 8)}` : 'rgba(255,255,255,0.03)', color: INK,
 })
@@ -294,7 +294,7 @@ function Protocol({ day, session, onClose, onFinished, onChange, onNavigate }) {
   }
   const meds = useMemo(() => MORNING_MEDS(day), [day])
   const bodyQueue = useMemo(() => [
-    ...HYGIENE_ITEMS.filter(h => MORNING_HYGIENE.includes(h.key)).map(h => ({ kind: 'hygiene', key: h.key, label: h.label, color: GREEN, sub: '0.25 mi when logged' })),
+    ...HYGIENE_ITEMS.filter(h => MORNING_HYGIENE.includes(h.key)).map(h => ({ kind: 'hygiene', key: h.key, label: h.label, color: SUCCESS, sub: '0.25 mi when logged' })),
     ...meds.map(m => ({ kind: 'medication', key: m.key, label: m.label, color: GOLD, sub: `${m.dose} · 0.5 mi when logged` })),
   ], [meds])
   const bodyLeft = bodyQueue.filter(i => !logged(i.kind, i.key) && !skipped.has(i.key))
@@ -413,7 +413,7 @@ function Protocol({ day, session, onClose, onFinished, onChange, onNavigate }) {
     // 1 Gateway
     if (cur.id === 'gateway') return (
       <div style={{ display: 'grid', gap: 14 }}>
-        {gatewayLog && <div className="mp-step-r" style={{ padding: '18px 22px', borderRadius: 14, border: `1px solid ${alpha(GREEN, 40)}`, background: `${alpha(GREEN, 6)}`, display: 'flex', alignItems: 'center', gap: 12 }}><Music size={18} color={GREEN} /><div><div style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 20, color: '#fff' }}>{gatewayLog.what}</div><div style={{ fontFamily: MONO, fontSize: 10, color: GRAY, letterSpacing: '0.6px' }}>chosen {fmtTime(gatewayLog.at)} · tap another to change it</div></div></div>}
+        {gatewayLog && <div className="mp-step-r" style={{ padding: '18px 22px', borderRadius: 14, border: `1px solid ${alpha(SUCCESS, 40)}`, background: `${alpha(SUCCESS, 6)}`, display: 'flex', alignItems: 'center', gap: 12 }}><Music size={18} color={SUCCESS} /><div><div style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 20, color: '#fff' }}>{gatewayLog.what}</div><div style={{ fontFamily: MONO, fontSize: 10, color: GRAY, letterSpacing: '0.6px' }}>chosen {fmtTime(gatewayLog.at)} · tap another to change it</div></div></div>}
         {GATEWAY_PLAYLIST.length > 0 ? (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 10 }}>
             {GATEWAY_PLAYLIST.map(t => { const on = gatewayLog?.what === `${t.title} · ${t.artist}`; return (
@@ -457,7 +457,7 @@ function Protocol({ day, session, onClose, onFinished, onChange, onNavigate }) {
               </div>
             </div>
           ) : (
-            <div className="mp-step-r" style={{ padding: '22px 24px', borderRadius: 14, border: `1px solid ${alpha(GREEN, 40)}`, background: `${alpha(GREEN, 6)}` }}>
+            <div className="mp-step-r" style={{ padding: '22px 24px', borderRadius: 14, border: `1px solid ${alpha(SUCCESS, 40)}`, background: `${alpha(SUCCESS, 6)}` }}>
               <div style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 24, color: '#fff' }}>{skippedItems.length ? `Body done, ${skippedItems.length} skipped for later.` : 'Body done.'}</div>
               <div style={{ fontSize: 12.5, color: GRAY, marginTop: 4 }}>{skippedItems.length ? skippedItems.map(i => i.label).join(' · ') : 'Everything logged. Moving on.'}</div>
             </div>
@@ -706,7 +706,7 @@ function Protocol({ day, session, onClose, onFinished, onChange, onNavigate }) {
           <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '1.4px', textTransform: 'uppercase', color: GOLD }}>Morning Protocol · running {fmtClock(elapsed)}</div>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: `repeat(${STEPS.length}, 1fr)`, gap: 6, marginBottom: 28 }}>
-          {STEPS.map((s, i) => { const done = i < step, nowS = i === step; const c = done ? GREEN : nowS ? GOLD_BRIGHT : 'rgba(255,255,255,0.18)'; return (
+          {STEPS.map((s, i) => { const done = i < step, nowS = i === step; const c = done ? SUCCESS : nowS ? GOLD_BRIGHT : 'rgba(255,255,255,0.18)'; return (
             <button key={s.id} onClick={() => go(i)} style={{ background: 'transparent', border: 'none', padding: 0, cursor: 'pointer', textAlign: 'left' }}>
               <div style={{ height: 3, borderRadius: 2, background: c, transition: 'background .4s' }} />
               <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginTop: 9 }}>

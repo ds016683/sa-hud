@@ -21,7 +21,7 @@ import { fmtStamp, listLiveFiles, listEvidence, openLiveFile, isRequest, isLink 
 import ProtocolsTab from './Protocols'
 import { isOpenRow } from '../../lib/protocols'
 import FilesTab from './Files'
-import { INK, INK2, GRAY, PANEL_BORDER, GOLD, GOLD_BRIGHT, BLUE, GREEN, RED, MONO, SERIF, S, Label, KIND_COLOR, KindIcon, NORTH_STAR_LABEL, NORTH_STAR_ASK, LABEL, PURPLE, alpha, NAVY_DEEP } from './canon'
+import { INK, INK2, GRAY, PANEL_BORDER, GOLD, GOLD_BRIGHT, BLUE, GREEN, SUCCESS, RED, MONO, SERIF, S, Label, KIND_COLOR, KindIcon, NORTH_STAR_LABEL, NORTH_STAR_ASK, LABEL, PURPLE, alpha, NAVY_DEEP } from './canon'
 
 const TABS = ['overview', 'protocols', 'files', 'notes']
 const TAB_LABEL = { overview: 'Briefing', protocols: 'Live Protocols', files: 'Files', notes: 'Notes' }
@@ -210,8 +210,8 @@ function WhereItStands({ item, rel, task, taskId, linkedBoards }) {
       <Label>Where It Stands</Label>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 22 }}>
         <div>
-          <div style={{ fontSize: 14.5, fontWeight: 600, color: GREEN, marginBottom: 5 }}>Done</div>
-          {done.length ? done.map((r, i) => <Row key={i} r={r} color={GREEN} />) : <div style={{ fontSize: 13, color: GRAY, padding: '4px 0' }}>Nothing ticked, closed or produced yet.</div>}
+          <div style={{ fontSize: 14.5, fontWeight: 600, color: SUCCESS, marginBottom: 5 }}>Done</div>
+          {done.length ? done.map((r, i) => <Row key={i} r={r} color={SUCCESS} />) : <div style={{ fontSize: 13, color: GRAY, padding: '4px 0' }}>Nothing ticked, closed or produced yet.</div>}
         </div>
         <div>
           <div style={{ fontSize: 14.5, fontWeight: 600, color: GOLD, marginBottom: 5 }}>Still Needed</div>
@@ -367,7 +367,7 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
                     {max > 0 && rel.steps === null && <div style={{ fontSize: 12.5, color: GRAY }}>Steps are not set up yet. Run sql/2026-10-07-side-missions-archive.sql in the Ledger and they appear here.</div>}
                     {max > 0 && Array.isArray(rel.steps) && rel.steps.map((st, i) => (
                       <div key={st.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 0', borderTop: `1px solid ${PANEL_BORDER}` }}>
-                        <button onClick={() => toggleStep(st.id, !st.done).then(load)} aria-label={st.done ? 'Undo' : 'Done'} style={{ width: 18, height: 18, borderRadius: 999, border: `1px solid ${st.done ? GREEN : 'rgba(255,255,255,0.3)'}`, background: st.done ? `${alpha(GREEN, 13)}` : 'transparent', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>{st.done && <Check size={11} color={GREEN} />}</button>
+                        <button onClick={() => toggleStep(st.id, !st.done).then(load)} aria-label={st.done ? 'Undo' : 'Done'} style={{ width: 18, height: 18, borderRadius: 999, border: `1px solid ${st.done ? SUCCESS : 'rgba(255,255,255,0.3)'}`, background: st.done ? `${alpha(SUCCESS, 13)}` : 'transparent', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>{st.done && <Check size={11} color={SUCCESS} />}</button>
                         <span style={{ fontFamily: MONO, fontSize: 10, color: GOLD, width: 14 }}>{i + 1}</span>
                         <span style={{ flex: 1, fontSize: 14, color: st.done ? GRAY : INK, textDecoration: st.done ? 'line-through' : 'none' }}>{st.text}</span>
                         {st.done_at && <span style={{ fontFamily: MONO, fontSize: 9.5, color: GRAY }}>{chiTime(st.done_at)}</span>}

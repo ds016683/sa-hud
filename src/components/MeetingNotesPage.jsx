@@ -9,7 +9,7 @@ import { Check, ChevronRight, ExternalLink, HelpCircle, Search } from 'lucide-re
 import { supabase } from '../lib/supabase'
 import { matchNotes } from '../lib/meetings'
 import {
-  INK, INK2, GRAY, PANEL_BG, PANEL_BORDER, GOLD, GOLD_BRIGHT, BLUE, PERIWINKLE, GREEN, MONO, SERIF,
+  INK, INK2, GRAY, PANEL_BG, PANEL_BORDER, GOLD, GOLD_BRIGHT, BLUE, PERIWINKLE, GREEN, SUCCESS, MONO, SERIF,
   S, Eyebrow, Stat, fmtDay, fmtTime, chiToday, chiDayOf, LABEL, alpha } from './river/canon'
 
 const DAYS_STEP = 30
@@ -112,7 +112,7 @@ function attendanceState(event, session, nowMs, notes) {
   return en != null && en <= nowMs ? 'confirm' : null
 }
 const CONFIRM_TITLE = 'Not confirmed attended. Start the timer, close it out, or tell Lumen.'
-const attendedChip = S.chip('rgba(67,211,146,0.16)', GREEN)
+const attendedChip = S.chip(alpha(SUCCESS, 16), SUCCESS)
 const confirmChip = S.chip('rgba(230,181,79,0.16)', GOLD_BRIGHT)
 
 /* -------------------- search highlight + snippet -------------------- */
@@ -568,7 +568,7 @@ export default function MeetingNotesPage() {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(96px, auto))', gap: 20 }}>
             <Stat v={stats.meetings} l="Meetings" />
             <Stat v={stats.documented} l="Documented" color={BLUE} />
-            <Stat v={stats.closed} l="Closed out" color={stats.closed ? GREEN : GRAY} />
+            <Stat v={stats.closed} l="Closed out" color={stats.closed ? SUCCESS : GRAY} />
           </div>
         )}
       </div>

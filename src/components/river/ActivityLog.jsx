@@ -4,7 +4,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { ChevronLeft, ChevronRight, Check, X as XIcon } from 'lucide-react'
 import { fetchDay, build, KINDS, shiftDay } from '../../lib/activity'
-import { INK, GRAY, PANEL_BORDER, GREEN, MONO, SERIF, S, Label, chiToday, fmtTime, fmtDay, LABEL, alpha } from './canon'
+import { INK, GRAY, PANEL_BORDER, GREEN, SUCCESS, MONO, SERIF, S, Label, chiToday, fmtTime, fmtDay, LABEL, alpha } from './canon'
 
 export const KindChip = ({ kind }) => {
   const c = (KINDS[kind] || KINDS.Activity).color
@@ -23,7 +23,7 @@ export function TimelineRow({ r, last }) {
       <div style={{ paddingBottom: 14 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
           <KindChip kind={r.kind} />
-          {r.documented && <span title="Documented in Granola" style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontFamily: MONO, fontSize: 9, letterSpacing: '1px', color: GREEN, textTransform: 'uppercase' }}><Check size={11} /> documented</span>}
+          {r.documented && <span title="Documented in Granola" style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontFamily: MONO, fontSize: 9, letterSpacing: '1px', color: SUCCESS, textTransform: 'uppercase' }}><Check size={11} /> documented</span>}
         </div>
         <div style={{ fontSize: 13.5, lineHeight: 1.5, color: INK, marginTop: 5 }}>{r.text}</div>
         {r.meta && <div style={{ fontSize: 11.5, lineHeight: 1.5, color: GRAY, marginTop: 2 }}>{r.meta}</div>}

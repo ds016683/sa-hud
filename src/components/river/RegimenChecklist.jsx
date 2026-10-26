@@ -8,7 +8,7 @@ import { useState } from 'react'
 import { Check, RotateCcw, X } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { MEDICATIONS, dueOn } from '../../constants/medications'
-import { S, Panel, Label, GRAY, INK2, GOLD, GREEN, RED, PERIWINKLE, PANEL_BORDER, MONO, chiToday, fmtTime, alpha, INK } from './canon'
+import { S, Panel, Label, GRAY, INK2, GOLD, GREEN, SUCCESS, RED, PERIWINKLE, PANEL_BORDER, MONO, chiToday, fmtTime, alpha, INK } from './canon'
 
 const CTRL = { fontSize: 12, padding: '7px 10px', borderRadius: 8, border: `1px solid ${PANEL_BORDER}`, background: 'rgba(255,255,255,0.05)', color: INK }
 const BTN = { ...CTRL, display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer' }
@@ -33,8 +33,8 @@ function Ring({ on }) {
   return (
     <span style={{
       width: 18, height: 18, borderRadius: 999, flex: '0 0 18px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-      border: `1px solid ${on ? GREEN : 'rgba(255,255,255,0.25)'}`, background: on ? `${alpha(GREEN, 13)}` : 'transparent',
-    }}>{on && <Check size={12} color={GREEN} />}</span>
+      border: `1px solid ${on ? SUCCESS : 'rgba(255,255,255,0.25)'}`, background: on ? `${alpha(SUCCESS, 13)}` : 'transparent',
+    }}>{on && <Check size={12} color={SUCCESS} />}</span>
   )
 }
 

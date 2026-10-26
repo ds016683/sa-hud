@@ -10,7 +10,7 @@ import { HYGIENE_ITEMS, HYGIENE_KEYS } from '../constants/hygiene'
 import { MEDICATIONS, dueOn } from '../constants/medications'
 import HygieneChecklist from './river/HygieneChecklist'
 import RegimenChecklist from './river/RegimenChecklist'
-import { BLUE, Eyebrow, GOLD, GRAY, GREEN, INK, INK2, LABEL, Label, MONO, PANEL_BORDER, PERIWINKLE, PURPLE, Panel, RED, S, Stat, alpha, chiToday, fmtTime } from './river/canon'
+import { BLUE, Eyebrow, GOLD, GRAY, GREEN, SUCCESS, INK, INK2, LABEL, Label, MONO, PANEL_BORDER, PERIWINKLE, PURPLE, Panel, RED, S, Stat, alpha, chiToday, fmtTime } from './river/canon'
 
 // ---------- constants ----------
 const TOP_PILLS = [
@@ -155,7 +155,7 @@ function ItemList({ items, cats, insertCat, onChanged, title, blank }) {
         <div key={i.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderBottom: `1px solid ${PANEL_BORDER}` }}>
           <span style={S.chip(`${CAT_COLOR[i.category] || GRAY}22`, CAT_COLOR[i.category] || GRAY)}>{CAT_LABEL[i.category] || i.category}</span>
           <span style={{ flex: 1, fontSize: 13.5, color: INK2 }}>{i.title}{i.cadence && <span style={{ color: GRAY, fontSize: 11, marginLeft: 8 }}>{i.cadence}</span>}</span>
-          <button onClick={() => done(i.id)} title="Done today" style={{ ...BTN, color: GREEN, padding: '4px 8px' }}><Check size={14} /></button>
+          <button onClick={() => done(i.id)} title="Done today" style={{ ...BTN, color: SUCCESS, padding: '4px 8px' }}><Check size={14} /></button>
           <button onClick={() => drop(i.id)} title="Drop" style={{ ...BTN, color: GRAY, padding: '4px 8px' }}><X size={14} /></button>
         </div>
       ))}
@@ -163,7 +163,7 @@ function ItemList({ items, cats, insertCat, onChanged, title, blank }) {
         <div style={{ marginTop: 12 }}>
           <Label>done today · {doneToday.length}</Label>
           {doneToday.map(i => (
-            <div key={i.id} style={{ display: 'flex', gap: 10, padding: '4px 0', fontSize: 13, color: INK2 }}><Check size={14} color={GREEN} /> {i.title}</div>
+            <div key={i.id} style={{ display: 'flex', gap: 10, padding: '4px 0', fontSize: 13, color: INK2 }}><Check size={14} color={SUCCESS} /> {i.title}</div>
           ))}
         </div>
       )}
@@ -312,7 +312,7 @@ function DevotionalPanel({ logs, onChanged }) {
   return (
     <Panel title="Morning Devotional">
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 14, marginBottom: 14 }}>
-        <Stat v={todays ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}><Check size={20} color={GREEN} /> {fmtTime(todays.at)}</span> : '·'} l={todays ? 'done today' : 'not yet today'} color={todays ? GREEN : '#fff'} />
+        <Stat v={todays ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}><Check size={20} color={SUCCESS} /> {fmtTime(todays.at)}</span> : '·'} l={todays ? 'done today' : 'not yet today'} color={todays ? SUCCESS : '#fff'} />
         <Stat v={streakText} l="day streak" color={streak > 0 ? GOLD : '#fff'} />
       </div>
       {todays
@@ -508,7 +508,7 @@ function HealthOverview({ rows, logs, overrides, items, scans, onChanged }) {
       return <span style={{ fontFamily: MONO, color: t.due > 0 && t.taken === t.due ? GOLD : INK2 }}>{t.taken}/{t.due}</span>
     } },
     { key: 'hyg', label: 'Hygiene', render: r => r.hygiene.length ? <span style={{ fontFamily: MONO, color: hygieneCount(r.hygiene) === HYGIENE_ITEMS.length ? GOLD : INK2 }}>{hygieneCount(r.hygiene)}/{HYGIENE_ITEMS.length}</span> : '' },
-    { key: 'dev', label: 'Devo', render: r => r.devotional.length ? <Check size={13} color={GREEN} /> : '' },
+    { key: 'dev', label: 'Devo', render: r => r.devotional.length ? <Check size={13} color={SUCCESS} /> : '' },
     { key: 'diet', label: 'Diet', render: r => [joinWhat(r.diet), joinNote(r.diet)].filter(Boolean).join(' · ') },
   ]
 
