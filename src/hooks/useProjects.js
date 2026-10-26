@@ -68,12 +68,12 @@ export default function useProjects() {
     return true
   }, [patchLocal])
 
-  const createProject = useCallback(async ({ name, category = 'client', kind = 'standing' }) => {
+  const createProject = useCallback(async ({ name, category = 'client', kind = 'standing', tags = [] }) => {
     const { data: { session } } = await supabase.auth.getSession()
     if (!session) return null
     const now = new Date().toISOString()
     const { data, error } = await supabase.from('projects').insert({
-      user_id: session.user.id, name, category, kind,
+      user_id: session.user.id, name, category, kind, tags,
       status: 'active', priority: 'medium', pinned: false, last_activity_at: now,
     }).select('*, tasks:project_tasks(id,text,status,done,source,session_ref,due_date,notes,objective_id,released_at,created_at)').single()
     if (error) { console.error('createProject:', error); return null }

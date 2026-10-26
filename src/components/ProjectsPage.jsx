@@ -63,6 +63,23 @@ const CATEGORY_LABELS = {
 }
 const CATEGORY_ORDER = ['q2-must', 'client', 'third-horizon', 'commercial-infra', 'biz-dev', 'personal', 'learning']
 
+// Horizon (David 10/25): the page sorts by pressure, not category. Pressure is read
+// from the Ledger: on the Board, waiting on David, overdue, due inside fourteen days.
+// A mission tagged 'horizon' has no clock on it and sits in the Horizon band.
+const isHorizon = (p) => (p.tags || []).includes('horizon')
+const pressureOf = (p) => {
+  const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Chicago' })
+  const soon = new Date(Date.now() + 14 * 86400e3).toLocaleDateString('en-CA', { timeZone: 'America/Chicago' })
+  const open = (p.tasks || []).filter(isOpen)
+  const onBoard = open.some(t => !!t.objective_id)
+  const waiting = open.filter(isBlocked).length
+  const overdue = open.filter(t => t.due_date && t.due_date < today).length
+  const dueSoon = open.filter(t => t.due_date && t.due_date >= today && t.due_date <= soon).length
+  const score = overdue * 100 + waiting * 10 + (onBoard ? 5 : 0) + dueSoon
+  return { onBoard, waiting, overdue, dueSoon, score, now: score > 0 }
+}
+const NOW_CAP = 3
+
 const isOpen = (t) => t.status !== 'done' && !t.done
 const isBlocked = (t) => t.status === 'blocked'
 
@@ -89,7 +106,7 @@ function planOf(project) {
 }
 const nowMilestone = (plan) => plan.find(({ t }) => isOpen(t) && t.objective_id) || plan.find(({ t }) => isOpen(t)) || null
 
-function ProjectCard({ project, onOpen }) {
+function ProjectCard({ project, onOpen, hot = false, compact = false }) {
   const { plan, history } = planOf(project)
   const ms = plan.map(p => p.t)
   const closed = ms.filter(t => !isOpen(t)).length
@@ -102,12 +119,12 @@ function ProjectCard({ project, onOpen }) {
   const lastTouch = project.last_activity_at ? new Date(project.last_activity_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'never'
   const pct = ms.length ? Math.round(closed / ms.length * 100) : 0
   return (
-    <button onClick={() => onOpen(project.id)} style={{ ...S.panel, textAlign: 'left', cursor: 'pointer', fontFamily: 'inherit', display: 'flex', flexDirection: 'column', gap: 10, minHeight: 150, width: '100%', transition: 'border-color 120ms' }}
+    <button onClick={() => onOpen(project.id)} style={{ ...S.panel, textAlign: 'left', cursor: 'pointer', fontFamily: 'inherit', display: 'flex', flexDirection: 'column', gap: compact ? 6 : 10, minHeight: compact ? 0 : 150, width: '100%', transition: 'border-color 120ms', borderLeft: hot ? `3px solid ${GOLD}` : undefined, background: hot ? `linear-gradient(180deg, ${alpha(GOLD, 6)}, transparent 60%), ${PANEL_BG}` : compact ? 'transparent' : PANEL_BG, padding: compact ? '12px 14px' : 16 }}
       onMouseEnter={e => e.currentTarget.style.borderColor = alpha(BLUE, 40)} onMouseLeave={e => e.currentTarget.style.borderColor = PANEL_BORDER}>
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 17, letterSpacing: '-0.01em', color: INK, lineHeight: 1.3 }}>{project.name}</div>
-          {project.description && <div style={{ fontSize: 12.5, lineHeight: 1.5, color: TEXT_DIM, marginTop: 3, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{project.description}</div>}
+          {project.description && !compact && <div style={{ fontSize: 12.5, lineHeight: 1.5, color: TEXT_DIM, marginTop: 3, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{project.description}</div>}
         </div>
         <span style={{ fontFamily: MONO, fontSize: 9, letterSpacing: '1px', textTransform: 'uppercase', color: BLUE, border: `1px solid ${alpha(BLUE, 33)}`, borderRadius: 999, padding: '2px 7px', whiteSpace: 'nowrap', flexShrink: 0 }}>{CATEGORY_LABELS[project.category] || project.category}</span>
       </div>
@@ -538,8 +555,9 @@ function ProjectDetail({ project, board: boardProp, api, onBack, initialTab, ini
           <div style={{ fontSize: 14, lineHeight: 1.6, color: TEXT_DIM, margin: '8px 0 0', maxWidth: '72ch' }}>
             {project.description ? <span><span style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '1.4px', textTransform: 'uppercase', color: BLUE, marginRight: 8, display: 'block', marginBottom: 2 }}>{NORTH_STAR_LABEL}</span><span style={{ fontFamily: SERIF, fontStyle: 'italic', fontSize: 15.5, color: INK }}>{project.description}</span></span> : <button onClick={async () => { const d = await hudPrompt(`${NORTH_STAR_LABEL}? One sentence.`, ''); if (d?.trim()) await api.updateProject(project.id, { description: d.trim() }) }} style={{ ...S.btnGhost, padding: '3px 9px', fontSize: 10 }}>Write the Polaris Objective</button>}
           </div>
-          <div style={S.sub}>
-            {[CATEGORY_LABELS[project.category] || project.category, project.key, '100 miles on completion · 10 per milestone'].filter(Boolean).join(' · ')}
+          <div style={{ ...S.sub, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+            <span>{[CATEGORY_LABELS[project.category] || project.category, project.key, '100 miles on completion · 10 per milestone'].filter(Boolean).join(' · ')}</span>
+            <button onClick={() => api.updateProject(project.id, { tags: isHorizon(project) ? (project.tags || []).filter(t => t !== 'horizon') : [...(project.tags || []), 'horizon'] })} title={isHorizon(project) ? 'On the horizon: no clock. Click to bring it into the standing missions.' : 'Click to put it on the horizon: no clock, a chip on the page.'} style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '1px', textTransform: 'uppercase', padding: '3px 9px', borderRadius: 999, border: `1px ${isHorizon(project) ? 'dashed' : 'solid'} ${PANEL_BORDER}`, background: 'transparent', color: isHorizon(project) ? GRAY : LABEL, cursor: 'pointer' }}>{isHorizon(project) ? 'Horizon' : 'Standing'}</button>
           </div>
         </div>
         <div style={{ display: 'flex', gap: 6, paddingTop: 6, flexWrap: 'wrap' }}>
@@ -659,6 +677,7 @@ export default function ProjectsPage({ deepLink = [], onNavigate } = {}) {
   const [adding, setAdding] = useState(false)
   const [newName, setNewName] = useState('')
   const [newCat, setNewCat] = useState('client')
+  const [newHorizon, setNewHorizon] = useState(true)
 
   if (loading && !projects.length) {
     return <div style={{ ...S.page, fontFamily: MONO, fontSize: 10, letterSpacing: '1.4px', color: GRAY }}>LOADING…</div>
@@ -675,19 +694,20 @@ export default function ProjectsPage({ deepLink = [], onNavigate } = {}) {
 
   const cats = CATEGORY_ORDER.filter(c => active.some(p => p.category === c))
   const shown = catFilter === 'all' ? active : active.filter(p => p.category === catFilter)
-  const sorted = [...shown].sort((a, b) => {
-    const ba = (a.tasks || []).some(t => isOpen(t) && isBlocked(t)) ? 0 : 1
-    const bb = (b.tasks || []).some(t => isOpen(t) && isBlocked(t)) ? 0 : 1
-    if (ba !== bb) return ba - bb
-    return new Date(b.last_activity_at || 0) - new Date(a.last_activity_at || 0)
-  })
+  const withP = shown.map(p => ({ p, pr: pressureOf(p) }))
+  const byPressure = (a, b) => (b.pr.score - a.pr.score) || (new Date(b.p.last_activity_at || 0) - new Date(a.p.last_activity_at || 0))
+  const qualify = withP.filter(x => !isHorizon(x.p) && x.pr.now).sort(byPressure)
+  const nowBand = qualify.slice(0, NOW_CAP)
+  const steady = [...qualify.slice(NOW_CAP), ...withP.filter(x => !isHorizon(x.p) && !x.pr.now).sort(byPressure)]
+  const horizon = withP.filter(x => isHorizon(x.p)).sort((a, b) => new Date(b.p.last_activity_at || 0) - new Date(a.p.last_activity_at || 0))
   const blockedTotal = active.reduce((n, p) => n + (p.tasks || []).filter(t => isOpen(t) && isBlocked(t)).length, 0)
-
+  const overdueTotal = active.reduce((n, p) => n + pressureOf(p).overdue, 0)
+  const standing = active.filter(p => !isHorizon(p)).length
   const create = async (e) => {
     e.preventDefault()
     const name = newName.trim()
     if (!name) return
-    const p = await api.createProject({ name, category: newCat })
+    const p = await api.createProject({ name, category: newCat, tags: newHorizon ? ['horizon'] : [] })
     setNewName(''); setAdding(false)
     if (p) setDetailId(p.id)
   }
@@ -697,9 +717,10 @@ export default function ProjectsPage({ deepLink = [], onNavigate } = {}) {
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16, flexWrap: 'wrap' }}>
         <div style={{ flex: 1, minWidth: 260 }}>
           <h1 style={S.h1}>Main Missions</h1>
-          <div style={S.sub}>
-            {active.length} standing · {blockedTotal > 0 ? `${blockedTotal} decisions waiting on you` : 'nothing waiting on you'}
+          <div style={{ fontFamily: SERIF, fontSize: 19, color: INK, marginTop: 8, lineHeight: 1.3 }}>
+            {standing} standing · <span style={{ color: blockedTotal ? GOLD : INK }}>{blockedTotal} waiting on you</span> · <span style={{ color: overdueTotal ? RED : INK }}>{overdueTotal} overdue</span>{horizon.length ? <span style={{ color: TEXT_DIM }}> · {horizon.length} on the horizon</span> : null}
           </div>
+          {qualify.length > NOW_CAP && <div style={{ ...S.sub, marginTop: 6 }}>{qualify.length} qualify for Now · {NOW_CAP} shown · the rest sit first in Steady</div>}
         </div>
         <div style={{ display: 'flex', gap: 8, paddingTop: 4 }}>
           <button style={S.btnGhost} onClick={api.refresh}><RefreshCw size={13} /> Refresh</button>
@@ -713,6 +734,7 @@ export default function ProjectsPage({ deepLink = [], onNavigate } = {}) {
           <select value={newCat} onChange={e => setNewCat(e.target.value)} style={{ ...S.input, width: 190 }}>
             {CATEGORY_ORDER.map(c => <option key={c} value={c} style={{ color: '#0F2334' }}>{CATEGORY_LABELS[c]}</option>)}
           </select>
+          <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontFamily: MONO, fontSize: 10.5, letterSpacing: '1px', textTransform: 'uppercase', color: newHorizon ? LABEL : GRAY, cursor: 'pointer', padding: '0 6px' }}><input type="checkbox" checked={newHorizon} onChange={e => setNewHorizon(e.target.checked)} /> Horizon · no clock yet</label>
           <button type="submit" style={S.btnPrimary}>Create</button>
         </form>
       )}
@@ -726,10 +748,31 @@ export default function ProjectsPage({ deepLink = [], onNavigate } = {}) {
         ))}
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 12 }}>
-        {sorted.map(p => <ProjectCard key={p.id} project={p} onOpen={setDetailId} />)}
-      </div>
-      {!sorted.length && <div style={{ fontSize: 13, color: GRAY, padding: '20px 0' }}>Nothing here.</div>}
+      {nowBand.length > 0 && (
+        <div style={{ marginBottom: 26 }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginBottom: 10 }}><span style={{ fontFamily: MONO, fontSize: 10.5, letterSpacing: '1.4px', textTransform: 'uppercase', color: GOLD }}>Now</span><span style={{ flex: 1, height: 1, background: PANEL_BORDER }} /><span style={{ fontFamily: MONO, fontSize: 10, color: GRAY }}>on the Board, waiting on you, overdue, or due inside fourteen days</span></div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 12 }}>
+            {nowBand.map(({ p }) => <ProjectCard key={p.id} project={p} onOpen={setDetailId} hot />)}
+          </div>
+        </div>
+      )}
+      {steady.length > 0 && (
+        <div style={{ marginBottom: 26 }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginBottom: 10 }}><span style={{ fontFamily: MONO, fontSize: 10.5, letterSpacing: '1.4px', textTransform: 'uppercase', color: LABEL }}>Steady</span><span style={{ flex: 1, height: 1, background: PANEL_BORDER }} /></div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 10 }}>
+            {steady.map(({ p, pr }) => <ProjectCard key={p.id} project={p} onOpen={setDetailId} compact hot={pr.now} />)}
+          </div>
+        </div>
+      )}
+      {horizon.length > 0 && (
+        <div style={{ marginBottom: 26 }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginBottom: 10 }}><span style={{ fontFamily: MONO, fontSize: 10.5, letterSpacing: '1.4px', textTransform: 'uppercase', color: GRAY }}>Horizon</span><span style={{ flex: 1, height: 1, background: PANEL_BORDER }} /><span style={{ fontFamily: MONO, fontSize: 10, color: GRAY }}>no clock on these</span></div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+            {horizon.map(({ p }) => <button key={p.id} onClick={() => setDetailId(p.id)} title={p.description || p.name} style={{ fontSize: 12.5, color: TEXT_DIM, border: `1px dashed ${PANEL_BORDER}`, borderRadius: 999, padding: '6px 12px', background: 'transparent', cursor: 'pointer', fontFamily: 'inherit' }}>{p.name}</button>)}
+          </div>
+        </div>
+      )}
+      {!nowBand.length && !steady.length && !horizon.length && <div style={{ fontSize: 13, color: GRAY, padding: '20px 0' }}>Nothing here.</div>}
 
       {archived.length > 0 && (
         <div style={{ marginTop: 28 }}>
