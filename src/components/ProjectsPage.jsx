@@ -135,7 +135,7 @@ function ProjectCard({ project, onOpen, hot = false, compact = false }) {
   const lastTouch = project.last_activity_at ? new Date(project.last_activity_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'never'
   return (
     <button onClick={() => onOpen(project.id)} style={{ ...S.panel, textAlign: 'left', cursor: 'pointer', fontFamily: 'inherit', display: 'flex', flexDirection: 'column', gap: compact ? 10 : 12, minHeight: compact ? 190 : 240, width: '100%', transition: 'border-color 120ms', borderLeft: hot ? `3px solid ${GOLD}` : undefined, background: hot ? `linear-gradient(180deg, ${alpha(GOLD, 6)}, transparent 60%), ${PANEL_BG}` : compact ? 'transparent' : PANEL_BG, padding: compact ? '16px 18px' : '20px 20px 18px' }}
-      onMouseEnter={e => e.currentTarget.style.borderColor = alpha(BLUE, 40)} onMouseLeave={e => e.currentTarget.style.borderColor = PANEL_BORDER}>
+      onMouseEnter={e => { e.currentTarget.style.borderColor = alpha(BLUE, 40); if (hot) e.currentTarget.style.borderLeftColor = GOLD }} onMouseLeave={e => { e.currentTarget.style.borderColor = PANEL_BORDER; if (hot) e.currentTarget.style.borderLeftColor = GOLD }}>
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
         <div style={{ flex: 1, minWidth: 0, fontFamily: SERIF, fontWeight: 500, fontSize: compact ? 16 : 18, letterSpacing: '-0.01em', color: INK, lineHeight: 1.25 }}>{project.name}</div>
         <span style={{ fontFamily: MONO, fontSize: 9, letterSpacing: '1px', textTransform: 'uppercase', color: BLUE, border: `1px solid ${alpha(BLUE, 33)}`, borderRadius: 999, padding: '2px 7px', whiteSpace: 'nowrap', flexShrink: 0 }}>{CATEGORY_LABELS[project.category] || project.category}</span>
