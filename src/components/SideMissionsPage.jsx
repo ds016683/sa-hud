@@ -7,6 +7,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Target, Play, Plus, Bell, Hourglass, ArrowUpRight, Inbox as InboxIcon, Flag, Trash2, RotateCcw, ExternalLink, Check } from 'lucide-react'
 import ItemDetail from './river/ItemDetail'
 import FileAway from './river/FileAway'
+import YayPage from './river/YayPage'
 import { fetchObjectives, addObjective, route, binObjective, restoreObjective, purgeObjective, reopenObjective, closeOut, pockets, provenance, realmOf, STATE, TAGS, sizeOf } from '../lib/objectives'
 import { fetchLoadout, SIZES } from '../lib/loadout'
 import { INK, INK2, GRAY, PANEL_BORDER, GOLD, GOLD_BRIGHT, BLUE, GREEN, RED, PURPLE, MONO, S, Panel, Label, chiToday, NORTH_STAR_LABEL, NORTH_STAR_ASK, LABEL, alpha } from './river/canon'
@@ -141,13 +142,16 @@ export default function SideMissionsPage({ onNavigate }) {
   const loadItemFor = (o) => L?.items.find(i => i.id === o.id) || null
 
   const act = async (fn, after) => { try { const r = await fn(); if (r && r.ok === false) { setMsg(`Will not fit: ${r.reasons.join(' · ')}`); return } if (after) setMsg(after); await refresh() } catch (e) { setMsg(`Could not do that: ${e.message}`) } }
+  // What a release pays (David 10/26): say it plainly, then the yay page.
+  const paysLine = (o) => { if ((o.tags || []).includes('impromptu')) return 'Ad Hoc · 1 mile at the close'; const e = Number(o.effort) || 1; return e >= 4 ? 'Mythic · 50 miles at the close' : e === 3 ? 'Contract · 15 miles at the close' : 'Bounty · 4 miles at the close' }
+  const [yay, setYay] = useState(null)
   const onDone = async (o) => {
     try {
       const p = await pockets(o.id)
       if (p.carrying) { setFiling({ o, p }); return }
       if (p.openSteps.length && !await hudConfirm(`${p.openSteps.length} step(s) still open. Close it out anyway?`)) return
       const r = await closeOut(o)
-      setMsg(`Released: ${o.title} · ${r.minutes}m${r.personal ? ' · personal' : ''} · miles on the next update`); await refresh()
+      setMsg(`Released: ${o.title} · ${r.minutes}m${r.personal ? ' · personal' : ''} · ${paysLine(o)}`); await refresh(); setYay(o.id)
     } catch (e) { setMsg(`Could not close it out: ${e.message}`) }
   }
 
@@ -156,7 +160,8 @@ export default function SideMissionsPage({ onNavigate }) {
   return (
     <div style={S.page}>
       {open && <ItemDetail item={toItem(open)} onClose={() => { setOpen(null); refresh() }} onNavigate={onNavigate} onChange={refresh} />}
-      {filing && <FileAway objective={filing.o} pockets={filing.p} onClose={() => setFiling(null)} onDone={({ filed, released }) => { setFiling(null); setMsg(`Filed ${filed.length} to the Archive and released ${filing.o.title} · ${released.minutes}m`); refresh() }} />}
+      {filing && <FileAway objective={filing.o} pockets={filing.p} onClose={() => setFiling(null)} onDone={({ filed, released }) => { const id = filing.o.id; const line = paysLine(filing.o); setFiling(null); setMsg(`Filed ${filed.length} to the Archive and released ${filing.o.title} · ${released.minutes}m · ${line}`); refresh(); setYay(id) }} />}
+      {yay && <YayPage objectiveId={yay} fresh onClose={() => setYay(null)} />}
       <div style={{ marginBottom: 18 }}>
         <h1 style={S.h1}><Target size={22} color={BLUE} style={{ verticalAlign: '-3px', marginRight: 8 }} />Side Missions</h1>
         <div style={S.sub}>the queue · what is loaded runs on the Board</div>
