@@ -63,22 +63,20 @@ const CATEGORY_LABELS = {
 }
 const CATEGORY_ORDER = ['q2-must', 'client', 'third-horizon', 'commercial-infra', 'biz-dev', 'personal', 'learning']
 
-// Horizon (David 10/25): the page sorts by pressure, not category. Pressure is read
-// from the Ledger: on the Board, waiting on David, overdue, due inside fourteen days.
-// A mission tagged 'horizon' has no clock on it and sits in the Horizon band.
+// Horizon (David 10/25, edges 10/26): the page sorts by where the mission sits on
+// the Board, nothing subjective. A milestone in the Loadout gives the card a green
+// edge; one in the Stash, gold; nothing on the Board, the accent blue. A mission
+// tagged 'horizon' has no clock on it and sits in the Horizon band as a chip.
 const isHorizon = (p) => (p.tags || []).includes('horizon')
-const pressureOf = (p) => {
-  const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Chicago' })
-  const soon = new Date(Date.now() + 14 * 86400e3).toLocaleDateString('en-CA', { timeZone: 'America/Chicago' })
+const boardStateOf = (p, objState) => {
   const open = (p.tasks || []).filter(isOpen)
-  const onBoard = open.some(t => !!t.objective_id)
-  const waiting = open.filter(isBlocked).length
-  const overdue = open.filter(t => t.due_date && t.due_date < today).length
-  const dueSoon = open.filter(t => t.due_date && t.due_date >= today && t.due_date <= soon).length
-  const score = overdue * 100 + waiting * 10 + (onBoard ? 5 : 0) + dueSoon
-  return { onBoard, waiting, overdue, dueSoon, score, now: score > 0 }
+  const states = open.map(t => t.objective_id ? objState[t.objective_id] : null).filter(Boolean)
+  if (states.some(o => o.state === 'active')) return 'loadout'
+  if (states.some(o => o.state === 'parked' && (o.tags || []).includes('stashed'))) return 'stash'
+  if (open.some(t => !!t.objective_id)) return 'loadout'   // promoted and live, state not read yet
+  return 'off'
 }
-const NOW_CAP = 3
+const EDGE = { loadout: GREEN, stash: GOLD, off: BLUE }
 
 const isOpen = (t) => t.status !== 'done' && !t.done
 const isBlocked = (t) => t.status === 'blocked'
@@ -123,7 +121,7 @@ function ProgressRing({ closed, total, size = 56, stroke = 5, color = GOLD }) {
   )
 }
 
-function ProjectCard({ project, onOpen, hot = false, compact = false }) {
+function ProjectCard({ project, onOpen, edge = BLUE, compact = false }) {
   const { plan } = planOf(project)
   const ms = plan.map(p => p.t)
   const closed = ms.filter(t => !isOpen(t)).length
@@ -134,8 +132,8 @@ function ProjectCard({ project, onOpen, hot = false, compact = false }) {
   const freshColor = fresh === 'fresh' ? GREEN : fresh === 'warning' ? GOLD : GRAY
   const lastTouch = project.last_activity_at ? new Date(project.last_activity_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'never'
   return (
-    <button onClick={() => onOpen(project.id)} style={{ ...S.panel, textAlign: 'left', cursor: 'pointer', fontFamily: 'inherit', display: 'flex', flexDirection: 'column', gap: compact ? 10 : 12, minHeight: compact ? 190 : 240, width: '100%', transition: 'border-color 120ms', borderLeft: hot ? `3px solid ${GOLD}` : undefined, background: hot ? `linear-gradient(180deg, ${alpha(GOLD, 6)}, transparent 60%), ${PANEL_BG}` : compact ? 'transparent' : PANEL_BG, padding: compact ? '16px 18px' : '20px 20px 18px' }}
-      onMouseEnter={e => { e.currentTarget.style.borderColor = alpha(BLUE, 40); if (hot) e.currentTarget.style.borderLeftColor = GOLD }} onMouseLeave={e => { e.currentTarget.style.borderColor = PANEL_BORDER; if (hot) e.currentTarget.style.borderLeftColor = GOLD }}>
+    <button onClick={() => onOpen(project.id)} style={{ ...S.panel, textAlign: 'left', cursor: 'pointer', fontFamily: 'inherit', display: 'flex', flexDirection: 'column', gap: compact ? 10 : 12, minHeight: compact ? 190 : 240, width: '100%', transition: 'border-color 120ms', borderLeft: `3px solid ${edge}`, background: compact ? 'transparent' : PANEL_BG, padding: compact ? '16px 18px' : '20px 20px 18px' }}
+      onMouseEnter={e => { e.currentTarget.style.borderColor = alpha(BLUE, 40); e.currentTarget.style.borderLeftColor = edge }} onMouseLeave={e => { e.currentTarget.style.borderColor = PANEL_BORDER; e.currentTarget.style.borderLeftColor = edge }}>
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
         <div style={{ flex: 1, minWidth: 0, fontFamily: SERIF, fontWeight: 500, fontSize: compact ? 16 : 18, letterSpacing: '-0.01em', color: INK, lineHeight: 1.25 }}>{project.name}</div>
         <span style={{ fontFamily: MONO, fontSize: 9, letterSpacing: '1px', textTransform: 'uppercase', color: BLUE, border: `1px solid ${alpha(BLUE, 33)}`, borderRadius: 999, padding: '2px 7px', whiteSpace: 'nowrap', flexShrink: 0 }}>{CATEGORY_LABELS[project.category] || project.category}</span>
@@ -686,6 +684,15 @@ export default function ProjectsPage({ deepLink = [], onNavigate } = {}) {
   const [newName, setNewName] = useState('')
   const [newCat, setNewCat] = useState('client')
   const [newHorizon, setNewHorizon] = useState(true)
+  // Board state of every promoted milestone, for the card edges and the bands.
+  const [objStates, setObjStates] = useState({})
+  const allObjIds = projects.flatMap(p => (p.tasks || []).map(t => t.objective_id)).filter(Boolean).sort().join(',')
+  useEffect(() => {
+    let on = true
+    if (!allObjIds) { Promise.resolve().then(() => { if (on) setObjStates({}) }); return () => { on = false } }
+    sbClient2.from('objectives').select('id,state,tags').in('id', allObjIds.split(',')).then(({ data }) => { if (on) setObjStates(Object.fromEntries((data || []).map(o => [o.id, o]))) })
+    return () => { on = false }
+  }, [allObjIds])
 
   if (loading && !projects.length) {
     return <div style={{ ...S.page, fontFamily: MONO, fontSize: 10, letterSpacing: '1.4px', color: GRAY }}>LOADING…</div>
@@ -702,15 +709,14 @@ export default function ProjectsPage({ deepLink = [], onNavigate } = {}) {
 
   const cats = CATEGORY_ORDER.filter(c => active.some(p => p.category === c))
   const shown = catFilter === 'all' ? active : active.filter(p => p.category === catFilter)
-  const withP = shown.map(p => ({ p, pr: pressureOf(p) }))
-  const byPressure = (a, b) => (b.pr.score - a.pr.score) || (new Date(b.p.last_activity_at || 0) - new Date(a.p.last_activity_at || 0))
-  const qualify = withP.filter(x => !isHorizon(x.p) && x.pr.now).sort(byPressure)
-  const nowBand = qualify.slice(0, NOW_CAP)
-  const steady = [...qualify.slice(NOW_CAP), ...withP.filter(x => !isHorizon(x.p) && !x.pr.now).sort(byPressure)]
-  const horizon = withP.filter(x => isHorizon(x.p)).sort((a, b) => new Date(b.p.last_activity_at || 0) - new Date(a.p.last_activity_at || 0))
-  const blockedTotal = active.reduce((n, p) => n + (p.tasks || []).filter(t => isOpen(t) && isBlocked(t)).length, 0)
-  const overdueTotal = active.reduce((n, p) => n + pressureOf(p).overdue, 0)
+  const withB = shown.map(p => ({ p, b: boardStateOf(p, objStates) }))
+  const byTouch = (a, b) => new Date(b.p.last_activity_at || 0) - new Date(a.p.last_activity_at || 0)
+  const nowBand = withB.filter(x => !isHorizon(x.p) && x.b !== 'off').sort((a, b) => (a.b === 'loadout' ? 0 : 1) - (b.b === 'loadout' ? 0 : 1) || byTouch(a, b))
+  const steady = withB.filter(x => !isHorizon(x.p) && x.b === 'off').sort(byTouch)
+  const horizon = withB.filter(x => isHorizon(x.p)).sort(byTouch)
   const standing = active.filter(p => !isHorizon(p)).length
+  const onBoardCount = active.filter(p => !isHorizon(p) && boardStateOf(p, objStates) !== 'off').length
+
   const create = async (e) => {
     e.preventDefault()
     const name = newName.trim()
@@ -726,9 +732,8 @@ export default function ProjectsPage({ deepLink = [], onNavigate } = {}) {
         <div style={{ flex: 1, minWidth: 260 }}>
           <h1 style={S.h1}>Main Missions</h1>
           <div style={{ fontFamily: SERIF, fontSize: 19, color: INK, marginTop: 8, lineHeight: 1.3 }}>
-            {standing} standing · <span style={{ color: blockedTotal ? GOLD : INK }}>{blockedTotal} waiting on you</span> · <span style={{ color: overdueTotal ? RED : INK }}>{overdueTotal} overdue</span>{horizon.length ? <span style={{ color: TEXT_DIM }}> · {horizon.length} on the horizon</span> : null}
+            {standing} standing · <span style={{ color: onBoardCount ? GREEN : INK }}>{onBoardCount} on the Board</span>{horizon.length ? <span style={{ color: TEXT_DIM }}> · {horizon.length} on the horizon</span> : null}
           </div>
-          {qualify.length > NOW_CAP && <div style={{ ...S.sub, marginTop: 6 }}>{qualify.length} qualify for Now · {NOW_CAP} shown · the rest sit first in Steady</div>}
         </div>
         <div style={{ display: 'flex', gap: 8, paddingTop: 4 }}>
           <button style={S.btnGhost} onClick={api.refresh}><RefreshCw size={13} /> Refresh</button>
@@ -758,17 +763,17 @@ export default function ProjectsPage({ deepLink = [], onNavigate } = {}) {
 
       {nowBand.length > 0 && (
         <div style={{ marginBottom: 26 }}>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginBottom: 10 }}><span style={{ fontFamily: MONO, fontSize: 10.5, letterSpacing: '1.4px', textTransform: 'uppercase', color: GOLD }}>Now</span><span style={{ flex: 1, height: 1, background: PANEL_BORDER }} /><span style={{ fontFamily: MONO, fontSize: 10, color: GRAY }}>on the Board, waiting on you, overdue, or due inside fourteen days</span></div>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginBottom: 10 }}><span style={{ fontFamily: MONO, fontSize: 10.5, letterSpacing: '1.4px', textTransform: 'uppercase', color: GREEN }}>Now</span><span style={{ flex: 1, height: 1, background: PANEL_BORDER }} /><span style={{ fontFamily: MONO, fontSize: 10, color: GRAY }}>a milestone in the Loadout (green) or the Stash (gold)</span></div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 12 }}>
-            {nowBand.map(({ p }) => <ProjectCard key={p.id} project={p} onOpen={setDetailId} hot />)}
+            {nowBand.map(({ p, b }) => <ProjectCard key={p.id} project={p} onOpen={setDetailId} edge={EDGE[b]} />)}
           </div>
         </div>
       )}
       {steady.length > 0 && (
         <div style={{ marginBottom: 26 }}>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginBottom: 10 }}><span style={{ fontFamily: MONO, fontSize: 10.5, letterSpacing: '1.4px', textTransform: 'uppercase', color: LABEL }}>Steady</span><span style={{ flex: 1, height: 1, background: PANEL_BORDER }} /></div>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginBottom: 10 }}><span style={{ fontFamily: MONO, fontSize: 10.5, letterSpacing: '1.4px', textTransform: 'uppercase', color: LABEL }}>Steady</span><span style={{ flex: 1, height: 1, background: PANEL_BORDER }} /><span style={{ fontFamily: MONO, fontSize: 10, color: GRAY }}>standing, nothing on the Board</span></div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 10 }}>
-            {steady.map(({ p, pr }) => <ProjectCard key={p.id} project={p} onOpen={setDetailId} compact hot={pr.now} />)}
+            {steady.map(({ p }) => <ProjectCard key={p.id} project={p} onOpen={setDetailId} compact edge={BLUE} />)}
           </div>
         </div>
       )}
