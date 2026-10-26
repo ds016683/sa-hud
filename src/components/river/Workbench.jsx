@@ -15,7 +15,24 @@ const rowStyle = { display: 'flex', alignItems: 'center', gap: 12, padding: '10p
 // Session reopen links (claude://, left by focus.py) belong to the Briefing's Sessions strip, never to the Workbench (David 10/26: "the page went a bit crazy").
 const isSessionLink = (r) => isLink(r) && /^claude:\/\//.test(String(r.path || ''))
 
-export default function WorkbenchTab({ project = null, objectiveId = null }) {
+// The intake (drop a file, point at a path, add a launch link) lives on the Files
+// pill (David 10/26); what comes in lands in play, on the Workbench's foot.
+export function WorkbenchIntake({ project = null, objectiveId = null, onDone }) {
+  const [msg, setMsg] = useState(null)
+  const [busy, setBusy] = useState(false)
+  const act = async (fn, ok) => { setBusy(true); try { await fn(); setMsg(ok); onDone && onDone() } catch (e) { setMsg(`Could not: ${e.message}`) } finally { setBusy(false) } }
+  const owner = objectiveId ? { objectiveId } : { projectId: project.id }
+  return (
+    <div>
+      <div style={{ fontSize: 13, color: INK2, marginBottom: 12, lineHeight: 1.5 }}>Bring a file in: drop one, point at a path on the Mac, or add a launch link. It lands in play on the Workbench until you mark it Done, then it files here.</div>
+      <DropZone busy={busy} onFiles={(fs) => fs.forEach(f => act(() => putLiveFile(f, owner), `In play on the Workbench: ${f.name}`))} onPath={(pth) => act(() => requestLiveFile(pth, owner), 'Requested; the next Claude session on the Mac puts it in play')} />
+      <LinkForm onAdd={(u, t, n) => act(() => addLiveLink(u, { title: t, note: n, ...owner }), 'Launch link added to the Workbench')} />
+      {msg && <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '1px', textTransform: 'uppercase', color: GOLD, marginTop: 8 }}>{msg}</div>}
+    </div>
+  )
+}
+
+export default function WorkbenchTab({ project = null, objectiveId = null, intake = true }) {
   const [rows, setRows] = useState(null)
   const [msg, setMsg] = useState(null)
   const [olderOpen, setOlderOpen] = useState({})
@@ -60,11 +77,11 @@ export default function WorkbenchTab({ project = null, objectiveId = null }) {
   )
   return (
     <div>
-      <div style={{ fontSize: 13, color: INK2, marginBottom: 12, lineHeight: 1.5 }}>{objectiveId ? 'What is live on this item: the files in play, one current version each. Sessions and Lumen put files here as they produce them; drop one in, or point at a path on the Mac.' : 'What is live on this mission: files in play on the mission itself and on its milestones. Sessions and Lumen put files here as they produce them; drop one in, or point at a path on the Mac.'}</div>
-      <div style={{ marginBottom: 14 }}>
+      <div style={{ fontSize: 13, color: INK2, marginBottom: 12, lineHeight: 1.5 }}>{objectiveId ? 'The files in play on this item, one current version each. Sessions and Lumen put files here as they produce them; bring one in under Files.' : 'The files in play on this mission and its milestones, one current version each. Sessions and Lumen put files here as they produce them; bring one in under Files.'}</div>
+      {intake && <div style={{ marginBottom: 14 }}>
         <DropZone busy={busy} onFiles={(fs) => fs.forEach(f => act(() => putLiveFile(f, objectiveId ? { objectiveId } : { projectId: project.id }), `In play: ${f.name}`))} onPath={(pth) => act(() => requestLiveFile(pth, objectiveId ? { objectiveId } : { projectId: project.id }), 'Requested; the next Claude session on the Mac puts it in play')} />
         <LinkForm onAdd={(u, t, n) => act(() => addLiveLink(u, objectiveId ? { title: t, note: n, objectiveId } : { title: t, note: n, projectId: project.id }), 'Launch link added')} />
-      </div>
+      </div>}
       {rows === null && <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '1.4px', textTransform: 'uppercase', color: GRAY, padding: '10px 0' }}>Reading the Ledger</div>}
       {rows && !rows.length && <div style={{ fontSize: 13, color: GRAY, padding: '10px 0' }}>Nothing in play {objectiveId ? 'on this item' : 'on this mission'} yet.</div>}
       {groups.map(g => (

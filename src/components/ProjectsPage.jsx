@@ -5,7 +5,7 @@ import {
 } from 'lucide-react'
 import useProjects, { freshnessOf } from '../hooks/useProjects'
 import ArtifactsTab from './river/ArtifactsTab'
-import WorkbenchTab from './river/Workbench'
+import WorkbenchTab, { WorkbenchIntake } from './river/Workbench'
 import PlanningCanvas from './river/PlanningCanvas'
 import ItemDetail from './river/ItemDetail'
 import SessionBoard from './river/SessionBoard'
@@ -314,7 +314,7 @@ function MissionFiles({ project, api, initialSlug }) {
     const [entries, live, arts, shares] = await Promise.all([
       api.listFiles(project.id, path).catch(() => []),
       path ? [] : listLiveFiles({ projectId: project.id }, { includeFiled: true }).then(r => r.rows.filter(f => f.filed_at && f.bucket !== 'link')).catch(() => []),
-      path ? [] : listArtifacts(project.id).catch(() => []),
+      path ? [] : listProjArtifacts(project.id).catch(() => []),
       path ? [] : listShares(project.id).catch(() => []),
     ])
     const out = []
@@ -409,7 +409,6 @@ function ProjectDetail({ project, board: boardProp, api, onBack, initialTab, ini
   const [board, setBoard] = useState(boardProp)
   useEffect(() => { let on = true; Promise.resolve().then(() => { if (on) setBoard(boardProp) }); return () => { on = false } }, [boardProp])
   const [artifactSlug, setArtifactSlug] = useState(initialSlug || null)
-  const openArtifact = (slug) => { setArtifactSlug(slug); setTab('artifacts') }
   const [newTask, setNewTask] = useState('')
   const [closingMission, setClosingMission] = useState(false)
   const [celebrate, setCelebrate] = useState(null)
@@ -589,11 +588,16 @@ function ProjectDetail({ project, board: boardProp, api, onBack, initialTab, ini
         )}
         {tab === 'workbench' && (
           <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 30, minWidth: 0 }}>
-            <div style={{ minWidth: 0 }}><CanonLabel>In Play</CanonLabel><WorkbenchTab project={project} /></div>
             <div style={{ minWidth: 0, overflow: 'hidden' }}><CanonLabel>Planning</CanonLabel><PlanningCanvas project={project} /></div>
+            <div style={{ minWidth: 0 }}><CanonLabel>In Play</CanonLabel><WorkbenchTab project={project} intake={false} /></div>
           </div>
         )}
-        {tab === 'files' && <MissionFiles project={project} api={api} initialSlug={artifactSlug} />}
+        {tab === 'files' && (
+          <div style={{ display: 'grid', gap: 30 }}>
+            <div><CanonLabel>Bring In</CanonLabel><WorkbenchIntake project={project} /></div>
+            <div><CanonLabel>Filed</CanonLabel><MissionFiles project={project} api={api} initialSlug={artifactSlug} /></div>
+          </div>
+        )}
         {tab === 'notes' && <ProjectNotes project={project} />}
         {tab === 'polaris' && (
           <div style={{ display: 'grid', gap: 22 }}>

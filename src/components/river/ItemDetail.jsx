@@ -21,7 +21,7 @@ import { fmtStamp, listLiveFiles, listEvidence, openLiveFile, isRequest, isLink 
 import ProtocolsTab from './Protocols'
 import { isOpenRow } from '../../lib/protocols'
 import FilesTab from './Files'
-import WorkbenchTab from './Workbench'
+import WorkbenchTab, { WorkbenchIntake } from './Workbench'
 import { INK, INK2, GRAY, PANEL_BORDER, GOLD, GOLD_BRIGHT, BLUE, GREEN, SUCCESS, RED, MONO, SERIF, S, Label, KIND_COLOR, KindIcon, NORTH_STAR_LABEL, NORTH_STAR_ASK, LABEL, PURPLE, alpha, NAVY_DEEP, CARD_PILLS, CardPill, Trail } from './canon'
 
 const TABS = CARD_PILLS.map(([id]) => id)
@@ -429,8 +429,8 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
 
           {rel && tab === 'workbench' && (item.objective_id ? (
             <div style={{ display: 'grid', gap: 28 }}>
-              <div><Label>In Play</Label><WorkbenchTab objectiveId={item.objective_id} /></div>
               <div><Label>Live Protocols</Label><ProtocolsTab objectiveId={item.objective_id} /></div>
+              <div><Label>In Play</Label><WorkbenchTab objectiveId={item.objective_id} intake={false} /></div>
             </div>
           ) : <None what={{ ...what, thing: 'a workbench' }} />)}
 
@@ -450,6 +450,7 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
             </div>
           ) : <None what={{ ...what, thing: 'a Polaris of its own' }} />)}
 
+          {rel && tab === 'files' && item.objective_id && <div style={{ marginBottom: 28 }}><Label>Bring In</Label><WorkbenchIntake objectiveId={item.objective_id} /></div>}
           {rel && tab === 'files' && <FilesTab inPlay={false} objectiveId={item.objective_id || null} rel={rel} what={what} open={open} taskId={taskId} onRead={async (a) => { try { setReading({ title: a.title, doc: briefs[a.slug] || await readObjArtifact(a.root, a.slug) }) } catch (e) { setMsg(`Could not read: ${e.message}`) } }} onGo={go} onAttach={attachArtifact} onChanged={load} />}
 
           {rel && tab === 'notes' && (
