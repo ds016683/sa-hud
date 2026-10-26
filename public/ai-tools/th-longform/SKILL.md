@@ -158,6 +158,9 @@ carry it back here.
 - No em dashes, anywhere. Title Case labels, mono eyebrows uppercase.
 - Second person to the named reader; the owner's verbatim language on the cover.
 - Prose leads, exhibits support. A table or chart never opens a page.
+- Staging (David 10/26): while the narrative is being staged, pages carry lorem
+  ipsum leads and paragraphs and the minimum of copy; exhibits, source lines,
+  captions and labels are real. David writes the narrative.
 - One accent surface-wide; gold is wayfinding (the Next button, the rail nodes),
   never data. Favorable figures read in the positive green, unfavorable in
   coral.
