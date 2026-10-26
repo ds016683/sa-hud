@@ -62,8 +62,8 @@ bar, the rail and every token. They differ only in the page.
 | `list` | accent-dotted bullets |
 | `callout` | an accent-ruled aside with a mono eyebrow (For the Review, Open Question) |
 | `stats` | a row of four tiles: mono label, serif figure, one-line qualifier; `tone` pos or neg |
-| `table` | columns, an optional second header line (Actual, Projected), rows with `style` indent / total / net / final; a row's `children` expand beneath it on click (a practice area opening to its client lines); a row's `note` opens its reasoning beneath it; `totalLabel` adds a trailing summary column; `source` and `expandHint` sit under the table |
-| `chart` | grouped bars by category with an optional `line` read as a strip beneath the categories; hover reads every series for that category |
+| `table` | columns, an optional second header line (Actual, Projected), rows with `style` indent / total / net / final; a row's `children` expand beneath it on click (a practice area opening to its client lines); a row's `note` opens its reasoning beneath it; a row's `flag` draws a small chip beside the label (Assumption, Yellow in the sheet); `totalLabel` adds a trailing summary column; `source` and `expandHint` sit under the table |
+| `chart` | grouped bars by category with an optional `line` read as a strip beneath the categories; hover reads every series for that category; `estimateFrom` draws the categories from that index on outlined behind a Closed / Estimate divider |
 | `source` | the small source line |
 | `document` | a card that opens a file or a live surface in a new tab |
 | `contents` | the cover's list of pages, every row jumps |
@@ -134,13 +134,16 @@ carry it back here.
 - `chassis/`: `doc.ts` (the types), `doc-reader.tsx` and `doc.module.css` (the
   reader), `route-page.tsx` and `route-unlock-page.tsx` (the route folder to
   copy, change `SLUG`).
-- `example/`: the Company Finance Review's `finance-review.ts` (cover + page 1 on
-  the NetSuite income statement, the pro forma beside it) and its generated
-  `finance-review-ns-data.ts` and `finance-review-data.ts`.
+- `example/`: the Company Finance Review's `finance-review.ts` (cover, page 1 on
+  the NetSuite income statement with the pro forma beside it, page 2 locking
+  the closed months and estimating the rest from the sheet's elements) and its
+  generated `finance-review-ns-data.ts`, `finance-review-data.ts` and
+  `finance-review-q4-data.ts`.
 - `tools/`: `build_pf_data.py` (a workbook to data-file generator), `ns_pl_jan_sep.py`
   (the NetSuite income statement over SuiteQL, by account and period, with a
-  tie-out) and `build_ns_data.py` (the statement tree to data file), and
-  `check_gate.sh` (the gate checks).
+  tie-out) and `build_ns_data.py` (the statement tree to data file), `build_pf_q4.py` (a
+  forecast quarter from a pro forma sheet with color flags and top-line
+  tie-outs), and `check_gate.sh` (the gate checks).
 
 ## Standing notes
 
