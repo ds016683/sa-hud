@@ -118,7 +118,7 @@ function ProgressRing({ closed, total, size = 56, stroke = 5, color = GOLD }) {
         <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={alpha(INK, 8)} strokeWidth={stroke} />
         <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={color} strokeWidth={stroke} strokeLinecap="round" strokeDasharray={c} strokeDashoffset={on ? c * (1 - pct) : c} style={{ transition: 'stroke-dashoffset .9s cubic-bezier(0.2, 0.8, 0.2, 1)' }} />
       </svg>
-      <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', fontFamily: SERIF, fontSize: size > 48 ? 13 : 11, color: INK, lineHeight: 1 }}>{closed}<span style={{ color: GRAY, fontSize: '0.75em', margin: '0 1px' }}>/</span>{total}</div>
+      <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: SERIF, fontSize: size > 56 ? 15 : size > 48 ? 13 : 11, color: INK, lineHeight: 1, whiteSpace: 'nowrap' }}><span>{closed}<span style={{ color: GRAY, fontSize: '0.75em', margin: '0 2px' }}>/</span>{total}</span></div>
     </div>
   )
 }
@@ -134,18 +134,18 @@ function ProjectCard({ project, onOpen, hot = false, compact = false }) {
   const freshColor = fresh === 'fresh' ? GREEN : fresh === 'warning' ? GOLD : GRAY
   const lastTouch = project.last_activity_at ? new Date(project.last_activity_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'never'
   return (
-    <button onClick={() => onOpen(project.id)} style={{ ...S.panel, textAlign: 'left', cursor: 'pointer', fontFamily: 'inherit', display: 'flex', flexDirection: 'column', gap: compact ? 10 : 14, minHeight: 0, width: '100%', transition: 'border-color 120ms', borderLeft: hot ? `3px solid ${GOLD}` : undefined, background: hot ? `linear-gradient(180deg, ${alpha(GOLD, 6)}, transparent 60%), ${PANEL_BG}` : compact ? 'transparent' : PANEL_BG, padding: compact ? '14px 16px' : '18px 18px 16px' }}
+    <button onClick={() => onOpen(project.id)} style={{ ...S.panel, textAlign: 'left', cursor: 'pointer', fontFamily: 'inherit', display: 'flex', flexDirection: 'column', gap: compact ? 12 : 16, minHeight: compact ? 150 : 190, width: '100%', transition: 'border-color 120ms', borderLeft: hot ? `3px solid ${GOLD}` : undefined, background: hot ? `linear-gradient(180deg, ${alpha(GOLD, 6)}, transparent 60%), ${PANEL_BG}` : compact ? 'transparent' : PANEL_BG, padding: compact ? '16px 18px' : '20px 20px 18px' }}
       onMouseEnter={e => e.currentTarget.style.borderColor = alpha(BLUE, 40)} onMouseLeave={e => e.currentTarget.style.borderColor = PANEL_BORDER}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-        <ProgressRing closed={closed} total={ms.length} size={compact ? 44 : 56} stroke={compact ? 4 : 5} />
+        <ProgressRing closed={closed} total={ms.length} size={compact ? 52 : 68} stroke={compact ? 4 : 5} />
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontFamily: SERIF, fontWeight: 500, fontSize: compact ? 16 : 18, letterSpacing: '-0.01em', color: INK, lineHeight: 1.25 }}>{project.name}</div>
           <div style={{ fontFamily: MONO, fontSize: 9, letterSpacing: '1px', textTransform: 'uppercase', color: BLUE, marginTop: 4 }}>{CATEGORY_LABELS[project.category] || project.category}</div>
         </div>
       </div>
       {now
-        ? <div style={{ fontSize: 13, color: INK, lineHeight: 1.4, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}><span style={{ color: now.objective_id ? GREEN : GOLD, fontFamily: MONO, fontSize: 9.5, letterSpacing: '1px', textTransform: 'uppercase', marginRight: 6 }}>{now.objective_id ? 'on the board' : 'now'}</span>{stripNum(now.text)}</div>
-        : <div style={{ fontSize: 12.5, color: GRAY }}>{ms.length ? 'Every milestone closed.' : 'No milestones yet.'}</div>}
+        ? <div style={{ fontSize: 13.5, color: INK, lineHeight: 1.45, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', marginTop: 'auto' }}><span style={{ color: now.objective_id ? GREEN : GOLD, fontFamily: MONO, fontSize: 9.5, letterSpacing: '1px', textTransform: 'uppercase', marginRight: 6 }}>{now.objective_id ? 'on the board' : 'now'}</span>{stripNum(now.text)}</div>
+        : <div style={{ fontSize: 12.5, color: GRAY, marginTop: 'auto' }}>{ms.length ? 'Every milestone closed.' : 'No milestones yet.'}</div>}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, fontFamily: MONO, fontSize: 10.5, letterSpacing: '0.8px', color: LABEL, textTransform: 'uppercase' }}>
         {blocked > 0 && <span style={{ color: RED, display: 'inline-flex', alignItems: 'center', gap: 4 }}><Hand size={10} /> {blocked} on David</span>}
         <span style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 6 }}><span style={{ width: 7, height: 7, borderRadius: 99, background: freshColor }} />touched {lastTouch}</span>
