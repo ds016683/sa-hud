@@ -22,7 +22,7 @@ import ProtocolsTab from './Protocols'
 import { isOpenRow } from '../../lib/protocols'
 import FilesTab from './Files'
 import WorkbenchTab from './Workbench'
-import { INK, INK2, GRAY, PANEL_BORDER, GOLD, GOLD_BRIGHT, BLUE, GREEN, SUCCESS, RED, MONO, SERIF, S, Label, KIND_COLOR, KindIcon, NORTH_STAR_LABEL, NORTH_STAR_ASK, LABEL, PURPLE, alpha, NAVY_DEEP, CARD_PILLS, CardPill } from './canon'
+import { INK, INK2, GRAY, PANEL_BORDER, GOLD, GOLD_BRIGHT, BLUE, GREEN, SUCCESS, RED, MONO, SERIF, S, Label, KIND_COLOR, KindIcon, NORTH_STAR_LABEL, NORTH_STAR_ASK, LABEL, PURPLE, alpha, NAVY_DEEP, CARD_PILLS, CardPill, Trail } from './canon'
 
 const TABS = CARD_PILLS.map(([id]) => id)
 const TAB_LABEL = Object.fromEntries(CARD_PILLS)
@@ -36,7 +36,6 @@ const btn = (color = INK2, filled = false) => ({
   display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: MONO, fontSize: 9.5, letterSpacing: '1px', textTransform: 'uppercase',
   padding: '6px 11px', borderRadius: 8, border: `1px solid ${filled ? color : `${alpha(color, 40)}`}`, background: filled ? color : 'transparent', color: filled ? NAVY_DEEP : color, cursor: 'pointer',
 })
-const rowStyle = { display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0', borderTop: `1px solid ${PANEL_BORDER}` }
 const None = ({ what }) => <div style={{ fontSize: 13, color: GRAY, padding: '14px 0' }}>This {what.item} doesn't call for {what.thing}.</div>
 
 // Everything the item connects to, loaded once.
@@ -302,14 +301,22 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
 
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: 16, flexWrap: 'wrap', marginTop: 22 }}>
           <div style={{ minWidth: 0, flex: 1 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 8 }}>
-              <span style={{ fontSize: 15, fontWeight: 600, color: KIND_COLOR[item.kind] || INK2, display: 'inline-flex', alignItems: 'center', gap: 7 }}><KindIcon kind={item.kind} size={14} />{item.kind}</span>
-              {(rel?.project || item.project) && <span style={{ fontSize: 15, fontWeight: 600, color: INK }}>· {rel?.project?.name || item.project}</span>}
-              {task && <span style={{ fontSize: 15, fontWeight: 600, color: INK2 }}>· Milestone{String(task.text || '').match(/^\s*(\d+)\s*[·.:)-]/) ? ` ${String(task.text).match(/^\s*(\d+)\s*[·.:)-]/)[1]}` : ''}</span>}
-              {item.size && !task && <span style={{ fontSize: 15, fontWeight: 600, color: INK2 }}>· {SIZES[item.size]?.label || item.size}</span>}
-              {item.event && <span style={{ fontSize: 15, fontWeight: 600, color: INK2 }}>· {chiTime(item.event.start_at)}</span>}
-              <span style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '1.4px', textTransform: 'uppercase', color: LABEL, marginLeft: 4 }}>Mission Briefing</span>
-            </div>
+            {(() => {
+              const nodes = []
+              const kindNode = { label: item.kind, icon: <KindIcon kind={item.kind} size={13} /> }
+              if (task || rel?.project || item.project) {
+                nodes.push({ label: 'Main Missions', onClick: () => { onClose(); onNavigate && onNavigate('main-missions') } })
+                nodes.push({ label: rel?.project?.name || item.project, onClick: rel?.project ? () => go([rel.project.id]) : null })
+                nodes.push({ label: task ? `Milestone${String(task.text || '').match(/^\s*(\d+)\s*[·.:)-]/) ? ` ${String(task.text).match(/^\s*(\d+)\s*[·.:)-]/)[1]}` : ''}` : item.kind, icon: <KindIcon kind={item.kind} size={13} /> })
+              } else if (item.kind === 'Event' || item.kind === 'Session' || item.kind === 'Ad Hoc') {
+                nodes.push({ label: 'Board', onClick: () => { onClose(); onNavigate && onNavigate('agenda') } })
+                nodes.push({ ...kindNode, label: item.kind === 'Event' ? `Meeting · ${chiTime(item.event?.start_at)}` : item.kind })
+              } else {
+                nodes.push({ label: 'Side Missions', onClick: () => { onClose(); onNavigate && onNavigate('side-missions') } })
+                nodes.push({ ...kindNode, label: item.size && SIZES[item.size] ? SIZES[item.size].label : item.kind })
+              }
+              return <Trail nodes={nodes} style={{ marginBottom: 12 }} />
+            })()}
             <h1 style={{ ...S.h1, marginBottom: 6, fontSize: String(item.title || '').length > 70 ? 22 : 28, lineHeight: 1.25 }}>{task ? String(item.title || '').replace(/^\s*\d+\s*[·.:)-]\s*/, '') : item.title}</h1>
             {obj?.north_star && <div onClick={() => setTab('polaris')} title="Polaris" style={{ fontFamily: SERIF, fontStyle: 'italic', fontSize: 14.5, color: INK2, lineHeight: 1.45, maxWidth: '72ch', cursor: 'pointer' }}>{obj.north_star}</div>}
           </div>

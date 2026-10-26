@@ -14,7 +14,7 @@ import { fileProject } from '../lib/archive'
 import { listLiveFiles, markFiled, listEvidence, openLiveFile } from '../lib/livefiles'
 import { supabase as sbAuth } from '../lib/supabase'
 import { equipTask, stashTask, deleteMission } from '../lib/loadout'
-import { NORTH_STAR_LABEL, LABEL, alpha, INK, INK2, NAVY_DEEP, BLUE, GRAY, PANEL_BORDER, PANEL_BG, GOLD, GREEN, SUCCESS, RED, PURPLE, CARD_PILLS, CardPill, Label as CanonLabel } from './river/canon'
+import { NORTH_STAR_LABEL, LABEL, alpha, INK, INK2, NAVY_DEEP, BLUE, GRAY, PANEL_BORDER, PANEL_BG, GOLD, GREEN, SUCCESS, RED, PURPLE, CARD_PILLS, CardPill, Label as CanonLabel, Trail } from './river/canon'
 import { importProject } from '../lib/cabinet'
 import BadgeMedallion from './BadgeArt'
 import { BADGES } from '../constants/collection'
@@ -244,144 +244,6 @@ function MilestoneRow({ n, project, task, board, api, onNavigate, onBoardChange,
 // =============================================================================
 // Detail: files browser (Supabase Storage, folder-per-project)
 // =============================================================================
-function FilesTab({ project, listFiles, uploadFile, createFolder, fileUrl, deleteFile }) {
-  const [path, setPath] = useState('') // subpath below the project root
-  const [entries, setEntries] = useState(undefined)
-  const [busy, setBusy] = useState(false)
-  const inputRef = useRef(null)
-
-  const load = useCallback(async () => {
-    setEntries(undefined)
-    const list = await listFiles(project.id, path)
-    setEntries(list)
-  }, [project.id, path, listFiles])
-
-  useEffect(() => { load() }, [load])
-
-  const crumbs = path ? path.split('/') : []
-  const folders = (entries || []).filter(e => e.id === null)
-  const files = (entries || []).filter(e => e.id !== null)
-
-  const onUpload = async (ev) => {
-    const picked = Array.from(ev.target.files || [])
-    if (!picked.length) return
-    setBusy(true)
-    for (const f of picked) await uploadFile(project.id, path, f)
-    setBusy(false)
-    ev.target.value = ''
-    load()
-  }
-
-  const onNewFolder = async () => {
-    const name = await hudPrompt('Folder name')
-    if (!name || !name.trim()) return
-    await createFolder(project.id, path, name.trim().replace(/\//g, '-'))
-    load()
-  }
-
-  const onOpenFile = async (name) => {
-    const url = await fileUrl(project.id, path, name)
-    if (url) window.open(url, '_blank', 'noopener')
-  }
-
-  const fmtSize = (b) => {
-    if (b == null) return ''
-    if (b < 1024) return `${b} B`
-    if (b < 1048576) return `${(b / 1024).toFixed(0)} KB`
-    return `${(b / 1048576).toFixed(1)} MB`
-  }
-
-  return (
-    <div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 4, flex: 1, fontFamily: MONO, fontSize: 10.5, letterSpacing: '0.8px', color: TEXT_DIM, minWidth: 200 }}>
-          <button onClick={() => setPath('')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: crumbs.length ? BLUE : GRAY, fontFamily: MONO, fontSize: 10.5, letterSpacing: '0.8px', padding: 0 }}>
-            {(project.key || project.name).toUpperCase()}
-          </button>
-          {crumbs.map((c, i) => (
-            <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-              <ChevronRight size={11} style={{ color: GRAY }} />
-              <button onClick={() => setPath(crumbs.slice(0, i + 1).join('/'))} style={{ background: 'none', border: 'none', cursor: 'pointer', color: i === crumbs.length - 1 ? GRAY : BLUE, fontFamily: MONO, fontSize: 10.5, letterSpacing: '0.8px', padding: 0 }}>
-                {c.toUpperCase()}
-              </button>
-            </span>
-          ))}
-        </div>
-        <button style={S.btnGhost} onClick={onNewFolder}><FolderPlus size={13} /> Folder</button>
-        <button style={{ ...S.btnPrimary, opacity: busy ? 0.5 : 1 }} disabled={busy} onClick={() => inputRef.current?.click()}>
-          <Upload size={13} /> {busy ? 'Uploading…' : 'Upload'}
-        </button>
-        <input ref={inputRef} type="file" multiple style={{ display: 'none' }} onChange={onUpload} />
-      </div>
-
-      {entries === undefined && <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '1.2px', color: GRAY }}>LOADING…</div>}
-      {entries !== undefined && !folders.length && !files.length && (
-        <div style={{ fontSize: 13, color: GRAY, padding: '18px 0' }}>Empty. Drop files in with Upload, or make a folder.</div>
-      )}
-
-      {folders.map(f => (
-        <button key={f.name} onClick={() => setPath(path ? `${path}/${f.name}` : f.name)} style={{
-          display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '9px 2px',
-          background: 'none', border: 'none', borderTop: `1px solid ${PANEL_BORDER}`, cursor: 'pointer',
-          color: INK, fontFamily: 'inherit', fontSize: 13.5, textAlign: 'left',
-        }}>
-          <Folder size={15} style={{ color: BLUE_DEEP, flexShrink: 0 }} />
-          <span style={{ flex: 1 }}>{f.name}</span>
-          <ChevronRight size={13} style={{ color: GRAY }} />
-        </button>
-      ))}
-      {files.map(f => (
-        <div key={f.name} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 2px', borderTop: `1px solid ${PANEL_BORDER}` }}>
-          <FileText size={15} style={{ color: GRAY, flexShrink: 0 }} />
-          <button onClick={() => onOpenFile(f.name)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: INK, fontFamily: 'inherit', fontSize: 13.5, textAlign: 'left', flex: 1, padding: 0, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {f.name}
-          </button>
-          <span style={{ fontFamily: MONO, fontSize: 9.5, color: GRAY }}>{fmtSize(f.metadata?.size)}</span>
-          <button onClick={() => onOpenFile(f.name)} title="Open / download" style={{ background: 'none', border: 'none', color: BLUE, cursor: 'pointer', padding: 4 }}><Download size={13} /></button>
-          <button onClick={async () => { if (await hudConfirm(`Delete ${f.name}?`)) { await deleteFile(project.id, path, f.name); load() } }} title="Delete" style={{ background: 'none', border: 'none', color: alpha(INK, 25), cursor: 'pointer', padding: 4 }}><Trash2 size={13} /></button>
-        </div>
-      ))}
-    </div>
-  )
-}
-
-// =============================================================================
-// Detail view
-// =============================================================================
-
-// Private shares owned by this mission: a page on the HUD's domain behind an
-// access code. Archiving retires the code; completing the mission archives all.
-function SharesTab({ project }) {
-  const [recs, setRecs] = useState(undefined)
-  const [msg, setMsg] = useState(null)
-  const load = useCallback(() => listShares(project.id).then(setRecs).catch(e => { setRecs([]); setMsg(e.message) }), [project.id])
-  useEffect(() => { load() }, [load])
-  const copy = async (text, what) => { try { await navigator.clipboard.writeText(text); setMsg(`${what} copied`) } catch { setMsg(`Copy failed; ${what}: ${text}`) } }
-  if (recs === undefined) return <div style={{ fontSize: 13, color: GRAY, padding: '12px 0' }}>Loading…</div>
-  if (!recs.length) return <div style={{ fontSize: 13, color: GRAY, padding: '12px 0' }}>No private pages shared from this mission. Claude publishes them here; each carries its own access code and is archived with the mission.</div>
-  return (
-    <div>
-      {recs.map(r => (
-        <div key={r.slug} style={{ borderTop: `1px solid ${PANEL_BORDER}`, padding: '12px 0', display: 'grid', gridTemplateColumns: '1fr auto', gap: 12, alignItems: 'start' }}>
-          <div style={{ minWidth: 0 }}>
-            <div style={{ fontSize: 14, color: r.active ? INK : GRAY }}>{r.title || r.slug}{!r.active && <span style={{ fontFamily: MONO, fontSize: 10.5, letterSpacing: '1px', color: LABEL, marginLeft: 8, textTransform: 'uppercase' }}>archived{r.archived_at ? ` · ${String(r.archived_at).slice(0, 10)}` : ''}</span>}</div>
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 6, alignItems: 'center' }}>
-              <button onClick={() => copy(shareUrl(r.slug), 'Link')} style={{ ...S.btnGhost, fontSize: 11, padding: '4px 10px', fontFamily: MONO }}>{shareUrl(r.slug).replace(/^https?:\/\//, '')}</button>
-              <button onClick={() => copy(r.code, 'Code')} style={{ ...S.btnGhost, fontSize: 11, padding: '4px 10px', fontFamily: MONO, letterSpacing: '2px', color: r.active ? GOLD : GRAY, borderColor: r.active ? alpha(GOLD, 40) : PANEL_BORDER }}>{r.code}</button>
-              <span style={{ fontSize: 11, color: GRAY }}>click to copy · created {String(r.created_at || '').slice(0, 10)}</span>
-            </div>
-            {r.note && <div style={{ fontSize: 12.5, color: TEXT_DIM, marginTop: 6 }}>{r.note}</div>}
-          </div>
-          <button onClick={async () => { await archiveShare(r, r.active); setMsg(r.active ? `Archived ${r.title || r.slug}; the code no longer opens it.` : `Reactivated ${r.title || r.slug}.`); load() }} style={{ ...S.btnGhost, fontSize: 10, padding: '5px 10px', color: r.active ? RED : GREEN, borderColor: r.active ? alpha(RED, 40) : alpha(GREEN, 40) }}>{r.active ? 'Archive' : 'Reactivate'}</button>
-        </div>
-      ))}
-      {msg && <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '1px', color: GOLD, marginTop: 10, textTransform: 'uppercase' }}>{msg}</div>}
-    </div>
-  )
-}
-
-// The debrief (David 10/21): closing a Main Mission asks the one question, shows
-// what is still open, and files what the mission is carrying before it leaves.
 function CloseMissionModal({ project, tasks, onClose, onDone }) {
   const [achieved, setAchieved] = useState('')
   const [files, setFiles] = useState(null)
@@ -434,6 +296,80 @@ function CloseMissionModal({ project, tasks, onClose, onDone }) {
           <button onClick={go} disabled={busy} style={{ ...S.btnGhost, border: `1px solid ${alpha(SUCCESS, 50)}`, color: SUCCESS, opacity: busy ? 0.6 : 1 }}>{busy ? 'Closing' : '✓ Close the mission · 100 miles'}</button>
         </div>
       </div>
+    </div>
+  )
+}
+
+// Files (10/26): one list. The cabinet's files and folders, the filed live files, the
+// artifacts and the shares, each a row with a kind chip. No Cabinet, Artifacts or
+// Shares sections: those are kinds of file, not places.
+function MissionFiles({ project, api, initialSlug }) {
+  const [path, setPath] = useState('')
+  const [rows, setRows] = useState(null)
+  const [artifact, setArtifact] = useState(initialSlug || null)
+  const [msg, setMsg] = useState(null)
+  const [busy, setBusy] = useState(false)
+  const inputRef = useRef(null)
+  const load = useCallback(async () => {
+    const [entries, live, arts, shares] = await Promise.all([
+      api.listFiles(project.id, path).catch(() => []),
+      path ? [] : listLiveFiles({ projectId: project.id }, { includeFiled: true }).then(r => r.rows.filter(f => f.filed_at && f.bucket !== 'link')).catch(() => []),
+      path ? [] : listArtifacts(project.id).catch(() => []),
+      path ? [] : listShares(project.id).catch(() => []),
+    ])
+    const out = []
+    for (const e of entries) out.push(e.id === null ? { kind: 'folder', key: `d:${e.name}`, name: e.name } : { kind: 'file', key: `f:${e.name}`, name: e.name, when: e.updated_at || e.created_at, entry: e })
+    for (const f of live) out.push({ kind: 'filed', key: `l:${f.id}`, name: f.name, when: f.filed_at, live: f })
+    for (const a of arts) out.push({ kind: 'artifact', key: `a:${a.slug}`, name: a.slug.replace(/-/g, ' '), when: a.updated_at, slug: a.slug })
+    for (const r of shares) out.push({ kind: 'share', key: `s:${r.slug}`, name: r.title || r.slug, when: r.created_at, share: r })
+    out.sort((a, b) => (a.kind === 'folder' ? 0 : 1) - (b.kind === 'folder' ? 0 : 1) || String(b.when || '').localeCompare(String(a.when || '')))
+    setRows(out)
+  }, [project.id, path, api])
+  useEffect(() => { load() }, [load])
+  const KIND = { folder: ['Folder', GRAY], file: ['File', BLUE], filed: ['Filed', INK2], artifact: ['Artifact', GOLD], share: ['Share', PURPLE] }
+  const open = async (r) => {
+    try {
+      if (r.kind === 'folder') { setPath(path ? `${path}/${r.name}` : r.name); return }
+      if (r.kind === 'file') { const u = await api.fileUrl(project.id, path, r.name); if (u) window.open(u, '_blank', 'noopener'); return }
+      if (r.kind === 'filed') { window.open(await openLiveFile(r.live), '_blank', 'noopener'); return }
+      if (r.kind === 'artifact') { setArtifact(r.slug); return }
+      if (r.kind === 'share') { window.open(shareUrl(r.share.slug), '_blank', 'noopener') }
+    } catch (e) { setMsg(`Could not open: ${e.message}`) }
+  }
+  const upload = async (file) => { if (!file) return; setBusy(true); try { await api.uploadFile(project.id, path, file); setMsg(`Filed ${file.name}`); await load() } catch (e) { setMsg(`Could not upload: ${e.message}`) } finally { setBusy(false) } }
+  const crumbs = path ? path.split('/') : []
+  return (
+    <div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 10 }}>
+        <span style={{ fontFamily: MONO, fontSize: 10.5, letterSpacing: '1px', textTransform: 'uppercase', color: LABEL }}>
+          <button onClick={() => setPath('')} style={{ background: 'none', border: 'none', color: path ? LABEL : INK, cursor: 'pointer', fontFamily: 'inherit', fontSize: 'inherit', letterSpacing: 'inherit', textTransform: 'inherit', padding: 0 }}>{project.name}</button>
+          {crumbs.map((c, i) => <span key={i}> / <button onClick={() => setPath(crumbs.slice(0, i + 1).join('/'))} style={{ background: 'none', border: 'none', color: i === crumbs.length - 1 ? INK : LABEL, cursor: 'pointer', fontFamily: 'inherit', fontSize: 'inherit', letterSpacing: 'inherit', textTransform: 'inherit', padding: 0 }}>{c}</button></span>)}
+        </span>
+        <span style={{ flex: 1 }} />
+        <label style={{ ...S.btnGhost, cursor: busy ? 'wait' : 'pointer', fontSize: 10 }}>Upload<input ref={inputRef} type="file" style={{ display: 'none' }} onChange={e => { upload(e.target.files?.[0]); e.target.value = '' }} /></label>
+        <button onClick={async () => { const n = await hudPrompt({ title: 'New folder', placeholder: 'folder name' }); if (n && n.trim()) { await api.createFolder(project.id, path, n.trim()); load() } }} style={{ ...S.btnGhost, fontSize: 10 }}>Folder</button>
+      </div>
+      {rows === null && <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '1.4px', textTransform: 'uppercase', color: GRAY, padding: '10px 0' }}>Reading</div>}
+      {rows && !rows.length && <div style={{ fontSize: 13, color: GRAY, padding: '10px 0' }}>Nothing filed here yet.</div>}
+      {(rows || []).map(r => { const [label, color] = KIND[r.kind]; return (
+        <div key={r.key} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '9px 0', borderTop: `1px solid ${PANEL_BORDER}` }}>
+          <span style={{ fontFamily: MONO, fontSize: 9, letterSpacing: '1px', textTransform: 'uppercase', color, width: 58, flexShrink: 0 }}>{label}</span>
+          <button onClick={() => open(r)} style={{ flex: 1, minWidth: 0, textAlign: 'left', background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontSize: 13.5, color: INK, fontFamily: 'inherit', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.name}{r.kind === 'folder' ? '/' : ''}{r.live?.version > 1 ? <span style={{ fontFamily: MONO, fontSize: 9, color: GOLD, marginLeft: 8 }}>v{r.live.version}</span> : null}{r.kind === 'share' && !r.share.active ? <span style={{ fontFamily: MONO, fontSize: 9, color: GRAY, marginLeft: 8, textTransform: 'uppercase', letterSpacing: '1px' }}>archived</span> : null}</button>
+          <span style={{ fontFamily: MONO, fontSize: 9.5, color: GRAY, whiteSpace: 'nowrap' }}>{r.when ? String(r.when).slice(0, 10) : ''}</span>
+          {r.kind === 'share' && <button onClick={async () => { try { await navigator.clipboard.writeText(r.share.code); setMsg('Code copied') } catch { setMsg(`Code: ${r.share.code}`) } }} style={{ ...S.btnGhost, fontSize: 10, padding: '3px 8px', fontFamily: MONO, letterSpacing: '2px', color: r.share.active ? GOLD : GRAY }}>{r.share.code}</button>}
+          {r.kind === 'share' && <button onClick={async () => { await archiveShare(r.share, r.share.active); load() }} style={{ ...S.btnGhost, fontSize: 10, padding: '3px 8px', color: r.share.active ? RED : GREEN }}>{r.share.active ? 'Archive' : 'Reactivate'}</button>}
+          {r.kind === 'file' && <button onClick={async () => { if (await hudConfirm(`Delete ${r.name}?`)) { await api.deleteFile(project.id, path, r.name); load() } }} title="Delete" style={{ background: 'transparent', border: 'none', color: alpha(INK, 25), cursor: 'pointer', padding: 4 }}><Trash2 size={12} /></button>}
+        </div>
+      ) })}
+      {msg && <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '1px', textTransform: 'uppercase', color: msg.startsWith('Could') ? RED : GOLD, marginTop: 10 }}>{msg}</div>}
+      {artifact && (
+        <div onClick={() => setArtifact(null)} style={{ position: 'fixed', inset: 0, zIndex: 70, background: 'rgba(5,14,24,0.74)', display: 'grid', placeItems: 'center', padding: 20 }}>
+          <div onClick={e => e.stopPropagation()} style={{ width: 'min(960px, 100%)', maxHeight: '90vh', overflowY: 'auto', background: 'var(--hud-surface-raised)', border: `1px solid ${PANEL_BORDER}`, borderRadius: 14, padding: '18px 22px' }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end' }}><button onClick={() => setArtifact(null)} style={{ ...S.btnGhost, fontSize: 10 }}>Close</button></div>
+            <ArtifactsTab key={artifact} project={project} initialSlug={artifact} />
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -559,7 +495,7 @@ function ProjectDetail({ project, board: boardProp, api, onBack, initialTab, ini
     <div style={S.page}>
       {closingMission && <CloseMissionModal project={project} tasks={tasks} onClose={() => setClosingMission(false)} onDone={closeMission} />}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, marginBottom: 18, flexWrap: 'wrap' }}>
-        <button onClick={onBack} style={S.btnGhost}><ArrowLeft size={13} /> All missions</button>
+        <Trail nodes={[{ label: 'Main Missions', onClick: onBack }, { label: project.name }]} />
         {project.status !== 'completed' && !project.archived_at && (
           <button
             onClick={() => setClosingMission(true)}
@@ -657,13 +593,7 @@ function ProjectDetail({ project, board: boardProp, api, onBack, initialTab, ini
             <div><CanonLabel>Planning</CanonLabel><PlanningCanvas project={project} /></div>
           </div>
         )}
-        {tab === 'files' && (
-          <div style={{ display: 'grid', gap: 30 }}>
-            <div><CanonLabel>Cabinet</CanonLabel><FilesTab project={project} listFiles={api.listFiles} uploadFile={api.uploadFile} createFolder={api.createFolder} fileUrl={api.fileUrl} deleteFile={api.deleteFile} /></div>
-            <div><CanonLabel>Artifacts</CanonLabel><ArtifactsTab key={artifactSlug || 'first'} project={project} initialSlug={artifactSlug} /></div>
-            <div><CanonLabel>Shares</CanonLabel><SharesTab project={project} /></div>
-          </div>
-        )}
+        {tab === 'files' && <MissionFiles project={project} api={api} initialSlug={artifactSlug} />}
         {tab === 'notes' && <ProjectNotes project={project} />}
         {tab === 'polaris' && (
           <div style={{ display: 'grid', gap: 22 }}>

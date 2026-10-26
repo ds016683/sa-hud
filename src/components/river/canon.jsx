@@ -133,3 +133,26 @@ export function CardPill({ active, children, onClick, count }) {
     }}>{children}{count > 0 && <span style={{ fontSize: 9, opacity: 0.8 }}>· {count}</span>}</button>
   )
 }
+
+// The trail (David 10/26): where you are and what you are under, with a way up.
+// nodes: [{ label, onClick, icon }] from the root to here; the last is where you are.
+export function Trail({ nodes, style }) {
+  const up = [...nodes].reverse().find((n, i) => i > 0 && n.onClick)
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', ...style }}>
+      {up && <button onClick={up.onClick} title={`Up to ${up.label}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontFamily: MONO, fontSize: 9.5, letterSpacing: '1px', textTransform: 'uppercase', padding: '4px 9px', borderRadius: 8, border: `1px solid ${PANEL_BORDER}`, background: 'transparent', color: LABEL, cursor: 'pointer' }}>↑ Up</button>}
+      {nodes.map((n, i) => {
+        const last = i === nodes.length - 1
+        const inner = <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>{n.icon}{n.label}</span>
+        return (
+          <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+            {i > 0 && <span style={{ color: GRAY, fontSize: 13 }}>›</span>}
+            {last || !n.onClick
+              ? <span style={{ fontSize: 14, fontWeight: last ? 600 : 500, color: last ? INK : INK2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: last ? 420 : 300 }}>{inner}</span>
+              : <button onClick={n.onClick} style={{ background: 'transparent', border: 'none', padding: 0, cursor: 'pointer', fontSize: 14, fontWeight: 500, color: LABEL, fontFamily: 'inherit', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 300 }}>{inner}</button>}
+          </span>
+        )
+      })}
+    </div>
+  )
+}
