@@ -134,9 +134,12 @@ carry it back here.
 - `chassis/`: `doc.ts` (the types), `doc-reader.tsx` and `doc.module.css` (the
   reader), `route-page.tsx` and `route-unlock-page.tsx` (the route folder to
   copy, change `SLUG`).
-- `example/`: the Company Finance Review's `finance-review.ts` (cover + page 1)
-  and its generated `finance-review-data.ts`.
-- `tools/`: `build_pf_data.py` (the workbook to data-file generator) and
+- `example/`: the Company Finance Review's `finance-review.ts` (cover + page 1 on
+  the NetSuite income statement, the pro forma beside it) and its generated
+  `finance-review-ns-data.ts` and `finance-review-data.ts`.
+- `tools/`: `build_pf_data.py` (a workbook to data-file generator), `ns_pl_jan_sep.py`
+  (the NetSuite income statement over SuiteQL, by account and period, with a
+  tie-out) and `build_ns_data.py` (the statement tree to data file), and
   `check_gate.sh` (the gate checks).
 
 ## Standing notes
