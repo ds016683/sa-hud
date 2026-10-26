@@ -588,9 +588,9 @@ function ProjectDetail({ project, board: boardProp, api, onBack, initialTab, ini
           </div>
         )}
         {tab === 'workbench' && (
-          <div style={{ display: 'grid', gap: 30 }}>
-            <div><CanonLabel>In Play</CanonLabel><WorkbenchTab project={project} /></div>
-            <div><CanonLabel>Planning</CanonLabel><PlanningCanvas project={project} /></div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 30, minWidth: 0 }}>
+            <div style={{ minWidth: 0 }}><CanonLabel>In Play</CanonLabel><WorkbenchTab project={project} /></div>
+            <div style={{ minWidth: 0, overflow: 'hidden' }}><CanonLabel>Planning</CanonLabel><PlanningCanvas project={project} /></div>
           </div>
         )}
         {tab === 'files' && <MissionFiles project={project} api={api} initialSlug={artifactSlug} />}

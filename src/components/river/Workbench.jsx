@@ -12,6 +12,8 @@ import { INK, INK2, GRAY, PANEL_BORDER, GOLD, BLUE, GREEN, RED, MONO, Label, KIN
 import { hudConfirm } from '../../lib/dialog'
 const btn = (color = INK2, filled = false) => ({ display: 'inline-flex', alignItems: 'center', gap: 5, fontFamily: MONO, fontSize: 9.5, letterSpacing: '1px', textTransform: 'uppercase', padding: '5px 9px', borderRadius: 8, border: `1px solid ${filled ? color : `${alpha(color, 40)}`}`, background: filled ? color : 'transparent', color: filled ? 'var(--hud-on-accent)' : color, cursor: 'pointer' })
 const rowStyle = { display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0', borderTop: `1px solid ${PANEL_BORDER}` }
+// Session reopen links (claude://, left by focus.py) belong to the Briefing's Sessions strip, never to the Workbench (David 10/26: "the page went a bit crazy").
+const isSessionLink = (r) => isLink(r) && /^claude:\/\//.test(String(r.path || ''))
 
 export default function WorkbenchTab({ project = null, objectiveId = null }) {
   const [rows, setRows] = useState(null)
@@ -19,12 +21,12 @@ export default function WorkbenchTab({ project = null, objectiveId = null }) {
   const [olderOpen, setOlderOpen] = useState({})
   const [busy, setBusy] = useState(false)
   const load = useCallback(async () => {
-    if (objectiveId) { const r = await listLiveFiles({ objectiveId }); setRows(r.rows); return }
+    if (objectiveId) { const r = await listLiveFiles({ objectiveId }); setRows(r.rows.filter(r => !isSessionLink(r))); return }
     const mine = await listLiveFiles({ projectId: project.id })
     const { data: tasks } = await supabase.from('project_tasks').select('id,text,objective_id,status').eq('project_id', project.id)
     const oids = (tasks || []).map(t => t.objective_id).filter(Boolean)
     const onItems = oids.length ? await Promise.all(oids.map(oid => listLiveFiles({ objectiveId: oid }))) : []
-    const all = [...mine.rows, ...onItems.flatMap(r => r.rows)]
+    const all = [...mine.rows, ...onItems.flatMap(r => r.rows)].filter(r => !isSessionLink(r))
     setRows(all)
   }, [project, objectiveId])
   useEffect(() => { load().catch(e => { console.warn('workbench', e.message); setRows([]) }) }, [load])

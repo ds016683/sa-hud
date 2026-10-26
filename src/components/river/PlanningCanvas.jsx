@@ -169,7 +169,7 @@ export function DomainFlowSurface({ dom, data = {}, onSave, busy }) {
   const addTask = (tid, bid) => edit(tid, t => ({ ...t, big: (t.big || []).map(y => y.id === bid ? { ...y, tasks: [...(y.tasks || []), blankTask()] } : y) }))
   const rmTask = (tid, bid, kid) => edit(tid, t => ({ ...t, big: (t.big || []).map(y => y.id === bid ? { ...y, tasks: (y.tasks || []).filter(z => z.id !== kid) } : y) }))
   const input = { width: '100%', minWidth: 0, padding: '6px 8px', borderRadius: 7, border: `1px solid ${PANEL_BORDER}`, fontSize: 12.5, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', background: PANEL_BG, color: INK }
-  const quiet = { width: '100%', minWidth: 0, boxSizing: 'border-box', fontFamily: 'inherit', color: INK, resize: 'none', padding: '3px 7px', margin: '0 -7px', fontSize: 13.5 }
+  const quiet = { width: '100%', maxWidth: '100%', minWidth: 0, boxSizing: 'border-box', fontFamily: 'inherit', color: INK, resize: 'none', padding: '3px 7px', margin: '0 -7px', fontSize: 13.5 }
   const eyebrow = { fontFamily: MONO, fontSize: 9.5, letterSpacing: '1.4px', textTransform: 'uppercase', color: LABEL }
   const card = { border: `1px solid ${PANEL_BORDER}`, borderLeft: `3px solid ${dom.color}`, borderRadius: 10, padding: '12px 14px', display: 'grid', gap: 8, background: PANEL_BG }
   const shown = [...truths].sort((a, b) => String(a.anchor || '9999').localeCompare(String(b.anchor || '9999')))
