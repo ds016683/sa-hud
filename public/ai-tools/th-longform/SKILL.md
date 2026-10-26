@@ -78,7 +78,8 @@ a proposals alias. If a session finds itself there, stop and move.
 
 A page may carry a `toggle` (content/doc.ts): a label, an off note, an on note
 and `blocksOn`, a second complete run of blocks. The reader draws a slim sticky
-bar at the top of the column with the switch, off on every page open, and
+bar at the top of the column with the switch, off on every page open unless
+the page sets `defaultOn` (the cash worksheet's purple items open on), and
 swaps the whole block run when it is on, so every figure, table and chart on
 the page moves together. Build both runs from one function of a boolean in
 the content file (the finance review's `page2Blocks(on)`); never hand-maintain
@@ -95,7 +96,9 @@ the Vercel project with `vercel env add`, the secret piped from the vault,
 never written to the repo; for Preview on all branches the CLI demands
   `--value`, so pipe the value into a POST to the project's env API instead), `finance-live.ts` (one exceljs parser that turns
 the sheet into DocRow shapes, with the sheet's bold, font and fill read for
-sections and flags), `finance-source.ts` (an eTag check at most once a minute,
+sections and flags; purple is read by hue, any shade, font or fill, direct, theme
+or indexed, so the purple rule lives in the refresh and not in the content),
+`finance-source.ts` (an eTag check at most once a minute,
 the workbook re-read only when it changed, the result held in memory per
 server instance, a committed snapshot as the fallback), `route.ts` (the
 refresh route the cron calls; it answers with the source stamp, never the
