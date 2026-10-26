@@ -10,7 +10,7 @@ This is the standard. Every Main Mission page, Side Mission card and Milestone c
 |---|---|---|---|
 | **Briefing** | Where it stands | The progress bar and the milestones, each with its steps, Load, Stash, Close | Where It Stands (done and still needed), Sessions, the facts row (Domain, Type, Due, Follow Up, Who), Back Story, Marks or Gates |
 | **Workbench** | What is being built | The files in play, the Planning canvas | The files in play, the Live Protocol rows (editing punchlists, briefing gap maps) |
-| **Files** | The filed and source material | The Cabinet (mission storage and the file store), the Artifacts (scorecards, decisions, briefs), the Shares (published pages) | The filed live files, the item's own folder, the mission's files and store |
+| **Files** | The filed and source material, one list | Every file and folder in the mission's storage, the filed live files, the artifacts (scorecards, decisions, briefs) and the shares (published pages), each a row with a kind chip. Cabinet, Artifacts and Shares are kinds of file, never sections | The filed live files, the item's own folder, the mission's files and store |
 | **Notes** | Your own words | The mission's notes, newest first | The item's own notes, then the meetings that match it |
 | **Polaris** | The objective and the proof | The objective sentence, editable; the evidence pinned on the mission; the close-out state | The objective sentence, editable; the evidence pinned on the item; the released state |
 
@@ -23,7 +23,7 @@ One rule for every page:
 - **In play** (filed_at null): the Workbench. It arrived from a session (livefile.py), from Lumen (write_file, file_attachment), or from a drop on the Board or the Workbench. Versions group under one row.
 - **Filed** (filed_at set): Files. Done on the Workbench moves it there. It never leaves the Ledger.
 - **Pinned** (evidence true): shows on Polaris as well, wherever it lives. The star on a Workbench row pins and unpins. Pinning is the only thing that puts a file on Polaris.
-- **Cabinet, Artifacts, Shares**: Files, always. They are not live files.
+- **Storage, artifacts, shares**: Files, always, as rows in the one list with a kind chip. They are not live files, and they are not sections of their own.
 
 ## What counts on a pill
 
@@ -31,6 +31,10 @@ One rule for every page:
 - Workbench: the open protocol rows.
 - Polaris: the pinned evidence.
 - Files and Notes carry no count.
+
+## The trail
+
+Every card and mission page opens with a trail: the root, the parent, where you are, with an Up button to the parent. A Milestone reads Main Missions › the mission › Milestone N. A Side Mission reads Side Missions › its type. A meeting, a session or an Ad Hoc reads Board › its kind. The mission page reads Main Missions › the mission. The component is `Trail` in canon.jsx.
 
 ## Connections
 
