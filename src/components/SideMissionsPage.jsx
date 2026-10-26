@@ -151,7 +151,7 @@ export default function SideMissionsPage({ onNavigate }) {
       if (p.carrying) { setFiling({ o, p }); return }
       if (p.openSteps.length && !await hudConfirm(`${p.openSteps.length} step(s) still open. Close it out anyway?`)) return
       const r = await closeOut(o)
-      setMsg(`Released: ${o.title} · ${r.minutes}m${r.personal ? ' · personal' : ''} · ${paysLine(o)}`); await refresh(); setYay(o.id)
+      setMsg(`Released: ${o.title}${r.minutes ? ` · ${r.minutes} minutes on the clock` : ''}${r.personal ? ' · personal' : ''} · ${paysLine(o)}`); await refresh(); setYay(o.id)
     } catch (e) { setMsg(`Could not close it out: ${e.message}`) }
   }
 
@@ -160,7 +160,7 @@ export default function SideMissionsPage({ onNavigate }) {
   return (
     <div style={S.page}>
       {open && <ItemDetail item={toItem(open)} onClose={() => { setOpen(null); refresh() }} onNavigate={onNavigate} onChange={refresh} />}
-      {filing && <FileAway objective={filing.o} pockets={filing.p} onClose={() => setFiling(null)} onDone={({ filed, released }) => { const id = filing.o.id; const line = paysLine(filing.o); setFiling(null); setMsg(`Filed ${filed.length} to the Archive and released ${filing.o.title} · ${released.minutes}m · ${line}`); refresh(); setYay(id) }} />}
+      {filing && <FileAway objective={filing.o} pockets={filing.p} onClose={() => setFiling(null)} onDone={({ filed, released }) => { const id = filing.o.id; const line = paysLine(filing.o); setFiling(null); setMsg(`Filed ${filed.length} to the Archive and released ${filing.o.title}${released.minutes ? ` · ${released.minutes} minutes on the clock` : ''} · ${line}`); refresh(); setYay(id) }} />}
       {yay && <YayPage objectiveId={yay} fresh onClose={() => setYay(null)} />}
       <div style={{ marginBottom: 18 }}>
         <h1 style={S.h1}><Target size={22} color={BLUE} style={{ verticalAlign: '-3px', marginRight: 8 }} />Side Missions</h1>
