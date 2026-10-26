@@ -662,7 +662,7 @@
       "position": 35
     }
   ],
-  "updated_at": "2026-10-26T13:36:54.202927+00:00",
+  "updated_at": "2026-10-26T14:55:44.880177+00:00",
   "updated_by": "session (claude), the October 19 record",
   "domains": {
     "Data Production": {
@@ -777,34 +777,32 @@
               "tasks": []
             }
           ]
-        },
-        {
-          "id": "be96159d-2641-45f7-8dea-08741f4e36a5",
-          "anchor": "",
-          "label": "Standing",
-          "text": "Data fidelity stays high and is measured, release by release, so regions first never means data second.",
-          "measure": "Each release passes the shared checklist: data accuracy, reconciliation of the data with the code scripts, release readiness, with named sign-off on both sides.",
-          "big": [
-            {
-              "id": "8d5111d7-180d-471e-855b-f9c3bede3c19",
-              "text": "QA process drafted for Chicago, November 9: application workflows, data accuracy, release readiness",
-              "accountable": "Tanner Johnson · Chris Kalvig",
-              "people": "",
-              "data_costs": "",
-              "tasks": []
-            },
-            {
-              "id": "d323dc75-b1cd-40c5-83a8-e6316087fb34",
-              "text": "Shared release checklist with named sign-off agreed with Arindam and Carrie",
-              "accountable": "",
-              "people": "",
-              "data_costs": "",
-              "tasks": []
-            }
-          ]
         }
       ],
-      "polaris": "At the end of 2027, Third Horizon will have delivered high quality market pricing data, on schedule and in a construct that can work with MMA's data delivery system(s)."
+      "polaris": "At the end of 2027, Third Horizon will have delivered high quality market pricing data, on schedule and in a construct that can work with MMA's data delivery system(s).",
+      "final": {
+        "text": "Data fidelity stays high and is measured, release by release, so regions first never means data second.",
+        "measure": "Each release passes the shared checklist: data accuracy, reconciliation of the data with the code scripts, release readiness, with named sign-off on both sides.",
+        "big": [
+          {
+            "id": "8d5111d7-180d-471e-855b-f9c3bede3c19",
+            "text": "QA process drafted for Chicago, November 9: application workflows, data accuracy, release readiness",
+            "accountable": "Tanner Johnson · Chris Kalvig",
+            "people": "",
+            "data_costs": "",
+            "tasks": []
+          },
+          {
+            "id": "d323dc75-b1cd-40c5-83a8-e6316087fb34",
+            "text": "Shared release checklist with named sign-off agreed with Arindam and Carrie",
+            "accountable": "",
+            "people": "",
+            "data_costs": "",
+            "tasks": []
+          }
+        ],
+        "seeded_from": "the Standing truth (10/26); rewrite to reflect the whole domain"
+      }
     },
     "Regional Engagement": {
       "definition": "The national paper, market reports, the quarterly town hall, the Raleigh pilot, Thresholds, regional reporting, real-time analytics support.",
@@ -943,49 +941,47 @@
               "tasks": []
             }
           ]
-        },
-        {
-          "id": "re-t5",
-          "label": "Standing",
-          "anchor": "",
-          "text": "The regions are engaged on a cadence, regions first and everything else tertiary: a quarterly town hall, stronger regional reporting defined for 2027, and real-time analytics support.",
-          "measure": "Adoption, usage, and leverage tracked by region and by office and driven explicitly; Alex's utilization dashboard is the source.",
-          "big": [
-            {
-              "id": "re-t5-b1",
-              "text": "Quarterly regional town hall (quarterly for the moment, for cost and the regions' attention)",
-              "accountable": "",
-              "people": "",
-              "data_costs": "",
-              "tasks": []
-            },
-            {
-              "id": "re-t5-b2",
-              "text": "Stronger regional reporting and back-end usage analytics for the regions, defined differently from the 2026 v10.2 production reporting (Handl's reporting package is a start)",
-              "accountable": "",
-              "people": "",
-              "data_costs": "",
-              "tasks": []
-            },
-            {
-              "id": "re-t5-b3",
-              "text": "Real-time analytics support: a person a producer can call when they hit a wall mid-analysis",
-              "accountable": "",
-              "people": "",
-              "data_costs": "",
-              "tasks": []
-            },
-            {
-              "id": "re-t5-b4",
-              "text": "The super user in the chair runs the ten moves proactively on every client rather than waiting to be asked (East with Zibby is the example)",
-              "accountable": "",
-              "people": "",
-              "data_costs": "",
-              "tasks": []
-            }
-          ]
         }
-      ]
+      ],
+      "final": {
+        "text": "The regions are engaged on a cadence, regions first and everything else tertiary: a quarterly town hall, stronger regional reporting defined for 2027, and real-time analytics support.",
+        "measure": "Adoption, usage, and leverage tracked by region and by office and driven explicitly; Alex's utilization dashboard is the source.",
+        "big": [
+          {
+            "id": "re-t5-b1",
+            "text": "Quarterly regional town hall (quarterly for the moment, for cost and the regions' attention)",
+            "accountable": "",
+            "people": "",
+            "data_costs": "",
+            "tasks": []
+          },
+          {
+            "id": "re-t5-b2",
+            "text": "Stronger regional reporting and back-end usage analytics for the regions, defined differently from the 2026 v10.2 production reporting (Handl's reporting package is a start)",
+            "accountable": "",
+            "people": "",
+            "data_costs": "",
+            "tasks": []
+          },
+          {
+            "id": "re-t5-b3",
+            "text": "Real-time analytics support: a person a producer can call when they hit a wall mid-analysis",
+            "accountable": "",
+            "people": "",
+            "data_costs": "",
+            "tasks": []
+          },
+          {
+            "id": "re-t5-b4",
+            "text": "The super user in the chair runs the ten moves proactively on every client rather than waiting to be asked (East with Zibby is the example)",
+            "accountable": "",
+            "people": "",
+            "data_costs": "",
+            "tasks": []
+          }
+        ],
+        "seeded_from": "the Standing truth (10/26); rewrite to reflect the whole domain"
+      }
     }
   }
 }
