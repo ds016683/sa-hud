@@ -9,8 +9,8 @@ This is the standard. Every Main Mission page, Side Mission card and Milestone c
 | Pill | What it holds | On a Main Mission | On a Side Mission or Milestone |
 |---|---|---|---|
 | **Briefing** | Where it stands | The progress bar and the milestones, each with its steps, Load, Stash, Close | Where It Stands (done and still needed), Sessions, the facts row (Domain, Type, Due, Follow Up, Who), Back Story, Marks or Gates |
-| **Workbench** | What is being built | The files in play, the Planning canvas | The files in play, the Live Protocol rows (editing punchlists, briefing gap maps) |
-| **Files** | The filed and source material, one list | Every file and folder in the mission's storage, the filed live files, the artifacts (scorecards, decisions, briefs) and the shares (published pages), each a row with a kind chip. Cabinet, Artifacts and Shares are kinds of file, never sections | The filed live files, the item's own folder, the mission's files and store |
+| **Workbench** | The working surface: what is being built | The Planning canvas first (a skill brought in, a doodle, the thing being made), the files in play at the foot | The Live Protocol rows first (editing punchlists, briefing gap maps), the files in play at the foot |
+| **Files** | Bring In, then the filed and source material, one list | Bring In (drop a file, point at a path, add a launch link; it lands in play on the Workbench), then every file and folder in the mission's storage, the filed live files, the artifacts (scorecards, decisions, briefs) and the shares (published pages), each a row with a kind chip. Cabinet, Artifacts and Shares are kinds of file, never sections | Bring In, then the filed live files, the item's own folder, the mission's files and store |
 | **Notes** | Your own words | The mission's notes, newest first | The item's own notes, then the meetings that match it |
 | **Polaris** | The objective and the proof | The objective sentence, editable; the evidence pinned on the mission; the close-out state | The objective sentence, editable; the evidence pinned on the item; the released state |
 
@@ -20,7 +20,7 @@ The Polaris sentence also reads under the title on every page, in italic, as the
 
 One rule for every page:
 
-- **In play** (filed_at null): the Workbench. It arrived from a session (livefile.py), from Lumen (write_file, file_attachment), or from a drop on the Board or the Workbench. Versions group under one row.
+- **In play** (filed_at null): the foot of the Workbench. It arrived from a session (livefile.py), from Lumen (write_file, file_attachment), from a drop on the Board, or from Bring In on Files. The Workbench itself is the working surface (David 10/26: "largely working surface where we are bringing in a skill or just doodling, creating stuff"); its head is the Planning canvas on a mission and the Live Protocol rows on an item. Versions group under one row.
 - **Filed** (filed_at set): Files. Done on the Workbench moves it there. It never leaves the Ledger.
 - **Pinned** (evidence true): shows on Polaris as well, wherever it lives. The star on a Workbench row pins and unpins. Pinning is the only thing that puts a file on Polaris.
 - **Storage, artifacts, shares**: Files, always, as rows in the one list with a kind chip. They are not live files, and they are not sections of their own.
