@@ -12,7 +12,7 @@ import { INK, INK2, GRAY, LABEL, MUTED, NAVY_DEEP, PANEL_BORDER, PANEL_BG, BLUE,
 // program-plan artifact; the artifact ports back to the Master Tracker later.
 // =============================================================================
 const SLUG = 'program-plan'
-const VIOLET = SUCCESS   // the medallion purple: a domain's streams (David, 10/26)
+const VIOLET = SUCCESS   // the medallion purple: the whole scheme of an open domain, label, icon, pills, spine and streams alike (David, 10/26)
 const btnPrimary = { background: BLUE, color: NAVY_DEEP, border: 'none', borderRadius: 8, padding: '8px 14px', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', display: 'inline-flex', alignItems: 'center', gap: 6 }
 const btnGhost = { background: PANEL_BG, color: INK, border: `1px solid ${PANEL_BORDER}`, borderRadius: 8, padding: '6px 12px', fontSize: 12, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit', display: 'inline-flex', alignItems: 'center', gap: 6 }
 const newId = () => (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`)
@@ -174,7 +174,7 @@ export function DomainFlowSurface({ dom, data = {}, onSave, busy }) {
   const input = { width: '100%', minWidth: 0, padding: '6px 8px', borderRadius: 7, border: `1px solid ${PANEL_BORDER}`, fontSize: 12.5, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', background: PANEL_BG, color: INK }
   const quiet = { width: '100%', maxWidth: '100%', minWidth: 0, boxSizing: 'border-box', fontFamily: 'inherit', color: INK, resize: 'none', padding: '3px 7px', margin: '0 -7px', fontSize: 13.5 }
   const eyebrow = { fontFamily: MONO, fontSize: 9.5, letterSpacing: '1.4px', textTransform: 'uppercase', color: LABEL }
-  const card = { border: `1px solid ${PANEL_BORDER}`, borderLeft: `3px solid ${dom.color}`, borderRadius: 10, padding: '12px 14px', display: 'grid', gap: 8, background: PANEL_BG }
+  const card = { border: `1px solid ${PANEL_BORDER}`, borderLeft: `3px solid ${VIOLET}`, borderRadius: 10, padding: '12px 14px', display: 'grid', gap: 8, background: PANEL_BG }
   // Numbers go by the stream (David, 10/26): 1, 2, 3 in the strip's order; a stream with several touchpoints through the year letters them 1a, 1b. A truth with no stream waits unnumbered at the foot.
   const sIndex = Object.fromEntries(streams.map((x, i) => [x.id, i]))
   const byTime = (a, b) => String(a.anchor || '9999').localeCompare(String(b.anchor || '9999'))
@@ -198,11 +198,11 @@ export function DomainFlowSurface({ dom, data = {}, onSave, busy }) {
 
   // Strategy: the big things as a keyed tree under the truth, text alone. n = the truth's number, or F for the Final.
   const bigTree = (t, n) => (
-    <div style={{ marginTop: 8, marginLeft: 1, borderLeft: `2px solid ${alpha(dom.color, 35)}`, paddingLeft: 18, display: 'grid', gap: 1 }}>
+    <div style={{ marginTop: 8, marginLeft: 1, borderLeft: `2px solid ${alpha(VIOLET, 35)}`, paddingLeft: 18, display: 'grid', gap: 1 }}>
       {(t.big || []).map((b, m) => (
         <div key={b.id} style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 6 }}>
-          <span style={{ position: 'absolute', left: -18, top: '50%', width: 11, height: 2, background: alpha(dom.color, 35) }} />
-          <Key color={dom.color} k={`${n}.${m + 1}`} />
+          <span style={{ position: 'absolute', left: -18, top: '50%', width: 11, height: 2, background: alpha(VIOLET, 35) }} />
+          <Key color={VIOLET} k={`${n}.${m + 1}`} />
           <textarea className="plan-quiet" value={b.text} onChange={e => setB(t.id, b.id, 'text', e.target.value)} rows={rowsAuto(b.text, 112)} placeholder="A big thing, in one line" style={{ ...quiet, color: INK2, lineHeight: 1.45, margin: 0, width: '100%' }} />
         </div>
       ))}
@@ -218,11 +218,11 @@ export function DomainFlowSurface({ dom, data = {}, onSave, busy }) {
         {ops && <span />}<span /><span style={eyebrow}>The Big Things That Have To Happen</span><span style={eyebrow}>Accountable</span>{budget && <span style={{ ...eyebrow, textAlign: 'right' }}>Cost</span>}<span />
         {(t.big || []).map((b, m) => (
           <Fragment key={b.id}>
-            {ops && <button onClick={() => setOpen(o => ({ ...o, [b.id]: !o[b.id] }))} title={open[b.id] ? 'Fold' : 'Explode into tasks'} style={{ background: 'none', border: 'none', color: dom.color, cursor: 'pointer', padding: 0, transform: open[b.id] ? 'rotate(90deg)' : 'none', transition: 'transform 120ms' }}><ChevronRight size={14} /></button>}
-            <Key color={dom.color} k={`${n}.${m + 1}`} />
+            {ops && <button onClick={() => setOpen(o => ({ ...o, [b.id]: !o[b.id] }))} title={open[b.id] ? 'Fold' : 'Explode into tasks'} style={{ background: 'none', border: 'none', color: VIOLET, cursor: 'pointer', padding: 0, transform: open[b.id] ? 'rotate(90deg)' : 'none', transition: 'transform 120ms' }}><ChevronRight size={14} /></button>}
+            <Key color={VIOLET} k={`${n}.${m + 1}`} />
             <input value={b.text} onChange={e => setB(t.id, b.id, 'text', e.target.value)} placeholder="A big thing, in one line" style={input} />
-            <input value={b.accountable} onChange={e => setB(t.id, b.id, 'accountable', e.target.value)} placeholder="One name" style={{ ...input, color: dom.color, fontWeight: 600 }} />
-            {budget && <input value={b.cost || ''} onChange={e => setB(t.id, b.id, 'cost', e.target.value)} placeholder="$" inputMode="decimal" style={{ ...input, textAlign: 'right', fontFamily: MONO, fontSize: 12, color: dom.color }} />}
+            <input value={b.accountable} onChange={e => setB(t.id, b.id, 'accountable', e.target.value)} placeholder="One name" style={{ ...input, color: VIOLET, fontWeight: 600 }} />
+            {budget && <input value={b.cost || ''} onChange={e => setB(t.id, b.id, 'cost', e.target.value)} placeholder="$" inputMode="decimal" style={{ ...input, textAlign: 'right', fontFamily: MONO, fontSize: 12, color: VIOLET }} />}
             <button onClick={() => rmBig(t.id, b.id)} title="Remove" style={removeBtn}><X size={12} /></button>
             {ops && open[b.id] && (
               <div style={{ gridColumn: '1 / -1', marginLeft: 28, padding: '10px 12px', borderRadius: 8, border: `1px dashed ${PANEL_BORDER}`, display: 'grid', gap: 8, background: PANEL_BG }}>
@@ -237,7 +237,7 @@ export function DomainFlowSurface({ dom, data = {}, onSave, busy }) {
                       <input value={k.text} onChange={e => setK(t.id, b.id, k.id, 'text', e.target.value)} placeholder="The task" style={{ ...input, opacity: k.done ? 0.6 : 1, textDecoration: k.done ? 'line-through' : 'none' }} />
                       <input value={k.owner} onChange={e => setK(t.id, b.id, k.id, 'owner', e.target.value)} placeholder="Name" style={input} />
                       <input type="date" value={k.due || ''} onChange={e => setK(t.id, b.id, k.id, 'due', e.target.value)} style={{ ...input, fontSize: 11 }} />
-                      <input type="checkbox" checked={!!k.done} onChange={e => setK(t.id, b.id, k.id, 'done', e.target.checked)} style={{ justifySelf: 'center', accentColor: dom.color }} />
+                      <input type="checkbox" checked={!!k.done} onChange={e => setK(t.id, b.id, k.id, 'done', e.target.checked)} style={{ justifySelf: 'center', accentColor: VIOLET }} />
                       <button onClick={() => rmTask(t.id, b.id, k.id)} title="Remove" style={removeBtn}><X size={12} /></button>
                     </Fragment>
                   ))}
@@ -248,7 +248,7 @@ export function DomainFlowSurface({ dom, data = {}, onSave, busy }) {
           </Fragment>
         ))}
         <button onClick={() => addBig(t.id)} style={{ ...btnGhost, padding: '4px 9px', fontSize: 11, justifySelf: 'start', gridColumn: budget ? '1 / 4' : '1 / -1' }}><Plus size={11} /> Big Thing</button>
-        {budget && <><span style={{ ...eyebrow, textAlign: 'right', color: dom.color }}>Subtotal · {money(subtotal(t))}</span><span /></>}
+        {budget && <><span style={{ ...eyebrow, textAlign: 'right', color: VIOLET }}>Subtotal · {money(subtotal(t))}</span><span /></>}
       </div>
     )
   }
@@ -262,7 +262,7 @@ export function DomainFlowSurface({ dom, data = {}, onSave, busy }) {
   ) : (
     <div style={card}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-        <Node color={dom.color} n={isFinal ? <Flag size={11} /> : n} size={22} ring={false} />
+        <Node color={VIOLET} n={isFinal ? <Flag size={11} /> : n} size={22} ring={false} />
         <textarea value={t.text} onChange={e => setT(t.id, 'text', e.target.value)} rows={2} placeholder={isFinal ? 'The one statement that is true of the whole domain at the end of 2027' : 'One sentence, verifiable'} style={{ ...input, fontFamily: SERIF, fontSize: 15, lineHeight: 1.35, resize: 'vertical' }} />
         {!isFinal && <button onClick={() => rmTruth(t.id)} title="Remove this truth" style={removeBtn}><X size={14} /></button>}
       </div>
@@ -278,9 +278,9 @@ export function DomainFlowSurface({ dom, data = {}, onSave, busy }) {
     <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 18 }}>
       <style>{FLOW_CSS}</style>
       <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
-        <span style={{ width: 40, height: 40, borderRadius: 11, background: dom.color, color: NAVY_DEEP, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><Icon size={20} /></span>
+        <span style={{ width: 40, height: 40, borderRadius: 11, background: VIOLET, color: NAVY_DEEP, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><Icon size={20} /></span>
         <div style={{ flex: 1, minWidth: 260 }}>
-          <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '1.4px', color: dom.color }}>{dom.code} · {dom.n}</div>
+          <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '1.4px', color: VIOLET }}>{dom.code} · {dom.n}</div>
           <div style={{ fontFamily: SERIF, fontSize: 22, fontWeight: 500, color: INK, lineHeight: 1.2 }}>{dom.id}</div>
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
@@ -289,8 +289,8 @@ export function DomainFlowSurface({ dom, data = {}, onSave, busy }) {
         </div>
       </div>
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
-        {FLOW_VIEWS.map(x => <Pill key={x.id} color={dom.color} active={view === x.id} onClick={() => setView(x.id)}>{x.label}</Pill>)}
-        {budget && <span style={{ marginLeft: 'auto', fontFamily: MONO, fontSize: 10, fontWeight: 600, letterSpacing: '1.2px', textTransform: 'uppercase', color: dom.color, padding: '5px 12px', borderRadius: 999, border: `1px solid ${alpha(dom.color, 55)}` }}>Total · {money(total)}</span>}
+        {FLOW_VIEWS.map(x => <Pill key={x.id} color={VIOLET} active={view === x.id} onClick={() => setView(x.id)}>{x.label}</Pill>)}
+        {budget && <span style={{ marginLeft: 'auto', fontFamily: MONO, fontSize: 10, fontWeight: 600, letterSpacing: '1.2px', textTransform: 'uppercase', color: VIOLET, padding: '5px 12px', borderRadius: 999, border: `1px solid ${alpha(VIOLET, 55)}` }}>Total · {money(total)}</span>}
       </div>
       {/* Streams (David, 10/26): a domain that carries several streams reads them all on one spine, or one at a time. Polaris and the Final stay domain-wide. */}
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', marginTop: -6 }}>
@@ -315,24 +315,24 @@ export function DomainFlowSurface({ dom, data = {}, onSave, busy }) {
 
       {/* The key, stated once: a numbered node is a thing that must be true at a key moment; a keyed line under it is a big thing that has to happen; the flag is the Final, true of the whole domain. */}
       <div style={{ display: 'flex', gap: 26, alignItems: 'center', flexWrap: 'wrap', paddingLeft: RAIL_W + 26, marginTop: 2 }}>
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 9 }}><Node color={dom.color} n="1" size={22} ring={false} /><span style={{ fontFamily: SERIF, fontSize: 14.5, color: INK }}>What Must Be True</span></span>
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 9 }}><Key color={dom.color} k="1.1" style={{ minWidth: 0 }} /><span style={{ fontSize: 12.5, color: INK2 }}>The Big Things That Have To Happen</span></span>
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 9 }}><Node color={dom.color} n={<Flag size={11} />} size={22} ring={false} /><span style={{ fontFamily: SERIF, fontSize: 14.5, color: INK }}>Final</span></span>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 9 }}><Node color={VIOLET} n="1" size={22} ring={false} /><span style={{ fontFamily: SERIF, fontSize: 14.5, color: INK }}>What Must Be True</span></span>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 9 }}><Key color={VIOLET} k="1.1" style={{ minWidth: 0 }} /><span style={{ fontSize: 12.5, color: INK2 }}>The Big Things That Have To Happen</span></span>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 9 }}><Node color={VIOLET} n={<Flag size={11} />} size={22} ring={false} /><span style={{ fontFamily: SERIF, fontSize: 14.5, color: INK }}>Final</span></span>
       </div>
 
       {/* One spine, three views. Polaris at the head, each truth at its time, the Final under the flag at the foot, Polaris and the Final chained by the second rail and the pulse. */}
       <div style={{ display: 'grid', gridTemplateColumns: `${RAIL_W}px minmax(0, 1fr)` }}>
-        <Rail color={dom.color} first node={<Node color={dom.color} n={<Icon size={14} />} pulse />}>
-          <span style={{ ...eyebrow, color: dom.color, marginTop: 7 }}>Polaris</span>
+        <Rail color={VIOLET} first node={<Node color={VIOLET} n={<Icon size={14} />} pulse />}>
+          <span style={{ ...eyebrow, color: VIOLET, marginTop: 7 }}>Polaris</span>
           <span style={{ fontSize: 11.5, color: MUTED }}>End Of 2027</span>
         </Rail>
-        <Body color={dom.color}>
+        <Body color={VIOLET}>
           {flow ? (
             <div style={{ display: 'grid', gap: 4, paddingTop: 2 }}>
               <textarea className="plan-quiet" value={polaris} onChange={e => { setPolaris(e.target.value); setDirty(true) }} rows={rowsAuto(polaris, 92)} placeholder="At the end of 2027, Third Horizon will have…" style={{ ...quiet, fontFamily: SERIF, fontStyle: 'italic', fontSize: 18, lineHeight: 1.45 }} />
             </div>
           ) : (
-            <div style={{ ...card, background: alpha(dom.color, 7) }}>
+            <div style={{ ...card, background: alpha(VIOLET, 7) }}>
               <span style={eyebrow}>Polaris Objective</span>
               <textarea value={polaris} onChange={e => { setPolaris(e.target.value); setDirty(true) }} rows={2} placeholder="At the end of 2027, Third Horizon will have…" style={{ ...input, fontFamily: SERIF, fontStyle: 'italic', fontSize: 15, lineHeight: 1.4, resize: 'vertical', background: 'transparent', border: '1px solid transparent' }} />
             </div>
@@ -340,25 +340,25 @@ export function DomainFlowSurface({ dom, data = {}, onSave, busy }) {
         </Body>
         {shown.map(({ t, n }) => (
           <Fragment key={t.id}>
-            <Rail color={dom.color} node={<Node color={dom.color} n={n} />}>
+            <Rail color={VIOLET} node={<Node color={VIOLET} n={n} />}>
               {flow ? (<>
-                <textarea className="plan-quiet" value={t.label} onChange={e => setT(t.id, 'label', e.target.value.replace(/\n/g, ' '))} rows={rowsAuto(t.label, 16)} placeholder="By when" style={{ ...quiet, textAlign: 'right', fontFamily: MONO, fontSize: 11, fontWeight: 600, letterSpacing: '0.8px', textTransform: 'uppercase', lineHeight: 1.35, color: dom.color, padding: '4px 7px', margin: '2px -7px 0 0', width: 'calc(100% + 7px)' }} />
+                <textarea className="plan-quiet" value={t.label} onChange={e => setT(t.id, 'label', e.target.value.replace(/\n/g, ' '))} rows={rowsAuto(t.label, 16)} placeholder="By when" style={{ ...quiet, textAlign: 'right', fontFamily: MONO, fontSize: 11, fontWeight: 600, letterSpacing: '0.8px', textTransform: 'uppercase', lineHeight: 1.35, color: VIOLET, padding: '4px 7px', margin: '2px -7px 0 0', width: 'calc(100% + 7px)' }} />
                 {t.anchor && <span style={{ fontSize: 11.5, color: MUTED }}>{fmtAnchor(t.anchor)}</span>}
               </>) : (<>
-                <textarea value={t.label} onChange={e => setT(t.id, 'label', e.target.value.replace(/\n/g, ' '))} rows={rowsAuto(t.label, 16)} placeholder="e.g. By Nov 30" style={{ ...input, fieldSizing: 'content', textAlign: 'right', fontFamily: MONO, fontSize: 11, fontWeight: 600, letterSpacing: '0.8px', textTransform: 'uppercase', lineHeight: 1.35, color: dom.color, marginTop: 2, resize: 'none' }} />
+                <textarea value={t.label} onChange={e => setT(t.id, 'label', e.target.value.replace(/\n/g, ' '))} rows={rowsAuto(t.label, 16)} placeholder="e.g. By Nov 30" style={{ ...input, fieldSizing: 'content', textAlign: 'right', fontFamily: MONO, fontSize: 11, fontWeight: 600, letterSpacing: '0.8px', textTransform: 'uppercase', lineHeight: 1.35, color: VIOLET, marginTop: 2, resize: 'none' }} />
                 <input type="date" value={t.anchor || ''} onChange={e => setT(t.id, 'anchor', e.target.value)} style={{ ...input, textAlign: 'right', fontSize: 11, color: MUTED }} />
-                {streams.length > 0 && <select value={t.stream || ''} onChange={e => setT(t.id, 'stream', e.target.value)} style={{ ...input, fontSize: 11, color: dom.color, fontWeight: 600 }}><option value="">No stream</option>{streams.map(x => <option key={x.id} value={x.id}>{x.code} · {x.name}</option>)}</select>}
+                {streams.length > 0 && <select value={t.stream || ''} onChange={e => setT(t.id, 'stream', e.target.value)} style={{ ...input, fontSize: 11, color: VIOLET, fontWeight: 600 }}><option value="">No stream</option>{streams.map(x => <option key={x.id} value={x.id}>{x.code} · {x.name}</option>)}</select>}
               </>)}
             </Rail>
-            <Body color={dom.color}>{truthBody(t, n, false)}</Body>
+            <Body color={VIOLET}>{truthBody(t, n, false)}</Body>
           </Fragment>
         ))}
         {/* The Final: the flag at the foot of the spine, chained to Polaris. */}
-        <Rail color={dom.color} last node={<Node color={dom.color} n={<Flag size={13} />} pulse />}>
-          <span style={{ ...eyebrow, color: dom.color, marginTop: 7 }}>Final</span>
+        <Rail color={VIOLET} last node={<Node color={VIOLET} n={<Flag size={13} />} pulse />}>
+          <span style={{ ...eyebrow, color: VIOLET, marginTop: 7 }}>Final</span>
           <span style={{ fontSize: 11.5, color: MUTED }}>End Of 2027</span>
         </Rail>
-        <Body color={dom.color}>{truthBody(finalRow, 'F', true)}</Body>
+        <Body color={VIOLET}>{truthBody(finalRow, 'F', true)}</Body>
       </div>
     </div>
   )
@@ -423,7 +423,7 @@ export default function PlanningCanvas({ project }) {
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
             <span style={eyebrow}>Open</span>
             {opened.map(id => { const d = MMA_DOMAINS.find(x => x.id === id); return d ? (
-              <Pill key={id} small active={surface === `domain:${id}`} onClick={() => setSurface(`domain:${id}`)}><span style={{ display: 'inline-block', width: 7, height: 7, borderRadius: 2, background: d.color }} />{d.id}</Pill>
+              <Pill key={id} small active={surface === `domain:${id}`} onClick={() => setSurface(`domain:${id}`)}><span style={{ display: 'inline-block', width: 7, height: 7, borderRadius: 2, background: VIOLET }} />{d.id}</Pill>
             ) : null })}
           </div>
         )}
