@@ -99,7 +99,8 @@ sections and flags), `finance-source.ts` (an eTag check at most once a minute,
 the workbook re-read only when it changed, the result held in memory per
 server instance, a committed snapshot as the fallback), `route.ts` (the
 refresh route the cron calls; it answers with the source stamp, never the
-figures) and `vercel.json` (the every-minute cron). Vercel runs crons on the
+  figures, and logs one line per call so `vercel logs` shows the cron; a
+  silent log stream proves nothing, it carries console output only) and `vercel.json` (the every-minute cron). Vercel runs crons on the
 production deployment only, which on this surface is `main`: a document on a
 preview alias relies on the request-time check until it is on main. The
 content file exports a builder of the live data (`buildPages(live)`) and the
