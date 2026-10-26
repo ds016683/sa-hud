@@ -52,6 +52,16 @@ bar, the rail and every token. They differ only in the page.
   one line, the legal line and the page number beneath. The last page says
   "End of the document, for now" until the next page lands.
 
+## A page switch
+
+A page may carry a `toggle` (content/doc.ts): a label, an off note, an on note
+and `blocksOn`, a second complete run of blocks. The reader draws a slim sticky
+bar at the top of the column with the switch, off on every page open, and
+swaps the whole block run when it is on, so every figure, table and chart on
+the page moves together. Build both runs from one function of a boolean in
+the content file (the finance review's `page2Blocks(on)`); never hand-maintain
+two copies. Born for the purple assumptions on the finance review, 10/25.
+
 ## Block kinds (content/doc.ts)
 
 | kind | what it is |
@@ -143,7 +153,10 @@ carry it back here.
   (the NetSuite income statement over SuiteQL, by account and period, with a
   tie-out) and `build_ns_data.py` (the statement tree to data file), `build_pf_q4.py` (a
   forecast quarter from a pro forma sheet with color flags and top-line
-  tie-outs), and `check_gate.sh` (the gate checks).
+  tie-outs), `ns_rev_lines.py` (NetSuite income by account, client and Project
+  ID, with journal entries re-attributed by the invoice they cite and lines
+  with no customer attributed by their Project ID), and `check_gate.sh` (the
+  gate checks).
 
 ## Standing notes
 
