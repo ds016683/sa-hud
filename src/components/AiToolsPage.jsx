@@ -47,14 +47,14 @@ const SKILLS = [
   {
     id: 'th-longform',
     name: 'Third Horizon Long-Form Document',
-    skin: 'The proposal chassis read as a document: the same bar and contents rail, but each entry is a page the reader scrolls, prose anchored, with tables that open to their lines and their reasoning, charts with hover readouts, embedded documents, and a Next at the very foot of every page.',
-    use: 'Any review, memo, working paper, brief or report that should read like a document rather than flip like a deck. In a Code session say "use th-longform" or "like the finance review". Born on the Company Finance Review, 10/25.',
+    skin: 'A gated document on Third Horizon\'s own long-form surface, longform.thirdhorizon.com: the CIP bar and contents rail, but each entry is a page the reader scrolls, prose anchored, with tables that open to their lines and their reasoning, charts with hover readouts, embedded documents, and a Next at the very foot of every page.',
+    use: 'Any review, memo, working paper, brief or report that should read like a document rather than flip like a deck. In a Code session say "use th-longform" or "like the finance review". Born on the Company Finance Review, 10/25; on its own repo and domain since 10/26.',
     swatches: [INK, INK, INK, INK, BLUE, BLUE, GOLD, GREEN, RED],
     base: '/ai-tools/th-longform',
     pptx: null,
     zip: 'th-longform-skill.zip',
     extras: [],
-    repo: { label: 'th-proposals Repo', url: 'https://github.com/Third-Horizon-Strategies/th-proposals' },
+    repo: { label: 'th-longform Repo', url: 'https://github.com/Third-Horizon-Strategies/th-longform' },
   },
 ]
 
