@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import {
   LayoutGrid, Network, LogOut, Menu, X, Target, Users,
-  FileText, Wallet, CreditCard, ListChecks, Compass, Waves, CalendarDays, BookOpen, Activity, Award, Wrench, GraduationCap, Sparkles, Archive as ArchiveIcon, FolderOpen, PenTool, Briefcase, Mic, Wand2, Bot, PenLine } from 'lucide-react'
+  FileText, Wallet, CreditCard, ListChecks, Compass, Waves, CalendarDays, BookOpen, Activity, Award, Wrench, GraduationCap, Sparkles, Archive as ArchiveIcon, FolderOpen, PenTool, Briefcase, Mic, Wand2, Bot, PenLine, Footprints } from 'lucide-react'
 import { getSession, onAuthStateChange, signOut } from './lib/auth'
 import { statusFor } from './constants/saDesign'
 import { fetchProtocolState } from './lib/protocol'
@@ -34,9 +34,11 @@ import WritingsPage from './components/WritingsPage'
 import AiToolsPage from './components/AiToolsPage'
 import LumenProtocolsPage from './components/LumenProtocolsPage'
 import AnthropicPage from './components/AnthropicPage'
+import JourneyPage from './components/JourneyPage'
 
 const NAV_ITEMS = [
   { id: 'river',            label: 'The River',             icon: Waves,          group: 'LANDING' },
+  { id: 'journey',          label: 'Journey',               icon: Footprints,     group: 'LANDING' },
   { id: 'agenda',           label: 'Board',                icon: CalendarDays,   group: 'MONITOR' },
   { id: 'narrative',        label: 'Narrative and Analytics', icon: BookOpen,     group: 'MONITOR' },
   { id: 'activity',         label: 'Activity',              icon: Activity,       group: 'MONITOR' },
@@ -277,6 +279,7 @@ export default function App() {
         <Topbar active={active} now={now} sov={gameState.sovereigntyLevel} onBack={goBack} />
         <div className="sa-content">
           {active === 'river'            && <LandingPage onNavigate={setActive} />}
+          {active === 'journey'          && <JourneyPage onNavigate={setActive} />}
           {active === 'agenda'           && <AgendaPage onNavigate={setRoute} />}
           {active === 'narrative'        && <NarrativePage />}
           {active === 'activity'         && <ActivityPage />}
