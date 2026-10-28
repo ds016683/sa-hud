@@ -126,8 +126,8 @@ export default function WorkspacePages({ root, what = 'item' }) {
   const [pages, setPages] = useState(null)
   const [open, setOpen] = useState(null)
   const [msg, setMsg] = useState(null)
-  const load = useCallback(async () => { try { setPages(await listPages(root)) } catch (e) { setPages([]); setMsg(`Could not read: ${e.message}`) } }, [root])
-  useEffect(() => { load() }, [load])
+  const load = useCallback(() => listPages(root).then(setPages).catch(e => { setPages([]); setMsg(`Could not read: ${e.message}`) }), [root])
+  useEffect(() => { let on = true; listPages(root).then(r => { if (on) setPages(r) }).catch(e => { if (on) { setPages([]); setMsg(`Could not read: ${e.message}`) } }); return () => { on = false } }, [root])
   const create = async () => {
     const t = await hudPrompt('Name the page', '')
     if (!t?.trim()) return
