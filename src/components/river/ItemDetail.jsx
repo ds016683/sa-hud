@@ -299,8 +299,8 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
           </div>
         </div>
 
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: 16, flexWrap: 'wrap', marginTop: 22 }}>
-          <div style={{ minWidth: 0, flex: 1 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16, flexWrap: 'wrap', marginTop: 22 }}>
+          <div style={{ minWidth: 280, flex: 1 }}>
             {(() => {
               const nodes = []
               const kindNode = { label: item.kind, icon: <KindIcon kind={item.kind} size={13} /> }
@@ -320,7 +320,7 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
             <h1 style={{ ...S.h1, marginBottom: 6, fontSize: String(item.title || '').length > 70 ? 22 : 28, lineHeight: 1.25 }}>{task ? String(item.title || '').replace(/^\s*\d+\s*[·.:)-]\s*/, '') : item.title}</h1>
             {obj?.north_star && <div onClick={() => setTab('polaris')} title="Polaris" style={{ fontFamily: SERIF, fontStyle: 'italic', fontSize: 14.5, color: INK2, lineHeight: 1.45, maxWidth: '72ch', cursor: 'pointer' }}>{obj.north_star}</div>}
           </div>
-          <div style={{ display: 'flex', gap: 6, paddingBottom: 4, flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: 6, paddingTop: 6, flexWrap: 'wrap' }}>
             {TABS.map(t => <CardPill key={t} active={tab === t} onClick={() => setTab(t)} count={counts[t]}>{TAB_LABEL[t]}</CardPill>)}
           </div>
         </div>
@@ -428,7 +428,7 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
           )}
 
           {rel && tab === 'workbench' && (item.objective_id ? (
-            <div style={{ display: 'grid', gap: 28 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 28 }}>
               <div><Label>Live Protocols</Label><ProtocolsTab objectiveId={item.objective_id} /></div>
               <div><Label>In Play</Label><WorkbenchTab objectiveId={item.objective_id} intake={false} /></div>
             </div>

@@ -10,8 +10,8 @@ import { listLiveFiles, putLiveFile, requestLiveFile, openLiveFile, draftMail, m
 import { DropZone, LinkForm } from './LiveFiles'
 import { INK, INK2, GRAY, PANEL_BORDER, GOLD, BLUE, GREEN, RED, MONO, Label, KIND_COLOR, PURPLE, alpha, GOLD_BRIGHT } from './canon'
 import { hudConfirm } from '../../lib/dialog'
-const btn = (color = INK2, filled = false) => ({ display: 'inline-flex', alignItems: 'center', gap: 5, fontFamily: MONO, fontSize: 9.5, letterSpacing: '1px', textTransform: 'uppercase', padding: '5px 9px', borderRadius: 8, border: `1px solid ${filled ? color : `${alpha(color, 40)}`}`, background: filled ? color : 'transparent', color: filled ? 'var(--hud-on-accent)' : color, cursor: 'pointer' })
-const rowStyle = { display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0', borderTop: `1px solid ${PANEL_BORDER}` }
+const btn = (color = INK2, filled = false) => ({ display: 'inline-flex', alignItems: 'center', gap: 5, flexShrink: 0, whiteSpace: 'nowrap', fontFamily: MONO, fontSize: 9.5, letterSpacing: '1px', textTransform: 'uppercase', padding: '5px 9px', borderRadius: 8, border: `1px solid ${filled ? color : `${alpha(color, 40)}`}`, background: filled ? color : 'transparent', color: filled ? 'var(--hud-on-accent)' : color, cursor: 'pointer' })
+const rowStyle = { display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0', borderTop: `1px solid ${PANEL_BORDER}`, minWidth: 0 }
 // Session reopen links (claude://, left by focus.py) belong to the Briefing's Sessions strip, never to the Workbench (David 10/26: "the page went a bit crazy").
 const isSessionLink = (r) => isLink(r) && /^claude:\/\//.test(String(r.path || ''))
 
@@ -76,7 +76,7 @@ export default function WorkbenchTab({ project = null, objectiveId = null, intak
     </div>
   )
   return (
-    <div>
+    <div style={{ minWidth: 0 }}>
       <div style={{ fontSize: 13, color: INK2, marginBottom: 12, lineHeight: 1.5 }}>{objectiveId ? 'The files in play on this item, one current version each. Sessions and Lumen put files here as they produce them; bring one in under Files.' : 'The files in play on this mission and its milestones, one current version each. Sessions and Lumen put files here as they produce them; bring one in under Files.'}</div>
       {intake && <div style={{ marginBottom: 14 }}>
         <DropZone busy={busy} onFiles={(fs) => fs.forEach(f => act(() => putLiveFile(f, objectiveId ? { objectiveId } : { projectId: project.id }), `In play: ${f.name}`))} onPath={(pth) => act(() => requestLiveFile(pth, objectiveId ? { objectiveId } : { projectId: project.id }), 'Requested; the next Claude session on the Mac puts it in play')} />
