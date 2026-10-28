@@ -13,7 +13,7 @@ import { listArtifacts, readArtifact, writeArtifact } from '../../lib/artifacts'
 import { fetchLoadout, equip, holster, stash, equipObjective, equipTask, fmtClock, SIZES } from '../../lib/loadout'
 import DocView from './DocView'
 import { stepsMaxFor } from '../../lib/objectives'
-import { fetchSteps, addStep, toggleStep, removeStep, listObjectiveArtifacts, listObjectiveFiles, listObjectiveBoards, provenance, realmOf, setSize, updateObjective } from '../../lib/objectives'
+import { fetchSteps, addStep, toggleStep, removeStep, listObjectiveArtifacts, listObjectiveFiles, listObjectiveBoards, provenance, realmOf, setSize, updateObjective, objRoot } from '../../lib/objectives'
 import { renderMarkdown } from './MeetingCloseout'
 import SessionBoard from './SessionBoard'
 import { recall } from '../../lib/recall'
@@ -22,6 +22,7 @@ import ProtocolsTab from './Protocols'
 import { isOpenRow } from '../../lib/protocols'
 import FilesTab from './Files'
 import WorkbenchTab, { WorkbenchIntake } from './Workbench'
+import WorkspacePages from './Workspace'
 import { INK, INK2, GRAY, PANEL_BORDER, GOLD, GOLD_BRIGHT, BLUE, GREEN, SUCCESS, RED, MONO, SERIF, S, Label, KIND_COLOR, KindIcon, NORTH_STAR_LABEL, NORTH_STAR_ASK, LABEL, PURPLE, alpha, NAVY_DEEP, CARD_PILLS, CardPill, Trail } from './canon'
 
 const TABS = CARD_PILLS.map(([id]) => id)
@@ -430,6 +431,7 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
           {rel && tab === 'workbench' && (item.objective_id ? (
             <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 28 }}>
               <div><Label>Live Protocols</Label><ProtocolsTab objectiveId={item.objective_id} /></div>
+              <div style={{ minWidth: 0 }}><Label>Workspace</Label><WorkspacePages root={objRoot(item.objective_id)} what="item" /></div>
               <div><Label>In Play</Label><WorkbenchTab objectiveId={item.objective_id} intake={false} /></div>
             </div>
           ) : <None what={{ ...what, thing: 'a workbench' }} />)}

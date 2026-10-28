@@ -6,6 +6,7 @@ import {
 import useProjects, { freshnessOf } from '../hooks/useProjects'
 import ArtifactsTab from './river/ArtifactsTab'
 import WorkbenchTab, { WorkbenchIntake } from './river/Workbench'
+import WorkspacePages from './river/Workspace'
 import PlanningCanvas from './river/PlanningCanvas'
 import ItemDetail from './river/ItemDetail'
 import SessionBoard from './river/SessionBoard'
@@ -589,6 +590,7 @@ function ProjectDetail({ project, board: boardProp, api, onBack, initialTab, ini
         {tab === 'workbench' && (
           <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 30, minWidth: 0 }}>
             <div style={{ minWidth: 0, overflow: 'hidden' }}><CanonLabel>Planning</CanonLabel><PlanningCanvas project={project} /></div>
+            <div style={{ minWidth: 0 }}><CanonLabel>Workspace</CanonLabel><WorkspacePages root={project.id} what="mission" /></div>
             <div style={{ minWidth: 0 }}><CanonLabel>In Play</CanonLabel><WorkbenchTab project={project} intake={false} /></div>
           </div>
         )}
