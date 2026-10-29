@@ -465,7 +465,7 @@ export default function DailyPerformancePage() {
       else setRows([])
       try {
         const { data: objs } = await supabase.from('objectives')
-          .select('id,title,state,activated_at,tags,due_date').is('deleted_at', null)
+          .select('id,title,state,activated_at,tags,due_date').is('deleted_at', null).is('parent_id', null)
         setBoard(objs || [])
       } catch { /* board controls degrade gracefully */ }
       return data || []

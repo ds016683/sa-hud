@@ -8,7 +8,7 @@ This is the standard. Every Main Mission page, Side Mission card and Milestone c
 
 | Pill | What it holds | On a Main Mission | On a Side Mission or Milestone |
 |---|---|---|---|
-| **Briefing** | Where it stands | The progress bar and the milestones, each with its steps, Load, Stash, Close | Where It Stands (done and still needed), Sessions, the facts row (Domain, Type, Due, Follow Up, Who), Back Story, Marks or Gates |
+| **Briefing** | Where it stands | The progress bar and the milestones, each with its steps, Load, Stash, Close | Where It Stands (done and still needed), Sessions, the facts row (Domain, Type, Due, Follow Up, Who), Back Story, then Marks on a Contract or Milestones on a Mythic |
 | **Workbench** | The working surface: what is being built | The Planning canvas first (a skill brought in, a doodle, the thing being made), then the Workspace pages, the files in play at the foot | The Live Protocol rows first (editing punchlists, briefing gap maps), then the Workspace pages, the files in play at the foot |
 | **Files** | Bring In, then the filed and source material, one list | Bring In (drop a file, point at a path, add a launch link; it lands in play on the Workbench), then every file and folder in the mission's storage, the filed live files, the artifacts (scorecards, decisions, briefs) and the shares (published pages), each a row with a kind chip. Cabinet, Artifacts and Shares are kinds of file, never sections | Bring In, then the filed live files, the item's own folder, the mission's files and store |
 | **Notes** | Your own words | The mission's notes, newest first | The item's own notes, then the meetings that match it |
@@ -43,6 +43,15 @@ David, October 28, 2026: "when i say that I want to create a workspace on the Mi
 ## The trail
 
 Every card and mission page opens with a trail: the root, the parent, where you are, with an Up button to the parent. A Milestone reads Main Missions › the mission › Milestone N. A Side Mission reads Side Missions › its type. A meeting, a session or an Ad Hoc reads Board › its kind. The mission page reads Main Missions › the mission. The component is `Trail` in canon.jsx.
+
+## Mythic milestones
+
+David, October 29, 2026: "Gateways should be called Milestones and have the same structural treatment as a Milestone card for a mission."
+
+- A Mythic's milestones are objectives of their own with `parent_id` set to the Mythic (`fetchMilestones`, `addMilestone`, `closeMilestone` in `src/lib/objectives.js`). Five at most, 10 miles each on close (the River pays `mythic-task` for the first five), and the Mythic pays 50 at its own release. The word gate is retired.
+- On the Mythic's Briefing they read like the Main Mission page's milestones (`MythicMilestones.jsx`): the progress bar, a serif number, the title, chips, the done-when, Open, Done when, Rename, Close, Delete. Open gives the milestone its own card with the five pills; its trail reads Side Missions › the Mythic › Milestone N, and its facts row says Milestone N of M in place of Type.
+- A milestone never sits on the Board or in the Stash on its own: the Mythic carries it, so the milestone card shows no clock. Lists of Side Missions (the Board, the inventory, Lumen's hands) hide children; they live only on their Mythic.
+- Mythic is purple: the `MYTHIC` token in canon.jsx (`--hud-purple`, the medallion purple with its own name), on the Type chip, the Loadout, the milestone label and numbers.
 
 ## Connections
 

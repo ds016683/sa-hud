@@ -346,7 +346,7 @@ export const TOOLS = [
   },
   {
     name: 'add_step',
-    description: "Add a gate to a Mythic (five at most, 10 miles each; a sixth means it is a Main Mission) or a mark to a Contract (three at most, unpaid). Every one must be observable: a decision marked, a conversation had, a thing produced. Refuses on a Bounty; set_size first if David wants it to be a Mythic.",
+    description: "Add a milestone to a Mythic (five at most, 10 miles each, each a card of its own in the HUD; a sixth means it is a Main Mission) or a mark to a Contract (three at most, unpaid). Every one must be observable: a decision marked, a conversation had, a thing produced. Refuses on a Bounty; set_size first if David wants it to be a Mythic.",
     inputSchema: { type: 'object', properties: { title: { type: 'string' }, text: { type: 'string' } }, required: ['title', 'text'] },
   },
   {
@@ -768,7 +768,7 @@ export async function callTool(name, args = {}) {
       return JSON.stringify({ from, to, timezone_note: 'times are UTC; Chicago is UTC-5 in September', days: byDay }, null, 2)
     }
     case 'get_objectives': {
-      const os = (await sb(`objectives?select=*&deleted_at=is.null&order=captured_at.desc`)).map(o => ({ id: o.id, title: o.title, state: o.state, due_date: o.due_date, follow_up_date: o.follow_up_date, is_anchor: o.is_anchor, is_emergency: o.is_emergency, released_at: o.released_at, released_kind: o.released_kind, who: o.who, tags: o.tags, ...(o.north_star ? { north_star: o.north_star } : {}) }))
+      const os = (await sb(`objectives?select=*&deleted_at=is.null&parent_id=is.null&order=captured_at.desc`)).map(o => ({ id: o.id, title: o.title, state: o.state, due_date: o.due_date, follow_up_date: o.follow_up_date, is_anchor: o.is_anchor, is_emergency: o.is_emergency, released_at: o.released_at, released_kind: o.released_kind, who: o.who, tags: o.tags, ...(o.north_star ? { north_star: o.north_star } : {}) }))
       const grouped = { active: [], parked: [], waiting: [], follow_up: [], foreman: [], inbox: [], released_today: [] }
       for (const o of os) {
         if (o.state === 'released') {
@@ -910,13 +910,26 @@ export async function callTool(name, args = {}) {
     }
     case 'list_steps': {
       const o = await findObjective(args.title)
+      if (sizeOf(o) === 'heavy') {
+        // A Mythic's milestones are objectives of their own (parent_id), each a card (David 10/29).
+        const kids = await sb(`objectives?select=id,title,state,description,released_at,captured_at&parent_id=eq.${o.id}&deleted_at=is.null&order=captured_at.asc`).catch(() => [])
+        return JSON.stringify({ ok: true, title: o.title, type: 'Mythic', milestones: kids.map((k, i) => ({ n: i + 1, title: k.title, done: k.state === 'released', done_when: k.description, closed_at: k.released_at })), max: 5, note: 'Mythic milestones, 10 miles each on close, five at most; each opens as a card in the HUD.' })
+      }
       const steps = await sb(`objective_steps?select=id,text,done,done_at,position&objective_id=eq.${o.id}&order=position.asc,id.asc`).catch(() => [])
       return JSON.stringify({ ok: true, title: o.title, type: sizeOf(o) === 'heavy' ? 'Mythic' : sizeOf(o) === 'medium' ? 'Contract' : 'Bounty', steps, max: 5 })
     }
     case 'add_step': {
       const o = await findObjective(args.title)
       const maxSteps = sizeOf(o) === 'heavy' ? 5 : sizeOf(o) === 'medium' ? 3 : 0
-      if (!maxSteps) return JSON.stringify({ ok: false, error: `"${o.title}" is a Bounty, one action; a Contract carries up to three marks, a Mythic five gates. Ask David whether to make it a Mythic (set_size heavy, 3 slots) first.` })
+      if (!maxSteps) return JSON.stringify({ ok: false, error: `"${o.title}" is a Bounty, one action; a Contract carries up to three marks, a Mythic five milestones. Ask David whether to make it a Mythic (set_size heavy, 3 slots) first.` })
+      if (maxSteps === 5) {
+        // Mythic milestone (David 10/29): an objective of its own under the Mythic, a card in the HUD.
+        const kids = await sb(`objectives?select=id&parent_id=eq.${o.id}&deleted_at=is.null`).catch(() => [])
+        if (kids.length >= 5) return JSON.stringify({ ok: false, error: 'five milestones is the limit for a Mythic; a sixth means this is a Main Mission (create_project and add_project_task).' })
+        const tags = (o.tags || []).filter(t => t === 'personal' || t === 'third-horizon')
+        const out = await sbWrite('POST', 'objectives', { user_id: DAVID, parent_id: o.id, title: String(args.text || '').trim().slice(0, 200), state: 'parked', kind: 'execution', effort: 2, importance: 2, needs_sizing: false, tags, captured_at: new Date().toISOString() })
+        return JSON.stringify({ ok: true, title: o.title, milestone: out?.[0]?.title, n: kids.length + 1, max: 5, pays: '10 miles when closed; it opens as its own card on the Mythic in the HUD' })
+      }
       const steps = await sb(`objective_steps?select=id&objective_id=eq.${o.id}`).catch(() => [])
       if (steps.length >= maxSteps) return JSON.stringify({ ok: false, error: maxSteps === 5 ? 'five gates is the limit for a Mythic; a sixth means this is a Main Mission (create_project and add_project_task).' : 'three marks is the limit for a Contract; more than that and it is a Mythic (set_size heavy).' })
       const out = await sbWrite('POST', 'objective_steps', { objective_id: o.id, text: String(args.text || '').trim().slice(0, 300), position: steps.length })
@@ -926,6 +939,16 @@ export async function callTool(name, args = {}) {
     case 'remove_step': {
       const o = await findObjective(args.title)
       const q = esc(args.step || '')
+      if (sizeOf(o) === 'heavy') {
+        // Mythic milestones live on objectives (parent_id), David 10/29.
+        let ks = await sb(`objectives?select=id,title,state&parent_id=eq.${o.id}&deleted_at=is.null&title=ilike.${encodeURIComponent(q)}`).catch(() => [])
+        if (ks.length !== 1) ks = await sb(`objectives?select=id,title,state&parent_id=eq.${o.id}&deleted_at=is.null&title=ilike.*${encodeURIComponent(q)}*`).catch(() => [])
+        if (ks.length !== 1) throw new Error(ks.length ? `milestone ambiguous: ${ks.map(k => k.title).join(' | ')}` : `no milestone matches "${args.step}" on ${o.title}`)
+        if (name === 'remove_step') { await sbWrite('PATCH', `objectives?id=eq.${ks[0].id}`, { deleted_at: new Date().toISOString() }, 'return=minimal'); return JSON.stringify({ ok: true, removed: ks[0].title }) }
+        const done = args.done !== false
+        await sbWrite('PATCH', `objectives?id=eq.${ks[0].id}`, done ? { state: 'released', released_kind: 'done', released_at: new Date().toISOString(), activated_at: null } : { state: 'parked', released_kind: null, released_at: null }, 'return=minimal')
+        return JSON.stringify({ ok: true, milestone: ks[0].title, done, note: done ? 'Mythic milestone closed: 10 miles on the next update (first five).' : 'reopened' })
+      }
       let ms = await sb(`objective_steps?select=id,text,done&objective_id=eq.${o.id}&text=ilike.${encodeURIComponent(q)}`).catch(() => [])
       if (ms.length !== 1) ms = await sb(`objective_steps?select=id,text,done&objective_id=eq.${o.id}&text=ilike.*${encodeURIComponent(q)}*`).catch(() => [])
       if (ms.length !== 1) throw new Error(ms.length ? `step ambiguous: ${ms.map(m => m.text).join(' | ')}` : `no step matches "${args.step}" on ${o.title}`)

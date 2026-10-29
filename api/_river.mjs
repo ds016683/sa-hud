@@ -80,7 +80,7 @@ export async function computeAwards(day, { closing = false } = {}) {
   const from = `${day}T00:00:00-05:00`, to = `${day}T23:59:59-05:00`
   const [doneTasks, released, stepsDone, taskObjIds, maint, logs, calendar, meetings, time, emails, inboxObjs, doneProjects, sessions, workouts] = await Promise.all([
     sb(`project_tasks?select=id,text,project_id,released_at&status=eq.done&released_at=gte.${from}&released_at=lte.${to}`),
-    sb(`objectives?select=id,title,released_at,released_kind,who,state,tags,captured_at,effort&released_at=gte.${from}&released_at=lte.${to}&deleted_at=is.null`),
+    sb(`objectives?select=id,title,released_at,released_kind,who,state,tags,captured_at,effort,parent_id&released_at=gte.${from}&released_at=lte.${to}&deleted_at=is.null`),
     sb(`objective_steps?select=id,text,objective_id,done_at&done=eq.true&done_at=gte.${from}&done_at=lte.${to}`).catch(() => []),
     sb(`project_tasks?select=objective_id&objective_id=not.is.null`),
     sb(`maintenance_items?select=id,title&status=eq.done&day=eq.${day}`).catch(() => []),
@@ -103,7 +103,25 @@ export async function computeAwards(day, { closing = false } = {}) {
   const onDay = (ts) => ts && ts >= from && ts <= to
   for (const p of doneProjects) if (onDay(p.archived_at) || onDay(p.last_activity_at)) add('main-mission', p.id, `Main Mission complete: ${p.name}`)
   for (const t of doneTasks) add('mission-task', t.id, `Mission task closed: ${t.text}`)
+  // Mythic milestones (David 10/29): a released objective whose parent is a Mythic
+  // pays like a Mythic task, the first five closed on that Mythic, never as a Bounty.
+  const childReleased = released.filter(o => o.parent_id && o.state === 'released' && o.released_kind === 'done')
+  if (childReleased.length) {
+    const pids = [...new Set(childReleased.map(o => o.parent_id))]
+    const [parents, sibs] = await Promise.all([
+      sb(`objectives?select=id,title,effort&id=in.(${pids.join(',')})`).catch(() => []),
+      sb(`objectives?select=id,parent_id,released_at&parent_id=in.(${pids.join(',')})&state=eq.released&released_kind=eq.done&deleted_at=is.null&order=released_at.asc`).catch(() => []),
+    ])
+    const mythics = new Map(parents.filter(p => (Number(p.effort) || 1) >= 4).map(p => [p.id, p]))
+    const rank = new Map(); for (const s of sibs) { const n = (rank.get(s.parent_id) || 0) + 1; rank.set(s.parent_id, n); rank.set(`child:${s.id}`, n) }
+    for (const o of childReleased) {
+      const p = mythics.get(o.parent_id); if (!p) continue
+      const n = rank.get(`child:${o.id}`) || 99
+      if (n <= MYTHIC_STEPS_MAX) add('mythic-task', `m:${o.id}`, `Mythic milestone ${n} of ${MYTHIC_STEPS_MAX} closed on ${p.title}: ${o.title}`)
+    }
+  }
   for (const o of released) {
+    if (o.parent_id) continue
     if (o.state === 'released' && o.released_kind === 'done' && !linked.has(o.id) && !(o.tags || []).includes('session')) {
       if ((o.tags || []).includes('impromptu')) add('impromptu', o.id, `Ad Hoc done: ${o.title}`)
       else if (!v2) {

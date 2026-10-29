@@ -423,7 +423,7 @@ export default function AgendaPage({ onNavigate } = {}) {
           supabase.from('calendar_events').select('*').eq('day', d).eq('is_cancelled', false).order('start_at', { ascending: true }),
           supabase.from('project_tasks').select('id,text,status,due_date,project_id,objective_id,notes,source,session_ref,created_at,updated_at').in('status', ['open', 'promoted', 'blocked']),
           supabase.from('projects').select('id,name,key'),
-          supabase.from('objectives').select('id,title,state,due_date,activated_at,is_emergency,deleted_at,follow_up_date,description,captured_at,tags').is('deleted_at', null).in('state', ['active', 'parked', 'waiting', 'follow_up']),
+          supabase.from('objectives').select('id,title,state,due_date,activated_at,is_emergency,deleted_at,follow_up_date,description,captured_at,tags').is('deleted_at', null).is('parent_id', null).in('state', ['active', 'parked', 'waiting', 'follow_up']),
           supabase.from('maintenance_items').select('*').eq('status', 'open'),
           supabase.from('granola_meetings').select('id,title,meeting_date,attendees,summary').eq('meeting_date', d),
           // meeting_sessions may not exist yet; its error reads as empty.

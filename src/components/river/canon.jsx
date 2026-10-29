@@ -16,6 +16,7 @@ export const GOLD_BRIGHT = 'var(--hud-gold)'
 export const BLUE = 'var(--hud-accent)'
 export const PERIWINKLE = 'var(--hud-accent)'
 export const PURPLE = 'var(--hud-accent)'
+export const MYTHIC = 'var(--hud-purple)'   // the Mythic's color (David 10/29): real purple, the medallion
 export const GREEN = 'var(--hud-pos)'
 export const SUCCESS = 'var(--hud-success)'  // done, closed, delivered, approved, achieved: the medallion purple (David, 10/25). GREEN stays for running clocks, live pulses, money up and utility buttons
 export const RED = 'var(--hud-neg)'

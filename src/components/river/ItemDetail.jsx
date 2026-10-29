@@ -13,7 +13,7 @@ import { listArtifacts, readArtifact, writeArtifact } from '../../lib/artifacts'
 import { fetchLoadout, equip, holster, stash, equipObjective, equipTask, fmtClock, SIZES } from '../../lib/loadout'
 import DocView from './DocView'
 import { stepsMaxFor } from '../../lib/objectives'
-import { fetchSteps, addStep, toggleStep, removeStep, listObjectiveArtifacts, listObjectiveFiles, listObjectiveBoards, provenance, realmOf, setSize, updateObjective, objRoot } from '../../lib/objectives'
+import { fetchSteps, addStep, toggleStep, removeStep, listObjectiveArtifacts, listObjectiveFiles, listObjectiveBoards, provenance, realmOf, setSize, updateObjective, objRoot, fetchMilestones } from '../../lib/objectives'
 import { renderMarkdown } from './MeetingCloseout'
 import SessionBoard from './SessionBoard'
 import { recall } from '../../lib/recall'
@@ -23,7 +23,8 @@ import { isOpenRow } from '../../lib/protocols'
 import FilesTab from './Files'
 import WorkbenchTab, { WorkbenchIntake } from './Workbench'
 import WorkspacePages from './Workspace'
-import { INK, INK2, GRAY, PANEL_BORDER, GOLD, GOLD_BRIGHT, BLUE, GREEN, SUCCESS, RED, MONO, SERIF, S, Label, KIND_COLOR, KindIcon, NORTH_STAR_LABEL, NORTH_STAR_ASK, LABEL, PURPLE, alpha, NAVY_DEEP, CARD_PILLS, CardPill, Trail } from './canon'
+import MythicMilestones from './MythicMilestones'
+import { INK, INK2, GRAY, PANEL_BORDER, GOLD, GOLD_BRIGHT, BLUE, GREEN, SUCCESS, RED, MONO, SERIF, S, Label, KIND_COLOR, KindIcon, NORTH_STAR_LABEL, NORTH_STAR_ASK, LABEL, PURPLE, MYTHIC, alpha, NAVY_DEEP, CARD_PILLS, CardPill, Trail } from './canon'
 
 const TABS = CARD_PILLS.map(([id]) => id)
 const TAB_LABEL = Object.fromEntries(CARD_PILLS)
@@ -50,6 +51,17 @@ async function loadRelated(item) {
       fetchSteps(item.objective_id), listObjectiveArtifacts(item.objective_id), listObjectiveFiles(item.objective_id), listObjectiveBoards(item.objective_id),
     ])
     out.objective = orow?.[0] || null; out.steps = steps; out.objArtifacts = oa; out.objFiles = of; out.objBoards = ob
+    // Mythic milestones (David 10/29): the children of a Mythic, and for a milestone, its parent and its number.
+    try { out.children = await fetchMilestones(item.objective_id) } catch { out.children = [] }
+    out.parent = null; out.milestoneN = null; out.milestoneOf = null
+    if (out.objective?.parent_id) {
+      try {
+        const [{ data: prow }, sibs] = await Promise.all([supabase.from('objectives').select('id,title,effort,tags,state').eq('id', out.objective.parent_id).limit(1), fetchMilestones(out.objective.parent_id)])
+        out.parent = prow?.[0] || null
+        const ix = sibs.findIndex(k => k.id === item.objective_id)
+        out.milestoneN = ix >= 0 ? ix + 1 : null; out.milestoneOf = sibs.length
+      } catch { out.parent = null }
+    }
     // The Editing Protocol punchlist (10/22): count only; the pill loads the rows.
     try { const { data: pl } = await supabase.from('edit_punchlist').select('*').eq('objective_id', item.objective_id); out.punchlist = pl || [] } catch { out.punchlist = [] }
     // Evidence (10/23): the files pinned under Polaris as the proof the objective was met.
@@ -173,6 +185,7 @@ function WhereItStands({ item, rel, task, taskId, linkedBoards }) {
     return () => { on = false }
   }, [oid, taskId])
   const steps = Array.isArray(rel.steps) ? rel.steps : []
+  const kids = Array.isArray(rel.children) ? rel.children : []
   const boardItems = []
   for (const b of linkedBoards) for (const ph of (b.phases || [])) {
     const phTied = !taskId || ph.task_id === taskId || (ph.tasks || []).some(t => t.task_id === taskId)
@@ -180,6 +193,7 @@ function WhereItStands({ item, rel, task, taskId, linkedBoards }) {
     for (const t of (ph.tasks || [])) boardItems.push({ ...t, board: b.title })
   }
   const done = [
+    ...kids.filter(k => k.state === 'released').map(k => ({ text: k.title, meta: k.released_at ? `milestone · ${new Date(k.released_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}` : 'milestone', kind: 'milestone' })),
     ...steps.filter(st => st.done).map(st => ({ text: st.text, meta: st.done_at ? chiTime(st.done_at) : null, kind: 'gate' })),
     ...boardItems.filter(t => t.status === 'done').map(t => ({ text: t.label, meta: t.id, kind: 'board' })),
     ...(rel.objArtifacts || []).map(a => ({ text: a.title || a.slug, meta: 'artifact', kind: 'made' })),
@@ -187,6 +201,7 @@ function WhereItStands({ item, rel, task, taskId, linkedBoards }) {
     ...(rel.objFiles || []).map(f => ({ text: f.name, meta: 'file', kind: 'made' })),
   ]
   const needed = [
+    ...kids.filter(k => k.state !== 'released').map((k, i) => ({ text: k.title, meta: `milestone ${i + 1}`, kind: 'milestone' })),
     ...steps.filter(st => !st.done).map(st => ({ text: st.text, meta: null, kind: 'gate' })),
     ...boardItems.filter(t => t.status !== 'done').map(t => ({ text: t.label, meta: t.status === 'blocked' ? (t.note || 'blocked') : t.status === 'inmotion' ? 'in motion' : t.id, kind: t.status === 'blocked' ? 'blocked' : 'board' })),
   ]
@@ -268,6 +283,7 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
   const [objBusy, setObjBusy] = useState(false)
   const [editStar, setEditStar] = useState(false)
   const [reading, setReading] = useState(null)
+  const [openChild, setOpenChild] = useState(null)
   const [briefs, setBriefs] = useState({})
   const readObjArtifact = useCallback(async (root, slug) => { const { data, error } = await supabase.storage.from('project-files').download(`${root}/artifacts/${slug}.json`); if (error) throw new Error(error.message); return JSON.parse(await data.text()) }, [])
   useEffect(() => { let on = true; const objArts = (rel?.objArtifacts || []); Promise.all(objArts.map(a => readObjArtifact(a.root || `objectives/${obj?.id}`, a.slug).then(d => [a.slug, d]).catch(() => [a.slug, null]))).then(ps => { if (on) setBriefs(Object.fromEntries(ps)) }); return () => { on = false } }, [rel, obj, readObjArtifact])
@@ -276,6 +292,7 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
 
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 240, overflowY: 'auto', background: 'linear-gradient(180deg, var(--hud-surface) 0%, var(--hud-surface-deep) 100%)' }}>
+      {openChild && <ItemDetail item={{ id: openChild.m.id, objective_id: openChild.m.id, kind: 'Side Mission', title: openChild.m.title, description: openChild.m.description, tags: openChild.m.tags, size: 'light' }} onClose={() => { setOpenChild(null); load() }} onNavigate={onNavigate} onChange={load} />}
       {reading && (
         <div onClick={() => setReading(null)} style={{ position: 'fixed', inset: 0, zIndex: 250, background: 'rgba(5,16,28,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
           <div onClick={e => e.stopPropagation()} style={{ width: 'min(760px, 100%)', maxHeight: '88vh', overflowY: 'auto', background: 'var(--hud-surface-raised)', border: `1px solid ${PANEL_BORDER}`, borderRadius: 14, padding: '24px 26px', display: 'grid', gap: 14 }}>
@@ -291,7 +308,7 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
           <button onClick={onClose} style={btn(INK2)}><ArrowLeft size={13} /> Back</button>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-            {item.kind !== 'Event' && item.kind !== 'Session' && (loaded
+            {item.kind !== 'Event' && item.kind !== 'Session' && !rel?.parent && (loaded
               ? (loaded.equipped
                 ? <button onClick={() => act(() => holster(loaded.id), 'Timer off')} style={btn(GREEN, true)}><Pause size={12} /> Timer on · {fmtClock(loaded.minutes_today)}</button>
                 : <button onClick={() => act(() => equip(loaded.id), 'Timer on')} style={btn(GREEN)}><Play size={12} /> Timer off · {fmtClock(loaded.minutes_today)}</button>)
@@ -312,6 +329,10 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
               } else if (item.kind === 'Event' || item.kind === 'Session' || item.kind === 'Ad Hoc') {
                 nodes.push({ label: 'Board', onClick: () => { onClose(); onNavigate && onNavigate('agenda') } })
                 nodes.push({ ...kindNode, label: item.kind === 'Event' ? `Meeting · ${chiTime(item.event?.start_at)}` : item.kind })
+              } else if (rel?.parent) {
+                nodes.push({ label: 'Side Missions', onClick: () => { onClose(); onNavigate && onNavigate('side-missions') } })
+                nodes.push({ label: rel.parent.title, onClick: onClose })
+                nodes.push({ ...kindNode, label: rel.milestoneN ? `Milestone ${rel.milestoneN}` : 'Milestone' })
               } else {
                 nodes.push({ label: 'Side Missions', onClick: () => { onClose(); onNavigate && onNavigate('side-missions') } })
                 nodes.push({ ...kindNode, label: item.size && SIZES[item.size] ? SIZES[item.size].label : item.kind })
@@ -340,7 +361,7 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
                     <div style={{ borderTop: `1px solid ${PANEL_BORDER}`, borderBottom: `1px solid ${PANEL_BORDER}`, padding: '14px 0', display: 'grid', gap: 16 }}>
                       <div style={{ display: 'flex', gap: 28, flexWrap: 'wrap', alignItems: 'flex-start' }}>
                         <div style={cell}><Label style={{ marginBottom: 0 }}>Domain</Label><div style={{ display: 'flex', gap: 4 }}>{[['third-horizon', 'Third Horizon'], ['personal', 'Personal']].map(([k, l]) => <button key={k} onClick={() => patchObj({ tags: [...new Set([...(obj.tags || []).filter(t => t !== 'personal'), ...(k === 'personal' ? ['personal'] : [])])] })} style={seg(realm === k, k === 'personal' ? GOLD : BLUE)}>{l}</button>)}</div></div>
-                        <div style={cell}><Label style={{ marginBottom: 0 }}>Type</Label><div style={{ display: 'flex', gap: 4 }}>{Object.entries(SIZES).map(([k, sdef]) => <button key={k} onClick={() => setSize(obj.id, k).then(load)} title={sdef.sub} style={seg(sz === k, sdef.color)}>{sdef.label}</button>)}</div></div>
+                        {rel.parent ? <div style={cell}><Label style={{ marginBottom: 0 }}>Milestone</Label><div style={{ fontFamily: SERIF, fontSize: 15.5, color: INK, paddingTop: 5 }}>{rel.milestoneN || '?'} of {rel.milestoneOf || '?'} on {rel.parent.title}<span style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '1px', textTransform: 'uppercase', color: MYTHIC, marginLeft: 10 }}>10 miles on close</span></div></div> : <div style={cell}><Label style={{ marginBottom: 0 }}>Type</Label><div style={{ display: 'flex', gap: 4 }}>{Object.entries(SIZES).map(([k, sdef]) => <button key={k} onClick={() => setSize(obj.id, k).then(load)} title={sdef.sub} style={seg(sz === k, sdef.color)}>{sdef.label}</button>)}</div></div>}
                         <div style={cell}><Label style={{ marginBottom: 0 }}>Due</Label><input type="date" value={obj.due_date || ''} onChange={e => patchObj({ due_date: e.target.value || null })} style={{ ...field, width: 150 }} /></div>
                         <div style={cell}><Label style={{ marginBottom: 0 }}>Follow Up</Label><input type="date" value={obj.follow_up_date || ''} onChange={e => patchObj({ follow_up_date: e.target.value || null })} style={{ ...field, width: 150 }} /></div>
                         <div style={{ ...cell, flex: 1, minWidth: 180 }}><Label style={{ marginBottom: 0 }}>Who</Label><input defaultValue={obj.stakeholder || ''} onBlur={e => { if ((e.target.value || '') !== (obj.stakeholder || '')) patchObj({ stakeholder: e.target.value || null }) }} placeholder="the person this is for or with" style={{ ...field, fontFamily: 'inherit', fontSize: 13, width: '100%', maxWidth: 320 }} /></div>
@@ -354,8 +375,8 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
 
                   {(item.description || obj.description) && <div><Label>Back Story</Label><div style={{ fontSize: 14.5, lineHeight: 1.65, color: INK, whiteSpace: 'pre-wrap' }}>{item.description || obj.description}</div></div>}
 
-                  <div>
-                    <Label>{sz === 'heavy' ? 'Gates · Mythic Tasks, 10 Miles Each, Five At Most' : sz === 'medium' ? 'Marks · What Has To Happen, Three At Most' : 'Marks'}</Label>
+                  {rel.parent ? null : sz === 'heavy' ? <MythicMilestones parent={obj} milestones={rel.children || []} onChanged={load} onOpen={(m, n) => setOpenChild({ m, n })} /> : <div>
+                    <Label>{sz === 'medium' ? 'Marks · What Has To Happen, Three At Most' : 'Marks'}</Label>
                     {max === 0 && <div style={{ fontSize: 13, color: GRAY }}>A Bounty is one action and carries no marks.</div>}
                     {max > 0 && rel.steps === null && <div style={{ fontSize: 12.5, color: GRAY }}>Steps are not set up yet. Run sql/2026-10-07-side-missions-archive.sql in the Ledger and they appear here.</div>}
                     {max > 0 && Array.isArray(rel.steps) && rel.steps.map((st, i) => (
@@ -374,7 +395,7 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
                       </div>
                     )}
                     {max > 0 && Array.isArray(rel.steps) && rel.steps.length >= max && <div style={{ fontSize: 12, color: GRAY, marginTop: 8 }}>{sz === 'heavy' ? 'Five gates is the Mythic’s limit. A sixth means this is a Main Mission: promote it.' : 'Three marks is a Contract’s limit. More than that is a Mythic.'}</div>}
-                  </div>
+                  </div>}
 
                 </>
               ) })()}
