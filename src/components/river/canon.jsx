@@ -29,7 +29,7 @@ export const alpha = (color, pct) => `color-mix(in srgb, ${color} ${pct}%, trans
 export const SERIF = "'Lora', Georgia, serif"
 
 export const S = {
-  page: { maxWidth: 1180, margin: '0 auto', padding: '4px 0 80px', color: INK },
+  page: { maxWidth: 1180, margin: '0 auto', padding: '28px 0 80px', color: INK },
   h1: { fontSize: 28, fontWeight: 500, margin: 0, color: INK, fontFamily: SERIF, letterSpacing: '-0.01em' },
   sub: { fontSize: 10.5, color: LABEL, margin: '6px 0 0', fontFamily: MONO, letterSpacing: '1.4px', textTransform: 'uppercase' },
   panel: { background: PANEL_BG, border: `1px solid ${PANEL_BORDER}`, borderRadius: 12, padding: 16, marginBottom: 12 },
