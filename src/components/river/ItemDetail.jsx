@@ -319,35 +319,53 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
           </div>
         </div>
 
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16, flexWrap: 'wrap', marginTop: 22 }}>
-          <div style={{ minWidth: 280, flex: 1 }}>
-            {(() => {
-              const nodes = []
-              const kindNode = { label: item.kind, icon: <KindIcon kind={item.kind} size={13} /> }
-              if (task || rel?.project || item.project) {
-                nodes.push({ label: 'Main Missions', onClick: () => { onClose(); onNavigate && onNavigate('main-missions') } })
-                nodes.push({ label: rel?.project?.name || item.project, onClick: rel?.project ? () => go([rel.project.id]) : null })
-                nodes.push({ label: task ? `Milestone${String(task.text || '').match(/^\s*(\d+)\s*[·.:)-]/) ? ` ${String(task.text).match(/^\s*(\d+)\s*[·.:)-]/)[1]}` : ''}` : item.kind, icon: <KindIcon kind={item.kind} size={13} /> })
-              } else if (item.kind === 'Event' || item.kind === 'Session' || item.kind === 'Ad Hoc') {
-                nodes.push({ label: 'Board', onClick: () => { onClose(); onNavigate && onNavigate('agenda') } })
-                nodes.push({ ...kindNode, label: item.kind === 'Event' ? `Meeting · ${chiTime(item.event?.start_at)}` : item.kind })
-              } else if (rel?.parent) {
-                nodes.push({ label: 'Side Missions', onClick: () => { onClose(); onNavigate && onNavigate('side-missions') } })
-                nodes.push({ label: rel.parent.title, onClick: onClose })
-                nodes.push({ ...kindNode, label: rel.milestoneN ? `Milestone ${rel.milestoneN}` : 'Milestone' })
-              } else {
-                nodes.push({ label: 'Side Missions', onClick: () => { onClose(); onNavigate && onNavigate('side-missions') } })
-                nodes.push({ ...kindNode, label: item.size && SIZES[item.size] ? SIZES[item.size].label : item.kind })
-              }
-              return <Trail nodes={nodes} style={{ marginBottom: 12 }} />
-            })()}
-            <h1 style={{ ...S.h1, marginBottom: 6, fontSize: String(item.title || '').length > 70 ? 22 : 28, lineHeight: 1.25 }}>{task ? String(item.title || '').replace(/^\s*\d+\s*[·.:)-]\s*/, '') : item.title}</h1>
-            {obj?.north_star && <div onClick={() => setTab('polaris')} title="Polaris" style={{ fontFamily: SERIF, fontStyle: 'italic', fontSize: 14.5, color: INK2, lineHeight: 1.45, maxWidth: '72ch', cursor: 'pointer' }}>{obj.north_star}</div>}
-          </div>
-          <div style={{ display: 'flex', gap: 6, paddingTop: 6, flexWrap: 'wrap' }}>
-            {TABS.map(t => <CardPill key={t} active={tab === t} onClick={() => setTab(t)} count={counts[t]}>{TAB_LABEL[t]}</CardPill>)}
-          </div>
-        </div>
+        {(() => {
+          // Header canon (David 10/29): the kind is the header and is bigger than the name it heads;
+          // the type wears its icon beside it; the name runs the full width and wraps only when the
+          // space is out. The trail above is navigation only.
+          const nodes = []
+          let head = item.kind
+          let chip = null
+          const nav = (route) => () => { onClose(); onNavigate && onNavigate(route) }
+          if (task || rel?.project || item.project) {
+            nodes.push({ label: 'Main Missions', onClick: nav('main-missions') })
+            nodes.push({ label: rel?.project?.name || item.project, onClick: rel?.project ? () => go([rel.project.id]) : null })
+            const n = String(task?.text || '').match(/^\s*(\d+)\s*[·.:)-]/)
+            head = task ? `Milestone${n ? ` ${n[1]}` : ''}` : item.kind
+            chip = { kind: 'Main Mission', label: 'Main Mission', color: KIND_COLOR['Main Mission'] }
+          } else if (item.kind === 'Event' || item.kind === 'Session' || item.kind === 'Ad Hoc') {
+            nodes.push({ label: 'Board', onClick: nav('agenda') })
+            head = item.kind === 'Event' ? 'Meeting' : item.kind
+            chip = item.kind === 'Event' ? { kind: 'Event', label: chiTime(item.event?.start_at), color: BLUE } : { kind: item.kind, label: item.kind, color: KIND_COLOR[item.kind] || BLUE }
+          } else if (rel?.parent) {
+            nodes.push({ label: 'Side Missions', onClick: nav('side-missions') })
+            nodes.push({ label: rel.parent.title, onClick: onClose })
+            head = rel.milestoneN ? `Milestone ${rel.milestoneN}` : 'Milestone'
+            chip = { kind: 'Side Mission', label: 'Mythic', color: MYTHIC }
+          } else {
+            nodes.push({ label: 'Side Missions', onClick: nav('side-missions') })
+            head = 'Side Mission'
+            const sdef = item.size && SIZES[item.size] ? SIZES[item.size] : null
+            chip = sdef ? { kind: 'Side Mission', label: sdef.label, color: sdef.color } : { kind: 'Side Mission', label: 'Side Mission', color: GOLD }
+          }
+          const name = task ? String(item.title || '').replace(/^\s*\d+\s*[·.:)-]\s*/, '') : item.title
+          return (
+            <div style={{ marginTop: 22 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
+                <Trail nodes={nodes} />
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                  {TABS.map(t => <CardPill key={t} active={tab === t} onClick={() => setTab(t)} count={counts[t]}>{TAB_LABEL[t]}</CardPill>)}
+                </div>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap', marginTop: 16 }}>
+                <h1 style={{ ...S.h1, fontSize: 28, lineHeight: 1.2 }}>{head}</h1>
+                {chip && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7, fontFamily: MONO, fontSize: 10.5, letterSpacing: '1.4px', textTransform: 'uppercase', color: chip.color, border: `1px solid ${alpha(chip.color, 40)}`, borderRadius: 999, padding: '5px 12px', whiteSpace: 'nowrap' }}><KindIcon kind={chip.kind} size={13} color={chip.color} />{chip.label}</span>}
+              </div>
+              <div style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 21, lineHeight: 1.3, color: INK, marginTop: 8, letterSpacing: '-0.005em' }}>{name}</div>
+              {obj?.north_star && <div onClick={() => setTab('polaris')} title="Polaris" style={{ fontFamily: SERIF, fontStyle: 'italic', fontSize: 14.5, color: INK2, lineHeight: 1.45, maxWidth: '72ch', cursor: 'pointer', marginTop: 6 }}>{obj.north_star}</div>}
+            </div>
+          )
+        })()}
 
         <div style={{ ...S.panel, marginTop: 20 }}>
           {!rel && <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '1.4px', textTransform: 'uppercase', color: LABEL, padding: '10px 0' }}>Reading the Ledger</div>}

@@ -138,7 +138,8 @@ export function CardPill({ active, children, onClick, count }) {
 // The trail (David 10/26): where you are and what you are under, with a way up.
 // nodes: [{ label, onClick, icon }] from the root to here; the last is where you are.
 export function Trail({ nodes, style }) {
-  const up = [...nodes].reverse().find((n, i) => i > 0 && n.onClick)
+  // Up goes to the nearest ancestor; a one-node trail is all ancestor (the card header names the page).
+  const up = [...nodes].reverse().find((n, i) => (i > 0 || nodes.length === 1) && n.onClick)
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', ...style }}>
       {up && <button onClick={up.onClick} title={`Up to ${up.label}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontFamily: MONO, fontSize: 9.5, letterSpacing: '1px', textTransform: 'uppercase', padding: '4px 9px', borderRadius: 8, border: `1px solid ${PANEL_BORDER}`, background: 'transparent', color: LABEL, cursor: 'pointer' }}>↑ Up</button>}

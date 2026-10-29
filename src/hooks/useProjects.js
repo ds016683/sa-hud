@@ -124,6 +124,9 @@ export default function useProjects() {
       user_id: session.user.id,
       title: (task.text || '').slice(0, 120),
       state: 'parked', kind: 'execution', effort: 2, importance: 2, needs_sizing: true,
+      // mission-task keeps a Main Mission's milestone out of the Side Missions lists (the other
+      // promote paths in loadout.js and api/_ledger.mjs already tag it; David 10/29).
+      tags: ['mission-task'],
       description: `Promoted from project: ${project.name}`,
     }).select().single()
     if (error) { console.error('promoteTask objective insert:', error); return null }
