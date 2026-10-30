@@ -100,11 +100,21 @@ export default function useProjects() {
     return data
   }, [patchLocal, touchProject])
 
-  const toggleTask = useCallback((projectId, task) => {
+  const toggleTask = useCallback(async (projectId, task) => {
     const nowDone = !(task.status === 'done' || task.done)
-    return updateTask(projectId, task.id, nowDone
-      ? { status: 'done', done: true, released_at: new Date().toISOString() }
+    const now = new Date().toISOString()
+    const out = await updateTask(projectId, task.id, nowDone
+      ? { status: 'done', done: true, released_at: now }
       : { status: 'open', done: false, released_at: null })
+    // The promoted objective follows its milestone (10/29): closing the milestone
+    // releases it, reopening parks it again, so no ghost sits in the Stash after
+    // the task is done. The River pays the task, never the linked objective.
+    if (out && task.objective_id) {
+      await supabase.from('objectives').update(nowDone
+        ? { state: 'released', released_kind: 'done', released_at: now, activated_at: null }
+        : { state: 'parked', released_kind: null, released_at: null, activated_at: null }).eq('id', task.objective_id)
+    }
+    return out
   }, [updateTask])
 
   const deleteTask = useCallback(async (projectId, taskId) => {

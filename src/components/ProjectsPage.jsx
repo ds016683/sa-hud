@@ -15,7 +15,7 @@ import { fileProject } from '../lib/archive'
 import { listLiveFiles, markFiled, listEvidence, openLiveFile } from '../lib/livefiles'
 import { supabase as sbAuth } from '../lib/supabase'
 import { equipTask, stashTask, deleteMission } from '../lib/loadout'
-import { NORTH_STAR_LABEL, LABEL, alpha, INK, INK2, NAVY_DEEP, BLUE, GRAY, PANEL_BORDER, PANEL_BG, GOLD, GREEN, SUCCESS, RED, PURPLE, CARD_PILLS, CardPill, Label as CanonLabel, Trail } from './river/canon'
+import { NORTH_STAR_LABEL, LABEL, alpha, INK, INK2, NAVY_DEEP, BLUE, GRAY, PANEL_BORDER, PANEL_BG, GOLD, GREEN, SUCCESS, RED, PURPLE, CARD_PILLS, CardPill, Label as CanonLabel, Trail, KIND_COLOR, KindIcon } from './river/canon'
 import { importProject } from '../lib/cabinet'
 import BadgeMedallion from './BadgeArt'
 import { BADGES } from '../constants/collection'
@@ -494,46 +494,52 @@ function ProjectDetail({ project, board: boardProp, api, onBack, initialTab, ini
   return (
     <div style={S.page}>
       {closingMission && <CloseMissionModal project={project} tasks={tasks} onClose={() => setClosingMission(false)} onDone={closeMission} />}
+      {/* Card header canon (David 10/29): the kind heads the name and is bigger than it; the
+          type chip with its icon sits beside the header; the name runs full width beneath. */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, marginBottom: 18, flexWrap: 'wrap' }}>
-        <Trail nodes={[{ label: 'Main Missions', onClick: onBack }, { label: project.name }]} />
-        {project.status !== 'completed' && !project.archived_at && (
-          <button
-            onClick={() => setClosingMission(true)}
-            title="Whole mission complete: 100 miles on the River"
-            style={{ ...S.btnGhost, border: `1px solid ${alpha(SUCCESS, 50)}`, color: SUCCESS }}
-          >
-            ✓ Mark mission complete
-          </button>
-        )}
-        {project.status !== 'completed' && (
-          <button
-            onClick={async () => {
-              const yes = await hudConfirm({ eyebrow: 'Delete Mission', title: project.name, message: 'Delete this mission? No miles are awarded. Milestones already closed keep theirs. Its artifacts and cabinet stay in the Ledger. It leaves every list.', confirm: 'Delete Mission', danger: true })
-              if (!yes) return
-              try { await deleteMission(project); await api.refresh(); onBack() } catch (e) { await hudNotice(`Could not delete: ${e.message}`) }
-            }}
-            title="Delete this mission: no miles, gone from every list"
-            style={{ ...S.btnGhost, border: `1px solid ${alpha(RED, 35)}`, color: RED, padding: '6px 10px' }}
-          >
-            <Trash2 size={12} /> Delete mission
-          </button>
-        )}
-      </div>
-
-      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16, flexWrap: 'wrap', marginBottom: 6 }}>
-        <div style={{ flex: 1, minWidth: 280 }}>
-          <h1 style={S.h1}>{project.name}</h1>
-          <div style={{ fontSize: 14, lineHeight: 1.6, color: TEXT_DIM, margin: '8px 0 0', maxWidth: '72ch' }}>
-            {project.description ? <span><span style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '1.4px', textTransform: 'uppercase', color: BLUE, marginRight: 8, display: 'block', marginBottom: 2 }}>{NORTH_STAR_LABEL}</span><span style={{ fontFamily: SERIF, fontStyle: 'italic', fontSize: 15.5, color: INK }}>{project.description}</span></span> : <button onClick={async () => { const d = await hudPrompt(`${NORTH_STAR_LABEL}? One sentence.`, ''); if (d?.trim()) await api.updateProject(project.id, { description: d.trim() }) }} style={{ ...S.btnGhost, padding: '3px 9px', fontSize: 10 }}>Write the Polaris Objective</button>}
-          </div>
-          <div style={{ ...S.sub, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-            <span>{[CATEGORY_LABELS[project.category] || project.category, project.key, '100 miles on completion · 10 per milestone'].filter(Boolean).join(' · ')}</span>
-            <button onClick={() => api.updateProject(project.id, { tags: isHorizon(project) ? (project.tags || []).filter(t => t !== 'horizon') : [...(project.tags || []), 'horizon'] })} title={isHorizon(project) ? 'On the horizon: no clock. Click to bring it into the standing missions.' : 'Click to put it on the horizon: no clock, a chip on the page.'} style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '1px', textTransform: 'uppercase', padding: '3px 9px', borderRadius: 999, border: `1px ${isHorizon(project) ? 'dashed' : 'solid'} ${PANEL_BORDER}`, background: 'transparent', color: isHorizon(project) ? GRAY : LABEL, cursor: 'pointer' }}>{isHorizon(project) ? 'Horizon' : 'Standing'}</button>
-          </div>
-        </div>
-        <div style={{ display: 'flex', gap: 6, paddingTop: 6, flexWrap: 'wrap' }}>
+        <Trail nodes={[{ label: 'Main Missions', onClick: onBack }]} />
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
           {CARD_PILLS.map(([id, label]) => <CardPill key={id} active={tab === id} onClick={() => setTab(id)} count={id === 'briefing' ? tasks.length : id === 'polaris' ? evidence.length : 0}>{label}</CardPill>)}
         </div>
+      </div>
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+        <h1 style={{ ...S.h1, lineHeight: 1.2 }}>Main Mission</h1>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: MONO, fontSize: 10.5, letterSpacing: '1px', textTransform: 'uppercase', color: KIND_COLOR['Main Mission'], border: `1px solid ${alpha(KIND_COLOR['Main Mission'], 40)}`, borderRadius: 999, padding: '3px 10px', whiteSpace: 'nowrap' }}>
+          <KindIcon kind="Main Mission" size={13} color={KIND_COLOR['Main Mission']} />{CATEGORY_LABELS[project.category] || project.category || 'Main Mission'}
+        </span>
+        <button onClick={() => api.updateProject(project.id, { tags: isHorizon(project) ? (project.tags || []).filter(t => t !== 'horizon') : [...(project.tags || []), 'horizon'] })} title={isHorizon(project) ? 'On the horizon: no clock. Click to bring it into the standing missions.' : 'Click to put it on the horizon: no clock, a chip on the page.'} style={{ fontFamily: MONO, fontSize: 10.5, letterSpacing: '1px', textTransform: 'uppercase', padding: '3px 10px', borderRadius: 999, border: `1px ${isHorizon(project) ? 'dashed' : 'solid'} ${PANEL_BORDER}`, background: 'transparent', color: isHorizon(project) ? GRAY : LABEL, cursor: 'pointer' }}>{isHorizon(project) ? 'Horizon' : 'Standing'}</button>
+      </div>
+      <div style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 21, lineHeight: 1.3, color: INK, marginTop: 8, letterSpacing: '-0.005em' }}>{project.name}</div>
+      <div style={{ fontSize: 14, lineHeight: 1.6, color: TEXT_DIM, margin: '6px 0 0', maxWidth: '72ch' }}>
+        {project.description ? <span><span style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '1.4px', textTransform: 'uppercase', color: BLUE, marginRight: 8, display: 'block', marginBottom: 2 }}>{NORTH_STAR_LABEL}</span><span style={{ fontFamily: SERIF, fontStyle: 'italic', fontSize: 15.5, color: INK }}>{project.description}</span></span> : <button onClick={async () => { const d = await hudPrompt(`${NORTH_STAR_LABEL}? One sentence.`, ''); if (d?.trim()) await api.updateProject(project.id, { description: d.trim() }) }} style={{ ...S.btnGhost, padding: '3px 9px', fontSize: 10 }}>Write the Polaris Objective</button>}
+      </div>
+      <div style={{ ...S.sub, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
+        <span>{[project.key, '100 miles on completion · 10 per milestone'].filter(Boolean).join(' · ')}</span>
+        <span style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          {project.status !== 'completed' && !project.archived_at && (
+            <button
+              onClick={() => setClosingMission(true)}
+              title="Whole mission complete: 100 miles on the River"
+              style={{ ...S.btnGhost, border: `1px solid ${alpha(SUCCESS, 50)}`, color: SUCCESS, padding: '4px 9px', fontSize: 10 }}
+            >
+              ✓ Mark Mission Complete
+            </button>
+          )}
+          {project.status !== 'completed' && (
+            <button
+              onClick={async () => {
+                const yes = await hudConfirm({ eyebrow: 'Delete Mission', title: project.name, message: 'Delete this mission? No miles are awarded. Milestones already closed keep theirs. Its artifacts and cabinet stay in the Ledger. It leaves every list.', confirm: 'Delete Mission', danger: true })
+                if (!yes) return
+                try { await deleteMission(project); await api.refresh(); onBack() } catch (e) { await hudNotice(`Could not delete: ${e.message}`) }
+              }}
+              title="Delete this mission: no miles, gone from every list"
+              style={{ ...S.btnGhost, border: `1px solid ${alpha(RED, 35)}`, color: RED, padding: '4px 9px', fontSize: 10 }}
+            >
+              <Trash2 size={12} /> Delete Mission
+            </button>
+          )}
+        </span>
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '14px 0 0' }}>

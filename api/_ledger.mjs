@@ -1536,9 +1536,12 @@ export async function callTool(name, args = {}) {
     }
     case 'complete_project_task': {
       const q = esc(args.text || '')
-      const ts = await sb(`project_tasks?select=id,text,status&status=neq.done&text=ilike.*${encodeURIComponent(q)}*&limit=5`)
+      const ts = await sb(`project_tasks?select=id,text,status,objective_id&status=neq.done&text=ilike.*${encodeURIComponent(q)}*&limit=5`)
       if (ts.length !== 1) throw new Error(ts.length ? `task ambiguous: ${ts.map(t => t.text).join(' | ')}` : `no open task matches "${args.text}"`)
-      await sbWrite('PATCH', `project_tasks?id=eq.${ts[0].id}`, { status: 'done', done: true, released_at: new Date().toISOString() }, 'return=minimal')
+      const doneAt = new Date().toISOString()
+      await sbWrite('PATCH', `project_tasks?id=eq.${ts[0].id}`, { status: 'done', done: true, released_at: doneAt }, 'return=minimal')
+      // The promoted objective follows its milestone (10/29): no ghost left in the Stash.
+      if (ts[0].objective_id) await sbWrite('PATCH', `objectives?id=eq.${ts[0].objective_id}&state=neq.released`, { state: 'released', released_kind: 'done', released_at: doneAt, activated_at: null }, 'return=minimal')
       return JSON.stringify({ ok: true, completed: ts[0].text })
     }
     case 'set_standing_order': {
