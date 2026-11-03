@@ -128,6 +128,7 @@ the same parser, so the two can never drift.
 | `source` | the small source line |
 | `document` | a card that opens a file or a live surface in a new tab |
 | `contents` | the cover's list of pages, every row jumps |
+| `cards` | a grid of items (Cards, the default, or a Table view): title, code, practice, a goal, who brings it in and who leads it as faces (`people`), a pithy one-line `status` on the face, a `link`, and an Open button to a modal that updates the assignment, the status and an update note; with a `store` the live copy is a JSON artifact in the Ledger's project-files bucket through `references/live/cards-route.ts` (document cookie required; LEDGER_URL + LEDGER_SERVICE_KEY on the project, the content seed when absent) so Lumen can read the updates and write the status |
 
 Add a kind only when a page needs a shape none of these carry; add it to
 `doc.ts`, render it in `doc-reader.tsx`, style it in `doc.module.css`, and
@@ -176,6 +177,17 @@ carry it back here.
   cookie denied, no static payload in the build). After a deploy,
   `references/tools/check_prod.sh <host>` runs the same denials against the
   live host without sending the code.
+
+## Edit Text, David's writing surface (11/1)
+
+David writes prose straight into the page, fast and loose, and tells Claude to format it. Modeled on the AMA deck's inline pass (th-proposals, 10/22), one box at a time instead of one slide.
+
+- **Where.** Dev server only (`preview_start` th-longform, port 3017). An **Edit Text** pill sits above the page. On, every prose box (lead, paragraph, heading, list, callout, and each pill of a briefing card) is contentEditable in the real typography. Production never renders the pill; `/api/edits` returns 404 there.
+- **How he writes.** Over the lorem (first keystroke replaces it) or into an empty box. Bold (Cmd+B), italic (Cmd+I) and emoji (the OS picker) are kept as `<strong>`, `<em>` and text. Autosaves 700ms after he stops typing and on blur.
+- **Where it lands.** `.edits/<doc>/page-NN.json` in the repo (gitignored): `blocks[id] = { label, html, text, savedAt, format, formatAt }`. Ids are `<pageSlug>:<blockIndex>` for page blocks and `<targetId>:<pill>` for card pills.
+- **Format ✦.** The button on a box saves it and sets `format: true`. That is the signal: David has said "format and clean this." Boxes without the flag are drafts in progress; leave them alone unless he says otherwise.
+- **The fold (Claude).** `node scripts/edits-show.mjs finance-review` prints every box with its flag and HTML. For each flagged box: rewrite in the house style below (no em dashes, data verbatim, qualified declaratives, Lora rhythm; keep his italics, bold and emoji where they carry meaning, and his phrasing where it is already good), write it into `content/*.ts` (a lead's bold first sentence goes in `bold`; `*italic*` in text maps to `em()`), build, deploy, then show him before and after per box and clear the flag by deleting the block from the JSON (or the file once a page is folded). If he says "keep my phrasing," fix only mechanics.
+- **Rule.** Never fold an unflagged box, never paraphrase a quote he typed as a quote, and never let a box's lorem ship: a page with a lorem lead is still staging.
 
 ## Workflow
 
