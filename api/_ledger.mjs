@@ -1501,7 +1501,7 @@ export async function callTool(name, args = {}) {
           const minutes = Number(args.minutes) > 0 ? Math.round(Number(args.minutes)) : (clocked.minutes || fallback)
           const personal = (o.tags || []).includes('personal')
           clock = { minutes, clocked_minutes: clocked.minutes, segments: clocked.segments, stated_by_david: Number(args.minutes) > 0, started_at: o.activated_at, personal, harvest: personal ? 'not logged: personal time stays out of Harvest' : 'not logged: the clock is kept in the Ledger' }
-          await sbWrite('POST', 'daily_logs', { day: chiToday(), kind: 'activity', what: o.title, value: minutes, note: `${personal ? 'personal' : 'work'} · Side Mission clock ${o.activated_at.slice(11, 16)}Z to ${new Date().toISOString().slice(11, 16)}Z`, source: `objective:${o.id}` }, 'return=minimal').catch(() => {})
+          await sbWrite('POST', 'daily_logs', { day: chiToday(), kind: 'activity', what: o.title, value: minutes, note: `${personal ? 'personal' : 'work'} · Side Mission clock ${o.activated_at ? o.activated_at.slice(11, 16) + 'Z' : 'earlier'} to ${new Date().toISOString().slice(11, 16)}Z`, source: `objective:${o.id}` }, 'return=minimal').catch(() => {})
         }
       }
       return JSON.stringify({ ok: true, title: o.title, from: o.state, to: state, follow_up_date: patch.follow_up_date || null, ...(equipped ? { equipped } : {}), ...(fit?.forced ? { forced_over: fit.reasons } : {}), ...(clock ? { clock, close_out: 'Tell David the time of activity. Ask once whether there is anything to file against it: a receipt, a photo, a conversation, a note. A photo he sends is filed automatically; a note goes in log_day activity with the same what.' } : {}) })
