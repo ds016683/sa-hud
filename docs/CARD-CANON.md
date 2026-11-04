@@ -53,6 +53,13 @@ David, October 29, 2026: "Gateways should be called Milestones and have the same
 - A milestone never sits on the Board or in the Stash on its own: the Mythic carries it, so the milestone card shows no clock. Lists of Side Missions (the Board, the inventory, Lumen's hands) hide children; they live only on their Mythic.
 - Mythic is purple: the `MYTHIC` token in canon.jsx (`--hud-purple`, the medallion purple with its own name), on the Type chip, the Loadout, the milestone label and numbers.
 
+## Lumen on the card
+David, November 4, 2026: "let's just build the same thing from scratch. call it lumen, use the hud's canon. i want the base functionality, particularly the ability to do a workbook to be the same. and arms and legs to wire up and change the card in real time and/or do some development work inside the workbench that can be ported later."
+
+- Every Main Mission page, Side Mission card and Milestone card carries a Lumen dock, bottom right. It opens a panel from the right (`src/components/river/LumenPanel.jsx`; the page yields its width on wide screens). Three tabs, never a sixth pill: **Lumen** (the same brain as WhatsApp and the HUD strip, framed on this card: `cardFrame` in `api/_ledger.mjs` rides each turn through `/api/lumen-hud` with `item`), **Workbook** (captures of his answers and of the card, notes, a PDF in the house frame), **Build** (pages Lumen built with `build_page`, previewed in a sandboxed frame, Open, Download, Delete).
+- Hands on the card: the Ledger tools he already has, plus `workspace_page` and `read_workspace_page` (the card's Workspace pages) and `build_page` (one self-contained HTML page per slug under `<root>/build/`, in the HUD's canon, portable by a Claude session later). When Lumen acts, the panel fires `hud:ledger-changed`; the card rereads itself and remounts its Workbench lists.
+- Where it lives in storage: `<root>/lumen/workbook.json` (captures and notes), `<root>/build/<slug>.html` with `<slug>.json` beside it, `<root>/workspace/<slug>.json` (the Workspace pages themselves). The thread is `lumen_messages`, channel hud, `meta.item` = the card's id.
+
 ## Connections
 
 - A Milestone card is the item card with a task behind it. It opens from the mission's Briefing (Open), from the Board, and from Live Protocols. Its breadcrumb's mission name goes up to the mission page.
