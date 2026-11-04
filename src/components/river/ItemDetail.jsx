@@ -119,8 +119,9 @@ async function loadRelated(item) {
   return out
 }
 
-// Where It Stands (David, 10/17): above the facts, two lists. Done: the gates
-// or marks ticked, the board items closed, what was produced. Still needed:
+// Where It Stands (David, 10/17; 11/4): above the facts, two lists. Done is the history,
+// a summary of what closed: milestones released, marks ticked, board items closed. Not
+// file names (11/4); a file stays only once it is pinned as evidence, the deliverable. Still needed:
 // the open gates, the open board items, and Lumen's two or three next steps
 // toward the star (the same brain as the Loadout card, loaded after).
 
@@ -199,9 +200,7 @@ function WhereItStands({ item, rel, task, taskId, linkedBoards }) {
     ...kids.filter(k => k.state === 'released').map(k => ({ text: k.title, meta: k.released_at ? `milestone · ${new Date(k.released_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}` : 'milestone', kind: 'milestone' })),
     ...steps.filter(st => st.done).map(st => ({ text: st.text, meta: st.done_at ? chiTime(st.done_at) : null, kind: 'gate' })),
     ...boardItems.filter(t => t.status === 'done').map(t => ({ text: t.label, meta: t.id, kind: 'board' })),
-    ...(rel.objArtifacts || []).map(a => ({ text: a.title || a.slug, meta: 'artifact', kind: 'made' })),
-    ...(rel.artifacts || []).filter(a => taskId && a.task_id === taskId).map(a => ({ text: a.title || a.slug, meta: 'artifact', kind: 'made' })),
-    ...(rel.objFiles || []).map(f => ({ text: f.name, meta: 'file', kind: 'made' })),
+    ...(rel.objFiles || []).filter(f => f.evidence).map(f => ({ text: f.name, meta: 'deliverable', kind: 'made' })),
   ]
   const needed = [
     ...kids.filter(k => k.state !== 'released').map((k, i) => ({ text: k.title, meta: `milestone ${i + 1}`, kind: 'milestone' })),
@@ -224,7 +223,7 @@ function WhereItStands({ item, rel, task, taskId, linkedBoards }) {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 22 }}>
         <div>
           <div style={{ fontSize: 14.5, fontWeight: 600, color: LABEL, marginBottom: 5 }}>Done</div>
-          {done.length ? done.map((r, i) => <Row key={i} r={r} color={doneColor} />) : <div style={{ fontSize: 13, color: GRAY, padding: '4px 0' }}>Nothing ticked, closed or produced yet.</div>}
+          {done.length ? done.map((r, i) => <Row key={i} r={r} color={doneColor} />) : <div style={{ fontSize: 13, color: GRAY, padding: '4px 0' }}>Nothing closed yet.</div>}
         </div>
         <div>
           <div style={{ fontSize: 14.5, fontWeight: 600, color: LABEL, marginBottom: 5 }}>Still Needed</div>
@@ -383,21 +382,17 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
               {obj && (() => { const sz = SIZES[item.size] ? item.size : 'light'; const realm = realmOf(obj); const max = stepsMaxFor(sz); const field = { background: 'rgba(255,255,255,0.05)', border: `1px solid ${PANEL_BORDER}`, borderRadius: 8, color: INK, padding: '6px 9px', fontFamily: MONO, fontSize: 12, height: 32, width: '100%', boxSizing: 'border-box' }; return (
                 <>
                   {(() => {
-                    // Pills are real pills, equal width (David 10/29). Dates: the Completion Requirement is the objective's
-                    // due date; Next Action Due By rides the next open milestone on a Mythic, else the objective's follow up.
+                    // The header strip (David 11/4): one fence around Domain and Type, read as the card's upper header,
+                    // with the one date the card carries at its right: Target Completion. Pills are real pills, equal
+                    // width (10/29). Next Action Due By is retired; a Mythic's next milestone carries its own date on its own card.
                     const seg = (on, color) => ({ ...btn(on ? color : INK2, on), padding: '6px 12px', whiteSpace: 'nowrap', borderRadius: 999, minWidth: PILL_W, justifyContent: 'center' })
-                    const cell = { display: 'grid', gap: 6, alignContent: 'start' }
-                    const kids = Array.isArray(rel.children) ? rel.children : []
-                    const nextIx = kids.findIndex(k => k.state !== 'released')
-                    const nextKid = nextIx >= 0 ? kids[nextIx] : null
-                    const nextVal = nextKid ? (nextKid.due_date || '') : (obj.follow_up_date || '')
-                    const setNext = (v) => nextKid ? updateObjective(nextKid.id, { due_date: v || null }).then(load) : patchObj({ follow_up_date: v || null })
+                    const cell = { display: 'grid', gap: 8, alignContent: 'start' }
+                    const fence = { display: 'flex', gap: 32, flexWrap: 'wrap', alignItems: 'flex-start', padding: '14px 18px 16px', borderRadius: 12, border: `1px solid ${PANEL_BORDER}`, boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.07), inset 0 -1px 0 rgba(0,0,0,0.18)' }
                     return (
-                      <div style={{ display: 'flex', gap: 28, flexWrap: 'wrap', alignItems: 'flex-start' }}>
+                      <div style={fence}>
                         <div style={cell}><Label style={{ marginBottom: 0 }}>Domain</Label><div style={{ display: 'flex', gap: 6 }}>{[['third-horizon', 'Third Horizon'], ['personal', 'Personal']].map(([k, l]) => <button key={k} onClick={() => patchObj({ tags: [...new Set([...(obj.tags || []).filter(t => t !== 'personal'), ...(k === 'personal' ? ['personal'] : [])])] })} style={seg(realm === k, BLUE)}>{l}</button>)}</div></div>
-                        {rel.parent ? <div style={cell}><Label style={{ marginBottom: 0 }}>Milestone</Label><div style={{ fontFamily: SERIF, fontSize: 15.5, color: INK, paddingTop: 5 }}>{rel.milestoneN || '?'} of {rel.milestoneOf || '?'} on {rel.parent.title}<span style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '1px', textTransform: 'uppercase', color: MYTHIC, marginLeft: 10 }}>10 miles on close</span></div></div> : <div style={cell}><Label style={{ marginBottom: 0 }}>Type</Label><div style={{ display: 'flex', gap: 6 }}>{Object.entries(SIZES).map(([k, sdef]) => <button key={k} onClick={() => setSize(obj.id, k).then(load)} title={sdef.sub} style={seg(sz === k, BLUE)}>{sdef.label}</button>)}</div></div>}
-                        <div style={cell}><Label style={{ marginBottom: 0 }}>{rel.parent ? 'Milestone' : 'Side Mission'} Completion Requirement</Label><input type="date" value={obj.due_date || ''} onChange={e => patchObj({ due_date: e.target.value || null })} style={{ ...field, width: 150 }} /></div>
-                        <div style={cell}><Label style={{ marginBottom: 0 }}>Next Action Due By</Label><input type="date" value={nextVal} onChange={e => setNext(e.target.value)} style={{ ...field, width: 150 }} />{nextKid && <div style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '1px', textTransform: 'uppercase', color: MYTHIC }}>Milestone {nextIx + 1} · {nextKid.title}</div>}</div>
+                        {rel.parent ? <div style={cell}><Label style={{ marginBottom: 0 }}>Milestone</Label><div style={{ fontFamily: SERIF, fontSize: 15.5, color: INK, paddingTop: 5 }}>{rel.milestoneN || '?'} of {rel.milestoneOf || '?'} on {rel.parent.title}<span style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '1px', textTransform: 'uppercase', color: LABEL, marginLeft: 10 }}>10 miles on close</span></div></div> : <div style={cell}><Label style={{ marginBottom: 0 }}>Type</Label><div style={{ display: 'flex', gap: 6 }}>{Object.entries(SIZES).map(([k, sdef]) => <button key={k} onClick={() => setSize(obj.id, k).then(load)} title={sdef.sub} style={seg(sz === k, BLUE)}>{sdef.label}</button>)}</div></div>}
+                        <div style={{ ...cell, marginLeft: 'auto' }}><Label style={{ marginBottom: 0 }}>Target Completion</Label><input type="date" value={obj.due_date || ''} onChange={e => patchObj({ due_date: e.target.value || null })} style={{ ...field, width: 150 }} /></div>
                       </div>
                     ) })()}
 
