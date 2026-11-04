@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Card Rebuild Options</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;1,400&family=Instrument+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --surface:#0F2334; --deep:#0D1D2C; --raised:#16314A;
+    --ink:#F3F1EA; --ink2:rgba(243,241,234,.68); --ink3:rgba(243,241,234,.42);
+    --border:rgba(255,255,255,.12); --fill:rgba(255,255,255,.05);
+    --accent:#8ACAFF; --on:#0D1D2C; --gold:#F8C761; --green:#57BE97;
+    --serif:'Lora',Georgia,serif; --sans:'Instrument Sans',system-ui,sans-serif; --mono:'JetBrains Mono',ui-monospace,monospace;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:#081520;color:var(--ink);font-family:var(--sans);padding:40px 24px 80px}
+  .intro{max-width:1100px;margin:0 auto 36px}
+  .intro h1{font-family:var(--serif);font-weight:500;font-size:28px;margin:0 0 8px;letter-spacing:-.005em}
+  .intro p{color:var(--ink2);font-size:15px;line-height:1.6;max-width:72ch;margin:0}
+  .opt{max-width:1100px;margin:0 auto 56px}
+  .opt-head{display:flex;align-items:baseline;gap:14px;margin:0 0 12px}
+  .opt-head .n{font-family:var(--mono);font-size:10px;letter-spacing:1.6px;text-transform:uppercase;color:var(--gold)}
+  .opt-head h2{font-family:var(--serif);font-weight:500;font-size:22px;margin:0}
+  .opt-head .why{color:var(--ink2);font-size:14px}
+  .frame{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:28px 36px 34px;min-height:420px}
+  .trail{display:flex;gap:10px;align-items:center;font-size:13px;color:var(--ink2);margin-bottom:18px}
+  .trail .up{font-family:var(--mono);font-size:9.5px;letter-spacing:1px;text-transform:uppercase;border:1px solid var(--border);border-radius:8px;padding:4px 8px;color:var(--ink2)}
+  .trail b{color:var(--ink);font-weight:600}
+  .pills{margin-left:auto;display:flex;gap:6px}
+  .pill{font-family:var(--mono);font-size:9.5px;letter-spacing:1px;text-transform:uppercase;border:1px solid var(--border);border-radius:999px;padding:6px 12px;color:var(--ink2)}
+  .pill.on{background:var(--accent);color:var(--on);border-color:var(--accent)}
+  .kind{font-family:var(--serif);font-weight:500;font-size:34px;letter-spacing:-.01em;display:flex;align-items:center;gap:14px}
+  .chip{font-family:var(--mono);font-size:9.5px;letter-spacing:1.2px;text-transform:uppercase;border:1px solid var(--accent);color:var(--accent);border-radius:999px;padding:5px 12px}
+  .name{font-family:var(--serif);font-weight:500;font-size:21px;line-height:1.3;margin-top:6px}
+  .polaris{font-family:var(--serif);font-style:italic;font-size:14.5px;color:var(--ink2);margin-top:6px;max-width:72ch}
+  .label{color:var(--accent);font-weight:600;font-size:15px;margin:0 0 8px}
+  .fence{display:flex;gap:32px;flex-wrap:wrap;align-items:flex-start;padding:14px 18px 16px;border-radius:12px;border:1px solid var(--border);box-shadow:inset 0 1px 0 rgba(255,255,255,.07),inset 0 -1px 0 rgba(0,0,0,.18);margin-top:22px}
+  .cell{display:grid;gap:8px}
+  .seg{display:flex;gap:6px}
+  .seg span{font-family:var(--mono);font-size:9.5px;letter-spacing:1px;text-transform:uppercase;border:1px solid rgba(243,241,234,.27);color:var(--ink2);border-radius:999px;padding:6px 12px;min-width:124px;text-align:center}
+  .seg span.on{background:var(--accent);color:var(--on);border-color:var(--accent)}
+  .date{font-family:var(--mono);font-size:12px;background:var(--fill);border:1px solid var(--border);border-radius:8px;padding:7px 10px;width:150px;height:32px}
+  .right{margin-left:auto}
+  .rule{border-top:1px solid var(--border);margin:22px 0 0;padding-top:16px}
+  .row{display:flex;gap:10px;align-items:flex-start;padding:4px 0;font-size:13.5px;line-height:1.5}
+  .dot{width:9px;height:9px;border-radius:99px;border:1.5px solid var(--ink2);margin-top:6px;flex-shrink:0}
+  .dot.fill{background:var(--ink2)}
+  .row i{color:var(--ink2)}
+  .row .m{font-family:var(--mono);font-size:9.5px;letter-spacing:.8px;color:var(--ink3);margin-left:8px;font-style:normal}
+  .muted{color:var(--ink3);font-size:13px}
+  .actions{display:flex;gap:8px;align-items:center;margin-top:26px}
+  .btn{font-family:var(--mono);font-size:9.5px;letter-spacing:1px;text-transform:uppercase;border:1px solid rgba(243,241,234,.3);color:var(--ink2);border-radius:8px;padding:8px 13px;display:inline-flex;gap:6px;align-items:center}
+  .btn.gold{background:var(--gold);border-color:var(--gold);color:var(--on)}
+  .btn.green{border-color:var(--green);color:var(--green)}
+  .status{margin-left:auto;font-family:var(--mono);font-size:10px;letter-spacing:1.2px;text-transform:uppercase;color:var(--ink3)}
+  .status b{color:var(--ink2);font-weight:500}
+  .prose{font-family:var(--serif);font-size:16px;line-height:1.65;color:var(--ink);max-width:66ch}
+  .prose + .prose{margin-top:10px}
+  .two{display:grid;grid-template-columns:1.1fr 1fr;gap:40px}
+  .stack .cell{margin-bottom:16px}
+  .lumen{position:absolute;right:28px;bottom:26px;border:1px solid var(--border);background:var(--raised);border-radius:999px;padding:9px 16px;font-family:var(--serif);font-size:15px}
+  .frame{position:relative}
+  .kill{max-width:1100px;margin:0 auto;color:var(--ink2);font-size:14px;line-height:1.7}
+  .kill b{color:var(--ink)}
+</style>
+</head>
+<body>
+
+<div class="intro">
+  <h1>The Milestone card, rebuilt from a blank page</h1>
+  <p>Three cuts of the same card. All three drop Sessions (a Cold Start button stays), the milestone commentary and input bar, the Mission chip, the Task block, and the Clock and State headings. They differ only in how much the page says and in what order.</p>
+</div>
+
+<!-- OPTION A -->
+<div class="opt">
+  <div class="opt-head"><span class="n">Option A</span><h2>Three Lines</h2><span class="why">header, the fence, then exactly three things: Done, Next, Go</span></div>
+  <div class="frame">
+    <div class="trail"><span class="up">↑ Up</span>Main Missions › <b>Company Finance Review</b>
+      <div class="pills"><span class="pill on">Briefing</span><span class="pill">Workbench · 8</span><span class="pill">Files · 9</span><span class="pill">Notes · 2</span><span class="pill">Polaris</span></div></div>
+    <div class="kind">Milestone 2 <span class="chip">Main Mission</span></div>
+    <div class="name">Create the same steady state model for 2027.</div>
+
+    <div class="fence">
+      <div class="cell"><div class="label" style="margin:0">Domain</div><div class="seg"><span class="on">Third Horizon</span><span>Personal</span></div></div>
+      <div class="cell"><div class="label" style="margin:0">Type</div><div class="seg"><span>Bounty</span><span>Contract</span><span class="on">Mythic</span></div></div>
+      <div class="cell right"><div class="label" style="margin:0">Target Completion</div><div class="date">11 / 04 / 2026</div></div>
+    </div>
+
+    <div class="rule">
+      <div class="label">Done</div>
+      <div class="muted">Nothing closed yet.</div>
+    </div>
+    <div class="rule">
+      <div class="label">Next</div>
+      <div class="row"><span class="dot"></span><i>Build the 2027 cash flow baseline using the same structure and assumptions as the current steady state model<span class="m">Lumen</span></i></div>
+      <div class="row"><span class="dot"></span><i>List out the short and medium term business structure decisions the model needs to flag<span class="m">Lumen</span></i></div>
+      <div class="row"><span class="dot"></span><i>Sequence the tactical steps to execute the cash and structure strategies side by side<span class="m">Lumen</span></i></div>
+    </div>
+
+    <div class="actions">
+      <span class="btn gold">Equip</span>
+      <span class="btn">⌘ Cold Start</span>
+      <span class="btn">Stash</span>
+      <span class="status">Holstered · <b>15m today</b></span>
+    </div>
+    <div class="lumen">✦ Lumen</div>
+  </div>
+</div>
+
+<!-- OPTION B -->
+<div class="opt">
+  <div class="opt-head"><span class="n">Option B</span><h2>The Briefing Memo</h2><span class="why">one narrow column; Where It Stands is two sentences Lumen keeps current, not lists</span></div>
+  <div class="frame">
+    <div class="trail"><span class="up">↑ Up</span>Main Missions › <b>Company Finance Review</b>
+      <div class="pills"><span class="pill on">Briefing</span><span class="pill">Workbench · 8</span><span class="pill">Files · 9</span><span class="pill">Notes · 2</span><span class="pill">Polaris</span></div></div>
+    <div style="max-width:760px">
+      <div class="kind">Milestone 2 <span class="chip">Main Mission</span></div>
+      <div class="name">Create the same steady state model for 2027.</div>
+      <div class="polaris">A 2027 steady state model on the same chassis as 2026, locked assumptions, pinch points visible by month.</div>
+
+      <div class="fence" style="gap:24px">
+        <div class="cell"><div class="label" style="margin:0">Domain</div><div class="seg"><span class="on">Third Horizon</span><span>Personal</span></div></div>
+        <div class="cell"><div class="label" style="margin:0">Type</div><div class="seg"><span>Bounty</span><span>Contract</span><span class="on">Mythic</span></div></div>
+        <div class="cell" style="flex-basis:100%"><div class="label" style="margin:0">Target Completion</div><div class="date">11 / 04 / 2026</div></div>
+      </div>
+
+      <div class="rule">
+        <div class="label">Where It Stands</div>
+        <div class="prose">Nothing has closed on this milestone yet. The 2026 model is live on the estimate page and the purple assumptions are tagged; the 2027 block on the pro forma is the next thing to pull forward.</div>
+        <div class="prose" style="color:var(--ink2)">Next: build the 2027 baseline on the same structure, then list the business structure decisions it has to flag, then sequence the steps.</div>
+      </div>
+
+      <div class="actions">
+        <span class="btn gold">Equip</span>
+        <span class="btn">⌘ Cold Start</span>
+        <span class="status">Holstered · <b>15m today</b></span>
+      </div>
+    </div>
+    <div class="lumen">✦ Lumen</div>
+  </div>
+</div>
+
+<!-- OPTION C -->
+<div class="opt">
+  <div class="opt-head"><span class="n">Option C</span><h2>Facts Left, Standing Right</h2><span class="why">the fence stands up as a left rail; the right side is the only thing to read</span></div>
+  <div class="frame">
+    <div class="trail"><span class="up">↑ Up</span>Main Missions › <b>Company Finance Review</b>
+      <div class="pills"><span class="pill on">Briefing</span><span class="pill">Workbench · 8</span><span class="pill">Files · 9</span><span class="pill">Notes · 2</span><span class="pill">Polaris</span></div></div>
+    <div class="kind">Milestone 2 <span class="chip">Main Mission</span></div>
+    <div class="name">Create the same steady state model for 2027.</div>
+
+    <div class="two" style="margin-top:22px">
+      <div>
+        <div class="fence stack" style="display:block;margin:0">
+          <div class="cell"><div class="label" style="margin:0">Domain</div><div class="seg"><span class="on">Third Horizon</span><span>Personal</span></div></div>
+          <div class="cell"><div class="label" style="margin:0">Type</div><div class="seg"><span>Bounty</span><span>Contract</span><span class="on">Mythic</span></div></div>
+          <div class="cell" style="margin:0"><div class="label" style="margin:0">Target Completion</div><div class="date">11 / 04 / 2026</div></div>
+        </div>
+        <div class="actions" style="margin-top:16px">
+          <span class="btn gold">Equip</span>
+          <span class="btn">⌘ Cold Start</span>
+          <span class="status">Holstered · <b>15m</b></span>
+        </div>
+      </div>
+      <div>
+        <div class="label">Done</div>
+        <div class="muted" style="margin-bottom:18px">Nothing closed yet.</div>
+        <div class="label">Next</div>
+        <div class="row"><span class="dot"></span><i>Build the 2027 cash flow baseline on the same structure as the current model<span class="m">Lumen</span></i></div>
+        <div class="row"><span class="dot"></span><i>List the business structure decisions the model needs to flag<span class="m">Lumen</span></i></div>
+        <div class="row"><span class="dot"></span><i>Sequence the tactical steps side by side<span class="m">Lumen</span></i></div>
+      </div>
+    </div>
+    <div class="lumen">✦ Lumen</div>
+  </div>
+</div>
+
+<div class="kill">
+  <b>Where the rest goes, in every option.</b> Back Story moves to Notes. Milestones (for a Mythic) and the Marks (for a Contract) move to the Workbench as the first block, so the Briefing never shows an input bar. Mission and Task fold into the trail at the top, which already names them. Clock and State become the one status line beside the buttons. Sessions is gone; Cold Start copies the briefed start command, and the resume command rides the Workbench.
+</div>
+
+</body>
+</html>

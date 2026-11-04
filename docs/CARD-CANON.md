@@ -91,3 +91,9 @@ The Polaris sentence, the Achieved line, the pinned evidence and the tags lead t
 - `CARD_PILLS` is the only source of the pill set. Adding a pill means changing it there and saying why here.
 - `node scripts/check-jsx-undef.mjs` runs before every deploy.
 - A page section that does not fit one of the five rows above does not get a sixth pill; it goes under the pill whose row describes it, with a label.
+
+## The quiet Briefing (David 11/4, the rebuild)
+
+The Briefing is the page you read in ten seconds, so it carries five things and nothing else: the trail; the header (kind, chip, name, Polaris line, the five pills in one quiet row under it, left); the fence (Domain, Type, Target Completion); Done and Next; and one action row (Equip or Holster, Cold Start, Stash, with the clock as a status line). Done is history: milestones released, marks ticked, board items closed, and a file only once it is starred as evidence. Next is the open marks or milestones, the open board items, and Lumen's two or three steps.
+
+Everything that edits or explains moves off the Briefing. Marks and Milestones are the first block on the Workbench, then the Milestone Board, then Sessions (copy a briefed start or the resume command), Live Protocols, Workspace and In Play. Back Story reads at the top of Notes. Mission and Task are the trail. Sessions as a Briefing block is retired; Cold Start is the one button that starts a fresh session on the card.

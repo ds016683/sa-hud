@@ -500,11 +500,8 @@ function ProjectDetail({ project, board: boardProp, api, onBack, initialTab, ini
       {closingMission && <CloseMissionModal project={project} tasks={tasks} onClose={() => setClosingMission(false)} onDone={closeMission} />}
       {/* Card header canon (David 10/29): the kind heads the name and is bigger than it; the
           type chip with its icon sits beside the header; the name runs full width beneath. */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, marginBottom: 18, flexWrap: 'wrap' }}>
+      <div style={{ marginBottom: 18 }}>
         <Trail nodes={[{ label: 'Main Missions', onClick: onBack }]} />
-        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-          {CARD_PILLS.map(([id, label]) => <CardPill key={id} active={tab === id} onClick={() => setTab(id)} count={id === 'briefing' ? tasks.length : id === 'polaris' ? evidence.length : 0}>{label}</CardPill>)}
-        </div>
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
@@ -517,6 +514,10 @@ function ProjectDetail({ project, board: boardProp, api, onBack, initialTab, ini
       <div style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 21, lineHeight: 1.3, color: INK, marginTop: 8, letterSpacing: '-0.005em' }}>{project.name}</div>
       <div style={{ fontSize: 14, lineHeight: 1.6, color: TEXT_DIM, margin: '6px 0 0', maxWidth: '72ch' }}>
         {project.description ? <span><span style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '1.4px', textTransform: 'uppercase', color: LABEL, marginRight: 8, display: 'block', marginBottom: 2 }}>{NORTH_STAR_LABEL}</span><span style={{ fontFamily: SERIF, fontStyle: 'italic', fontSize: 15.5, color: INK }}>{project.description}</span></span> : <button onClick={async () => { const d = await hudPrompt(`${NORTH_STAR_LABEL}? One sentence.`, ''); if (d?.trim()) await api.updateProject(project.id, { description: d.trim() }) }} style={{ ...S.btnGhost, padding: '3px 9px', fontSize: 10 }}>Write the Polaris Objective</button>}
+      </div>
+      {/* The pills (David 11/4, one chassis with the item card): one quiet row under the header, left. */}
+      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 18 }}>
+        {CARD_PILLS.map(([id, label]) => <CardPill key={id} active={tab === id} onClick={() => setTab(id)} count={id === 'briefing' ? tasks.length : id === 'polaris' ? evidence.length : 0}>{label}</CardPill>)}
       </div>
       <div style={{ ...S.sub, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
         <span>{[project.key, '100 miles on completion · 10 per milestone'].filter(Boolean).join(' · ')}</span>

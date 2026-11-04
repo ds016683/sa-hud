@@ -7,7 +7,7 @@
 // shows whatever checklist is running on the item. Files is the one place its
 // files live. Notes is the meetings and the item's own notes.
 import { useCallback, useEffect, useState } from 'react'
-import { ArrowLeft, Play, Pause, Archive, ExternalLink, Mic, Map as MapIcon, Check, Plus, Trash2, Terminal, Star } from 'lucide-react'
+import { Play, Pause, Archive, ExternalLink, Mic, Check, Plus, Trash2, Terminal, Star } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { listArtifacts, readArtifact, writeArtifact } from '../../lib/artifacts'
 import { fetchLoadout, equip, holster, stash, equipObjective, equipTask, fmtClock, SIZES } from '../../lib/loadout'
@@ -130,18 +130,23 @@ async function loadRelated(item) {
 // in Live Files (claude://claude.ai/epitaxy/local_<session id>) that focus.py leaves on
 // the item; the note carries the resume command. The briefed command is built here.
 const isSessionLink = (r) => isLink(r) && /^claude:\/\//.test(String(r.path || ''))
+const sessionLinks = (links) => (links || []).filter(isSessionLink).sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)))
+// The Cold Start (David 11/4): one button on the Briefing copies a briefed start for a fresh Claude session.
+function briefCommand(item, links) {
+  const sessions = sessionLinks(links)
+  const cwd = (String(sessions[0]?.note || '').match(/^cd "([^"]+)"/) || [])[1] || '~/builds/sa-hud'
+  const oid = item.objective_id || item.id
+  return `cd "${cwd}" && claude "Pick up the ${item.kind || 'Side Mission'} '${String(item.title || '').replace(/"/g, "'")}' (${oid}): read its briefing with get_objectives and list_steps, its files with list_live_files, then continue from Next. Set the focus on it first."`
+}
 function SessionsStrip({ item, links }) {
   const [copied, setCopied] = useState(null)
   const copy = async (key, text) => { try { await navigator.clipboard.writeText(text); setCopied(key); setTimeout(() => setCopied(null), 1600) } catch { /* no clipboard */ } }
-  const sessions = (links || []).filter(isSessionLink).sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)))
-  const cwdOf = (r) => (String(r?.note || '').match(/^cd "([^"]+)"/) || [])[1] || null
-  const cwd = cwdOf(sessions[0]) || '~/builds/sa-hud'
-  const oid = item.objective_id || item.id
-  const brief = `cd "${cwd}" && claude "Pick up the ${item.kind || 'Side Mission'} '${String(item.title || '').replace(/"/g, "'")}' (${oid}): read its briefing with get_objectives and list_steps, its files with list_live_files, then continue from Still Needed. Set the focus on it first."`
+  const sessions = sessionLinks(links)
+  const brief = briefCommand(item, links)
   const latest = sessions.find(r => r.note) || null
   return (
     <div style={{ marginTop: 14, paddingTop: 12, borderTop: `1px solid ${PANEL_BORDER}` }}>
-      <div style={{ fontSize: 14.5, fontWeight: 600, color: LABEL }}>Sessions</div>
+      <Label>Sessions</Label>
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
         <button onClick={() => copy('brief', brief)} title={brief} style={{ ...btn(INK2), padding: '5px 10px' }}><Terminal size={11} /> {copied === 'brief' ? 'Copied' : 'Copy a Briefed Start'}</button>
         {latest && <button onClick={() => copy('resume', latest.note)} title={latest.note} style={{ ...btn(INK2), padding: '5px 10px' }}><Terminal size={11} /> {copied === 'resume' ? 'Copied' : 'Copy Resume Command'}</button>}
@@ -218,20 +223,17 @@ function WhereItStands({ item, rel, task, taskId, linkedBoards }) {
     </div>
   )
   return (
-    <div style={{ borderTop: `1px solid ${PANEL_BORDER}`, paddingTop: 14 }}>
-      <Label>Where It Stands</Label>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 22 }}>
-        <div>
-          <div style={{ fontSize: 14.5, fontWeight: 600, color: LABEL, marginBottom: 5 }}>Done</div>
-          {done.length ? done.map((r, i) => <Row key={i} r={r} color={doneColor} />) : <div style={{ fontSize: 13, color: GRAY, padding: '4px 0' }}>Nothing closed yet.</div>}
-        </div>
-        <div>
-          <div style={{ fontSize: 14.5, fontWeight: 600, color: LABEL, marginBottom: 5 }}>Still Needed</div>
-          {needed.map((r, i) => <Row key={i} r={r} color={r.kind === 'blocked' ? CAUTION : INK2} open />)}
-          {thinking && <div style={{ fontFamily: MONO, fontSize: 10.5, letterSpacing: '1px', textTransform: 'uppercase', color: LABEL, padding: '4px 0' }}>Lumen is reading the trail</div>}
-          {!thinking && (next || []).map((t, i) => <div key={`n${i}`} style={{ display: 'flex', gap: 10, alignItems: 'flex-start', padding: '4px 0' }}><span style={{ width: 9, height: 9, borderRadius: 99, boxSizing: 'border-box', border: `1.5px solid ${INK2}`, marginTop: 6, flexShrink: 0 }} /><span style={{ fontSize: 13.5, lineHeight: 1.5, color: INK2, fontStyle: 'italic', flex: 1 }}>{t}<span style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '0.8px', color: GRAY, marginLeft: 8, fontStyle: 'normal' }}>Lumen</span></span></div>)}
-          {!thinking && !needed.length && !(next || []).length && <div style={{ fontSize: 13, color: GRAY, padding: '4px 0' }}>Nothing open. If the star is true, extract it.</div>}
-        </div>
+    <div style={{ display: 'grid', gap: 18 }}>
+      <div>
+        <Label>Done</Label>
+        {done.length ? done.map((r, i) => <Row key={i} r={r} color={doneColor} />) : <div style={{ fontSize: 13, color: GRAY, padding: '4px 0' }}>Nothing closed yet.</div>}
+      </div>
+      <div>
+        <Label>Next</Label>
+        {needed.map((r, i) => <Row key={i} r={r} color={r.kind === 'blocked' ? CAUTION : INK2} open />)}
+        {thinking && <div style={{ fontFamily: MONO, fontSize: 10.5, letterSpacing: '1px', textTransform: 'uppercase', color: LABEL, padding: '4px 0' }}>Lumen is reading the trail</div>}
+        {!thinking && (next || []).map((t, i) => <div key={`n${i}`} style={{ display: 'flex', gap: 10, alignItems: 'flex-start', padding: '4px 0' }}><span style={{ width: 9, height: 9, borderRadius: 99, boxSizing: 'border-box', border: `1.5px solid ${INK2}`, marginTop: 6, flexShrink: 0 }} /><span style={{ fontSize: 13.5, lineHeight: 1.5, color: INK2, fontStyle: 'italic', flex: 1 }}>{t}<span style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '0.8px', color: GRAY, marginLeft: 8, fontStyle: 'normal' }}>Lumen</span></span></div>)}
+        {!thinking && !needed.length && !(next || []).length && <div style={{ fontSize: 13, color: GRAY, padding: '4px 0' }}>Nothing open. If the star is true, extract it.</div>}
       </div>
     </div>
   )
@@ -290,6 +292,8 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
   const counts = { workbench: (rel?.punchlist || []).filter(isOpenRow).length, polaris: (rel?.evidence || []).length, files: (rel?.objFiles?.length || 0) + (rel?.projectFiles.length || 0) + (rel?.storeFiles.filter(f => !f.folder).length || 0), notes: rel?.meetings.length || 0 }
   const obj = rel?.objective || null
   const [stepText, setStepText] = useState('')
+  const [copied, setCopied] = useState(false)
+  const copyText = async (text) => { try { await navigator.clipboard.writeText(text); setCopied(true); setTimeout(() => setCopied(false), 1600) } catch { /* no clipboard */ } }
   const [objBusy, setObjBusy] = useState(false)
   const [editStar, setEditStar] = useState(false)
   const [reading, setReading] = useState(null)
@@ -313,18 +317,6 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
         </div>
       )}
       <div style={host === 'page' ? { minWidth: 0 } : { ...S.page, maxWidth: 1180, margin: '0 auto' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-          <button onClick={onClose} style={btn(INK2)}><ArrowLeft size={13} /> Back</button>
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-            {item.kind !== 'Event' && item.kind !== 'Session' && !rel?.parent && (loaded
-              ? (loaded.equipped
-                ? <button onClick={() => act(() => holster(loaded.id), 'Timer off')} style={btn(GREEN, true)}><Pause size={12} /> Timer on · {fmtClock(loaded.minutes_today)}</button>
-                : <button onClick={() => act(() => equip(loaded.id), 'Timer on')} style={btn(INK2)}><Play size={12} /> Timer off · {fmtClock(loaded.minutes_today)}</button>)
-              : <button onClick={startTimer} style={btn(INK2)}><Play size={12} /> Load and start timer</button>)}
-            {loaded && <button onClick={() => act(() => stash(loaded.id), 'Stashed')} style={btn(INK2)}><Archive size={12} /> Stash</button>}
-          </div>
-        </div>
-
         {(() => {
           // Header canon (David 10/29): the kind is the header and is bigger than the name it heads;
           // the type wears its icon beside it; the name runs the full width and wraps only when the
@@ -356,19 +348,18 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
           }
           const name = task ? String(item.title || '').replace(/^\s*\d+\s*[·.:)-]\s*/, '') : item.title
           return (
-            <div style={{ marginTop: 22 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
-                <Trail nodes={nodes} />
-                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                  {TABS.map(t => <CardPill key={t} active={tab === t} onClick={() => setTab(t)} count={counts[t]}>{TAB_LABEL[t]}</CardPill>)}
-                </div>
-              </div>
+            <div>
+              <Trail nodes={nodes} />
               <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap', marginTop: 16 }}>
                 <h1 style={{ ...S.h1, fontSize: 28, lineHeight: 1.2 }}>{head}</h1>
                 {chip && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7, fontFamily: MONO, fontSize: 10.5, letterSpacing: '1.4px', textTransform: 'uppercase', color: chip.color, border: `1px solid ${alpha(chip.color, 40)}`, borderRadius: 999, padding: '5px 12px', whiteSpace: 'nowrap' }}><KindIcon kind={chip.kind} size={13} color={chip.color} />{chip.label}</span>}
               </div>
               <div style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 21, lineHeight: 1.3, color: INK, marginTop: 8, letterSpacing: '-0.005em' }}>{name}</div>
               {obj?.north_star && <div onClick={() => setTab('polaris')} title="Polaris" style={{ fontFamily: SERIF, fontStyle: 'italic', fontSize: 14.5, color: INK2, lineHeight: 1.45, maxWidth: '72ch', cursor: 'pointer', marginTop: 6 }}>{obj.north_star}</div>}
+              {/* The pills (David 11/4, the rebuild): one quiet row under the header, left, not fighting the trail. */}
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 18 }}>
+                {TABS.map(t => <CardPill key={t} active={tab === t} onClick={() => setTab(t)} count={counts[t]}>{TAB_LABEL[t]}</CardPill>)}
+              </div>
             </div>
           )
         })()}
@@ -379,7 +370,7 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
 
           {rel && tab === 'briefing' && (
             <div style={{ display: 'grid', gap: 22 }}>
-              {obj && (() => { const sz = SIZES[item.size] ? item.size : 'light'; const realm = realmOf(obj); const max = stepsMaxFor(sz); const field = { background: 'rgba(255,255,255,0.05)', border: `1px solid ${PANEL_BORDER}`, borderRadius: 8, color: INK, padding: '6px 9px', fontFamily: MONO, fontSize: 12, height: 32, width: '100%', boxSizing: 'border-box' }; return (
+              {obj && (() => { const sz = SIZES[item.size] ? item.size : 'light'; const realm = realmOf(obj); const field = { background: 'rgba(255,255,255,0.05)', border: `1px solid ${PANEL_BORDER}`, borderRadius: 8, color: INK, padding: '6px 9px', fontFamily: MONO, fontSize: 12, height: 32, width: '100%', boxSizing: 'border-box' }; return (
                 <>
                   {(() => {
                     // The header strip (David 11/4): one fence around Domain and Type, read as the card's upper header,
@@ -397,10 +388,37 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
                     ) })()}
 
                   <WhereItStands item={item} rel={rel} task={task} taskId={taskId} linkedBoards={linkedBoards} />
-                  <SessionsStrip item={item} links={requests} />
+                </>
+              ) })()}
+              {!obj && item.kind !== 'Event' && item.kind !== 'Session' && <WhereItStands item={item} rel={rel} task={task} taskId={taskId} linkedBoards={linkedBoards} />}
+              {!obj && (item.description || task?.notes) && <div><Label>Back Story</Label><div style={{ fontSize: 14.5, lineHeight: 1.65, color: INK, whiteSpace: 'pre-wrap' }}>{item.description || task.notes}</div></div>}
+              {item.event && (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 14 }}>
+                  <div><Label>When</Label><div style={{ fontSize: 13, color: INK }}>{chiTime(item.event.start_at)} to {chiTime(item.event.end_at)} CT</div></div>
+                  <div><Label>Organizer</Label><div style={{ fontSize: 13, color: INK }}>{item.event.organizer || 'unknown'}</div></div>
+                  <div style={{ gridColumn: '1 / -1' }}><Label>Attendees</Label><div style={{ fontSize: 13, color: INK2, lineHeight: 1.6 }}>{(item.event.attendees || []).map(a => a?.name || a?.email || a).filter(Boolean).join(', ') || 'none listed'}</div></div>
+                </div>
+              )}
+              {task?.due_date && !obj && <div style={{ fontFamily: MONO, fontSize: 10.5, letterSpacing: '1px', color: LABEL, textTransform: 'uppercase' }}>{task.status} · due {task.due_date}</div>}
+              {item.kind !== 'Event' && item.kind !== 'Session' && (
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', borderTop: `1px solid ${PANEL_BORDER}`, paddingTop: 16 }}>
+                  {!rel?.parent && (loaded
+                    ? (loaded.equipped
+                      ? <button onClick={() => act(() => holster(loaded.id), 'Timer off')} style={btn(GREEN, true)}><Pause size={12} /> Holster</button>
+                      : <button onClick={() => act(() => equip(loaded.id), 'Timer on')} style={btn(GOLD, true)}><Play size={12} /> Equip</button>)
+                    : <button onClick={startTimer} style={btn(GOLD, true)}><Play size={12} /> Equip</button>)}
+                  <button onClick={() => copyText(briefCommand(item, requests))} title={briefCommand(item, requests)} style={btn(INK2)}><Terminal size={12} /> {copied ? 'Copied' : 'Cold Start'}</button>
+                  {loaded && <button onClick={() => act(() => stash(loaded.id), 'Stashed')} style={btn(INK2)}><Archive size={12} /> Stash</button>}
+                  <span style={{ marginLeft: 'auto', fontFamily: MONO, fontSize: 10, letterSpacing: '1.2px', textTransform: 'uppercase', color: GRAY }}>{loaded ? (loaded.equipped ? 'Equipped' : 'Holstered') : 'Not loaded'} · <span style={{ color: loaded?.equipped ? GREEN : INK2 }}>{fmtClock(loaded?.minutes_today || 0)} today</span></span>
+                </div>
+              )}
+            </div>
+          )}
 
-                  {(item.description || obj.description) && <div><Label>Back Story</Label><div style={{ fontSize: 14.5, lineHeight: 1.65, color: INK, whiteSpace: 'pre-wrap' }}>{item.description || obj.description}</div></div>}
-
+          {rel && tab === 'workbench' && (item.objective_id ? (
+            <div key={tick} style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 28 }}>
+              {obj && (() => { const sz = SIZES[item.size] ? item.size : 'light'; const max = stepsMaxFor(sz); return (
+                <>
                   {rel.parent ? null : sz === 'heavy' ? <MythicMilestones parent={obj} milestones={rel.children || []} onChanged={load} onOpen={(m) => openCard(m.id)} /> : <div>
                     <Label>{sz === 'medium' ? 'Marks · What Has To Happen, Three At Most' : 'Marks'}</Label>
                     {max === 0 && <div style={{ fontSize: 13, color: GRAY }}>A Bounty is one action and carries no marks.</div>}
@@ -422,37 +440,8 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
                     )}
                     {max > 0 && Array.isArray(rel.steps) && rel.steps.length >= max && <div style={{ fontSize: 12, color: GRAY, marginTop: 8 }}>{sz === 'heavy' ? 'Five gates is the Mythic’s limit. A sixth means this is a Main Mission: promote it.' : 'Three marks is a Contract’s limit. More than that is a Mythic.'}</div>}
                   </div>}
-
                 </>
               ) })()}
-              {!obj && item.kind !== 'Event' && item.kind !== 'Session' && <WhereItStands item={item} rel={rel} task={task} taskId={taskId} linkedBoards={linkedBoards} />}
-              {!obj && (item.description || task?.notes) && <div><Label>Back Story</Label><div style={{ fontSize: 14.5, lineHeight: 1.65, color: INK, whiteSpace: 'pre-wrap' }}>{item.description || task.notes}</div></div>}
-              {item.event && (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 14 }}>
-                  <div><Label>When</Label><div style={{ fontSize: 13, color: INK }}>{chiTime(item.event.start_at)} to {chiTime(item.event.end_at)} CT</div></div>
-                  <div><Label>Organizer</Label><div style={{ fontSize: 13, color: INK }}>{item.event.organizer || 'unknown'}</div></div>
-                  <div style={{ gridColumn: '1 / -1' }}><Label>Attendees</Label><div style={{ fontSize: 13, color: INK2, lineHeight: 1.6 }}>{(item.event.attendees || []).map(a => a?.name || a?.email || a).filter(Boolean).join(', ') || 'none listed'}</div></div>
-                </div>
-              )}
-              {rel.project && (
-                <div>
-                  <Label>Mission</Label>
-                  <button onClick={() => go([rel.project.id])} style={btn(INK2)}><MapIcon size={12} /> {rel.project.name}</button>
-                </div>
-              )}
-              {task && (
-                <div>
-                  <Label>Task</Label>
-                  <div style={{ fontSize: 13, color: INK }}>{task.text}</div>
-                  <div style={{ fontFamily: MONO, fontSize: 10.5, letterSpacing: '1px', color: LABEL, textTransform: 'uppercase', marginTop: 4 }}>{task.status}{task.due_date ? ` · due ${task.due_date}` : ''}</div>
-                </div>
-              )}
-              {loaded && (
-                <div style={{ display: 'flex', gap: 22, flexWrap: 'wrap', alignItems: 'flex-end', borderTop: `1px solid ${PANEL_BORDER}`, paddingTop: 14 }}>
-                  <div><Label>Clock Today</Label><div style={{ fontFamily: SERIF, fontSize: 20, color: loaded.equipped ? GREEN : INK }}>{fmtClock(loaded.minutes_today)}</div></div>
-                  <div><Label>State</Label><div style={{ fontFamily: SERIF, fontSize: 20, color: INK }}>{loaded.equipped ? 'Equipped' : 'Holstered'}</div></div>
-                </div>
-              )}
               {(() => { const b = linkedBoards[0] || (task ? (rel.boards || [])[0] : null); return b && item.kind !== 'Event' ? (
                 <div style={{ borderTop: `1px solid ${PANEL_BORDER}`, paddingTop: 16 }}>
                   <Label>{taskId ? 'Milestone Board · Claude’s Steps On This Milestone' : 'Session Board'}</Label>
@@ -471,12 +460,7 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
                   </div>
                 </div>
               ) : null) })()}
-              {!item.description && !task?.notes && !rel.project && !item.event && !loaded && !obj && <div style={{ fontSize: 13, color: GRAY }}>No back story on this one yet.</div>}
-            </div>
-          )}
-
-          {rel && tab === 'workbench' && (item.objective_id ? (
-            <div key={tick} style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 28 }}>
+              <div><SessionsStrip item={item} links={requests} /></div>
               <div><Label>Live Protocols</Label><ProtocolsTab objectiveId={item.objective_id} /></div>
               <div style={{ minWidth: 0 }}><Label>Workspace</Label><WorkspacePages root={objRoot(item.objective_id)} what="item" /></div>
               <div><Label>In Play</Label><WorkbenchTab objectiveId={item.objective_id} intake={false} /></div>
@@ -504,6 +488,7 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
 
           {rel && tab === 'notes' && (
             <div style={{ display: 'grid', gap: 18 }}>
+              {(item.description || obj?.description || task?.notes) && <div><Label>Back Story</Label><div style={{ fontSize: 14.5, lineHeight: 1.65, color: INK, whiteSpace: 'pre-wrap' }}>{item.description || obj?.description || task?.notes}</div></div>}
               {obj && (
                 <div>
                   <Label>Notes On This {what.item === 'task' ? 'Milestone' : 'Mission'}</Label>
