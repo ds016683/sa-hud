@@ -39,9 +39,13 @@ const chiToday = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Chi
 // The tasks on David's default project, by name (11/4): an item can ask for
 // a task other than THS Internal ("Business Management"); unknown names fall
 // back to the default and say so in the reply.
-export async function projectTasks() {
-  const out = (await harvest(`task_assignments?per_page=100&is_active=true`)).task_assignments || []
-  return out.filter(a => a.project?.id === DEFAULT_PROJECT_ID).map(a => ({ id: a.task.id, name: a.task.name }))
+export async function projectTasks(projectId = DEFAULT_PROJECT_ID) {
+  const out = (await harvest(`projects/${projectId}/task_assignments?per_page=100&is_active=true`)).task_assignments || []
+  return out.map(a => ({ id: a.task.id, name: a.task.name }))
+}
+async function activeProjects() {
+  const out = (await harvest(`projects?is_active=true&per_page=100`)).projects || []
+  return out.map(p => ({ id: p.id, name: p.name, client: p.client?.name || null }))
 }
 async function resolveTask(name) {
   if (!name) return { task_id: DEFAULT_TASK_ID }
@@ -111,7 +115,7 @@ export default async function handler(req, res) {
       return res.status(out.error ? 400 : 200).json(out)
     }
     if (action === 'tasks') {
-      return res.status(200).json({ ok: true, project_id: DEFAULT_PROJECT_ID, default_task_id: DEFAULT_TASK_ID, tasks: await projectTasks() })
+      return res.status(200).json({ ok: true, project_id: DEFAULT_PROJECT_ID, default_task_id: DEFAULT_TASK_ID, tasks: await projectTasks(), projects: await activeProjects() })
     }
     if (action === 'status') {
       const today = chiToday()
