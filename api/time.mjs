@@ -43,15 +43,39 @@ export async function projectTasks(projectId = DEFAULT_PROJECT_ID) {
   const out = (await harvest(`projects/${projectId}/task_assignments?per_page=100&is_active=true`)).task_assignments || []
   return out.map(a => ({ id: a.task.id, name: a.task.name }))
 }
+// Every active project, all pages (the account has several hundred).
 async function activeProjects() {
-  const out = (await harvest(`projects?is_active=true&per_page=100`)).projects || []
-  return out.map(p => ({ id: p.id, name: p.name, client: p.client?.name || null }))
+  const all = []
+  for (let page = 1; page <= 10; page++) {
+    const r = await harvest(`projects?is_active=true&per_page=100&page=${page}`)
+    all.push(...(r.projects || []).map(p => ({ id: p.id, name: p.name, client: p.client?.name || null })))
+    if (!r.next_page) break
+  }
+  return all
 }
-async function resolveTask(name) {
-  if (!name) return { task_id: DEFAULT_TASK_ID }
-  const want = String(name).trim().toLowerCase()
-  const t = (await projectTasks()).find(x => x.name.toLowerCase() === want)
-  return t ? { task_id: t.id, task: t.name } : { task_id: DEFAULT_TASK_ID, task_fallback: `no task named "${name}" on the default project` }
+async function accountTasks() {
+  const all = []
+  for (let page = 1; page <= 10; page++) {
+    const r = await harvest(`tasks?is_active=true&per_page=100&page=${page}`)
+    all.push(...(r.tasks || []).map(t => ({ id: t.id, name: t.name })))
+    if (!r.next_page) break
+  }
+  return all
+}
+const same = (a, b) => String(a || '').trim().toLowerCase() === String(b || '').trim().toLowerCase()
+// Where an entry lands: the default project and task unless the item names a
+// project (by name, any client) and/or a task (by name, on that project).
+async function resolveTask(taskName, projectName) {
+  let project_id = DEFAULT_PROJECT_ID, project = null, fallback = []
+  if (projectName) {
+    const p = (await activeProjects()).find(x => same(x.name, projectName))
+    if (p) { project_id = p.id; project = p.name } else fallback.push(`no active project named "${projectName}"`)
+  }
+  if (!taskName) return project_id === DEFAULT_PROJECT_ID ? { task_id: DEFAULT_TASK_ID, ...(fallback.length ? { fallback } : {}) } : { project_id, project, task_id: (await projectTasks(project_id))[0]?.id || DEFAULT_TASK_ID }
+  const t = (await projectTasks(project_id)).find(x => same(x.name, taskName))
+  if (t) return { project_id, project, task_id: t.id, task: t.name, ...(fallback.length ? { fallback } : {}) }
+  fallback.push(`no task named "${taskName}" on ${project || 'the default project'}`)
+  return { project_id, project, task_id: (await projectTasks(project_id))[0]?.id || DEFAULT_TASK_ID, fallback }
 }
 
 // Log a completed span to Harvest: one entry per title per day (appends).
@@ -64,16 +88,16 @@ export async function logHours(title, hours, day = null, ceiling = MAX_HOURS, op
   if (h > ceiling) return { error: `span ${h}h over sanity ceiling (${ceiling}h)` }
   const today = /^\d{4}-\d{2}-\d{2}$/.test(String(day || '')) ? day : chiToday()
   const notes = NOTE_PREFIX + String(opts.notes || title).slice(0, 200)
-  const coded = await resolveTask(opts.task)
+  const coded = await resolveTask(opts.task, opts.project)
   const me = await harvest('users/me')
   const existing = (await harvest(`time_entries?user_id=${me.id}&from=${today}&to=${today}&per_page=100`)).time_entries || []
-  const match = existing.find(e => e.notes === notes && !e.is_running && e.task?.id === coded.task_id)
+  const match = existing.find(e => e.notes === notes && !e.is_running && e.task?.id === coded.task_id && e.project?.id === (coded.project_id || DEFAULT_PROJECT_ID))
   if (match) {
     const total = Math.round((match.hours + h) * 100) / 100
     const entry = await harvest(`time_entries/${match.id}`, { method: 'PATCH', body: { hours: total } })
     return { ok: true, appended: true, entry_id: entry.id, added: h, hours: total, ...coded }
   }
-  const entry = await harvest('time_entries', { method: 'POST', body: { project_id: DEFAULT_PROJECT_ID, task_id: coded.task_id, spent_date: today, hours: h, notes } })
+  const entry = await harvest('time_entries', { method: 'POST', body: { project_id: coded.project_id || DEFAULT_PROJECT_ID, task_id: coded.task_id, spent_date: today, hours: h, notes } })
   return { ok: true, logged: true, entry_id: entry.id, hours: h, ...coded }
 }
 
@@ -107,15 +131,19 @@ export default async function handler(req, res) {
 
   let body = req.body
   if (typeof body === 'string') { try { body = JSON.parse(body) } catch { body = {} } }
-  const { action, title, hours, notes, task } = body || {}
+  const { action, title, hours, notes, task, project, q } = body || {}
 
   try {
     if (action === 'log') {
-      const out = await logHours(title, hours, null, MAX_HOURS, { notes, task })
+      const out = await logHours(title, hours, null, MAX_HOURS, { notes, task, project })
       return res.status(out.error ? 400 : 200).json(out)
     }
     if (action === 'tasks') {
-      return res.status(200).json({ ok: true, project_id: DEFAULT_PROJECT_ID, default_task_id: DEFAULT_TASK_ID, tasks: await projectTasks(), projects: await activeProjects() })
+      const needle = String(q || '').trim().toLowerCase()
+      const hit = (name) => !needle || String(name || '').toLowerCase().includes(needle)
+      const projects = (await activeProjects()).filter(p => hit(p.name) || hit(p.client))
+      const tasks = (await accountTasks()).filter(t => hit(t.name))
+      return res.status(200).json({ ok: true, project_id: DEFAULT_PROJECT_ID, default_task_id: DEFAULT_TASK_ID, default_tasks: await projectTasks(), projects, tasks })
     }
     if (action === 'status') {
       const today = chiToday()
