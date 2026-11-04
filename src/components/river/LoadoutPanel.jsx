@@ -417,7 +417,7 @@ function RoutineSlot({ tick, onChanged }) {
   )
 }
 
-export default function LoadoutPanel({ onChange, refreshKey = 0, onNavigate, bare = false }) {
+export default function LoadoutPanel({ onChange, refreshKey = 0, bare = false }) {
   const [L, setL] = useState(null)
   const [tick, setTick] = useState(0)
   const [open, setOpen] = useState(null)
@@ -438,7 +438,7 @@ export default function LoadoutPanel({ onChange, refreshKey = 0, onNavigate, bar
   const [stashNode, setStashNode] = useState(null)
   useEffect(() => { const n = document.getElementById('console-stash'); if (n) setStashNode(n) }, [])
   const [protoCount, setProtoCount] = useState(0)
-  useEffect(() => { let on = true; liveProtocolCounts().then(c => { if (on) setProtoCount(Object.values(c).reduce((a, b) => a + b, 0)) }).catch(() => {}); return () => { on = false } }, [protoOpen, related])
+  useEffect(() => { let on = true; liveProtocolCounts().then(c => { if (on) setProtoCount(Object.values(c).reduce((a, b) => a + b, 0)) }).catch(() => {}); return () => { on = false } }, [protoOpen, refreshKey])
   const refresh = useCallback(() => Promise.all([fetchLoadout().then(setL), fetchStash().then(setHeld), liveCounts().then(setClips)]).catch(e => console.warn('loadout', e.message)), [])
   useEffect(() => { refresh() }, [refresh, tick, refreshKey])
   useEffect(() => { const t = setInterval(() => setTick(x => x + 1), 30_000); return () => clearInterval(t) }, [])

@@ -166,7 +166,7 @@ function ProjectCard({ project, onOpen, edge = INK2, compact = false }) {
 // =============================================================================
 const Chip = ({ color, children }) => <span style={{ fontFamily: MONO, fontSize: 9, letterSpacing: '1px', textTransform: 'uppercase', color, border: `1px solid ${alpha(color, 33)}`, borderRadius: 999, padding: '2px 7px', whiteSpace: 'nowrap' }}>{children}</span>
 
-function MilestoneRow({ n, project, task, board, api, onNavigate, onBoardChange, onAward, objState }) {
+function MilestoneRow({ n, project, task, board, api, onBoardChange, onAward, objState }) {
   const open = isOpen(task)
   const blocked = isBlocked(task)
   const ost = task.objective_id ? objState?.[task.objective_id] : null
