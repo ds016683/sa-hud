@@ -3,8 +3,8 @@
 // for meetings). Instead each objective accrues its own board clock
 // (objectives.activated_at, stamped on play), and when it leaves the board
 // the elapsed span is written here as a COMPLETED Harvest entry:
-//   {action: 'log', title, hours} -> entry in the default bucket,
-//   notes "HUD · <title>". Spans under 3 minutes are dropped as misclicks.
+//   {action: 'log', title, hours, notes?, task?} -> entry in the default project,
+//   notes "HUD · <title>" (or "HUD · <notes>"), task THS Internal unless named. Spans under 3 minutes are dropped as misclicks.
 
 export const config = { maxDuration: 60 }
 
@@ -36,24 +36,41 @@ async function harvest(path, { method = 'GET', body } = {}) {
 
 const chiToday = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Chicago', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date())
 
+// The tasks on David's default project, by name (11/4): an item can ask for
+// a task other than THS Internal ("Business Management"); unknown names fall
+// back to the default and say so in the reply.
+export async function projectTasks() {
+  const out = (await harvest(`task_assignments?per_page=100&is_active=true`)).task_assignments || []
+  return out.filter(a => a.project?.id === DEFAULT_PROJECT_ID).map(a => ({ id: a.task.id, name: a.task.name }))
+}
+async function resolveTask(name) {
+  if (!name) return { task_id: DEFAULT_TASK_ID }
+  const want = String(name).trim().toLowerCase()
+  const t = (await projectTasks()).find(x => x.name.toLowerCase() === want)
+  return t ? { task_id: t.id, task: t.name } : { task_id: DEFAULT_TASK_ID, task_fallback: `no task named "${name}" on the default project` }
+}
+
 // Log a completed span to Harvest: one entry per title per day (appends).
-export async function logHours(title, hours, day = null, ceiling = MAX_HOURS) {
+// opts.notes replaces the title in the entry's notes (an item that wants only
+// basic information in Harvest, David 11/4); opts.task names the task.
+export async function logHours(title, hours, day = null, ceiling = MAX_HOURS, opts = {}) {
   const h = Math.round(Number(hours) * 100) / 100
   if (!title || !Number.isFinite(h)) return { error: 'title and hours required' }
   if (h < MIN_HOURS) return { ok: true, note: `span ${h}h under minimum; not logged` }
   if (h > ceiling) return { error: `span ${h}h over sanity ceiling (${ceiling}h)` }
   const today = /^\d{4}-\d{2}-\d{2}$/.test(String(day || '')) ? day : chiToday()
-  const notes = NOTE_PREFIX + String(title).slice(0, 200)
+  const notes = NOTE_PREFIX + String(opts.notes || title).slice(0, 200)
+  const coded = await resolveTask(opts.task)
   const me = await harvest('users/me')
   const existing = (await harvest(`time_entries?user_id=${me.id}&from=${today}&to=${today}&per_page=100`)).time_entries || []
-  const match = existing.find(e => e.notes === notes && !e.is_running)
+  const match = existing.find(e => e.notes === notes && !e.is_running && e.task?.id === coded.task_id)
   if (match) {
     const total = Math.round((match.hours + h) * 100) / 100
     const entry = await harvest(`time_entries/${match.id}`, { method: 'PATCH', body: { hours: total } })
-    return { ok: true, appended: true, entry_id: entry.id, added: h, hours: total }
+    return { ok: true, appended: true, entry_id: entry.id, added: h, hours: total, ...coded }
   }
-  const entry = await harvest('time_entries', { method: 'POST', body: { project_id: DEFAULT_PROJECT_ID, task_id: DEFAULT_TASK_ID, spent_date: today, hours: h, notes } })
-  return { ok: true, logged: true, entry_id: entry.id, hours: h }
+  const entry = await harvest('time_entries', { method: 'POST', body: { project_id: DEFAULT_PROJECT_ID, task_id: coded.task_id, spent_date: today, hours: h, notes } })
+  return { ok: true, logged: true, entry_id: entry.id, hours: h, ...coded }
 }
 
 // Set today's Harvest entry for a title to exactly `hours` (create if absent).
@@ -86,12 +103,15 @@ export default async function handler(req, res) {
 
   let body = req.body
   if (typeof body === 'string') { try { body = JSON.parse(body) } catch { body = {} } }
-  const { action, title, hours } = body || {}
+  const { action, title, hours, notes, task } = body || {}
 
   try {
     if (action === 'log') {
-      const out = await logHours(title, hours)
+      const out = await logHours(title, hours, null, MAX_HOURS, { notes, task })
       return res.status(out.error ? 400 : 200).json(out)
+    }
+    if (action === 'tasks') {
+      return res.status(200).json({ ok: true, project_id: DEFAULT_PROJECT_ID, default_task_id: DEFAULT_TASK_ID, tasks: await projectTasks() })
     }
     if (action === 'status') {
       const today = chiToday()
@@ -103,7 +123,7 @@ export default async function handler(req, res) {
       }
       return res.status(200).json({ ok: true, banked })
     }
-    return res.status(400).json({ error: 'action must be log or status' })
+    return res.status(400).json({ error: 'action must be log, status or tasks' })
   } catch (e) {
     console.error('time failed:', e)
     return res.status(500).json({ error: String(e.message || e) })
