@@ -209,8 +209,9 @@ function WhereItStands({ item, rel, task, taskId, linkedBoards }) {
     ...boardItems.filter(t => t.status !== 'done').map(t => ({ text: t.label, meta: t.status === 'blocked' ? (t.note || 'blocked') : t.status === 'inmotion' ? 'in motion' : t.id, kind: t.status === 'blocked' ? 'blocked' : 'board' })),
   ]
   if (task && task.status === 'done') done.unshift({ text: 'Milestone closed', meta: task.released_at ? new Date(task.released_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : null, kind: 'board' })
-  // The card palette (David 11/4): done is the success purple, open is an ink ring, blocked is the caution tone; identity stays on the header chip.
-  const doneColor = SUCCESS
+  // The card palette (David 11/4): done is a filled ink dot, open is an ink ring, blocked is the caution tone; no purple
+  // on the card below the header chip (David 11/4, "still have a rogue purple").
+  const doneColor = INK2
   const Row = ({ r, color, open }) => (
     <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start', padding: '4px 0' }}>
       <span style={{ width: 9, height: 9, borderRadius: 99, boxSizing: 'border-box', background: open ? 'transparent' : color, border: `1.5px solid ${color}`, marginTop: 6, flexShrink: 0 }} />
@@ -222,7 +223,7 @@ function WhereItStands({ item, rel, task, taskId, linkedBoards }) {
       <Label>Where It Stands</Label>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 22 }}>
         <div>
-          <div style={{ fontSize: 14.5, fontWeight: 600, color: doneColor, marginBottom: 5 }}>Done</div>
+          <div style={{ fontSize: 14.5, fontWeight: 600, color: LABEL, marginBottom: 5 }}>Done</div>
           {done.length ? done.map((r, i) => <Row key={i} r={r} color={doneColor} />) : <div style={{ fontSize: 13, color: GRAY, padding: '4px 0' }}>Nothing ticked, closed or produced yet.</div>}
         </div>
         <div>
@@ -373,7 +374,8 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
           )
         })()}
 
-        <div style={{ ...S.panel, marginTop: 20 }}>
+        {/* No surface under the card (David 11/4): the content lives on the page itself, like the Main Mission page. */}
+        <div style={{ marginTop: 20 }}>
           {!rel && <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '1.4px', textTransform: 'uppercase', color: LABEL, padding: '10px 0' }}>Reading the Ledger</div>}
 
           {rel && tab === 'briefing' && (
