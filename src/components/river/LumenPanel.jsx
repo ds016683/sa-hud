@@ -11,7 +11,7 @@
 // Lumen built with build_page, previewed live, portable later by a session).
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Sparkles, X as XIcon, BookOpen, Hammer, ExternalLink, Download, Trash2, FileText, Printer, Plus } from 'lucide-react'
-import { INK, INK2, GRAY, PANEL_BORDER, GOLD, GOLD_BRIGHT, BLUE, GREEN, RED, MONO, SERIF, LABEL, alpha } from './canon'
+import { INK, INK2, GRAY, PANEL_BORDER, GOLD, GOLD_BRIGHT, BLUE, RED, MONO, SERIF, LABEL, alpha } from './canon'
 import { readWorkbook, writeWorkbook, listBuilds, buildUrl, readBuildHtml, removeBuild, loadThread, askLumen, fireLedgerChanged } from '../../lib/lumenPanel'
 import { hudConfirm } from '../../lib/dialog'
 
@@ -85,11 +85,10 @@ export default function LumenPanel({ item }) {
   useEffect(() => { scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' }) }, [thread, pending, open, tab])
   // Push-aside, always (David 11/4: "it should move the rest of the page in a bit instead of
   // overlapping it"): the HUD's scroll container takes a right padding the panel's width.
-  const [w, setW] = useState(WIDTH)
   useEffect(() => {
     if (!open) return
     const app = document.querySelector('.sa-app')
-    const apply = () => { const pw = panelWidth(); setW(pw); app?.style.setProperty('--lumen-w', `${pw}px`) }
+    const apply = () => { const pw = panelWidth(); document.documentElement.style.setProperty('--lumen-w', `${pw}px`); app?.style.setProperty('--lumen-w', `${pw}px`) }
     apply(); app?.classList.add('lumen-open')
     const onKey = (e) => { if (e.key === 'Escape') setOpen(false) }
     window.addEventListener('keydown', onKey); window.addEventListener('resize', apply)
@@ -131,9 +130,7 @@ export default function LumenPanel({ item }) {
   const downloadBuild = () => { if (!html || !sel) return; const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([html], { type: 'text/html' })); a.download = `${sel}.html`; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000) }
   const nCaps = wb?.captures?.length || 0, nBuilds = builds?.length || 0
 
-  const Tab = ({ id, icon: Icon, label, count }) => (
-    <button onClick={() => setTab(id)} style={{ ...btn(tab === id ? GOLD_BRIGHT : INK2, tab === id), padding: '6px 11px', borderRadius: 999 }}><Icon size={11} /> {label}{count ? ` · ${count}` : ''}</button>
-  )
+  const tabStyle = (id) => ({ ...btn(tab === id ? BLUE : INK2, tab === id), padding: '6px 11px', borderRadius: 999 })
 
   return (
     <>
@@ -142,7 +139,7 @@ export default function LumenPanel({ item }) {
           <Sparkles size={15} color={GOLD_BRIGHT} /> Lumen
         </button>
       )}
-      <aside aria-label="Lumen" aria-hidden={!open} style={{ position: 'fixed', top: 0, right: 0, bottom: 0, zIndex: 210, width: w, transform: open ? 'translateX(0)' : 'translateX(104%)', transition: 'transform 220ms ease', background: 'var(--hud-surface-raised)', borderLeft: `1px solid ${PANEL_BORDER}`, boxShadow: open ? '-18px 0 40px rgba(0,0,0,0.35)' : 'none', display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+      <aside aria-label="Lumen" aria-hidden={!open} style={{ position: 'fixed', top: 0, right: 0, bottom: 0, zIndex: 210, width: 'var(--lumen-w, 460px)', transform: open ? 'translateX(0)' : 'translateX(104%)', transition: 'transform 220ms ease', background: 'var(--hud-surface-raised)', borderLeft: `1px solid ${PANEL_BORDER}`, boxShadow: open ? '-18px 0 40px rgba(0,0,0,0.35)' : 'none', display: 'flex', flexDirection: 'column', minWidth: 0 }}>
         <div style={{ padding: '16px 18px 12px', borderBottom: `1px solid ${PANEL_BORDER}` }}>
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
             <span style={{ width: 36, height: 36, borderRadius: 999, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', border: `1px solid ${alpha(GOLD_BRIGHT, 50)}`, background: alpha(GOLD_BRIGHT, 10), flexShrink: 0 }}><Sparkles size={16} color={GOLD_BRIGHT} /></span>
@@ -154,9 +151,9 @@ export default function LumenPanel({ item }) {
             <button onClick={() => setOpen(false)} aria-label="Close Lumen" style={{ width: 28, height: 28, borderRadius: 8, border: `1px solid ${PANEL_BORDER}`, background: 'transparent', color: INK2, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><XIcon size={14} /></button>
           </div>
           <div style={{ display: 'flex', gap: 6, marginTop: 12, flexWrap: 'wrap' }}>
-            <Tab id="lumen" icon={Sparkles} label="Lumen" />
-            <Tab id="workbook" icon={BookOpen} label="Workbook" count={nCaps} />
-            <Tab id="build" icon={Hammer} label="Build" count={nBuilds} />
+            <button onClick={() => setTab('lumen')} style={tabStyle('lumen')}><Sparkles size={11} /> Lumen</button>
+            <button onClick={() => setTab('workbook')} style={tabStyle('workbook')}><BookOpen size={11} /> Workbook{nCaps ? ` · ${nCaps}` : ''}</button>
+            <button onClick={() => setTab('build')} style={tabStyle('build')}><Hammer size={11} /> Build{nBuilds ? ` · ${nBuilds}` : ''}</button>
           </div>
         </div>
 
@@ -173,10 +170,10 @@ export default function LumenPanel({ item }) {
                 <div key={m.id} style={{ fontSize: 13.5, lineHeight: 1.65, color: m.direction === 'in' ? INK2 : INK, paddingLeft: m.direction === 'in' ? 0 : 12, borderLeft: m.direction === 'in' ? 'none' : `2px solid ${alpha(BLUE, 40)}`, whiteSpace: 'pre-wrap', marginBottom: 12 }}>
                   <div style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '1px', color: GRAY, marginBottom: 2 }}>{m.direction === 'in' ? 'YOU' : 'LUMEN'} · {stamp(m.at)}</div>
                   {m.body}
-                  {m.direction === 'out' && <div style={{ marginTop: 6 }}><button onClick={() => { capture({ kind: 'answer', title: questionBefore(i) || 'From Lumen', body: m.body }); setMsg('In the Workbook') }} style={btn(GOLD_BRIGHT)}><Plus size={10} /> Workbook</button></div>}
+                  {m.direction === 'out' && <div style={{ marginTop: 6 }}><button onClick={() => { capture({ kind: 'answer', title: questionBefore(i) || 'From Lumen', body: m.body }); setMsg('In the Workbook') }} style={btn(INK2)}><Plus size={10} /> Workbook</button></div>}
                 </div>
               ))}
-              {pending && <div style={{ ...eyebrow, color: GOLD_BRIGHT, padding: '6px 0' }}>Lumen is reading the card</div>}
+              {pending && <div style={{ ...eyebrow, padding: '6px 0' }}>Lumen is reading the card</div>}
             </div>
             <div style={{ padding: '12px 18px 16px', borderTop: `1px solid ${PANEL_BORDER}`, display: 'flex', gap: 8, alignItems: 'flex-end' }}>
               <textarea rows={2} value={input} placeholder="Say it to Lumen (Enter sends, Shift+Enter for a new line)" onChange={e => setInput(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(input) } }} style={{ ...field, flex: 1 }} />
@@ -189,16 +186,16 @@ export default function LumenPanel({ item }) {
           <div style={{ flex: 1, overflowY: 'auto', padding: '14px 18px 18px', minHeight: 0 }}>
             <div style={{ fontSize: 13, color: INK2, lineHeight: 1.55 }}>Collect what matters on this card: Lumen's answers (the Workbook button under each), the card itself, and your notes. Print it as a PDF in the house frame.</div>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 12 }}>
-              <button onClick={captureCard} style={btn(BLUE)}><FileText size={11} /> Capture the card</button>
+              <button onClick={captureCard} style={btn(INK2)}><FileText size={11} /> Capture the card</button>
               <button onClick={() => wb && printWorkbook({ title: item.title, captures: wb.captures, notes: wb.notes })} disabled={!wb} style={btn(GOLD_BRIGHT, true)}><Printer size={11} /> PDF</button>
-              {nCaps > 0 && <button onClick={async () => { if (await hudConfirm('Clear every capture in this Workbook?')) saveWb({ ...wb, captures: [] }) }} style={btn(RED)}><Trash2 size={11} /> Clear</button>}
+              {nCaps > 0 && <button onClick={async () => { if (await hudConfirm('Clear every capture in this Workbook?')) saveWb({ ...wb, captures: [] }) }} style={btn(INK2)}><Trash2 size={11} /> Clear</button>}
             </div>
             <div style={{ ...eyebrow, marginTop: 18 }}>Captures{nCaps ? ` · ${nCaps}` : ''}</div>
             {!nCaps && <div style={{ fontSize: 12.5, color: GRAY, marginTop: 6 }}>Nothing captured yet.</div>}
             {(wb?.captures || []).map(c => (
               <div key={c.id} style={{ borderTop: `1px solid ${PANEL_BORDER}`, padding: '10px 0' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ ...eyebrow, color: c.kind === 'answer' ? GOLD_BRIGHT : BLUE }}>{c.kind === 'answer' ? 'From Lumen' : c.kind === 'card' ? 'The card' : 'Note'} · {stamp(c.at)}</span>
+                  <span style={eyebrow}>{c.kind === 'answer' ? 'From Lumen' : c.kind === 'card' ? 'The card' : 'Note'} · {stamp(c.at)}</span>
                   <span style={{ flex: 1 }} />
                   <button onClick={() => dropCapture(c.id)} title="Remove" style={{ ...btn(INK2), padding: '3px 7px' }}><XIcon size={10} /></button>
                 </div>
@@ -217,8 +214,8 @@ export default function LumenPanel({ item }) {
             {builds && builds.length === 0 && <div style={{ fontSize: 12.5, color: GRAY }}>Nothing built yet.</div>}
             <div style={{ display: 'grid', gap: 6 }}>
               {(builds || []).map(b => (
-                <div key={b.slug} onClick={() => openBuild(b)} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 11px', borderRadius: 10, border: `1px solid ${sel === b.slug ? alpha(GOLD_BRIGHT, 60) : PANEL_BORDER}`, background: sel === b.slug ? alpha(GOLD_BRIGHT, 6) : 'rgba(255,255,255,0.03)', cursor: 'pointer', minWidth: 0 }}>
-                  <Hammer size={13} color={GOLD_BRIGHT} />
+                <div key={b.slug} onClick={() => openBuild(b)} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 11px', borderRadius: 10, border: `1px solid ${sel === b.slug ? alpha(BLUE, 60) : PANEL_BORDER}`, background: sel === b.slug ? alpha(BLUE, 8) : 'rgba(255,255,255,0.03)', cursor: 'pointer', minWidth: 0 }}>
+                  <Hammer size={13} color={LABEL} />
                   <span style={{ flex: 1, minWidth: 0 }}>
                     <span style={{ fontSize: 13.5, fontWeight: 600, color: INK, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{b.title || b.slug}</span>
                     {b.note && <span style={{ fontSize: 12, color: INK2, display: 'block' }}>{b.note}</span>}
@@ -230,11 +227,11 @@ export default function LumenPanel({ item }) {
             {sel && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8, flex: 1, minHeight: 320 }}>
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                  <button onClick={async () => window.open(await buildUrl(item.root, sel), '_blank', 'noopener')} style={btn(GREEN)}><ExternalLink size={11} /> Open</button>
-                  <button onClick={downloadBuild} disabled={!html} style={btn(BLUE)}><Download size={11} /> Download</button>
-                  <button onClick={async () => { if (await hudConfirm(`Delete the build "${sel}"?`)) { await removeBuild(item.root, sel); setSel(null); setHtml(null); setBuilds(await listBuilds(item.root)) } }} style={btn(RED)}><Trash2 size={11} /> Delete</button>
+                  <button onClick={async () => window.open(await buildUrl(item.root, sel), '_blank', 'noopener')} style={btn(INK2)}><ExternalLink size={11} /> Open</button>
+                  <button onClick={downloadBuild} disabled={!html} style={btn(INK2)}><Download size={11} /> Download</button>
+                  <button onClick={async () => { if (await hudConfirm(`Delete the build "${sel}"?`)) { await removeBuild(item.root, sel); setSel(null); setHtml(null); setBuilds(await listBuilds(item.root)) } }} style={btn(INK2)}><Trash2 size={11} /> Delete</button>
                 </div>
-                {html ? <iframe title={sel} sandbox="allow-scripts allow-forms allow-modals allow-popups" srcDoc={html} style={{ flex: 1, width: '100%', minHeight: 320, border: `1px solid ${PANEL_BORDER}`, borderRadius: 10, background: '#0F2334' }} /> : <div style={{ ...eyebrow, color: GOLD_BRIGHT }}>Reading the build</div>}
+                {html ? <iframe title={sel} sandbox="allow-scripts allow-forms allow-modals allow-popups" srcDoc={html} style={{ flex: 1, width: '100%', minHeight: 320, border: `1px solid ${PANEL_BORDER}`, borderRadius: 10, background: '#0F2334' }} /> : <div style={eyebrow}>Reading the build</div>}
               </div>
             )}
           </div>

@@ -8,7 +8,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { FileText, ExternalLink, Mail, Check, Star, FolderOpen } from 'lucide-react'
 import { listLiveFiles, putLiveFile, requestLiveFile, openLiveFile, draftMail, markFiled, groupVersions, fmtStamp, fmtSize, isRequest, urlOf, isLink, addLiveLink, pinEvidence } from '../../lib/livefiles'
 import { DropZone, LinkForm } from './LiveFiles'
-import { INK, INK2, GRAY, PANEL_BORDER, GOLD, GOLD_BRIGHT, BLUE, GREEN, RED, MONO, Label, PURPLE, alpha } from './canon'
+import { INK, INK2, GRAY, PANEL_BORDER, GOLD, GOLD_BRIGHT, RED, MONO, Label, LABEL, alpha } from './canon'
 import { hudConfirm } from '../../lib/dialog'
 const btn = (color = INK2, filled = false) => ({ display: 'inline-flex', alignItems: 'center', gap: 5, fontFamily: MONO, fontSize: 9.5, letterSpacing: '1px', textTransform: 'uppercase', padding: '5px 9px', borderRadius: 8, border: `1px solid ${filled ? color : `${alpha(color, 40)}`}`, background: filled ? color : 'transparent', color: filled ? 'var(--hud-on-accent)' : color, cursor: 'pointer', flexShrink: 0 })
 const rowStyle = { display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0', borderTop: `1px solid ${PANEL_BORDER}` }
@@ -35,24 +35,24 @@ export default function FilesTab({ objectiveId, rel, what, open, onRead, onGo, o
   const otherArtifacts = (rel?.artifacts || []).filter(a => !a.decision && !(taskId && a.task_id === taskId))
 
   const FileRow = ({ r, dim = false }) => isLink(r) ? (
-    <div style={{ ...rowStyle, border: `1px solid ${alpha(PURPLE, 40)}`, borderRadius: 10, padding: '10px 12px', margin: '6px 0', background: 'rgba(180,163,232,0.07)' }}>
-      <span style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '0.8px', textTransform: 'uppercase', color: PURPLE }}>app</span>
+    <div style={{ ...rowStyle, border: `1px solid ${PANEL_BORDER}`, borderRadius: 10, padding: '10px 12px', margin: '6px 0', background: 'rgba(255,255,255,0.03)' }}>
+      <span style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '0.8px', textTransform: 'uppercase', color: LABEL }}>app</span>
       <span style={{ flex: 1, minWidth: 0 }}><span style={{ fontSize: 14.5, fontWeight: 600, color: INK }}>{r.name}</span>{r.note && <span style={{ display: 'block', fontSize: 12.5, color: INK2, marginTop: 2 }}>{r.note}</span>}<span style={{ display: 'block', fontFamily: MONO, fontSize: 9.5, color: GRAY, marginTop: 3 }}>{r.path}</span></span>
       <button onClick={() => pin(r)} title={r.evidence ? 'Pinned as evidence under Polaris' : 'Pin as evidence under Polaris'} style={btn(r.evidence ? GOLD_BRIGHT : INK2, !!r.evidence)}><Star size={11} fill={r.evidence ? 'var(--hud-on-accent)' : 'none'} /></button>
-      <button onClick={() => window.open(r.path, '_blank', 'noopener')} style={btn(PURPLE, true)}><ExternalLink size={11} /> Launch</button>
+      <button onClick={() => window.open(r.path, '_blank', 'noopener')} style={btn(INK2)}><ExternalLink size={11} /> Launch</button>
       <button onClick={async () => { if (await hudConfirm(`Done with ${r.name}? The link leaves the Board.`)) act(() => markFiled(r.id), `Out of play: ${r.name}`) }} style={btn(INK2)}><Check size={11} /> Done</button>
     </div>
   ) : (
     <div style={{ ...rowStyle, opacity: dim ? 0.6 : 1, paddingLeft: dim ? 24 : 0 }}>
-      <FileText size={14} color={isRequest(r) ? GOLD : r.evidence ? GOLD_BRIGHT : dim ? GRAY : BLUE} />
+      <FileText size={14} color={r.evidence ? GOLD_BRIGHT : dim ? GRAY : LABEL} />
       <span title={r.path} style={{ flex: 1, fontSize: dim ? 12.5 : 13.5, color: dim ? INK2 : INK, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.name}{r.version > 1 && <span style={{ fontFamily: MONO, fontSize: 9, letterSpacing: '1px', color: GOLD, marginLeft: 8 }}>v{r.version}</span>}{r.evidence && <span style={{ fontFamily: MONO, fontSize: 9, letterSpacing: '1px', textTransform: 'uppercase', color: GOLD_BRIGHT, marginLeft: 8 }}>evidence</span>}{r.note && <span style={{ fontSize: 12, color: INK2, marginLeft: 10 }}>{r.note}</span>}</span>
-      {isRequest(r) && <span style={{ fontFamily: MONO, fontSize: 9, letterSpacing: '1px', textTransform: 'uppercase', color: GOLD }}>waiting for a session on the Mac</span>}
+      {isRequest(r) && <span style={{ fontFamily: MONO, fontSize: 9, letterSpacing: '1px', textTransform: 'uppercase', color: INK2 }}>waiting for a session on the Mac</span>}
       <span style={{ fontFamily: MONO, fontSize: 9.5, color: GRAY, whiteSpace: 'nowrap' }}>{fmtStamp(r.created_at)}{r.size ? ` · ${fmtSize(r.size)}` : ''}</span>
       {!dim && !isRequest(r) && <button onClick={() => pin(r)} title={r.evidence ? 'Pinned as evidence under Polaris. Click to unpin.' : 'Pin as evidence under Polaris'} style={btn(r.evidence ? GOLD_BRIGHT : INK2, !!r.evidence)}><Star size={11} fill={r.evidence ? 'var(--hud-on-accent)' : 'none'} /></button>}
-      {urlOf(r) && <button onClick={() => window.open(urlOf(r), '_blank', 'noopener')} title={urlOf(r)} style={btn(GREEN)}><ExternalLink size={11} /> Visit</button>}
-      {!isRequest(r) && <button onClick={() => act(async () => { window.open(await openLiveFile(r), '_blank', 'noopener') }, `Opened ${r.name}`)} style={btn(BLUE)}><ExternalLink size={11} /> {String(r.name).toLowerCase().endsWith('.html') ? 'Source' : 'Open'}</button>}
-      {!isRequest(r) && !dim && <button onClick={() => act(async () => { const d = await draftMail(r); if (d.webLink) window.open(d.webLink, '_blank', 'noopener') }, `Draft open in Outlook: ${r.name}`)} title="Open a new Outlook draft with this file attached" style={btn(GOLD)}><Mail size={11} /> Mail</button>}
-      {!dim && !r.filed_at && <button onClick={async () => { if (await hudConfirm(`Done with ${r.name}? It leaves the Board and stays here under Filed.`)) act(() => markFiled(r.id), `Out of play: ${r.name}`) }} title="Done: out of play" style={btn(GREEN)}><Check size={11} /> Done</button>}
+      {urlOf(r) && <button onClick={() => window.open(urlOf(r), '_blank', 'noopener')} title={urlOf(r)} style={btn(INK2)}><ExternalLink size={11} /> Visit</button>}
+      {!isRequest(r) && <button onClick={() => act(async () => { window.open(await openLiveFile(r), '_blank', 'noopener') }, `Opened ${r.name}`)} style={btn(INK2)}><ExternalLink size={11} /> {String(r.name).toLowerCase().endsWith('.html') ? 'Source' : 'Open'}</button>}
+      {!isRequest(r) && !dim && <button onClick={() => act(async () => { const d = await draftMail(r); if (d.webLink) window.open(d.webLink, '_blank', 'noopener') }, `Draft open in Outlook: ${r.name}`)} title="Open a new Outlook draft with this file attached" style={btn(INK2)}><Mail size={11} /> Mail</button>}
+      {!dim && !r.filed_at && <button onClick={async () => { if (await hudConfirm(`Done with ${r.name}? It leaves the Board and stays here under Filed.`)) act(() => markFiled(r.id), `Out of play: ${r.name}`) }} title="Done: out of play" style={btn(INK2)}><Check size={11} /> Done</button>}
     </div>
   )
 
@@ -87,8 +87,8 @@ export default function FilesTab({ objectiveId, rel, what, open, onRead, onGo, o
           <Label>Artifacts</Label>
           {linkedArtifacts.map(a => (
             <div key={a.slug} style={rowStyle}>
-              <FileText size={14} color={GOLD_BRIGHT} /><span style={{ flex: 1, fontSize: 13.5, color: INK }}>{a.title}{a.decision ? <span style={{ fontFamily: MONO, fontSize: 9, letterSpacing: '1px', color: GOLD, marginLeft: 8, textTransform: 'uppercase' }}>decision</span> : null}</span>
-              {a.obj ? <button onClick={() => onRead(a)} style={btn(GOLD, true)}>Read</button> : <button onClick={() => onGo([a.project_id || rel.project.id, 'artifacts', a.slug])} style={btn(GOLD, true)}>Open</button>}
+              <FileText size={14} color={LABEL} /><span style={{ flex: 1, fontSize: 13.5, color: INK }}>{a.title}{a.decision ? <span style={{ fontFamily: MONO, fontSize: 9, letterSpacing: '1px', color: LABEL, marginLeft: 8, textTransform: 'uppercase' }}>decision</span> : null}</span>
+              {a.obj ? <button onClick={() => onRead(a)} style={btn(INK2)}>Read</button> : <button onClick={() => onGo([a.project_id || rel.project.id, 'artifacts', a.slug])} style={btn(INK2)}>Open</button>}
             </div>
           ))}
           {otherArtifacts.length > 0 && (
@@ -98,7 +98,7 @@ export default function FilesTab({ objectiveId, rel, what, open, onRead, onGo, o
                 <div key={a.slug} style={rowStyle}>
                   <FileText size={14} color={GRAY} /><span style={{ flex: 1, fontSize: 13, color: INK2 }}>{a.title}</span>
                   <button onClick={() => onGo([rel.project.id, 'artifacts', a.slug])} style={btn(INK2)}>Open</button>
-                  {taskId && onAttach && <button onClick={() => onAttach(a.slug)} style={btn(GOLD)}>Attach</button>}
+                  {taskId && onAttach && <button onClick={() => onAttach(a.slug)} style={btn(INK2)}>Attach</button>}
                 </div>
               ))}
             </div>
@@ -115,11 +115,11 @@ export default function FilesTab({ objectiveId, rel, what, open, onRead, onGo, o
           ))}
           {(rel?.projectFiles || []).length > 0 && <div style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '1px', textTransform: 'uppercase', color: GRAY, margin: '10px 0 2px' }}>On the mission · {rel.project?.name}</div>}
           {(rel?.projectFiles || []).map(f => (
-            <div key={f.path} style={rowStyle}><ExternalLink size={14} color={BLUE} /><span style={{ flex: 1, fontSize: 13, color: INK, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.name}</span><button onClick={() => open(f.bucket, f.path)} style={btn(INK2)}>Open</button></div>
+            <div key={f.path} style={rowStyle}><ExternalLink size={14} color={LABEL} /><span style={{ flex: 1, fontSize: 13, color: INK, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.name}</span><button onClick={() => open(f.bucket, f.path)} style={btn(INK2)}>Open</button></div>
           ))}
           {(rel?.storeFiles || []).length > 0 && <div style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '1px', textTransform: 'uppercase', color: GRAY, margin: '10px 0 2px' }}>Lumen's file store · {rel.project?.name}</div>}
           {(rel?.storeFiles || []).map(f => (
-            <div key={f.path} style={rowStyle}>{f.folder ? <FolderOpen size={14} color={GRAY} /> : <ExternalLink size={14} color={BLUE} />}<span style={{ flex: 1, fontSize: 13, color: f.folder ? INK2 : INK, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.name}{f.folder ? '/' : ''}</span>{!f.folder && <button onClick={() => open(f.bucket, f.path)} style={btn(INK2)}>Open</button>}</div>
+            <div key={f.path} style={rowStyle}>{f.folder ? <FolderOpen size={14} color={GRAY} /> : <ExternalLink size={14} color={LABEL} />}<span style={{ flex: 1, fontSize: 13, color: f.folder ? INK2 : INK, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.name}{f.folder ? '/' : ''}</span>{!f.folder && <button onClick={() => open(f.bucket, f.path)} style={btn(INK2)}>Open</button>}</div>
           ))}
           {rel?.project && <div style={{ marginTop: 12 }}><button onClick={() => onGo([rel.project.id, 'files'])} style={btn(INK2)}><FolderOpen size={12} /> All mission files</button></div>}
         </div>

@@ -10,7 +10,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { Check, ExternalLink, AlertTriangle, Eye, X as XIcon, ListChecks } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { hudPrompt } from '../../lib/dialog'
-import { INK, INK2, GRAY, PANEL_BORDER, BLUE, GREEN, SUCCESS, RED, GOLD, MONO, SERIF, LABEL, Label, alpha } from './canon'
+import { INK, INK2, GRAY, PANEL_BORDER, BLUE, SUCCESS, RED, CAUTION, MONO, SERIF, LABEL, Label, alpha } from './canon'
 
 const NAVY_DEEP = 'var(--hud-on-accent)'
 const fmtWhen = (iso) => iso ? new Date(iso).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZone: 'America/Chicago' }) : ''
@@ -21,7 +21,7 @@ function Mark({ status }) {
   const base = { width: 18, height: 18, borderRadius: '50%', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }
   if (status === 'approved') return <span style={{ ...base, background: SUCCESS, color: NAVY_DEEP }}><Check size={11} strokeWidth={3} /></span>
   if (status === 'done') return <span style={{ ...base, border: `1.5px solid ${SUCCESS}`, color: SUCCESS }}><Check size={10} strokeWidth={3} /></span>
-  if (status === 'flagged') return <span style={{ ...base, border: `1.5px solid ${RED}`, color: RED }}><AlertTriangle size={9} /></span>
+  if (status === 'flagged') return <span style={{ ...base, border: `1.5px solid ${CAUTION}`, color: CAUTION }}><AlertTriangle size={9} /></span>
   if (status === 'asked') return <span style={{ ...base, border: `1.5px solid ${BLUE}`, color: BLUE, fontFamily: MONO, fontSize: 10, fontWeight: 700 }}>?</span>
   if (status === 'ruled') return <span style={{ ...base, border: `1.5px solid ${GRAY}`, color: GRAY, fontFamily: MONO, fontSize: 11 }}>⊘</span>
   return <span style={{ ...base, border: `1.5px solid ${PANEL_BORDER}`, color: GRAY, fontFamily: MONO, fontSize: 10 }}>…</span>
@@ -34,11 +34,11 @@ function EditingRow({ r, onInspect }) {
       <span style={{ fontFamily: MONO, fontSize: 10, color: GRAY, width: 18, textAlign: 'right', paddingTop: 3 }}>{r.seq}</span>
       <Mark status={r.status} />
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontFamily: SERIF, fontSize: 14, lineHeight: 1.45, color: r.status === 'flagged' ? RED : INK2, textDecoration: r.status === 'approved' ? 'line-through' : 'none', textDecorationColor: 'rgba(234,241,248,0.3)' }}>{r.entry}</div>
-        {r.status === 'flagged' && r.flag_reason && <div style={{ fontSize: 12, color: RED, opacity: 0.85, marginTop: 3, lineHeight: 1.5 }}>{r.flag_reason}</div>}
+        <div style={{ fontFamily: SERIF, fontSize: 14, lineHeight: 1.45, color: r.status === 'flagged' ? CAUTION : INK2, textDecoration: r.status === 'approved' ? 'line-through' : 'none', textDecorationColor: 'rgba(234,241,248,0.3)' }}>{r.entry}</div>
+        {r.status === 'flagged' && r.flag_reason && <div style={{ fontSize: 12, color: CAUTION, opacity: 0.9, marginTop: 3, lineHeight: 1.5 }}>{r.flag_reason}</div>}
         <div style={{ fontFamily: MONO, fontSize: 9.5, color: GRAY, marginTop: 3 }}>{fmtWhen(r.created_at)}{r.approved_at ? ` · approved ${fmtWhen(r.approved_at)}` : ''}</div>
       </div>
-      {(r.status === 'done' || r.status === 'approved') && <button onClick={() => onInspect(r)} style={btn(BLUE)}><Eye size={11} /> Inspect</button>}
+      {(r.status === 'done' || r.status === 'approved') && <button onClick={() => onInspect(r)} style={btn(INK2)}><Eye size={11} /> Inspect</button>}
     </div>
   )
 }
@@ -53,12 +53,12 @@ function InspectModal({ row, onClose, onApprove }) {
         </div>
         {[['Here Is What Happened', row.what_happened], ['Here Is What Page', row.where_page], ['Here Is What to Look For', row.look_for]].map(([k, v]) => v && (
           <div key={k}>
-            <div style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '1.6px', textTransform: 'uppercase', color: BLUE, margin: '16px 0 4px' }}>{k}</div>
+            <div style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '1.6px', textTransform: 'uppercase', color: LABEL, margin: '16px 0 4px' }}>{k}</div>
             <div style={{ fontSize: 13.5, color: INK2, lineHeight: 1.6 }}>{v}</div>
           </div>
         ))}
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 20, paddingTop: 14, borderTop: `1px solid ${PANEL_BORDER}` }}>
-          {row.link && <a href={row.link} target="_blank" rel="noopener noreferrer" style={{ ...btn(BLUE), textDecoration: 'none', padding: '7px 13px' }}><ExternalLink size={11} /> Open the Preview</a>}
+          {row.link && <a href={row.link} target="_blank" rel="noopener noreferrer" style={{ ...btn(INK2), textDecoration: 'none', padding: '7px 13px' }}><ExternalLink size={11} /> Open the Preview</a>}
           <span style={{ flex: 1 }} />
           {row.status !== 'approved'
             ? <button onClick={() => onApprove(row)} style={{ ...btn(SUCCESS, true), padding: '8px 16px', fontWeight: 700 }}><Check size={12} strokeWidth={3} /> Approve</button>
@@ -74,7 +74,7 @@ function BriefingRow({ r, onAnswer, onRule }) {
   const [answering, setAnswering] = useState(false)
   const [text, setText] = useState('')
   const open = isOpenRow(r) && r.status !== 'done'
-  const srcColor = { david: GOLD, file: BLUE, tool: INK2 }[r.source] || GRAY
+  const srcColor = { david: LABEL, file: INK2, tool: INK2 }[r.source] || GRAY
   return (
     <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '10px 0', borderTop: `1px solid ${PANEL_BORDER}` }}>
       <span style={{ fontFamily: MONO, fontSize: 10, color: GRAY, width: 18, textAlign: 'right', paddingTop: 3 }}>{r.seq}</span>
@@ -88,16 +88,16 @@ function BriefingRow({ r, onAnswer, onRule }) {
         {r.why && <div style={{ fontSize: 12, color: GRAY, marginTop: 3, lineHeight: 1.5 }}>{r.why}</div>}
         {r.status === 'done' && r.what_happened && <div style={{ fontSize: 13, color: INK2, marginTop: 5, lineHeight: 1.55, borderLeft: `2px solid ${SUCCESS}`, paddingLeft: 10 }}>{r.what_happened}</div>}
         {r.status === 'ruled' && r.ruling && <div style={{ fontSize: 12.5, color: GRAY, marginTop: 5, lineHeight: 1.5, fontStyle: 'italic' }}>Ruled: {r.ruling}</div>}
-        {r.status === 'flagged' && r.flag_reason && <div style={{ fontSize: 12, color: RED, opacity: 0.85, marginTop: 3, lineHeight: 1.5 }}>{r.flag_reason}</div>}
+        {r.status === 'flagged' && r.flag_reason && <div style={{ fontSize: 12, color: CAUTION, opacity: 0.9, marginTop: 3, lineHeight: 1.5 }}>{r.flag_reason}</div>}
         {answering && (
           <div style={{ marginTop: 8, display: 'grid', gap: 6 }}>
             <textarea autoFocus value={text} onChange={e => setText(e.target.value)} rows={3} placeholder="Your answer, in your words. The session records it as the fill." style={{ width: '100%', boxSizing: 'border-box', background: 'rgba(255,255,255,0.05)', border: `1px solid ${alpha(BLUE, 40)}`, borderRadius: 8, color: INK, padding: '8px 10px', fontSize: 13.5, fontFamily: 'inherit', lineHeight: 1.5, resize: 'vertical' }} />
-            <div style={{ display: 'flex', gap: 8 }}><button onClick={() => { if (text.trim()) { onAnswer(r, text.trim()); setAnswering(false); setText('') } }} style={btn(GREEN, true)}><Check size={11} /> Save Answer</button><button onClick={() => setAnswering(false)} style={btn(INK2)}>Cancel</button></div>
+            <div style={{ display: 'flex', gap: 8 }}><button onClick={() => { if (text.trim()) { onAnswer(r, text.trim()); setAnswering(false); setText('') } }} style={btn(BLUE, true)}><Check size={11} /> Save Answer</button><button onClick={() => setAnswering(false)} style={btn(INK2)}>Cancel</button></div>
           </div>
         )}
         <div style={{ fontFamily: MONO, fontSize: 9.5, color: GRAY, marginTop: 3 }}>{fmtWhen(r.created_at)}{r.updated_at && r.updated_at !== r.created_at ? ` · ${r.status} ${fmtWhen(r.updated_at)}` : ''}</div>
       </div>
-      {open && !answering && <button onClick={() => setAnswering(true)} style={btn(BLUE)}>Answer</button>}
+      {open && !answering && <button onClick={() => setAnswering(true)} style={btn(INK2)}>Answer</button>}
       {open && !answering && <button onClick={() => onRule(r)} title="Close the gap without a fill: leave it, defer it, not needed" style={btn(INK2)}>Rule</button>}
     </div>
   )
@@ -141,7 +141,7 @@ export default function ProtocolsTab({ objectiveId }) {
               <span style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '1.2px', textTransform: 'uppercase', color: open ? LABEL : GRAY }}>{g.rows.length} rows · {open} open{g.key === 'editing' ? ` · ${g.rows.filter(r => r.status === 'flagged').length} flagged` : ` · ${g.rows.filter(r => r.status === 'ruled').length} ruled`}{open ? '' : ' · complete'}</span>
             </div>
             {def.sub && <div style={{ fontSize: 12.5, color: GRAY, marginBottom: 6 }}>{def.sub}</div>}
-            <div style={{ fontFamily: MONO, fontSize: 12, letterSpacing: '1px', color: pct === 100 ? SUCCESS : GOLD, marginBottom: 8 }}>{bar} {closed} of {g.rows.length} · {pct}%</div>
+            <div style={{ fontFamily: MONO, fontSize: 12, letterSpacing: '1px', color: pct === 100 ? SUCCESS : LABEL, marginBottom: 8 }}>{bar} {closed} of {g.rows.length} · {pct}%</div>
             {g.key === 'briefing' && asked && <div style={{ fontSize: 13, color: INK, marginBottom: 8, padding: '8px 12px', border: `1px solid ${alpha(BLUE, 33)}`, borderRadius: 8, background: 'rgba(169,201,232,0.07)' }}><span style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '1.2px', textTransform: 'uppercase', color: BLUE, marginRight: 10 }}>The ask</span>{asked.entry}</div>}
             {g.rows.map(r => g.key === 'briefing'
               ? <BriefingRow key={r.id} r={r} onAnswer={answer} onRule={rule} />
@@ -184,7 +184,7 @@ export function LiveProtocolsModal({ onClose, onOpen }) {
     <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 230, background: 'rgba(5,16,28,0.7)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '7vh 16px', overflowY: 'auto' }}>
       <div onClick={e => e.stopPropagation()} style={{ width: 'min(760px, 100%)', background: '#10273B', border: `1px solid ${PANEL_BORDER}`, borderRadius: 14, padding: '20px 24px 18px', display: 'grid', gap: 14 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <ListChecks size={16} color={BLUE} />
+          <ListChecks size={16} color={LABEL} />
           <div style={{ flex: 1 }}><Label style={{ marginBottom: 2 }}>Live Protocols</Label><div style={{ fontFamily: SERIF, fontSize: 18, color: INK }}>What is being iterated right now</div></div>
           <button onClick={onClose} aria-label="Close" style={{ background: 'transparent', border: 'none', color: GRAY, cursor: 'pointer' }}><XIcon size={16} /></button>
         </div>
@@ -200,7 +200,7 @@ export function LiveProtocolsModal({ onClose, onOpen }) {
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
                   <span style={{ fontFamily: SERIF, fontSize: 16, color: INK }}>{o.title}</span>
-                  <span style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '1.2px', textTransform: 'uppercase', color: BLUE }}>{def.label} · {g.rows.length} open</span>
+                  <span style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '1.2px', textTransform: 'uppercase', color: LABEL }}>{def.label} · {g.rows.length} open</span>
                   <span style={{ fontFamily: MONO, fontSize: 9.5, color: GRAY }}>{fmtWhen(g.last)}</span>
                 </div>
                 {ask && <div style={{ fontSize: 13, color: INK2, marginTop: 4, lineHeight: 1.5 }}><span style={{ fontFamily: MONO, fontSize: 9, letterSpacing: '1px', textTransform: 'uppercase', color: ask.status === 'flagged' ? RED : LABEL, marginRight: 8 }}>{ask.status === 'asked' ? 'the ask' : ask.status === 'flagged' ? 'flagged' : 'in motion'}</span>{ask.entry}</div>}

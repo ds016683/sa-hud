@@ -40,7 +40,7 @@ function Row({ n, m, onOpen, onChanged, setMsg }) {
             {open && <button onClick={doneWhen} disabled={busy} style={ghost()}>Done when</button>}
             {open && <button onClick={rename} disabled={busy} style={ghost()}>Rename</button>}
             {open
-              ? <button onClick={close} disabled={busy} style={ghost(GOLD)}>Close · 10 mi</button>
+              ? <button onClick={close} disabled={busy} style={ghost(INK2)}>Close · 10 mi</button>
               : <button onClick={reopen} disabled={busy} style={ghost()}>Reopen</button>}
             <button onClick={remove} disabled={busy} title="Delete" style={{ background: 'transparent', border: 'none', color: alpha(INK, 25), cursor: 'pointer', padding: 4 }}><Trash2 size={12} /></button>
           </div>
@@ -64,7 +64,7 @@ export default function MythicMilestones({ parent, milestones, onChanged, onOpen
   }
   return (
     <div>
-      <Label style={{ color: MYTHIC }}>Milestones · 10 Miles Each, Five At Most</Label>
+      <Label>Milestones · 10 Miles Each, Five At Most</Label>
       {list.length > 0 && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '2px 0 8px' }}>
           <span style={{ flex: 1, height: 5, borderRadius: 99, background: alpha(INK, 8), overflow: 'hidden' }}><span style={{ display: 'block', width: `${pct}%`, height: '100%', background: MYTHIC }} /></span>

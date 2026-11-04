@@ -78,14 +78,14 @@ function Page({ root, slug, doc: initial, onClose, onRemoved }) {
   const remove = async () => { if (!await hudConfirm(`Delete the page "${docRef.current.title}"? It leaves the Ledger.`)) return; clearTimeout(timer.current); statusRef.current = 'saved'; try { await removePage(root, slug); onRemoved() } catch (e) { setSt(`could not delete: ${e.message}`) } }
   const close = async () => { if (statusRef.current === 'unsaved' || statusRef.current === 'saving') await save(); onClose() }
 
-  const statusColor = status === 'saved' ? GRAY : status === 'saving' || status === 'unsaved' ? GOLD : RED
+  const statusColor = status === 'saved' ? GRAY : status === 'saving' || status === 'unsaved' ? INK2 : RED
   return (
     <div style={{ minWidth: 0 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 10 }}>
         <button onClick={rename} title="Rename" style={{ background: 'transparent', border: 'none', padding: 0, cursor: 'text', fontFamily: SERIF, fontSize: 17, fontWeight: 600, color: INK, textAlign: 'left', minWidth: 0, flex: '1 1 240px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{doc.title}</button>
         <span style={{ ...mono, color: statusColor }}>{status === 'saved' ? `Saved ${fmt(doc.updated_at)}` : status}</span>
-        <button onClick={() => setMode('type')} style={btn(BLUE, mode === 'type')}><Type size={11} /> Type</button>
-        <button onClick={() => setMode('draw')} style={btn(BLUE, mode === 'draw')}><Pen size={11} /> Draw</button>
+        <button onClick={() => setMode('type')} style={btn(mode === 'type' ? BLUE : INK2, mode === 'type')}><Type size={11} /> Type</button>
+        <button onClick={() => setMode('draw')} style={btn(mode === 'draw' ? BLUE : INK2, mode === 'draw')}><Pen size={11} /> Draw</button>
         <button onClick={close} style={btn(INK2)}><X size={11} /> Close</button>
       </div>
       {mode === 'draw' && (
@@ -94,9 +94,9 @@ function Page({ root, slug, doc: initial, onClose, onRemoved }) {
           <span style={{ width: 8 }} />
           {WIDTHS.map(w => <button key={w} onClick={() => { setWidth(w); setEraser(false) }} title={`${w}px`} style={{ width: 26, height: 26, borderRadius: 8, border: `1px solid ${width === w && !eraser ? BLUE : alpha(INK2, 30)}`, background: 'transparent', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}><span style={{ width: w + 2, height: w + 2, borderRadius: 99, background: INK }} /></button>)}
           <span style={{ width: 8 }} />
-          <button onClick={() => setEraser(v => !v)} style={btn(GOLD, eraser)}><Eraser size={11} /> Eraser</button>
+          <button onClick={() => setEraser(v => !v)} style={btn(eraser ? BLUE : INK2, eraser)}><Eraser size={11} /> Eraser</button>
           <button onClick={undo} style={btn(INK2)}><Undo2 size={11} /> Undo</button>
-          <button onClick={clearInk} style={btn(RED)}><Trash2 size={11} /> Clear Ink</button>
+          <button onClick={clearInk} style={btn(INK2)}><Trash2 size={11} /> Clear Ink</button>
         </div>
       )}
       <div ref={wrapRef} style={{ position: 'relative', height: doc.height || 720, background: PANEL_BG, border: `1px solid ${PANEL_BORDER}`, borderRadius: 10, overflow: 'hidden' }}>
@@ -116,7 +116,7 @@ function Page({ root, slug, doc: initial, onClose, onRemoved }) {
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8 }}>
         <span style={{ ...mono, flex: 1 }}>{doc.strokes.length} strokes · {String(doc.text || '').trim() ? String(doc.text).trim().split(/\s+/).length : 0} words</span>
         <button onClick={taller} style={btn(INK2)}><ChevronsDown size={11} /> Taller</button>
-        <button onClick={remove} style={btn(RED)}><Trash2 size={11} /> Delete Page</button>
+        <button onClick={remove} style={btn(INK2)}><Trash2 size={11} /> Delete Page</button>
       </div>
     </div>
   )

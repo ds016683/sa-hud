@@ -17,7 +17,7 @@ import { fileProject } from '../lib/archive'
 import { listLiveFiles, markFiled, listEvidence, openLiveFile } from '../lib/livefiles'
 import { supabase as sbAuth } from '../lib/supabase'
 import { equipTask, stashTask, deleteMission } from '../lib/loadout'
-import { NORTH_STAR_LABEL, LABEL, alpha, INK, INK2, NAVY_DEEP, BLUE, GRAY, PANEL_BORDER, PANEL_BG, GOLD, GREEN, SUCCESS, RED, PURPLE, CARD_PILLS, CardPill, Label as CanonLabel, Trail, KIND_COLOR, KindIcon } from './river/canon'
+import { NORTH_STAR_LABEL, LABEL, alpha, INK, INK2, NAVY_DEEP, BLUE, GRAY, PANEL_BORDER, PANEL_BG, GOLD, GREEN, SUCCESS, RED, CAUTION, PURPLE, CARD_PILLS, CardPill, Label as CanonLabel, Trail, KIND_COLOR, KindIcon } from './river/canon'
 import { importProject } from '../lib/cabinet'
 import BadgeMedallion from './BadgeArt'
 import { BADGES } from '../constants/collection'
@@ -40,7 +40,7 @@ const S = {
   h1: { fontSize: 28, fontWeight: 500, margin: 0, color: INK, fontFamily: SERIF, letterSpacing: '-0.01em' },
   sub: { fontSize: 10, color: LABEL, margin: '6px 0 0', fontFamily: MONO, letterSpacing: '1.4px', textTransform: 'uppercase' },
   panel: { background: PANEL_BG, border: `1px solid ${PANEL_BORDER}`, borderRadius: 12, padding: 16 },
-  panelTitle: { fontSize: 10, fontWeight: 600, color: BLUE, textTransform: 'uppercase', letterSpacing: '1.6px', marginBottom: 10, fontFamily: MONO },
+  panelTitle: { fontSize: 10, fontWeight: 600, color: LABEL, textTransform: 'uppercase', letterSpacing: '1.6px', marginBottom: 10, fontFamily: MONO },
   btnPrimary: { background: BLUE, color: NAVY_DEEP, border: 'none', borderRadius: 8, padding: '8px 14px', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', display: 'inline-flex', alignItems: 'center', gap: 6 },
   btnGhost: { background: PANEL_BG, color: INK, border: `1px solid ${PANEL_BORDER}`, borderRadius: 8, padding: '6px 12px', fontSize: 12, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit', display: 'inline-flex', alignItems: 'center', gap: 6 },
   input: { width: '100%', padding: '10px 12px', borderRadius: 8, border: `1px solid ${PANEL_BORDER}`, fontSize: 14, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', background: alpha(INK, 7), color: INK },
@@ -79,7 +79,7 @@ const boardStateOf = (p, objState) => {
   if (open.some(t => !!t.objective_id)) return 'loadout'   // promoted and live, state not read yet
   return 'off'
 }
-const EDGE = { loadout: GREEN, stash: GOLD, off: BLUE }
+const EDGE = { loadout: GREEN, stash: INK2, off: INK2 }
 
 const isOpen = (t) => t.status !== 'done' && !t.done
 const isBlocked = (t) => t.status === 'blocked'
@@ -108,7 +108,7 @@ function planOf(project) {
 const nowMilestone = (plan) => plan.find(({ t }) => isOpen(t) && t.objective_id) || plan.find(({ t }) => isOpen(t)) || null
 
 // The ring (David 10/26): x of x closed, drawn once and grown on mount.
-function ProgressRing({ closed, total, size = 56, stroke = 5, color = GOLD }) {
+function ProgressRing({ closed, total, size = 56, stroke = 5, color = LABEL }) {
   const [on, setOn] = useState(false)
   useEffect(() => { const t = setTimeout(() => setOn(true), 20); return () => clearTimeout(t) }, [])
   const r = (size - stroke) / 2, c = 2 * Math.PI * r
@@ -124,7 +124,7 @@ function ProgressRing({ closed, total, size = 56, stroke = 5, color = GOLD }) {
   )
 }
 
-function ProjectCard({ project, onOpen, edge = BLUE, compact = false }) {
+function ProjectCard({ project, onOpen, edge = INK2, compact = false }) {
   const { plan } = planOf(project)
   const ms = plan.map(p => p.t)
   const closed = ms.filter(t => !isOpen(t)).length
@@ -132,14 +132,14 @@ function ProjectCard({ project, onOpen, edge = BLUE, compact = false }) {
   const now = nowP?.t || null
   const blocked = ms.filter(t => isOpen(t) && isBlocked(t)).length
   const fresh = freshnessOf(project.last_activity_at)
-  const freshColor = fresh === 'fresh' ? GREEN : fresh === 'warning' ? GOLD : GRAY
+  const freshColor = fresh === 'fresh' ? GREEN : fresh === 'warning' ? CAUTION : GRAY
   const lastTouch = project.last_activity_at ? new Date(project.last_activity_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'never'
   return (
     <button onClick={() => onOpen(project.id)} style={{ ...S.panel, textAlign: 'left', cursor: 'pointer', fontFamily: 'inherit', display: 'flex', flexDirection: 'column', gap: compact ? 10 : 12, minHeight: compact ? 190 : 240, width: '100%', transition: 'border-color 120ms', borderLeft: `3px solid ${edge}`, background: compact ? 'transparent' : PANEL_BG, padding: compact ? '16px 18px' : '20px 20px 18px' }}
       onMouseEnter={e => { e.currentTarget.style.borderColor = alpha(BLUE, 40); e.currentTarget.style.borderLeftColor = edge }} onMouseLeave={e => { e.currentTarget.style.borderColor = PANEL_BORDER; e.currentTarget.style.borderLeftColor = edge }}>
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
         <div style={{ flex: 1, minWidth: 0, fontFamily: SERIF, fontWeight: 500, fontSize: compact ? 16 : 18, letterSpacing: '-0.01em', color: INK, lineHeight: 1.25 }}>{project.name}</div>
-        <span style={{ fontFamily: MONO, fontSize: 9, letterSpacing: '1px', textTransform: 'uppercase', color: BLUE, border: `1px solid ${alpha(BLUE, 33)}`, borderRadius: 999, padding: '2px 7px', whiteSpace: 'nowrap', flexShrink: 0 }}>{CATEGORY_LABELS[project.category] || project.category}</span>
+        <span style={{ fontFamily: MONO, fontSize: 9, letterSpacing: '1px', textTransform: 'uppercase', color: LABEL, border: `1px solid ${alpha(LABEL, 33)}`, borderRadius: 999, padding: '2px 7px', whiteSpace: 'nowrap', flexShrink: 0 }}>{CATEGORY_LABELS[project.category] || project.category}</span>
       </div>
       <div style={{ display: 'flex', justifyContent: 'center', padding: compact ? '2px 0' : '6px 0' }}>
         <ProgressRing closed={closed} total={ms.length} size={compact ? 64 : 88} stroke={compact ? 5 : 6} />
@@ -148,7 +148,7 @@ function ProjectCard({ project, onOpen, edge = BLUE, compact = false }) {
         ? <div style={{ fontSize: 13.5, color: INK, lineHeight: 1.45, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', marginTop: 'auto' }}><span style={{ color: now.objective_id ? GREEN : GOLD, fontFamily: MONO, fontSize: 9.5, letterSpacing: '1px', textTransform: 'uppercase', marginRight: 6 }}>{now.objective_id ? 'on the board' : 'now'}</span>{stripNum(now.text)}</div>
         : <div style={{ fontSize: 12.5, color: GRAY, marginTop: 'auto' }}>{ms.length ? 'Every milestone closed.' : 'No milestones yet.'}</div>}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, fontFamily: MONO, fontSize: 10.5, letterSpacing: '0.8px', color: LABEL, textTransform: 'uppercase' }}>
-        {blocked > 0 && <span style={{ color: RED, display: 'inline-flex', alignItems: 'center', gap: 4 }}><Hand size={10} /> {blocked} on David</span>}
+        {blocked > 0 && <span style={{ color: CAUTION, display: 'inline-flex', alignItems: 'center', gap: 4 }}><Hand size={10} /> {blocked} on David</span>}
         <span style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 6 }}><span style={{ width: 7, height: 7, borderRadius: 99, background: freshColor }} />touched {lastTouch}</span>
       </div>
     </button>
@@ -201,15 +201,15 @@ function MilestoneRow({ n, project, task, board, api, onNavigate, onBoardChange,
   return (
     <div style={{ borderTop: `1px solid ${PANEL_BORDER}`, padding: '12px 0', opacity: open ? 1 : 0.55 }}>
       <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
-        <span style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 22, lineHeight: 1, color: open ? (onBoard ? GREEN : GOLD) : SUCCESS, width: 26, flexShrink: 0, paddingTop: 2 }}>{n}</span>
+        <span style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 22, lineHeight: 1, color: open ? (onBoard ? GREEN : LABEL) : SUCCESS, width: 26, flexShrink: 0, paddingTop: 2 }}>{n}</span>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
             <span onClick={() => setExpanded(x => !x)} title="Open this milestone" style={{ fontSize: 15, lineHeight: 1.4, color: open ? INK : GRAY, textDecoration: open ? 'none' : 'line-through', cursor: 'pointer', flex: 1, minWidth: 220 }}>{stripNum(task.text)}</span>
             {!open && <Chip color={SUCCESS}>closed{task.released_at ? ` ${new Date(task.released_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}` : ''} · 10 mi</Chip>}
             {open && onBoard && <Chip color={GREEN}>on the board</Chip>}
-            {stashed && <Chip color={BLUE}>in the stash</Chip>}
-            {open && blocked && <Chip color={RED}>blocked · needs David</Chip>}
-            {steps.length > 0 && <Chip color={stepsDone === steps.length ? GOLD : GRAY}>{stepsDone} / {steps.length} steps</Chip>}
+            {stashed && <Chip color={INK2}>in the stash</Chip>}
+            {open && blocked && <Chip color={CAUTION}>blocked · needs David</Chip>}
+            {steps.length > 0 && <Chip color={stepsDone === steps.length ? SUCCESS : GRAY}>{stepsDone} / {steps.length} steps</Chip>}
           </div>
           {task.notes && <div style={{ fontSize: 12.5, color: TEXT_DIM, marginTop: 3, lineHeight: 1.5 }}>Done when: {task.notes}</div>}
           {steps.length > 0 && (
@@ -217,8 +217,8 @@ function MilestoneRow({ n, project, task, board, api, onNavigate, onBoardChange,
               {steps.map((st, ti) => (
                 <button key={st.id || ti} onClick={() => toggleStep(ti)} title={st.status === 'done' ? 'Reopen' : 'Mark done'} style={{ display: 'flex', alignItems: 'flex-start', gap: 9, background: 'transparent', border: 'none', padding: '3px 0', cursor: 'pointer', textAlign: 'left', color: INK }}>
                   {st.status === 'done' ? <span style={{ width: 15, height: 15, borderRadius: 99, background: SUCCESS, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 2 }}><Check size={10} color={NAVY_DEEP} /></span>
-                    : <span style={{ width: 15, height: 15, borderRadius: 99, border: `1.5px solid ${st.status === 'inmotion' ? GOLD : st.status === 'blocked' ? RED : alpha(INK, 30)}`, display: 'inline-block', flexShrink: 0, marginTop: 2 }} />}
-                  <span style={{ fontFamily: MONO, fontSize: 10, color: GOLD, letterSpacing: '0.5px', paddingTop: 2, flexShrink: 0 }}>{st.id}</span>
+                    : <span style={{ width: 15, height: 15, borderRadius: 99, border: `1.5px solid ${st.status === 'inmotion' ? GREEN : st.status === 'blocked' ? CAUTION : alpha(INK, 30)}`, display: 'inline-block', flexShrink: 0, marginTop: 2 }} />}
+                  <span style={{ fontFamily: MONO, fontSize: 10, color: LABEL, letterSpacing: '0.5px', paddingTop: 2, flexShrink: 0 }}>{st.id}</span>
                   <span style={{ fontSize: 13, lineHeight: 1.45, color: st.status === 'done' ? GRAY : INK, textDecoration: st.status === 'done' ? 'line-through' : 'none' }}>{st.label}{st.note && <span style={{ display: 'block', fontSize: 12, color: st.status === 'blocked' ? RED : GRAY }}>{st.note}</span>}</span>
                 </button>
               ))}
@@ -226,13 +226,13 @@ function MilestoneRow({ n, project, task, board, api, onNavigate, onBoardChange,
           )}
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
             <button onClick={() => setExpanded(x => !x)} style={{ ...S.btnGhost, padding: '4px 9px', fontSize: 10 }}>Open</button>
-            {open && !onBoard && <button onClick={load} disabled={busy} style={{ ...S.btnGhost, padding: '4px 9px', fontSize: 10, color: GREEN, borderColor: alpha(GREEN, 40) }}>Load</button>}
-            {open && !onBoard && !stashed && <button onClick={toStash} disabled={busy} title="Stage it in the Stash on the Board; no slot, no clock" style={{ ...S.btnGhost, padding: '4px 9px', fontSize: 10, color: BLUE, borderColor: alpha(BLUE, 40) }}>Stash</button>}
+            {open && !onBoard && <button onClick={load} disabled={busy} style={{ ...S.btnGhost, padding: '4px 9px', fontSize: 10 }}>Load</button>}
+            {open && !onBoard && !stashed && <button onClick={toStash} disabled={busy} title="Stage it in the Stash on the Board; no slot, no clock" style={{ ...S.btnGhost, padding: '4px 9px', fontSize: 10 }}>Stash</button>}
             {open && <button onClick={addStep} style={{ ...S.btnGhost, padding: '4px 9px', fontSize: 10 }}><Plus size={10} /> Step</button>}
             {open && <button onClick={doneWhen} style={{ ...S.btnGhost, padding: '4px 9px', fontSize: 10 }}>Done when</button>}
             {open && <button onClick={rename} style={{ ...S.btnGhost, padding: '4px 9px', fontSize: 10 }}>Rename</button>}
             {open
-              ? <button onClick={async () => { if (!await hudConfirm(`Close milestone ${n}? 10 miles on the next update.`)) return; await api.toggleTask(project.id, task); onAward && onAward({ n, title: stripNum(task.text) }) }} style={{ ...S.btnGhost, padding: '4px 9px', fontSize: 10, color: GOLD, borderColor: alpha(GOLD, 40) }}><Check size={10} /> Close milestone</button>
+              ? <button onClick={async () => { if (!await hudConfirm(`Close milestone ${n}? 10 miles on the next update.`)) return; await api.toggleTask(project.id, task); onAward && onAward({ n, title: stripNum(task.text) }) }} style={{ ...S.btnGhost, padding: '4px 9px', fontSize: 10 }}><Check size={10} /> Close milestone</button>
               : <button onClick={() => api.toggleTask(project.id, task)} style={{ ...S.btnGhost, padding: '4px 9px', fontSize: 10 }}>Reopen</button>}
             <button onClick={async () => { if (await hudConfirm('Delete this milestone?')) api.deleteTask(project.id, task.id) }} title="Delete" style={{ background: 'transparent', border: 'none', color: alpha(INK, 25), cursor: 'pointer', padding: 4 }}><Trash2 size={12} /></button>
           </div>
@@ -278,7 +278,7 @@ function CloseMissionModal({ project, tasks, onClose, onDone }) {
         <textarea value={achieved} onChange={e => setAchieved(e.target.value)} rows={3} placeholder="In your words. It lands in the Archive as Achieved and on the yay page under the star." style={{ ...S.input, width: '100%', marginTop: 8, resize: 'vertical', lineHeight: 1.5 }} autoFocus />
         {openTasks.length > 0 && (
           <div style={{ marginTop: 16, padding: '12px 14px', borderRadius: 10, border: `1px solid ${PANEL_BORDER}`, background: PANEL_BG }}>
-            <div style={{ fontSize: 13.5, fontWeight: 600, color: GOLD }}>{openTasks.length} milestone{openTasks.length === 1 ? '' : 's'} still open</div>
+            <div style={{ fontSize: 13.5, fontWeight: 600, color: LABEL }}>{openTasks.length} milestone{openTasks.length === 1 ? '' : 's'} still open</div>
             <div style={{ fontSize: 12.5, color: TEXT_DIM, margin: '6px 0 8px', lineHeight: 1.5 }}>{openTasks.map(t => stripNum(t.text)).join(' · ')}</div>
             <label style={{ display: 'flex', gap: 8, alignItems: 'flex-start', fontSize: 13, color: '#fff', cursor: 'pointer' }}><input type="checkbox" checked={closeOpen} onChange={e => setCloseOpen(e.target.checked)} style={{ marginTop: 3 }} /><span>Close them as done with the mission (each pays its 10). Unchecked, they stay open in the mission's history and pay nothing.</span></label>
           </div>
@@ -329,7 +329,7 @@ function MissionFiles({ project, api, initialSlug }) {
     setRows(out)
   }, [project.id, path, api])
   useEffect(() => { load() }, [load])
-  const KIND = { folder: ['Folder', GRAY], file: ['File', BLUE], filed: ['Filed', INK2], artifact: ['Artifact', GOLD], share: ['Share', PURPLE] }
+  const KIND = { folder: ['Folder', GRAY], file: ['File', LABEL], filed: ['Filed', INK2], artifact: ['Artifact', LABEL], share: ['Share', LABEL] }
   const open = async (r) => {
     try {
       if (r.kind === 'folder') { setPath(path ? `${path}/${r.name}` : r.name); return }
@@ -359,8 +359,8 @@ function MissionFiles({ project, api, initialSlug }) {
           <span style={{ fontFamily: MONO, fontSize: 9, letterSpacing: '1px', textTransform: 'uppercase', color, width: 58, flexShrink: 0 }}>{label}</span>
           <button onClick={() => open(r)} style={{ flex: 1, minWidth: 0, textAlign: 'left', background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontSize: 13.5, color: INK, fontFamily: 'inherit', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.name}{r.kind === 'folder' ? '/' : ''}{r.live?.version > 1 ? <span style={{ fontFamily: MONO, fontSize: 9, color: GOLD, marginLeft: 8 }}>v{r.live.version}</span> : null}{r.kind === 'share' && !r.share.active ? <span style={{ fontFamily: MONO, fontSize: 9, color: GRAY, marginLeft: 8, textTransform: 'uppercase', letterSpacing: '1px' }}>archived</span> : null}</button>
           <span style={{ fontFamily: MONO, fontSize: 9.5, color: GRAY, whiteSpace: 'nowrap' }}>{r.when ? String(r.when).slice(0, 10) : ''}</span>
-          {r.kind === 'share' && <button onClick={async () => { try { await navigator.clipboard.writeText(r.share.code); setMsg('Code copied') } catch { setMsg(`Code: ${r.share.code}`) } }} style={{ ...S.btnGhost, fontSize: 10, padding: '3px 8px', fontFamily: MONO, letterSpacing: '2px', color: r.share.active ? GOLD : GRAY }}>{r.share.code}</button>}
-          {r.kind === 'share' && <button onClick={async () => { await archiveShare(r.share, r.share.active); load() }} style={{ ...S.btnGhost, fontSize: 10, padding: '3px 8px', color: r.share.active ? RED : GREEN }}>{r.share.active ? 'Archive' : 'Reactivate'}</button>}
+          {r.kind === 'share' && <button onClick={async () => { try { await navigator.clipboard.writeText(r.share.code); setMsg('Code copied') } catch { setMsg(`Code: ${r.share.code}`) } }} style={{ ...S.btnGhost, fontSize: 10, padding: '3px 8px', fontFamily: MONO, letterSpacing: '2px', color: r.share.active ? LABEL : GRAY }}>{r.share.code}</button>}
+          {r.kind === 'share' && <button onClick={async () => { await archiveShare(r.share, r.share.active); load() }} style={{ ...S.btnGhost, fontSize: 10, padding: '3px 8px' }}>{r.share.active ? 'Archive' : 'Reactivate'}</button>}
           {r.kind === 'file' && <button onClick={async () => { if (await hudConfirm(`Delete ${r.name}?`)) { await api.deleteFile(project.id, path, r.name); load() } }} title="Delete" style={{ background: 'transparent', border: 'none', color: alpha(INK, 25), cursor: 'pointer', padding: 4 }}><Trash2 size={12} /></button>}
         </div>
       ) })}
@@ -517,7 +517,7 @@ function ProjectDetail({ project, board: boardProp, api, onBack, initialTab, ini
       </div>
       <div style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 21, lineHeight: 1.3, color: INK, marginTop: 8, letterSpacing: '-0.005em' }}>{project.name}</div>
       <div style={{ fontSize: 14, lineHeight: 1.6, color: TEXT_DIM, margin: '6px 0 0', maxWidth: '72ch' }}>
-        {project.description ? <span><span style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '1.4px', textTransform: 'uppercase', color: BLUE, marginRight: 8, display: 'block', marginBottom: 2 }}>{NORTH_STAR_LABEL}</span><span style={{ fontFamily: SERIF, fontStyle: 'italic', fontSize: 15.5, color: INK }}>{project.description}</span></span> : <button onClick={async () => { const d = await hudPrompt(`${NORTH_STAR_LABEL}? One sentence.`, ''); if (d?.trim()) await api.updateProject(project.id, { description: d.trim() }) }} style={{ ...S.btnGhost, padding: '3px 9px', fontSize: 10 }}>Write the Polaris Objective</button>}
+        {project.description ? <span><span style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '1.4px', textTransform: 'uppercase', color: LABEL, marginRight: 8, display: 'block', marginBottom: 2 }}>{NORTH_STAR_LABEL}</span><span style={{ fontFamily: SERIF, fontStyle: 'italic', fontSize: 15.5, color: INK }}>{project.description}</span></span> : <button onClick={async () => { const d = await hudPrompt(`${NORTH_STAR_LABEL}? One sentence.`, ''); if (d?.trim()) await api.updateProject(project.id, { description: d.trim() }) }} style={{ ...S.btnGhost, padding: '3px 9px', fontSize: 10 }}>Write the Polaris Objective</button>}
       </div>
       <div style={{ ...S.sub, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
         <span>{[project.key, '100 miles on completion · 10 per milestone'].filter(Boolean).join(' · ')}</span>
@@ -539,7 +539,7 @@ function ProjectDetail({ project, board: boardProp, api, onBack, initialTab, ini
                 try { await deleteMission(project); await api.refresh(); onBack() } catch (e) { await hudNotice(`Could not delete: ${e.message}`) }
               }}
               title="Delete this mission: no miles, gone from every list"
-              style={{ ...S.btnGhost, border: `1px solid ${alpha(RED, 35)}`, color: RED, padding: '4px 9px', fontSize: 10 }}
+              style={{ ...S.btnGhost, padding: '4px 9px', fontSize: 10 }}
             >
               <Trash2 size={12} /> Delete Mission
             </button>
@@ -548,7 +548,7 @@ function ProjectDetail({ project, board: boardProp, api, onBack, initialTab, ini
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '14px 0 0' }}>
-        <span style={{ flex: 1, height: 5, borderRadius: 99, background: alpha(INK, 8), overflow: 'hidden' }}><span style={{ display: 'block', width: `${pct}%`, height: '100%', background: GOLD }} /></span>
+        <span style={{ flex: 1, height: 5, borderRadius: 99, background: alpha(INK, 8), overflow: 'hidden' }}><span style={{ display: 'block', width: `${pct}%`, height: '100%', background: LABEL }} /></span>
         <span style={{ fontFamily: MONO, fontSize: 10.5, letterSpacing: '1px', textTransform: 'uppercase', color: LABEL }}>{closed} of {tasks.length} closed</span>
       </div>
 
@@ -615,7 +615,7 @@ function ProjectDetail({ project, board: boardProp, api, onBack, initialTab, ini
         {tab === 'polaris' && (
           <div style={{ display: 'grid', gap: 22 }}>
             <div>
-              <CanonLabel style={{ color: BLUE }}>{NORTH_STAR_LABEL}</CanonLabel>
+              <CanonLabel>{NORTH_STAR_LABEL}</CanonLabel>
               <textarea defaultValue={project.description || ''} rows={3} onBlur={e => { const v = e.target.value.trim() || null; if (v !== (project.description || null)) api.updateProject(project.id, { description: v }) }} placeholder="What will be true when this mission is done? One sentence." style={{ width: '100%', boxSizing: 'border-box', background: 'rgba(255,255,255,0.05)', border: `1px solid ${PANEL_BORDER}`, borderRadius: 8, padding: '10px 12px', color: INK, fontSize: 17, fontFamily: SERIF, fontStyle: 'italic', lineHeight: 1.45, resize: 'vertical' }} />
             </div>
             <div>
@@ -629,7 +629,7 @@ function ProjectDetail({ project, board: boardProp, api, onBack, initialTab, ini
                 </div>
               ))}
             </div>
-            {project.status === 'completed' && <div style={{ fontFamily: MONO, fontSize: 10.5, letterSpacing: '1.2px', textTransform: 'uppercase', color: GREEN }}>Complete{project.archived_at ? ` · ${String(project.archived_at).slice(0, 10)}` : ''}</div>}
+            {project.status === 'completed' && <div style={{ fontFamily: MONO, fontSize: 10.5, letterSpacing: '1.2px', textTransform: 'uppercase', color: SUCCESS }}>Complete{project.archived_at ? ` · ${String(project.archived_at).slice(0, 10)}` : ''}</div>}
           </div>
         )}
       {celebrate && (
@@ -770,7 +770,7 @@ export default function ProjectsPage({ deepLink = [], onNavigate } = {}) {
         <div style={{ marginBottom: 26 }}>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginBottom: 10 }}><span style={{ fontFamily: MONO, fontSize: 10.5, letterSpacing: '1.4px', textTransform: 'uppercase', color: LABEL }}>Steady</span><span style={{ flex: 1, height: 1, background: PANEL_BORDER }} /><span style={{ fontFamily: MONO, fontSize: 10, color: GRAY }}>standing, nothing on the Board</span></div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 10 }}>
-            {steady.map(({ p }) => <ProjectCard key={p.id} project={p} onOpen={setDetailId} compact edge={BLUE} />)}
+            {steady.map(({ p }) => <ProjectCard key={p.id} project={p} onOpen={setDetailId} compact edge={INK2} />)}
           </div>
         </div>
       )}

@@ -26,7 +26,7 @@ import WorkspacePages from './Workspace'
 import MythicMilestones from './MythicMilestones'
 import LumenPanel from './LumenPanel'
 import { LEDGER_EVENT } from '../../lib/lumenPanel'
-import { INK, INK2, GRAY, PANEL_BORDER, GOLD, GOLD_BRIGHT, BLUE, GREEN, SUCCESS, RED, MONO, SERIF, S, Label, KIND_COLOR, KindIcon, NORTH_STAR_LABEL, NORTH_STAR_ASK, LABEL, MYTHIC, alpha, NAVY_DEEP, CARD_PILLS, CardPill, Trail } from './canon'
+import { INK, INK2, GRAY, PANEL_BORDER, GOLD, GOLD_BRIGHT, BLUE, GREEN, SUCCESS, RED, CAUTION, MONO, SERIF, S, Label, KIND_COLOR, KindIcon, NORTH_STAR_LABEL, NORTH_STAR_ASK, LABEL, MYTHIC, alpha, NAVY_DEEP, CARD_PILLS, CardPill, Trail } from './canon'
 
 const TABS = CARD_PILLS.map(([id]) => id)
 const TAB_LABEL = Object.fromEntries(CARD_PILLS)
@@ -141,7 +141,7 @@ function SessionsStrip({ item, links }) {
     <div style={{ marginTop: 14, paddingTop: 12, borderTop: `1px solid ${PANEL_BORDER}` }}>
       <div style={{ fontSize: 14.5, fontWeight: 600, color: LABEL }}>Sessions</div>
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
-        <button onClick={() => copy('brief', brief)} title={brief} style={{ ...btn(BLUE), padding: '5px 10px' }}><Terminal size={11} /> {copied === 'brief' ? 'Copied' : 'Copy a Briefed Start'}</button>
+        <button onClick={() => copy('brief', brief)} title={brief} style={{ ...btn(INK2), padding: '5px 10px' }}><Terminal size={11} /> {copied === 'brief' ? 'Copied' : 'Copy a Briefed Start'}</button>
         {latest && <button onClick={() => copy('resume', latest.note)} title={latest.note} style={{ ...btn(INK2), padding: '5px 10px' }}><Terminal size={11} /> {copied === 'resume' ? 'Copied' : 'Copy Resume Command'}</button>}
       </div>
       {sessions.length === 0 && <div style={{ fontSize: 12.5, color: GRAY, marginTop: 8 }}>No Claude session has worked this item yet. The Briefed Start begins one; paste it in a terminal.</div>}
@@ -168,7 +168,7 @@ function Evidence({ rows, onFiles, say }) {
           <span style={{ width: 6, height: 6, borderRadius: 99, background: GOLD_BRIGHT, flexShrink: 0 }} />
           <span style={{ flex: 1, fontSize: 13.5, color: INK, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.name}{r.version > 1 && <span style={{ fontFamily: MONO, fontSize: 9, color: GOLD, marginLeft: 8 }}>v{r.version}</span>}</span>
           <span style={{ fontFamily: MONO, fontSize: 9.5, color: GRAY }}>{fmtStamp(r.created_at)}</span>
-          <button onClick={() => openRow(r)} style={btn(GOLD_BRIGHT)}><ExternalLink size={11} /> Open</button>
+          <button onClick={() => openRow(r)} style={btn(INK2)}><ExternalLink size={11} /> Open</button>
         </div>
       ))}
     </div>
@@ -208,12 +208,12 @@ function WhereItStands({ item, rel, task, taskId, linkedBoards }) {
     ...boardItems.filter(t => t.status !== 'done').map(t => ({ text: t.label, meta: t.status === 'blocked' ? (t.note || 'blocked') : t.status === 'inmotion' ? 'in motion' : t.id, kind: t.status === 'blocked' ? 'blocked' : 'board' })),
   ]
   if (task && task.status === 'done') done.unshift({ text: 'Milestone closed', meta: task.released_at ? new Date(task.released_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : null, kind: 'board' })
-  // Done wears the type's color (David 10/29: a Contract's Done is the Contract blue); Still Needed stays gold.
-  const doneColor = item.size && SIZES[item.size] ? SIZES[item.size].color : (KIND_COLOR[item.kind] || SUCCESS)
+  // The card palette (David 11/4): done is the success purple, open is an ink ring, blocked is the caution tone; identity stays on the header chip.
+  const doneColor = SUCCESS
   const Row = ({ r, color, open }) => (
     <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start', padding: '4px 0' }}>
       <span style={{ width: 9, height: 9, borderRadius: 99, boxSizing: 'border-box', background: open ? 'transparent' : color, border: `1.5px solid ${color}`, marginTop: 6, flexShrink: 0 }} />
-      <span style={{ fontSize: 13.5, lineHeight: 1.5, color: INK, flex: 1 }}>{r.text}{r.meta && <span style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '0.8px', color: r.kind === 'blocked' ? RED : GRAY, marginLeft: 8 }}>{r.meta}</span>}</span>
+      <span style={{ fontSize: 13.5, lineHeight: 1.5, color: INK, flex: 1 }}>{r.text}{r.meta && <span style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '0.8px', color: r.kind === 'blocked' ? CAUTION : GRAY, marginLeft: 8 }}>{r.meta}</span>}</span>
     </div>
   )
   return (
@@ -225,10 +225,10 @@ function WhereItStands({ item, rel, task, taskId, linkedBoards }) {
           {done.length ? done.map((r, i) => <Row key={i} r={r} color={doneColor} />) : <div style={{ fontSize: 13, color: GRAY, padding: '4px 0' }}>Nothing ticked, closed or produced yet.</div>}
         </div>
         <div>
-          <div style={{ fontSize: 14.5, fontWeight: 600, color: GOLD, marginBottom: 5 }}>Still Needed</div>
-          {needed.map((r, i) => <Row key={i} r={r} color={r.kind === 'blocked' ? RED : GOLD} open />)}
+          <div style={{ fontSize: 14.5, fontWeight: 600, color: LABEL, marginBottom: 5 }}>Still Needed</div>
+          {needed.map((r, i) => <Row key={i} r={r} color={r.kind === 'blocked' ? CAUTION : INK2} open />)}
           {thinking && <div style={{ fontFamily: MONO, fontSize: 10.5, letterSpacing: '1px', textTransform: 'uppercase', color: LABEL, padding: '4px 0' }}>Lumen is reading the trail</div>}
-          {!thinking && (next || []).map((t, i) => <div key={`n${i}`} style={{ display: 'flex', gap: 10, alignItems: 'flex-start', padding: '4px 0' }}><span style={{ width: 9, height: 9, borderRadius: 99, boxSizing: 'border-box', border: `1.5px solid ${BLUE}`, marginTop: 6, flexShrink: 0 }} /><span style={{ fontSize: 13.5, lineHeight: 1.5, color: INK2, fontStyle: 'italic', flex: 1 }}>{t}<span style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '0.8px', color: BLUE, marginLeft: 8, fontStyle: 'normal' }}>Lumen</span></span></div>)}
+          {!thinking && (next || []).map((t, i) => <div key={`n${i}`} style={{ display: 'flex', gap: 10, alignItems: 'flex-start', padding: '4px 0' }}><span style={{ width: 9, height: 9, borderRadius: 99, boxSizing: 'border-box', border: `1.5px solid ${INK2}`, marginTop: 6, flexShrink: 0 }} /><span style={{ fontSize: 13.5, lineHeight: 1.5, color: INK2, fontStyle: 'italic', flex: 1 }}>{t}<span style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '0.8px', color: GRAY, marginLeft: 8, fontStyle: 'normal' }}>Lumen</span></span></div>)}
           {!thinking && !needed.length && !(next || []).length && <div style={{ fontSize: 13, color: GRAY, padding: '4px 0' }}>Nothing open. If the star is true, extract it.</div>}
         </div>
       </div>
@@ -318,8 +318,8 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
             {item.kind !== 'Event' && item.kind !== 'Session' && !rel?.parent && (loaded
               ? (loaded.equipped
                 ? <button onClick={() => act(() => holster(loaded.id), 'Timer off')} style={btn(GREEN, true)}><Pause size={12} /> Timer on · {fmtClock(loaded.minutes_today)}</button>
-                : <button onClick={() => act(() => equip(loaded.id), 'Timer on')} style={btn(GREEN)}><Play size={12} /> Timer off · {fmtClock(loaded.minutes_today)}</button>)
-              : <button onClick={startTimer} style={btn(GREEN)}><Play size={12} /> Load and start timer</button>)}
+                : <button onClick={() => act(() => equip(loaded.id), 'Timer on')} style={btn(INK2)}><Play size={12} /> Timer off · {fmtClock(loaded.minutes_today)}</button>)
+              : <button onClick={startTimer} style={btn(INK2)}><Play size={12} /> Load and start timer</button>)}
             {loaded && <button onClick={() => act(() => stash(loaded.id), 'Stashed')} style={btn(INK2)}><Archive size={12} /> Stash</button>}
           </div>
         </div>
@@ -391,8 +391,8 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
                     const setNext = (v) => nextKid ? updateObjective(nextKid.id, { due_date: v || null }).then(load) : patchObj({ follow_up_date: v || null })
                     return (
                       <div style={{ display: 'flex', gap: 28, flexWrap: 'wrap', alignItems: 'flex-start' }}>
-                        <div style={cell}><Label style={{ marginBottom: 0 }}>Domain</Label><div style={{ display: 'flex', gap: 6 }}>{[['third-horizon', 'Third Horizon'], ['personal', 'Personal']].map(([k, l]) => <button key={k} onClick={() => patchObj({ tags: [...new Set([...(obj.tags || []).filter(t => t !== 'personal'), ...(k === 'personal' ? ['personal'] : [])])] })} style={seg(realm === k, k === 'personal' ? GOLD : BLUE)}>{l}</button>)}</div></div>
-                        {rel.parent ? <div style={cell}><Label style={{ marginBottom: 0 }}>Milestone</Label><div style={{ fontFamily: SERIF, fontSize: 15.5, color: INK, paddingTop: 5 }}>{rel.milestoneN || '?'} of {rel.milestoneOf || '?'} on {rel.parent.title}<span style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '1px', textTransform: 'uppercase', color: MYTHIC, marginLeft: 10 }}>10 miles on close</span></div></div> : <div style={cell}><Label style={{ marginBottom: 0 }}>Type</Label><div style={{ display: 'flex', gap: 6 }}>{Object.entries(SIZES).map(([k, sdef]) => <button key={k} onClick={() => setSize(obj.id, k).then(load)} title={sdef.sub} style={seg(sz === k, sdef.color)}>{sdef.label}</button>)}</div></div>}
+                        <div style={cell}><Label style={{ marginBottom: 0 }}>Domain</Label><div style={{ display: 'flex', gap: 6 }}>{[['third-horizon', 'Third Horizon'], ['personal', 'Personal']].map(([k, l]) => <button key={k} onClick={() => patchObj({ tags: [...new Set([...(obj.tags || []).filter(t => t !== 'personal'), ...(k === 'personal' ? ['personal'] : [])])] })} style={seg(realm === k, BLUE)}>{l}</button>)}</div></div>
+                        {rel.parent ? <div style={cell}><Label style={{ marginBottom: 0 }}>Milestone</Label><div style={{ fontFamily: SERIF, fontSize: 15.5, color: INK, paddingTop: 5 }}>{rel.milestoneN || '?'} of {rel.milestoneOf || '?'} on {rel.parent.title}<span style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '1px', textTransform: 'uppercase', color: MYTHIC, marginLeft: 10 }}>10 miles on close</span></div></div> : <div style={cell}><Label style={{ marginBottom: 0 }}>Type</Label><div style={{ display: 'flex', gap: 6 }}>{Object.entries(SIZES).map(([k, sdef]) => <button key={k} onClick={() => setSize(obj.id, k).then(load)} title={sdef.sub} style={seg(sz === k, BLUE)}>{sdef.label}</button>)}</div></div>}
                         <div style={cell}><Label style={{ marginBottom: 0 }}>{rel.parent ? 'Milestone' : 'Side Mission'} Completion Requirement</Label><input type="date" value={obj.due_date || ''} onChange={e => patchObj({ due_date: e.target.value || null })} style={{ ...field, width: 150 }} /></div>
                         <div style={cell}><Label style={{ marginBottom: 0 }}>Next Action Due By</Label><input type="date" value={nextVal} onChange={e => setNext(e.target.value)} style={{ ...field, width: 150 }} />{nextKid && <div style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '1px', textTransform: 'uppercase', color: MYTHIC }}>Milestone {nextIx + 1} · {nextKid.title}</div>}</div>
                       </div>
@@ -410,7 +410,7 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
                     {max > 0 && Array.isArray(rel.steps) && rel.steps.map((st, i) => (
                       <div key={st.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 0', borderTop: `1px solid ${PANEL_BORDER}` }}>
                         <button onClick={() => toggleStep(st.id, !st.done).then(load)} aria-label={st.done ? 'Undo' : 'Done'} style={{ width: 18, height: 18, borderRadius: 999, border: `1px solid ${st.done ? SUCCESS : 'rgba(255,255,255,0.3)'}`, background: st.done ? `${alpha(SUCCESS, 13)}` : 'transparent', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>{st.done && <Check size={11} color={SUCCESS} />}</button>
-                        <span style={{ fontFamily: MONO, fontSize: 10, color: GOLD, width: 14 }}>{i + 1}</span>
+                        <span style={{ fontFamily: MONO, fontSize: 10, color: LABEL, width: 14 }}>{i + 1}</span>
                         <span style={{ flex: 1, fontSize: 14, color: st.done ? GRAY : INK, textDecoration: st.done ? 'line-through' : 'none' }}>{st.text}</span>
                         {st.done_at && <span style={{ fontFamily: MONO, fontSize: 9.5, color: GRAY }}>{chiTime(st.done_at)}</span>}
                         <button onClick={() => removeStep(st.id).then(load)} aria-label="Remove" style={{ background: 'transparent', border: 'none', color: GRAY, cursor: 'pointer', padding: 2 }}><Trash2 size={11} /></button>
@@ -419,7 +419,7 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
                     {max > 0 && Array.isArray(rel.steps) && rel.steps.length < max && (
                       <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
                         <input value={stepText} onChange={e => setStepText(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') addStepNow() }} placeholder={rel.steps.length ? `${sz === 'heavy' ? 'gate' : 'mark'} ${rel.steps.length + 1} of ${max}: something that can be seen to have happened` : `the first thing that has to happen (1 of ${max}): a decision marked, a conversation had, a thing produced`} disabled={objBusy} style={{ flex: 1, background: 'rgba(255,255,255,0.05)', border: `1px solid ${PANEL_BORDER}`, borderRadius: 8, color: INK, padding: '7px 10px', fontSize: 13, fontFamily: 'inherit' }} />
-                        <button onClick={addStepNow} disabled={objBusy || !stepText.trim()} style={btn(BLUE, false)}><Plus size={11} /> Add</button>
+                        <button onClick={addStepNow} disabled={objBusy || !stepText.trim()} style={btn(INK2, false)}><Plus size={11} /> Add</button>
                       </div>
                     )}
                     {max > 0 && Array.isArray(rel.steps) && rel.steps.length >= max && <div style={{ fontSize: 12, color: GRAY, marginTop: 8 }}>{sz === 'heavy' ? 'Five gates is the Mythic’s limit. A sixth means this is a Main Mission: promote it.' : 'Three marks is a Contract’s limit. More than that is a Mythic.'}</div>}
@@ -439,7 +439,7 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
               {rel.project && (
                 <div>
                   <Label>Mission</Label>
-                  <button onClick={() => go([rel.project.id])} style={btn(GOLD)}><MapIcon size={12} /> {rel.project.name}</button>
+                  <button onClick={() => go([rel.project.id])} style={btn(INK2)}><MapIcon size={12} /> {rel.project.name}</button>
                 </div>
               )}
               {task && (
@@ -489,15 +489,15 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
             <div style={{ display: 'grid', gap: 22 }}>
               <>
                   <div>
-                    <Label style={{ color: BLUE }}>{NORTH_STAR_LABEL}</Label>
+                    <Label>{NORTH_STAR_LABEL}</Label>
                     {editStar || !obj.north_star
                       ? <textarea autoFocus={editStar} defaultValue={obj.north_star || ''} rows={2} onBlur={e => { const v = e.target.value.trim() || null; setEditStar(false); if (v !== (obj.north_star || null)) patchObj({ north_star: v }) }} placeholder={NORTH_STAR_ASK} style={{ width: '100%', boxSizing: 'border-box', background: 'rgba(255,255,255,0.05)', border: `1px solid ${PANEL_BORDER}`, borderRadius: 8, padding: '10px 12px', color: INK, fontSize: 17, fontFamily: SERIF, fontStyle: 'italic', lineHeight: 1.45, resize: 'vertical' }} />
-                      : <div onClick={() => setEditStar(true)} title="Click to edit" style={{ fontFamily: SERIF, fontStyle: 'italic', fontSize: 15.5, lineHeight: 1.5, color: INK, borderLeft: `2px solid ${BLUE}`, paddingLeft: 12, cursor: 'text' }}>{obj.north_star}</div>}
+                      : <div onClick={() => setEditStar(true)} title="Click to edit" style={{ fontFamily: SERIF, fontStyle: 'italic', fontSize: 15.5, lineHeight: 1.5, color: INK, borderLeft: `2px solid ${LABEL}`, paddingLeft: 12, cursor: 'text' }}>{obj.north_star}</div>}
                   </div>
                   <Evidence rows={rel.evidence || []} onFiles={() => setTab('workbench')} say={setMsg} />
 
               </>
-              {obj.state === 'released' && <div style={{ fontFamily: MONO, fontSize: 10.5, letterSpacing: '1.2px', textTransform: 'uppercase', color: GREEN }}>Released{obj.released_at ? ` · ${obj.released_at.slice(0, 10)}` : ''}</div>}
+              {obj.state === 'released' && <div style={{ fontFamily: MONO, fontSize: 10.5, letterSpacing: '1.2px', textTransform: 'uppercase', color: SUCCESS }}>Released{obj.released_at ? ` · ${obj.released_at.slice(0, 10)}` : ''}</div>}
             </div>
           ) : <None what={{ ...what, thing: 'a Polaris of its own' }} />)}
 

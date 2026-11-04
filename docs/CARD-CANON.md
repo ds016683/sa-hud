@@ -33,6 +33,15 @@ David, October 28, 2026: "when i say that I want to create a workspace on the Mi
 - Pages live in storage as JSON under `<root>/workspace/<slug>.json` (`src/lib/workspace.js`; the root is the mission's id or `objectives/<id>`). They are not Live Files, not artifacts, not sections of Files. Delete Page removes the document.
 - The Workspace sits between the head of the Workbench (Planning on a mission, Live Protocols on an item) and the files in play at the foot. It counts nothing on the pill and earns no miles.
 
+## The card palette
+David, November 4, 2026: "we have a massive color sprawl problem on all these mission cards..... like everywhere." One rule, every card and the Lumen panel:
+
+1. **Ink carries content.** Steel blue (`LABEL`) carries every label, eyebrow, field title, section count and file icon. Captions and attributions (a "Lumen" tag on a suggested step, a "waiting" note) are muted ink, never a color.
+2. **Chrome is one color.** Every button, selector, pill and tab is an ink-2 outline at rest. Selected or active is the accent fill (`BLUE`). No gold, green, red or purple buttons at rest; a destructive action is a plain button whose confirm dialog does the warning.
+3. **Identity shows once.** Bounty gold, Contract blue, Mythic purple live on the Type chip in the header. A Mythic's milestone numbers and progress bar inherit it. The Type and Domain selectors in the facts row use the accent like any selector.
+4. **State colors are reserved.** `SUCCESS` (the medallion purple) for done, closed, released, complete. `GREEN` only for a running clock, an item on the Board, money. `CAUTION` for blocked and flagged. `RED` only inside a destructive confirm.
+5. **Gold is wayfinding.** The Polaris star and the evidence pin, the celebration, and one primary action per surface (Send on the Lumen panel, PDF on its Workbook). Nothing else.
+
 ## What counts on a pill
 
 - Briefing: the number of milestones (missions only).
