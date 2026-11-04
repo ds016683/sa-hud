@@ -15,8 +15,9 @@ import { INK, INK2, GRAY, PANEL_BORDER, GOLD, GOLD_BRIGHT, BLUE, GREEN, RED, MON
 import { readWorkbook, writeWorkbook, listBuilds, buildUrl, readBuildHtml, removeBuild, loadThread, askLumen, fireLedgerChanged } from '../../lib/lumenPanel'
 import { hudConfirm } from '../../lib/dialog'
 
+// The panel's width: 460px on a wide window, less on a narrow one, so the page always keeps room beside it.
 const WIDTH = 460
-const PUSH_AT = 1280
+const panelWidth = () => Math.min(WIDTH, Math.max(320, Math.round(window.innerWidth * 0.42)))
 const btn = (color = INK2, filled = false, extra = {}) => ({ display: 'inline-flex', alignItems: 'center', gap: 5, fontFamily: MONO, fontSize: 9.5, letterSpacing: '1px', textTransform: 'uppercase', padding: '5px 9px', borderRadius: 8, border: `1px solid ${filled ? color : alpha(color, 40)}`, background: filled ? color : 'transparent', color: filled ? 'var(--hud-on-accent)' : color, cursor: 'pointer', whiteSpace: 'nowrap', ...extra })
 const eyebrow = { fontFamily: MONO, fontSize: 9.5, letterSpacing: '1.4px', textTransform: 'uppercase', color: LABEL }
 const field = { width: '100%', background: 'rgba(255,255,255,0.05)', border: `1px solid ${PANEL_BORDER}`, borderRadius: 8, color: INK, padding: '9px 11px', fontSize: 13.5, fontFamily: 'inherit', boxSizing: 'border-box', lineHeight: 1.5, resize: 'none' }
@@ -82,15 +83,17 @@ export default function LumenPanel({ item }) {
   }, [item.id, item.root])
   useEffect(() => { if (open) loadAll().catch(e => setMsg(`Could not read: ${e.message}`)) }, [open, loadAll])
   useEffect(() => { scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' }) }, [thread, pending, open, tab])
-  // Push-aside on wide screens (the page yields its width); overlay on narrow ones.
+  // Push-aside, always (David 11/4: "it should move the rest of the page in a bit instead of
+  // overlapping it"): the HUD's scroll container takes a right padding the panel's width.
+  const [w, setW] = useState(WIDTH)
   useEffect(() => {
     if (!open) return
-    const wide = window.innerWidth >= PUSH_AT
-    const prev = document.body.style.paddingRight, prevT = document.body.style.transition
-    if (wide) { document.body.style.transition = 'padding-right 220ms ease'; document.body.style.paddingRight = `${WIDTH}px` }
+    const app = document.querySelector('.sa-app')
+    const apply = () => { const pw = panelWidth(); setW(pw); app?.style.setProperty('--lumen-w', `${pw}px`) }
+    apply(); app?.classList.add('lumen-open')
     const onKey = (e) => { if (e.key === 'Escape') setOpen(false) }
-    window.addEventListener('keydown', onKey)
-    return () => { window.removeEventListener('keydown', onKey); document.body.style.paddingRight = prev; document.body.style.transition = prevT }
+    window.addEventListener('keydown', onKey); window.addEventListener('resize', apply)
+    return () => { window.removeEventListener('keydown', onKey); window.removeEventListener('resize', apply); app?.classList.remove('lumen-open') }
   }, [open])
 
   const send = async (text) => {
@@ -139,7 +142,7 @@ export default function LumenPanel({ item }) {
           <Sparkles size={15} color={GOLD_BRIGHT} /> Lumen
         </button>
       )}
-      <aside aria-label="Lumen" aria-hidden={!open} style={{ position: 'fixed', top: 0, right: 0, bottom: 0, zIndex: 210, width: `min(${WIDTH}px, 94vw)`, transform: open ? 'translateX(0)' : 'translateX(104%)', transition: 'transform 220ms ease', background: 'var(--hud-surface-raised)', borderLeft: `1px solid ${PANEL_BORDER}`, boxShadow: open ? '-18px 0 40px rgba(0,0,0,0.35)' : 'none', display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+      <aside aria-label="Lumen" aria-hidden={!open} style={{ position: 'fixed', top: 0, right: 0, bottom: 0, zIndex: 210, width: w, transform: open ? 'translateX(0)' : 'translateX(104%)', transition: 'transform 220ms ease', background: 'var(--hud-surface-raised)', borderLeft: `1px solid ${PANEL_BORDER}`, boxShadow: open ? '-18px 0 40px rgba(0,0,0,0.35)' : 'none', display: 'flex', flexDirection: 'column', minWidth: 0 }}>
         <div style={{ padding: '16px 18px 12px', borderBottom: `1px solid ${PANEL_BORDER}` }}>
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
             <span style={{ width: 36, height: 36, borderRadius: 999, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', border: `1px solid ${alpha(GOLD_BRIGHT, 50)}`, background: alpha(GOLD_BRIGHT, 10), flexShrink: 0 }}><Sparkles size={16} color={GOLD_BRIGHT} /></span>

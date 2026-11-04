@@ -156,6 +156,9 @@ body {
 
 /* ---------- LAYOUT ---------- */
 .sa-app { display: flex; min-height: 100vh; }
+/* Lumen on the card (David 11/4): when the panel is open the page yields its width, never overlapped. */
+.sa-app .sa-main { transition: padding-right 220ms ease; }
+.sa-app.lumen-open .sa-main { padding-right: var(--lumen-w, 460px); }
 
 /* ---------- SIDEBAR ---------- */
 .sa-sidebar {
