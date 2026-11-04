@@ -24,6 +24,8 @@ import FilesTab from './Files'
 import WorkbenchTab, { WorkbenchIntake } from './Workbench'
 import WorkspacePages from './Workspace'
 import MythicMilestones from './MythicMilestones'
+import LumenPanel from './LumenPanel'
+import { LEDGER_EVENT } from '../../lib/lumenPanel'
 import { INK, INK2, GRAY, PANEL_BORDER, GOLD, GOLD_BRIGHT, BLUE, GREEN, SUCCESS, RED, MONO, SERIF, S, Label, KIND_COLOR, KindIcon, NORTH_STAR_LABEL, NORTH_STAR_ASK, LABEL, MYTHIC, alpha, NAVY_DEEP, CARD_PILLS, CardPill, Trail } from './canon'
 
 const TABS = CARD_PILLS.map(([id]) => id)
@@ -247,6 +249,9 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
   const tieBoard = async (b) => { if (!obj) return; const { error } = await supabase.from('session_boards').update({ board: { ...(b.board || {}), objective_id: obj.id } }).eq('id', b.id); if (error) { setMsg(`Could not tie: ${error.message}`); return } setMsg(`Tied ${b.title}`); load() }
   const load = useCallback(() => loadRelated(item).then(setRel).catch(e => { console.warn('item detail', e.message); setRel({ project: null, task: null, artifacts: [], boards: [], projectFiles: [], storeFiles: [], meetings: [], loadout: null }) }), [item])
   useEffect(() => { load() }, [load])
+  // Lumen acted on this card from the panel (11/4): reread it, and remount the Workbench's lists.
+  const [tick, setTick] = useState(0)
+  useEffect(() => { const h = (e) => { const id = e?.detail?.id; if (!id || id === (item.objective_id || item.id)) { load(); setTick(t => t + 1) } }; window.addEventListener(LEDGER_EVENT, h); return () => window.removeEventListener(LEDGER_EVENT, h) }, [load, item])
   // hash deep link (David, 10/17): the open briefing rides the URL, so a refresh
   // lands back on it. #/<page>/.../item/<objective id>
   useEffect(() => {
@@ -473,7 +478,7 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
           )}
 
           {rel && tab === 'workbench' && (item.objective_id ? (
-            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 28 }}>
+            <div key={tick} style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 28 }}>
               <div><Label>Live Protocols</Label><ProtocolsTab objectiveId={item.objective_id} /></div>
               <div style={{ minWidth: 0 }}><Label>Workspace</Label><WorkspacePages root={objRoot(item.objective_id)} what="item" /></div>
               <div><Label>In Play</Label><WorkbenchTab objectiveId={item.objective_id} intake={false} /></div>
@@ -524,6 +529,7 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
           {msg && <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '1px', textTransform: 'uppercase', color: msg.startsWith('Could') ? RED : GOLD_BRIGHT, marginTop: 14 }}>{msg}</div>}
         </div>
       </div>
+      {item.objective_id && <LumenPanel item={{ kind: 'objective', id: item.objective_id, title: item.title, root: objRoot(item.objective_id), summary: [obj?.north_star, item.description || obj?.description].filter(Boolean).join('\n\n') }} />}
     </div>
   )
 }

@@ -112,7 +112,7 @@ ${doc}`
 }
 
 // One turn: returns the reply text. Runs the tool loop against the Ledger.
-export async function think({ channel = 'whatsapp', text, spoken = false }) {
+export async function think({ channel = 'whatsapp', text, spoken = false, frame = null }) {
   const [doc, ctx, constitution, rules] = await Promise.all([
     identityDoc('operating-context.md'), threadContext(),
     identityDoc('constitution.md').catch(() => ''),
@@ -124,6 +124,7 @@ export async function think({ channel = 'whatsapp', text, spoken = false }) {
     + persona(doc, spoken, channel)
     + (ctx.memory ? `\n\n## Longer memory (summary of the thread before the recent messages)\n${ctx.memory.summary}` : '')
     + (transcript ? `\n\n## Recent thread\n${transcript}` : '')
+    + (frame ? `\n\n## The card David is working in right now (the Lumen panel, 11/4)\n${frame}\n\nYou are open beside this card. Treat it as the subject unless he says otherwise: its title is the side_mission (or its key the project) in every tool call. Your hands on it: milestones and marks (add_step, complete_step, set_due, set_north_star, move_objective, close_out), its files (list_live_files, file_attachment, write_file), its Workspace pages (workspace_page, read_workspace_page), and builds (build_page: a complete self-contained HTML page he can use on the Build tab right away, in the HUD's canon). When he asks you to change the card, do it with the tools and say what changed in one line; the card refreshes on its own. When he asks for a plan, an outline or a draft, put it on a Workspace page and say so. When he asks for a tool, a mock-up, a page or a prototype, build_page it. Answer in a few plain sentences, longer only when he asks for a draft or a list.` : '')
   // Stable prefix (everything before the memory + thread) gets the cache marker.
   const cut = systemText.indexOf('\n\n## Longer memory')
   const cut2 = cut >= 0 ? cut : systemText.indexOf('\n\n## Recent thread')

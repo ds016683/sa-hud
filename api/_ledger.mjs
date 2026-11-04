@@ -180,6 +180,61 @@ const plusDays = (n) => { const d = new Date(); d.setDate(d.getDate() + n); retu
 const OBJ_STATES = ['active', 'parked', 'waiting', 'follow_up', 'foreman', 'released', 'inbox']
 
 // Exact title first, then a contains match; refuses ambiguity rather than guessing.
+// ---- storage, generic (11/4, the Lumen panel): write any object into project-files; list a prefix
+async function putStorage(path, body, contentType) {
+  const res = await fetch(`${URL_BASE}/storage/v1/object/project-files/${path.split('/').map(encodeURIComponent).join('/')}`, { method: 'POST', headers: { ...sbHeaders(), 'Content-Type': contentType, 'x-upsert': 'true' }, body })
+  if (!res.ok) throw new Error(`storage write ${res.status}: ${(await res.text()).slice(0, 160)}`)
+  return path
+}
+async function getStorageJson(path) {
+  const res = await fetch(`${URL_BASE}/storage/v1/object/project-files/${path.split('/').map(encodeURIComponent).join('/')}?cb=${Date.now()}`, { headers: { ...sbHeaders(), 'Cache-Control': 'no-cache' }, cache: 'no-store' })
+  return res.ok ? res.json() : null
+}
+async function listStorage(prefix, limit = 200) {
+  const res = await fetch(`${URL_BASE}/storage/v1/object/list/project-files`, { method: 'POST', headers: { ...sbHeaders(), 'Content-Type': 'application/json' }, body: JSON.stringify({ prefix, limit, sortBy: { column: 'updated_at', order: 'desc' } }) })
+  if (!res.ok) return []
+  return (await res.json()) || []
+}
+const slugOf = (t) => String(t || 'page').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 48) || 'page'
+const rootOf = (item) => item.kind === 'project' ? item.id : `objectives/${item.id}`
+
+// The card frame (11/4): what Lumen sees of the card David is working in from the
+// Lumen panel. Title, Polaris, back story, state, milestones or steps, the files
+// in play, the workspace pages, the builds. Short: it rides every turn.
+export async function cardFrame(item) {
+  const lines = []
+  const root = rootOf(item)
+  if (item.kind === 'project') {
+    const pr = (await sb(`projects?select=id,key,name,description,status&id=eq.${item.id}&limit=1`))[0]
+    if (!pr) return `Main Mission ${item.id} (not found)`
+    lines.push(`Main Mission: ${pr.name} (project key ${pr.key}, status ${pr.status}). Address it in tools as project "${pr.key}".`)
+    if (pr.description) lines.push(`Description: ${String(pr.description).slice(0, 600)}`)
+    const tasks = await sb(`project_tasks?select=text,status,notes&project_id=eq.${item.id}&order=id.asc&limit=40`).catch(() => [])
+    if (tasks.length) lines.push(`Milestones (${tasks.length}):\n` + tasks.map(t => `- [${t.status}] ${t.text}`).join('\n'))
+  } else {
+    const o = (await sb(`objectives?select=id,title,state,effort,tags,description,notes,north_star,due_date,follow_up_date,parent_id&id=eq.${item.id}&limit=1`))[0]
+    if (!o) return `Side Mission ${item.id} (not found)`
+    const size = Number(o.effort) >= 4 ? 'Mythic' : Number(o.effort) === 3 ? 'Contract' : 'Bounty'
+    lines.push(`${o.parent_id ? 'Milestone of a Mythic' : 'Side Mission'}: "${o.title}" (${size}, ${o.state}${(o.tags || []).includes('impromptu') ? ', Ad Hoc' : ''}). Address it in tools as side_mission "${o.title}".`)
+    if (o.north_star) lines.push(`Polaris: ${o.north_star}`)
+    if (o.description) lines.push(`Back story: ${String(o.description).slice(0, 600)}`)
+    if (o.notes) lines.push(`Notes: ${String(o.notes).slice(0, 400)}`)
+    if (o.due_date || o.follow_up_date) lines.push(`Dates: due ${o.due_date || 'none'}, follow up ${o.follow_up_date || 'none'}`)
+    const kids = await sb(`objectives?select=title,state,description&parent_id=eq.${item.id}&deleted_at=is.null&order=captured_at.asc&limit=10`).catch(() => [])
+    if (kids.length) lines.push(`Milestones (${kids.length}):\n` + kids.map((k, i) => `- ${i + 1}. [${k.state}] ${k.title}${k.description ? ` (done when: ${String(k.description).slice(0, 120)})` : ''}`).join('\n'))
+    const steps = await sb(`objective_steps?select=text,done&objective_id=eq.${item.id}&order=id.asc&limit=20`).catch(() => [])
+    if (steps.length) lines.push(`Marks:\n` + steps.map(s => `- [${s.done ? 'x' : ' '}] ${s.text}`).join('\n'))
+  }
+  const files = await sb(`live_files?select=name,note,bucket,path&${item.kind === 'project' ? 'project_id' : 'objective_id'}=eq.${item.id}&filed_at=is.null&superseded_by=is.null&order=created_at.desc&limit=30`).catch(() => [])
+  const inPlay = files.filter(f => !(f.bucket === 'link' && /^claude:\/\//.test(String(f.path || ''))))
+  if (inPlay.length) lines.push(`Files in play (${inPlay.length}):\n` + inPlay.map(f => `- ${f.name}${f.bucket === 'link' ? ` (link: ${f.path})` : ''}${f.note ? ` · ${String(f.note).slice(0, 100)}` : ''}`).join('\n'))
+  const pages = (await listStorage(`${root}/workspace`)).filter(f => f.name.endsWith('.json'))
+  if (pages.length) lines.push(`Workspace pages: ${pages.map(f => f.name.replace(/\.json$/, '')).join(', ')} (read one with read_workspace_page; write with workspace_page)`)
+  const builds = (await listStorage(`${root}/build`)).filter(f => f.name.endsWith('.json'))
+  if (builds.length) lines.push(`Builds on the Build tab: ${builds.map(f => f.name.replace(/\.json$/, '')).join(', ')} (rewrite one with build_page using the same slug)`)
+  return lines.join('\n')
+}
+
 async function findObjective(title) {
   const q = esc(title || '')
   if (!q) throw new Error('title required')
@@ -643,6 +698,21 @@ export const TOOLS = [
     description: 'The active standing orders Lumen is holding for David.',
     inputSchema: { type: 'object', properties: {} },
   },
+  {
+    name: 'workspace_page',
+    description: "Write a Workspace page on a card (a Main Mission by project, or a Side Mission or Milestone by side_mission): the blank pages under Workspace on the card's Workbench pill where David types and draws. Use it to put a plan, an outline, a draft, a table in words, or a working analysis onto the card where he can keep working it. title names the page (the slug comes from it unless you pass slug); text is the page's content (plain text, headings as lines). Writing an existing slug replaces its text and keeps David's drawing. Say the page is on the Workbench under Workspace.",
+    inputSchema: { type: 'object', properties: { project: { type: 'string' }, side_mission: { type: 'string' }, title: { type: 'string' }, slug: { type: 'string' }, text: { type: 'string' } }, required: ['title', 'text'] },
+  },
+  {
+    name: 'read_workspace_page',
+    description: "Read a Workspace page on a card (by project or side_mission, and slug or title). Returns its text.",
+    inputSchema: { type: 'object', properties: { project: { type: 'string' }, side_mission: { type: 'string' }, slug: { type: 'string' } }, required: ['slug'] },
+  },
+  {
+    name: 'build_page',
+    description: "Build something David can use right away on a card: a prototype, a mock-up, a small tool, a calculator, a one-page view, a form, a chart. html is ONE complete self-contained HTML document (inline CSS and JS, no external files except Google Fonts; fetch nothing). Wear the HUD's canon: navy ground #0F2334, ink #F3F1EA, Lora for headings, Instrument Sans for labels and chrome, the accent oklch(0.82 0.109 248), gold #F8C761 only for small wayfinding. It renders on the Lumen panel's Build tab and on the card's Workbench, and a Claude session can port it into a real app later, so keep it clean and commented. slug names it (reuse a slug to revise). title is what David sees; note is one line on what it does. Say it is on the Build tab when it lands.",
+    inputSchema: { type: 'object', properties: { project: { type: 'string' }, side_mission: { type: 'string' }, slug: { type: 'string' }, title: { type: 'string' }, html: { type: 'string' }, note: { type: 'string' } }, required: ['slug', 'title', 'html'] },
+  },
 ]
 
 // Web hands (10/20): a page reader and a keyless search, so "find it on their
@@ -1022,6 +1092,34 @@ export async function callTool(name, args = {}) {
       const doc = await readArtifact(pr.id, args.slug)
       if (!doc) return JSON.stringify({ ok: false, error: `no artifact ${args.slug} on ${pr.name}`, artifacts: await listArtifacts(pr.id) })
       return JSON.stringify({ ok: true, project: pr.name, slug: args.slug, doc })
+    }
+    case 'workspace_page': {
+      const pr = await resolveRoot(args)
+      const slug = slugOf(args.slug || args.title)
+      const path = `${pr.id}/workspace/${slug}.json`
+      const cur = await getStorageJson(path)
+      const now = new Date().toISOString()
+      const doc = { v: 1, kind: 'workspace-page', title: String(args.title || cur?.title || slug).trim(), text: String(args.text || ''), strokes: Array.isArray(cur?.strokes) ? cur.strokes : [], height: cur?.height || 720, created_at: cur?.created_at || now, updated_at: now, updated_by: 'lumen' }
+      await putStorage(path, JSON.stringify(doc), 'application/json')
+      return JSON.stringify({ ok: true, on: pr.name, slug, title: doc.title, replaced: !!cur, note: 'On the card: Workbench, Workspace.' })
+    }
+    case 'read_workspace_page': {
+      const pr = await resolveRoot(args)
+      const doc = await getStorageJson(`${pr.id}/workspace/${slugOf(args.slug)}.json`)
+      if (!doc) return JSON.stringify({ ok: false, error: `no workspace page ${args.slug} on ${pr.name}` })
+      return JSON.stringify({ ok: true, title: doc.title, updated_at: doc.updated_at, updated_by: doc.updated_by, text: String(doc.text || '').slice(0, 20000) })
+    }
+    case 'build_page': {
+      const pr = await resolveRoot(args)
+      const slug = slugOf(args.slug || args.title)
+      const html = String(args.html || '')
+      if (!/<html|<!doctype/i.test(html)) throw new Error('html must be a complete document (doctype and <html>)')
+      const prior = await getStorageJson(`${pr.id}/build/${slug}.json`)
+      const now = new Date().toISOString()
+      await putStorage(`${pr.id}/build/${slug}.html`, html, 'text/html; charset=utf-8')
+      const meta = { v: 1, kind: 'build', slug, title: String(args.title || slug), note: String(args.note || prior?.note || ''), bytes: html.length, version: (prior?.version || 0) + 1, created_at: prior?.created_at || now, updated_at: now, updated_by: 'lumen' }
+      await putStorage(`${pr.id}/build/${slug}.json`, JSON.stringify(meta), 'application/json')
+      return JSON.stringify({ ok: true, on: pr.name, slug, title: meta.title, version: meta.version, note: 'On the Lumen panel, Build tab, and on the card\'s Workbench under Builds.' })
     }
     case 'write_artifact': {
       const pr = await resolveRoot(args)

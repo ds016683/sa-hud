@@ -9,6 +9,8 @@ import WorkbenchTab, { WorkbenchIntake } from './river/Workbench'
 import WorkspacePages from './river/Workspace'
 import PlanningCanvas from './river/PlanningCanvas'
 import ItemDetail from './river/ItemDetail'
+import LumenPanel from './river/LumenPanel'
+import { LEDGER_EVENT } from '../lib/lumenPanel'
 import SessionBoard from './river/SessionBoard'
 import { listShares, archiveShare, archiveSharesFor, shareUrl } from '../lib/shares'
 import { fileProject } from '../lib/archive'
@@ -416,6 +418,9 @@ function ProjectDetail({ project, board: boardProp, api, onBack, initialTab, ini
   const [draft, setDraft] = useState(null)
   const [drafting, setDrafting] = useState(false)
   const [draftErr, setDraftErr] = useState(null)
+  // Lumen acted on this mission from the panel (11/4): refresh the project and remount the Workbench's lists.
+  const [tick, setTick] = useState(0)
+  useEffect(() => { const h = (e) => { const id = e?.detail?.id; if (!id || id === project.id) { api?.refresh?.(); setTick(t => t + 1) } }; window.addEventListener(LEDGER_EVENT, h); return () => window.removeEventListener(LEDGER_EVENT, h) }, [api, project.id])
 
   // mission hash (David, 10/17): the open mission and its tab ride the URL so a refresh lands back here.
   useEffect(() => { try { const suffix = ((window.location.hash || '').match(/\/item\/[^/]+$/) || [''])[0]; window.history.replaceState(window.history.state, '', `#/main-missions/${project.id}/${tab}${suffix}`) } catch { /* no-op */ } }, [project.id, tab])
@@ -596,8 +601,8 @@ function ProjectDetail({ project, board: boardProp, api, onBack, initialTab, ini
         {tab === 'workbench' && (
           <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 30, minWidth: 0 }}>
             <div style={{ minWidth: 0, overflow: 'hidden' }}><CanonLabel>Planning</CanonLabel><PlanningCanvas project={project} /></div>
-            <div style={{ minWidth: 0 }}><CanonLabel>Workspace</CanonLabel><WorkspacePages root={project.id} what="mission" /></div>
-            <div style={{ minWidth: 0 }}><CanonLabel>In Play</CanonLabel><WorkbenchTab project={project} intake={false} /></div>
+            <div style={{ minWidth: 0 }}><CanonLabel>Workspace</CanonLabel><WorkspacePages key={tick} root={project.id} what="mission" /></div>
+            <div style={{ minWidth: 0 }}><CanonLabel>In Play</CanonLabel><WorkbenchTab key={tick} project={project} intake={false} /></div>
           </div>
         )}
         {tab === 'files' && (
@@ -657,6 +662,7 @@ function ProjectDetail({ project, board: boardProp, api, onBack, initialTab, ini
         </div>
       )}
       </div>
+      <LumenPanel item={{ kind: 'project', id: project.id, title: project.name, root: project.id, summary: project.description || '' }} />
     </div>
   )
 }

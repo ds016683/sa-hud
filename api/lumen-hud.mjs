@@ -9,6 +9,7 @@
 export const config = { maxDuration: 300, api: { bodyParser: false } }
 
 import { think, remember } from './_lumen-brain.mjs'
+import { cardFrame } from './_ledger.mjs'
 import { transcribe } from './_wa.mjs'
 
 const URL_BASE = 'https://cmuvomnmaoseccxpeuxq.supabase.co'
@@ -30,10 +31,13 @@ export default async function handler(req, res) {
   if (!(await authorized(req))) return res.status(401).json({ error: 'unauthorized' })
   const ctype = String(req.headers['content-type'] || '')
   const raw = await readRaw(req)
-  let text = '', kind = 'text', where = String((req.query || {}).where || 'HUD').slice(0, 80)
+  let text = '', kind = 'text', where = String((req.query || {}).where || 'HUD').slice(0, 80), item = null
   if (ctype.includes('application/json')) {
     const body = JSON.parse(raw.toString('utf8') || '{}')
     text = String(body.text || '').trim(); where = String(body.where || where).slice(0, 80)
+    // The Lumen panel (11/4): the card David is in rides with the turn, and the brain gets its frame.
+    const it = body.item && typeof body.item === 'object' ? body.item : null
+    if (it && ['objective', 'project'].includes(it.kind) && /^[0-9a-f-]{8,}$/i.test(String(it.id || ''))) item = { kind: it.kind, id: String(it.id) }
   } else {
     if (!raw.length) return res.status(400).json({ error: 'empty audio' })
     kind = 'audio'
@@ -41,10 +45,13 @@ export default async function handler(req, res) {
     if (!text) return res.status(200).json({ error: 'nothing heard' })
   }
   if (!text) return res.status(400).json({ error: 'text required' })
-  await remember({ channel: 'hud', direction: 'in', kind, body: text, meta: { where } })
+  const meta = item ? { where, item: item.id, item_kind: item.kind } : { where }
+  await remember({ channel: 'hud', direction: 'in', kind, body: text, meta })
+  let frame = null
+  if (item) { try { frame = await cardFrame(item) } catch (e) { frame = `(the card could not be read: ${String(e.message || e).slice(0, 120)})` } }
   let reply
-  try { reply = await think({ channel: 'hud', spoken: false, text: `[${where}] ${text}` }) }
+  try { reply = await think({ channel: 'hud', spoken: false, text: `[${where}] ${text}`, frame }) }
   catch (e) { reply = `I hit a wall on that one: ${String(e.message || e).slice(0, 160)}` }
-  await remember({ channel: 'hud', direction: 'out', kind: 'text', body: reply, meta: { where } })
+  await remember({ channel: 'hud', direction: 'out', kind: 'text', body: reply, meta })
   return res.status(200).json({ reply, transcript: kind === 'audio' ? text : undefined })
 }
