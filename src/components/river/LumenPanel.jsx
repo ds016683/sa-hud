@@ -88,11 +88,12 @@ export default function LumenPanel({ item }) {
   useEffect(() => {
     if (!open) return
     const app = document.querySelector('.sa-app')
-    const apply = () => { const pw = panelWidth(); document.documentElement.style.setProperty('--lumen-w', `${pw}px`); app?.style.setProperty('--lumen-w', `${pw}px`) }
+    // --lumen-aside on the root: the item card's own overlay (position fixed) reads it as its right edge; the mission page reads --lumen-w through .lumen-open.
+    const apply = () => { const pw = panelWidth(); document.documentElement.style.setProperty('--lumen-w', `${pw}px`); document.documentElement.style.setProperty('--lumen-aside', `${pw}px`); app?.style.setProperty('--lumen-w', `${pw}px`) }
     apply(); app?.classList.add('lumen-open')
     const onKey = (e) => { if (e.key === 'Escape') setOpen(false) }
     window.addEventListener('keydown', onKey); window.addEventListener('resize', apply)
-    return () => { window.removeEventListener('keydown', onKey); window.removeEventListener('resize', apply); app?.classList.remove('lumen-open') }
+    return () => { window.removeEventListener('keydown', onKey); window.removeEventListener('resize', apply); app?.classList.remove('lumen-open'); document.documentElement.style.setProperty('--lumen-aside', '0px') }
   }, [open])
 
   const send = async (text) => {

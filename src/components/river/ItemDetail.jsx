@@ -298,7 +298,7 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
   const addStepNow = async () => { const t = stepText.trim(); if (!t || !obj) return; setObjBusy(true); try { const r = await addStep(obj.id, t, (rel.steps || []).length); if (r === null) setMsg('Steps are not set up yet: run sql/2026-10-07-side-missions-archive.sql'); setStepText(''); await load() } catch (e) { setMsg(`Could not add: ${e.message}`) } finally { setObjBusy(false) } }
 
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 240, overflowY: 'auto', background: 'linear-gradient(180deg, var(--hud-surface) 0%, var(--hud-surface-deep) 100%)' }}>
+    <div style={{ position: 'fixed', top: 0, left: 0, bottom: 0, right: 'var(--lumen-aside, 0px)', transition: 'right 220ms ease', zIndex: 240, overflowY: 'auto', background: 'linear-gradient(180deg, var(--hud-surface) 0%, var(--hud-surface-deep) 100%)' }}>
       {openChild && <ItemDetail item={{ id: openChild.m.id, objective_id: openChild.m.id, kind: 'Side Mission', title: openChild.m.title, description: openChild.m.description, tags: openChild.m.tags, size: 'light' }} onClose={() => { setOpenChild(null); load() }} onNavigate={onNavigate} onChange={load} />}
       {reading && (
         <div onClick={() => setReading(null)} style={{ position: 'fixed', inset: 0, zIndex: 250, background: 'rgba(5,16,28,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
