@@ -33,6 +33,13 @@ David, October 28, 2026: "when i say that I want to create a workspace on the Mi
 - Pages live in storage as JSON under `<root>/workspace/<slug>.json` (`src/lib/workspace.js`; the root is the mission's id or `objectives/<id>`). They are not Live Files, not artifacts, not sections of Files. Delete Page removes the document.
 - The Workspace sits between the head of the Workbench (Planning on a mission, Live Protocols on an item) and the files in play at the foot. It counts nothing on the pill and earns no miles.
 
+## One chassis
+David, November 4, 2026: "all pages down in a card should be matching the parent, right?" Yes. A Side Mission, Milestone or Ad Hoc card is a page inside the shell, exactly like the Main Mission page: sidebar on the left, the topbar, the content column, the browser's back. It is never an overlay drawn over another page.
+
+- The route carries it: `#/<page>/<params>/item/<objective id>` (or `item/task:<project task id>` for a milestone not yet promoted). `openCard(id)` in `src/lib/card.js` pushes it; `closeCard()` goes back. App.jsx reads the hash, loads the item with `itemFromObjective`, and renders `ItemDetail host="page"` in place of the page, which stays mounted hidden and remounts once the card closes.
+- Every opener goes through `openCard`: the Board's priorities and Loadout slots, the Stash peek, the Side Missions page, the Archive's yay page, Live Protocols, a mission's milestone rows, and a Mythic's milestones. A page that renders `<ItemDetail>` itself is wrong, with one exception: a meeting opened from the calendar, which has no objective behind it and still uses the overlay host.
+- What the chassis gives every card for free: the column width, the scroll, the Lumen panel's push-aside, and whatever the shell grows next.
+
 ## The card palette
 David, November 4, 2026: "we have a massive color sprawl problem on all these mission cards..... like everywhere." One rule, every card and the Lumen panel:
 

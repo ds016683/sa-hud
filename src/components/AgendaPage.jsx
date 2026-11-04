@@ -21,6 +21,7 @@ import {
   INK, INK2, GRAY, NAVY_DEEP, PANEL_BORDER, GOLD, GOLD_BRIGHT, BLUE, PERIWINKLE, PURPLE, GREEN, SUCCESS, RED, MONO, SERIF,
   S, Eyebrow, Label, Panel, chiToday, fmtTime, weekday, alpha } from './river/canon'
 import { hudPrompt, hudConfirm } from '../lib/dialog'
+import { openCard } from '../lib/card'
 
 const fmtFullDay = (day) => day ? new Date(day + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }) : ''
 const fmtShortDay = (day) => day ? new Date(day + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : ''
@@ -291,10 +292,9 @@ const daysLate = (due, day) => due ? Math.round((new Date(day + 'T12:00:00') - n
 const whenText = (due, day) => { const n = daysLate(due, day); if (n === null) return null; if (n > 0) return `${n} day${n === 1 ? '' : 's'} overdue`; if (n === 0) return 'due today'; return `due ${fmtShortDay(due)}` }
 const Tag = ({ color, children }) => <span style={{ ...S.chip('transparent', color), border: `1px solid ${alpha(color, 33)}`, fontFamily: MONO, fontSize: 8.5, letterSpacing: '1px', padding: '1px 7px', whiteSpace: 'nowrap' }}>{children}</span>
 
-function WorkPanel({ tasks, projects, objectives, loading, day, refresh, refreshKey, onNavigate, isToday }) {
+function WorkPanel({ tasks, projects, objectives, loading, day, refresh, refreshKey, isToday }) {
   const [plan, setPlan] = useState(undefined)
   const [L, setL] = useState(null)
-  const [open, setOpen] = useState(null)
   const [busy, setBusy] = useState(false)
   const [note, setNote] = useState(null)
   const [showAll, setShowAll] = useState(false)
@@ -339,13 +339,11 @@ function WorkPanel({ tasks, projects, objectives, loading, day, refresh, refresh
     ...(objectives || []).filter(o => o.state !== 'active' && !(o.tags || []).includes('stashed') && !prioIds.has(String(o.id))).map(o => ({ id: `o:${o.id}`, kind: (o.tags || []).includes('impromptu') ? 'Ad Hoc' : 'Side Mission', size: sizeOf(o), title: o.title, project: null, due: o.due_date || o.follow_up_date || null, ref: { type: 'objective', id: o.id }, raw: o, state: o.state })),
   ].sort((a, b) => String(a.due || '9999').localeCompare(String(b.due || '9999')))
   const shown = showAll ? queue : queue.slice(0, 10)
-  const openRow = (row) => row.kind === 'Main Mission'
-    ? setOpen({ id: row.raw.objective_id || row.raw.id, objective_id: row.raw.objective_id || null, task_id: row.raw.id, kind: 'Main Mission', title: row.title, project: row.project, project_id: row.raw.project_id, description: row.raw.notes })
-    : setOpen({ id: row.raw.id, objective_id: row.raw.id, kind: row.kind, title: row.raw.title, description: row.raw.description, tags: row.raw.tags, size: row.size, objective: row.raw })
+  // One chassis (11/4): a row opens its card as a page by route.
+  const openRow = (row) => openCard(row.kind === 'Main Mission' ? (row.raw.objective_id || `task:${row.raw.id}`) : row.raw.id)
   if (loading && !tasks) return <Panel heading="Today's Work Priorities" style={{ marginBottom: 0 }}><Empty>Loading…</Empty></Panel>
   return (
     <Panel heading="Today's Work Priorities" style={{ marginBottom: 0 }}>
-      {open && <ItemDetail item={open} onClose={() => { setOpen(null); refresh && refresh() }} onNavigate={onNavigate} onChange={refresh} />}
       {note && <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '0.8px', textTransform: 'uppercase', color: note.startsWith('Could') || note.startsWith('Will not') ? RED : GREEN, marginBottom: 10 }}>{note}</div>}
       {plan === undefined && isToday && <Empty>Reading today's plan…</Empty>}
       {plan === null && isToday && <Empty>No plan yet. The Morning Protocol builds it from your answers, the calendar, and what you picked.</Empty>}

@@ -17,6 +17,7 @@ import DocView from './river/DocView'
 import ItemDetail from './river/ItemDetail'
 import { INK, INK2, GRAY, PANEL_BORDER, GOLD, GOLD_BRIGHT, BLUE, GREEN, SUCCESS, PURPLE, MONO, SERIF, S, Panel, Label, LABEL, alpha } from './river/canon'
 import { hudConfirm } from '../lib/dialog'
+import { openCard } from '../lib/card'
 const btn = (color = INK2, filled = false, extra = {}) => ({ display: 'inline-flex', alignItems: 'center', gap: 5, fontFamily: MONO, fontSize: 9.5, letterSpacing: '1px', textTransform: 'uppercase', padding: '5px 9px', borderRadius: 8, border: `1px solid ${filled ? color : `${alpha(color, 40)}`}`, background: filled ? color : 'transparent', color: filled ? 'var(--hud-on-accent)' : color, cursor: 'pointer', ...extra })
 const KIND = { artifact: ['Brief', FileText, GOLD_BRIGHT], decision: ['Decision', Scale, GOLD], board: ['Board', ListChecks, GREEN], file: ['File', Paperclip, BLUE], summary: ['Close-out', AlignLeft, INK2] }
 const TYPES = ['Bounty', 'Contract', 'Mythic', 'Main Mission task', 'Ad Hoc']
@@ -90,13 +91,12 @@ function MissionRow({ m, onYay, onReopen }) {
   )
 }
 
-export default function ArchivePage({ onNavigate }) {
+export default function ArchivePage() {
   const [data, setData] = useState(undefined)
   const [q, setQ] = useState('')
   const [realm, setRealm] = useState(null)
   const [type, setType] = useState(null)
   const [yay, setYay] = useState(null)
-  const [detail, setDetail] = useState(null)
   const [err, setErr] = useState(null)
   const [tick, setTick] = useState(0)
   useEffect(() => { let on = true; listClosedMissions().then(d => { if (on) setData(d) }).catch(e => { if (on) setErr(e.message) }); return () => { on = false } }, [tick])
@@ -119,8 +119,7 @@ export default function ArchivePage({ onNavigate }) {
 
   return (
     <div style={S.page}>
-      {yay && <YayPage objectiveId={yay.id} onClose={() => setYay(null)} onOpenMission={(o) => { setYay(null); setDetail(o) }} />}
-      {detail && <ItemDetail item={{ id: detail.id, objective_id: detail.id, kind: kindOf(detail, false), title: detail.title, description: detail.description, tags: detail.tags, size: sizeOf(detail), objective: detail }} onClose={() => setDetail(null)} onNavigate={onNavigate} onChange={() => setTick(x => x + 1)} />}
+      {yay && <YayPage objectiveId={yay.id} onClose={() => setYay(null)} onOpenMission={(o) => { setYay(null); openCard(o.id) }} />}
       <div style={{ marginBottom: 18 }}>
         <h1 style={S.h1}><ArchiveIcon size={22} color={BLUE} style={{ verticalAlign: '-3px', marginRight: 8 }} />Archive</h1>
         <div style={S.sub}>every closed mission and what it left behind · any word finds it</div>

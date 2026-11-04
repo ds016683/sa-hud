@@ -28,6 +28,7 @@ import { liveProtocolCounts } from '../../lib/protocols'
 import { liveCounts } from '../../lib/livefiles'
 import ItemDetail from './ItemDetail'
 import { INK, INK2, GRAY, PANEL_BORDER, GOLD, GOLD_BRIGHT, BLUE, GREEN, RED, MONO, SERIF, S, Eyebrow, Label, Panel, KIND_COLOR, KindChip, NORTH_STAR_LABEL, LABEL, alpha } from './canon'
+import { openCard } from '../../lib/card'
 
 const btn = (color = INK2, filled = false) => ({
   display: 'inline-flex', alignItems: 'center', gap: 5, fontFamily: MONO, fontSize: 9.5, letterSpacing: '1px', textTransform: 'uppercase',
@@ -422,7 +423,6 @@ export default function LoadoutPanel({ onChange, refreshKey = 0, onNavigate, bar
   const [open, setOpen] = useState(null)
   const [dispatch, setDispatch] = useState(null)
   const [filing, setFiling] = useState(null)
-  const [related, setRelated] = useState(null)
   const [projects, setProjects] = useState([])
   const [msg, setMsg] = useState(null)
   const [recallOf, setRecallOf] = useState(null)
@@ -471,25 +471,24 @@ export default function LoadoutPanel({ onChange, refreshKey = 0, onNavigate, bar
   return (
     <Wrap style={wrapStyle}>
       <style>{`.board-slots { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px } @media (max-width: 980px) { .board-slots { grid-template-columns: repeat(2, minmax(0, 1fr)) } }`}</style>
-      {related && <ItemDetail item={{ id: related.id, objective_id: related.id, kind: related.kind, title: related.title, project: related.project, project_id: related.project_id, description: related.description, tags: related.tags, size: related.size }} onClose={() => setRelated(null)} onNavigate={onNavigate} onChange={bump} />}
       {open && <ExtractModal item={open} onClose={() => setOpen(null)} onDone={(r) => { const id = open.id, session = open.session; setOpen(null); setMsg(`Extracted: ${open.title} · ${fmtClock(r.minutes)}${r.personal ? ' · personal' : ''}`); logBoard(`Extracted: ${open.title} · ${fmtClock(r.minutes)}`); bump(); if (!session) setYay(id) }} />}
       {filing && <FileAway objective={filing.o} pockets={filing.p} onClose={() => setFiling(null)} onDone={({ filed, released }) => { const id = filing.o.id; setFiling(null); setMsg(`Filed ${filed.length} to the Archive · extracted ${filing.o.title} · ${released.minutes}m`); logBoard(`Extracted: ${filing.o.title} · filed ${filed.length} to the Archive`); bump(); setYay(id) }} />}
       {recallOf && <RecallModal objectiveId={recallOf.id} taskId={recallOf.task_id || null} title={recallOf.title} onClose={() => setRecallOf(null)} />}
       {logOpen && <ActivityLogModal onClose={() => setLogOpen(false)} />}
-      {protoOpen && <LiveProtocolsModal onClose={() => setProtoOpen(false)} onOpen={(it) => setRelated(it)} />}
+      {protoOpen && <LiveProtocolsModal onClose={() => setProtoOpen(false)} onOpen={(it) => openCard(it.id)} />}
       {filesOpen && <LiveFilesModal onClose={() => setFilesOpen(null)} filter={filesOpen.objectiveId ? filesOpen : null} items={[...(L?.items || []).filter(x => !x.meeting).map(x => ({ ...x, stashed: false })), ...held.map(x => ({ ...x, stashed: true }))]} onChanged={refresh} />}
-      {peek && <StashPeek it={peek} act={act} clips={clips[peek.id] || 0} onFiles={(x) => { setPeek(null); setFilesOpen({ objectiveId: x.id, title: x.kind === 'Main Mission' ? (x.task_text || x.title).replace(/^\s*\d+\s*[·.:)-]\s*/, '') : x.title }) }} onClose={() => setPeek(null)} onOpenFull={(it) => setRelated({ id: it.id, objective_id: it.id, kind: it.kind, title: it.title, project: it.project, description: it.description, tags: it.tags, size: it.size })} />}
-      {yay && <YayPage objectiveId={yay} fresh onClose={() => setYay(null)} onOpenMission={(o) => { setYay(null); setRelated({ id: o.id, objective_id: o.id, kind: (o.tags || []).includes('impromptu') ? 'Ad Hoc' : 'Side Mission', title: o.title, description: o.description, tags: o.tags, size: sizeOf(o) }) }} />}
+      {peek && <StashPeek it={peek} act={act} clips={clips[peek.id] || 0} onFiles={(x) => { setPeek(null); setFilesOpen({ objectiveId: x.id, title: x.kind === 'Main Mission' ? (x.task_text || x.title).replace(/^\s*\d+\s*[·.:)-]\s*/, '') : x.title }) }} onClose={() => setPeek(null)} onOpenFull={(it) => openCard(it.id)} />}
+      {yay && <YayPage objectiveId={yay} fresh onClose={() => setYay(null)} onOpenMission={(o) => { setYay(null); openCard(o.id) }} />}
       {dispatch && <DispatchModal item={dispatch} projects={projects} onClose={() => setDispatch(null)} onDone={(r) => { setDispatch(null); setMsg(`Dispatched: ${dispatch.title} · ${fmtClock(r.minutes)}${r.ported.length ? ` · ported ${r.ported.length}` : ' · nothing left'} · 1 mile on the next update`); logBoard(`Dispatched: ${dispatch.title} · ${fmtClock(r.minutes)}`); bump() }} />}
       {!L ? (
         <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '1.4px', textTransform: 'uppercase', color: LABEL, padding: '12px 0' }}>Reading the board</div>
       ) : (
         <>
           <div className="board-slots">
-            {layout.placed.map(({ it, n }) => it.meeting ? <MeetingSlot key={it.id} it={it} n={n} act={act} /> : <FilledSlot key={it.id} it={it} n={n} act={act} onOpen={setRelated} onExtract={extractGate} onRecall={setRecallOf} clips={clips[it.id] || 0} onFiles={(x) => setFilesOpen({ objectiveId: x.id, title: x.kind === 'Main Mission' ? (x.task_text || x.title).replace(/^\s*\d+\s*[·.:)-]\s*/, '') : x.title })} dropFromStash={(id) => act(async () => { const r = await equipObjective(id, { clock: true, ignoreStamina: true }); if (!r.ok) throw new Error(r.reasons.join(' · ')) }, 'Loaded from the Stash · timer on')} />)}
+            {layout.placed.map(({ it, n }) => it.meeting ? <MeetingSlot key={it.id} it={it} n={n} act={act} /> : <FilledSlot key={it.id} it={it} n={n} act={act} onOpen={(it) => openCard(it.id)} onExtract={extractGate} onRecall={setRecallOf} clips={clips[it.id] || 0} onFiles={(x) => setFilesOpen({ objectiveId: x.id, title: x.kind === 'Main Mission' ? (x.task_text || x.title).replace(/^\s*\d+\s*[·.:)-]\s*/, '') : x.title })} dropFromStash={(id) => act(async () => { const r = await equipObjective(id, { clock: true, ignoreStamina: true }); if (!r.ok) throw new Error(r.reasons.join(' · ')) }, 'Loaded from the Stash · timer on')} />)}
             {layout.empties.map(n => <EmptySlot key={`empty-${n}`} n={n} dropFromStash={(id) => act(async () => { const r = await equipObjective(id, { clock: true, ignoreStamina: true }); if (!r.ok) throw new Error(r.reasons.join(' · ')) }, 'Loaded from the Stash · timer on')} />)}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10, minWidth: 0, alignSelf: 'stretch' }}>
-              <AdHocSlot item={L.adhoc[0] || null} act={act} onDispatch={setDispatch} onOpen={setRelated} onChanged={bump} onRecall={setRecallOf} />
+              <AdHocSlot item={L.adhoc[0] || null} act={act} onDispatch={setDispatch} onOpen={(it) => openCard(it.id)} onChanged={bump} onRecall={setRecallOf} />
               <RoutineSlot tick={tick} onChanged={bump} />
             </div>
             {!stashNode && <StashStack items={held} act={act} onOpen={setPeek} dropFromLoadout={(id) => act(() => stash(id), 'Stashed from the Loadout')} />}
@@ -499,14 +498,14 @@ export default function LoadoutPanel({ onChange, refreshKey = 0, onNavigate, bar
             <div style={{ marginTop: 12, borderTop: `1px solid ${PANEL_BORDER}`, paddingTop: 8 }}>
               {layout.overflow.map(it => (
                 <div key={it.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '5px 0', flexWrap: 'wrap' }}>
-                  <span onClick={() => setRelated(it)} style={{ fontSize: 13, color: INK2, flex: 1, minWidth: 200, cursor: 'pointer' }}>{it.title}</span>
+                  <span onClick={() => openCard(it.id)} style={{ fontSize: 13, color: INK2, flex: 1, minWidth: 200, cursor: 'pointer' }}>{it.title}</span>
                   <span style={{ fontFamily: MONO, fontSize: 10, color: GRAY, letterSpacing: '0.6px' }}>{SIZES[it.size]?.label} · no slot free</span>
                   <button onClick={() => act(() => stash(it.id), `Stashed: ${it.title}`)} style={btn(INK2)}><Archive size={11} /> Stash</button>
                 </div>
               ))}
               {L.adhoc.slice(1).map(it => (
                 <div key={it.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '5px 0', flexWrap: 'wrap' }}>
-                  <span onClick={() => setRelated(it)} style={{ fontSize: 13, color: INK2, flex: 1, minWidth: 200, cursor: 'pointer' }}>{it.title}</span>
+                  <span onClick={() => openCard(it.id)} style={{ fontSize: 13, color: INK2, flex: 1, minWidth: 200, cursor: 'pointer' }}>{it.title}</span>
                   <span style={{ fontFamily: MONO, fontSize: 10, color: GRAY, letterSpacing: '0.6px' }}>Ad Hoc · waiting for the slot</span>
                 </div>
               ))}

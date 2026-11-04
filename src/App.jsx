@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import {
   LayoutGrid, Network, LogOut, Menu, X, Target, Users,
   FileText, Wallet, CreditCard, ListChecks, Compass, Waves, CalendarDays, BookOpen, Activity, Award, Wrench, GraduationCap, Sparkles, Archive as ArchiveIcon, FolderOpen, PenTool, Briefcase, Mic, Wand2, Bot, PenLine, Footprints } from 'lucide-react'
@@ -11,6 +11,7 @@ import ProjectsPage from './components/ProjectsPage'
 import ClientsPage from './components/ClientsPage'
 import ItemDetail from './components/river/ItemDetail'
 import { itemFromObjective } from './lib/loadout'
+import { closeCard } from './lib/card'
 import { GOLD, MissionMark, alpha } from './components/river/canon'
 import EcosystemPage from './components/EcosystemPage'
 import MeetingNotesPage from './components/MeetingNotesPage'
@@ -222,16 +223,21 @@ export default function App() {
   const [globalItemId, setGlobalItemId] = useState(() => parseHash().item)
   const [globalItem, setGlobalItem] = useState(null)
   useEffect(() => { let on = true; if (!globalItemId) { Promise.resolve().then(() => { if (on) setGlobalItem(null) }); return () => { on = false } } itemFromObjective(globalItemId).then(it => { if (on) setGlobalItem(it) }).catch(() => { if (on) setGlobalItem(null) }); return () => { on = false } }, [globalItemId])
+  // The pages behind an open card stay mounted (hidden) and remount once the card closes, so they read fresh.
+  const [pageEpoch, setPageEpoch] = useState(0)
+  const hadCard = useRef(!!globalItemId)
   const setActive = (id) => {
-    if (id === active && !params.length) return
+    if (id === active && !params.length && !globalItemId) return
     try { window.history.pushState({ page: id }, '', `#/${id}`) } catch { /* no-op */ }
     setParams([])
+    setGlobalItemId(null)
     setActiveState(id)
   }
   // Route with segments, e.g. setRoute('main-missions', [projectId, 'artifacts', slug]).
   const setRoute = (id, segs = []) => {
     try { window.history.pushState({ page: id }, '', `#/${[id, ...segs.map(encodeURIComponent)].join('/')}`) } catch { /* no-op */ }
     setParams(segs)
+    setGlobalItemId(null)
     setActiveState(id)
   }
   const goBack = () => {
@@ -239,7 +245,7 @@ export default function App() {
     else setActive('river')
   }
   useEffect(() => {
-    const onPop = () => { const h = parseHash(); setParams(h.params); setActiveState(h.page); setGlobalItemId(h.item) }
+    const onPop = () => { const h = parseHash(); setParams(h.params); setActiveState(h.page); setGlobalItemId(h.item); if (h.item) hadCard.current = true; else if (hadCard.current) { hadCard.current = false; setPageEpoch(e => e + 1) } }
     window.addEventListener('popstate', onPop)
     return () => window.removeEventListener('popstate', onPop)
   }, [])
@@ -278,6 +284,8 @@ export default function App() {
       <div className={`sa-main sa-surface-dark${active === 'ecosystem' ? '' : ' sa-dark-scroll'}`}>
         <Topbar active={active} now={now} sov={gameState.sovereigntyLevel} onBack={goBack} />
         <div className="sa-content">
+          {globalItem && <ItemDetail host="page" item={globalItem} onClose={closeCard} onNavigate={setRoute} />}
+          <div hidden={!!globalItem} key={pageEpoch}>
           {active === 'river'            && <LandingPage onNavigate={setActive} />}
           {active === 'journey'          && <JourneyPage onNavigate={setActive} />}
           {active === 'agenda'           && <AgendaPage onNavigate={setRoute} />}
@@ -303,8 +311,8 @@ export default function App() {
           {active === 'mhpi'             && <MHPIPage />}
           {active === 'learning'         && <LearningPage />}
           {active === 'anthropic'        && <AnthropicPage />}
+          </div>
         </div>
-        {globalItem && <ItemDetail item={globalItem} onClose={() => { setGlobalItemId(null); setGlobalItem(null) }} onNavigate={setRoute} />}
       </div>
     </div>
   )

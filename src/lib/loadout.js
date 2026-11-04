@@ -321,6 +321,14 @@ export async function logBoard(text) {
 
 // Rebuild a Board item from an objective id (for a refreshed Mission Briefing).
 export async function itemFromObjective(id) {
+  // task:<project task id>: a milestone with no objective behind it yet (one chassis, 11/4)
+  if (/^task:/.test(String(id))) {
+    const t = (await q(supabase.from('project_tasks').select('id,project_id,text,notes,status,objective_id').eq('id', String(id).slice(5)).limit(1)))[0]
+    if (!t) return null
+    if (t.objective_id) return itemFromObjective(t.objective_id)
+    const project = (await q(supabase.from('projects').select('id,name').eq('id', t.project_id).limit(1)))[0] || null
+    return { id: t.id, objective_id: null, task_id: t.id, kind: 'Main Mission', title: String(t.text || '').replace(/^\s*\d+\s*[·.:)-]\s*/, ''), project: project?.name || null, project_id: project?.id || null, task_text: t.text, description: t.notes, tags: [], size: 'light', north_star: null, personal: false }
+  }
   const o = (await q(supabase.from('objectives').select('id,title,tags,effort,description,north_star,state,due_date').eq('id', id).limit(1)))[0]
   if (!o) return null
   const link = (await q(supabase.from('project_tasks').select('id,project_id,text').eq('objective_id', id).limit(1)))[0] || null

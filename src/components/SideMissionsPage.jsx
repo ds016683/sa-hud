@@ -12,6 +12,7 @@ import { fetchObjectives, addObjective, route, binObjective, restoreObjective, p
 import { fetchLoadout, SIZES } from '../lib/loadout'
 import { INK, INK2, GRAY, PANEL_BORDER, GOLD, GOLD_BRIGHT, BLUE, GREEN, RED, PURPLE, MONO, S, Panel, Label, chiToday, NORTH_STAR_LABEL, NORTH_STAR_ASK, LABEL, alpha } from './river/canon'
 import { hudConfirm } from '../lib/dialog'
+import { openCard } from '../lib/card'
 const btn = (color = INK2, filled = false, extra = {}) => ({
   display: 'inline-flex', alignItems: 'center', gap: 5, fontFamily: MONO, fontSize: 9.5, letterSpacing: '1px', textTransform: 'uppercase',
   padding: '5px 9px', borderRadius: 8, border: `1px solid ${filled ? color : `${alpha(color, 40)}`}`, background: filled ? color : 'transparent', color: filled ? 'var(--hud-on-accent)' : color, cursor: 'pointer', ...extra,
@@ -121,7 +122,6 @@ export default function SideMissionsPage({ onNavigate }) {
   const [rows, setRows] = useState(null)
   const [L, setL] = useState(null)
   const [container, setContainer] = useState(() => { try { return localStorage.getItem('sm-container') || 'parked' } catch { return 'parked' } })
-  const [open, setOpen] = useState(null)
   const [filing, setFiling] = useState(null)
   const [msg, setMsg] = useState(null)
   const [filter, setFilter] = useState('')
@@ -157,11 +157,9 @@ export default function SideMissionsPage({ onNavigate }) {
     } catch (e) { setMsg(`Could not close it out: ${e.message}`) }
   }
 
-  const toItem = (o) => ({ id: o.id, objective_id: o.id, kind: (o.tags || []).includes('impromptu') ? 'Ad Hoc' : 'Side Mission', title: o.title, description: o.description, tags: o.tags, size: sizeOf(o), objective: o })
 
   return (
     <div style={S.page}>
-      {open && <ItemDetail item={toItem(open)} onClose={() => { setOpen(null); refresh() }} onNavigate={onNavigate} onChange={refresh} />}
       {filing && <FileAway objective={filing.o} pockets={filing.p} onClose={() => setFiling(null)} onDone={({ filed, released }) => { const id = filing.o.id; const line = paysLine(filing.o); setFiling(null); setMsg(`Filed ${filed.length} to the Archive and released ${filing.o.title}${released.minutes ? ` · ${released.minutes} minutes on the clock` : ''} · ${line}`); refresh(); setYay(id) }} />}
       {yay && <YayPage objectiveId={yay} fresh onClose={() => setYay(null)} />}
       <div style={{ marginBottom: 18 }}>
@@ -173,7 +171,7 @@ export default function SideMissionsPage({ onNavigate }) {
 
       {active.length > 0 && (
         <Panel heading="On the Board" style={{ marginBottom: 12 }}>
-          {active.map(o => <Row key={o.id} o={o} container="active" loadItem={loadItemFor(o)} onOpen={setOpen} onRoute={(x, c) => act(() => route(x.id, c), `${x.title} → ${STATE[c].label}`)} onDone={onDone} onBin={(x) => act(() => binObjective(x.id), `Binned: ${x.title}`)} />)}
+          {active.map(o => <Row key={o.id} o={o} container="active" loadItem={loadItemFor(o)} onOpen={(o) => openCard(o.id)} onRoute={(x, c) => act(() => route(x.id, c), `${x.title} → ${STATE[c].label}`)} onDone={onDone} onBin={(x) => act(() => binObjective(x.id), `Binned: ${x.title}`)} />)}
           {onNavigate && <div style={{ marginTop: 8 }}><button onClick={() => onNavigate('agenda')} style={btn(BLUE)}>Open the Board →</button></div>}
         </Panel>
       )}
@@ -191,7 +189,7 @@ export default function SideMissionsPage({ onNavigate }) {
           {!rows && <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '1.4px', textTransform: 'uppercase', color: LABEL, padding: '10px 0' }}>Reading the queue</div>}
           {rows && shown.length === 0 && <div style={{ fontSize: 13, color: GRAY, padding: '12px 0' }}>{container === 'released' ? `Nothing released in the last ${range || 'all'} days.` : container === 'bin' ? 'The bin is empty.' : `Nothing in ${STATE[container].label}.`}</div>}
           {shown.map(o => (
-            <Row key={o.id} o={o} container={container} loadItem={loadItemFor(o)} onOpen={setOpen}
+            <Row key={o.id} o={o} container={container} loadItem={loadItemFor(o)} onOpen={(o) => openCard(o.id)}
               onRoute={(x, c) => act(() => route(x.id, c), c === 'active' ? `Loaded: ${x.title}` : `${x.title} → ${STATE[c].label}`)}
               onDone={onDone} onBin={(x) => act(() => binObjective(x.id), `Binned: ${x.title}`)}
               onRestore={(x) => act(() => restoreObjective(x.id), `Restored: ${x.title}`)} onPurge={async (x) => { if (await hudConfirm(`Purge "${x.title}" for good?`)) act(() => purgeObjective(x.id), 'Purged') }}

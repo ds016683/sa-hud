@@ -25,6 +25,7 @@ import { supabase as sbClient2 } from '../lib/supabase'
 import { listArtifacts as listProjArtifacts, readArtifact as readProjArtifact } from '../lib/artifacts'
 import { supabase as sbClient } from '../lib/supabase'
 import { hudPrompt, hudConfirm, hudNotice } from '../lib/dialog'
+import { openCard } from '../lib/card'
 // =============================================================================
 // STYLE TOKENS (CIP canon, matches ObjectivesPage dark stage)
 // =============================================================================
@@ -171,7 +172,6 @@ function MilestoneRow({ n, project, task, board, api, onNavigate, onBoardChange,
   const ost = task.objective_id ? objState?.[task.objective_id] : null
   const onBoard = open && !!task.objective_id && (ost ? ost.state === 'active' : true)
   const stashed = open && !!ost && ost.state === 'parked' && (ost.tags || []).includes('stashed')
-  const [expanded, setExpanded] = useState(false)
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState(null)
   const phases = board?.phases || []
@@ -204,7 +204,7 @@ function MilestoneRow({ n, project, task, board, api, onNavigate, onBoardChange,
         <span style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 22, lineHeight: 1, color: open ? (onBoard ? GREEN : LABEL) : SUCCESS, width: 26, flexShrink: 0, paddingTop: 2 }}>{n}</span>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-            <span onClick={() => setExpanded(x => !x)} title="Open this milestone" style={{ fontSize: 15, lineHeight: 1.4, color: open ? INK : GRAY, textDecoration: open ? 'none' : 'line-through', cursor: 'pointer', flex: 1, minWidth: 220 }}>{stripNum(task.text)}</span>
+            <span onClick={() => openCard(task.objective_id || `task:${task.id}`)} title="Open this milestone" style={{ fontSize: 15, lineHeight: 1.4, color: open ? INK : GRAY, textDecoration: open ? 'none' : 'line-through', cursor: 'pointer', flex: 1, minWidth: 220 }}>{stripNum(task.text)}</span>
             {!open && <Chip color={SUCCESS}>closed{task.released_at ? ` ${new Date(task.released_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}` : ''} · 10 mi</Chip>}
             {open && onBoard && <Chip color={GREEN}>on the board</Chip>}
             {stashed && <Chip color={INK2}>in the stash</Chip>}
@@ -225,7 +225,7 @@ function MilestoneRow({ n, project, task, board, api, onNavigate, onBoardChange,
             </div>
           )}
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
-            <button onClick={() => setExpanded(x => !x)} style={{ ...S.btnGhost, padding: '4px 9px', fontSize: 10 }}>Open</button>
+            <button onClick={() => openCard(task.objective_id || `task:${task.id}`)} style={{ ...S.btnGhost, padding: '4px 9px', fontSize: 10 }}>Open</button>
             {open && !onBoard && <button onClick={load} disabled={busy} style={{ ...S.btnGhost, padding: '4px 9px', fontSize: 10 }}>Load</button>}
             {open && !onBoard && !stashed && <button onClick={toStash} disabled={busy} title="Stage it in the Stash on the Board; no slot, no clock" style={{ ...S.btnGhost, padding: '4px 9px', fontSize: 10 }}>Stash</button>}
             {open && <button onClick={addStep} style={{ ...S.btnGhost, padding: '4px 9px', fontSize: 10 }}><Plus size={10} /> Step</button>}
@@ -239,7 +239,6 @@ function MilestoneRow({ n, project, task, board, api, onNavigate, onBoardChange,
           {msg && <div style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '1px', textTransform: 'uppercase', color: msg.startsWith('Could') || msg.startsWith('Will') || msg.startsWith('No session') ? RED : msg === 'In the Stash' ? BLUE : GOLD, marginTop: 6 }}>{msg}</div>}
         </div>
       </div>
-      {expanded && <ItemDetail item={{ id: task.objective_id || task.id, objective_id: task.objective_id || null, task_id: task.id, kind: 'Main Mission', title: stripNum(task.text), project: project.name, project_id: project.id, description: task.notes }} onClose={() => setExpanded(false)} onNavigate={onNavigate} onChange={() => api.refresh()} />}
     </div>
   )
 }

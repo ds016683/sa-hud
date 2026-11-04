@@ -25,6 +25,7 @@ import WorkbenchTab, { WorkbenchIntake } from './Workbench'
 import WorkspacePages from './Workspace'
 import MythicMilestones from './MythicMilestones'
 import LumenPanel from './LumenPanel'
+import { openCard } from '../../lib/card'
 import { LEDGER_EVENT } from '../../lib/lumenPanel'
 import { INK, INK2, GRAY, PANEL_BORDER, GOLD, GOLD_BRIGHT, BLUE, GREEN, SUCCESS, RED, CAUTION, MONO, SERIF, S, Label, KIND_COLOR, KindIcon, NORTH_STAR_LABEL, NORTH_STAR_ASK, LABEL, MYTHIC, alpha, NAVY_DEEP, CARD_PILLS, CardPill, Trail } from './canon'
 
@@ -236,7 +237,7 @@ function WhereItStands({ item, rel, task, taskId, linkedBoards }) {
   )
 }
 
-export default function ItemDetail({ item, onClose, onNavigate, onChange, initialTab = 'overview' }) {
+export default function ItemDetail({ item, onClose, onNavigate, onChange, initialTab = 'overview', host = 'overlay' }) {
   const [tab, setTab] = useState(TABS.includes(initialTab) ? initialTab : (LEGACY_TAB[initialTab] || 'briefing'))
   const [rel, setRel] = useState(null)
   const [msg, setMsg] = useState(null)
@@ -262,10 +263,11 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
     return () => { try { if (/\/item\//.test(window.location.hash)) window.history.replaceState(window.history.state, '', (window.location.hash || '').replace(/\/item\/[^/]+$/, '') || '#/river') } catch { /* no-op */ } }
   }, [item.objective_id, item.id, item.kind])
   useEffect(() => {
+    if (host !== 'overlay') return
     const onKey = (e) => { if (e.key === 'Escape') onClose() }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [onClose])
+  }, [onClose, host])
 
   const task = rel?.task
   const taskId = item.task_id || task?.id || null
@@ -275,7 +277,8 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
 
   const act = async (fn, after) => { try { await fn(); setMsg(after); await load(); onChange && onChange() } catch (e) { setMsg(`Could not do that: ${e.message}`) } }
   const open = async (bucket, path) => { const { data } = await supabase.storage.from(bucket).createSignedUrl(path, 600); if (data?.signedUrl) window.open(data.signedUrl, '_blank', 'noopener') }
-  const go = (segs) => { onClose(); onNavigate && onNavigate('main-missions', segs) }
+  // One chassis (11/4): as a page, leaving the card is a route change; the overlay closes first.
+  const go = (segs) => { if (host === 'overlay') onClose(); onNavigate && onNavigate('main-missions', segs) }
   const attachArtifact = async (slug) => { if (!rel?.project || !taskId) return; const doc = await readArtifact(rel.project.id, slug); await writeArtifact(rel.project.id, slug, { ...doc, task_id: taskId }); setMsg(`Attached ${doc.title || slug}`); load() }
   const startTimer = () => act(async () => {
     if (loaded) return equip(loaded.id)
@@ -290,7 +293,6 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
   const [objBusy, setObjBusy] = useState(false)
   const [editStar, setEditStar] = useState(false)
   const [reading, setReading] = useState(null)
-  const [openChild, setOpenChild] = useState(null)
   const [briefs, setBriefs] = useState({})
   const readObjArtifact = useCallback(async (root, slug) => { const { data, error } = await supabase.storage.from('project-files').download(`${root}/artifacts/${slug}.json`); if (error) throw new Error(error.message); return JSON.parse(await data.text()) }, [])
   useEffect(() => { let on = true; const objArts = (rel?.objArtifacts || []); Promise.all(objArts.map(a => readObjArtifact(a.root || `objectives/${obj?.id}`, a.slug).then(d => [a.slug, d]).catch(() => [a.slug, null]))).then(ps => { if (on) setBriefs(Object.fromEntries(ps)) }); return () => { on = false } }, [rel, obj, readObjArtifact])
@@ -298,8 +300,7 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
   const addStepNow = async () => { const t = stepText.trim(); if (!t || !obj) return; setObjBusy(true); try { const r = await addStep(obj.id, t, (rel.steps || []).length); if (r === null) setMsg('Steps are not set up yet: run sql/2026-10-07-side-missions-archive.sql'); setStepText(''); await load() } catch (e) { setMsg(`Could not add: ${e.message}`) } finally { setObjBusy(false) } }
 
   return (
-    <div style={{ position: 'fixed', top: 0, left: 0, bottom: 0, right: 'var(--lumen-aside, 0px)', transition: 'right 220ms ease', zIndex: 240, overflowY: 'auto', background: 'linear-gradient(180deg, var(--hud-surface) 0%, var(--hud-surface-deep) 100%)' }}>
-      {openChild && <ItemDetail item={{ id: openChild.m.id, objective_id: openChild.m.id, kind: 'Side Mission', title: openChild.m.title, description: openChild.m.description, tags: openChild.m.tags, size: 'light' }} onClose={() => { setOpenChild(null); load() }} onNavigate={onNavigate} onChange={load} />}
+    <div style={host === 'page' ? { minWidth: 0 } : { position: 'fixed', top: 0, left: 0, bottom: 0, right: 'var(--lumen-aside, 0px)', transition: 'right 220ms ease', zIndex: 240, overflowY: 'auto', background: 'linear-gradient(180deg, var(--hud-surface) 0%, var(--hud-surface-deep) 100%)' }}>
       {reading && (
         <div onClick={() => setReading(null)} style={{ position: 'fixed', inset: 0, zIndex: 250, background: 'rgba(5,16,28,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
           <div onClick={e => e.stopPropagation()} style={{ width: 'min(760px, 100%)', maxHeight: '88vh', overflowY: 'auto', background: 'var(--hud-surface-raised)', border: `1px solid ${PANEL_BORDER}`, borderRadius: 14, padding: '24px 26px', display: 'grid', gap: 14 }}>
@@ -311,7 +312,7 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
           </div>
         </div>
       )}
-      <div style={{ ...S.page, maxWidth: 1180, margin: '0 auto' }}>
+      <div style={host === 'page' ? { minWidth: 0 } : { ...S.page, maxWidth: 1180, margin: '0 auto' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
           <button onClick={onClose} style={btn(INK2)}><ArrowLeft size={13} /> Back</button>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
@@ -331,7 +332,7 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
           const nodes = []
           let head = item.kind
           let chip = null
-          const nav = (route) => () => { onClose(); onNavigate && onNavigate(route) }
+          const nav = (route) => () => { if (host === 'overlay') onClose(); onNavigate && onNavigate(route) }
           if (task || rel?.project || item.project) {
             nodes.push({ label: 'Main Missions', onClick: nav('main-missions') })
             nodes.push({ label: rel?.project?.name || item.project, onClick: rel?.project ? () => go([rel.project.id]) : null })
@@ -344,7 +345,7 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
             chip = item.kind === 'Event' ? { kind: 'Event', label: chiTime(item.event?.start_at), color: BLUE } : { kind: item.kind, label: item.kind, color: KIND_COLOR[item.kind] || BLUE }
           } else if (rel?.parent) {
             nodes.push({ label: 'Side Missions', onClick: nav('side-missions') })
-            nodes.push({ label: rel.parent.title, onClick: onClose })
+            nodes.push({ label: rel.parent.title, onClick: host === 'page' ? () => openCard(rel.parent.id) : onClose })
             head = rel.milestoneN ? `Milestone ${rel.milestoneN}` : 'Milestone'
             chip = { kind: 'Side Mission', label: 'Mythic', color: MYTHIC }
           } else {
@@ -403,7 +404,7 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
 
                   {(item.description || obj.description) && <div><Label>Back Story</Label><div style={{ fontSize: 14.5, lineHeight: 1.65, color: INK, whiteSpace: 'pre-wrap' }}>{item.description || obj.description}</div></div>}
 
-                  {rel.parent ? null : sz === 'heavy' ? <MythicMilestones parent={obj} milestones={rel.children || []} onChanged={load} onOpen={(m, n) => setOpenChild({ m, n })} /> : <div>
+                  {rel.parent ? null : sz === 'heavy' ? <MythicMilestones parent={obj} milestones={rel.children || []} onChanged={load} onOpen={(m) => openCard(m.id)} /> : <div>
                     <Label>{sz === 'medium' ? 'Marks · What Has To Happen, Three At Most' : 'Marks'}</Label>
                     {max === 0 && <div style={{ fontSize: 13, color: GRAY }}>A Bounty is one action and carries no marks.</div>}
                     {max > 0 && rel.steps === null && <div style={{ fontSize: 12.5, color: GRAY }}>Steps are not set up yet. Run sql/2026-10-07-side-missions-archive.sql in the Ledger and they appear here.</div>}
