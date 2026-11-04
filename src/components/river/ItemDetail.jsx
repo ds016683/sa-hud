@@ -94,6 +94,19 @@ async function loadRelated(item) {
       out.projectFiles = (pf || []).filter(f => f.id !== null && !f.name.endsWith('.json')).map(f => ({ name: f.name, path: `${pid}/${f.name}`, bucket: 'project-files' }))
       const { data: sf } = await supabase.storage.from('files').list(p.name, { limit: 100 })
       out.storeFiles = (sf || []).map(f => ({ name: f.name, folder: f.id === null, path: `${p.name}/${f.name}`, bucket: 'files' }))
+      // A Main Mission milestone (David 11/4): its number and the mission's count, the same way the Main Mission page numbers them.
+      if (task) {
+        try {
+          const { data: pts } = await supabase.from('project_tasks').select('id,text,status,created_at').eq('project_id', pid).order('created_at')
+          const numOf = (t) => { const m = /^\s*(\d+)\s*[·.:)-]/.exec(String(t?.text || '')); return m ? Number(m[1]) : null }
+          const all = pts || []
+          const numbered = all.filter(t => numOf(t) !== null)
+          const unnumberedOpen = all.filter(t => numOf(t) === null && t.status !== 'done')
+          out.milestoneOf = numbered.length ? numbered.length + unnumberedOpen.length : all.length
+          const n = numOf(task)
+          out.milestoneN = n !== null ? n : (all.findIndex(t => t.id === task.id) + 1 || null)
+        } catch { /* the fence falls back to ? of ? */ }
+      }
     }
   }
   // Decisions live on the standing mission "Decisions" and point at the board item they serve.
@@ -301,6 +314,7 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
   const readObjArtifact = useCallback(async (root, slug) => { const { data, error } = await supabase.storage.from('project-files').download(`${root}/artifacts/${slug}.json`); if (error) throw new Error(error.message); return JSON.parse(await data.text()) }, [])
   useEffect(() => { let on = true; const objArts = (rel?.objArtifacts || []); Promise.all(objArts.map(a => readObjArtifact(a.root || `objectives/${obj?.id}`, a.slug).then(d => [a.slug, d]).catch(() => [a.slug, null]))).then(ps => { if (on) setBriefs(Object.fromEntries(ps)) }); return () => { on = false } }, [rel, obj, readObjArtifact])
   const patchObj = async (patch) => { try { await updateObjective(obj.id, patch); await load(); onChange && onChange() } catch (e) { setMsg(`Could not save: ${e.message}`) } }
+  const patchTask = async (patch) => { try { const { error } = await supabase.from('project_tasks').update(patch).eq('id', task.id); if (error) throw error; await load(); onChange && onChange() } catch (e) { setMsg(`Could not save: ${e.message}`) } }
   const addStepNow = async () => { const t = stepText.trim(); if (!t || !obj) return; setObjBusy(true); try { const r = await addStep(obj.id, t, (rel.steps || []).length); if (r === null) setMsg('Steps are not set up yet: run sql/2026-10-07-side-missions-archive.sql'); setStepText(''); await load() } catch (e) { setMsg(`Could not add: ${e.message}`) } finally { setObjBusy(false) } }
 
   return (
@@ -382,8 +396,8 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
                     return (
                       <div style={fence}>
                         <div style={cell}><Label style={{ marginBottom: 0 }}>Domain</Label><div style={{ display: 'flex', gap: 6 }}>{[['third-horizon', 'Third Horizon'], ['personal', 'Personal']].map(([k, l]) => <button key={k} onClick={() => patchObj({ tags: [...new Set([...(obj.tags || []).filter(t => t !== 'personal'), ...(k === 'personal' ? ['personal'] : [])])] })} style={seg(realm === k, BLUE)}>{l}</button>)}</div></div>
-                        {rel.parent ? <div style={cell}><Label style={{ marginBottom: 0 }}>Milestone</Label><div style={{ fontFamily: SERIF, fontSize: 15.5, color: INK, paddingTop: 5 }}>{rel.milestoneN || '?'} of {rel.milestoneOf || '?'} on {rel.parent.title}<span style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '1px', textTransform: 'uppercase', color: LABEL, marginLeft: 10 }}>10 miles on close</span></div></div> : <div style={cell}><Label style={{ marginBottom: 0 }}>Type</Label><div style={{ display: 'flex', gap: 6 }}>{Object.entries(SIZES).map(([k, sdef]) => <button key={k} onClick={() => setSize(obj.id, k).then(load)} title={sdef.sub} style={seg(sz === k, BLUE)}>{sdef.label}</button>)}</div></div>}
-                        <div style={{ ...cell, marginLeft: 'auto' }}><Label style={{ marginBottom: 0 }}>Target Completion</Label><input type="date" value={obj.due_date || ''} onChange={e => patchObj({ due_date: e.target.value || null })} style={{ ...field, width: 150 }} /></div>
+                        {(rel.parent || task) ? <div style={cell}><Label style={{ marginBottom: 0 }}>Milestone</Label><div style={{ fontFamily: SERIF, fontSize: 15.5, color: INK, paddingTop: 5 }}>{rel.milestoneN || '?'} of {rel.milestoneOf || '?'} on {rel.parent ? rel.parent.title : (rel.project?.name || item.project || 'the Main Mission')}<span style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '1px', textTransform: 'uppercase', color: LABEL, marginLeft: 10 }}>{rel.parent ? '10 miles on close' : '1 mile on close'}</span></div></div> : <div style={cell}><Label style={{ marginBottom: 0 }}>Type</Label><div style={{ display: 'flex', gap: 6 }}>{Object.entries(SIZES).map(([k, sdef]) => <button key={k} onClick={() => setSize(obj.id, k).then(load)} title={sdef.sub} style={seg(sz === k, BLUE)}>{sdef.label}</button>)}</div></div>}
+                        <div style={{ ...cell, marginLeft: 'auto' }}><Label style={{ marginBottom: 0 }}>Target Completion</Label><input type="date" value={(task ? task.due_date : obj.due_date) || ''} onChange={e => task ? patchTask({ due_date: e.target.value || null }) : patchObj({ due_date: e.target.value || null })} style={{ ...field, width: 150 }} /></div>
                       </div>
                     ) })()}
 
