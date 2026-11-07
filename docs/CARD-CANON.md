@@ -9,7 +9,7 @@ This is the standard. Every Main Mission page, Side Mission card and Milestone c
 | Pill | What it holds | On a Main Mission | On a Side Mission or Milestone |
 |---|---|---|---|
 | **Briefing** | Where it stands | The progress bar and the milestones, each with its steps, Load, Stash, Close | Where It Stands (done and still needed), Sessions, the facts row (Domain, Type, Due, Follow Up, Who), Back Story, then Marks on a Contract or Milestones on a Mythic |
-| **Workbench** | The working surface: what is being built | The Planning canvas first (a skill brought in, a doodle, the thing being made), then the Workspace pages, the files in play at the foot | The Live Protocol rows first (editing punchlists, briefing gap maps), then the Workspace pages, the files in play at the foot |
+| **Workbench** | The working surface: what is being built | The Pages first, as tabs (David 11/7): one tab per page built on the mission (build_page from Lumen or a session, a pipeline-fed view, a skill brought in), newest first so the page in motion is tab one; the MMA Planning canvas is a page on the MMA missions only, never on another mission. Then the Workspace pages, the files in play at the foot | The Live Protocol rows first (editing punchlists, briefing gap maps), then the Workspace pages, the files in play at the foot |
 | **Files** | Bring In, then the filed and source material, one list | Bring In (drop a file, point at a path, add a launch link; it lands in play on the Workbench), then every file and folder in the mission's storage, the filed live files, the artifacts (scorecards, decisions, briefs) and the shares (published pages), each a row with a kind chip. Cabinet, Artifacts and Shares are kinds of file, never sections | Bring In, then the filed live files, the item's own folder, the mission's files and store |
 | **Notes** | Your own words | The mission's notes, newest first | The item's own notes, then the meetings that match it |
 | **Polaris** | The objective and the proof | The objective sentence, editable; the evidence pinned on the mission; the close-out state | The objective sentence, editable; the evidence pinned on the item; the released state |
@@ -31,7 +31,7 @@ David, October 28, 2026: "when i say that I want to create a workspace on the Mi
 
 - A workspace is the set of pages under the Workspace label on a card's Workbench pill. A page is a blank surface: type on it (autosaved) and draw over it (pen or mouse). New Page on the card, or `~/.claude/hud-board/workspace.py new "<title>" --item "<item>"` from a session, opens one; a session can seed it with text.
 - Pages live in storage as JSON under `<root>/workspace/<slug>.json` (`src/lib/workspace.js`; the root is the mission's id or `objectives/<id>`). They are not Live Files, not artifacts, not sections of Files. Delete Page removes the document.
-- The Workspace sits between the head of the Workbench (Planning on a mission, Live Protocols on an item) and the files in play at the foot. It counts nothing on the pill and earns no miles.
+- The Workspace sits between the head of the Workbench (the Pages tabs on a mission, Live Protocols on an item) and the files in play at the foot. It counts nothing on the pill and earns no miles.
 
 ## One chassis
 David, November 4, 2026: "all pages down in a card should be matching the parent, right?" Yes. A Side Mission, Milestone or Ad Hoc card is a page inside the shell, exactly like the Main Mission page: sidebar on the left, the topbar, the content column, the browser's back. It is never an overlay drawn over another page.

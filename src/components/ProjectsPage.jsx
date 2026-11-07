@@ -7,7 +7,7 @@ import useProjects, { freshnessOf } from '../hooks/useProjects'
 import ArtifactsTab from './river/ArtifactsTab'
 import WorkbenchTab, { WorkbenchIntake } from './river/Workbench'
 import WorkspacePages from './river/Workspace'
-import PlanningCanvas from './river/PlanningCanvas'
+import WorkbenchPages from './river/WorkbenchPages'
 import ItemDetail from './river/ItemDetail'
 import LumenPanel from './river/LumenPanel'
 import { LEDGER_EVENT } from '../lib/lumenPanel'
@@ -600,7 +600,8 @@ function ProjectDetail({ project, board: boardProp, api, onBack, initialTab, ini
         )}
         {tab === 'workbench' && (
           <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 30, minWidth: 0 }}>
-            <div style={{ minWidth: 0, overflow: 'hidden' }}><CanonLabel>Planning</CanonLabel><PlanningCanvas project={project} /></div>
+            {/* Pages (David 11/7): tabs, one per page built on this mission, newest first; Planning only where it belongs (MMA). */}
+            <div style={{ minWidth: 0, overflow: 'hidden' }}><CanonLabel>Pages</CanonLabel><WorkbenchPages key={tick} project={project} /></div>
             <div style={{ minWidth: 0 }}><CanonLabel>Workspace</CanonLabel><WorkspacePages key={tick} root={project.id} what="mission" /></div>
             <div style={{ minWidth: 0 }}><CanonLabel>In Play</CanonLabel><WorkbenchTab key={tick} project={project} intake={false} /></div>
           </div>
