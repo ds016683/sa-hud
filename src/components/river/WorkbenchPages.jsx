@@ -8,7 +8,7 @@
 // mission, which is how MMA's 2027 domains turned up on APF's Workbench.
 import { useCallback, useEffect, useState } from 'react'
 import { ExternalLink, RefreshCw } from 'lucide-react'
-import { listBuilds, buildUrl, LEDGER_EVENT } from '../../lib/lumenPanel'
+import { listBuilds, buildUrl, readBuildHtml, LEDGER_EVENT } from '../../lib/lumenPanel'
 import { readArtifact } from '../../lib/artifacts'
 import PlanningCanvas from './PlanningCanvas'
 import { CardPill, INK2, GRAY, LABEL, PANEL_BORDER, MONO } from './canon'
@@ -22,7 +22,7 @@ export default function WorkbenchPages({ project }) {
   const [pages, setPages] = useState(null)        // [{ slug, title, note, updated_at }]
   const [planning, setPlanning] = useState(isMMA(project))
   const [sel, setSel] = useState(() => { try { return localStorage.getItem(rememberKey(project.id)) } catch { return null } })
-  const [src, setSrc] = useState(null)
+  const [html, setHtml] = useState(null)   // the page's HTML, rendered through srcDoc like the Lumen panel does (storage may serve it as plain text)
   const [nonce, setNonce] = useState(0)
 
   const load = useCallback(async () => {
@@ -45,11 +45,12 @@ export default function WorkbenchPages({ project }) {
   const current = tabs.find(t => t.id === sel) || tabs[0] || null
 
   useEffect(() => {
-    if (!current) { setSrc(null); return }
+    if (!current) { setHtml(null); return }
     try { localStorage.setItem(rememberKey(project.id), current.id) } catch { /* fine */ }
-    if (current.id === 'planning') { setSrc(null); return }
+    if (current.id === 'planning') { setHtml(null); return }
     let on = true
-    buildUrl(project.id, current.id).then(u => { if (on) setSrc(u) }).catch(() => { if (on) setSrc(null) })
+    setHtml(null)
+    readBuildHtml(project.id, current.id).then(h => { if (on) setHtml(h) }).catch(() => { if (on) setHtml('') })
     return () => { on = false }
   }, [current?.id, project.id, nonce]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -72,9 +73,11 @@ export default function WorkbenchPages({ project }) {
             <button onClick={() => setNonce(n => n + 1)} style={btn} title="Reload the page"><RefreshCw size={11} /> Refresh</button>
             <button onClick={async () => window.open(await buildUrl(project.id, current.id), '_blank', 'noopener')} style={btn}><ExternalLink size={11} /> Open</button>
           </div>
-          {src
-            ? <iframe key={`${current.id}:${nonce}`} title={current.label} src={src} sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-modals" style={{ width: '100%', height: 'min(1100px, 78vh)', minHeight: 520, border: `1px solid ${PANEL_BORDER}`, borderRadius: 12, background: '#0F2334' }} />
-            : <div style={{ fontSize: 13, color: GRAY }}>Opening the page.</div>}
+          {html === null
+            ? <div style={{ fontSize: 13, color: GRAY }}>Opening the page.</div>
+            : html === ''
+              ? <div style={{ fontSize: 13, color: GRAY }}>Could not read this page. Open it in a new tab.</div>
+              : <iframe key={`${current.id}:${nonce}`} title={current.label} srcDoc={html} sandbox="allow-scripts allow-popups allow-forms allow-modals" style={{ width: '100%', height: 'min(1100px, 78vh)', minHeight: 520, border: `1px solid ${PANEL_BORDER}`, borderRadius: 12, background: '#0F2334' }} />}
         </div>
       ) : null}
     </div>
