@@ -65,7 +65,6 @@ async function loadRelated(item) {
         out.parent = prow?.[0] || null
         const ix = sibs.findIndex(k => k.id === item.objective_id)
         out.milestoneN = ix >= 0 ? ix + 1 : null; out.milestoneOf = sibs.length
-        out.siblings = sibs.map((k, i) => ({ n: i + 1, text: k.title, done: k.state === 'released', current: k.id === item.objective_id, target: k.id }))
       } catch { out.parent = null }
     }
     // The Editing Protocol punchlist (10/22): count only; the pill loads the rows.
@@ -98,18 +97,14 @@ async function loadRelated(item) {
       // A Main Mission milestone (David 11/4): its number and the mission's count, the same way the Main Mission page numbers them.
       if (task) {
         try {
-          const { data: pts } = await supabase.from('project_tasks').select('id,text,status,created_at,objective_id').eq('project_id', pid).order('created_at')
-          const NUM = /^\s*(\d+)\s*[·.:)-]\s*/
-          const numOf = (t) => { const m = NUM.exec(String(t?.text || '')); return m ? Number(m[1]) : null }
+          const { data: pts } = await supabase.from('project_tasks').select('id,text,status,created_at').eq('project_id', pid).order('created_at')
+          const numOf = (t) => { const m = /^\s*(\d+)\s*[·.:)-]/.exec(String(t?.text || '')); return m ? Number(m[1]) : null }
           const all = pts || []
-          const numbered = all.filter(t => numOf(t) !== null).sort((a, b) => numOf(a) - numOf(b))
+          const numbered = all.filter(t => numOf(t) !== null)
           const unnumberedOpen = all.filter(t => numOf(t) === null && t.status !== 'done')
-          let last = numbered.length ? Math.max(...numbered.map(numOf)) : 0
-          const plan = numbered.length ? [...numbered.map(t => ({ t, n: numOf(t) })), ...unnumberedOpen.map(t => ({ t, n: ++last }))] : all.map((t, i) => ({ t, n: i + 1 }))
-          // The mission's milestones on the card (David 11/7: "where is my list of milestones here?"), the same plan the Main Mission page shows.
-          out.siblings = plan.map(({ t, n }) => ({ n, text: String(t.text || '').replace(NUM, ''), done: t.status === 'done', current: t.id === task.id, target: t.objective_id || `task:${t.id}` }))
-          out.milestoneOf = plan.length
-          out.milestoneN = plan.find(x => x.t.id === task.id)?.n || null
+          out.milestoneOf = numbered.length ? numbered.length + unnumberedOpen.length : all.length
+          const n = numOf(task)
+          out.milestoneN = n !== null ? n : (all.findIndex(t => t.id === task.id) + 1 || null)
         } catch { /* the fence falls back to ? of ? */ }
       }
     }
@@ -406,16 +401,6 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
                       </div>
                     ) })()}
 
-                  {(rel.siblings || []).length > 1 && <div>
-                    <Label>Milestones</Label>
-                    <div style={{ display: 'grid', gap: 7 }}>
-                      {rel.siblings.map(sib => <div key={sib.n} onClick={() => !sib.current && openCard(sib.target)} title={sib.current ? 'This milestone' : 'Open this milestone'} style={{ display: 'flex', gap: 12, alignItems: 'baseline', cursor: sib.current ? 'default' : 'pointer', fontFamily: SERIF, fontSize: 15, lineHeight: 1.4, color: sib.current ? INK : sib.done ? GRAY : INK2, textDecoration: sib.done ? 'line-through' : 'none' }}>
-                        <span style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '1px', color: sib.current ? LABEL : GRAY, minWidth: 16, textAlign: 'right' }}>{sib.n}</span>
-                        <span style={{ flex: 1 }}>{sib.text}</span>
-                        {sib.current && <span style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '1px', textTransform: 'uppercase', color: LABEL }}>Here</span>}
-                      </div>)}
-                    </div>
-                  </div>}
                   <WhereItStands item={item} rel={rel} task={task} taskId={taskId} linkedBoards={linkedBoards} />
                 </>
               ) })()}
