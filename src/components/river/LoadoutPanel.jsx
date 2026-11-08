@@ -69,13 +69,20 @@ function ClockStrip({ minutes = 0, hours = 1, running = false, onToggle }) {
 // (a reticle ring, an arrow, ticks): Holster sends the item back to its repository, Stash holds it on the board, Extract
 // closes it and banks the miles. Lumen keeps the bottom right. Chrome is one color at rest, Extract the one gold action.
 const GLYPH = { fill: 'none', stroke: 'currentColor', strokeWidth: 1.7, strokeLinecap: 'round', strokeLinejoin: 'round' }
-const GlyphExtract = ({ size = 15 }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" {...GLYPH}>
-    <path d="M6.3 6.3A8 8 0 1 0 17.7 6.3" />
-    <path d="M12 16V3.5M8.3 7.2 12 3.5l3.7 3.7" />
-    <path d="M2.5 12h2M19.5 12h2M12 19.5v2" />
-  </svg>
-)
+// Extract is the Marathon exfil marker (David 11/7, from his frame): a peaked badge with a bold up-arrow. The marker is the
+// button's own shape, gold outline and arrow at rest, gold fill with the arrow in navy on hover, so it keeps the house palette.
+function ExtractMarker({ title, onClick, size = 34 }) {
+  const [hot, setHot] = useState(false)
+  return (
+    <button type="button" onClick={onClick} title={title} aria-label={title} onMouseEnter={() => setHot(true)} onMouseLeave={() => setHot(false)}
+      style={{ width: size, height: size, padding: 0, border: 'none', background: 'transparent', color: GOLD, display: 'inline-grid', placeItems: 'center', cursor: 'pointer', flexShrink: 0 }}>
+      <svg width={size} height={size} viewBox="0 0 24 24" style={{ display: 'block', transition: 'filter 0.15s', filter: hot ? `drop-shadow(0 0 4px ${alpha(GOLD, 55)})` : 'none' }}>
+        <path d="M12 1.6 22 9.3v11.1a1.6 1.6 0 0 1-1.6 1.6H3.6A1.6 1.6 0 0 1 2 20.4V9.3Z" fill={hot ? GOLD : alpha(GOLD, 8)} stroke={GOLD} strokeWidth={1.5} strokeLinejoin="round" style={{ transition: 'fill 0.15s' }} />
+        <path d="M12 18.2V8.4M7.9 12.2 12 8.1l4.1 4.1" fill="none" stroke={hot ? 'var(--hud-on-accent)' : GOLD} strokeWidth={2.3} strokeLinecap="round" strokeLinejoin="round" style={{ transition: 'stroke 0.15s' }} />
+      </svg>
+    </button>
+  )
+}
 const GlyphHolster = ({ size = 15 }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" {...GLYPH}>
     <path d="M9.5 4.5H4.5v15h5" />
@@ -251,7 +258,7 @@ export function FilledSlot({ it, n, act, onOpen, onExtract, onRecall, dropFromSt
         verbs={[
           <IconVerb key="holster" title="Holster · back to its repository" onClick={() => act(() => unload(it.id), `Holstered: ${it.title}`)}><GlyphHolster /></IconVerb>,
           <IconVerb key="stash" title="Stash · hold it on the board" onClick={() => act(() => stash(it.id), `Stashed: ${it.title}`)}><GlyphStash /></IconVerb>,
-          <IconVerb key="extract" color={GOLD} title="Extract · close it, bank the miles" onClick={() => onExtract(it)}><GlyphExtract /></IconVerb>,
+          <ExtractMarker key="extract" title="Extract · close it, bank the miles" onClick={() => onExtract(it)} />,
         ]}
         tail={<BrainButton onClick={() => onRecall(it)} />}
       />
