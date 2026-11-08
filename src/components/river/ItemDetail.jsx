@@ -229,6 +229,8 @@ function WhereItStands({ item, rel, task, taskId, linkedBoards }) {
 
 export default function ItemDetail({ item, onClose, onNavigate, onChange, initialTab = 'overview', host = 'overlay' }) {
   const [tab, setTab] = useState(TABS.includes(initialTab) ? initialTab : (LEGACY_TAB[initialTab] || 'briefing'))
+  // The open pill rides the card's address (David 11/7: a refresh while working with Lumen on a pill must land back on that pill).
+  useEffect(() => { if (host !== 'page') return; try { const h = window.location.hash || ''; if (!/\/item\//.test(h)) return; const next = h.replace(/(\/item\/[^/]+)(\/[^/]*)?$/, `$1/${tab}`); if (next !== h) window.history.replaceState(window.history.state, '', next) } catch { /* no-op */ } }, [tab, host])
   const [rel, setRel] = useState(null)
   const [msg, setMsg] = useState(null)
   const [openNote, setOpenNote] = useState(null)

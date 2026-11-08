@@ -214,13 +214,15 @@ export default function App() {
     const page = NAV_ITEMS.some(n => n.id === parts[0]) ? parts[0] : 'river'
     const all = page === parts[0] ? parts.slice(1).map(decodeURIComponent) : []
     const at = all.indexOf('item')
-    return { page, params: at >= 0 ? all.slice(0, at) : all, item: at >= 0 ? all[at + 1] || null : null }
+    // …/item/<id>/<pill> (David 11/7): the card's open pill rides the address so a refresh leaves him where he is.
+    return { page, params: at >= 0 ? all.slice(0, at) : all, item: at >= 0 ? all[at + 1] || null : null, itemTab: at >= 0 ? all[at + 2] || null : null }
   }
   const readHash = () => parseHash().page
   const [active, setActiveState] = useState(readHash)
   const [params, setParams] = useState(() => parseHash().params)
   // A Mission Briefing open in the URL (…/item/<objective id>) survives a refresh.
   const [globalItemId, setGlobalItemId] = useState(() => parseHash().item)
+  const [globalItemTab, setGlobalItemTab] = useState(() => parseHash().itemTab)
   const [globalItem, setGlobalItem] = useState(null)
   useEffect(() => { let on = true; if (!globalItemId) { Promise.resolve().then(() => { if (on) setGlobalItem(null) }); return () => { on = false } } itemFromObjective(globalItemId).then(it => { if (on) setGlobalItem(it) }).catch(() => { if (on) setGlobalItem(null) }); return () => { on = false } }, [globalItemId])
   // The pages behind an open card stay mounted (hidden) and remount once the card closes, so they read fresh.
@@ -245,7 +247,7 @@ export default function App() {
     else setActive('river')
   }
   useEffect(() => {
-    const onPop = () => { const h = parseHash(); setParams(h.params); setActiveState(h.page); setGlobalItemId(h.item); if (h.item) hadCard.current = true; else if (hadCard.current) { hadCard.current = false; setPageEpoch(e => e + 1) } }
+    const onPop = () => { const h = parseHash(); setParams(h.params); setActiveState(h.page); setGlobalItemId(h.item); setGlobalItemTab(h.itemTab); if (h.item) hadCard.current = true; else if (hadCard.current) { hadCard.current = false; setPageEpoch(e => e + 1) } }
     window.addEventListener('popstate', onPop)
     return () => window.removeEventListener('popstate', onPop)
   }, [])
@@ -284,7 +286,7 @@ export default function App() {
       <div className={`sa-main sa-surface-dark${active === 'ecosystem' ? '' : ' sa-dark-scroll'}`}>
         <Topbar active={active} now={now} sov={gameState.sovereigntyLevel} onBack={goBack} />
         <div className="sa-content">
-          {globalItem && <ItemDetail host="page" item={globalItem} onClose={closeCard} onNavigate={setRoute} />}
+          {globalItem && <ItemDetail key={globalItem.id} host="page" item={globalItem} initialTab={globalItemTab || 'briefing'} onClose={closeCard} onNavigate={setRoute} />}
           <div hidden={!!globalItem} key={pageEpoch}>
           {active === 'river'            && <LandingPage onNavigate={setActive} />}
           {active === 'journey'          && <JourneyPage onNavigate={setActive} />}

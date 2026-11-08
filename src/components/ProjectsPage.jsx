@@ -421,7 +421,7 @@ function ProjectDetail({ project, board: boardProp, api, onBack, initialTab, ini
   useEffect(() => { const h = (e) => { const id = e?.detail?.id; if (!id || id === project.id) { api?.refresh?.(); setTick(t => t + 1) } }; window.addEventListener(LEDGER_EVENT, h); return () => window.removeEventListener(LEDGER_EVENT, h) }, [api, project.id])
 
   // mission hash (David, 10/17): the open mission and its tab ride the URL so a refresh lands back here.
-  useEffect(() => { try { const suffix = ((window.location.hash || '').match(/\/item\/[^/]+$/) || [''])[0]; window.history.replaceState(window.history.state, '', `#/main-missions/${project.id}/${tab}${suffix}`) } catch { /* no-op */ } }, [project.id, tab])
+  useEffect(() => { try { const suffix = ((window.location.hash || '').match(/\/item\/.*$/) || [''])[0]; window.history.replaceState(window.history.state, '', `#/main-missions/${project.id}/${tab}${suffix}`) } catch { /* no-op */ } }, [project.id, tab])
   const { plan, history } = planOf(project)
   const tasks = plan.map(p => p.t)
   const [objState, setObjState] = useState({})
