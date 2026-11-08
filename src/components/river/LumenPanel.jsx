@@ -140,7 +140,7 @@ export default function LumenPanel({ item }) {
           <Sparkles size={15} color={GOLD_BRIGHT} /> Lumen
         </button>
       )}
-      <aside aria-label="Lumen" aria-hidden={!open} style={{ position: 'fixed', top: 0, right: 0, bottom: 0, zIndex: 210, width: 'var(--lumen-w, 460px)', transform: open ? 'translateX(0)' : 'translateX(104%)', transition: 'transform 220ms ease', background: 'var(--hud-surface-raised)', borderLeft: `1px solid ${PANEL_BORDER}`, boxShadow: open ? '-18px 0 40px rgba(0,0,0,0.35)' : 'none', display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+      <aside aria-label="Lumen" aria-hidden={!open} style={{ position: 'fixed', top: 0, right: 0, bottom: 0, zIndex: 210, width: 'var(--lumen-w, 460px)', transform: open ? 'translateX(0)' : 'translateX(104%)', transition: 'transform 220ms ease', background: 'var(--hud-surface-raised)', borderLeft: `1px solid ${PANEL_BORDER}`, boxShadow: open ? '-18px 0 40px rgba(0,0,0,0.35)' : 'none', display: 'flex', flexDirection: 'column', minWidth: 0, overflow: 'hidden', overscrollBehavior: 'contain' }}>
         <div style={{ padding: '16px 18px 12px', borderBottom: `1px solid ${PANEL_BORDER}` }}>
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
             <span style={{ width: 36, height: 36, borderRadius: 999, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', border: `1px solid ${alpha(GOLD_BRIGHT, 50)}`, background: alpha(GOLD_BRIGHT, 10), flexShrink: 0 }}><Sparkles size={16} color={GOLD_BRIGHT} /></span>
@@ -160,7 +160,7 @@ export default function LumenPanel({ item }) {
 
         {tab === 'lumen' && (
           <>
-            <div ref={scrollRef} style={{ flex: 1, overflowY: 'auto', padding: '14px 18px', minHeight: 0 }}>
+            <div ref={scrollRef} style={{ flex: 1, overflowY: 'auto', overscrollBehavior: 'contain', padding: '14px 18px', minHeight: 0 }}>
               {thread.length === 0 && !pending && (
                 <div style={{ display: 'grid', gap: 8 }}>
                   <div style={{ fontSize: 13, color: INK2, lineHeight: 1.55 }}>Same Lumen as WhatsApp and the strip, framed on this card. He can move its milestones, file to it, write its Workspace pages and build pages for it.</div>
@@ -184,7 +184,7 @@ export default function LumenPanel({ item }) {
         )}
 
         {tab === 'workbook' && (
-          <div style={{ flex: 1, overflowY: 'auto', padding: '14px 18px 18px', minHeight: 0 }}>
+          <div style={{ flex: 1, overflowY: 'auto', overscrollBehavior: 'contain', padding: '14px 18px 18px', minHeight: 0 }}>
             <div style={{ fontSize: 13, color: INK2, lineHeight: 1.55 }}>Collect what matters on this card: Lumen's answers (the Workbook button under each), the card itself, and your notes. Print it as a PDF in the house frame.</div>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 12 }}>
               <button onClick={captureCard} style={btn(INK2)}><FileText size={11} /> Capture the card</button>
@@ -210,7 +210,7 @@ export default function LumenPanel({ item }) {
         )}
 
         {tab === 'build' && (
-          <div style={{ flex: 1, overflowY: 'auto', padding: '14px 18px 18px', minHeight: 0, display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <div style={{ flex: 1, overflowY: 'auto', overscrollBehavior: 'contain', padding: '14px 18px 18px', minHeight: 0, display: 'flex', flexDirection: 'column', gap: 12 }}>
             <div style={{ fontSize: 13, color: INK2, lineHeight: 1.55 }}>Pages Lumen built for this card: a mock-up, a tool, a one-page view. Ask him on the Lumen tab ("build me a…"); each lands here and on the Workbench, and a Claude session can port it into a real app later.</div>
             {builds && builds.length === 0 && <div style={{ fontSize: 12.5, color: GRAY }}>Nothing built yet.</div>}
             <div style={{ display: 'grid', gap: 6 }}>
