@@ -6,8 +6,7 @@ import {
 import useProjects, { freshnessOf } from '../hooks/useProjects'
 import ArtifactsTab from './river/ArtifactsTab'
 import WorkbenchTab, { WorkbenchIntake } from './river/Workbench'
-import WorkspacePages from './river/Workspace'
-import WorkbenchPages from './river/WorkbenchPages'
+import WorkbenchSheet from './river/WorkbenchSheet'
 import ItemDetail from './river/ItemDetail'
 import LumenPanel from './river/LumenPanel'
 import { LEDGER_EVENT } from '../lib/lumenPanel'
@@ -599,16 +598,13 @@ function ProjectDetail({ project, board: boardProp, api, onBack, initialTab, ini
           </div>
         )}
         {tab === 'workbench' && (
-          <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 30, minWidth: 0 }}>
-            {/* Pages (David 11/7): tabs, one per page built on this mission, newest first; Planning only where it belongs (MMA). */}
-            <div style={{ minWidth: 0, overflow: 'hidden' }}><CanonLabel>Pages</CanonLabel><WorkbenchPages key={tick} project={project} /></div>
-            <div style={{ minWidth: 0 }}><CanonLabel>Workspace</CanonLabel><WorkspacePages key={tick} root={project.id} what="mission" /></div>
-            <div style={{ minWidth: 0 }}><CanonLabel>In Play</CanonLabel><WorkbenchTab key={tick} project={project} intake={false} /></div>
-          </div>
+          /* The sheet (David 11/7): tabs across the top, one blank page each, a live protocol first with a tab of its own; the files in play read under Files. */
+          <div style={{ minWidth: 0 }}><WorkbenchSheet key={tick} root={project.id} project={project} scopes={planOf(project).plan.filter(({ t }) => t.objective_id).map(({ t, n }) => ({ objectiveId: t.objective_id, label: `Milestone ${n}` }))} /></div>
         )}
         {tab === 'files' && (
           <div style={{ display: 'grid', gap: 30 }}>
             <div><CanonLabel>Bring In</CanonLabel><WorkbenchIntake project={project} /></div>
+            <div style={{ minWidth: 0 }}><CanonLabel>In Play</CanonLabel><WorkbenchTab key={tick} project={project} intake={false} /></div>
             <div><CanonLabel>Filed</CanonLabel><MissionFiles project={project} api={api} initialSlug={artifactSlug} /></div>
           </div>
         )}
@@ -621,7 +617,7 @@ function ProjectDetail({ project, board: boardProp, api, onBack, initialTab, ini
             </div>
             <div>
               <CanonLabel>Evidence{evidence.length ? ` · ${evidence.length}` : ''}</CanonLabel>
-              {!evidence.length && <div style={{ fontSize: 13, color: GRAY }}>Nothing pinned yet. When the thing that proves the objective exists, pin it with the star on the Workbench and it shows here.</div>}
+              {!evidence.length && <div style={{ fontSize: 13, color: GRAY }}>Nothing pinned yet. When the thing that proves the objective exists, pin it with the star under Files and it shows here.</div>}
               {evidence.map(f => (
                 <div key={f.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 0', borderTop: `1px solid ${PANEL_BORDER}` }}>
                   <span style={{ width: 6, height: 6, borderRadius: 99, background: GOLD, flexShrink: 0 }} />

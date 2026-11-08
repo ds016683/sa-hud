@@ -18,6 +18,7 @@ export function blankPage(title) {
 
 const summary = (d) => ({
   title: d.title || 'Untitled',
+  created_at: d.created_at || d.updated_at || null,
   updated_at: d.updated_at,
   updated_by: d.updated_by || null,
   words: String(d.text || '').trim() ? String(d.text).trim().split(/\s+/).length : 0,

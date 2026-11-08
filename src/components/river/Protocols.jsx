@@ -103,7 +103,7 @@ function BriefingRow({ r, onAnswer, onRule }) {
   )
 }
 
-export default function ProtocolsTab({ objectiveId }) {
+export default function ProtocolsTab({ objectiveId, only = null, bare = false }) {
   const [rows, setRows] = useState(null) // null loading · 'missing' table absent · []
   const [inspect, setInspect] = useState(null)
   const load = useCallback(async () => {
@@ -122,7 +122,7 @@ export default function ProtocolsTab({ objectiveId }) {
   if (rows.length === 0) return <div style={{ fontSize: 13, color: GRAY, padding: '14px 0' }}>No protocol is live on this item. A session in the Editing Protocol or the Briefing Protocol writes its rows here as it runs.</div>
 
   const groups = []
-  for (const r of rows) { const k = protocolOf(r); let g = groups.find(x => x.key === k); if (!g) { g = { key: k, rows: [] }; groups.push(g) } g.rows.push(r) }
+  for (const r of rows) { const k = protocolOf(r); if (only && k !== only) continue; let g = groups.find(x => x.key === k); if (!g) { g = { key: k, rows: [] }; groups.push(g) } g.rows.push(r) }
   groups.sort((a, b) => (b.rows.filter(isOpenRow).length - a.rows.filter(isOpenRow).length))
   return (
     <div style={{ display: 'grid', gap: 26 }}>
@@ -137,10 +137,10 @@ export default function ProtocolsTab({ objectiveId }) {
         return (
           <div key={g.key}>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, flexWrap: 'wrap', marginBottom: 2 }}>
-              <span style={{ fontFamily: SERIF, fontSize: 18, color: open ? INK : GRAY }}>{def.label}</span>
+              {!bare && <span style={{ fontFamily: SERIF, fontSize: 18, color: open ? INK : GRAY }}>{def.label}</span>}
               <span style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '1.2px', textTransform: 'uppercase', color: open ? LABEL : GRAY }}>{g.rows.length} rows · {open} open{g.key === 'editing' ? ` · ${g.rows.filter(r => r.status === 'flagged').length} flagged` : ` · ${g.rows.filter(r => r.status === 'ruled').length} ruled`}{open ? '' : ' · complete'}</span>
             </div>
-            {def.sub && <div style={{ fontSize: 12.5, color: GRAY, marginBottom: 6 }}>{def.sub}</div>}
+            {def.sub && !bare && <div style={{ fontSize: 12.5, color: GRAY, marginBottom: 6 }}>{def.sub}</div>}
             <div style={{ fontFamily: MONO, fontSize: 12, letterSpacing: '1px', color: pct === 100 ? SUCCESS : LABEL, marginBottom: 8 }}>{bar} {closed} of {g.rows.length} · {pct}%</div>
             {g.key === 'briefing' && asked && <div style={{ fontSize: 13, color: INK, marginBottom: 8, padding: '8px 12px', border: `1px solid ${alpha(BLUE, 33)}`, borderRadius: 8, background: 'rgba(169,201,232,0.07)' }}><span style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '1.2px', textTransform: 'uppercase', color: BLUE, marginRight: 10 }}>The ask</span>{asked.entry}</div>}
             {g.rows.map(r => g.key === 'briefing'

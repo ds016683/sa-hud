@@ -12,18 +12,14 @@ import { supabase } from '../../lib/supabase'
 import { listArtifacts, readArtifact, writeArtifact } from '../../lib/artifacts'
 import { fetchLoadout, equip, holster, stash, equipObjective, equipTask, fmtClock, SIZES } from '../../lib/loadout'
 import DocView from './DocView'
-import { stepsMaxFor } from '../../lib/objectives'
-import { fetchSteps, addStep, toggleStep, removeStep, listObjectiveArtifacts, listObjectiveFiles, listObjectiveBoards, realmOf, setSize, updateObjective, objRoot, fetchMilestones } from '../../lib/objectives'
+import { fetchSteps, listObjectiveArtifacts, listObjectiveFiles, listObjectiveBoards, realmOf, setSize, updateObjective, objRoot, fetchMilestones } from '../../lib/objectives'
 import { renderMarkdown } from './MeetingCloseout'
-import SessionBoard from './SessionBoard'
 import { recall } from '../../lib/recall'
 import { fmtStamp, listLiveFiles, listEvidence, openLiveFile, isRequest, isLink } from '../../lib/livefiles'
-import ProtocolsTab from './Protocols'
 import { isOpenRow } from '../../lib/protocols'
 import FilesTab from './Files'
 import WorkbenchTab, { WorkbenchIntake } from './Workbench'
-import WorkspacePages from './Workspace'
-import MythicMilestones from './MythicMilestones'
+import WorkbenchSheet from './WorkbenchSheet'
 import LumenPanel from './LumenPanel'
 import { openCard } from '../../lib/card'
 import { LEDGER_EVENT } from '../../lib/lumenPanel'
@@ -151,27 +147,6 @@ function briefCommand(item, links) {
   const oid = item.objective_id || item.id
   return `cd "${cwd}" && claude "Pick up the ${item.kind || 'Side Mission'} '${String(item.title || '').replace(/"/g, "'")}' (${oid}): read its briefing with get_objectives and list_steps, its files with list_live_files, then continue from Next. Set the focus on it first."`
 }
-function SessionsStrip({ item, links }) {
-  const [copied, setCopied] = useState(null)
-  const copy = async (key, text) => { try { await navigator.clipboard.writeText(text); setCopied(key); setTimeout(() => setCopied(null), 1600) } catch { /* no clipboard */ } }
-  const sessions = sessionLinks(links)
-  const brief = briefCommand(item, links)
-  const latest = sessions.find(r => r.note) || null
-  return (
-    <div style={{ marginTop: 14, paddingTop: 12, borderTop: `1px solid ${PANEL_BORDER}` }}>
-      <Label>Sessions</Label>
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
-        <button onClick={() => copy('brief', brief)} title={brief} style={{ ...btn(INK2), padding: '5px 10px' }}><Terminal size={11} /> {copied === 'brief' ? 'Copied' : 'Copy a Briefed Start'}</button>
-        {latest && <button onClick={() => copy('resume', latest.note)} title={latest.note} style={{ ...btn(INK2), padding: '5px 10px' }}><Terminal size={11} /> {copied === 'resume' ? 'Copied' : 'Copy Resume Command'}</button>}
-      </div>
-      {sessions.length === 0 && <div style={{ fontSize: 12.5, color: GRAY, marginTop: 8 }}>No Claude session has worked this item yet. The Briefed Start begins one; paste it in a terminal.</div>}
-      {sessions.map(r => (
-        <div key={r.id} style={{ fontSize: 13, color: INK, marginTop: 8 }}>{String(r.name || '').replace(/^Claude session · /, '')}<span style={{ fontFamily: MONO, fontSize: 10, color: GRAY, marginLeft: 8 }}>{fmtStamp(r.created_at)}</span></div>
-      ))}
-    </div>
-  )
-}
-
 // Evidence (David 10/23): the files pinned under Polaris as the proof the
 // objective was met. They lead the close-out record. Pinning happens in Files.
 function Evidence({ rows, onFiles, say }) {
@@ -257,12 +232,9 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
   const [rel, setRel] = useState(null)
   const [msg, setMsg] = useState(null)
   const [openNote, setOpenNote] = useState(null)
-  const [recentBoards, setRecentBoards] = useState([])
   const [requests, setRequests] = useState([])
   const objKey = item.objective_id || null
   useEffect(() => { let on = true; if (!objKey) { Promise.resolve().then(() => { if (on) setRequests([]) }); return () => { on = false } } listLiveFiles({ objectiveId: objKey }).then(r => { if (on) setRequests((r.rows || []).filter(x => isRequest(x) || isLink(x))) }).catch(() => {}); return () => { on = false } }, [objKey, rel])
-  useEffect(() => { let on = true; supabase.from('session_boards').select('id,project,title,updated_at,board').order('updated_at', { ascending: false }).limit(24).then(({ data }) => { if (on) setRecentBoards(Array.isArray(data) ? data : []) }); return () => { on = false } }, [])
-  const tieBoard = async (b) => { if (!obj) return; const { error } = await supabase.from('session_boards').update({ board: { ...(b.board || {}), objective_id: obj.id } }).eq('id', b.id); if (error) { setMsg(`Could not tie: ${error.message}`); return } setMsg(`Tied ${b.title}`); load() }
   const load = useCallback(() => loadRelated(item).then(setRel).catch(e => { console.warn('item detail', e.message); setRel({ project: null, task: null, artifacts: [], boards: [], projectFiles: [], storeFiles: [], meetings: [], loadout: null }) }), [item])
   useEffect(() => { load() }, [load])
   // Lumen acted on this card from the panel (11/4): reread it, and remount the Workbench's lists.
@@ -304,10 +276,8 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
 
   const counts = { workbench: (rel?.punchlist || []).filter(isOpenRow).length, polaris: (rel?.evidence || []).length, files: (rel?.objFiles?.length || 0) + (rel?.projectFiles.length || 0) + (rel?.storeFiles.filter(f => !f.folder).length || 0), notes: rel?.meetings.length || 0 }
   const obj = rel?.objective || null
-  const [stepText, setStepText] = useState('')
   const [copied, setCopied] = useState(false)
   const copyText = async (text) => { try { await navigator.clipboard.writeText(text); setCopied(true); setTimeout(() => setCopied(false), 1600) } catch { /* no clipboard */ } }
-  const [objBusy, setObjBusy] = useState(false)
   const [editStar, setEditStar] = useState(false)
   const [reading, setReading] = useState(null)
   const [briefs, setBriefs] = useState({})
@@ -315,7 +285,6 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
   useEffect(() => { let on = true; const objArts = (rel?.objArtifacts || []); Promise.all(objArts.map(a => readObjArtifact(a.root || `objectives/${obj?.id}`, a.slug).then(d => [a.slug, d]).catch(() => [a.slug, null]))).then(ps => { if (on) setBriefs(Object.fromEntries(ps)) }); return () => { on = false } }, [rel, obj, readObjArtifact])
   const patchObj = async (patch) => { try { await updateObjective(obj.id, patch); await load(); onChange && onChange() } catch (e) { setMsg(`Could not save: ${e.message}`) } }
   const patchTask = async (patch) => { try { const { error } = await supabase.from('project_tasks').update(patch).eq('id', task.id); if (error) throw error; await load(); onChange && onChange() } catch (e) { setMsg(`Could not save: ${e.message}`) } }
-  const addStepNow = async () => { const t = stepText.trim(); if (!t || !obj) return; setObjBusy(true); try { const r = await addStep(obj.id, t, (rel.steps || []).length); if (r === null) setMsg('Steps are not set up yet: run sql/2026-10-07-side-missions-archive.sql'); setStepText(''); await load() } catch (e) { setMsg(`Could not add: ${e.message}`) } finally { setObjBusy(false) } }
 
   return (
     <div style={host === 'page' ? { minWidth: 0 } : { position: 'fixed', top: 0, left: 0, bottom: 0, right: 'var(--lumen-aside, 0px)', transition: 'right 220ms ease', zIndex: 240, overflowY: 'auto', background: 'linear-gradient(180deg, var(--hud-surface) 0%, var(--hud-surface-deep) 100%)' }}>
@@ -430,55 +399,7 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
           )}
 
           {rel && tab === 'workbench' && (item.objective_id ? (
-            <div key={tick} style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 28 }}>
-              {obj && (() => { const sz = SIZES[item.size] ? item.size : 'light'; const max = stepsMaxFor(sz); return (
-                <>
-                  {rel.parent ? null : sz === 'heavy' ? <MythicMilestones parent={obj} milestones={rel.children || []} onChanged={load} onOpen={(m) => openCard(m.id)} /> : <div>
-                    <Label>{sz === 'medium' ? 'Marks · What Has To Happen, Three At Most' : 'Marks'}</Label>
-                    {max === 0 && <div style={{ fontSize: 13, color: GRAY }}>A Bounty is one action and carries no marks.</div>}
-                    {max > 0 && rel.steps === null && <div style={{ fontSize: 12.5, color: GRAY }}>Steps are not set up yet. Run sql/2026-10-07-side-missions-archive.sql in the Ledger and they appear here.</div>}
-                    {max > 0 && Array.isArray(rel.steps) && rel.steps.map((st, i) => (
-                      <div key={st.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 0', borderTop: `1px solid ${PANEL_BORDER}` }}>
-                        <button onClick={() => toggleStep(st.id, !st.done).then(load)} aria-label={st.done ? 'Undo' : 'Done'} style={{ width: 18, height: 18, borderRadius: 999, border: `1px solid ${st.done ? SUCCESS : 'rgba(255,255,255,0.3)'}`, background: st.done ? `${alpha(SUCCESS, 13)}` : 'transparent', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>{st.done && <Check size={11} color={SUCCESS} />}</button>
-                        <span style={{ fontFamily: MONO, fontSize: 10, color: LABEL, width: 14 }}>{i + 1}</span>
-                        <span style={{ flex: 1, fontSize: 14, color: st.done ? GRAY : INK, textDecoration: st.done ? 'line-through' : 'none' }}>{st.text}</span>
-                        {st.done_at && <span style={{ fontFamily: MONO, fontSize: 9.5, color: GRAY }}>{chiTime(st.done_at)}</span>}
-                        <button onClick={() => removeStep(st.id).then(load)} aria-label="Remove" style={{ background: 'transparent', border: 'none', color: GRAY, cursor: 'pointer', padding: 2 }}><Trash2 size={11} /></button>
-                      </div>
-                    ))}
-                    {max > 0 && Array.isArray(rel.steps) && rel.steps.length < max && (
-                      <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-                        <input value={stepText} onChange={e => setStepText(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') addStepNow() }} placeholder={rel.steps.length ? `${sz === 'heavy' ? 'gate' : 'mark'} ${rel.steps.length + 1} of ${max}: something that can be seen to have happened` : `the first thing that has to happen (1 of ${max}): a decision marked, a conversation had, a thing produced`} disabled={objBusy} style={{ flex: 1, background: 'rgba(255,255,255,0.05)', border: `1px solid ${PANEL_BORDER}`, borderRadius: 8, color: INK, padding: '7px 10px', fontSize: 13, fontFamily: 'inherit' }} />
-                        <button onClick={addStepNow} disabled={objBusy || !stepText.trim()} style={btn(INK2, false)}><Plus size={11} /> Add</button>
-                      </div>
-                    )}
-                    {max > 0 && Array.isArray(rel.steps) && rel.steps.length >= max && <div style={{ fontSize: 12, color: GRAY, marginTop: 8 }}>{sz === 'heavy' ? 'Five gates is the Mythic’s limit. A sixth means this is a Main Mission: promote it.' : 'Three marks is a Contract’s limit. More than that is a Mythic.'}</div>}
-                  </div>}
-                </>
-              ) })()}
-              {(() => { const b = linkedBoards[0] || (task ? (rel.boards || [])[0] : null); return b && item.kind !== 'Event' ? (
-                <div style={{ borderTop: `1px solid ${PANEL_BORDER}`, paddingTop: 16 }}>
-                  <Label>{taskId ? 'Milestone Board · Claude’s Steps On This Milestone' : 'Session Board'}</Label>
-                  {!b.linked && !(rel.objBoards || []).length && <div style={{ fontSize: 12.5, color: GRAY, marginBottom: 8 }}>Claude's latest board on the mission; nothing on it is tied to this {what.item} yet.</div>}
-                  <SessionBoard key={b.id} board={b} compact focusTaskId={taskId} onChange={() => onChange && onChange()} />
-                </div>
-              ) : (obj && item.kind !== 'Event' ? (
-                <div style={{ borderTop: `1px solid ${PANEL_BORDER}`, paddingTop: 14 }}>
-                  <Label>Session Board</Label>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', fontSize: 13, color: GRAY }}>
-                    <span>No Claude board is tied to this {what.item} yet. Tie the session that is working it:</span>
-                    <select defaultValue="" onChange={e => { const b = recentBoards.find(x => x.id === e.target.value); if (b) tieBoard(b) }} style={{ background: 'var(--hud-on-accent)', color: INK, border: `1px solid ${PANEL_BORDER}`, borderRadius: 7, padding: '4px 8px', fontSize: 12, maxWidth: 360 }}>
-                      <option value="">Pick a recent board…</option>
-                      {recentBoards.map(b => <option key={b.id} value={b.id}>{b.project} · {b.title}</option>)}
-                    </select>
-                  </div>
-                </div>
-              ) : null) })()}
-              <div><SessionsStrip item={item} links={requests} /></div>
-              <div><Label>Live Protocols</Label><ProtocolsTab objectiveId={item.objective_id} /></div>
-              <div style={{ minWidth: 0 }}><Label>Workspace</Label><WorkspacePages root={objRoot(item.objective_id)} what="item" /></div>
-              <div><Label>In Play</Label><WorkbenchTab objectiveId={item.objective_id} intake={false} /></div>
-            </div>
+            <div key={tick} style={{ minWidth: 0 }}><WorkbenchSheet root={objRoot(item.objective_id)} scopes={[{ objectiveId: item.objective_id, label: null }]} /></div>
           ) : <None what={{ ...what, thing: 'a workbench' }} />)}
 
           {rel && tab === 'polaris' && (obj ? (
@@ -490,7 +411,7 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
                       ? <textarea autoFocus={editStar} defaultValue={obj.north_star || ''} rows={2} onBlur={e => { const v = e.target.value.trim() || null; setEditStar(false); if (v !== (obj.north_star || null)) patchObj({ north_star: v }) }} placeholder={NORTH_STAR_ASK} style={{ width: '100%', boxSizing: 'border-box', background: 'rgba(255,255,255,0.05)', border: `1px solid ${PANEL_BORDER}`, borderRadius: 8, padding: '10px 12px', color: INK, fontSize: 17, fontFamily: SERIF, fontStyle: 'italic', lineHeight: 1.45, resize: 'vertical' }} />
                       : <div onClick={() => setEditStar(true)} title="Click to edit" style={{ fontFamily: SERIF, fontStyle: 'italic', fontSize: 15.5, lineHeight: 1.5, color: INK, borderLeft: `2px solid ${LABEL}`, paddingLeft: 12, cursor: 'text' }}>{obj.north_star}</div>}
                   </div>
-                  <Evidence rows={rel.evidence || []} onFiles={() => setTab('workbench')} say={setMsg} />
+                  <Evidence rows={rel.evidence || []} onFiles={() => setTab('files')} say={setMsg} />
 
               </>
               {obj.state === 'released' && <div style={{ fontFamily: MONO, fontSize: 10.5, letterSpacing: '1.2px', textTransform: 'uppercase', color: SUCCESS }}>Released{obj.released_at ? ` · ${obj.released_at.slice(0, 10)}` : ''}</div>}
@@ -498,6 +419,7 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
           ) : <None what={{ ...what, thing: 'a Polaris of its own' }} />)}
 
           {rel && tab === 'files' && item.objective_id && <div style={{ marginBottom: 28 }}><Label>Bring In</Label><WorkbenchIntake objectiveId={item.objective_id} /></div>}
+          {rel && tab === 'files' && item.objective_id && <div key={`play:${tick}`} style={{ marginBottom: 28 }}><Label>In Play</Label><WorkbenchTab objectiveId={item.objective_id} intake={false} /></div>}
           {rel && tab === 'files' && <FilesTab inPlay={false} objectiveId={item.objective_id || null} rel={rel} what={what} open={open} taskId={taskId} onRead={async (a) => { try { setReading({ title: a.title, doc: briefs[a.slug] || await readObjArtifact(a.root, a.slug) }) } catch (e) { setMsg(`Could not read: ${e.message}`) } }} onGo={go} onAttach={attachArtifact} onChanged={load} />}
 
           {rel && tab === 'notes' && (

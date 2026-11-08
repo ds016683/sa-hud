@@ -97,3 +97,14 @@ The Polaris sentence, the Achieved line, the pinned evidence and the tags lead t
 The Briefing is the page you read in ten seconds, so it carries five things and nothing else: the trail; the header (kind, chip, name, Polaris line, the five pills in one quiet row under it, left); the fence (Domain, Type, Target Completion); Done and Next; and one action row (Equip or Holster, Cold Start, Stash, with the clock as a status line). Done is history: milestones released, marks ticked, board items closed, and a file only once it is starred as evidence. Next is the open marks or milestones, the open board items, and Lumen's two or three steps.
 
 Everything that edits or explains moves off the Briefing. Marks and Milestones are the first block on the Workbench, then the Milestone Board, then Sessions (copy a briefed start or the resume command), Live Protocols, Workspace and In Play. Back Story reads at the top of Notes. Mission and Task are the trail. Sessions as a Briefing block is retired; Cold Start is the one button that starts a fresh session on the card.
+
+## The Workbench sheet (David 11/7)
+
+"i want a blank canvas where i can put whatever i want. tabs at the top, with the labels for whatever i'm doing there." The Workbench pill on every card (Main Mission, Side Mission, Milestone) is one surface, `WorkbenchSheet`:
+
+- **Live Protocols line** under the pills and over the tabs: `Live Protocols  On` in GREEN with the protocol's name and open count, or `Off` in gray.
+- **The tab strip**, Excel vibe: a live protocol is listed first and always has a tab of its own (Editing Protocol, Briefing Protocol; on a Main Mission, suffixed with the milestone it runs on); then one tab per Workspace page, left to right by creation; Planning only on MMA or a mission that already carries a program plan; a plus at the end opens `Tab N`. Double-click a page tab to rename it.
+- **The head of a tab**, before the content: `Created <when> · Updated <when>`, then Type and Draw.
+- **The sheet**: the Workspace page itself (type, draw, Taller, Delete Page). Nothing embedded: no iframes, no built pages (those live on the Lumen panel's Build tab), no lists.
+
+What left the Workbench that day: Marks and a Mythic's milestones (read them under Done and Next on the Briefing; Lumen or a session adds one), the Session Board tie, the Sessions strip (Cold Start on the Briefing is the hand), and In Play, which now reads under Files between Bring In and Filed. Pinning evidence happens under Files.

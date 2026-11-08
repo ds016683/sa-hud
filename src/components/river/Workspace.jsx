@@ -42,7 +42,7 @@ function paint(canvas, strokes, live) {
 
 // One open page: the text layer beneath, the ink layer on top. Type and Draw
 // decide which layer the pointer reaches; both always show.
-function Page({ root, slug, doc: initial, onClose, onRemoved }) {
+export function Page({ root, slug, doc: initial, onClose, onRemoved, embedded = false, title = null }) {
   const [doc, setDoc] = useState(initial)
   const [mode, setMode] = useState('type')
   const [color, setColor] = useState(INK)
@@ -66,6 +66,8 @@ function Page({ root, slug, doc: initial, onClose, onRemoved }) {
   }, [])
   useEffect(() => { size(); const ro = new ResizeObserver(size); if (wrapRef.current) ro.observe(wrapRef.current); return () => ro.disconnect() }, [size, doc.height])
   useEffect(() => () => { clearTimeout(timer.current); if (statusRef.current === 'unsaved') writePage(root, slug, docRef.current).catch(() => {}) }, [root, slug])
+  // A rename from the tab (11/7): the new title lands in the working copy before any pending autosave can write the old one back.
+  useEffect(() => { if (title && title !== docRef.current.title) { docRef.current = { ...docRef.current, title }; setDoc(docRef.current) } }, [title])
 
   const pos = (e) => { const r = canvasRef.current.getBoundingClientRect(); return { x: Math.round((e.clientX - r.left) * 10) / 10, y: Math.round((e.clientY - r.top) * 10) / 10, p: e.pointerType === 'pen' ? Math.max(0.15, e.pressure || 0.5) : 0.5 } }
   const down = (e) => { if (e.pointerType === 'touch' && e.isPrimary === false) return; e.preventDefault(); canvasRef.current.setPointerCapture(e.pointerId); live.current = { color: css(color), width, eraser, pts: [pos(e)] }; repaint() }
@@ -79,14 +81,17 @@ function Page({ root, slug, doc: initial, onClose, onRemoved }) {
   const close = async () => { if (statusRef.current === 'unsaved' || statusRef.current === 'saving') await save(); onClose() }
 
   const statusColor = status === 'saved' ? GRAY : status === 'saving' || status === 'unsaved' ? INK2 : RED
+  const sheet = embedded ? { border: `1px solid ${PANEL_BORDER}`, borderTop: 'none', borderRadius: '0 10px 10px 10px', background: PANEL_BG, padding: '12px 14px 10px' } : {}
   return (
-    <div style={{ minWidth: 0 }}>
+    <div style={{ minWidth: 0, ...sheet }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 10 }}>
-        <button onClick={rename} title="Rename" style={{ background: 'transparent', border: 'none', padding: 0, cursor: 'text', fontFamily: SERIF, fontSize: 17, fontWeight: 600, color: INK, textAlign: 'left', minWidth: 0, flex: '1 1 240px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{doc.title}</button>
-        <span style={{ ...mono, color: statusColor }}>{status === 'saved' ? `Saved ${fmt(doc.updated_at)}` : status}</span>
+        {embedded
+          ? <span style={{ ...mono, flex: '1 1 240px', color: GRAY }}>Created {fmt(doc.created_at)} · Updated {fmt(doc.updated_at)}{status !== 'saved' && <span style={{ color: statusColor, marginLeft: 10 }}>{status}</span>}</span>
+          : <button onClick={rename} title="Rename" style={{ background: 'transparent', border: 'none', padding: 0, cursor: 'text', fontFamily: SERIF, fontSize: 17, fontWeight: 600, color: INK, textAlign: 'left', minWidth: 0, flex: '1 1 240px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{doc.title}</button>}
+        {!embedded && <span style={{ ...mono, color: statusColor }}>{status === 'saved' ? `Saved ${fmt(doc.updated_at)}` : status}</span>}
         <button onClick={() => setMode('type')} style={btn(mode === 'type' ? BLUE : INK2, mode === 'type')}><Type size={11} /> Type</button>
         <button onClick={() => setMode('draw')} style={btn(mode === 'draw' ? BLUE : INK2, mode === 'draw')}><Pen size={11} /> Draw</button>
-        <button onClick={close} style={btn(INK2)}><X size={11} /> Close</button>
+        {onClose && <button onClick={close} style={btn(INK2)}><X size={11} /> Close</button>}
       </div>
       {mode === 'draw' && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 10 }}>
@@ -99,7 +104,7 @@ function Page({ root, slug, doc: initial, onClose, onRemoved }) {
           <button onClick={clearInk} style={btn(INK2)}><Trash2 size={11} /> Clear Ink</button>
         </div>
       )}
-      <div ref={wrapRef} style={{ position: 'relative', height: doc.height || 720, background: PANEL_BG, border: `1px solid ${PANEL_BORDER}`, borderRadius: 10, overflow: 'hidden' }}>
+      <div ref={wrapRef} style={{ position: 'relative', height: doc.height || 720, background: embedded ? 'rgba(0,0,0,0.12)' : PANEL_BG, border: `1px solid ${PANEL_BORDER}`, borderRadius: 10, overflow: 'hidden' }}>
         <textarea
           value={doc.text}
           onChange={e => touch({ text: e.target.value })}
