@@ -78,7 +78,7 @@ async function nextSteps(g) {
   if (!process.env.ANTHROPIC_API_KEY) return []
   const prompt = `David pressed the brain on his Loadout card for "${g.title}" (${g.kind}${g.project ? ` on ${g.project}` : ''}).${g.star ? ` His North Star for it, what will be true that wasn't true before: "${g.star}". Every step you suggest must move toward that line.` : ''} Here is everything the system has on it, oldest first:\n${g.history.map(h => `- ${h.when}: ${h.text}`).join('\n') || '- nothing recorded'}\n\nGive David two or three next steps. Plain, one line each, concrete, in his language, no preamble, no numbering. Return a JSON array of strings and nothing else.`
   try {
-    const r = await fetch('https://api.anthropic.com/v1/messages', { method: 'POST', headers: { 'x-api-key': process.env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' }, body: JSON.stringify({ model: process.env.LUMEN_MODEL || 'claude-sonnet-5', max_tokens: 400, messages: [{ role: 'user', content: prompt }] }) })
+    const r = await fetch('https://api.anthropic.com/v1/messages', { method: 'POST', headers: { 'x-api-key': process.env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' }, body: JSON.stringify({ model: process.env.LUMEN_MODEL || 'claude-opus-5-5', max_tokens: 400, messages: [{ role: 'user', content: prompt }] }) })
     const j = await r.json(); const text = (j.content || []).map(c => c.text || '').join('')
     const m = text.match(/\[[\s\S]*\]/); return m ? JSON.parse(m[0]).slice(0, 3).map(String) : []
   } catch { return [] }
