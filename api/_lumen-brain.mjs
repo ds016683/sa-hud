@@ -4,7 +4,7 @@
 
 import { sb, sbWrite, identityDoc, chiToday, TOOLS, callTool } from './_ledger.mjs'
 
-const MODEL = () => process.env.LUMEN_MODEL || 'claude-sonnet-5'
+const MODEL = () => process.env.LUMEN_MODEL || 'claude-opus-5-5'
 const RECENT = 40          // messages of verbatim thread carried into each turn
 const FOLD_AT = 120        // when the unfolded thread exceeds this, write a memory summary
 

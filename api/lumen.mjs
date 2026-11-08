@@ -24,7 +24,7 @@ export async function readImage(bytes, mime, caption) {
   const b64 = Buffer.from(bytes).toString('base64')
   const r = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST', headers: { 'x-api-key': process.env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
-    body: JSON.stringify({ model: process.env.LUMEN_MODEL || 'claude-sonnet-5', max_tokens: 3000, messages: [{ role: 'user', content: [
+    body: JSON.stringify({ model: process.env.LUMEN_MODEL || 'claude-opus-5-5', max_tokens: 3000, messages: [{ role: 'user', content: [
       { type: 'image', source: { type: 'base64', media_type: mime || 'image/jpeg', data: b64 } },
       { type: 'text', text: `Classify this photo and reply with ONLY JSON, no prose.
 1. InBody body-composition screen: {"kind":"inbody","scan":{"weight_lbs":number,"smm_lbs":number,"pbf_pct":number,"ecw_tbw":number}} (null for an unreadable field).

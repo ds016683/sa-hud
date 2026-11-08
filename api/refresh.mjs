@@ -243,7 +243,7 @@ export default async function handler(req, res) {
         method: 'POST',
         headers: { 'x-api-key': process.env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
         body: JSON.stringify({
-          model: 'claude-sonnet-5',
+          model: process.env.LUMEN_MODEL || 'claude-opus-5-5',
           max_tokens: 24000,
           system: INSTRUCTIONS,
           tools: [SUBMIT_TOOL],

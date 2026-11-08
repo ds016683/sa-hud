@@ -5,7 +5,7 @@
 // draft for him to edit and confirm.
 import { authorized } from './lumen-hud.mjs'
 
-const MODEL = () => process.env.LUMEN_MODEL || 'claude-sonnet-5'
+const MODEL = () => process.env.LUMEN_MODEL || 'claude-opus-5-5'
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'POST' })
