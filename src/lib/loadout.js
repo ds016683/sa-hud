@@ -162,6 +162,15 @@ export async function returnToInventory(objectiveId) {
   if (error) throw new Error(error.message)
 }
 
+// Holster (David 11/7): off the board and back to the Missions Inventory (parked, no Stash tag), the clock stopped.
+// A Main Mission task keeps its bridge and stays promoted, as the Stash does, so it loads again in one move.
+export async function unload(objectiveId) {
+  await holster(objectiveId)
+  const o = (await q(supabase.from('objectives').select('tags').eq('id', objectiveId).limit(1)))[0]
+  const { error } = await supabase.from('objectives').update({ state: 'parked', activated_at: null, tags: (o?.tags || []).filter(t => t !== 'stashed') }).eq('id', objectiveId)
+  if (error) throw new Error(error.message)
+}
+
 // Extract: release the item, keep its clock in the Ledger (never Harvest),
 // close a linked Main Mission task, file a note if there is one.
 export async function extract(item, { minutes, note } = {}) {

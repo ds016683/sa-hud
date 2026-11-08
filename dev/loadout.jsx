@@ -16,15 +16,16 @@ function App() {
   const [items, setItems] = useState(seed)
   // local act: the message names the verb; Equip and Holster flip the running state here, nothing touches the Ledger
   const act = (fn, msg) => {
-    const m = /^(Equipped|Holstered): (.*)$/.exec(msg)
-    if (m) setItems(prev => prev.map(i => i.title === m[2] || (i.task_text && m[2] === i.title) ? { ...i, equipped: m[1] === 'Equipped' } : m[1] === 'Equipped' ? { ...i, equipped: false } : i))
+    const m = /^(Clock running|Clock stopped|Holstered|Stashed): (.*)$/.exec(msg)
+    if (m && m[1].startsWith('Clock')) setItems(prev => prev.map(i => i.title === m[2] ? { ...i, equipped: m[1] === 'Clock running' } : m[1] === 'Clock running' ? { ...i, equipped: false } : i))
+    else if (m) setItems(prev => prev.filter(i => i.title !== m[2]))
     console.log(msg)
   }
   let n = 1
   return (
     <div className="sa-dark" style={{ minHeight: '100vh', background: 'var(--hud-surface, #0E2336)', padding: 24, color: 'var(--hud-ink, #EAF1F8)', fontFamily: 'Instrument Sans, system-ui, sans-serif' }}><div style={{ maxWidth: 1480, margin: '0 auto' }}>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 14, alignItems: 'stretch' }}>
-        {items.map(it => { const at = n; n += it.slots; return <FilledSlot key={it.id} it={it} n={at} act={act} onOpen={() => {}} onExtract={() => console.log('extract')} onRecall={() => console.log('recall')} clips={it.id === 'a' ? 3 : 0} onFiles={() => console.log('files')} /> })}
+        {items.map(it => { const at = n; n += it.slots; return <FilledSlot key={it.id} it={it} n={at} act={act} onOpen={() => {}} onExtract={() => console.log('extract')} onRecall={() => console.log('recall')} /> })}
       </div>
     </div></div>
   )

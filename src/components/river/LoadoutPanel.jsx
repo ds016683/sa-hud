@@ -18,7 +18,7 @@ import { supabase } from '../../lib/supabase'
 import { DispatchModal } from './AmbushPanel'
 import { pockets } from '../../lib/objectives'
 import FileAway from './FileAway'
-import { fetchLoadout, equip, holster, stash, extract, addImpromptu, fmtClock, SIZES, SLOTS, sizeOf, hoursOf, chiToday, fetchStash, returnToInventory, equipObjective, STASH_MAX, logBoard } from '../../lib/loadout'
+import { fetchLoadout, equip, holster, unload, stash, extract, addImpromptu, fmtClock, SIZES, SLOTS, sizeOf, hoursOf, chiToday, fetchStash, returnToInventory, equipObjective, STASH_MAX, logBoard } from '../../lib/loadout'
 import { fileAchieved } from '../../lib/archive'
 import { Undo2, ArrowUpToLine, ScrollText, Paperclip } from 'lucide-react'
 import ActivityLogModal from './ActivityLog'
@@ -40,41 +40,73 @@ const btn = (color = INK2, filled = false) => ({
 // item's hour budget for the day (a Bounty's hour, a Contract's four, a Mythic's eight), the clock reads in serif like the
 // other figures on the card, and the state word says Running (green, the one thing green means here) or Holstered.
 const CLOCK_RING = 22
-function ClockStrip({ minutes = 0, hours = 1, running = false }) {
+// Click the strip to toggle the clock (David 11/7): running stops it, paused starts it and stops any other.
+function ClockStrip({ minutes = 0, hours = 1, running = false, onToggle }) {
+  const [hot, setHot] = useState(false)
   const r = (CLOCK_RING - 3) / 2, c = 2 * Math.PI * r
   const frac = Math.max(0, Math.min(1, (Number(minutes) || 0) / Math.max(hours * 60, 1)))
   const tone = running ? GREEN : LABEL
+  const edge = running ? alpha(GREEN, hot ? 75 : 45) : alpha(BLUE, hot ? 55 : 22)
   return (
-    <div title={running ? 'The clock is running on this item' : 'The clock is holstered; the minutes are today\'s'} style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '5px 12px 5px 7px', borderRadius: 999, border: `1px solid ${running ? alpha(GREEN, 45) : alpha(BLUE, 22)}`, background: running ? alpha(GREEN, 6) : 'transparent' }}>
+    <div role="button" tabIndex={0} aria-pressed={running} onClick={onToggle} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onToggle?.() } }} onMouseEnter={() => setHot(true)} onMouseLeave={() => setHot(false)}
+      title={running ? 'Stop the clock' : 'Start the clock on this item; any other clock stops'}
+      style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '5px 12px 5px 7px', borderRadius: 999, border: `1px solid ${edge}`, background: running ? alpha(GREEN, hot ? 10 : 6) : hot ? alpha(BLUE, 6) : 'transparent', cursor: 'pointer', userSelect: 'none', transition: 'border-color 0.15s, background 0.15s' }}>
       <svg width={CLOCK_RING} height={CLOCK_RING} viewBox={`0 0 ${CLOCK_RING} ${CLOCK_RING}`} style={{ flexShrink: 0 }}>
         <circle cx={CLOCK_RING / 2} cy={CLOCK_RING / 2} r={r} fill="none" stroke={alpha(INK2, 22)} strokeWidth={2} />
         <circle cx={CLOCK_RING / 2} cy={CLOCK_RING / 2} r={r} fill="none" stroke={tone} strokeWidth={2} strokeLinecap="round" strokeDasharray={`${c * frac} ${c}`} transform={`rotate(-90 ${CLOCK_RING / 2} ${CLOCK_RING / 2})`} style={{ transition: 'stroke-dasharray 0.6s' }} />
         <circle cx={CLOCK_RING / 2} cy={CLOCK_RING / 2} r={2.6} fill={tone} style={running ? { animation: 'hudClockPulse 1.6s ease-in-out infinite' } : undefined} />
       </svg>
       <span style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 15, color: INK, lineHeight: 1 }}>{fmtClock(minutes)}</span>
-      <span style={{ fontSize: 11.5, color: MUTED, lineHeight: 1 }}>of {hours}h</span>
+      <span style={{ fontSize: 11.5, color: MUTED, lineHeight: 1, whiteSpace: 'nowrap' }}>of {hours}h</span>
       <span style={{ flex: 1 }} />
-      <span style={{ fontSize: 11.5, fontWeight: 600, color: running ? GREEN : MUTED, lineHeight: 1 }}>{running ? 'Running' : 'Holstered'}</span>
+      <span style={{ fontSize: 11.5, fontWeight: 600, color: running ? GREEN : MUTED, lineHeight: 1, whiteSpace: 'nowrap' }}>{running ? 'Running' : 'Paused'}</span>
       {running && <style>{'@keyframes hudClockPulse{0%,100%{opacity:1}50%{opacity:.3}}'}</style>}
     </div>
   )
 }
 
-// The verbs, balanced (David 11/7): equal cells across the card, the icon buttons as a pair at the end. The first cell is
-// the verb the item can take now, Holster while the clock runs, Equip while it rests; Stash parks it; Extract (gold, the one
-// primary action on the face) closes it. Chrome is one color at rest, per CARD-CANON.
-const vbtn = (color = INK2) => ({ ...btn(color), justifyContent: 'center', width: '100%', padding: '7px 6px', borderRadius: 8, whiteSpace: 'nowrap' })
-function VerbRow({ cells, tail }) {
+// The verbs (David 11/7): loaded is equipped, so there are three, as glyphs at the bottom left in the Marathon map idiom
+// (a reticle ring, an arrow, ticks): Holster sends the item back to its repository, Stash holds it on the board, Extract
+// closes it and banks the miles. Lumen keeps the bottom right. Chrome is one color at rest, Extract the one gold action.
+const GLYPH = { fill: 'none', stroke: 'currentColor', strokeWidth: 1.7, strokeLinecap: 'round', strokeLinejoin: 'round' }
+const GlyphExtract = ({ size = 15 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" {...GLYPH}>
+    <path d="M6.3 6.3A8 8 0 1 0 17.7 6.3" />
+    <path d="M12 16V3.5M8.3 7.2 12 3.5l3.7 3.7" />
+    <path d="M2.5 12h2M19.5 12h2M12 19.5v2" />
+  </svg>
+)
+const GlyphHolster = ({ size = 15 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" {...GLYPH}>
+    <path d="M9.5 4.5H4.5v15h5" />
+    <path d="M20 12H9M12.8 8.2 9 12l3.8 3.8" />
+    <path d="M19.5 7.5v-2M19.5 18.5v-2" />
+  </svg>
+)
+const GlyphStash = ({ size = 15 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" {...GLYPH}>
+    <path d="M4 14.5l8 4 8-4M4 18l8 4 8-4" />
+    <path d="M12 2.5V13M8.3 9.3 12 13l3.7-3.7" />
+  </svg>
+)
+function IconVerb({ color = INK2, title, onClick, children }) {
+  const [hot, setHot] = useState(false)
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: `repeat(${cells.length}, minmax(0, 1fr))${tail ? ' auto' : ''}`, gap: 6, alignItems: 'center' }}>
-      {cells}
-      {tail && <span style={{ display: 'inline-flex', gap: 6, alignItems: 'center', paddingLeft: 2 }}>{tail}</span>}
+    <button type="button" onClick={onClick} title={title} aria-label={title} onMouseEnter={() => setHot(true)} onMouseLeave={() => setHot(false)}
+      style={{ width: 32, height: 32, borderRadius: 99, border: `1px solid ${alpha(color, hot ? 85 : 40)}`, background: hot ? alpha(color, 10) : 'transparent', color, display: 'inline-grid', placeItems: 'center', cursor: 'pointer', flexShrink: 0, padding: 0, transition: 'border-color 0.15s, background 0.15s' }}>
+      {children}
+    </button>
+  )
+}
+function VerbRow({ verbs, tail }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+      {verbs}
+      <span style={{ flex: 1 }} />
+      {tail}
     </div>
   )
 }
-const ClockVerb = ({ it, act }) => it.equipped
-  ? <button key="clock" onClick={() => act(() => holster(it.id), `Holstered: ${it.title}`)} title="Holster: pause the clock, it stays loaded" style={vbtn(INK2)}><Pause size={11} /> Holster</button>
-  : <button key="clock" onClick={() => act(() => equip(it.id), `Equipped: ${it.title}`)} title="Equip: run the clock on this, holster the rest" style={vbtn(INK2)}><Play size={11} /> Equip</button>
 
 const SizeChip = ({ size }) => {
   const s = SIZES[size] || SIZES.light
@@ -181,7 +213,7 @@ function MeetingSlot({ it, n, act }) {
   )
 }
 
-export function FilledSlot({ it, n, act, onOpen, onExtract, onRecall, dropFromStash, clips = 0, onFiles }) {
+export function FilledSlot({ it, n, act, onOpen, onExtract, onRecall, dropFromStash }) {
   const span = it.slots || 1
   const color = KIND_COLOR[it.kind] || INK2
   const main = it.kind === 'Main Mission'
@@ -214,14 +246,14 @@ export function FilledSlot({ it, n, act, onOpen, onExtract, onRecall, dropFromSt
         <Fact label="Miles"><span style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 16, color: INK }}>{miles.n}</span><span style={{ fontFamily: MONO, fontSize: 10.5, letterSpacing: '1px', textTransform: 'uppercase', color: LABEL, marginLeft: 5 }}>{miles.sub}</span></Fact>
         <div style={{ borderLeft: `1px solid ${PANEL_BORDER}`, paddingLeft: 12 }}><Fact label="Due">{due ? <span style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 16, color: late ? RED : INK }}>{due}{late ? <span style={{ fontFamily: MONO, fontSize: 9, letterSpacing: '1px', textTransform: 'uppercase', marginLeft: 5 }}>overdue</span> : null}</span> : <span style={{ fontSize: 13, color: GRAY }}>none set</span>}</Fact></div>
       </div>
-      <ClockStrip minutes={it.minutes_today} hours={hoursOf(it)} running={!!it.equipped} />
+      <ClockStrip minutes={it.minutes_today} hours={hoursOf(it)} running={!!it.equipped} onToggle={() => act(() => it.equipped ? holster(it.id) : equip(it.id), it.equipped ? `Clock stopped: ${it.title}` : `Clock running: ${it.title}`)} />
       <VerbRow
-        cells={[
-          <ClockVerb key="clock" it={it} act={act} />,
-          <button key="stash" onClick={() => act(() => stash(it.id), `Stashed: ${it.title}`)} title="Stash: park it, it stays planned" style={vbtn(INK2)}><Archive size={11} /> Stash</button>,
-          <button key="extract" onClick={() => onExtract(it)} title="Extract: close it and bank the miles" style={vbtn(GOLD)}><PackageCheck size={11} /> Extract</button>,
+        verbs={[
+          <IconVerb key="holster" title="Holster · back to its repository" onClick={() => act(() => unload(it.id), `Holstered: ${it.title}`)}><GlyphHolster /></IconVerb>,
+          <IconVerb key="stash" title="Stash · hold it on the board" onClick={() => act(() => stash(it.id), `Stashed: ${it.title}`)}><GlyphStash /></IconVerb>,
+          <IconVerb key="extract" color={GOLD} title="Extract · close it, bank the miles" onClick={() => onExtract(it)}><GlyphExtract /></IconVerb>,
         ]}
-        tail={<>{onFiles && <ClipButton count={clips} onClick={() => onFiles(it)} />}<BrainButton onClick={() => onRecall(it)} /></>}
+        tail={<BrainButton onClick={() => onRecall(it)} />}
       />
     </div>
   )
@@ -275,12 +307,9 @@ function AdHocSlot({ item, act, onDispatch, onOpen, onChanged, onRecall }) {
           <Fact label="Miles"><span style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 16, color: INK }}>1</span><span style={{ fontFamily: MONO, fontSize: 10.5, letterSpacing: '1px', textTransform: 'uppercase', color: LABEL, marginLeft: 5 }}>on dispatch</span></Fact>
           <div style={{ borderLeft: `1px solid ${PANEL_BORDER}`, paddingLeft: 12 }}><Fact label="Landed">{since ? <span style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 16, color: INK }}>{since}</span> : <span style={{ fontSize: 13, color: GRAY }}>today</span>}</Fact></div>
         </div>
-        <ClockStrip minutes={item.minutes_today} hours={hoursOf(item)} running={!!item.equipped} />
+        <ClockStrip minutes={item.minutes_today} hours={hoursOf(item)} running={!!item.equipped} onToggle={() => act(() => item.equipped ? holster(item.id) : equip(item.id), item.equipped ? `Clock stopped: ${item.title}` : `Clock running: ${item.title}`)} />
         <VerbRow
-          cells={[
-            <ClockVerb key="clock" it={item} act={act} />,
-            <button key="dispatch" onClick={() => onDispatch(item)} title="Dispatch: done, 1 mile" style={vbtn(GOLD)}><Swords size={11} /> Dispatch</button>,
-          ]}
+          verbs={[<IconVerb key="dispatch" color={GOLD} title="Dispatch · done, 1 mile" onClick={() => onDispatch(item)}><Swords size={14} /></IconVerb>]}
           tail={<BrainButton onClick={() => onRecall(item)} />}
         />
       </div>
@@ -525,7 +554,7 @@ export default function LoadoutPanel({ onChange, refreshKey = 0, bare = false })
       ) : (
         <>
           <div className="board-slots">
-            {layout.placed.map(({ it, n }) => it.meeting ? <MeetingSlot key={it.id} it={it} n={n} act={act} /> : <FilledSlot key={it.id} it={it} n={n} act={act} onOpen={(it) => openCard(it.id)} onExtract={extractGate} onRecall={setRecallOf} clips={clips[it.id] || 0} onFiles={(x) => setFilesOpen({ objectiveId: x.id, title: x.kind === 'Main Mission' ? (x.task_text || x.title).replace(/^\s*\d+\s*[·.:)-]\s*/, '') : x.title })} dropFromStash={(id) => act(async () => { const r = await equipObjective(id, { clock: true, ignoreStamina: true }); if (!r.ok) throw new Error(r.reasons.join(' · ')) }, 'Loaded from the Stash · timer on')} />)}
+            {layout.placed.map(({ it, n }) => it.meeting ? <MeetingSlot key={it.id} it={it} n={n} act={act} /> : <FilledSlot key={it.id} it={it} n={n} act={act} onOpen={(it) => openCard(it.id)} onExtract={extractGate} onRecall={setRecallOf} dropFromStash={(id) => act(async () => { const r = await equipObjective(id, { clock: true, ignoreStamina: true }); if (!r.ok) throw new Error(r.reasons.join(' · ')) }, 'Loaded from the Stash · timer on')} />)}
             {layout.empties.map(n => <EmptySlot key={`empty-${n}`} n={n} dropFromStash={(id) => act(async () => { const r = await equipObjective(id, { clock: true, ignoreStamina: true }); if (!r.ok) throw new Error(r.reasons.join(' · ')) }, 'Loaded from the Stash · timer on')} />)}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10, minWidth: 0, alignSelf: 'stretch' }}>
               <AdHocSlot item={L.adhoc[0] || null} act={act} onDispatch={setDispatch} onOpen={(it) => openCard(it.id)} onChanged={bump} onRecall={setRecallOf} />
