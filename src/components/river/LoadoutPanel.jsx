@@ -256,7 +256,7 @@ export function FilledSlot({ it, n, act, onOpen, onExtract, onRecall, dropFromSt
       <ClockStrip minutes={it.minutes_today} hours={hoursOf(it)} running={!!it.equipped} onToggle={() => act(() => it.equipped ? holster(it.id) : equip(it.id), it.equipped ? `Clock stopped: ${it.title}` : `Clock running: ${it.title}`)} />
       <VerbRow
         verbs={[
-          <IconVerb key="holster" title="Holster · back to its repository" onClick={() => act(() => unload(it.id), `Holstered: ${it.title}`)}><GlyphHolster /></IconVerb>,
+          <IconVerb key="holster" title="Holster · Back to the Mission Board" onClick={() => act(() => unload(it.id), `Holstered: ${it.title}`)}><GlyphHolster /></IconVerb>,
           <IconVerb key="stash" title="Stash · hold it on the board" onClick={() => act(() => stash(it.id), `Stashed: ${it.title}`)}><GlyphStash /></IconVerb>,
           <ExtractMarker key="extract" title="Extract · close it, bank the miles" onClick={() => onExtract(it)} />,
         ]}
