@@ -6,7 +6,7 @@ import { X as XIcon, Check, ExternalLink } from 'lucide-react'
 import BadgeMedallion from '../BadgeArt'
 import { missionSummary, fmtDay } from '../../lib/summary'
 import { signedUrl } from '../../lib/archive'
-import { INK, INK2, GRAY, PANEL_BORDER, GOLD, GREEN, SUCCESS, BLUE, MONO, SERIF, S, KindIcon, Label, NORTH_STAR_LABEL, LABEL, alpha, RED } from './canon'
+import { INK, INK2, GRAY, PANEL_BORDER, GOLD, GREEN, SUCCESS, BLUE, MONO, SERIF, S, KindIcon, Label, NORTH_STAR_LABEL, LABEL, MUTED, alpha, RED } from './canon'
 import DocView from './DocView'
 import SessionBoard from './SessionBoard'
 
