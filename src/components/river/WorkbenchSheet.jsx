@@ -9,12 +9,17 @@
 // Live Protocols line between the pills and the tabs says On or Off. Marks,
 // boards, sessions and the files in play left this surface the same day; the
 // files in play read under Files.
+// A page built on the card (build_page from Lumen, a pipeline-fed view such
+// as the BS Test Lab Usage page, a skill brought in) is a tab too (David 11/9:
+// "i don't see the analytics module we built on the workbench anywhere"),
+// listed after the protocols and before the Workspace pages, newest first,
+// rendered through srcDoc the way the Lumen panel's Build tab renders it.
 import { useEffect, useState } from 'react'
-import { Plus } from 'lucide-react'
+import { Plus, RefreshCw, ExternalLink } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { listPages, readPage, writePage, blankPage, slugify } from '../../lib/workspace'
 import { PROTOCOLS, protocolOf, isOpenRow } from '../../lib/protocols'
-import { LEDGER_EVENT } from '../../lib/lumenPanel'
+import { LEDGER_EVENT, listBuilds, readBuildHtml, buildUrl } from '../../lib/lumenPanel'
 import { Page } from './Workspace'
 import ProtocolsTab from './Protocols'
 import PlanningCanvas from './PlanningCanvas'
@@ -25,6 +30,7 @@ import { hudPrompt } from '../../lib/dialog'
 const fmt = (iso) => iso ? new Date(iso).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : ''
 const mono = { fontFamily: MONO, fontSize: 9.5, letterSpacing: '1px', textTransform: 'uppercase', color: GRAY }
 const remember = (root) => `hud:sheet:${root}`
+const smallBtn = { display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 10px', fontSize: 11.5, color: INK2, background: 'transparent', border: `1px solid ${PANEL_BORDER}`, borderRadius: 999, cursor: 'pointer' }
 // The MMA Planning canvas is a tab too, only on the MMA missions or one that already carries a program plan (it used to render everywhere).
 const isMMA = (project) => /^Client\.MMA/i.test(String(project?.key || ''))
 
@@ -58,6 +64,9 @@ function Tab({ active, live = false, onClick, onDoubleClick, children, title }) 
 
 export default function WorkbenchSheet({ root, scopes = [], project = null }) {
   const [pages, setPages] = useState(null)
+  const [builds, setBuilds] = useState([])
+  const [html, setHtml] = useState(null) // the open built page
+  const [nonce, setNonce] = useState(0)
   const [planning, setPlanning] = useState(() => isMMA(project) ? project : null)
   const [protocols, setProtocols] = useState([])
   const [sel, setSel] = useState(() => { try { return localStorage.getItem(remember(root)) } catch { return null } })
@@ -74,19 +83,22 @@ export default function WorkbenchSheet({ root, scopes = [], project = null }) {
     Promise.all([
       listPages(root).then(r => [...r].sort(byCreated)).catch(e => { if (on) setMsg(`Could not read: ${e.message}`); return [] }),
       loadProtocols(scopes),
-    ]).then(([pg, pr]) => { if (on) { setPages(pg); setProtocols(pr) } })
+      listBuilds(root).catch(() => []),
+    ]).then(([pg, pr, bd]) => { if (on) { setPages(pg); setProtocols(pr); setBuilds(bd) } })
     return () => { on = false }
   }, [root, scopeKey, tick]) // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { const on = () => setTick(t => t + 1); window.addEventListener(LEDGER_EVENT, on); return () => window.removeEventListener(LEDGER_EVENT, on) }, [])
 
   const tabs = [
     ...protocols.map(g => ({ id: `protocol:${g.key}`, kind: 'protocol', label: `${(PROTOCOLS[g.protocol] || { label: `${g.protocol} protocol` }).label}${g.scope ? ` · ${g.scope}` : ''}`, live: g.open > 0, g })),
+    ...builds.map(b => ({ id: `build:${b.slug}`, kind: 'build', label: b.title || b.slug, build: b })),
     ...(pages || []).map(p => ({ id: `page:${p.slug}`, kind: 'page', label: p.title, page: p })),
     ...(planning ? [{ id: 'planning', kind: 'planning', label: 'Planning' }] : []),
   ]
   const current = tabs.find(t => t.id === sel) || tabs[0] || null
   const currentId = current?.id || null
   const currentSlug = current?.kind === 'page' ? current.page.slug : null
+  const currentBuild = current?.kind === 'build' ? current.build.slug : null
   useEffect(() => { if (currentId) { try { localStorage.setItem(remember(root), currentId) } catch { /* fine */ } } }, [currentId, root])
 
   // Open the page under the current tab (a stale page under another tab is harmless; the render checks the slug).
@@ -96,6 +108,15 @@ export default function WorkbenchSheet({ root, scopes = [], project = null }) {
     readPage(root, currentSlug).then(doc => { if (on) setOpen({ slug: currentSlug, doc }) }).catch(e => { if (on) setMsg(`Could not open: ${e.message}`) })
     return () => { on = false }
   }, [currentSlug, root])
+
+  // A built page: read its HTML when its tab opens or on Refresh (a pipeline rewrites it in storage without a Ledger event).
+  useEffect(() => {
+    if (!currentBuild) { setHtml(null); return }
+    let on = true
+    setHtml(null)
+    readBuildHtml(root, currentBuild).then(h => { if (on) setHtml(h) }).catch(() => { if (on) setHtml('') })
+    return () => { on = false }
+  }, [currentBuild, root, nonce])
 
   const add = async () => {
     const n = (pages || []).length + 1
@@ -143,6 +164,21 @@ export default function WorkbenchSheet({ root, scopes = [], project = null }) {
       )}
       {current?.kind === 'planning' && (
         <div style={{ border: `1px solid ${PANEL_BORDER}`, borderTop: 'none', borderRadius: '0 10px 10px 10px', background: PANEL_BG, padding: '12px 14px 14px', minWidth: 0, overflow: 'hidden' }}><PlanningCanvas project={planning} /></div>
+      )}
+      {current?.kind === 'build' && (
+        <div style={{ border: `1px solid ${PANEL_BORDER}`, borderTop: 'none', borderRadius: '0 10px 10px 10px', background: PANEL_BG, padding: '12px 14px 14px', minWidth: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 10 }}>
+            <span style={mono}>Created {fmt(current.build.created_at)} · Updated {fmt(current.build.updated_at)}</span>
+            {current.build.note && <span style={{ fontSize: 12.5, color: INK2, flex: 1, minWidth: 200 }}>{current.build.note}</span>}
+            <button onClick={() => setNonce(n => n + 1)} title="Reread the page" style={smallBtn}><RefreshCw size={11} /> Refresh</button>
+            <button onClick={async () => window.open(await buildUrl(root, current.build.slug), '_blank', 'noopener')} title="Open in a new tab" style={smallBtn}><ExternalLink size={11} /> Open</button>
+          </div>
+          {html === null
+            ? <div style={mono}>Opening the page</div>
+            : html === ''
+              ? <div style={{ fontSize: 13, color: GRAY }}>Could not read this page. Open it in a new tab.</div>
+              : <iframe key={`${current.build.slug}:${nonce}`} title={current.label} srcDoc={html} sandbox="allow-scripts allow-popups allow-forms allow-modals" style={{ display: 'block', width: '100%', height: 'min(1100px, 78vh)', minHeight: 520, border: `1px solid ${PANEL_BORDER}`, borderRadius: 10, background: '#0F2334' }} />}
+        </div>
       )}
       {current?.kind === 'page' && (open && open.slug === current.page.slug
         ? <Page key={open.slug} root={root} slug={open.slug} doc={open.doc} embedded title={current.page.title} onRemoved={removed} />
