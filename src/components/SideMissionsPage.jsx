@@ -13,6 +13,7 @@ import { fetchLoadout, SIZES } from '../lib/loadout'
 import { INK, INK2, GRAY, PANEL_BORDER, GOLD, GOLD_BRIGHT, BLUE, GREEN, RED, PURPLE, MONO, S, Panel, Label, chiToday, NORTH_STAR_LABEL, NORTH_STAR_ASK, LABEL, alpha } from './river/canon'
 import { hudConfirm } from '../lib/dialog'
 import { openCard } from '../lib/card'
+import { LEDGER_EVENT } from '../lib/lumenPanel'
 const btn = (color = INK2, filled = false, extra = {}) => ({
   display: 'inline-flex', alignItems: 'center', gap: 5, fontFamily: MONO, fontSize: 9.5, letterSpacing: '1px', textTransform: 'uppercase',
   padding: '5px 9px', borderRadius: 8, border: `1px solid ${filled ? color : `${alpha(color, 40)}`}`, background: filled ? color : 'transparent', color: filled ? 'var(--hud-on-accent)' : color, cursor: 'pointer', ...extra,
@@ -88,7 +89,7 @@ function Row({ o, container, loadItem, onOpen, onRoute, onDone, onBin, onRestore
           <span style={chip(SIZES[size].color)}>{SIZES[size].label}</span>
           <span style={chip(realmOf(o) === 'personal' ? GOLD : PURPLE)}>{realmOf(o) === 'personal' ? 'Personal' : 'Third Horizon'}</span>
           <span style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '0.6px', color: GRAY }}>{prov.label}</span>
-          {o.due_date && <span style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '0.6px', color: late ? RED : GRAY }}>due {fmtDay(o.due_date)}{late ? ' · overdue' : ''}</span>}
+          {o.due_date && <span style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '0.6px', color: late ? RED : LABEL }}>Target Completion {fmtDay(o.due_date)}{late ? ' · overdue' : ''}</span>}
           {container === 'follow_up' && o.follow_up_date && <span style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '0.6px', color: o.follow_up_date <= today ? '#E0985C' : GRAY }}>follow up {fmtDay(o.follow_up_date)}</span>}
           {container === 'released' && o.released_at && <span style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '0.6px', color: GRAY }}>released {fmtDay(o.released_at.slice(0, 10))}{o.released_kind && o.released_kind !== 'done' ? ` · ${o.released_kind}` : ''}</span>}
           {loadItem && <span style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '0.6px', color: loadItem.equipped ? GREEN : BLUE }}>{loadItem.equipped ? 'on the Board · running' : 'on the Board · holstered'}</span>}
@@ -128,6 +129,8 @@ export default function SideMissionsPage({ onNavigate }) {
   const [range, setRange] = useState(7)
   const refresh = useCallback(() => Promise.all([fetchObjectives(), fetchLoadout()]).then(([r, l]) => { setRows(r); setL(l) }).catch(e => setMsg(`Could not read: ${e.message}`)), [])
   useEffect(() => { Promise.resolve().then(refresh) }, [refresh])
+  // A card edit (Target Completion, follow up, a route) shows on the row without a reload.
+  useEffect(() => { const h = () => { refresh() }; window.addEventListener(LEDGER_EVENT, h); return () => window.removeEventListener(LEDGER_EVENT, h) }, [refresh])
   const pick = (c) => { setContainer(c); try { localStorage.setItem('sm-container', c) } catch { /* no-op */ } }
 
   // Side Missions only (David 10/26): a promoted milestone is a Main Mission's item and a

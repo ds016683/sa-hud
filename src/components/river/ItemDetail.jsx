@@ -22,7 +22,7 @@ import WorkbenchTab, { WorkbenchIntake } from './Workbench'
 import WorkbenchSheet from './WorkbenchSheet'
 import LumenPanel from './LumenPanel'
 import { openCard } from '../../lib/card'
-import { LEDGER_EVENT } from '../../lib/lumenPanel'
+import { LEDGER_EVENT, fireLedgerChanged } from '../../lib/lumenPanel'
 import { INK, INK2, GRAY, PANEL_BORDER, GOLD, GOLD_BRIGHT, BLUE, GREEN, SUCCESS, RED, CAUTION, MONO, SERIF, S, Label, KIND_COLOR, KindIcon, NORTH_STAR_LABEL, NORTH_STAR_ASK, LABEL, MYTHIC, alpha, NAVY_DEEP, CARD_PILLS, CardPill, Trail } from './canon'
 
 const TABS = CARD_PILLS.map(([id]) => id)
@@ -285,8 +285,8 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
   const [briefs, setBriefs] = useState({})
   const readObjArtifact = useCallback(async (root, slug) => { const { data, error } = await supabase.storage.from('project-files').download(`${root}/artifacts/${slug}.json`); if (error) throw new Error(error.message); return JSON.parse(await data.text()) }, [])
   useEffect(() => { let on = true; const objArts = (rel?.objArtifacts || []); Promise.all(objArts.map(a => readObjArtifact(a.root || `objectives/${obj?.id}`, a.slug).then(d => [a.slug, d]).catch(() => [a.slug, null]))).then(ps => { if (on) setBriefs(Object.fromEntries(ps)) }); return () => { on = false } }, [rel, obj, readObjArtifact])
-  const patchObj = async (patch) => { try { await updateObjective(obj.id, patch); await load(); onChange && onChange() } catch (e) { setMsg(`Could not save: ${e.message}`) } }
-  const patchTask = async (patch) => { try { const { error } = await supabase.from('project_tasks').update(patch).eq('id', task.id); if (error) throw error; await load(); onChange && onChange() } catch (e) { setMsg(`Could not save: ${e.message}`) } }
+  const patchObj = async (patch) => { try { await updateObjective(obj.id, patch); await load(); onChange && onChange(); fireLedgerChanged({ id: obj.id, source: 'card' }) } catch (e) { setMsg(`Could not save: ${e.message}`) } }
+  const patchTask = async (patch) => { try { const { error } = await supabase.from('project_tasks').update(patch).eq('id', task.id); if (error) throw error; await load(); onChange && onChange(); fireLedgerChanged({ id: item.objective_id || item.id, source: 'card' }) } catch (e) { setMsg(`Could not save: ${e.message}`) } }
 
   return (
     <div style={host === 'page' ? { minWidth: 0 } : { position: 'fixed', top: 0, left: 0, bottom: 0, right: 'var(--lumen-aside, 0px)', transition: 'right 220ms ease', zIndex: 240, overflowY: 'auto', background: 'linear-gradient(180deg, var(--hud-surface) 0%, var(--hud-surface-deep) 100%)' }}>
