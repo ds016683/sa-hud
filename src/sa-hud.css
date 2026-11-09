@@ -34,7 +34,7 @@
   --hud-success:        #B4A3E8;                 /* done, closed, achieved: the Main Mission medallion purple (David, 10/25) */
   --hud-purple:         #B4A3E8;                 /* the Mythic (David, 10/29): the same medallion purple, its own token */
   --hud-neg:            #DE7E6E;
-  --hud-warn:           #B8822E;
+  --hud-warn:           #DE7E6E;                 /* flagged, blocked, overdue: the same red as neg. The amber (#B8822E) is retired (David 11/9) */
 }
 [data-theme="light"] {
   --hud-surface:        #FBFAF5;
@@ -54,7 +54,7 @@
   --hud-success:        #5F4DAB;                 /* the same purple, deepened for paper */
   --hud-purple:         #5F4DAB;
   --hud-neg:            #A8382F;
-  --hud-warn:           #946212;
+  --hud-warn:           #A8382F;
 }
 
 /* ===================== sa-hud.css (handoff, verbatim) ===================== */
@@ -97,7 +97,7 @@
 
   /* tier colors */
   --tier-sp: #A8382F; /* S+ */
-  --tier-s:  #B8822E; /* S  */
+  --tier-s:  #F8C761; /* S  */
   --tier-ap: #C49A3A; /* A+ */
   --tier-a:  #2F7A4F; /* A  */
   --tier-c:  #64748B; /* C  */
@@ -559,7 +559,7 @@ body {
 .sa-brief .why { color: var(--sa-ink-2); font-size: 13px; line-height: 1.55; margin: 8px 0 12px; }
 .sa-brief .side { flex: 0 0 auto; display: flex; flex-direction: column; align-items: flex-end; gap: 8px; width: 116px; text-align: right; }
 .sa-brief .side .due { font-family: var(--font-mono); font-size: 10px; color: var(--sa-ink-3); letter-spacing: .5px; }
-.sa-brief .side .due.warn { color: #B8822E; }
+.sa-brief .side .due.warn { color: var(--hud-neg); }
 
 /* ---- staged action row (inbox) ---- */
 .sa-stage { display: flex; align-items: center; gap: 14px; padding: 14px 0; border-bottom: 1px solid var(--sa-border); }
@@ -614,7 +614,7 @@ body {
 .sa-node { position: absolute; background: var(--sa-surface); border: 1px solid var(--sa-border); border-radius: 8px; padding: 10px 12px; min-width: 150px; box-shadow: var(--sa-shadow); }
 .sa-node .nm { font-weight: 600; font-size: 13px; color: var(--sa-ink); }
 .sa-node .st { font-size: 10.5px; margin-top: 3px; }
-.sa-node .st.ok { color: #2F7A4F; } .sa-node .st.plan { color: #B8822E; } .sa-node .st.off { color: var(--sa-ink-3); }
+.sa-node .st.ok { color: #2F7A4F; } .sa-node .st.plan { color: var(--hud-accent); } .sa-node .st.off { color: var(--sa-ink-3); }
 .sa-wire-brain { position: absolute; background: var(--sa-ink); color: #fff; border: 1px solid var(--sa-accent-line); border-radius: 10px; padding: 16px 20px; text-align: center; box-shadow: var(--sa-shadow-lift); }
 .sa-wire-brain .lbl { font-family: var(--font-mono); font-size: 8.5px; letter-spacing: 2px; color: var(--sa-accent); }
 .sa-wire-brain .nm { font-family: var(--font-serif); font-size: 22px; margin-top: 4px; }
@@ -643,7 +643,7 @@ body {
 
 /* sovereignty meter (0-10 computed) */
 .sov-meter { position: relative; height: 12px; border-radius: 6px; background: var(--sa-border); overflow: hidden; }
-.sov-meter .fill { position: absolute; inset: 0 auto 0 0; border-radius: 6px; background: linear-gradient(90deg, #A8382F 0%, #C2603F 28%, #B8822E 52%, #2F7A4F 100%); }
+.sov-meter .fill { position: absolute; inset: 0 auto 0 0; border-radius: 6px; background: linear-gradient(90deg, #A8382F 0%, #C2603F 28%, #F8C761 52%, #2F7A4F 100%); }
 .sov-meter .mark { position: absolute; top: -3px; width: 4px; height: 18px; border-radius: 2px; background: var(--sa-ink); box-shadow: 0 0 0 2px var(--sa-surface); }
 .sov-num { font-family: var(--font-serif); font-size: 40px; line-height: 1; color: #A8382F; }
 .spark { width: 100%; height: 64px; }

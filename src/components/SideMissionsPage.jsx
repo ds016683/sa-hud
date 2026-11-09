@@ -7,7 +7,7 @@
 // pulse read; the page shows them as facets, never as places.
 // Canon enforced here (docs/CANON.md, docs/CARD-CANON.md): titles in Lora at
 // 14.5, labels Title Case 16/600 in LABEL, meta 10.5 and never smaller, chrome
-// one color with the accent for selected, overdue in CAUTION, released in
+// one color with the accent for selected, overdue in RED, released in
 // SUCCESS, GREEN only for the Board, gold on one primary action.
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Target, Play, Plus, Trash2, RotateCcw, Check } from 'lucide-react'
@@ -15,7 +15,7 @@ import FileAway from './river/FileAway'
 import YayPage from './river/YayPage'
 import { fetchObjectives, addObjective, route, updateObjective, binObjective, restoreObjective, purgeObjective, reopenObjective, closeOut, pockets, provenance, TAGS } from '../lib/objectives'
 import { fetchLoadout, SIZES } from '../lib/loadout'
-import { INK, INK2, GRAY, PANEL_BORDER, PANEL_BG, GOLD, BLUE, GREEN, RED, SUCCESS, CAUTION, LABEL, MUTED, NAVY_DEEP, MONO, SERIF, S, Panel, Label, SubLabel, TYPE, chiToday, NORTH_STAR_LABEL, NORTH_STAR_ASK, alpha } from './river/canon'
+import { INK, INK2, GRAY, PANEL_BORDER, PANEL_BG, GOLD, BLUE, GREEN, RED, SUCCESS, LABEL, MUTED, NAVY_DEEP, MONO, SERIF, S, Panel, Label, SubLabel, TYPE, chiToday, NORTH_STAR_LABEL, NORTH_STAR_ASK, alpha } from './river/canon'
 import { hudConfirm, hudPrompt } from '../lib/dialog'
 import { openCard } from '../lib/card'
 import { LEDGER_EVENT } from '../lib/lumenPanel'
@@ -36,13 +36,13 @@ const plusDays = (n, from = chiToday()) => { const d = new Date(from + 'T12:00:0
 const weekEnd = (day) => { const d = new Date(day + 'T12:00:00'); const dow = d.getDay(); d.setDate(d.getDate() + (7 - dow) % 7); return d.toISOString().slice(0, 10) }
 
 // One clear mark: the words Target Completion, then the date in ink. Caution once it
-// passes (flagged, per the card palette), the off gray when none is set.
+// passes (red, the amber is retired, David 11/9), the off gray when none is set.
 function TargetMark({ date, late }) {
-  const tone = !date ? GRAY : late ? CAUTION : LABEL
+  const tone = !date ? GRAY : late ? RED : LABEL
   return (
     <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 8, padding: '3px 9px', border: `1px solid ${alpha(tone, 40)}`, borderRadius: 6 }}>
       <span style={{ ...meta, color: tone }}>Target Completion</span>
-      <span style={{ fontSize: TYPE.body, fontWeight: 500, color: !date ? GRAY : late ? CAUTION : INK }}>{date ? fmtTarget(date) : 'Not Set'}{late ? ' · Overdue' : ''}</span>
+      <span style={{ fontSize: TYPE.body, fontWeight: 500, color: !date ? GRAY : late ? RED : INK }}>{date ? fmtTarget(date) : 'Not Set'}{late ? ' · Overdue' : ''}</span>
     </span>
   )
 }
@@ -153,7 +153,7 @@ function Row({ o, view, loadItem, selected, onSelect, onOpen, onLoad, onDone, on
             : <TargetMark date={o.due_date} late={late} />}
           {o.state === 'waiting' && <Tag>Waits On · {person || 'Unnamed'}</Tag>}
           {o.state === 'foreman' && <Tag>Handed To · {person || 'Unnamed'}</Tag>}
-          {o.state === 'follow_up' && o.follow_up_date && <Tag color={o.follow_up_date <= today ? CAUTION : LABEL}>Nudge · {fmtDay(o.follow_up_date)}</Tag>}
+          {o.state === 'follow_up' && o.follow_up_date && <Tag color={o.follow_up_date <= today ? RED : LABEL}>Nudge · {fmtDay(o.follow_up_date)}</Tag>}
           {o.state === 'inbox' && <Tag>New From Lumen</Tag>}
           {loadItem && <span style={{ ...meta, color: GREEN }}>{loadItem.equipped ? 'On The Board · Running' : 'On The Board · Holstered'}</span>}
           {!loadItem && o.state === 'parked' && isStashed(o) && <span style={{ ...meta, color: MUTED }}>Stashed</span>}

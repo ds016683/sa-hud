@@ -4,7 +4,7 @@
 export const SOV_THRESHOLDS = [
   { min: 80, status: 'PEAK OPERATING CAPACITY', color: '#2F7A4F' },
   { min: 60, status: 'EFFECTIVE — REST SOON', color: '#F8C761' },
-  { min: 40, status: 'WARNING — SHADOWS ACTIVATING', color: '#B8822E' },
+  { min: 40, status: 'WARNING — SHADOWS ACTIVATING', color: '#DE7E6E' },
   { min: 20, status: 'CRITICAL — DYSFUNCTION IMMINENT', color: '#C2603F' },
   { min: 0, status: 'COLLAPSE — ALL SHADOWS ACTIVE', color: '#A8382F' },
 ]

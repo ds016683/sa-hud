@@ -26,7 +26,7 @@ const SKILLS = [
     name: 'Third Horizon Deck (CIP)',
     skin: 'The CIP Executive Summary frame: one navy surface, Lora story beats, Instrument Sans chrome, a single accent, gold for wayfinding only, the confidentiality footer on every slide.',
     use: 'Any Third Horizon deck, investor material, executive summary, or anything "in the TH frame". In a Code session say "use th-deck" or "on brand".',
-    swatches: [INK, INK, INK, INK, BLUE, BLUE, GOLD, GREEN, RED, '#B8822E'],
+    swatches: [INK, INK, INK, INK, BLUE, BLUE, GOLD, GREEN, RED, GOLD],
     base: '/ai-tools/th-deck',
     pptx: 'Third Horizon Deck Template.pptx',
     zip: 'th-deck-skill.zip',
