@@ -10,7 +10,7 @@ import FileAway from './river/FileAway'
 import YayPage from './river/YayPage'
 import { fetchObjectives, addObjective, route, binObjective, restoreObjective, purgeObjective, reopenObjective, closeOut, pockets, STATE, TAGS } from '../lib/objectives'
 import { fetchLoadout, SIZES } from '../lib/loadout'
-import { INK, INK2, GRAY, PANEL_BORDER, GOLD, GOLD_BRIGHT, BLUE, GREEN, RED, PURPLE, MONO, S, Panel, Label, chiToday, NORTH_STAR_LABEL, NORTH_STAR_ASK, LABEL, MUTED, CAUTION, alpha } from './river/canon'
+import { INK, INK2, GRAY, PANEL_BORDER, GOLD, GOLD_BRIGHT, BLUE, GREEN, RED, PURPLE, MONO, S, Panel, Label, chiToday, NORTH_STAR_LABEL, NORTH_STAR_ASK, LABEL, MUTED, alpha } from './river/canon'
 import { hudConfirm } from '../lib/dialog'
 import { openCard } from '../lib/card'
 import { LEDGER_EVENT } from '../lib/lumenPanel'
@@ -21,13 +21,13 @@ const btn = (color = INK2, filled = false, extra = {}) => ({
 const field = { background: 'rgba(255,255,255,0.05)', border: `1px solid ${PANEL_BORDER}`, borderRadius: 8, color: INK, padding: '8px 10px', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }
 const fmtDay = (d) => d ? new Date(d + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : ''
 const fmtTarget = (d) => d ? new Date(d + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) : ''
-// One clear mark: the words Target Completion, then the date in ink. Red once it passes, caution when none is set.
+// One clear mark: the words Target Completion, then the date in ink. Red once it passes, the off gray when none is set.
 function TargetMark({ date, late }) {
-  const tone = !date ? CAUTION : late ? RED : LABEL
+  const tone = !date ? GRAY : late ? RED : LABEL
   return (
     <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 8, padding: '3px 9px', border: `1px solid ${alpha(tone, 40)}`, borderRadius: 6 }}>
       <span style={{ fontFamily: MONO, fontSize: 9, letterSpacing: '1px', textTransform: 'uppercase', color: tone }}>Target Completion</span>
-      <span style={{ fontSize: 12.5, color: !date ? CAUTION : late ? RED : INK, fontWeight: 500 }}>{date ? fmtTarget(date) : 'Not Set'}{late ? ' · Overdue' : ''}</span>
+      <span style={{ fontSize: 12.5, color: !date ? GRAY : late ? RED : INK, fontWeight: 500 }}>{date ? fmtTarget(date) : 'Not Set'}{late ? ' · Overdue' : ''}</span>
     </span>
   )
 }
