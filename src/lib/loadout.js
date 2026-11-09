@@ -173,21 +173,25 @@ export async function unload(objectiveId) {
 
 // Extract: release the item, keep its clock in the Ledger (never Harvest),
 // close a linked Main Mission task, file a note if there is one.
-export async function extract(item, { minutes, note } = {}) {
+// day (David 11/9): the day it was really done, for items caught up in arrears; the
+// release and the day log land on that day, today when it is not given.
+export async function extract(item, { minutes, note, day } = {}) {
   const clocked = await clockedMinutes(item.id)
   const fallback = item.activated_at ? Math.max(1, Math.round((Date.now() - new Date(item.activated_at).getTime()) / 60000)) : 0
   const mins = Number(minutes) > 0 ? Math.round(Number(minutes)) : (clocked || fallback)
-  const now = new Date().toISOString()
+  const today = chiToday()
+  const onDay = day && /^\d{4}-\d{2}-\d{2}$/.test(day) && day < today ? day : today
+  const now = onDay === today ? new Date().toISOString() : new Date(`${onDay}T17:00:00-06:00`).toISOString()
   const { error } = await supabase.from('objectives').update({ state: 'released', released_kind: 'done', released_at: now, activated_at: null }).eq('id', item.id)
   if (error) throw new Error(error.message)
   await supabase.from('project_tasks').update({ status: 'done', done: true, released_at: now }).eq('objective_id', item.id).neq('status', 'done')
   const personal = item.personal
   await supabase.from('daily_logs').insert({
-    day: chiToday(), kind: 'activity', what: item.title, value: mins,
+    day: onDay, kind: 'activity', what: item.title, value: mins,
     note: `${personal ? 'personal' : 'work'} · ${item.kind} clock · ${clocked ? `${clocked} clocked` : 'no clock'}${Number(minutes) > 0 ? ` · David stated ${mins}` : ''}${note ? ` · ${note}` : ''}`,
     source: `objective:${item.id}`,
   })
-  return { minutes: mins, clocked, personal }
+  return { minutes: mins, clocked, personal, day: onDay }
 }
 
 // ---- Putting things on the board from the Board page itself -------------------

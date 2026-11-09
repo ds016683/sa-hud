@@ -121,9 +121,10 @@ const SizeChip = ({ size }) => {
 }
 
 
-function ExtractModal({ item, onClose, onDone }) {
+export function ExtractModal({ item, onClose, onDone }) {
   const [minutes, setMinutes] = useState(Math.round(item.minutes_today) || '')
   const [note, setNote] = useState('')
+  const [day, setDay] = useState(() => new Date().toLocaleDateString('en-CA', { timeZone: 'America/Chicago' }))
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState(null)
   useEffect(() => {
@@ -133,7 +134,7 @@ function ExtractModal({ item, onClose, onDone }) {
   }, [onClose])
   const go = async () => {
     setBusy(true); setErr(null)
-    try { if (note.trim()) await fileAchieved(item, note.trim()); const r = await extract(item, { minutes: Number(minutes) || 0, note: note.trim() || null }); onDone(r) }
+    try { if (note.trim()) await fileAchieved(item, note.trim()); const r = await extract(item, { minutes: Number(minutes) || 0, note: note.trim() || null, day }); onDone(r) }
     catch (e) { setErr(e.message); setBusy(false) }
   }
   const field = { width: '100%', background: 'rgba(255,255,255,0.05)', border: `1px solid ${PANEL_BORDER}`, borderRadius: 8, color: INK, padding: '8px 10px', fontSize: 13, fontFamily: 'inherit' }
@@ -151,9 +152,12 @@ function ExtractModal({ item, onClose, onDone }) {
 
         <div style={{ marginTop: 18, display: 'grid', gridTemplateColumns: '120px 1fr', gap: 12, alignItems: 'start' }}>
           <div>
-            <Label>Time of activity</Label>
+            <Label>Time Of Activity</Label>
             <input type="number" min="0" value={minutes} onChange={e => setMinutes(e.target.value)} style={field} />
-            <div style={{ fontSize: 10.5, color: GRAY, marginTop: 4 }}>minutes · clocked {fmtClock(item.minutes_today)}</div>
+            <div style={{ fontSize: 10.5, color: MUTED, marginTop: 4 }}>minutes · clocked {fmtClock(item.minutes_today)}</div>
+            <Label style={{ marginTop: 12 }}>Done On</Label>
+            <input type="date" value={day} max={new Date().toLocaleDateString('en-CA', { timeZone: 'America/Chicago' })} onChange={e => setDay(e.target.value)} style={field} />
+            <div style={{ fontSize: 10.5, color: MUTED, marginTop: 4 }}>today unless it was done earlier</div>
           </div>
           <div>
             {item.north_star && <div style={{ fontFamily: SERIF, fontStyle: 'italic', fontSize: 13, lineHeight: 1.45, color: INK2, borderLeft: `2px solid ${BLUE}`, paddingLeft: 9, marginBottom: 8 }}>{item.north_star}</div>}

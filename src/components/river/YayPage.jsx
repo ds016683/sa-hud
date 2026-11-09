@@ -85,6 +85,7 @@ export default function YayPage({ objectiveId, onClose, fresh = false, onOpenMis
               {m.achieved
                 ? <div style={{ fontSize: 15.5, lineHeight: 1.7, color: INK }}>{m.achieved}{m.achievedFrom === 'archive' && <div style={{ fontFamily: MONO, fontSize: 10.5, letterSpacing: '0.8px', textTransform: 'uppercase', color: LABEL, marginTop: 6 }}>from the close-out summary, before Achieved was asked</div>}{m.achievedFrom === 'achieved' && <div style={{ fontFamily: MONO, fontSize: 10.5, letterSpacing: '0.8px', textTransform: 'uppercase', color: LABEL, marginTop: 6 }}>in David's words at close</div>}</div>
                 : <div style={{ fontSize: 13.5, color: GRAY }}>Nothing written at close. Tell Lumen what was achieved and it lands here.</div>}
+              {m.origin && <div style={{ fontSize: 12.5, color: MUTED, marginTop: 8 }}>Origin · {m.origin}</div>}
             </div>
 
             {m.attachments.length > 0 && (

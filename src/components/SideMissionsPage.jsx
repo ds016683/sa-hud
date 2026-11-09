@@ -13,9 +13,9 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Target, Play, Plus, Trash2, RotateCcw, Check } from 'lucide-react'
 import FileAway from './river/FileAway'
 import YayPage from './river/YayPage'
-import { fetchObjectives, addObjective, route, updateObjective, binObjective, restoreObjective, purgeObjective, reopenObjective, closeOut, pockets, provenance, TAGS } from '../lib/objectives'
+import { fetchObjectives, addObjective, route, updateObjective, binObjective, restoreObjective, purgeObjective, reopenObjective, closeOut, pockets, provenance, sizeOf, TAGS } from '../lib/objectives'
 import { fetchLoadout, SIZES } from '../lib/loadout'
-import { IconVerb } from './river/LoadoutPanel'
+import { IconVerb, ExtractModal } from './river/LoadoutPanel'
 import { INK, INK2, GRAY, PANEL_BORDER, PANEL_BG, GOLD, BLUE, GREEN, RED, SUCCESS, LABEL, MUTED, NAVY_DEEP, MONO, SERIF, S, Panel, Label, SubLabel, TYPE, chiToday, NORTH_STAR_LABEL, NORTH_STAR_ASK, alpha } from './river/canon'
 import { hudConfirm, hudPrompt } from '../lib/dialog'
 import { openCard } from '../lib/card'
@@ -212,6 +212,7 @@ export default function SideMissionsPage({ onNavigate }) {
   const [range, setRange] = useState(30)
   const [sel, setSel] = useState(() => new Set())
   const [filing, setFiling] = useState(null)
+  const [extracting, setExtracting] = useState(null)
   const [yay, setYay] = useState(null)
   const [msg, setMsg] = useState(null)
   const [dateAsk, setDateAsk] = useState(null)   // 'target' | 'nudge' while the bulk date input is open
@@ -262,8 +263,10 @@ export default function SideMissionsPage({ onNavigate }) {
       const p = await pockets(o.id)
       if (p.carrying) { setFiling({ o, p }); return }
       if (p.openSteps.length && !await hudConfirm(`${p.openSteps.length} step(s) still open. Close it out anyway?`)) return
-      const r = await closeOut(o)
-      setMsg(`Released: ${o.title}${r.minutes ? ` · ${r.minutes} minutes on the clock` : ''}${r.personal ? ' · personal' : ''} · ${paysLine(o)}`); await refresh(); setYay(o.id)
+      // The same close-out form as the Board's Extract (David 11/9): time, the day it was
+      // really done, Achieved in his words; then the report.
+      const tags = o.tags || []
+      setExtracting({ id: o.id, title: o.title, kind: tags.includes('impromptu') ? 'Ad Hoc' : 'Side Mission', size: sizeOf(o), personal: tags.includes('personal'), north_star: o.north_star || null, activated_at: o.activated_at, minutes_today: 0, tags })
     } catch (e) { setMsg(`Could not close it out: ${e.message}`) }
   }
 
@@ -299,6 +302,7 @@ export default function SideMissionsPage({ onNavigate }) {
   return (
     <div style={S.page}>
       {filing && <FileAway objective={filing.o} pockets={filing.p} onClose={() => setFiling(null)} onDone={({ filed, released }) => { const id = filing.o.id; const line = paysLine(filing.o); setFiling(null); setMsg(`Filed ${filed.length} to the Archive and released ${filing.o.title}${released.minutes ? ` · ${released.minutes} minutes on the clock` : ''} · ${line}`); refresh(); setYay(id) }} />}
+      {extracting && <ExtractModal item={extracting} onClose={() => setExtracting(null)} onDone={(r) => { const o = extracting; setExtracting(null); setMsg(`Extracted: ${o.title}${r.minutes ? ` · ${r.minutes} minutes on the clock` : ''}${r.day && r.day !== today ? ` · done on ${fmtDay(r.day)}` : ''}${r.personal ? ' · personal' : ''} · ${paysLine({ tags: o.tags, effort: o.size === 'heavy' ? 5 : o.size === 'medium' ? 3 : 1 })}`); refresh(); setYay(o.id) }} />}
       {yay && <YayPage objectiveId={yay} fresh onClose={() => setYay(null)} />}
       <div style={{ marginBottom: 18 }}>
         <h1 style={S.h1}><Target size={22} color={BLUE} style={{ verticalAlign: '-3px', marginRight: 8 }} />Side Missions</h1>

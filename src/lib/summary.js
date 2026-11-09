@@ -38,14 +38,17 @@ export async function missionSummary(objectiveId) {
   const closed = o.released_at || link?.released_at || null
   const days = opened && closed ? Math.max(1, Math.round((new Date(closed) - new Date(opened)) / 864e5)) : null
   const sum = archive.find(a => a.kind === 'summary')
-  const achieved = sum?.body?.achieved || sum?.summary || o.description || null
+  // Achieved is David's own answer (filed at close) or the Archive summary; the description is
+  // where the item came from, not what was achieved (David 11/9), so it reads as origin.
+  const achieved = sum?.body?.achieved || sum?.summary || null
+  const origin = o.description ? String(o.description).split('\n')[0].slice(0, 200) : null
   return {
     id: o.id, title: o.title, kind, type, size, badge, color: colorOf(kind, size), objective: o, badgeLabel: BADGES[badge]?.label, lore: BADGES[badge]?.lore,
     project: project?.name || null, projectKey: project?.key || null, task: link ? link.text : null,
     personal: tags.includes('personal'), state: o.state, released_kind: o.released_kind,
     miles, gatesDone, gatesTotal: steps.length, gatesPaid: Math.min(gatesDone, MILES.gatesPaid),
     opened, closed, days, minutes: Math.round(minutes),
-    gates: steps, achieved, achievedFrom: sum?.body?.achieved ? 'achieved' : sum ? 'archive' : o.description ? 'description' : null,
+    gates: steps, achieved, origin, achievedFrom: sum?.body?.achieved ? 'achieved' : sum ? 'archive' : null,
     north_star: link ? (project?.description || null) : (o.north_star || null),
     attachments: archive.filter(a => a.kind !== 'summary'),
   }
