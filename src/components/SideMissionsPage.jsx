@@ -8,9 +8,9 @@ import { Target, Play, Plus, Bell, Hourglass, ArrowUpRight, Inbox as InboxIcon, 
 import ItemDetail from './river/ItemDetail'
 import FileAway from './river/FileAway'
 import YayPage from './river/YayPage'
-import { fetchObjectives, addObjective, route, binObjective, restoreObjective, purgeObjective, reopenObjective, closeOut, pockets, provenance, realmOf, STATE, TAGS, sizeOf } from '../lib/objectives'
+import { fetchObjectives, addObjective, route, binObjective, restoreObjective, purgeObjective, reopenObjective, closeOut, pockets, STATE, TAGS } from '../lib/objectives'
 import { fetchLoadout, SIZES } from '../lib/loadout'
-import { INK, INK2, GRAY, PANEL_BORDER, GOLD, GOLD_BRIGHT, BLUE, GREEN, RED, PURPLE, MONO, S, Panel, Label, chiToday, NORTH_STAR_LABEL, NORTH_STAR_ASK, LABEL, alpha } from './river/canon'
+import { INK, INK2, GRAY, PANEL_BORDER, GOLD, GOLD_BRIGHT, BLUE, GREEN, RED, PURPLE, MONO, S, Panel, Label, chiToday, NORTH_STAR_LABEL, NORTH_STAR_ASK, LABEL, MUTED, CAUTION, alpha } from './river/canon'
 import { hudConfirm } from '../lib/dialog'
 import { openCard } from '../lib/card'
 import { LEDGER_EVENT } from '../lib/lumenPanel'
@@ -19,8 +19,18 @@ const btn = (color = INK2, filled = false, extra = {}) => ({
   padding: '5px 9px', borderRadius: 8, border: `1px solid ${filled ? color : `${alpha(color, 40)}`}`, background: filled ? color : 'transparent', color: filled ? 'var(--hud-on-accent)' : color, cursor: 'pointer', ...extra,
 })
 const field = { background: 'rgba(255,255,255,0.05)', border: `1px solid ${PANEL_BORDER}`, borderRadius: 8, color: INK, padding: '8px 10px', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }
-const chip = (fg, border = `${alpha(fg, 33)}`) => ({ ...S.chip('transparent', fg), border: `1px solid ${border}`, fontFamily: MONO, fontSize: 9, letterSpacing: '1px', padding: '2px 7px' })
 const fmtDay = (d) => d ? new Date(d + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : ''
+const fmtTarget = (d) => d ? new Date(d + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) : ''
+// One clear mark: the words Target Completion, then the date in ink. Red once it passes, caution when none is set.
+function TargetMark({ date, late }) {
+  const tone = !date ? CAUTION : late ? RED : LABEL
+  return (
+    <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 8, padding: '3px 9px', border: `1px solid ${alpha(tone, 40)}`, borderRadius: 6 }}>
+      <span style={{ fontFamily: MONO, fontSize: 9, letterSpacing: '1px', textTransform: 'uppercase', color: tone }}>Target Completion</span>
+      <span style={{ fontSize: 12.5, color: !date ? CAUTION : late ? RED : INK, fontWeight: 500 }}>{date ? fmtTarget(date) : 'Not Set'}{late ? ' · Overdue' : ''}</span>
+    </span>
+  )
+}
 const CONTAINERS = ['inbox', 'follow_up', 'waiting', 'foreman', 'parked', 'bin']
 const ICON = { inbox: InboxIcon, follow_up: Bell, waiting: Hourglass, foreman: ArrowUpRight, parked: Flag, released: Check, bin: Trash2 }
 
@@ -79,20 +89,19 @@ function AddForm({ onAdded }) {
 }
 
 function Row({ o, container, loadItem, onOpen, onRoute, onDone, onBin, onRestore, onPurge, onReopen }) {
-  const size = sizeOf(o); const prov = provenance(o); const today = chiToday()
+  const today = chiToday()
   const late = o.due_date && o.due_date < today
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0', borderTop: `1px solid ${PANEL_BORDER}`, flexWrap: 'wrap' }}>
       <div style={{ flex: 1, minWidth: 260 }}>
         <div onClick={() => onOpen(o)} style={{ fontSize: 14, color: INK, cursor: 'pointer', lineHeight: 1.35 }}>{o.title}</div>
-        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', marginTop: 5 }}>
-          <span style={chip(SIZES[size].color)}>{SIZES[size].label}</span>
-          <span style={chip(realmOf(o) === 'personal' ? GOLD : PURPLE)}>{realmOf(o) === 'personal' ? 'Personal' : 'Third Horizon'}</span>
-          <span style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '0.6px', color: GRAY }}>{prov.label}</span>
-          {o.due_date && <span style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '0.6px', color: late ? RED : LABEL }}>Target Completion {fmtDay(o.due_date)}{late ? ' · overdue' : ''}</span>}
-          {container === 'follow_up' && o.follow_up_date && <span style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '0.6px', color: o.follow_up_date <= today ? '#E0985C' : GRAY }}>follow up {fmtDay(o.follow_up_date)}</span>}
-          {container === 'released' && o.released_at && <span style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '0.6px', color: GRAY }}>released {fmtDay(o.released_at.slice(0, 10))}{o.released_kind && o.released_kind !== 'done' ? ` · ${o.released_kind}` : ''}</span>}
-          {loadItem && <span style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '0.6px', color: loadItem.equipped ? GREEN : BLUE }}>{loadItem.equipped ? 'on the Board · running' : 'on the Board · holstered'}</span>}
+        {/* The face of a Side Mission (David 11/9): the title and one clear Target Completion mark.
+            The size, realm, provenance and follow-up chips came off; they read on the card. */}
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center', marginTop: 6 }}>
+          {container === 'released' && o.released_at
+            ? <span style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '0.8px', color: MUTED }}>Released {fmtDay(o.released_at.slice(0, 10))}{o.released_kind && o.released_kind !== 'done' ? ` · ${o.released_kind}` : ''}</span>
+            : <TargetMark date={o.due_date} late={late} />}
+          {loadItem && <span style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '0.6px', color: loadItem.equipped ? GREEN : BLUE }}>{loadItem.equipped ? 'On the Board · Running' : 'On the Board · Holstered'}</span>}
         </div>
       </div>
       <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
