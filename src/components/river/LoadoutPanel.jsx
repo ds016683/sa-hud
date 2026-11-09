@@ -143,8 +143,9 @@ export function ExtractModal({ item, onClose, onDone }) {
       <div onClick={e => e.stopPropagation()} style={{ maxWidth: 520, width: '100%', background: 'var(--hud-surface-raised)', border: `1px solid ${PANEL_BORDER}`, borderRadius: 14, padding: '24px 26px 22px' }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14 }}>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <Eyebrow style={{ marginBottom: 6 }}>Extract</Eyebrow>
-            <div style={{ fontFamily: SERIF, fontSize: 22, fontWeight: 500, color: '#fff', letterSpacing: '-0.01em' }}>{item.title}</div>
+            {/* Header canon: the kind heads the name, nothing stacked above a title (David 11/7). */}
+            <div style={{ fontFamily: SERIF, fontSize: 24, fontWeight: 500, color: '#fff', letterSpacing: '-0.01em', lineHeight: 1.2 }}>Extract</div>
+            <div style={{ fontFamily: SERIF, fontSize: 16.5, fontWeight: 500, color: INK, letterSpacing: '-0.005em', lineHeight: 1.3, marginTop: 6 }}>{item.title}</div>
             <div style={{ display: 'flex', gap: 6, marginTop: 8, flexWrap: 'wrap' }}><KindChip kind={item.kind} /><SizeChip size={item.size} />{item.personal && <span style={S.chip('rgba(255,255,255,0.06)', INK2)}>personal</span>}</div>
           </div>
           <button onClick={onClose} aria-label="Close" style={{ width: 28, height: 28, borderRadius: 8, border: `1px solid ${PANEL_BORDER}`, background: 'transparent', color: INK2, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><XIcon size={14} /></button>
