@@ -18,8 +18,7 @@ import { supabase } from '../../lib/supabase'
 import { DispatchModal } from './AmbushPanel'
 import { pockets } from '../../lib/objectives'
 import FileAway from './FileAway'
-import { fetchLoadout, equip, holster, unload, stash, extract, addImpromptu, fmtClock, SIZES, SLOTS, sizeOf, hoursOf, chiToday, fetchStash, returnToInventory, equipObjective, STASH_MAX, logBoard } from '../../lib/loadout'
-import { fileAchieved } from '../../lib/archive'
+import { fetchLoadout, equip, holster, unload, stash, addImpromptu, fmtClock, SIZES, SLOTS, hoursOf, chiToday, fetchStash, returnToInventory, equipObjective, STASH_MAX, logBoard } from '../../lib/loadout'
 import { Undo2, ArrowUpToLine, ScrollText, Paperclip } from 'lucide-react'
 import ActivityLogModal from './ActivityLog'
 import LiveFilesModal, { ClipButton } from './LiveFiles'
@@ -120,62 +119,6 @@ const SizeChip = ({ size }) => {
   return <span style={{ ...S.chip('rgba(255,255,255,0.06)', s.color), border: `1px solid ${alpha(s.color, 33)}`, fontFamily: MONO, fontSize: 9, letterSpacing: '1px', padding: '2px 7px' }}>{s.label} · {s.slots} slot{s.slots === 1 ? '' : 's'}</span>
 }
 
-
-export function ExtractModal({ item, onClose, onDone }) {
-  const [minutes, setMinutes] = useState(Math.round(item.minutes_today) || '')
-  const [note, setNote] = useState('')
-  const [day, setDay] = useState(() => new Date().toLocaleDateString('en-CA', { timeZone: 'America/Chicago' }))
-  const [busy, setBusy] = useState(false)
-  const [err, setErr] = useState(null)
-  useEffect(() => {
-    const onKey = (e) => { if (e.key === 'Escape') onClose() }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [onClose])
-  const go = async () => {
-    setBusy(true); setErr(null)
-    try { if (note.trim()) await fileAchieved(item, note.trim()); const r = await extract(item, { minutes: Number(minutes) || 0, note: note.trim() || null, day }); onDone(r) }
-    catch (e) { setErr(e.message); setBusy(false) }
-  }
-  const field = { width: '100%', background: 'rgba(255,255,255,0.05)', border: `1px solid ${PANEL_BORDER}`, borderRadius: 8, color: INK, padding: '8px 10px', fontSize: 13, fontFamily: 'inherit' }
-  return (
-    <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 250, background: 'rgba(8,20,32,0.88)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
-      <div onClick={e => e.stopPropagation()} style={{ maxWidth: 520, width: '100%', background: 'var(--hud-surface-raised)', border: `1px solid ${PANEL_BORDER}`, borderRadius: 14, padding: '24px 26px 22px' }}>
-        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14 }}>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            {/* Header canon: the kind heads the name, nothing stacked above a title (David 11/7). */}
-            <div style={{ fontFamily: SERIF, fontSize: 24, fontWeight: 500, color: '#fff', letterSpacing: '-0.01em', lineHeight: 1.2 }}>Extract</div>
-            <div style={{ fontFamily: SERIF, fontSize: 16.5, fontWeight: 500, color: INK, letterSpacing: '-0.005em', lineHeight: 1.3, marginTop: 6 }}>{item.title}</div>
-            <div style={{ display: 'flex', gap: 6, marginTop: 8, flexWrap: 'wrap' }}><KindChip kind={item.kind} /><SizeChip size={item.size} />{item.personal && <span style={S.chip('rgba(255,255,255,0.06)', INK2)}>personal</span>}</div>
-          </div>
-          <button onClick={onClose} aria-label="Close" style={{ width: 28, height: 28, borderRadius: 8, border: `1px solid ${PANEL_BORDER}`, background: 'transparent', color: INK2, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><XIcon size={14} /></button>
-        </div>
-
-        <div style={{ marginTop: 18, display: 'grid', gridTemplateColumns: '120px 1fr', gap: 12, alignItems: 'start' }}>
-          <div>
-            <Label>Time Of Activity</Label>
-            <input type="number" min="0" value={minutes} onChange={e => setMinutes(e.target.value)} style={field} />
-            <div style={{ fontSize: 10.5, color: MUTED, marginTop: 4 }}>minutes · clocked {fmtClock(item.minutes_today)}</div>
-            <Label style={{ marginTop: 12 }}>Done On</Label>
-            <input type="date" value={day} max={new Date().toLocaleDateString('en-CA', { timeZone: 'America/Chicago' })} onChange={e => setDay(e.target.value)} style={field} />
-            <div style={{ fontSize: 10.5, color: MUTED, marginTop: 4 }}>today unless it was done earlier</div>
-          </div>
-          <div>
-            {item.north_star && <div style={{ fontFamily: SERIF, fontStyle: 'italic', fontSize: 13, lineHeight: 1.45, color: INK2, borderLeft: `2px solid ${BLUE}`, paddingLeft: 9, marginBottom: 8 }}>{item.north_star}</div>}
-            <Label style={{ color: BLUE }}>Achieved · Is It True? What's Different Now?</Label>
-            <textarea rows={3} value={note} onChange={e => setNote(e.target.value)} placeholder="In your words. It lands on the yay page under the star." style={{ ...field, resize: 'vertical' }} />
-          </div>
-        </div>
-        <div style={{ fontSize: 11.5, color: GRAY, marginTop: 10 }}>{item.personal ? 'Personal time stays out of Harvest; the clock is kept in the Ledger.' : 'The clock is kept in the Ledger. Harvest is for Third Horizon work you log yourself.'} Miles bank on the next update.</div>
-        {err && <div style={{ fontSize: 12, color: RED, marginTop: 8 }}>{err}</div>}
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 16 }}>
-          <button onClick={onClose} style={btn(INK2)}>Cancel</button>
-          <button onClick={go} disabled={busy} style={btn(GOLD, true)}><PackageCheck size={12} /> {busy ? 'Extracting' : 'Extract'}</button>
-        </div>
-      </div>
-    </div>
-  )
-}
 
 const field = { width: '100%', background: 'rgba(255,255,255,0.05)', border: `1px solid ${PANEL_BORDER}`, borderRadius: 8, color: INK, padding: '8px 10px', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }
 const slotBox = (border, bg = 'rgba(255,255,255,0.03)', dashed = false) => ({
@@ -552,7 +495,7 @@ export default function LoadoutPanel({ onChange, refreshKey = 0, bare = false })
   return (
     <Wrap style={wrapStyle}>
       <style>{`.board-slots { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px } @media (max-width: 980px) { .board-slots { grid-template-columns: repeat(2, minmax(0, 1fr)) } }`}</style>
-      {open && <ExtractModal item={open} onClose={() => setOpen(null)} onDone={(r) => { const id = open.id, session = open.session; setOpen(null); setMsg(`Extracted: ${open.title} · ${fmtClock(r.minutes)}${r.personal ? ' · personal' : ''}`); logBoard(`Extracted: ${open.title} · ${fmtClock(r.minutes)}`); bump(); if (!session) setYay(id) }} />}
+      {open && <YayPage objectiveId={open.id} onClose={() => setOpen(null)} extract={{ item: open, onDone: (r) => { setMsg(`Extracted: ${open.title} · ${fmtClock(r.minutes)}${r.personal ? ' · personal' : ''}`); logBoard(`Extracted: ${open.title} · ${fmtClock(r.minutes)}`); bump() } }} />}
       {filing && <FileAway objective={filing.o} pockets={filing.p} onClose={() => setFiling(null)} onDone={({ filed, released }) => { const id = filing.o.id; setFiling(null); setMsg(`Filed ${filed.length} to the Archive · extracted ${filing.o.title} · ${released.minutes}m`); logBoard(`Extracted: ${filing.o.title} · filed ${filed.length} to the Archive`); bump(); setYay(id) }} />}
       {recallOf && <RecallModal objectiveId={recallOf.id} taskId={recallOf.task_id || null} title={recallOf.title} onClose={() => setRecallOf(null)} />}
       {logOpen && <ActivityLogModal onClose={() => setLogOpen(false)} />}

@@ -5,6 +5,8 @@ import { useEffect, useState } from 'react'
 import { X as XIcon, Check, ExternalLink } from 'lucide-react'
 import BadgeMedallion from '../BadgeArt'
 import { missionSummary, fmtDay } from '../../lib/summary'
+import { extract as extractItem, fmtClock } from '../../lib/loadout'
+import { fileAchieved } from '../../lib/archive'
 import { signedUrl } from '../../lib/archive'
 import { INK, INK2, GRAY, PANEL_BORDER, GOLD, GREEN, SUCCESS, BLUE, MONO, SERIF, S, KindIcon, Label, NORTH_STAR_LABEL, LABEL, MUTED, alpha, RED } from './canon'
 import DocView from './DocView'
@@ -12,18 +14,41 @@ import SessionBoard from './SessionBoard'
 
 const Fact = ({ label, children }) => <div><Label>{label}</Label><div style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 17, color: INK, lineHeight: 1.25 }}>{children}</div></div>
 
-export default function YayPage({ objectiveId, onClose, fresh = false, onOpenMission = null }) {
+// One card (David 11/9): the same Mission Summary is the close-out form. With `extract`
+// ({ item, onDone }) the card opens on an open item with the Closed date, the clock and
+// Achieved as fields; Extract writes them and the card turns into Mission Complete in place.
+export default function YayPage({ objectiveId, onClose, fresh = false, onOpenMission = null, extract = null }) {
   const [m, setM] = useState(null)
   const [err, setErr] = useState(null)
   const [reading, setReading] = useState(null)
-  useEffect(() => { let on = true; missionSummary(objectiveId).then(x => { if (on) setM(x) }).catch(e => { if (on) setErr(e.message) }); return () => { on = false } }, [objectiveId])
+  const [closed, setClosed] = useState(false)
+  const [minutes, setMinutes] = useState(extract ? (Math.round(extract.item?.minutes_today) || '') : '')
+  const [day, setDay] = useState(() => new Date().toLocaleDateString('en-CA', { timeZone: 'America/Chicago' }))
+  const [note, setNote] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [saveErr, setSaveErr] = useState(null)
+  const [tick, setTick] = useState(0)
+  useEffect(() => { let on = true; missionSummary(objectiveId).then(x => { if (on) setM(x) }).catch(e => { if (on) setErr(e.message) }); return () => { on = false } }, [objectiveId, tick])
+  const extracting = !!extract && !closed
+  const go = async () => {
+    if (!extract || busy) return
+    setBusy(true); setSaveErr(null)
+    try {
+      if (note.trim()) await fileAchieved(extract.item, note.trim())
+      const r = await extractItem(extract.item, { minutes: Number(minutes) || 0, note: note.trim() || null, day })
+      setClosed(true); setTick(t => t + 1); setBusy(false)
+      extract.onDone && extract.onDone(r)
+    } catch (e) { setSaveErr(e.message); setBusy(false) }
+  }
+  const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Chicago' })
+  const field = { width: '100%', background: 'rgba(255,255,255,0.05)', border: `1px solid ${PANEL_BORDER}`, borderRadius: 8, color: INK, padding: '7px 10px', fontSize: 14, fontFamily: 'inherit', boxSizing: 'border-box' }
   useEffect(() => { const k = (e) => { if (e.key === 'Escape') onClose() }; window.addEventListener('keydown', k); return () => window.removeEventListener('keydown', k) }, [onClose])
   const color = m ? m.color : GOLD
   return (
     <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 300, background: 'rgba(5,16,28,0.86)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16, overflowY: 'auto' }}>
       <div onClick={e => e.stopPropagation()} style={{ width: 'min(720px, 100%)', maxHeight: '92vh', overflowY: 'auto', background: '#0F2338', border: `1px solid ${alpha(color, 33)}`, borderRadius: 16, padding: '34px 32px 26px', boxShadow: `0 0 60px -20px ${color}` }}>
-        {err && <div style={{ fontFamily: MONO, fontSize: 10, color: RED, letterSpacing: '1px', textTransform: 'uppercase' }}>{err}</div>}
-        {!m && !err && <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '1.4px', textTransform: 'uppercase', color: LABEL }}>Reading the Ledger</div>}
+        {err && <div style={{ fontSize: 13, color: RED }}>{err}</div>}
+        {!m && !err && <div style={{ fontSize: 13.5, color: MUTED }}>Reading the Ledger</div>}
         {reading && (
           <div onClick={() => setReading(null)} style={{ position: 'fixed', inset: 0, zIndex: 310, background: 'rgba(5,16,28,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
             <div onClick={e => e.stopPropagation()} style={{ width: 'min(760px, 100%)', maxHeight: '88vh', overflowY: 'auto', background: 'var(--hud-surface-raised)', border: `1px solid ${PANEL_BORDER}`, borderRadius: 14, padding: '24px 26px', display: 'grid', gap: 14 }}>
@@ -43,8 +68,11 @@ export default function YayPage({ objectiveId, onClose, fresh = false, onOpenMis
             <div style={{ display: 'flex', gap: 22, alignItems: 'center', flexWrap: 'wrap' }}>
               <BadgeMedallion id={m.badge} size={118} glow color={color} />
               <div style={{ flex: 1, minWidth: 240 }}>
-                <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '2px', textTransform: 'uppercase', color, display: 'inline-flex', alignItems: 'center', gap: 8 }}><KindIcon kind={m.kind} size={12} color={color} />{fresh ? 'Mission complete' : 'Mission Summary'} · {m.type}</div>
-                <h2 style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 28, letterSpacing: '-0.01em', color: '#fff', lineHeight: 1.2, margin: '8px 0 4px' }}>{m.title}</h2>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                  <h2 style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 28, letterSpacing: '-0.01em', color: '#fff', lineHeight: 1.2, margin: 0 }}>{extracting ? 'Extract' : (fresh || closed) ? 'Mission Complete' : 'Mission Summary'}</h2>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7, fontFamily: MONO, fontSize: 10.5, letterSpacing: '1.4px', textTransform: 'uppercase', color, border: `1px solid ${alpha(color, 40)}`, borderRadius: 999, padding: '4px 11px', whiteSpace: 'nowrap' }}><KindIcon kind={m.kind} size={12} color={color} />{m.type}</span>
+                </div>
+                <div style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 20, lineHeight: 1.3, color: INK, margin: '8px 0 4px', letterSpacing: '-0.005em' }}>{m.title}</div>
                 {m.project && <div style={{ fontSize: 13.5, color: INK2 }}>{m.project}{m.projectKey ? <span style={{ fontFamily: MONO, fontSize: 10.5, letterSpacing: '1px', textTransform: 'uppercase', color: LABEL, marginLeft: 8 }}>{m.projectKey}</span> : null}</div>}
                 <div style={{ fontFamily: SERIF, fontStyle: 'italic', fontSize: 13, color: GRAY, marginTop: 6 }}>{m.lore}</div>
               </div>
@@ -60,9 +88,13 @@ export default function YayPage({ objectiveId, onClose, fresh = false, onOpenMis
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 14, borderTop: `1px solid ${PANEL_BORDER}`, borderBottom: `1px solid ${PANEL_BORDER}`, padding: '14px 0' }}>
               <Fact label="Miles netted"><span style={{ fontSize: 30, color: GOLD }}>{m.miles}</span>{m.size === 'heavy' && m.kind === 'Side Mission' && <div style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '0.8px', color: GRAY, marginTop: 2 }}>50 + 10 × {m.gatesPaid} gates</div>}</Fact>
               <Fact label="Opened">{fmtDay(m.opened)}</Fact>
-              <Fact label="Closed">{fmtDay(m.closed)}</Fact>
-              <Fact label="In flight">{m.days ? `${m.days} day${m.days === 1 ? '' : 's'}` : '—'}</Fact>
-              <Fact label="On the clock">{m.minutes ? `${Math.floor(m.minutes / 60)}h ${m.minutes % 60}m` : 'no clock'}</Fact>
+              {extracting
+                ? <div><Label>Done On</Label><input type="date" value={day} max={today} onChange={e => setDay(e.target.value)} style={field} /><div style={{ fontSize: 11, color: MUTED, marginTop: 4 }}>today unless it was done earlier</div></div>
+                : <Fact label="Closed">{fmtDay(m.closed)}</Fact>}
+              <Fact label="In flight">{extracting ? (m.opened ? `${Math.max(1, Math.round((new Date(`${day}T12:00:00`) - new Date(m.opened)) / 864e5))} days` : '—') : m.days ? `${m.days} day${m.days === 1 ? '' : 's'}` : '—'}</Fact>
+              {extracting
+                ? <div><Label>Time Of Activity</Label><input type="number" min="0" value={minutes} onChange={e => setMinutes(e.target.value)} placeholder="minutes" style={field} /><div style={{ fontSize: 11, color: MUTED, marginTop: 4 }}>minutes · clocked {fmtClock(extract.item?.minutes_today || m.minutes || 0)}</div></div>
+                : <Fact label="On the clock">{m.minutes ? `${Math.floor(m.minutes / 60)}h ${m.minutes % 60}m` : 'no clock'}</Fact>}
             </div>
 
             {m.gates.length > 0 && (
@@ -81,8 +113,10 @@ export default function YayPage({ objectiveId, onClose, fresh = false, onOpenMis
             )}
 
             <div>
-              <Label>Achieved{m.north_star ? ' · What Is Different Now' : ''}</Label>
-              {m.achieved
+              <Label>Achieved{m.north_star || extracting ? ' · Is It True? What Is Different Now?' : ''}</Label>
+              {extracting
+                ? <textarea rows={3} value={note} onChange={e => setNote(e.target.value)} placeholder="In your words. It stays on this card under the star." style={{ ...field, resize: 'vertical', fontSize: 14.5, lineHeight: 1.55 }} />
+                : m.achieved
                 ? <div style={{ fontSize: 15.5, lineHeight: 1.7, color: INK }}>{m.achieved}{m.achievedFrom === 'archive' && <div style={{ fontFamily: MONO, fontSize: 10.5, letterSpacing: '0.8px', textTransform: 'uppercase', color: LABEL, marginTop: 6 }}>from the close-out summary, before Achieved was asked</div>}{m.achievedFrom === 'achieved' && <div style={{ fontFamily: MONO, fontSize: 10.5, letterSpacing: '0.8px', textTransform: 'uppercase', color: LABEL, marginTop: 6 }}>in David's words at close</div>}</div>
                 : <div style={{ fontSize: 13.5, color: GRAY }}>Nothing written at close. Tell Lumen what was achieved and it lands here.</div>}
               {m.origin && <div style={{ fontSize: 12.5, color: MUTED, marginTop: 8 }}>Origin · {m.origin}</div>}
@@ -105,9 +139,13 @@ export default function YayPage({ objectiveId, onClose, fresh = false, onOpenMis
               </div>
             )}
 
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, borderTop: `1px solid ${PANEL_BORDER}`, paddingTop: 14, flexWrap: 'wrap' }}>
-              {onOpenMission && <button onClick={() => onOpenMission(m.objective)} style={S.btnGhost}><ExternalLink size={11} /> Open mission page</button>}
-              <button onClick={onClose} style={S.btnPrimary}>Continue</button>
+            {saveErr && <div style={{ fontSize: 13, color: RED }}>{saveErr}</div>}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, borderTop: `1px solid ${PANEL_BORDER}`, paddingTop: 14, flexWrap: 'wrap', alignItems: 'center' }}>
+              {extracting && <span style={{ fontSize: 12, color: MUTED, marginRight: 'auto' }}>{m.personal ? 'Personal time stays out of Harvest; the clock is kept in the Ledger.' : 'The clock is kept in the Ledger.'} Miles bank on the next update.</span>}
+              {!extracting && onOpenMission && <button onClick={() => onOpenMission(m.objective)} style={S.btnGhost}><ExternalLink size={11} /> Open Mission Page</button>}
+              {extracting
+                ? <><button onClick={onClose} style={S.btnGhost}>Cancel</button><button onClick={go} disabled={busy} style={S.btnPrimary}>{busy ? 'Extracting' : 'Extract'}</button></>
+                : <button onClick={onClose} style={S.btnPrimary}>Continue</button>}
             </div>
           </div>
         )}
