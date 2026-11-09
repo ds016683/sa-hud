@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client'
 import './index.css'
 import './sa-hud.css'
 import App from './App.jsx'
+import BuildNotice from './components/BuildNotice.jsx'
 // Theme (Milestone 18): dark, the CIP feature navy. The CIP paper tokens stay in sa-hud.css under
 // [data-theme="light"] for when the scrub (18.3) has cleared the pages' own navy; the switch was
 // pulled 10/24 (David) until then. Any stored light preference is cleared so no one is stuck in it.
@@ -47,6 +48,7 @@ createRoot(document.getElementById('root')).render(
   <StrictMode>
     <RootBoundary>
       <App />
+      <BuildNotice />
     </RootBoundary>
   </StrictMode>,
 )

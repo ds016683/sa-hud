@@ -11,6 +11,18 @@
       "port": 5173
     },
     {
+      "name": "sa-hud-preview",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": [
+        "vite",
+        "preview",
+        "--port",
+        "4173",
+        "--strictPort"
+      ],
+      "port": 4173
+    },
+    {
       "name": "hud-board",
       "runtimeExecutable": "bash",
       "runtimeArgs": [
