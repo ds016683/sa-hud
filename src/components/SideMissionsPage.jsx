@@ -51,7 +51,8 @@ const Tag = ({ children, color = LABEL }) => <span style={{ ...meta, color, bord
 // ---- facets ---------------------------------------------------------------------
 const DOMAIN_IDS = TAGS.domain.map(t => t.id)
 const DOMAIN_LABEL = Object.fromEntries(TAGS.domain.map(t => [t.id, t.label]))
-const personOf = (o) => String(o.who || o.stakeholder || '').trim() || null
+const NOBODY = /^(n\/a|na|none|no one|nobody|tbd|-)$/i
+const personOf = (o) => { const w = String(o.who || o.stakeholder || '').trim(); return w && !NOBODY.test(w) ? w : null }
 const domainOf = (o) => (o.tags || []).find(t => DOMAIN_IDS.includes(t)) || null
 const isStashed = (o) => (o.tags || []).includes('stashed')
 const VIEWS = [
@@ -139,7 +140,7 @@ function Row({ o, view, loadItem, selected, onSelect, onOpen, onLoad, onDone, on
   const binned = view === 'bin'
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '11px 0', borderTop: `1px solid ${PANEL_BORDER}` }}>
-      {!binned && !released && (
+      {!binned && !released && onSelect && (
         <button onClick={() => onSelect(o.id)} aria-label="select" style={{ width: 16, height: 16, flex: 'none', borderRadius: 4, border: `1px solid ${selected ? BLUE : INK2}`, background: selected ? BLUE : 'transparent', cursor: 'pointer', padding: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
           {selected && <Check size={11} color={NAVY_DEEP} strokeWidth={3} />}
         </button>
@@ -156,7 +157,7 @@ function Row({ o, view, loadItem, selected, onSelect, onOpen, onLoad, onDone, on
           {o.state === 'inbox' && <Tag>New From Lumen</Tag>}
           {loadItem && <span style={{ ...meta, color: GREEN }}>{loadItem.equipped ? 'On The Board · Running' : 'On The Board · Holstered'}</span>}
           {!loadItem && o.state === 'parked' && isStashed(o) && <span style={{ ...meta, color: MUTED }}>Stashed</span>}
-          <span style={{ fontSize: 12.5, color: MUTED, lineHeight: 1.3 }}>{provenance(o).label}{provenance(o).detail && provenance(o).label !== 'Added by hand' ? ` · ${provenance(o).detail}` : ''}</span>
+          {provenance(o).label !== 'Added by hand' && <span style={{ fontSize: 12.5, color: MUTED, lineHeight: 1.3 }}>{provenance(o).label}{provenance(o).detail ? ` · ${provenance(o).detail}` : ''}</span>}
         </div>
       </div>
       <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
@@ -298,15 +299,15 @@ export default function SideMissionsPage({ onNavigate }) {
 
       {active.length > 0 && (
         <Panel heading="On the Board" style={{ marginBottom: 12 }}>
-          {active.map(o => <Row key={o.id} o={o} view="open" loadItem={loadItemFor(o)} selected={false} onSelect={() => {}} onOpen={(o) => openCard(o.id)} onLoad={() => {}} onDone={onDone} onBin={(x) => act(() => binObjective(x.id), `Binned: ${x.title}`)} />)}
+          {active.map(o => <Row key={o.id} o={o} view="open" loadItem={loadItemFor(o)} selected={false} onSelect={null} onOpen={(o) => openCard(o.id)} onLoad={() => {}} onDone={onDone} onBin={(x) => act(() => binObjective(x.id), `Binned: ${x.title}`)} />)}
           {onNavigate && <div style={{ marginTop: 10 }}><button onClick={() => onNavigate('agenda')} style={pill()}>Open the Board →</button></div>}
         </Panel>
       )}
 
       <Panel style={{ marginBottom: 12 }}>
         <div className="sm-grid" style={{ display: 'grid', gridTemplateColumns: '216px minmax(0, 1fr)', gap: 22 }}>
-          {/* the rail */}
-          <div>
+          {/* the rail: stays put while the list scrolls */}
+          <div style={{ position: 'sticky', top: 12, alignSelf: 'start', maxHeight: 'calc(100vh - 24px)', overflowY: 'auto' }}>
             <Label>View</Label>
             {VIEWS.map(([k, label]) => { const n = viewCount(k); if (!n && !['open', 'target', 'released'].includes(k)) return null; return <Facet key={k} on={view === k} off={!n} count={n} onClick={() => pickView(k)}>{label}</Facet> })}
             <Facet on={view === 'bin'} off={!bin.length} count={bin.length} onClick={() => pickView('bin')}>Bin</Facet>
@@ -342,7 +343,7 @@ export default function SideMissionsPage({ onNavigate }) {
             </div>
 
             {picked.length > 0 && (
-              <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', background: PANEL_BG, border: `1px solid ${PANEL_BORDER}`, borderRadius: 10, padding: '9px 12px', marginTop: 12 }}>
+              <div style={{ position: 'sticky', top: 8, zIndex: 3, display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', background: 'var(--hud-surface)', border: `1px solid ${BLUE}`, borderRadius: 10, padding: '9px 12px', marginTop: 12, boxShadow: '0 8px 24px rgba(0,0,0,0.35)' }}>
                 <SubLabel style={{ marginBottom: 0, color: INK }}>{picked.length} Selected</SubLabel>
                 {dateAsk
                   ? <>
