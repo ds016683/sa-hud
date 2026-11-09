@@ -71,7 +71,7 @@ function ClockStrip({ minutes = 0, hours = 1, running = false, onToggle }) {
 const GLYPH = { fill: 'none', stroke: 'currentColor', strokeWidth: 1.7, strokeLinecap: 'round', strokeLinejoin: 'round' }
 // Extract is the Marathon exfil marker (David 11/7, from his frame): a peaked badge with a bold up-arrow. The marker is the
 // button's own shape, gold outline and arrow at rest, gold fill with the arrow in navy on hover, so it keeps the house palette.
-function ExtractMarker({ title, onClick, size = 34 }) {
+export function ExtractMarker({ title, onClick, size = 34 }) {
   const [hot, setHot] = useState(false)
   return (
     <button type="button" onClick={onClick} title={title} aria-label={title} onMouseEnter={() => setHot(true)} onMouseLeave={() => setHot(false)}
@@ -96,7 +96,7 @@ const GlyphStash = ({ size = 15 }) => (
     <path d="M12 2.5V13M8.3 9.3 12 13l3.7-3.7" />
   </svg>
 )
-function IconVerb({ color = INK2, title, onClick, children }) {
+export function IconVerb({ color = INK2, title, onClick, children }) {
   const [hot, setHot] = useState(false)
   return (
     <button type="button" onClick={onClick} title={title} aria-label={title} onMouseEnter={() => setHot(true)} onMouseLeave={() => setHot(false)}

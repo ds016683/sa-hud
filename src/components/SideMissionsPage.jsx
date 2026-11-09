@@ -15,6 +15,7 @@ import FileAway from './river/FileAway'
 import YayPage from './river/YayPage'
 import { fetchObjectives, addObjective, route, updateObjective, binObjective, restoreObjective, purgeObjective, reopenObjective, closeOut, pockets, provenance, TAGS } from '../lib/objectives'
 import { fetchLoadout, SIZES } from '../lib/loadout'
+import { ExtractMarker, IconVerb } from './river/LoadoutPanel'
 import { INK, INK2, GRAY, PANEL_BORDER, PANEL_BG, GOLD, BLUE, GREEN, RED, SUCCESS, LABEL, MUTED, NAVY_DEEP, MONO, SERIF, S, Panel, Label, SubLabel, TYPE, chiToday, NORTH_STAR_LABEL, NORTH_STAR_ASK, alpha } from './river/canon'
 import { hudConfirm, hudPrompt } from '../lib/dialog'
 import { openCard } from '../lib/card'
@@ -160,19 +161,20 @@ function Row({ o, view, loadItem, selected, onSelect, onOpen, onLoad, onDone, on
           {provenance(o).label !== 'Added by hand' && <span style={{ fontSize: 12.5, color: MUTED, lineHeight: 1.3 }}>{provenance(o).label}{provenance(o).detail ? ` · ${provenance(o).detail}` : ''}</span>}
         </div>
       </div>
-      <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+      {/* The Board's verbs, as glyphs (David 11/9): Load, Extract, Bin; the tooltip says the word. */}
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center', justifyContent: 'flex-end', flexShrink: 0 }}>
         {binned ? (
           <>
-            <button onClick={() => onRestore(o)} style={pill()}><RotateCcw size={10} /> Restore</button>
-            <button onClick={() => onPurge(o)} style={pill()}><Trash2 size={10} /> Purge</button>
+            <IconVerb title="Restore · back to the queue" onClick={() => onRestore(o)}><RotateCcw size={14} /></IconVerb>
+            <IconVerb title="Purge · gone for good" onClick={() => onPurge(o)}><Trash2 size={14} /></IconVerb>
           </>
         ) : released ? (
-          <button onClick={() => onReopen(o)} style={pill()}><RotateCcw size={10} /> Reopen</button>
+          <IconVerb title="Reopen · back to the queue" onClick={() => onReopen(o)}><RotateCcw size={14} /></IconVerb>
         ) : (
           <>
-            {!loadItem && <button onClick={() => onLoad(o)} title="Load onto the Board" style={pill()}><Play size={10} /> Load</button>}
-            <button onClick={() => onDone(o)} title="Done: close it out" style={pill()}><Check size={10} /> Done</button>
-            <button onClick={() => onBin(o)} title="Bin" style={{ ...pill(), padding: '5px 8px' }}><Trash2 size={10} /></button>
+            {!loadItem && <IconVerb title="Load · onto the Board" onClick={() => onLoad(o)}><Play size={14} /></IconVerb>}
+            <ExtractMarker title="Extract · close it, bank the miles" onClick={() => onDone(o)} size={32} />
+            <IconVerb title="Bin" onClick={() => onBin(o)}><Trash2 size={14} /></IconVerb>
           </>
         )}
       </div>
@@ -277,10 +279,10 @@ export default function SideMissionsPage({ onNavigate }) {
   }
   const takeBack = () => each(o => route(o.id, 'parked').then(() => updateObjective(o.id, { who: null })), 'Back in the queue')
   const releaseAll = async () => {
-    if (!await hudConfirm(`Release ${picked.length} ${picked.length === 1 ? 'item' : 'items'}? Anything carrying files is skipped and stays for its own close-out.`)) return
+    if (!await hudConfirm(`Extract ${picked.length} ${picked.length === 1 ? 'item' : 'items'}? Anything carrying files is skipped and stays for its own close-out.`)) return
     let ok = 0, skipped = 0
     for (const o of picked) { try { const p = await pockets(o.id); if (p.carrying) { skipped++; continue } await closeOut(o); ok++ } catch { skipped++ } }
-    setMsg(`Released ${ok}${skipped ? ` · ${skipped} skipped (carrying files or steps, close them one at a time)` : ''}`); clear(); await refresh()
+    setMsg(`Extracted ${ok}${skipped ? ` · ${skipped} skipped (carrying files or steps, close them one at a time)` : ''}`); clear(); await refresh()
   }
   const binAll = async () => { if (!await hudConfirm(`Bin ${picked.length} ${picked.length === 1 ? 'item' : 'items'}? The Bin keeps them until you purge.`)) return; each(o => binObjective(o.id), 'Binned') }
 
@@ -370,7 +372,7 @@ export default function SideMissionsPage({ onNavigate }) {
                         <button onClick={() => handTo('foreman')} style={pill()}>Hand To</button>
                         <button onClick={() => handTo('waiting')} style={pill()}>Waits On</button>
                         {picked.some(o => ['waiting', 'foreman', 'follow_up', 'inbox'].includes(o.state)) && <button onClick={takeBack} style={pill()}>Back To Queue</button>}
-                        <button onClick={releaseAll} style={pill()}>Release</button>
+                        <button onClick={releaseAll} style={pill()}>Extract</button>
                         <button onClick={binAll} style={pill()}>Bin</button>
                         <span style={{ flex: 1 }} />
                         <button onClick={clear} style={pill()}>Clear</button>
