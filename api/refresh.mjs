@@ -277,14 +277,9 @@ export default async function handler(req, res) {
     }
     if (!out) throw new Error(`submit_update shape unusable after retry; ${lastShapeError}`)
 
-    // ---- deterministic writes
-    const created = []
-    for (const c of out.create_objectives || []) {
-      const tags = c.maybe_dupe ? ['agent', 'suggested', 'maybe-dupe'] : ['agent', 'suggested']
-      const description = `Manual refresh: discovered from ${c.source} on ${TODAY}` + (c.maybe_dupe && c.closest ? ` · Possible duplicate of: ${c.closest}` : '')
-      await sb('objectives', { method: 'POST', prefer: 'return=minimal', body: { user_id: DAVID, title: String(c.title).slice(0, 120), state: 'inbox', tags, needs_sizing: true, effort: 2, importance: 2, description } })
-      created.push(c.title)
-    }
+    // ---- suggestions stay suggestions (David 11/9): the model's create_objectives are
+    // reported back, never written. Nothing lands on his board unless he commissions it.
+    const created = (out.create_objectives || []).map(c => `${String(c.title).slice(0, 120)}${c.source ? ` (from ${c.source})` : ''}${c.maybe_dupe && c.closest ? ` · possible duplicate of: ${c.closest}` : ''}`)
     // source_counts and must_do are mechanical, never model-authored.
     const row = {
       ...out.row, day: TODAY, model: 'Manual Refresh', scorecard, must_do: mustDo,
@@ -304,7 +299,7 @@ export default async function handler(req, res) {
       } else throw e
     }
 
-    return res.status(200).json({ ok: true, day: TODAY, source_counts: row.source_counts, created_objectives: created, pipes, miles: scorecard.miles, badges: scorecard.badges, badge_evidence: scorecard.badge_evidence, river_total: scorecard.river_total, released_today: scorecard.released_today })
+    return res.status(200).json({ ok: true, day: TODAY, source_counts: row.source_counts, suggested_objectives: created, pipes, miles: scorecard.miles, badges: scorecard.badges, badge_evidence: scorecard.badge_evidence, river_total: scorecard.river_total, released_today: scorecard.released_today })
   } catch (e) {
     console.error('refresh failed:', e)
     return res.status(500).json({ error: String(e.message || e) })
