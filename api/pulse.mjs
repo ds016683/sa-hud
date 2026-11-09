@@ -164,14 +164,17 @@ export default async function handler(req, res) {
     }
     // ---- notes landing: when Granola notes for a meeting today reach the
     // Ledger (the sync runs every 30 minutes, so 30 to 60 minutes after the
-    // meeting ends), Lumen reads them once, works the board, and sends David
-    // the specific things he said he would do. One message per note.
+    // meeting ends), Lumen reads them once and sends David the specific things
+    // he said he would do, as recommendations. One message per note. Nothing is
+    // added to the board from notes (David 11/9); the recommendations live in
+    // this message and in granola_meetings.action_items until a day-summary
+    // surface takes them (Milestone 19 territory).
     if (kind === 'sweep' || kind === 'notes') {
       const notes = await sb(`granola_meetings?select=id,title,summary,action_items,key_decisions,meeting_date&meeting_date=eq.${TODAY}&summary=not.is.null&order=granola_created_at.asc&limit=6`).catch(() => [])
       for (const n of notes) {
         if (!dry && await alreadySent('notes', TODAY, n.id)) continue
         out.push(await say({ kind: 'notes', day: TODAY, item: n.id, dry, instruction:
-          `[PULSE] Granola notes just landed for today's meeting "${n.title}". Here they are:\n\n${String(n.summary || '').slice(0, 6000)}${n.action_items ? `\n\nAction items as Granola saw them: ${JSON.stringify(n.action_items).slice(0, 1500)}` : ''}\n\nDo two things. First, work the board: for each action item that is David's own (not someone else's), add_objective in state follow_up with a sensible follow_up_date (a week out unless the notes name a date) and description "From ${n.title} notes"; if the notes move a deadline on something already on his board (check get_objectives), use set_due; skip anything already on the board. Second, message David: a short list of the specific things HE said he would do in this meeting, in his words where the notes have them, each with the date if one was named, then one line on what you put on the board. If the notes show nothing he committed to, say so in one line.` }))
+          `[PULSE] Granola notes just landed for today's meeting "${n.title}". Here they are:\n\n${String(n.summary || '').slice(0, 6000)}${n.action_items ? `\n\nAction items as Granola saw them: ${JSON.stringify(n.action_items).slice(0, 1500)}` : ''}\n\nDo two things. First, read the board (get_objectives): if the notes move a deadline on something already on it, use set_due; otherwise write nothing. Never add_objective from meeting notes (David 11/9: notes do not generate to-dos; 119 Side Missions piled up that way). Second, message David: a short list of the specific things HE said he would do in this meeting, in his words where the notes have them, each with the date if one was named, headed "Recommended to-dos from ${n.title}", and close with one line saying none of it is on the board until he says which to add. If the notes show nothing he committed to, say so in one line.` }))
       }
     }
     // ---- mail: unread messages in lumen@ from David are conversation turns;
