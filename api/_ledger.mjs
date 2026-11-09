@@ -401,7 +401,7 @@ export const TOOLS = [
   },
   {
     name: 'add_step',
-    description: "Only on David's express ask in this turn (David 11/9: nothing is created on his board, no objective, task, milestone, step, maintenance or project, unless he commissions that item himself; a suggestion is a message to him, never a row). Add a milestone to a Mythic (five at most, 10 miles each, each a card of its own in the HUD; a sixth means it is a Main Mission) or a mark to a Contract (three at most, unpaid). Every one must be observable: a decision marked, a conversation had, a thing produced. Refuses on a Bounty; set_size first if David wants it to be a Mythic.",
+    description: "Only when David himself asks in this turn (David 11/9: nothing is created on his board, no objective, task, milestone, step, maintenance or project, unless he commissions that item himself; a suggestion is a message to him, never a row). Add a milestone to a Mythic (five at most, 10 miles each, each a card of its own in the HUD; a sixth means it is a Main Mission) or a mark to a Contract (three at most, unpaid). Every one must be observable: a decision marked, a conversation had, a thing produced. Refuses on a Bounty; set_size first if David wants it to be a Mythic.",
     inputSchema: { type: 'object', properties: { title: { type: 'string' }, text: { type: 'string' } }, required: ['title', 'text'] },
   },
   {
@@ -486,7 +486,7 @@ export const TOOLS = [
   },
   {
     name: 'add_maintenance',
-    description: "Only on David's express ask in this turn (David 11/9: nothing is created on his board, no objective, task, milestone, step, maintenance or project, unless he commissions that item himself; a suggestion is a message to him, never a row). Add a maintenance item (the small recurring upkeep of a life: content, hygiene, exercise, other). Five done in a day strike a Maintenance Bundle.",
+    description: "Only when David himself asks in this turn (David 11/9: nothing is created on his board, no objective, task, milestone, step, maintenance or project, unless he commissions that item himself; a suggestion is a message to him, never a row). Add a maintenance item (the small recurring upkeep of a life: content, hygiene, exercise, other). Five done in a day strike a Maintenance Bundle.",
     inputSchema: { type: 'object', properties: { title: { type: 'string' }, category: { type: 'string', enum: ['content', 'hygiene', 'exercise', 'other'] }, cadence: { type: 'string' } }, required: ['title', 'category'] },
   },
   {
@@ -572,7 +572,7 @@ export const TOOLS = [
   // ---- writes (the hands)
   {
     name: 'add_objective',
-    description: "Only on David's express ask in this turn (David 11/9: nothing is created on his board, no objective, task, milestone, step, maintenance or project, unless he commissions that item himself; a suggestion is a message to him, never a row). Capture a new objective on David's board. Default state is 'inbox' (awaiting his triage); use 'active' only when he says to start it now, 'parked' for the queue, 'follow_up' with a follow_up_date when he wants to be nudged later, 'waiting' when the ball is in someone else's court. Never create duplicates of things already on the board: check get_objectives first when unsure.",
+    description: "Only when David himself asks in this turn (David 11/9: nothing is created on his board, no objective, task, milestone, step, maintenance or project, unless he commissions that item himself; a suggestion is a message to him, never a row). Capture a new objective on David's board. Default state is 'inbox' (awaiting his triage); use 'active' only when he says to start it now, 'parked' for the queue, 'follow_up' with a follow_up_date when he wants to be nudged later, 'waiting' when the ball is in someone else's court. Never create duplicates of things already on the board: check get_objectives first when unsure.",
     inputSchema: { type: 'object', properties: {
       title: { type: 'string' },
       state: { type: 'string', enum: ['inbox', 'parked', 'active', 'follow_up', 'waiting'] },
@@ -600,7 +600,7 @@ export const TOOLS = [
   },
   {
     name: 'add_project_task',
-    description: 'Only on David's express ask in this turn (David 11/9: nothing is created on his board, no objective, task, milestone, step, maintenance or project, unless he commissions that item himself; a suggestion is a message to him, never a row). Add an open task to a project (by project key or name). Project tasks are the firm-level layer, distinct from personal Objectives.',
+    description: 'Only when David himself asks in this turn (David 11/9: nothing is created on his board, no objective, task, milestone, step, maintenance or project, unless he commissions that item himself; a suggestion is a message to him, never a row). Add an open task to a project (by project key or name). Project tasks are the firm-level layer, distinct from personal Objectives.',
     inputSchema: { type: 'object', properties: { project: { type: 'string', description: 'project key or name' }, text: { type: 'string' }, due_date: { type: 'string' } }, required: ['project', 'text'] },
   },
   {
@@ -660,7 +660,7 @@ export const TOOLS = [
   },
   {
     name: 'create_project',
-    description: "Only on David's express ask in this turn (David 11/9: nothing is created on his board, no objective, task, milestone, step, maintenance or project, unless he commissions that item himself; a suggestion is a message to him, never a row). Create a project on the Projects layer (long-standing work with its own task list). Give it a key like 'Platform.Lumen' so the session board and Lumen can address it. category: client | third-horizon | personal | commercial-infra | q2-must | biz-dev | learning.",
+    description: "Only when David himself asks in this turn (David 11/9: nothing is created on his board, no objective, task, milestone, step, maintenance or project, unless he commissions that item himself; a suggestion is a message to him, never a row). Create a project on the Projects layer (long-standing work with its own task list). Give it a key like 'Platform.Lumen' so the session board and Lumen can address it. category: client | third-horizon | personal | commercial-infra | q2-must | biz-dev | learning.",
     inputSchema: { type: 'object', properties: { name: { type: 'string' }, key: { type: 'string' }, category: { type: 'string' }, description: { type: 'string' } }, required: ['name'] },
   },
   {
