@@ -15,7 +15,7 @@ import FileAway from './river/FileAway'
 import YayPage from './river/YayPage'
 import { fetchObjectives, addObjective, route, updateObjective, binObjective, restoreObjective, purgeObjective, reopenObjective, closeOut, pockets, provenance, TAGS } from '../lib/objectives'
 import { fetchLoadout, SIZES } from '../lib/loadout'
-import { ExtractMarker, IconVerb } from './river/LoadoutPanel'
+import { IconVerb } from './river/LoadoutPanel'
 import { INK, INK2, GRAY, PANEL_BORDER, PANEL_BG, GOLD, BLUE, GREEN, RED, SUCCESS, LABEL, MUTED, NAVY_DEEP, MONO, SERIF, S, Panel, Label, SubLabel, TYPE, chiToday, NORTH_STAR_LABEL, NORTH_STAR_ASK, alpha } from './river/canon'
 import { hudConfirm, hudPrompt } from '../lib/dialog'
 import { openCard } from '../lib/card'
@@ -47,6 +47,14 @@ function TargetMark({ date, late }) {
     </span>
   )
 }
+// The Extract marker at list weight: the same house-and-arrow as the Loadout slot, drawn as a
+// hairline in the ring like Load and Bin, not the gold slab (David 11/9: too bold on a row).
+const GlyphExtract = ({ size = 15 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round">
+    <path d="M12 2.6 21 9.6v10.2a1.2 1.2 0 0 1-1.2 1.2H4.2A1.2 1.2 0 0 1 3 19.8V9.6Z" />
+    <path d="M12 17.5V9.3M8.6 12.6 12 9.2l3.4 3.4" />
+  </svg>
+)
 const Tag = ({ children, color = LABEL }) => <span style={{ ...meta, color, border: `1px solid ${alpha(color, 33)}`, borderRadius: 999, padding: '2px 8px', whiteSpace: 'nowrap' }}>{children}</span>
 
 // ---- facets ---------------------------------------------------------------------
@@ -173,7 +181,7 @@ function Row({ o, view, loadItem, selected, onSelect, onOpen, onLoad, onDone, on
         ) : (
           <>
             {!loadItem && <IconVerb title="Load · onto the Board" onClick={() => onLoad(o)}><Play size={14} /></IconVerb>}
-            <ExtractMarker title="Extract · close it, bank the miles" onClick={() => onDone(o)} size={32} />
+            <IconVerb title="Extract · close it, bank the miles" onClick={() => onDone(o)}><GlyphExtract /></IconVerb>
             <IconVerb title="Bin" onClick={() => onBin(o)}><Trash2 size={14} /></IconVerb>
           </>
         )}
