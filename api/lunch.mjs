@@ -115,7 +115,7 @@ async function logEvent(config, type, extra = {}) {
 }
 
 // ---- the menu, read from the config ---------------------------------------------------
-const allItems = (config) => (config.menu?.sections || []).flatMap(sec => (sec.items || []).map(it => ({ ...it, section: sec.title })))
+const allItems = (config) => (config.menu?.sections || []).flatMap(sec => (sec.items || []).filter(it => it.id).map(it => ({ ...it, section: sec.title })))
 const closed = (config) => !!config.closes_at && Date.now() > new Date(config.closes_at).getTime()
 
 function validateOrder(config, body) {
@@ -271,34 +271,17 @@ textarea{resize:vertical;min-height:72px}
 .done li{border-top:1px solid var(--line);padding:9px 0;font-family:var(--serif);font-size:16.5px}
 .done li span{font-family:var(--sans);font-size:13.5px;color:var(--ink2)}
 .done .nt{color:var(--ink2);font-size:14px;margin-top:10px}
-details{margin-top:44px;border-top:1px solid var(--line);padding-top:16px}
-summary{cursor:pointer;font-size:14px;font-weight:600;color:var(--accent)}
-details ul{margin:12px 0 0;padding-left:18px;color:var(--ink2);font-size:13.5px;max-width:64ch}
-details li{margin-bottom:7px}
-details li b{color:var(--ink);font-weight:600}
-.foot{margin-top:18px;font-size:12.5px;color:var(--ink3)}
+.foot{margin-top:44px;border-top:1px solid var(--line);padding-top:14px;font-size:12.5px;color:var(--ink3)}
+.menufoot{margin-top:26px;font-size:12.5px;color:var(--ink2);line-height:1.55}
+.rule{border:none;border-top:1px solid rgba(243,241,234,.45);margin:14px 12px 4px}
 [hidden]{display:none!important}
 @media (max-width:520px){h1{font-size:27px}.brand.named>span{display:none}}
 `
 
-function posture(config, exp) {
-  const hours = exp ? Math.max(1, Math.round((exp * 1000 - Date.now()) / 3600000)) : SESSION_HOURS
-  return `<details><summary>Security Posture, For A Lunch Order</summary><ul>
-<li><b>Access.</b> One shared code, checked on the server with a constant-time compare. The guest list and the menu are not sent until it passes. Five wrong codes in ten minutes locks an address out.</li>
-<li><b>Session.</b> A signed token (HMAC-SHA256) in an HttpOnly, Secure, SameSite cookie scoped to this one path. ${exp ? `Yours expires in about ${hours} ${hours === 1 ? 'hour' : 'hours'}.` : `It lasts ${SESSION_HOURS} hours at most.`}</li>
-<li><b>Stored.</b> Your name and your order. That is the whole record.</li>
-<li><b>Not stored.</b> IP addresses, device details, analytics. A keyed hash of an address is written only when a code is mistyped, to count the tries.</li>
-<li><b>Third parties.</b> None. No trackers, no analytics, no external scripts, fonts or images. A nonce-only Content Security Policy enforces it, and you are welcome to check the headers.</li>
-<li><b>Retention.</b> Orders are deleted once lunch has been ordered.</li>
-<li><b>Proportion.</b> Yes, this is a lot for a sandwich. It is the same chassis we put in front of client work, and it costs nothing to leave on.</li>
-</ul></details>`
-}
-
-function shell({ config, nonce, title, who, body, script, exp }) {
+function shell({ config, nonce, title, who, body, script }) {
   return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><meta name="color-scheme" content="dark"><title>${esc(title)}</title><style nonce="${nonce}">${CSS}</style></head><body><div class="wrap">
 <div class="brand${who ? ' named' : ''}"><img src="/lunch-assets/th-arches-white.png" alt=""><span>Third Horizon</span>${who || ''}</div>
 ${body}
-${posture(config, exp)}
 <div class="foot">Third Horizon · ${esc(config.title || 'Lunch')}</div>
 </div><noscript><div class="wrap"><div class="err">This page needs JavaScript to send your order.</div></div></noscript>
 <script nonce="${nonce}">${script || ''}</script></body></html>`
@@ -317,7 +300,7 @@ async function send(body){
 function gatePage(config, nonce) {
   const body = `<h1>${esc(config.title || 'Lunch')}</h1>
 <div class="sub">${esc([config.place, config.when].filter(Boolean).join(' · '))}</div>
-<div class="lede">Yes, there is an access gate on the lunch menu. Enter the code from your invite and pick what you would like.</div>
+<div class="lede">Enter the code from your invite and pick what you would like.</div>
 <form class="card" id="gate" autocomplete="off">
   <label for="code">Access Code</label>
   <input id="code" name="code" type="text" inputmode="text" autocapitalize="none" autocorrect="off" spellcheck="false" maxlength="40" required autofocus>
@@ -362,13 +345,14 @@ ${shut ? '<div class="nt">Ordering has closed.</div>' : '<div class="rowend"><bu
     return shell({ config, nonce, title: config.title || 'Lunch', who, body, exp, script: `${POST_JS}document.getElementById('switch').addEventListener('click',async()=>{try{await send({action:'switch'});location.reload()}catch(e){}});` })
   }
   const sections = (menu.sections || []).map(sec => `<section class="sec"><h2>${esc(sec.title)}</h2>${sec.note ? `<div class="secnote">${esc(sec.note)}</div>` : ''}
-${(sec.items || []).map(it => `<button class="item" type="button" aria-pressed="false" data-id="${esc(it.id)}"><div class="top"><div class="nm">${esc(it.name)}</div>${it.price ? `<div class="pr">${esc(it.price)}</div>` : ''}</div>${it.desc ? `<div class="ds">${esc(it.desc)}</div>` : ''}<div class="pick">Tap To Add</div></button>${(it.options || []).length ? `<div class="opts" data-for="${esc(it.id)}" hidden>${it.options.map(o => `<div class="ol">${esc(o.label)}${o.required ? '' : ' (Optional)'}</div><div class="chips" data-label="${esc(o.label)}">${(o.choices || []).map(c => `<button class="chip" type="button" aria-pressed="false" data-choice="${esc(c)}">${esc(c)}</button>`).join('')}</div>`).join('')}</div>` : ''}`).join('')}</section>`).join('')
+${(sec.items || []).map(it => it.divider ? '<hr class="rule">' : `<button class="item" type="button" aria-pressed="false" data-id="${esc(it.id)}"><div class="top"><div class="nm">${esc(it.name)}</div>${it.price ? `<div class="pr">${esc(it.price)}</div>` : ''}</div>${it.desc ? `<div class="ds">${esc(it.desc)}</div>` : ''}<div class="pick">Tap To Add</div></button>${(it.options || []).length ? `<div class="opts" data-for="${esc(it.id)}" hidden>${it.options.map(o => `<div class="ol">${esc(o.label)}${o.required ? '' : ' (Optional)'}</div><div class="chips" data-label="${esc(o.label)}">${(o.choices || []).map(c => `<button class="chip" type="button" aria-pressed="false" data-choice="${esc(c)}">${esc(c)}</button>`).join('')}</div>`).join('')}</div>` : ''}`).join('')}</section>`).join('')
   const body = `<h1>${esc(config.title || 'Lunch')}</h1>
 <div class="sub">${esc([config.place, config.when].filter(Boolean).join(' · '))}${config.closes_at ? ` · Orders close ${esc(fmtWhen(config.closes_at))}` : ''}</div>
 ${doneCard}
 <div id="edit"${order || shut ? ' hidden' : ''}>
 <div class="menuhead"><div class="t">${esc(menu.title || 'Menu')}</div>${menu.note ? `<div class="n">${esc(menu.note)}</div>` : ''}</div>
 ${sections}
+${menu.foot ? `<div class="menufoot">${(Array.isArray(menu.foot) ? menu.foot : [menu.foot]).map(l => esc(l)).join('<br>')}</div>` : ''}
 <div class="card"><label for="notes">Allergies Or Changes</label><textarea id="notes" maxlength="400" placeholder="Anything the kitchen should know."></textarea></div>
 <div class="err" id="err" role="alert"></div>
 </div>
