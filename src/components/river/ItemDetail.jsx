@@ -9,7 +9,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Play, Pause, Archive, ExternalLink, Mic, Check, Plus, Trash2, Terminal, Star } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
-import { listArtifacts, readArtifact, writeArtifact } from '../../lib/artifacts'
+import { listArtifacts, readArtifact } from '../../lib/artifacts'
 import { fetchLoadout, equip, holster, stash, equipObjective, equipTask, fmtClock, SIZES } from '../../lib/loadout'
 import DocView from './DocView'
 import { fetchSteps, listObjectiveArtifacts, listObjectiveFiles, listObjectiveBoards, realmOf, setSize, updateObjective, objRoot, fetchMilestones } from '../../lib/objectives'
@@ -17,8 +17,7 @@ import { renderMarkdown } from './MeetingCloseout'
 import { recall } from '../../lib/recall'
 import { fmtStamp, listLiveFiles, listEvidence, openLiveFile, isRequest, isLink } from '../../lib/livefiles'
 import { isOpenRow } from '../../lib/protocols'
-import FilesTab from './Files'
-import WorkbenchTab, { WorkbenchIntake } from './Workbench'
+import CardFiles, { WrittenOnCard } from './CardFiles'
 import WorkbenchSheet from './WorkbenchSheet'
 import LumenPanel from './LumenPanel'
 import { openCard } from '../../lib/card'
@@ -265,10 +264,8 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
   const what = { item: item.kind === 'Event' ? 'meeting' : item.kind === 'Main Mission' ? 'task' : item.kind === 'Session' ? 'session' : 'mission' }
 
   const act = async (fn, after) => { try { await fn(); setMsg(after); await load(); onChange && onChange() } catch (e) { setMsg(`Could not do that: ${e.message}`) } }
-  const open = async (bucket, path) => { const { data } = await supabase.storage.from(bucket).createSignedUrl(path, 600); if (data?.signedUrl) window.open(data.signedUrl, '_blank', 'noopener') }
   // One chassis (11/4): as a page, leaving the card is a route change; the overlay closes first.
   const go = (segs) => { if (host === 'overlay') onClose(); onNavigate && onNavigate('main-missions', segs) }
-  const attachArtifact = async (slug) => { if (!rel?.project || !taskId) return; const doc = await readArtifact(rel.project.id, slug); await writeArtifact(rel.project.id, slug, { ...doc, task_id: taskId }); setMsg(`Attached ${doc.title || slug}`); load() }
   const startTimer = () => act(async () => {
     if (loaded) return equip(loaded.id)
     if (item.objective_id) { const r = await equipObjective(item.objective_id); if (!r.ok) throw new Error(r.reasons.join('; ')) ; return }
@@ -276,7 +273,7 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
     throw new Error('nothing to load')
   }, 'Timer on')
 
-  const counts = { workbench: (rel?.punchlist || []).filter(isOpenRow).length, polaris: (rel?.evidence || []).length, files: (rel?.objFiles?.length || 0) + (rel?.projectFiles.length || 0) + (rel?.storeFiles.filter(f => !f.folder).length || 0), notes: rel?.meetings.length || 0 }
+  const counts = { workbench: (rel?.punchlist || []).filter(isOpenRow).length, polaris: (rel?.evidence || []).length, files: rel?.objFiles?.length || 0, notes: rel?.meetings.length || 0 }
   const obj = rel?.objective || null
   const [copied, setCopied] = useState(false)
   const copyText = async (text) => { try { await navigator.clipboard.writeText(text); setCopied(true); setTimeout(() => setCopied(false), 1600) } catch { /* no clipboard */ } }
@@ -420,9 +417,8 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
             </div>
           ) : <None what={{ ...what, thing: 'a Polaris of its own' }} />)}
 
-          {rel && tab === 'files' && item.objective_id && <div style={{ marginBottom: 28 }}><Label>Bring In</Label><WorkbenchIntake objectiveId={item.objective_id} /></div>}
-          {rel && tab === 'files' && item.objective_id && <div key={`play:${tick}`} style={{ marginBottom: 28 }}><Label>In Play</Label><WorkbenchTab objectiveId={item.objective_id} intake={false} /></div>}
-          {rel && tab === 'files' && <FilesTab inPlay={false} objectiveId={item.objective_id || null} rel={rel} what={what} open={open} taskId={taskId} onRead={async (a) => { try { setReading({ title: a.title, doc: briefs[a.slug] || await readObjArtifact(a.root, a.slug) }) } catch (e) { setMsg(`Could not read: ${e.message}`) } }} onGo={go} onAttach={attachArtifact} onChanged={load} />}
+          {rel && tab === 'files' && <CardFiles key={`files:${item.objective_id || item.id}`} objectiveId={item.objective_id || null} onChanged={load} />}
+          {rel && tab === 'files' && <WrittenOnCard artifacts={rel.objArtifacts || []} onRead={async (a) => { try { setReading({ title: a.title, doc: briefs[a.slug] || await readObjArtifact(a.root, a.slug) }) } catch (e) { setMsg(`Could not read: ${e.message}`) } }} />}
 
           {rel && tab === 'notes' && (
             <div style={{ display: 'grid', gap: 18 }}>

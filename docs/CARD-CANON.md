@@ -10,7 +10,7 @@ This is the standard. Every Main Mission page, Side Mission card and Milestone c
 |---|---|---|---|
 | **Briefing** | Where it stands | The progress bar and the milestones, each with its steps, Load, Stash, Close | Where It Stands (done and still needed), Sessions, the facts row (Domain, Type, Due, Follow Up, Who), Back Story, then Marks on a Contract or Milestones on a Mythic |
 | **Workbench** | The working surface: what is being built | One sheet of tabs (David 11/7, 11/10): a tab for each live protocol first, then a tab for each page built on the mission (build_page from Lumen or a session, a pipeline-fed view, a skill brought in), newest first, then the blank tabs left to right by creation; the MMA Planning canvas is a tab on the MMA missions only, never on another mission | The same sheet of tabs: a tab for each live protocol (editing punchlists, briefing gap maps), then the built tabs, then the blank tabs |
-| **Files** | Bring In, then the filed and source material, one list | Bring In (drop a file, point at a path, add a launch link; it lands in play on the Workbench), then every file and folder in the mission's storage, the filed live files, the artifacts (scorecards, decisions, briefs) and the shares (published pages), each a row with a kind chip. Cabinet, Artifacts and Shares are kinds of file, never sections | Bring In, then the filed live files, the item's own folder, the mission's files and store |
+| **Files** | One list of the files brought in, nothing else | Bring In (drop a file, point at a path, add a launch link; it lands in play on the Workbench), then every file and folder in the mission's storage, the filed live files, the artifacts (scorecards, decisions, briefs) and the shares (published pages), each a row with a kind chip. Cabinet, Artifacts and Shares are kinds of file, never sections | One list (David 11/10): the files and launch links attached to this card, by David through Add or by Lumen or a session at his word. Click a row to preview it; filter, sort and folders above. No intake box, no In Play or Filed sections, no mission files, no file store. Empty shows one icon and Add |
 | **Notes** | Your own words | The mission's notes, newest first | The item's own notes, then the meetings that match it |
 | **Polaris** | The objective and the proof | The objective sentence, editable; the evidence pinned on the mission; the close-out state | The objective sentence, editable; the evidence pinned on the item; the released state |
 
@@ -115,3 +115,21 @@ Everything that edits or explains moves off the Briefing. Marks and Milestones a
 - **The sheet**: the tab itself (type, draw, Taller, Delete Tab). A built page's tab renders the page itself (srcDoc, as on the Lumen panel's Build tab, which still lists it too), with Created and Updated, the page's note, Refresh and Open in its head (David 11/9, when the BS Test Lab Usage page had lost its door on the card). No lists, no blocks: a new surface is a tab.
 
 What left the Workbench that day: Marks and a Mythic's milestones (read them under Done and Next on the Briefing; Lumen or a session adds one), the Session Board tie, the Sessions strip (Cold Start on the Briefing is the hand), and In Play, which now reads under Files between Bring In and Filed. Pinning evidence happens under Files.
+
+## The Files List On A Card (David 11/10)
+
+David: "this part of the card face needs to be way simpler. a list of actual files. only the ones i've authorized be brought in. discreet attachment modal. if nothing, a decent sized icon indicating no files for this card at this time. otherwise, the files should be visible and i should be able to preview them, filter, sort, etc. even have folders if needed."
+
+The Files pill on a Side Mission, Milestone or Ad Hoc card is `CardFiles` (src/components/river/CardFiles.jsx):
+
+- **One list.** A row is a file or a launch link attached to this card (a `live_files` row), whether it is on the Board or not. Columns: Name, From, Added, Size; click a column to sort, and the choice sticks. The From column says who brought it in: You, Lumen, A Session.
+- **What is not on it.** The intake box, the In Play and Filed sections, the mission's files, Lumen's file store, session reopen links. Documents Lumen or a session wrote on the card (a brief, a plan) are not files David brought in: one quiet line at the foot says how many there are, with Show.
+- **Add** opens a small modal with three ways in: A File (drop or choose), From This Mac (a path a session brings in), A Link. It is the only intake on the pill.
+- **Preview.** Click a row. Images, PDFs, text, sheets as text and built pages show in place; Word, Excel and PowerPoint show as a plain rendering through the cabinet's PDF door. Every action lives here: Open, Download, Mail, Pin To Polaris, Put On or Take Off The Board, the folder, Remove.
+- **Filter** matches the name, the kind, who brought it in, and the folder.
+- **Folders** are optional. New Folder makes one; a file moves in from its preview. They are an index beside the card's files (`objectives/<id>/files-index.json`), not a schema change, and removing a folder never removes a file.
+- **Empty.** One large folder icon, "No Files On This Card", and Add.
+- No small tracked capitals anywhere on it: labels and buttons are in the body face, Title Case.
+- `dev/files.html` runs the pill on sample files with no sign-in (`?empty` for the empty state).
+
+The Main Mission page's Files still has its older layout (Bring In, In Play, the mission's storage with folders, artifacts and shares); it moves to this list when David says so.

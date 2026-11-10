@@ -196,3 +196,29 @@ export async function addLiveLink(url, { title = null, objectiveId = null, proje
   if (prior.length) { await q(supabase.from('live_files').update({ name, note, objective_id: objectiveId, project_id: projectId }).eq('id', prior[0].id).select()); return prior[0] }
   return (await q(supabase.from('live_files').insert({ user_id: s?.user?.id || null, name, bucket: 'link', path: u, size: null, mime: 'text/uri-list', objective_id: objectiveId, project_id: projectId, note, source: 'david', version: 1 }).select()))[0]
 }
+
+// Folders on a card's Files (David 11/10): a small index beside the card's files, so a file
+// can sit in a folder without a schema change. { v, folders: [name], of: { <live file id>: name } }
+const indexPath = (objectiveId) => `objectives/${objectiveId}/files-index.json`
+export async function readFileIndex(objectiveId) {
+  const empty = { v: 1, folders: [], of: {} }
+  try {
+    const { data, error } = await supabase.storage.from(BUCKET).createSignedUrl(indexPath(objectiveId), 60)
+    if (error || !data?.signedUrl) return empty
+    const res = await fetch(`${data.signedUrl}&cb=${Date.now()}`, { cache: 'no-store' })
+    if (!res.ok) return empty
+    const j = await res.json()
+    return { v: 1, folders: Array.isArray(j.folders) ? j.folders : [], of: j.of && typeof j.of === 'object' ? j.of : {} }
+  } catch { return empty }
+}
+export async function writeFileIndex(objectiveId, index) {
+  const { error } = await supabase.storage.from(BUCKET).upload(indexPath(objectiveId), new Blob([JSON.stringify({ v: 1, folders: index.folders || [], of: index.of || {} })], { type: 'application/json' }), { upsert: true, contentType: 'application/json' })
+  if (error) throw new Error(error.message)
+}
+// Put a filed file back on the Board, or take one off it (the row stays on the card either way).
+export async function setInPlay(id, on) { await q(supabase.from('live_files').update(on ? { filed_at: null, filed_to: null } : { filed_at: new Date().toISOString() }).eq('id', id).select()) }
+// A link or a waiting request has no bytes to delete; a file loses its bytes and its row.
+export async function removeLiveRow(row) {
+  if (row.bucket !== 'link' && row.bucket !== 'request') await supabase.storage.from(row.bucket || BUCKET).remove([row.path])
+  await q(supabase.from('live_files').delete().eq('id', row.id).select())
+}
