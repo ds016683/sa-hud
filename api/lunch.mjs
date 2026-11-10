@@ -27,7 +27,7 @@ import crypto from 'node:crypto'
 
 const URL_BASE = 'https://cmuvomnmaoseccxpeuxq.supabase.co'
 const BUCKET = 'project-files'
-const ORIGINS = ['https://proposals.thirdhorizon.com', 'https://sa-hud.vercel.app', 'http://localhost:5173', 'http://localhost:3013']
+const ORIGINS = ['https://meetings.thirdhorizon.com', 'https://proposals.thirdhorizon.com', 'https://sa-hud.vercel.app', 'http://localhost:5173', 'http://localhost:3013']
 const SESSION_HOURS = 12
 const THROTTLE_MAX = 5
 const THROTTLE_WINDOW_MS = 10 * 60 * 1000
@@ -91,7 +91,9 @@ function readCookie(req, name) {
   for (const part of raw.split(';')) { const i = part.indexOf('='); if (i > 0 && part.slice(0, i).trim() === name) return part.slice(i + 1).trim() }
   return null
 }
-const setCookie = (res, slug, value, maxAge) => res.setHeader('Set-Cookie', `${cookieName(slug)}=${value}; Path=/lunch/${slug}; Max-Age=${maxAge}; HttpOnly; Secure; SameSite=Lax`)
+// The cookie is scoped to the address the guest is on: /lunch/<slug>, or /<slug> when the
+// event is served at the root of the meetings host (the proxy passes at=/<slug>, nothing else is honored).
+const setCookie = (res, slug, value, maxAge, at) => res.setHeader('Set-Cookie', `${cookieName(slug)}=${value}; Path=${at === `/${slug}` ? at : `/lunch/${slug}`}; Max-Age=${maxAge}; HttpOnly; Secure; SameSite=Lax`)
 
 function secure(res, nonce) {
   res.setHeader('Cache-Control', 'private, no-store, max-age=0, must-revalidate')
@@ -394,6 +396,7 @@ function plainPage(res, status, title, line) {
 // ---- the door ---------------------------------------------------------------------------
 export default async function handler(req, res) {
   const slug = String((req.query || {}).slug || '').toLowerCase()
+  const at = String((req.query || {}).at || '')
   if (!/^[a-z0-9][a-z0-9-]{0,39}$/.test(slug)) return plainPage(res, 404, 'Nothing Here', 'This address does not lead anywhere.')
   const config = await getJson(`lunch/${slug}/config.json`)
   if (!config || !config.active || config.slug !== slug) return plainPage(res, 404, 'Nothing Here', 'This address does not lead anywhere.')
@@ -437,7 +440,7 @@ export default async function handler(req, res) {
       return json(res, 401, { ok: false, error: 'That code did not match. Check your invite and try again.' })
     }
     const m = mint(config, null)
-    setCookie(res, slug, m.token, m.maxAge)
+    setCookie(res, slug, m.token, m.maxAge, at)
     await logEvent(config, 'gate.pass')
     return json(res, 200, { ok: true })
   }
@@ -448,12 +451,12 @@ export default async function handler(req, res) {
     const r = (config.roster || []).find(x => x.id === String(body.person || ''))
     if (!r) return json(res, 400, { ok: false, error: 'That name is not on the list.' })
     const m = mint(config, r.id)
-    setCookie(res, slug, m.token, m.maxAge)
+    setCookie(res, slug, m.token, m.maxAge, at)
     await logEvent(config, 'identify', { person_id: r.id, name: r.name })
     return json(res, 200, { ok: true })
   }
-  if (action === 'switch') { const m = mint(config, null); setCookie(res, slug, m.token, m.maxAge); return json(res, 200, { ok: true }) }
-  if (action === 'leave') { setCookie(res, slug, '', 0); return json(res, 200, { ok: true }) }
+  if (action === 'switch') { const m = mint(config, null); setCookie(res, slug, m.token, m.maxAge, at); return json(res, 200, { ok: true }) }
+  if (action === 'leave') { setCookie(res, slug, '', 0, at); return json(res, 200, { ok: true }) }
 
   if (!person) return json(res, 400, { ok: false, error: 'Pick your name first.' })
   if (action === 'order' || action === 'clear') {
