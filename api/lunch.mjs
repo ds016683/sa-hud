@@ -417,10 +417,14 @@ export default async function handler(req, res) {
   if (req.method !== 'POST') { res.setHeader('Allow', 'GET, POST'); return json(res, 405, { ok: false, error: 'Method not allowed.' }) }
 
   // Writes: same-origin only, JSON only, with the header a plain form cannot send.
+  // Some browsers send Origin: null on a same-origin POST under a no-referrer policy; the
+  // custom header below is what a cross-site page cannot send, so null is let through to it.
+  // Every refusal here is written to the trail, so a guest who cannot get in can be seen.
   const origin = String(req.headers.origin || '')
-  if (origin && !ORIGINS.includes(origin)) return json(res, 403, { ok: false, error: 'Wrong origin.' })
-  if (String(req.headers['x-requested-with'] || '') !== 'lunch') return json(res, 403, { ok: false, error: 'Missing header.' })
-  if (!/^application\/json/i.test(String(req.headers['content-type'] || ''))) return json(res, 415, { ok: false, error: 'JSON only.' })
+  const refuse = async (status, error, reason) => { await logEvent(config, 'post.blocked', { reason, origin: origin.slice(0, 80) }); return json(res, status, { ok: false, error }) }
+  if (origin && origin !== 'null' && !ORIGINS.includes(origin)) return refuse(403, 'That did not go through from this address. Reload the page and try again.', 'origin')
+  if (String(req.headers['x-requested-with'] || '') !== 'lunch') return refuse(403, 'That did not go through. Reload the page and try again.', 'header')
+  if (!/^application\/json/i.test(String(req.headers['content-type'] || ''))) return refuse(415, 'That did not go through. Reload the page and try again.', 'content-type')
   let body = req.body
   if (typeof body === 'string') { try { body = JSON.parse(body) } catch { body = null } }
   if (!body || typeof body !== 'object' || JSON.stringify(body).length > 8000) return json(res, 400, { ok: false, error: 'Bad request.' })
@@ -433,8 +437,10 @@ export default async function handler(req, res) {
     const t = (await getJson(tpath)) || { fails: [] }
     const recent = (t.fails || []).filter(ms => Date.now() - ms < THROTTLE_WINDOW_MS)
     if (recent.length >= THROTTLE_MAX) { await logEvent(config, 'gate.throttled'); return json(res, 429, { ok: false, error: 'Too many tries. Give it ten minutes.' }) }
-    const code = clean(body.code, 80)
-    if (!code || !config.code || !sameText(code.toLowerCase(), String(config.code).toLowerCase())) {
+    // Forgiving on form, exact on substance: case, spaces and punctuation are ignored ("MMA 2026" opens mma2026).
+    const norm = (c) => String(c || '').toLowerCase().replace(/[^a-z0-9]/g, '')
+    const code = norm(clean(body.code, 80))
+    if (!code || !config.code || !sameText(code, norm(config.code))) {
       await put(tpath, JSON.stringify({ fails: [...recent, Date.now()] })).catch(() => {})
       await logEvent(config, 'gate.fail')
       return json(res, 401, { ok: false, error: 'That code did not match. Check your invite and try again.' })
