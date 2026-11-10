@@ -15,7 +15,7 @@
 //   project-files/lunch/<slug>/events/<iso>-<id>.json     the audit trail (no IPs)
 //   project-files/lunch/<slug>/throttle/<keyed hash>.json wrong-code attempts, per address
 // The order sheet is rebuilt on every change as a built page on the mission's card:
-//   project-files/objectives/<objective_id>/build/lunch-orders.{html,json}
+//   project-files/objectives/<objective_id>/build/lunch-<slug>.{html,json}
 //
 // Posture, all of it real: the code is checked here with a constant-time compare; the
 // guest list and the menu are not sent before it passes; the session is an HMAC-SHA256
@@ -110,7 +110,8 @@ const json = (res, status, body) => { secure(res, null); res.setHeader('Content-
 
 async function logEvent(config, type, extra = {}) {
   const at = new Date().toISOString()
-  try { await put(`lunch/${config.slug}/events/${at.replace(/[:.]/g, '-')}-${crypto.randomBytes(3).toString('hex')}.json`, JSON.stringify({ at, type, ...extra })) } catch { /* the trail never blocks a guest */ }
+  // The type rides in the file name so the order sheet can count events from one listing.
+  try { await put(`lunch/${config.slug}/events/${at.replace(/[:.]/g, '-')}_${type.replace(/[^a-z]/g, '-')}_${crypto.randomBytes(3).toString('hex')}.json`, JSON.stringify({ at, type, ...extra })) } catch { /* the trail never blocks a guest */ }
 }
 
 // ---- the menu, read from the config ---------------------------------------------------
@@ -190,18 +191,18 @@ ${orders.length ? orders.sort((a, b) => String(a.name).localeCompare(String(b.na
 ${waiting.length ? `<h2>Still To Order</h2><div class="wait">${waiting.map(r => esc(r.name)).join(' · ')}</div>` : ''}
 </body></html>`
 }
-async function rebuildBoard(config) {
+export async function rebuildBoard(config) {
   if (!config.objective_id) return
   try {
     const [orders, evFiles] = await Promise.all([readOrders(config), list(`lunch/${config.slug}/events`, 1000)])
-    // The sheet shows two gate counts; read the latest two hundred events for them.
-    const gate = await Promise.all(evFiles.slice(-200).map(f => getJson(`lunch/${config.slug}/events/${f.name}`)))
-    const html = boardHtml(config, orders, gate.filter(Boolean))
+    const gate = evFiles.map(f => ({ type: (f.name.match(/_([a-z-]+)_[0-9a-f]{6}\.json$/) || [])[1]?.replace('-', '.') || '' }))
+    const html = boardHtml(config, orders, gate)
     const root = `objectives/${config.objective_id}`
-    const prior = await getJson(`${root}/build/lunch-orders.json`)
+    const page = `lunch-${config.slug}`
+    const prior = await getJson(`${root}/build/${page}.json`)
     const now = new Date().toISOString()
-    await put(`${root}/build/lunch-orders.html`, html, 'text/html; charset=utf-8')
-    await put(`${root}/build/lunch-orders.json`, JSON.stringify({ v: 1, kind: 'build', slug: 'lunch-orders', title: 'Lunch Orders', note: `${orders.length} of ${(config.roster || []).length} in. Rebuilt by the lunch door on every order.`, bytes: html.length, version: (prior?.version || 0) + 1, created_at: prior?.created_at || now, updated_at: now, updated_by: 'lunch door', events: evFiles.length }))
+    await put(`${root}/build/${page}.html`, html, 'text/html; charset=utf-8')
+    await put(`${root}/build/${page}.json`, JSON.stringify({ v: 1, kind: 'build', slug: page, title: `${config.title || 'Lunch'} Orders`, note: `${orders.length} of ${(config.roster || []).length} in. Rebuilt by the lunch door on every order.`, bytes: html.length, version: (prior?.version || 0) + 1, created_at: prior?.created_at || now, updated_at: now, updated_by: 'lunch door', events: evFiles.length }))
   } catch { /* the sheet never blocks a guest */ }
 }
 
@@ -219,6 +220,7 @@ body{margin:0;min-height:100vh;background:var(--navy);color:var(--ink);font-fami
 .brand img{height:20px;width:auto;display:block}
 .brand span{font-family:var(--serif);font-size:16px;font-weight:500;letter-spacing:-.005em}
 .brand .who{margin-left:auto;font-family:var(--sans);font-size:13px;color:var(--ink2);display:flex;gap:12px;align-items:center}
+.brand .who span{font-family:var(--sans);font-size:13.5px;font-weight:500;color:var(--ink)}
 h1{font-family:var(--serif);font-weight:500;font-size:32px;letter-spacing:-.01em;line-height:1.15;margin:0}
 h1 em{font-style:italic;color:var(--accent)}
 .sub{color:var(--ink2);font-size:15px;margin-top:8px;max-width:60ch}
@@ -276,7 +278,7 @@ details li{margin-bottom:7px}
 details li b{color:var(--ink);font-weight:600}
 .foot{margin-top:18px;font-size:12.5px;color:var(--ink3)}
 [hidden]{display:none!important}
-@media (max-width:520px){h1{font-size:27px}.brand .who span{display:none}}
+@media (max-width:520px){h1{font-size:27px}.brand.named>span{display:none}}
 `
 
 function posture(config, exp) {
@@ -294,7 +296,7 @@ function posture(config, exp) {
 
 function shell({ config, nonce, title, who, body, script, exp }) {
   return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><meta name="color-scheme" content="dark"><title>${esc(title)}</title><style nonce="${nonce}">${CSS}</style></head><body><div class="wrap">
-<div class="brand"><img src="/lunch-assets/th-arches-white.png" alt=""><span>Third Horizon</span>${who || ''}</div>
+<div class="brand${who ? ' named' : ''}"><img src="/lunch-assets/th-arches-white.png" alt=""><span>Third Horizon</span>${who || ''}</div>
 ${body}
 ${posture(config, exp)}
 <div class="foot">Third Horizon · ${esc(config.title || 'Lunch')}</div>
@@ -453,7 +455,6 @@ export default async function handler(req, res) {
     const m = mint(config, null)
     setCookie(res, slug, m.token, m.maxAge)
     await logEvent(config, 'gate.pass')
-    await rebuildBoard(config)
     return json(res, 200, { ok: true })
   }
 
