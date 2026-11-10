@@ -23,20 +23,12 @@
     {
       "path": "/api/consent-watch",
       "schedule": "*/30 * * * *"
-    },
-    {
-      "path": "/api/lunch-sweep",
-      "schedule": "7 * * * *"
     }
   ],
   "rewrites": [
     {
       "source": "/s/:slug",
       "destination": "/api/share?s=:slug"
-    },
-    {
-      "source": "/lunch/:slug",
-      "destination": "/api/lunch?slug=:slug"
     }
   ],
   "redirects": [

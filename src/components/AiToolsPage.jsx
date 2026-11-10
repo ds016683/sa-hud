@@ -59,14 +59,14 @@ const SKILLS = [
   {
     id: 'lunch-menu',
     name: 'Lunch Menu',
-    skin: 'A gated order page for a lunch with guests, at lunch.thirdhorizon.com/<client>: an access code, a tile for each guest, the restaurant\'s menu verbatim in the HUD canon, and an order sheet on the mission\'s Workbench with the tally to read to the restaurant. The page and every order are scuttled 24 hours after the lunch.',
+    skin: 'A gated order page for a lunch with guests, at lunch.thirdhorizon.com/<client>: an access code, a tile for each guest, the restaurant\'s menu verbatim in the HUD canon, and an order sheet for the organizer with the tally to read to the restaurant. The page and every order are scuttled 24 hours after the lunch.',
     use: 'Any meal with guests where the room orders from one menu. In a Code session say "lunch menu" and send the menu photo, the names, the client and the time of the lunch. The session hands back a link and a code, answers "who has ordered", and writes the final order and the email for whoever places it. Born on the MMA lunch, 11/10.',
     swatches: [INK, BLUE, GOLD],
     base: '/ai-tools/lunch-menu',
     pptx: null,
     zip: 'lunch-menu-skill.zip',
     extras: [{ label: 'Menu Shape', file: 'menu-example.json' }],
-    surface: { note: 'Nothing is built per lunch. One function on the HUD project, the lunch door, serves every event from a config in private storage; lunch.thirdhorizon.com is its address. The skill writes the config, watches the orders and produces the final list.', label: 'The Door In The Repo', url: 'https://github.com/ds016683/sa-hud/blob/main/api/lunch.mjs' },
+    surface: { note: 'Nothing is built per lunch. One function on the Third Horizon stack, the lunch door, serves every event from a config in its own private store; lunch.thirdhorizon.com is its address. The skill writes the config, watches the orders and produces the final list. None of it runs on or touches the HUD.', label: 'th-lunch Repo', url: 'https://github.com/Third-Horizon-Strategies/th-lunch' },
   },
 ]
 
