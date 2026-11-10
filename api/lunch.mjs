@@ -4,6 +4,11 @@
 //
 //   GET  /lunch/<slug>    -> the page for where this visitor stands (gate, names, menu)
 //   POST /lunch/<slug>    -> { action: unlock | identify | switch | order | clear | leave }
+// Guests reach it at https://lunch.thirdhorizon.com/<client> (th-proposals proxies that
+// host's /<slug> here). An event is scuttled 24 hours after the lunch (config.expires_at,
+// set to lunch_at + 24h): the hourly sweep (api/lunch-sweep.mjs) or the first visit after
+// that hour deletes the config, the orders, the trail and the order sheet, and leaves a
+// tombstone with no names in it at project-files/lunch/_scuttled/.
 //
 // An event is one config in private storage, written by a session at David's word:
 //   project-files/lunch/<slug>/config.json
@@ -27,7 +32,7 @@ import crypto from 'node:crypto'
 
 const URL_BASE = 'https://cmuvomnmaoseccxpeuxq.supabase.co'
 const BUCKET = 'project-files'
-const ORIGINS = ['https://meetings.thirdhorizon.com', 'https://proposals.thirdhorizon.com', 'https://sa-hud.vercel.app', 'http://localhost:5173', 'http://localhost:3013']
+const ORIGINS = ['https://lunch.thirdhorizon.com', 'https://meetings.thirdhorizon.com', 'https://proposals.thirdhorizon.com', 'https://sa-hud.vercel.app', 'http://localhost:5173', 'http://localhost:3013']
 const SESSION_HOURS = 12
 const THROTTLE_MAX = 5
 const THROTTLE_WINDOW_MS = 10 * 60 * 1000
@@ -52,6 +57,39 @@ async function list(prefix, limit = 500) {
   const res = await fetch(`${URL_BASE}/storage/v1/object/list/${BUCKET}`, { method: 'POST', headers: { ...hdr(), 'Content-Type': 'application/json' }, body: JSON.stringify({ prefix, limit, sortBy: { column: 'name', order: 'asc' } }) })
   if (!res.ok) return []
   return ((await res.json()) || []).filter(f => f.id !== null)
+}
+
+async function listFolders(prefix) {
+  const res = await fetch(`${URL_BASE}/storage/v1/object/list/${BUCKET}`, { method: 'POST', headers: { ...hdr(), 'Content-Type': 'application/json' }, body: JSON.stringify({ prefix, limit: 500 }) })
+  if (!res.ok) return []
+  return ((await res.json()) || []).filter(f => f.id === null).map(f => f.name)
+}
+
+// ---- scuttle: an event leaves nothing behind but a tombstone ---------------------------
+export async function scuttle(slug, reason = 'expired') {
+  const config = await getJson(`lunch/${slug}/config.json`)
+  const paths = []
+  let orders = 0
+  for (const dir of ['orders', 'events', 'throttle']) {
+    const files = await list(`lunch/${slug}/${dir}`, 1000)
+    if (dir === 'orders') orders = files.length
+    paths.push(...files.map(f => `lunch/${slug}/${dir}/${f.name}`))
+  }
+  paths.push(`lunch/${slug}/config.json`)
+  if (config?.objective_id) paths.push(`objectives/${config.objective_id}/build/lunch-${slug}.html`, `objectives/${config.objective_id}/build/lunch-${slug}.json`)
+  for (let i = 0; i < paths.length; i += 100) await remove(paths.slice(i, i + 100))
+  const at = new Date().toISOString()
+  await put(`lunch/_scuttled/${slug}-${at.slice(0, 19).replace(/[:T]/g, '-')}.json`, JSON.stringify({ slug, title: config?.title || null, lunch_at: config?.lunch_at || null, objective_id: config?.objective_id || null, guests: (config?.roster || []).length, orders, scuttled_at: at, reason }))
+  return { slug, removed: paths.length, orders }
+}
+export async function sweep() {
+  const out = []
+  for (const slug of await listFolders('lunch')) {
+    if (slug.startsWith('_')) continue
+    const config = await getJson(`lunch/${slug}/config.json`)
+    if (config?.expires_at && Date.now() > new Date(config.expires_at).getTime()) out.push(await scuttle(slug, 'expired, 24 hours after the lunch'))
+  }
+  return out
 }
 
 // ---- small tools ----------------------------------------------------------------------
@@ -181,8 +219,9 @@ h2{font-family:Lora,Georgia,serif;font-weight:500;font-size:19px;color:var(--acc
 <div class="sub">${esc([config.place, config.when].filter(Boolean).join(' · '))}${config.closes_at ? ` · Orders close ${esc(fmtWhen(config.closes_at))}` : ''}</div>
 <div class="facts">
   <div class="fact"><div class="k">Orders In</div><div class="v">${orders.length} of ${roster.length}</div></div>
-  <div class="fact"><div class="k">Guest Link</div><div class="v">${esc(config.link || `proposals.thirdhorizon.com/lunch/${config.slug}`)}</div></div>
+  <div class="fact"><div class="k">Guest Link</div><div class="v">${esc(config.link || `lunch.thirdhorizon.com/${config.slug}`)}</div></div>
   <div class="fact"><div class="k">Access Code</div><div class="v">${esc(config.code || '')}</div></div>
+  ${config.expires_at ? `<div class="fact"><div class="k">Scuttles</div><div class="v">${esc(fmtWhen(config.expires_at))}</div></div>` : ''}
   <div class="fact"><div class="k">Gate</div><div class="v">${count('gate.pass')} in · ${count('gate.fail')} wrong</div></div>
 </div>
 ${!config.menu || !roster.length ? `<h2>Waiting On</h2><div class="wait">${!config.menu ? 'The menu. ' : ''}${!roster.length ? 'The guest list.' : ''}</div>` : ''}
@@ -400,7 +439,10 @@ export default async function handler(req, res) {
   if (!/^[a-z0-9][a-z0-9-]{0,39}$/.test(slug)) return plainPage(res, 404, 'Nothing Here', 'This address does not lead anywhere.')
   const config = await getJson(`lunch/${slug}/config.json`)
   if (!config || !config.active || config.slug !== slug) return plainPage(res, 404, 'Nothing Here', 'This address does not lead anywhere.')
-  if (config.expires_at && Date.now() > new Date(config.expires_at).getTime()) return plainPage(res, 410, 'Lunch Is Over', 'This order page has closed and its orders have been cleared.')
+  if (config.expires_at && Date.now() > new Date(config.expires_at).getTime()) {
+    await scuttle(slug, 'expired, 24 hours after the lunch').catch(() => {})
+    return plainPage(res, 410, 'Lunch Is Over', 'This order page has closed and its orders have been cleared.')
+  }
 
   const session = verify(config, readCookie(req, cookieName(slug)))
   const person = session?.p ? (config.roster || []).find(r => r.id === session.p) || null : null
