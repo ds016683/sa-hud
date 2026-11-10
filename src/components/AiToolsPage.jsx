@@ -56,6 +56,18 @@ const SKILLS = [
     extras: [],
     repo: { label: 'th-longform Repo', url: 'https://github.com/Third-Horizon-Strategies/th-longform' },
   },
+  {
+    id: 'lunch-menu',
+    name: 'Lunch Menu',
+    skin: 'A gated order page for a lunch with guests, at lunch.thirdhorizon.com/<client>: an access code, a tile for each guest, the restaurant\'s menu verbatim in the HUD canon, and an order sheet on the mission\'s Workbench with the tally to read to the restaurant. The page and every order are scuttled 24 hours after the lunch.',
+    use: 'Any meal with guests where the room orders from one menu. In a Code session say "lunch menu" and send the menu photo, the names, the client and the time of the lunch. The session hands back a link and a code, answers "who has ordered", and writes the final order and the email for whoever places it. Born on the MMA lunch, 11/10.',
+    swatches: [INK, BLUE, GOLD],
+    base: '/ai-tools/lunch-menu',
+    pptx: null,
+    zip: 'lunch-menu-skill.zip',
+    extras: [{ label: 'Menu Shape', file: 'menu-example.json' }],
+    surface: { note: 'Nothing is built per lunch. One function on the HUD project, the lunch door, serves every event from a config in private storage; lunch.thirdhorizon.com is its address. The skill writes the config, watches the orders and produces the final list.', label: 'The Door In The Repo', url: 'https://github.com/ds016683/sa-hud/blob/main/api/lunch.mjs' },
+  },
 ]
 
 const btn = (color, filled = false) => ({ display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: MONO, fontSize: 10.5, letterSpacing: '0.08em', textTransform: 'uppercase', padding: '7px 12px', borderRadius: 999, cursor: 'pointer', border: `1px solid ${filled ? color : `${alpha(color, 53)}`}`, background: filled ? `${alpha(color, 13)}` : 'transparent', color, textDecoration: 'none' })
@@ -95,7 +107,11 @@ function SkillCard({ k }) {
             {k.extras.map(x => <a key={x.file} href={href(x.file)} target="_blank" rel="noreferrer" style={btn(INK2)}><FileText size={12} /> {x.label}</a>)}
           </div>
         </div>
-        {k.repo ? <div style={{ padding: '12px 14px', borderRadius: 10, border: `1px solid ${PANEL_BORDER}`, background: 'rgba(255,255,255,0.02)' }}>
+        {k.surface ? <div style={{ padding: '12px 14px', borderRadius: 10, border: `1px solid ${PANEL_BORDER}`, background: 'rgba(255,255,255,0.02)' }}>
+          <Label style={{ fontSize: TYPE.subhead }}>The Surface</Label>
+          <div style={{ fontSize: TYPE.meta + 1.5, color: MUTED, lineHeight: 1.5, marginBottom: 10 }}>{k.surface.note}</div>
+          <a href={k.surface.url} target="_blank" rel="noreferrer" style={btn(BLUE)}><ExternalLink size={12} /> {k.surface.label}</a>
+        </div> : k.repo ? <div style={{ padding: '12px 14px', borderRadius: 10, border: `1px solid ${PANEL_BORDER}`, background: 'rgba(255,255,255,0.02)' }}>
           <Label style={{ fontSize: TYPE.subhead }}>The Surface</Label>
           <div style={{ fontSize: TYPE.meta + 1.5, color: MUTED, lineHeight: 1.5, marginBottom: 10 }}>This skill builds on the live proposals surface, not a standalone template: the registry, the slide kinds, the gate and the access suite all live in the repo.</div>
           <a href={k.repo.url} target="_blank" rel="noreferrer" style={btn(BLUE)}><ExternalLink size={12} /> {k.repo.label}</a>

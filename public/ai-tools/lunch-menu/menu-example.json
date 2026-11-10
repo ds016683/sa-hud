@@ -1,0 +1,34 @@
+{
+  "title": "Menu",
+  "note": "Optional line under the title, as printed",
+  "sections": [
+    {
+      "title": "Antipasti",
+      "items": [
+        { "name": "Bread Service", "price": "10", "desc": "Parker House Rolls, Whipped Butter V" },
+        { "name": "Minestrone Soup", "price": "Cup, 5 Bowl, 8", "desc": "Tomatoes, White Beans V",
+          "options": [{ "label": "Size", "choices": ["Cup, 5", "Bowl, 8"], "required": true }] }
+      ]
+    },
+    {
+      "title": "Pasta & Entrees",
+      "items": [
+        { "name": "Linguini Carbonara*", "price": "20", "desc": "Black Pepper, Lardons, Parmesan, Egg" },
+        { "divider": true },
+        { "name": "Black Bass", "price": "28", "desc": "White Beans, Roasted Fennel" }
+      ]
+    },
+    {
+      "title": "Sandwiches",
+      "note": "Served With Fries Or Salad",
+      "items": [
+        { "name": "Chicken Pesto", "price": "19", "desc": "Mozzarella, Red Peppers, Arugula",
+          "options": [{ "label": "Side", "choices": ["Fries", "Salad"], "required": true }] }
+      ]
+    }
+  ],
+  "foot": [
+    "*Consuming raw or undercooked meats, poultry, seafood, shellfish, or eggs may increase your risk of foodborne illness",
+    "GF - Gluten Free   V - Vegetarian"
+  ]
+}
