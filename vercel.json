@@ -29,6 +29,10 @@
     {
       "source": "/s/:slug",
       "destination": "/api/share?s=:slug"
+    },
+    {
+      "source": "/lunch/:slug",
+      "destination": "/api/lunch?slug=:slug"
     }
   ],
   "redirects": [
