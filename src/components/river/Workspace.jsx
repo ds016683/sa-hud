@@ -74,10 +74,10 @@ export function Page({ root, slug, doc: initial, onClose, onRemoved, embedded = 
   const move = (e) => { if (!live.current) return; e.preventDefault(); const evs = typeof e.nativeEvent.getCoalescedEvents === 'function' ? e.nativeEvent.getCoalescedEvents() : [e]; for (const ev of evs) live.current.pts.push(pos(ev)); repaint() }
   const up = (e) => { if (!live.current) return; e.preventDefault(); const st = live.current; live.current = null; touch({ strokes: [...docRef.current.strokes, st] }); repaint() }
   const undo = () => { if (!docRef.current.strokes.length) return; touch({ strokes: docRef.current.strokes.slice(0, -1) }); repaint() }
-  const clearInk = async () => { if (!docRef.current.strokes.length) return; if (!await hudConfirm('Clear the ink on this page? The text stays.')) return; touch({ strokes: [] }); repaint() }
+  const clearInk = async () => { if (!docRef.current.strokes.length) return; if (!await hudConfirm('Clear the ink on this tab? The text stays.')) return; touch({ strokes: [] }); repaint() }
   const rename = async () => { const t = await hudPrompt('Name the page', docRef.current.title); if (t?.trim() && t.trim() !== docRef.current.title) touch({ title: t.trim() }) }
   const taller = () => touch({ height: (docRef.current.height || 720) + 360 })
-  const remove = async () => { if (!await hudConfirm(`Delete the page "${docRef.current.title}"? It leaves the Ledger.`)) return; clearTimeout(timer.current); statusRef.current = 'saved'; try { await removePage(root, slug); onRemoved() } catch (e) { setSt(`could not delete: ${e.message}`) } }
+  const remove = async () => { if (!await hudConfirm(`Delete the tab "${docRef.current.title}"? It leaves the Ledger.`)) return; clearTimeout(timer.current); statusRef.current = 'saved'; try { await removePage(root, slug); onRemoved() } catch (e) { setSt(`could not delete: ${e.message}`) } }
   const close = async () => { if (statusRef.current === 'unsaved' || statusRef.current === 'saving') await save(); onClose() }
 
   const statusColor = status === 'saved' ? GRAY : status === 'saving' || status === 'unsaved' ? INK2 : RED
@@ -108,7 +108,7 @@ export function Page({ root, slug, doc: initial, onClose, onRemoved, embedded = 
         <textarea
           value={doc.text}
           onChange={e => touch({ text: e.target.value })}
-          placeholder={mode === 'type' ? 'A blank page. Type here; switch to Draw to ink over it.' : ''}
+          placeholder={mode === 'type' ? 'A blank tab. Type here; switch to Draw to ink over it.' : ''}
           spellCheck={false}
           style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', boxSizing: 'border-box', padding: '22px 26px', background: 'transparent', border: 'none', outline: 'none', resize: 'none', color: INK, fontFamily: SERIF, fontSize: 15.5, lineHeight: 1.65, pointerEvents: mode === 'type' ? 'auto' : 'none' }}
         />
@@ -121,7 +121,7 @@ export function Page({ root, slug, doc: initial, onClose, onRemoved, embedded = 
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8 }}>
         <span style={{ ...mono, flex: 1 }}>{doc.strokes.length} strokes · {String(doc.text || '').trim() ? String(doc.text).trim().split(/\s+/).length : 0} words</span>
         <button onClick={taller} style={btn(INK2)}><ChevronsDown size={11} /> Taller</button>
-        <button onClick={remove} style={btn(INK2)}><Trash2 size={11} /> Delete Page</button>
+        <button onClick={remove} style={btn(INK2)}><Trash2 size={11} /> Delete Tab</button>
       </div>
     </div>
   )
@@ -145,7 +145,7 @@ export default function WorkspacePages({ root, what = 'item' }) {
     <div style={{ minWidth: 0 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
         <div style={{ fontSize: 13, color: INK2, lineHeight: 1.5, flex: 1 }}>Blank pages on this {what}: draw, type, design, formulate, analyze. A page keeps what you put on it. A session or Lumen can open one here too.</div>
-        <button onClick={create} style={{ ...S.btnPrimary, flexShrink: 0 }}><Plus size={12} /> New Page</button>
+        <button onClick={create} style={{ ...S.btnPrimary, flexShrink: 0 }}><Plus size={12} /> New Tab</button>
       </div>
       {pages === null && <div style={{ ...mono, padding: '6px 0' }}>Reading the Ledger</div>}
       {pages && !pages.length && <div style={{ fontSize: 13, color: GRAY, padding: '4px 0' }}>No pages yet.</div>}

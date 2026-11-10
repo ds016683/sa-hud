@@ -64,3 +64,7 @@ The files in play right now (David, 10/16). A file a session or Lumen produces f
 ## Authorship (David, 11/9)
 
 Nothing is created on David's board without him. No objective (Side Mission), project task (milestone), step, maintenance item or project comes into being unless David expressly commissions that item: through a Lumen surface (chat, WhatsApp, voice, the card panel), a HUD control, or a Claude session he is in. Meeting notes, mail sweeps, the pulse, the refresh and the day close may recommend, in a message or a report, and write nothing. "Add it" from David on a named recommendation is a commission; a batch is not. The one standing exception is the session focus item that focus.py makes for an Activity Board clock, because David commissioned that tooling. He found 119 Side Missions written from meeting notes before this rule was set.
+
+## Workbench And Tabs (David, 11/10)
+
+The working surface on a card is the Workbench, and the Workbench is made of tabs. A protocol tab, a built tab, a blank tab: each is "a tab on the Workbench". The word Workspace is retired from the screen, from session replies and from Lumen's voice; "create a workspace" means open a new tab. The full entry is in docs/CARD-CANON.md, "The Workbench And Its Tabs".

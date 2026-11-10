@@ -200,7 +200,7 @@ const rootOf = (item) => item.kind === 'project' ? item.id : `objectives/${item.
 
 // The card frame (11/4): what Lumen sees of the card David is working in from the
 // Lumen panel. Title, Polaris, back story, state, milestones or steps, the files
-// in play, the workspace pages, the builds. Short: it rides every turn.
+// in play, the Workbench tabs, the builds. Short: it rides every turn.
 export async function cardFrame(item) {
   const lines = []
   const root = rootOf(item)
@@ -229,7 +229,7 @@ export async function cardFrame(item) {
   const inPlay = files.filter(f => !(f.bucket === 'link' && /^claude:\/\//.test(String(f.path || ''))))
   if (inPlay.length) lines.push(`Files in play (${inPlay.length}):\n` + inPlay.map(f => `- ${f.name}${f.bucket === 'link' ? ` (link: ${f.path})` : ''}${f.note ? ` · ${String(f.note).slice(0, 100)}` : ''}`).join('\n'))
   const pages = (await listStorage(`${root}/workspace`)).filter(f => f.name.endsWith('.json'))
-  if (pages.length) lines.push(`Workspace pages: ${pages.map(f => f.name.replace(/\.json$/, '')).join(', ')} (read one with read_workspace_page; write with workspace_page)`)
+  if (pages.length) lines.push(`Workbench tabs: ${pages.map(f => f.name.replace(/\.json$/, '')).join(', ')} (read one with read_workbench_tab; write with workbench_tab)`)
   const builds = (await listStorage(`${root}/build`)).filter(f => f.name.endsWith('.json'))
   if (builds.length) lines.push(`Builds on the Build tab: ${builds.map(f => f.name.replace(/\.json$/, '')).join(', ')} (rewrite one with build_page using the same slug)`)
   return lines.join('\n')
@@ -699,18 +699,18 @@ export const TOOLS = [
     inputSchema: { type: 'object', properties: {} },
   },
   {
-    name: 'workspace_page',
-    description: "Write a Workspace page on a card (a Main Mission by project, or a Side Mission or Milestone by side_mission): the blank pages under Workspace on the card's Workbench pill where David types and draws. Use it to put a plan, an outline, a draft, a table in words, or a working analysis onto the card where he can keep working it. title names the page (the slug comes from it unless you pass slug); text is the page's content (plain text, headings as lines). Writing an existing slug replaces its text and keeps David's drawing. Say the page is on the Workbench under Workspace.",
+    name: 'workbench_tab',
+    description: "Write a tab on a card's Workbench (a Main Mission by project, or a Side Mission or Milestone by side_mission). The Workbench is the card's working surface and it is made of tabs; this opens a tab David can type in and draw over, or rewrites one. Use it to put a plan, an outline, a draft, a table in words, or a working analysis onto the card where he can keep working it. title names the tab (the slug comes from it unless you pass slug); text is the tab's content (plain text, headings as lines). Writing an existing slug replaces its text and keeps David's drawing. The words to use with David (his canon, 11/10): it is a tab on the card's Workbench. Never say Workspace, and never say Workspace page.",
     inputSchema: { type: 'object', properties: { project: { type: 'string' }, side_mission: { type: 'string' }, title: { type: 'string' }, slug: { type: 'string' }, text: { type: 'string' } }, required: ['title', 'text'] },
   },
   {
-    name: 'read_workspace_page',
-    description: "Read a Workspace page on a card (by project or side_mission, and slug or title). Returns its text.",
+    name: 'read_workbench_tab',
+    description: "Read a tab on a card's Workbench (by project or side_mission, and slug or title). Returns its text.",
     inputSchema: { type: 'object', properties: { project: { type: 'string' }, side_mission: { type: 'string' }, slug: { type: 'string' } }, required: ['slug'] },
   },
   {
     name: 'build_page',
-    description: "Build something David can use right away on a card: a prototype, a mock-up, a small tool, a calculator, a one-page view, a form, a chart. html is ONE complete self-contained HTML document (inline CSS and JS, no external files except Google Fonts; fetch nothing). Wear the HUD's canon: navy ground #0F2334, ink #F3F1EA, Lora for headings, Instrument Sans for labels and chrome, the accent oklch(0.82 0.109 248), gold #F8C761 only for small wayfinding. It renders on the Lumen panel's Build tab and on the card's Workbench, and a Claude session can port it into a real app later, so keep it clean and commented. slug names it (reuse a slug to revise). title is what David sees; note is one line on what it does. Say it is on the Build tab when it lands.",
+    description: "Build something David can use right away on a card: a prototype, a mock-up, a small tool, a calculator, a one-page view, a form, a chart. html is ONE complete self-contained HTML document (inline CSS and JS, no external files except Google Fonts; fetch nothing). Wear the HUD's canon: navy ground #0F2334, ink #F3F1EA, Lora for headings, Instrument Sans for labels and chrome, the accent oklch(0.82 0.109 248), gold #F8C761 only for small wayfinding. It shows as a tab on the card's Workbench and on the Lumen panel's Build tab, and a Claude session can port it into a real app later, so keep it clean and commented. slug names it (reuse a slug to revise). title is what David sees; note is one line on what it does. Say it is on the Build tab when it lands.",
     inputSchema: { type: 'object', properties: { project: { type: 'string' }, side_mission: { type: 'string' }, slug: { type: 'string' }, title: { type: 'string' }, html: { type: 'string' }, note: { type: 'string' } }, required: ['slug', 'title', 'html'] },
   },
 ]
@@ -1093,7 +1093,8 @@ export async function callTool(name, args = {}) {
       if (!doc) return JSON.stringify({ ok: false, error: `no artifact ${args.slug} on ${pr.name}`, artifacts: await listArtifacts(pr.id) })
       return JSON.stringify({ ok: true, project: pr.name, slug: args.slug, doc })
     }
-    case 'workspace_page': {
+    case 'workbench_tab':
+    case 'workspace_page': {   // the old name still answers (renamed 11/10: Workbench tabs, David's canon)
       const pr = await resolveRoot(args)
       const slug = slugOf(args.slug || args.title)
       const path = `${pr.id}/workspace/${slug}.json`
@@ -1101,12 +1102,13 @@ export async function callTool(name, args = {}) {
       const now = new Date().toISOString()
       const doc = { v: 1, kind: 'workspace-page', title: String(args.title || cur?.title || slug).trim(), text: String(args.text || ''), strokes: Array.isArray(cur?.strokes) ? cur.strokes : [], height: cur?.height || 720, created_at: cur?.created_at || now, updated_at: now, updated_by: 'lumen' }
       await putStorage(path, JSON.stringify(doc), 'application/json')
-      return JSON.stringify({ ok: true, on: pr.name, slug, title: doc.title, replaced: !!cur, note: 'On the card: Workbench, Workspace.' })
+      return JSON.stringify({ ok: true, on: pr.name, slug, title: doc.title, replaced: !!cur, note: `On the card's Workbench, as the tab named "${doc.title}". Call it a tab on the Workbench.` })
     }
+    case 'read_workbench_tab':
     case 'read_workspace_page': {
       const pr = await resolveRoot(args)
       const doc = await getStorageJson(`${pr.id}/workspace/${slugOf(args.slug)}.json`)
-      if (!doc) return JSON.stringify({ ok: false, error: `no workspace page ${args.slug} on ${pr.name}` })
+      if (!doc) return JSON.stringify({ ok: false, error: `no Workbench tab ${args.slug} on ${pr.name}` })
       return JSON.stringify({ ok: true, title: doc.title, updated_at: doc.updated_at, updated_by: doc.updated_by, text: String(doc.text || '').slice(0, 20000) })
     }
     case 'build_page': {
@@ -1119,7 +1121,7 @@ export async function callTool(name, args = {}) {
       await putStorage(`${pr.id}/build/${slug}.html`, html, 'text/html; charset=utf-8')
       const meta = { v: 1, kind: 'build', slug, title: String(args.title || slug), note: String(args.note || prior?.note || ''), bytes: html.length, version: (prior?.version || 0) + 1, created_at: prior?.created_at || now, updated_at: now, updated_by: 'lumen' }
       await putStorage(`${pr.id}/build/${slug}.json`, JSON.stringify(meta), 'application/json')
-      return JSON.stringify({ ok: true, on: pr.name, slug, title: meta.title, version: meta.version, note: 'On the Lumen panel, Build tab, and on the card\'s Workbench under Builds.' })
+      return JSON.stringify({ ok: true, on: pr.name, slug, title: meta.title, version: meta.version, note: `On the card's Workbench, as the tab named "${meta.title}", and on the Lumen panel's Build tab.` })
     }
     case 'write_artifact': {
       const pr = await resolveRoot(args)

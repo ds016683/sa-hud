@@ -9,7 +9,7 @@ This is the standard. Every Main Mission page, Side Mission card and Milestone c
 | Pill | What it holds | On a Main Mission | On a Side Mission or Milestone |
 |---|---|---|---|
 | **Briefing** | Where it stands | The progress bar and the milestones, each with its steps, Load, Stash, Close | Where It Stands (done and still needed), Sessions, the facts row (Domain, Type, Due, Follow Up, Who), Back Story, then Marks on a Contract or Milestones on a Mythic |
-| **Workbench** | The working surface: what is being built | The Pages first, as tabs (David 11/7): one tab per page built on the mission (build_page from Lumen or a session, a pipeline-fed view, a skill brought in), newest first so the page in motion is tab one; the MMA Planning canvas is a page on the MMA missions only, never on another mission. Then the Workspace pages, the files in play at the foot | The Live Protocol rows first (editing punchlists, briefing gap maps), then the Workspace pages, the files in play at the foot |
+| **Workbench** | The working surface: what is being built | One sheet of tabs (David 11/7, 11/10): a tab for each live protocol first, then a tab for each page built on the mission (build_page from Lumen or a session, a pipeline-fed view, a skill brought in), newest first, then the blank tabs left to right by creation; the MMA Planning canvas is a tab on the MMA missions only, never on another mission | The same sheet of tabs: a tab for each live protocol (editing punchlists, briefing gap maps), then the built tabs, then the blank tabs |
 | **Files** | Bring In, then the filed and source material, one list | Bring In (drop a file, point at a path, add a launch link; it lands in play on the Workbench), then every file and folder in the mission's storage, the filed live files, the artifacts (scorecards, decisions, briefs) and the shares (published pages), each a row with a kind chip. Cabinet, Artifacts and Shares are kinds of file, never sections | Bring In, then the filed live files, the item's own folder, the mission's files and store |
 | **Notes** | Your own words | The mission's notes, newest first | The item's own notes, then the meetings that match it |
 | **Polaris** | The objective and the proof | The objective sentence, editable; the evidence pinned on the mission; the close-out state | The objective sentence, editable; the evidence pinned on the item; the released state |
@@ -25,13 +25,20 @@ One rule for every page:
 - **Pinned** (evidence true): shows on Polaris as well, wherever it lives. The star on a Workbench row pins and unpins. Pinning is the only thing that puts a file on Polaris.
 - **Storage, artifacts, shares**: Files, always, as rows in the one list with a kind chip. They are not live files, and they are not sections of their own.
 
-## The Workspace
+## The Workbench And Its Tabs (the words)
 
-David, October 28, 2026: "when i say that I want to create a workspace on the Mission card's work bench, i want to start building blank pages where we can draw, type, design, formulate, analyze, etc."
+David, November 10, 2026: "workbench > workspace ... be sure that 'tabs' are part of the language and canon."
 
-- A workspace is the set of pages under the Workspace label on a card's Workbench pill. A page is a blank surface: type on it (autosaved) and draw over it (pen or mouse). New Page on the card, or `~/.claude/hud-board/workspace.py new "<title>" --item "<item>"` from a session, opens one; a session can seed it with text.
-- Pages live in storage as JSON under `<root>/workspace/<slug>.json` (`src/lib/workspace.js`; the root is the mission's id or `objectives/<id>`). They are not Live Files, not artifacts, not sections of Files. Delete Page removes the document.
-- The Workspace sits between the head of the Workbench (the Pages tabs on a mission, Live Protocols on an item) and the files in play at the foot. It counts nothing on the pill and earns no miles.
+- **Workbench** is the working surface on every card. It is the only name for it.
+- **Tab** is the unit of the Workbench. Everything on it is a tab, named for what is being done there. There are three kinds:
+  - a **protocol tab**, one for each live protocol on the card (Editing, Briefing), always listed first;
+  - a **built tab**, a page Lumen or a session built for the card (`build_page`, or a pipeline-fed view);
+  - a **blank tab**, opened with the plus, by a session, or by Lumen (`workbench_tab`), to type in and draw over.
+- **Workspace is retired as a word.** David's 10/28 phrase "create a workspace" means: open a new tab on that card's Workbench. Nobody, in the HUD, in a session reply, or in Lumen's voice, says Workspace or Workspace page. On screen the controls read New Tab and Delete Tab.
+- Under the hood the old name survives only where renaming would break things: blank tabs are stored at `<root>/workspace/<slug>.json` (`src/lib/workspace.js`), the session hand is `~/.claude/hud-board/workspace.py`, and Lumen's old tool names `workspace_page` and `read_workspace_page` still answer as aliases of `workbench_tab` and `read_workbench_tab`.
+- A tab is not a Live File, not an artifact, and earns no miles. It counts nothing on the pill.
+
+History, for the record: on 10/28 the Workbench carried a Workspace label with a list of blank pages under it; on 11/7 the Workbench became one sheet with tabs and that label left the screen; on 11/10 the word left the language.
 
 ## One chassis
 David, November 4, 2026: "all pages down in a card should be matching the parent, right?" Yes. A Side Mission, Milestone or Ad Hoc card is a page inside the shell, exactly like the Main Mission page: sidebar on the left, the topbar, the content column, the browser's back. It is never an overlay drawn over another page.
@@ -73,8 +80,8 @@ David, October 29, 2026: "Gateways should be called Milestones and have the same
 David, November 4, 2026: "let's just build the same thing from scratch. call it lumen, use the hud's canon. i want the base functionality, particularly the ability to do a workbook to be the same. and arms and legs to wire up and change the card in real time and/or do some development work inside the workbench that can be ported later."
 
 - Every Main Mission page, Side Mission card and Milestone card carries a Lumen dock, bottom right. It opens a panel from the right (`src/components/river/LumenPanel.jsx`; the page yields its width on wide screens). Three tabs, never a sixth pill: **Lumen** (the same brain as WhatsApp and the HUD strip, framed on this card: `cardFrame` in `api/_ledger.mjs` rides each turn through `/api/lumen-hud` with `item`), **Workbook** (captures of his answers and of the card, notes, a PDF in the house frame), **Build** (pages Lumen built with `build_page`, previewed in a sandboxed frame, Open, Download, Delete).
-- Hands on the card: the Ledger tools he already has, plus `workspace_page` and `read_workspace_page` (the card's Workspace pages) and `build_page` (one self-contained HTML page per slug under `<root>/build/`, in the HUD's canon, portable by a Claude session later). When Lumen acts, the panel fires `hud:ledger-changed`; the card rereads itself and remounts its Workbench lists.
-- Where it lives in storage: `<root>/lumen/workbook.json` (captures and notes), `<root>/build/<slug>.html` with `<slug>.json` beside it, `<root>/workspace/<slug>.json` (the Workspace pages themselves). The thread is `lumen_messages`, channel hud, `meta.item` = the card's id.
+- Hands on the card: the Ledger tools he already has, plus `workbench_tab` and `read_workbench_tab` (the card's blank Workbench tabs) and `build_page` (one self-contained HTML page per slug under `<root>/build/`, in the HUD's canon, portable by a Claude session later). When Lumen acts, the panel fires `hud:ledger-changed`; the card rereads itself and remounts its Workbench lists.
+- Where it lives in storage: `<root>/lumen/workbook.json` (captures and notes), `<root>/build/<slug>.html` with `<slug>.json` beside it, `<root>/workspace/<slug>.json` (the blank Workbench tabs themselves). The thread is `lumen_messages`, channel hud, `meta.item` = the card's id.
 
 ## Connections
 
@@ -96,15 +103,15 @@ The Polaris sentence, the Achieved line, the pinned evidence and the tags lead t
 
 The Briefing is the page you read in ten seconds, so it carries five things and nothing else: the trail; the header (kind, chip, name, Polaris line, the five pills in one quiet row under it, left); the fence (Domain, Type, Target Completion); Done and Next; and one action row (Equip or Holster, Cold Start, Stash, with the clock as a status line). Done is history: milestones released, marks ticked, board items closed, and a file only once it is starred as evidence. Next is the open marks or milestones, the open board items, and Lumen's two or three steps.
 
-Everything that edits or explains moves off the Briefing. Marks and Milestones are the first block on the Workbench, then the Milestone Board, then Sessions (copy a briefed start or the resume command), Live Protocols, Workspace and In Play. Back Story reads at the top of Notes. Mission and Task are the trail. Sessions as a Briefing block is retired; Cold Start is the one button that starts a fresh session on the card.
+Everything that edits or explains moves off the Briefing. Marks and Milestones are the first block on the Workbench, then the Milestone Board, then Sessions (copy a briefed start or the resume command), Live Protocols, the blank tabs and In Play (the state on 11/4; the 11/7 sheet below replaced this stack with tabs). Back Story reads at the top of Notes. Mission and Task are the trail. Sessions as a Briefing block is retired; Cold Start is the one button that starts a fresh session on the card.
 
 ## The Workbench sheet (David 11/7)
 
 "i want a blank canvas where i can put whatever i want. tabs at the top, with the labels for whatever i'm doing there." The Workbench pill on every card (Main Mission, Side Mission, Milestone) is one surface, `WorkbenchSheet`:
 
 - **Live Protocols line** under the pills and over the tabs: `Live Protocols  On` in GREEN with the protocol's name and open count, or `Off` in gray.
-- **The tab strip**, Excel vibe: a live protocol is listed first and always has a tab of its own (Editing Protocol, Briefing Protocol; on a Main Mission, suffixed with the milestone it runs on); then one tab per page built on the card (build_page from Lumen, a pipeline-fed view such as the BS Test Lab Usage page, a skill brought in), newest first; then one tab per Workspace page, left to right by creation; Planning only on MMA or a mission that already carries a program plan; a plus at the end opens `Tab N`. Double-click a page tab to rename it.
+- **The tab strip**, Excel vibe: a live protocol is listed first and always has a tab of its own (Editing Protocol, Briefing Protocol; on a Main Mission, suffixed with the milestone it runs on); then one tab per page built on the card (build_page from Lumen, a pipeline-fed view such as the BS Test Lab Usage page, a skill brought in), newest first; then the blank tabs, left to right by creation; Planning only on MMA or a mission that already carries a program plan; a plus at the end opens `Tab N`. Double-click a blank tab to rename it.
 - **The head of a tab**, before the content: `Created <when> · Updated <when>`, then Type and Draw.
-- **The sheet**: the Workspace page itself (type, draw, Taller, Delete Page). A built page's tab renders the page itself (srcDoc, as on the Lumen panel's Build tab, which still lists it too), with Created and Updated, the page's note, Refresh and Open in its head (David 11/9, when the BS Test Lab Usage page had lost its door on the card). No lists, no blocks: a new surface is a tab.
+- **The sheet**: the tab itself (type, draw, Taller, Delete Tab). A built page's tab renders the page itself (srcDoc, as on the Lumen panel's Build tab, which still lists it too), with Created and Updated, the page's note, Refresh and Open in its head (David 11/9, when the BS Test Lab Usage page had lost its door on the card). No lists, no blocks: a new surface is a tab.
 
 What left the Workbench that day: Marks and a Mythic's milestones (read them under Done and Next on the Briefing; Lumen or a session adds one), the Session Board tie, the Sessions strip (Cold Start on the Briefing is the hand), and In Play, which now reads under Files between Bring In and Filed. Pinning evidence happens under Files.

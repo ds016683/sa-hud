@@ -22,7 +22,7 @@ const btn = (color = INK2, filled = false, extra = {}) => ({ display: 'inline-fl
 const eyebrow = { fontFamily: MONO, fontSize: 9.5, letterSpacing: '1.4px', textTransform: 'uppercase', color: LABEL }
 const field = { width: '100%', background: 'rgba(255,255,255,0.05)', border: `1px solid ${PANEL_BORDER}`, borderRadius: 8, color: INK, padding: '9px 11px', fontSize: 13.5, fontFamily: 'inherit', boxSizing: 'border-box', lineHeight: 1.5, resize: 'none' }
 const stamp = (iso) => iso ? new Date(iso).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZone: 'America/Chicago' }) : ''
-const SUGGEST = ['Where does this stand?', 'What should I do next on this?', 'Draft a plan for this onto a Workspace page', 'Build me a one-page mock-up for this']
+const SUGGEST = ['Where does this stand?', 'What should I do next on this?', 'Draft a plan for this onto a Workbench tab', 'Build me a one-page mock-up for this']
 const esc = (t) => String(t ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 
 // The Workbook as paper: the house frame (Lora and Instrument Sans, navy ink on
@@ -163,7 +163,7 @@ export default function LumenPanel({ item }) {
             <div ref={scrollRef} style={{ flex: 1, overflowY: 'auto', overscrollBehavior: 'contain', padding: '14px 18px', minHeight: 0 }}>
               {thread.length === 0 && !pending && (
                 <div style={{ display: 'grid', gap: 8 }}>
-                  <div style={{ fontSize: 13, color: INK2, lineHeight: 1.55 }}>Same Lumen as WhatsApp and the strip, framed on this card. He can move its milestones, file to it, write its Workspace pages and build pages for it.</div>
+                  <div style={{ fontSize: 13, color: INK2, lineHeight: 1.55 }}>Same Lumen as WhatsApp and the strip, framed on this card. He can move its milestones, file to it, write tabs on its Workbench and build pages for it.</div>
                   {SUGGEST.map(q => <button key={q} onClick={() => send(q)} style={{ textAlign: 'left', fontFamily: 'inherit', fontSize: 13, color: INK, background: 'rgba(255,255,255,0.04)', border: `1px solid ${PANEL_BORDER}`, borderRadius: 10, padding: '9px 12px', cursor: 'pointer' }}>{q}</button>)}
                 </div>
               )}
