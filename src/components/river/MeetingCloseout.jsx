@@ -41,16 +41,19 @@ function inline(text, keyBase) {
   })
 }
 
-const mdHeading = { fontFamily: MONO, fontSize: 9.5, letterSpacing: '1.4px', textTransform: 'uppercase', color: BLUE, margin: '10px 0 4px' }
-const mdPara = { fontSize: 12.5, lineHeight: 1.6, color: INK2, margin: '4px 0' }
-const mdBullet = { display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 12.5, lineHeight: 1.6, color: INK2, padding: '1px 0' }
+// A heading inside notes reads as a sub-head in the body face, as authored: no small tracked
+// capitals anywhere (David 11/9), and a clear step above the text under it (the type scale).
+const mdHeading = { fontSize: 14.5, fontWeight: 600, lineHeight: 1.35, color: LABEL, margin: '16px 0 6px' }
+const mdPara = { fontSize: 13.5, lineHeight: 1.6, color: INK2, margin: '4px 0' }
+const mdBullet = { display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 13.5, lineHeight: 1.6, color: INK2, padding: '1px 0' }
 const mdDash = { width: 12, height: 2, background: GOLD, flexShrink: 0, marginTop: 9, borderRadius: 1 }
 
-// Block level: # / ## headings become mono blue labels, "- " "* " "• " lines
-// become gold-dash bullets, blank lines split paragraphs.
-export function renderMarkdown(text, { size = 12.5 } = {}) {
+// Block level: # / ## headings become sub-heads, "- " "* " "• " lines become gold-dash
+// bullets, blank lines split paragraphs. Body size is the canon's 13.5 unless a caller asks
+// for more; a note-taker's escaped marks ("\~10%") lose their backslash.
+export function renderMarkdown(text, { size = 13.5 } = {}) {
   const sz = { fontSize: size, lineHeight: size > 13 ? 1.7 : 1.6 }
-  const lines = String(text || '').replace(/\r\n?/g, '\n').split('\n')
+  const lines = String(text || '').replace(/\r\n?/g, '\n').replace(/\\([~*_$#.()[\]!<>+-])/g, '$1').split('\n')
   const out = []
   let para = [], list = []
   const flushPara = () => { if (para.length) { out.push(<p key={`p${out.length}`} style={{ ...mdPara, ...sz }}>{inline(para.join(' '), `p${out.length}`)}</p>); para = [] } }
@@ -64,7 +67,7 @@ export function renderMarkdown(text, { size = 12.5 } = {}) {
     const line = raw.trim()
     if (!line) { flushPara(); flushList(); continue }
     const h = line.match(/^#{1,6}\s+(.*)$/)
-    if (h) { flushPara(); flushList(); out.push(<div key={`h${out.length}`} style={mdHeading}>{h[1].replace(/\*\*/g, '')}</div>); continue }
+    if (h) { flushPara(); flushList(); out.push(<div key={`h${out.length}`} style={{ ...mdHeading, fontSize: Math.max(14.5, size + 1), ...(out.length ? {} : { marginTop: 2 }) }}>{h[1].replace(/\*\*/g, '')}</div>); continue }
     const b = line.match(/^(?:[-*•]|\d+[.)])\s+(.*)$/)
     // "1) … 2) … 3) …" on one line is prose, not a list of one.
     if (b && !/\s\d+[.)]\s/.test(b[1])) { flushPara(); list.push(b[1]); continue }

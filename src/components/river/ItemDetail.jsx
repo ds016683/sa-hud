@@ -23,7 +23,7 @@ import WorkbenchSheet from './WorkbenchSheet'
 import LumenPanel from './LumenPanel'
 import { openCard } from '../../lib/card'
 import { LEDGER_EVENT, fireLedgerChanged } from '../../lib/lumenPanel'
-import { INK, INK2, GRAY, PANEL_BORDER, GOLD, GOLD_BRIGHT, BLUE, GREEN, SUCCESS, RED, CAUTION, MONO, SERIF, S, Label, KIND_COLOR, KindIcon, NORTH_STAR_LABEL, NORTH_STAR_ASK, LABEL, MYTHIC, alpha, NAVY_DEEP, CARD_PILLS, CardPill, Trail } from './canon'
+import { INK, INK2, GRAY, PANEL_BORDER, GOLD, GOLD_BRIGHT, BLUE, GREEN, SUCCESS, RED, CAUTION, MONO, SERIF, S, Label, KIND_COLOR, KindIcon, NORTH_STAR_LABEL, NORTH_STAR_ASK, LABEL, MUTED, MYTHIC, alpha, NAVY_DEEP, CARD_PILLS, CardPill, Trail } from './canon'
 
 const TABS = CARD_PILLS.map(([id]) => id)
 const TAB_LABEL = Object.fromEntries(CARD_PILLS)
@@ -435,11 +435,11 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
               )}
               <div>
               {rel.meetings.map(m => (
-                <div key={m.id} style={{ borderTop: `1px solid ${PANEL_BORDER}`, padding: '10px 0' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer' }} onClick={() => setOpenNote(openNote === m.id ? null : m.id)}>
-                    <Mic size={14} color={INK2} /><span style={{ flex: 1, fontSize: 13.5, color: INK }}>{m.title}</span><span style={{ fontFamily: MONO, fontSize: 9.5, color: GRAY }}>{m.meeting_date}</span>
+                <div key={m.id} style={{ borderTop: `1px solid ${PANEL_BORDER}`, padding: '13px 0' }}>
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, cursor: 'pointer' }} onClick={() => setOpenNote(openNote === m.id ? null : m.id)}>
+                    <Mic size={15} color={LABEL} style={{ flexShrink: 0 }} /><span style={{ flex: 1, minWidth: 0, fontFamily: SERIF, fontWeight: 500, fontSize: 16, lineHeight: 1.3, letterSpacing: '-0.005em', color: INK }}>{m.title}</span><span style={{ fontSize: 13, color: MUTED, whiteSpace: 'nowrap' }}>{m.meeting_date ? new Date(`${String(m.meeting_date).slice(0, 10)}T12:00:00`).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }) : ''}</span>
                   </div>
-                  {openNote === m.id && <div style={{ marginTop: 10, fontSize: 13, lineHeight: 1.65, color: INK2 }}>{m.summary ? renderMarkdown(m.summary) : <span style={{ color: GRAY }}>No summary stored.</span>}</div>}
+                  {openNote === m.id && <div style={{ marginTop: 12, maxWidth: '86ch', fontSize: 14.5, lineHeight: 1.7, color: INK2 }}>{m.summary ? renderMarkdown(m.summary, { size: 14.5 }) : <span style={{ color: GRAY }}>No summary stored.</span>}</div>}
                 </div>
               ))}
               {!rel.meetings.length && <None what={{ ...what, thing: 'meeting notes' }} />}
