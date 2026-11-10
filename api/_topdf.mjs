@@ -8,7 +8,7 @@ import { PDFDocument, StandardFonts, rgb } from 'pdf-lib'
 
 const ext = (name) => (String(name).split('.').pop() || '').toLowerCase()
 
-async function textOf(name, bytes) {
+export async function textOf(name, bytes) {
   const e = ext(name)
   if (e === 'docx') {
     const mammoth = (await import('mammoth')).default || (await import('mammoth'))

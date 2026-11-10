@@ -140,13 +140,13 @@ async function listArtifacts(projectId) {
 // Live Files index: a row for anything Lumen writes or files, so the Board's
 // Live Files window sees it. Never fatal (the table may not exist yet).
 const stemOf = (n) => String(n || '').replace(/\.[^.]+$/, '').replace(/[\s_.-]*(v|ver|version)\s*\d+[a-z]?$/i, '').replace(/[\s_.-]*\(\d+\)$/, '').replace(/[\s_.-]*(final|draft|copy|latest|new)(\s*\d+)?$/i, '').replace(/[\s_.-]+$/, '').trim().toLowerCase()
-export async function indexLiveFile({ name, bucket, path, size, mime, objective_id = null, project_id = null, note = null }) {
+export async function indexLiveFile({ name, bucket, path, size, mime, objective_id = null, project_id = null, note = null, source = 'lumen' }) {
   try {
     const root = path.replace(/\/[^/]+$/, '')
     const inRoot = await sb(`live_files?select=id,name,version&path=like.${encodeURIComponent(root + '/%')}&bucket=eq.${bucket}&superseded_by=is.null&filed_at=is.null`)
     const ext = (n) => (String(n || '').split('.').pop() || '').toLowerCase()
     const prior = inRoot.filter(r => stemOf(r.name) === stemOf(name) && ext(r.name) === ext(name)).sort((a, b) => (b.version || 1) - (a.version || 1))
-    const ins = await sbWrite('POST', 'live_files', { user_id: DAVID, name, bucket, path, size: size || null, mime: mime || null, objective_id, project_id, note, source: 'lumen', version: prior.length ? (prior[0].version || 1) + 1 : 1 })
+    const ins = await sbWrite('POST', 'live_files', { user_id: DAVID, name, bucket, path, size: size || null, mime: mime || null, objective_id, project_id, note, source, version: prior.length ? (prior[0].version || 1) + 1 : 1 })
     if (ins?.[0]) for (const pr of prior) await sbWrite('PATCH', `live_files?id=eq.${pr.id}`, { superseded_by: ins[0].id }, 'return=minimal')
   } catch (e) { console.warn('live file index', e.message) }
 }
@@ -1609,7 +1609,20 @@ export async function callTool(name, args = {}) {
       const path = `${root}/${name}`
       const up = await fetch(`${URL_BASE}/storage/v1/object/project-files/${path.split('/').map(encodeURIComponent).join('/')}`, { method: 'POST', headers: { ...sbHeaders(), 'Content-Type': pick.contentType || 'application/octet-stream', 'x-upsert': 'true' }, body: Buffer.from(await bin.arrayBuffer()) })
       if (!up.ok) throw new Error(`file upload -> ${up.status}: ${(await up.text()).slice(0, 160)}`)
-      await indexLiveFile({ name, bucket: 'project-files', path, size: pick.size, mime: pick.contentType, objective_id: root.startsWith('objectives/') ? root.split('/')[1] : null, project_id: root.startsWith('objectives/') ? null : root, note: 'from email' })
+      // Where it came from (David 11/10: "have 'source' so it can say email and date"): the row's
+      // source is 'email' and its note names the sender, when the email arrived and its subject,
+      // in a form the Files list reads back ("Email · sender · date · subject").
+      let note = 'from email'
+      try {
+        const mr = await fetch(`https://graph.microsoft.com/v1.0/users/${MAILBOX}/messages/${id}?$select=subject,from,receivedDateTime`, { headers: { Authorization: `Bearer ${token}` } })
+        if (mr.ok) {
+          const m = await mr.json()
+          const flat = (v) => String(v || '').replace(/\s*·\s*/g, ' ').replace(/\s+/g, ' ').trim()
+          const when = new Date(m.receivedDateTime).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', timeZone: 'America/Chicago' })
+          note = ['Email', flat(m.from?.emailAddress?.name || m.from?.emailAddress?.address) || 'Unknown Sender', when, flat(m.subject) || 'No Subject'].join(' · ')
+        }
+      } catch (e) { console.warn('email source', e.message) }
+      await indexLiveFile({ name, bucket: 'project-files', path, size: pick.size, mime: pick.contentType, objective_id: root.startsWith('objectives/') ? root.split('/')[1] : null, project_id: root.startsWith('objectives/') ? null : root, note, source: 'email' })
       return JSON.stringify({ ok: true, filed: name, path, size: pick.size, live: true })
     }
     case 'set_north_star': {

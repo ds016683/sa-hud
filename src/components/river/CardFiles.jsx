@@ -4,21 +4,28 @@
 // and i should be able to preview them, filter, sort, etc. even have folders if needed."
 //
 // One list. A row is a file (or a launch link) attached to this card: by David through
-// Add, or by Lumen or a session at his word; the From column says which. Nothing else
-// rides here: no intake box, no In Play and Filed sections, no mission files, no file
-// store, no session links. Click a row to preview it; every action lives in the preview.
+// Add, or by Lumen or a session at his word. Nothing else rides here: no intake box, no
+// In Play and Filed sections, no mission files, no file store, no session links.
+//
+// 11/10, second pass ("not sure i'm tracking the 'on the board.' didn't come from lumen.
+// have 'source' so it can say email and date. i should be able to click it and a quick
+// synopsis of the document and come up in an overlay"): the Source column says where the
+// file came from (an email and its date, you, Lumen, a Claude session); nothing here says
+// On The Board; a click opens an overlay that leads with a quick synopsis of the document,
+// with the document itself and every action one button away.
 // Folders are an index beside the card's files (lib/livefiles readFileIndex), no schema.
 // Canon: labels in the body face, Title Case, nothing in small tracked capitals.
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { FileText, FileSpreadsheet, FileImage, Link2, Folder, FolderOpen, FolderPlus, Paperclip, Star, X as XIcon, ExternalLink, Download, Mail, Trash2, ChevronDown, ChevronRight, ArrowUp, ArrowDown, Search, Hourglass, Presentation } from 'lucide-react'
-import { listLiveFiles, putLiveFile, requestLiveFile, addLiveLink, openLiveFile, downloadLiveFile, draftMail, pinEvidence, setInPlay, removeLiveRow, readFileIndex, writeFileIndex, isRequest, isLink, fmtSize, extOf } from '../../lib/livefiles'
+import { FileText, FileSpreadsheet, FileImage, Link2, Folder, FolderOpen, FolderPlus, Paperclip, Star, X as XIcon, ExternalLink, Download, Mail, Trash2, ChevronDown, ChevronRight, ArrowUp, ArrowDown, Search, Hourglass, Presentation, Eye, EyeOff } from 'lucide-react'
+import { listLiveFiles, putLiveFile, requestLiveFile, addLiveLink, openLiveFile, downloadLiveFile, draftMail, pinEvidence, removeLiveRow, readFileIndex, writeFileIndex, fileSynopsis, sourceOf, isRequest, isLink, fmtSize, extOf } from '../../lib/livefiles'
 import { pdfUrl } from '../../lib/cabinet'
 import { LEDGER_EVENT } from '../../lib/lumenPanel'
 import { hudConfirm, hudPrompt } from '../../lib/dialog'
-import { INK, INK2, GRAY, MUTED, LABEL, BLUE, GOLD, GREEN, RED, NAVY_DEEP, PANEL_BORDER, PANEL_BG, SERIF, alpha } from './canon'
+import { renderMarkdown } from './MeetingCloseout'
+import { INK, INK2, GRAY, MUTED, LABEL, BLUE, GOLD, RED, NAVY_DEEP, PANEL_BORDER, PANEL_BG, SERIF, alpha } from './canon'
 
 // The pill's hands on the Ledger, in one object so dev/files.html can swap in sample data.
-const LEDGER = { listLiveFiles, readFileIndex, writeFileIndex, putLiveFile, requestLiveFile, addLiveLink, openLiveFile, downloadLiveFile, draftMail, pinEvidence, setInPlay, removeLiveRow, pdfUrl }
+const LEDGER = { listLiveFiles, readFileIndex, writeFileIndex, putLiveFile, requestLiveFile, addLiveLink, openLiveFile, downloadLiveFile, draftMail, pinEvidence, removeLiveRow, fileSynopsis, pdfUrl }
 
 const isSessionLink = (r) => isLink(r) && /^claude:\/\//.test(String(r.path || ''))
 const IMG = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg']
@@ -36,7 +43,9 @@ function FileGlyph({ row, size = 17, color = LABEL, style }) {
   if (k === 'Deck') return <Presentation {...p} />
   return <FileText {...p} />
 }
-const fromOf = (r) => isRequest(r) ? 'You, From This Mac' : r.source === 'david' ? 'You' : r.source === 'lumen' ? 'Lumen' : r.source === 'session' ? 'A Session' : (r.source || 'Unknown')
+// What the model at the door can read (api/live-files synopsis); anything else opens on the document itself.
+const READABLE = ['pdf', 'png', 'jpg', 'jpeg', 'gif', 'webp', 'docx', 'xlsx', 'xls', 'csv', 'tsv', 'pptx', 'txt', 'md', 'html', 'htm', 'json', 'log', 'yml', 'yaml']
+const canSynopsize = (r) => !isLink(r) && !isRequest(r) && READABLE.includes(extOf(r.name))
 const day = (iso) => iso ? new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'America/Chicago' }) : ''
 const stamp = (iso) => iso ? new Date(iso).toLocaleString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', timeZone: 'America/Chicago' }) : ''
 
@@ -125,12 +134,28 @@ function AddModal({ api, owner, folders, onClose, onAdded }) {
   )
 }
 
-// ---- the preview, where every action on a file lives -----------------------------------------
-function Preview({ api, row, folder, folders, onClose, onAct, onMove }) {
-  const [view, setView] = useState({ state: 'loading' })
+// ---- the overlay: a quick synopsis first, the document and every action behind it ------------
+function FileSheet({ api, row, folder, folders, onClose, onAct, onMove }) {
   const ext = extOf(row.name)
+  const id = row.id
+  const readable = canSynopsize(row)
+  const src = sourceOf(row)
+  const [syn, setSyn] = useState(readable ? { state: 'loading' } : { state: 'none' })
+  const [again, setAgain] = useState(0)
+  const [showDoc, setShowDoc] = useState(!readable)
+  const [view, setView] = useState({ state: 'loading' })
   useEffect(() => { const k = (e) => { if (e.key === 'Escape') onClose() }; window.addEventListener('keydown', k); return () => window.removeEventListener('keydown', k) }, [onClose])
   useEffect(() => {
+    if (!readable) return
+    let on = true
+    api.fileSynopsis(id, { refresh: again > 0 })
+      .then(j => { if (on) setSyn({ state: 'ready', text: j.synopsis, partial: !!j.partial }) })
+      .catch(e => { if (on) setSyn({ state: 'error', message: e.message }) })
+    return () => { on = false }
+  }, [id, readable, again, api])
+  const rewrite = () => { setSyn({ state: 'loading' }); setAgain(n => n + 1) }
+  useEffect(() => {
+    if (!showDoc) return
     let on = true
     const show = (v) => { if (on) setView(v) }
     const run = async () => {
@@ -152,42 +177,66 @@ function Preview({ api, row, folder, folders, onClose, onAct, onMove }) {
     }
     run().then(show).catch(e => show({ state: 'error', message: e.message }))
     return () => { on = false }
-  }, [row, ext, api])
-  const box = { border: `1px solid ${PANEL_BORDER}`, borderRadius: 10, background: 'rgba(0,0,0,0.18)', height: 'min(62vh, 640px)', overflow: 'auto' }
+  }, [row, ext, api, showDoc])
+  const box = { border: `1px solid ${PANEL_BORDER}`, borderRadius: 10, background: 'rgba(0,0,0,0.18)', height: 'min(58vh, 620px)', overflow: 'auto' }
   const center = { ...box, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 10, textAlign: 'center', padding: 24, color: INK2, fontSize: 14 }
+  const facts = [
+    ['Source', src.sender ? `Email From ${src.sender}, ${src.when}` : src.kind === 'You' ? 'Added By You' : src.kind === 'This Mac' ? 'A Path On This Mac' : src.kind],
+    src.subject ? ['Subject', src.subject] : null,
+    ['Added', stamp(row.created_at)],
+    ['Kind', [kindOf(row), row.size ? fmtSize(row.size) : null, row.version > 1 ? `Version ${row.version}` : null].filter(Boolean).join(' · ')],
+    row.note && src.kind !== 'Email' && !isLink(row) ? ['Note', row.note] : null,
+  ].filter(Boolean)
+  const quiet = { background: 'transparent', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit', fontSize: 13, color: MUTED, textDecoration: 'underline', textUnderlineOffset: 3 }
   return (
     <div style={veil} onClick={onClose}>
-      <div style={sheet(940)} onClick={e => e.stopPropagation()}>
+      <div style={sheet(showDoc ? 940 : 720)} onClick={e => e.stopPropagation()}>
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
           <FileGlyph row={row} size={20} style={{ flexShrink: 0, marginTop: 5 }} />
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ ...modalTitle, wordBreak: 'break-word' }}>{row.name}</div>
-            <div style={{ fontSize: 13, color: MUTED, marginTop: 4, lineHeight: 1.5 }}>{[kindOf(row), `From ${fromOf(row)}`, stamp(row.created_at), row.size ? fmtSize(row.size) : null, row.version > 1 ? `Version ${row.version}` : null].filter(Boolean).join(' · ')}{!row.filed_at && !isRequest(row) && <span style={{ color: GREEN }}> · On The Board</span>}{row.evidence && <span style={{ color: GOLD }}> · Pinned To Polaris</span>}</div>
-            {row.note && !isLink(row) && <div style={{ fontSize: 13.5, color: INK2, marginTop: 6 }}>{row.note}</div>}
-          </div>
+          <div style={{ ...modalTitle, flex: 1, minWidth: 0, wordBreak: 'break-word' }}>{row.name}</div>
           <button onClick={onClose} aria-label="Close" style={{ background: 'transparent', border: 'none', color: INK2, cursor: 'pointer', padding: 2 }}><XIcon size={18} /></button>
         </div>
-        <div style={{ marginTop: 16 }}>
-          {view.state === 'loading' && <div style={center}>Opening</div>}
-          {view.state === 'image' && <div style={{ ...box, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><img src={view.url} alt={row.name} style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} /></div>}
-          {view.state === 'frame' && <iframe title={row.name} src={view.url} style={{ ...box, width: '100%', display: 'block', background: '#fff' }} />}
-          {view.state === 'html' && <iframe title={row.name} srcDoc={view.text} sandbox="allow-scripts" style={{ ...box, width: '100%', display: 'block', background: '#fff' }} />}
-          {view.state === 'text' && <pre style={{ ...box, margin: 0, padding: 16, fontSize: 13, lineHeight: 1.6, color: INK, whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontFamily: 'var(--font-mono, monospace)' }}>{view.text}</pre>}
-          {view.state === 'link' && <div style={center}><Link2 size={34} color={LABEL} /><div style={{ color: INK, fontSize: 15, wordBreak: 'break-all' }}>{row.path}</div>{row.note && <div>{row.note}</div>}</div>}
-          {view.state === 'waiting' && <div style={center}><Hourglass size={34} color={LABEL} /><div style={{ color: INK, fontSize: 15 }}>Waiting for a Claude session on this Mac to bring it in.</div><div style={{ wordBreak: 'break-all' }}>{row.path}</div></div>}
-          {view.state === 'none' && <div style={center}><FileGlyph row={row} size={34} /><div style={{ color: INK, fontSize: 15 }}>No preview for this kind of file.</div><div>Open it or download it below.</div></div>}
-          {view.state === 'error' && <div style={center}><div style={{ color: INK, fontSize: 15 }}>The preview would not open.</div><div>{view.message}</div></div>}
-          {view.plain && <div style={{ fontSize: 12.5, color: MUTED, marginTop: 6 }}>A plain rendering of the words, in order. Open it for the original layout.</div>}
+        <div style={{ display: 'grid', gridTemplateColumns: 'max-content minmax(0, 1fr)', columnGap: 18, rowGap: 5, marginTop: 14 }}>
+          {facts.map(([l, v]) => [
+            <span key={`${l}l`} style={{ fontSize: 13, fontWeight: 600, color: LABEL, lineHeight: 1.55 }}>{l}</span>,
+            <span key={`${l}v`} style={{ fontSize: 13.5, color: INK2, lineHeight: 1.55, wordBreak: 'break-word' }}>{v}</span>,
+          ])}
         </div>
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginTop: 16 }}>
+        {syn.state !== 'none' && (
+          <div style={{ marginTop: 18, borderTop: `1px solid ${PANEL_BORDER}`, paddingTop: 16 }}>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 12 }}>
+              <div style={{ flex: 1, fontSize: 15.5, fontWeight: 600, color: LABEL }}>Synopsis</div>
+              {syn.state === 'ready' && <button onClick={rewrite} style={quiet}>Write It Again</button>}
+            </div>
+            {syn.state === 'loading' && <div style={{ fontSize: 14, color: MUTED, marginTop: 8 }}>Reading the document</div>}
+            {syn.state === 'ready' && <div style={{ marginTop: 4 }}>{renderMarkdown(syn.text, { size: 14.5 })}</div>}
+            {syn.state === 'ready' && syn.partial && <div style={{ fontSize: 12.5, color: MUTED, marginTop: 8 }}>This document is long. The synopsis covers the first part of it.</div>}
+            {syn.state === 'error' && <div style={{ fontSize: 13.5, color: INK2, marginTop: 8, lineHeight: 1.55 }}>The synopsis did not come back: {syn.message}. <button onClick={rewrite} style={{ ...quiet, fontSize: 13.5 }}>Try Again</button></div>}
+          </div>
+        )}
+        {showDoc && (
+          <div style={{ marginTop: 16 }}>
+            {view.state === 'loading' && <div style={center}>Opening</div>}
+            {view.state === 'image' && <div style={{ ...box, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><img src={view.url} alt={row.name} style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} /></div>}
+            {view.state === 'frame' && <iframe title={row.name} src={view.url} style={{ ...box, width: '100%', display: 'block', background: '#fff' }} />}
+            {view.state === 'html' && <iframe title={row.name} srcDoc={view.text} sandbox="allow-scripts" style={{ ...box, width: '100%', display: 'block', background: '#fff' }} />}
+            {view.state === 'text' && <pre style={{ ...box, margin: 0, padding: 16, fontSize: 13, lineHeight: 1.6, color: INK, whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontFamily: 'var(--font-mono, monospace)' }}>{view.text}</pre>}
+            {view.state === 'link' && <div style={center}><Link2 size={34} color={LABEL} /><div style={{ color: INK, fontSize: 15, wordBreak: 'break-all' }}>{row.path}</div>{row.note && <div>{row.note}</div>}</div>}
+            {view.state === 'waiting' && <div style={center}><Hourglass size={34} color={LABEL} /><div style={{ color: INK, fontSize: 15 }}>Waiting for a Claude session on this Mac to bring it in.</div><div style={{ wordBreak: 'break-all' }}>{row.path}</div></div>}
+            {view.state === 'none' && <div style={center}><FileGlyph row={row} size={34} /><div style={{ color: INK, fontSize: 15 }}>No preview for this kind of file.</div><div>Open it or download it below.</div></div>}
+            {view.state === 'error' && <div style={center}><div style={{ color: INK, fontSize: 15 }}>The document would not open here.</div><div>{view.message}</div></div>}
+            {view.plain && <div style={{ fontSize: 12.5, color: MUTED, marginTop: 6 }}>A plain rendering of the words, in order. Open it for the original layout.</div>}
+          </div>
+        )}
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginTop: 18 }}>
           {isLink(row) && <button onClick={() => window.open(row.path, '_blank', 'noopener')} style={btn('primary')}><ExternalLink size={14} /> Launch</button>}
+          {readable && <button onClick={() => setShowDoc(v => !v)} style={btn(showDoc ? 'on' : 'plain')}>{showDoc ? <EyeOff size={14} /> : <Eye size={14} />} {showDoc ? 'Hide The Document' : 'Show The Document'}</button>}
           {!isLink(row) && !isRequest(row) && <>
             <button onClick={() => onAct('open')} style={btn()}><ExternalLink size={14} /> Open</button>
             <button onClick={() => onAct('download')} style={btn()}><Download size={14} /> Download</button>
             <button onClick={() => onAct('mail')} title="A new Outlook draft with this file attached" style={btn()}><Mail size={14} /> Mail</button>
           </>}
           {!isRequest(row) && <button onClick={() => onAct('pin')} style={btn(row.evidence ? 'on' : 'plain')}><Star size={14} /> {row.evidence ? 'Pinned To Polaris' : 'Pin To Polaris'}</button>}
-          {!isRequest(row) && <button onClick={() => onAct('board')} style={btn()}>{row.filed_at ? 'Put On The Board' : 'Take Off The Board'}</button>}
           {folders.length > 0 && (
             <select value={folder || ''} onChange={e => onMove(e.target.value || null)} aria-label="Folder" style={{ ...field, width: 'auto', padding: '7px 10px', fontSize: 13, borderRadius: 999 }}>
               <option value="" style={{ color: '#0F2334' }}>No Folder</option>{folders.map(f => <option key={f} value={f} style={{ color: '#0F2334' }}>{f}</option>)}
@@ -202,15 +251,15 @@ function Preview({ api, row, folder, folders, onClose, onAct, onMove }) {
 }
 
 // ---- the list --------------------------------------------------------------------------------
-const COLS = [['name', 'Name'], ['from', 'From'], ['added', 'Added'], ['size', 'Size']]
-const GRID = { display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 150px 120px 84px', gap: 14, alignItems: 'center' }
+const COLS = [['name', 'Name'], ['source', 'Source'], ['added', 'Added'], ['size', 'Size']]
+const GRID = { display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 176px 116px 80px', gap: 14, alignItems: 'center' }
 
 export default function CardFiles({ objectiveId, onChanged, api = LEDGER }) {
   const [rows, setRows] = useState(null)
   const [index, setIndex] = useState({ v: 1, folders: [], of: {} })
   const [tick, setTick] = useState(0)
   const [filter, setFilter] = useState('')
-  const [sort, setSort] = useState(() => { try { return JSON.parse(localStorage.getItem('hud:files:sort')) || { by: 'added', dir: 'desc' } } catch { return { by: 'added', dir: 'desc' } } })
+  const [sort, setSort] = useState(() => { try { const k = JSON.parse(localStorage.getItem('hud:files:sort')); return k ? { ...k, by: k.by === 'from' ? 'source' : k.by } : { by: 'added', dir: 'desc' } } catch { return { by: 'added', dir: 'desc' } } })
   const [closed, setClosed] = useState({})
   const [adding, setAdding] = useState(false)
   const [previewId, setPreviewId] = useState(null)
@@ -228,12 +277,12 @@ export default function CardFiles({ objectiveId, onChanged, api = LEDGER }) {
 
   const reload = () => { setTick(t => t + 1); onChanged && onChanged() }
   const saveIndex = async (next) => { setIndex(next); try { await api.writeFileIndex(objectiveId, next) } catch (e) { setMsg(`Could not save the folders: ${e.message}`) } }
-  const setSortBy = (by) => { const next = sort.by === by ? { by, dir: sort.dir === 'asc' ? 'desc' : 'asc' } : { by, dir: by === 'name' || by === 'from' ? 'asc' : 'desc' }; setSort(next); try { localStorage.setItem('hud:files:sort', JSON.stringify(next)) } catch { /* no-op */ } }
+  const setSortBy = (by) => { const next = sort.by === by ? { by, dir: sort.dir === 'asc' ? 'desc' : 'asc' } : { by, dir: by === 'name' || by === 'source' ? 'asc' : 'desc' }; setSort(next); try { localStorage.setItem('hud:files:sort', JSON.stringify(next)) } catch { /* no-op */ } }
 
   const shown = useMemo(() => {
     const f = filter.trim().toLowerCase()
-    const list = (rows || []).filter(r => !f || [r.name, r.note, fromOf(r), kindOf(r), index.of[r.id]].some(v => String(v || '').toLowerCase().includes(f)))
-    const key = (r) => sort.by === 'name' ? String(r.name || '').toLowerCase() : sort.by === 'from' ? fromOf(r) : sort.by === 'size' ? Number(r.size) || 0 : String(r.created_at || '')
+    const list = (rows || []).filter(r => !f || [r.name, r.note, sourceOf(r).label, kindOf(r), index.of[r.id]].some(v => String(v || '').toLowerCase().includes(f)))
+    const key = (r) => sort.by === 'name' ? String(r.name || '').toLowerCase() : sort.by === 'source' ? sourceOf(r).label.toLowerCase() : sort.by === 'size' ? Number(r.size) || 0 : String(r.created_at || '')
     return list.sort((a, b) => { const x = key(a), y = key(b); return (x < y ? -1 : x > y ? 1 : 0) * (sort.dir === 'asc' ? 1 : -1) })
   }, [rows, filter, sort, index])
   const folders = index.folders || []
@@ -247,7 +296,6 @@ export default function CardFiles({ objectiveId, onChanged, api = LEDGER }) {
       else if (what === 'download') window.open(await api.downloadLiveFile(row), '_blank', 'noopener')
       else if (what === 'mail') { const d = await api.draftMail(row); if (d.webLink) window.open(d.webLink, '_blank', 'noopener'); setMsg(`Draft open in Outlook: ${row.name}`) }
       else if (what === 'pin') { await api.pinEvidence(row.id, !row.evidence); reload() }
-      else if (what === 'board') { await api.setInPlay(row.id, !!row.filed_at); reload() }
       else if (what === 'remove') {
         if (!await hudConfirm({ title: `Remove ${row.name}?`, message: isLink(row) || isRequest(row) ? 'It leaves this card.' : 'The file is deleted from this card and cannot be brought back.', confirm: 'Remove', danger: true })) return
         await api.removeLiveRow(row)
@@ -277,6 +325,7 @@ export default function CardFiles({ objectiveId, onChanged, api = LEDGER }) {
 
   // A plain function, not a component: rows render inline and keep no state of their own.
   const renderRow = (r) => {
+    const src = sourceOf(r)
     return (
       <button key={r.id} onClick={() => setPreviewId(r.id)} style={{ ...GRID, width: '100%', textAlign: 'left', fontFamily: 'inherit', background: 'transparent', border: 'none', borderTop: `1px solid ${PANEL_BORDER}`, padding: '12px 4px', cursor: 'pointer', color: INK }}
         onMouseEnter={e => { e.currentTarget.style.background = PANEL_BG }} onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}>
@@ -284,12 +333,12 @@ export default function CardFiles({ objectiveId, onChanged, api = LEDGER }) {
           <FileGlyph row={r} style={{ flexShrink: 0 }} />
           <span style={{ minWidth: 0 }}>
             <span style={{ display: 'block', fontSize: 14.5, color: INK, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.name}{r.version > 1 && <span style={{ color: MUTED, fontSize: 12.5 }}> · Version {r.version}</span>}</span>
-            {(r.evidence || !r.filed_at || isRequest(r) || (isLink(r) && r.note)) && <span style={{ display: 'block', fontSize: 12.5, color: MUTED, marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {isRequest(r) ? 'Waiting for a session on this Mac' : <>{!r.filed_at && <span style={{ color: GREEN }}>On The Board</span>}{!r.filed_at && r.evidence && ' · '}{r.evidence && <span style={{ color: GOLD }}>Pinned To Polaris</span>}{isLink(r) && r.note ? `${!r.filed_at || r.evidence ? ' · ' : ''}${r.note}` : ''}</>}
+            {(r.evidence || isRequest(r) || (isLink(r) && r.note)) && <span style={{ display: 'block', fontSize: 12.5, color: MUTED, marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {isRequest(r) ? 'Waiting for a session on this Mac' : <>{r.evidence && <span style={{ color: GOLD }}>Pinned To Polaris</span>}{isLink(r) && r.note ? `${r.evidence ? ' · ' : ''}${r.note}` : ''}</>}
             </span>}
           </span>
         </span>
-        <span style={{ fontSize: 13, color: INK2 }}>{fromOf(r)}</span>
+        <span title={src.sender ? `Email from ${src.sender}, ${src.when}: ${src.subject}` : undefined} style={{ fontSize: 13, color: INK2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{src.label}</span>
         <span style={{ fontSize: 13, color: INK2 }}>{day(r.created_at)}</span>
         <span style={{ fontSize: 13, color: INK2, textAlign: 'right' }}>{r.size ? fmtSize(r.size) : ''}</span>
       </button>
@@ -301,7 +350,7 @@ export default function CardFiles({ objectiveId, onChanged, api = LEDGER }) {
   return (
     <div style={{ minWidth: 0 }}>
       {adding && <AddModal api={api} owner={{ objectiveId }} folders={folders} onClose={() => setAdding(false)} onAdded={added} />}
-      {preview && <Preview api={api} row={preview} folder={index.of[preview.id] || null} folders={folders} onClose={() => setPreviewId(null)} onAct={(w) => act(preview, w)} onMove={(name) => move(preview, name)} />}
+      {preview && <FileSheet key={preview.id} api={api} row={preview} folder={index.of[preview.id] || null} folders={folders} onClose={() => setPreviewId(null)} onAct={(w) => act(preview, w)} onMove={(name) => move(preview, name)} />}
 
       {empty ? (
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', gap: 12, padding: '54px 16px 46px' }}>
@@ -315,7 +364,7 @@ export default function CardFiles({ objectiveId, onChanged, api = LEDGER }) {
           <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginBottom: 14 }}>
             <span style={{ position: 'relative', flex: '1 1 240px', maxWidth: 360 }}>
               <Search size={15} color={MUTED} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)' }} />
-              <input value={filter} onChange={e => setFilter(e.target.value)} placeholder="Filter by name, kind, or who brought it in" style={{ ...field, paddingLeft: 36, borderRadius: 999 }} />
+              <input value={filter} onChange={e => setFilter(e.target.value)} placeholder="Filter by name, kind, or source" style={{ ...field, paddingLeft: 36, borderRadius: 999 }} />
             </span>
             <span style={{ fontSize: 13, color: MUTED }}>{shown.length === rows.length ? `${rows.length} ${rows.length === 1 ? 'file' : 'files'}` : `${shown.length} of ${rows.length}`}</span>
             <span style={{ flex: 1 }} />

@@ -165,7 +165,7 @@ export default function LiveFilesModal({ onClose, filter = null, items = [], onC
                           {isRequest(r) && <span title={r.path} style={{ fontFamily: MONO, fontSize: 9, letterSpacing: '1px', textTransform: 'uppercase', color: GOLD, border: `1px solid ${alpha(GOLD, 33)}`, borderRadius: 999, padding: '1px 7px' }}>waiting for a session on the Mac</span>}
                         </div>
                         <div style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '0.6px', color: GRAY, marginTop: 2 }}>
-                          {fmtStamp(r.created_at)}{r.size ? ` · ${fmtSize(r.size)}` : ''} · {r.source === 'session' ? `Claude${r.session ? ` · ${r.session}` : ''}` : r.source === 'lumen' ? 'Lumen' : 'David'}{isOld ? ' · older version' : ''}
+                          {fmtStamp(r.created_at)}{r.size ? ` · ${fmtSize(r.size)}` : ''} · {r.source === 'session' ? `Claude${r.session ? ` · ${r.session}` : ''}` : r.source === 'lumen' ? 'Lumen' : r.source === 'email' ? 'Email' : 'David'}{isOld ? ' · older version' : ''}
                         </div>
                         <div onClick={async () => { const n = await hudPrompt('Note on this file', r.note || ''); if (n !== null) act(() => noteLiveFile(r.id, n.trim() || null), 'Note saved') }} style={{ fontSize: 12, color: r.note ? INK2 : GRAY, marginTop: 3, cursor: 'text', fontStyle: r.note ? 'normal' : 'italic' }}>{r.note || 'add a note'}</div>
                       </div>

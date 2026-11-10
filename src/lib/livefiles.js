@@ -174,6 +174,34 @@ export async function draftMail(f) {
   return j
 }
 
+// A quick synopsis of one file (David 11/10), written once by Lumen's model at the door and
+// kept beside the files, so the second ask is instant. refresh writes it again.
+export async function fileSynopsis(id, { refresh = false } = {}) {
+  const { data: { session } } = await supabase.auth.getSession()
+  if (!session) throw new Error('not signed in')
+  const r = await fetch('/api/live-files', { method: 'POST', headers: { Authorization: `Bearer ${session.access_token}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'synopsis', id, refresh }) })
+  const j = await r.json().catch(() => ({}))
+  if (!r.ok || j.error) throw new Error(j.error || `synopsis ${r.status}`)
+  return j
+}
+
+// Where a file came from, for the Source column. An attachment filed from an email carries
+// "Email · sender · date · subject" in its note (written at filing, api/_ledger file_attachment).
+export function sourceOf(r) {
+  if (!r) return { kind: 'Unknown', label: 'Unknown' }
+  if (r.bucket === 'request') return { kind: 'This Mac', label: 'This Mac' }
+  const p = String(r.note || '').split(' · ')
+  if (p[0] === 'Email' && p.length >= 4) {
+    const day = p[2].replace(/,\s*\d{1,2}:\d{2}\s*[AP]M$/i, '')
+    return { kind: 'Email', label: `Email · ${day}`, sender: p[1], when: p[2], day, subject: p.slice(3).join(' · ') }
+  }
+  if (r.source === 'email' || r.note === 'from email') return { kind: 'Email', label: 'Email' }
+  if (r.source === 'david') return { kind: 'You', label: 'You' }
+  if (r.source === 'lumen') return { kind: 'Lumen', label: 'Lumen' }
+  if (r.source === 'session') return { kind: 'Claude Session', label: 'Claude Session' }
+  return { kind: r.source || 'Unknown', label: r.source || 'Unknown' }
+}
+
 // A path on David's Mac, typed into the HUD. The browser cannot read it, so the
 // row waits (bucket 'request') until a Claude session on the Mac puts the file
 // in play (livefile.py put <path> --request <id>); the session hook announces it.
