@@ -38,6 +38,7 @@ export async function createDraft({ to = [], cc = [], subject = '', body = '', f
       try { const c = JSON.parse(Buffer.from(token.split('.')[1], 'base64url').toString()); roles = c.roles || []; app = c.appid || c.azp || '' } catch { /* opaque token */ }
       return new Error(`Outlook refused to create the draft in ${MAILBOX} (403). The HUD's Graph app ${app ? `(client ${app.slice(0, 8)}…) ` : ''}carries roles [${roles.join(', ') || 'none readable'}]; drafting needs Mail.ReadWrite (application) with admin consent. Jordana can grant it in Entra: App registrations, the HUD app, API permissions, Add Microsoft Graph application permission Mail.ReadWrite, Grant admin consent.`)
     }
+    if (/ErrorInvalidReferenceItem/.test(text)) return new Error('that message is an unsent draft, so it cannot be replied to; reply to a received or sent message, or write a new draft')
     return new Error(`draft -> ${made.status}: ${text}`)
   }
   let msg
