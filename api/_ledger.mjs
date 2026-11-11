@@ -793,8 +793,8 @@ export const TOOLS = [
   },
   {
     name: 'voice_candidates',
-    description: "Make voices for David to hear, when he asks to try a new voice for you or for anything else. ElevenLabs Voice Design turns a description into up to three candidate voices saying a sample line. description (20 to 1000 characters) says who is speaking: age, gender, accent, pitch, pace, character, recording quality. sample (100 to 1000 characters) is what the voice says: use a few sentences you would really say to him. Each candidate is kept in the cabinet under Lumen/Voice Candidates/<day>/ and sent to his WhatsApp as a voice note labeled with label and its number. Returns each candidate's generated_voice_id. Your own voice does not change. Call it once per character he wants to compare.",
-    inputSchema: { type: 'object', properties: { label: { type: 'string', description: 'a short name for this character, e.g. Old Master' }, description: { type: 'string' }, sample: { type: 'string' }, count: { type: 'integer', description: '1 to 3, default 3' }, send: { type: 'boolean', description: 'false to keep them in the cabinet without sending voice notes' } }, required: ['description', 'sample'] },
+    description: "Make voices for David to hear, when he asks to try a new voice for you or for anything else. Two ways. A fresh design: description (20 to 1000 characters) says who is speaking (age, gender, accent, pitch, pace, character, recording quality) and ElevenLabs Voice Design makes up to three new candidate voices. A remix of a voice he already likes: give from_voice_id (a saved voice; keep_voice returns it) and make description the CHANGES he asked for, in plain words (older, more command, softer), and say what to keep; strength 0 to 1 is how far it may move from the original (default 0.35, a nudge). sample (100 to 1000 characters) is what the voice says: a few sentences you would really say to him, and the same sample across a comparison. Each candidate is kept in the cabinet under Lumen/Voice Candidates/<day>/ and sent to his WhatsApp as a voice note labeled with label and its number. Returns each candidate's generated_voice_id. Your own voice does not change.",
+    inputSchema: { type: 'object', properties: { label: { type: 'string', description: 'a short name for this character, e.g. Old Master' }, description: { type: 'string' }, sample: { type: 'string' }, from_voice_id: { type: 'string', description: 'a saved voice to remix instead of designing a new one' }, strength: { type: 'number', description: 'remix only: 0 to 1, default 0.35' }, count: { type: 'integer', description: '1 to 3, default 3' }, send: { type: 'boolean', description: 'false to keep them in the cabinet without sending voice notes' } }, required: ['description', 'sample'] },
   },
   {
     name: 'keep_voice',
@@ -1969,12 +1969,19 @@ export async function callTool(name, args = {}) {
       if (desc.length < 20 || desc.length > 1000) return JSON.stringify({ ok: false, error: 'description: 20 to 1000 characters saying who is speaking (age, accent, pitch, pace, character)' })
       if (sample.length < 100 || sample.length > 1000) return JSON.stringify({ ok: false, error: 'sample: 100 to 1000 characters for the voice to say' })
       if (!process.env.ELEVENLABS_API_KEY) return JSON.stringify({ ok: false, error: 'no ElevenLabs key on this deployment' })
-      const r = await fetch('https://api.elevenlabs.io/v1/text-to-voice/design?output_format=mp3_44100_128', {
-        method: 'POST', headers: { 'xi-api-key': process.env.ELEVENLABS_API_KEY, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ voice_description: desc, text: sample, model_id: 'eleven_ttv_v3' }),
-      })
+      // From a voice he already likes (David 11/11, on Tea Master 1: "maybe add a few years and a slight elevation to
+      // the command in the voice"): a remix keeps that voice and applies the changes described, where a fresh
+      // design would roll new voices. from_voice_id is a saved voice (keep_voice returns it); strength is how far
+      // the changes may pull it from the original, 0 to 1.
+      const from = String(args.from_voice_id || '').trim()
+      const H = { 'xi-api-key': process.env.ELEVENLABS_API_KEY, 'Content-Type': 'application/json' }
+      const strength = Math.min(Math.max(Number(args.strength ?? 0.35), 0), 1)
+      const ask = (body) => fetch(from ? `https://api.elevenlabs.io/v1/text-to-voice/${encodeURIComponent(from)}/remix?output_format=mp3_44100_128` : 'https://api.elevenlabs.io/v1/text-to-voice/design?output_format=mp3_44100_128', { method: 'POST', headers: H, body: JSON.stringify(body) })
+      let r = await ask(from ? { voice_description: desc, text: sample, prompt_strength: strength } : { voice_description: desc, text: sample, model_id: 'eleven_ttv_v3' })
+      // The strength setting is only taken by the newest voice model; without it the remix still runs.
+      if (from && r.status === 422) r = await ask({ voice_description: desc, text: sample })
       const j = await r.json().catch(() => null)
-      if (!r.ok) return JSON.stringify({ ok: false, error: `ElevenLabs voice design -> ${r.status}: ${JSON.stringify(j).slice(0, 300)}` })
+      if (!r.ok) return JSON.stringify({ ok: false, error: `ElevenLabs voice ${from ? 'remix' : 'design'} -> ${r.status}: ${JSON.stringify(j).slice(0, 300)}` })
       const previews = (j?.previews || []).slice(0, Math.min(Math.max(Number(args.count) || 3, 1), 3))
       const day = chiToday(), to = davidNumber(), out = []
       for (const [i, pv] of previews.entries()) {
@@ -1992,7 +1999,7 @@ export async function callTool(name, args = {}) {
         const rec = 'lumen/voice-candidates.json'
         const got = await fetchObject('project-files', rec)
         const list = got ? await got.json().catch(() => []) : []
-        const next = [...(Array.isArray(list) ? list : []), { at: new Date().toISOString(), label, description: desc, candidates: out.map(c => ({ n: c.n, generated_voice_id: c.generated_voice_id, path: c.path })) }].slice(-60)
+        const next = [...(Array.isArray(list) ? list : []), { at: new Date().toISOString(), label, description: desc, ...(from ? { from_voice_id: from, strength } : {}), candidates: out.map(c => ({ n: c.n, generated_voice_id: c.generated_voice_id, path: c.path })) }].slice(-60)
         await fetch(`${URL_BASE}/storage/v1/object/project-files/${rec}`, { method: 'POST', headers: { ...sbHeaders(), 'Content-Type': 'application/json', 'x-upsert': 'true' }, body: JSON.stringify(next) })
       } catch (e) { console.warn('voice record', e.message) }
       return JSON.stringify({ ok: true, label, candidates: out, note: 'Each candidate is in the cabinet as an mp3 and, unless send was false, in David\'s WhatsApp as a voice note. keep_voice with a generated_voice_id saves the one he picks; a candidate that is not kept may not stay available.' })
