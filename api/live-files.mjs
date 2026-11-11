@@ -44,7 +44,8 @@ const PDF_MAX = 22 * 1024 * 1024   // the API takes 32 MB a request, and base64 
 const IMG_MAX = 3.5 * 1024 * 1024
 const metaPath = (id) => `live-meta/${id}.json`
 async function readMeta(id) {
-  const r = await fetch(`${URL_BASE}/storage/v1/object/project-files/${metaPath(id)}`, { headers: hdr() })
+  // Storage serves a cached copy of an object for a while; ask past it so Write It Again shows the new synopsis.
+  const r = await fetch(`${URL_BASE}/storage/v1/object/project-files/${metaPath(id)}?cb=${Date.now()}`, { headers: hdr(), cache: 'no-store' })
   if (!r.ok) return null
   try { return await r.json() } catch { return null }
 }

@@ -14,6 +14,7 @@
 // Code session to pick up (~/.claude/hud-board/handoff.py list | read | take | answer).
 // The session's answer is written back into this card's thread as a message from
 // Claude Code, so David sees it on the card and Lumen reads it on his next turn.
+// Storage serves a cached copy of an object for a while, so every read of a hand-off asks past it (?cb=).
 //   { action: 'handoffs', item } -> { ok, handoffs: [{ id, at, status, message_id, answered_at }] }
 // Only David's press makes one: nothing here is created by Lumen or by a session.
 export const config = { maxDuration: 300, api: { bodyParser: false } }
@@ -31,7 +32,7 @@ const HO = (itemId, id = '') => `${URL_BASE}/storage/v1/object/project-files/han
 async function listHandoffs(itemId) {
   const r = await fetch(`${URL_BASE}/storage/v1/object/list/project-files`, { method: 'POST', headers: { ...svc(), 'Content-Type': 'application/json' }, body: JSON.stringify({ prefix: `handoffs/${itemId}`, limit: 200, sortBy: { column: 'name', order: 'asc' } }) })
   const names = ((r.ok ? await r.json() : []) || []).filter(f => f.id && f.name.endsWith('.json')).map(f => f.name.replace(/\.json$/, ''))
-  const docs = await Promise.all(names.map(async (id) => { try { const g = await fetch(HO(itemId, id), { headers: svc() }); return g.ok ? await g.json() : null } catch { return null } }))
+  const docs = await Promise.all(names.map(async (id) => { try { const g = await fetch(`${HO(itemId, id)}?cb=${Date.now()}`, { headers: svc(), cache: 'no-store' }); return g.ok ? await g.json() : null } catch { return null } }))
   return docs.filter(Boolean).map(d => ({ id: d.id, at: d.at, status: d.status, message_id: d.message_id ?? null, answered_at: d.answered_at || null }))
 }
 async function makeHandoff(body, item) {
@@ -44,7 +45,7 @@ async function makeHandoff(body, item) {
   // One small index of what is waiting, so a session start reads one file (handoff.py keeps it too).
   try {
     const idx = `${URL_BASE}/storage/v1/object/project-files/handoffs/_open.json`
-    const g = await fetch(idx, { headers: svc() })
+    const g = await fetch(`${idx}?cb=${Date.now()}`, { headers: svc(), cache: 'no-store' })
     const open = g.ok ? await g.json().catch(() => []) : []
     const next = [...(Array.isArray(open) ? open : []).filter(x => x.id !== id), { id, item_id: item.id, title: doc.item.title, at: doc.at }]
     await fetch(idx, { method: 'POST', headers: { ...svc(), 'Content-Type': 'application/json', 'x-upsert': 'true' }, body: JSON.stringify(next) })
