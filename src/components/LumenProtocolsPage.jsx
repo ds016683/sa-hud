@@ -6,7 +6,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { S, Eyebrow, Serif, Label, INK, INK2, GRAY, GOLD, GREEN, RED, MONO, PANEL_BORDER, PANEL_BG, LABEL, MUTED, TYPE, alpha } from './river/canon'
 
-const PILLS = [{ id: 'identity', label: 'Identity' }, { id: 'rules', label: 'Rules' }, { id: 'mail', label: 'Mail Protocol' }, { id: 'editing', label: 'Editing Protocol' }, { id: 'briefing', label: 'Briefing Protocol' }]
+const PILLS = [{ id: 'identity', label: 'Identity' }, { id: 'rules', label: 'Rules' }, { id: 'mail', label: 'Mail Protocol' }, { id: 'editing', label: 'Editing Protocol' }, { id: 'briefing', label: 'Briefing Protocol' }, { id: 'remind', label: 'Remind Me Protocol' }]
 
 const Block = ({ title, children }) => (
   <div style={{ border: `1px solid ${PANEL_BORDER}`, background: PANEL_BG, borderRadius: 12, padding: '16px 18px', marginBottom: 12 }}>
@@ -198,13 +198,64 @@ function Briefing() {
   )
 }
 
+// The Remind Me Protocol (David 11/11, on a reply that closed with the open choices as a
+// short numbered list: "hahahaha this is so awesome. we should call it the remind me protocol").
+function RemindMe() {
+  const chip = (c) => ({ fontFamily: MONO, fontSize: 11, letterSpacing: '0.08em', padding: '2px 8px', borderRadius: 6, border: `1px solid ${alpha(c, 40)}`, color: c, background: `${alpha(c, 8)}` })
+  return (
+    <>
+      <Block title="What It Is">
+        The Remind Me Protocol keeps what waits on David in front of him. He works many threads in one session and several sessions at once, and a decision asked once scrolls away. So the session carries the list: every reply closes with what still waits on him, one short numbered line each, until he rules. He never has to ask what he was supposed to decide. Born on the Side Mission Briefing build, November 11, 2026, from his ask to {'“'}keep them fresh on the turns so they{'’'}re top of mind.{'”'}
+      </Block>
+      <Block title="What Goes On The List">
+        <ul style={{ margin: 0, paddingLeft: 18 }}>
+          <Li><b style={{ color: INK }}>A choice</b> the session made on its own judgment that he has not ruled on.</Li>
+          <Li><b style={{ color: INK }}>A question</b> he has not answered.</Li>
+          <Li><b style={{ color: INK }}>A hand-off</b> only he can do: a line to send Lumen, a secret to enter, a file to upload.</Li>
+          <Li><b style={{ color: INK }}>Something he parked</b>: {'“'}come back to this in a bit.{'”'}</Li>
+          <Li>Never the session{'’'}s own to-dos, status, or finished work. If the session can find the answer itself, it finds it.</Li>
+        </ul>
+      </Block>
+      <Block title="The Loop">
+        <ol style={{ margin: 0, paddingLeft: 18 }}>
+          <Li><b style={{ color: INK }}>Raise it in full once.</b> The first time, the item gets its real explanation in the reply.</Li>
+          <Li><b style={{ color: INK }}>Put it on the list.</b> One row in the Ledger: a line of about twelve words, shaped so a yes, a no, or a pick answers it. The detail stays behind the line.</Li>
+          <Li><b style={{ color: INK }}>Close every reply with it.</b> The open rows, numbered, under the words Remind Me, even when the reply is about something else. Read from the Ledger, never from memory.</Li>
+          <Li><b style={{ color: INK }}>Numbers never change.</b> A row keeps its number, so {'“'}4: yes{'”'} works three replies later.</Li>
+          <Li><b style={{ color: INK }}>When he rules, close it and act.</b> The ruling is recorded in his words, the work follows, and the line leaves the list. {'“'}Leave it{'”'} and {'“'}drop it{'”'} are rulings.</Li>
+        </ol>
+      </Block>
+      <Block title="Standing Rules Inside It">
+        <ul style={{ margin: 0, paddingLeft: 18 }}>
+          <Li>Only David closes an item. The session never rules for him, never drops an item because it is old, and never reads silence as a yes.</Li>
+          <Li>One line per item, every turn. No re-explaining and no nagging in the body of the reply; the list at the bottom is the whole reminder.</Li>
+          <Li>Nothing is created from the list. An item is a question to David, not a task, a Side Mission or a milestone.</Li>
+          <Li>With the Briefing Protocol on, its progress line is still the last line; the Remind Me list sits right above it.</Li>
+          <Li>An empty list is silent.</Li>
+        </ul>
+      </Block>
+      <Block title="The Pieces">
+        <ul style={{ margin: 0, paddingLeft: 18 }}>
+          <Li><span style={chip(GREEN)}>remind.py</span> <span style={{ marginLeft: 8 }}>the helper: add, rule, done, list, show.</span></Li>
+          <Li><span style={chip(GOLD)}>edit_punchlist</span> <span style={{ marginLeft: 8 }}>the Ledger table the rows live on, named remind and keyed by the session, so the list survives a long session and a change of focus.</span></Li>
+          <Li><span style={chip(GOLD)}>remind-me-protocol skill</span> <span style={{ marginLeft: 8 }}>the loop in words, so any Code session runs it the same way.</span></Li>
+          <Li><span style={chip(LABEL)}>Lumen</span> <span style={{ marginLeft: 8 }}>follows the same protocol in his own threads by rule, and keeps his list in the conversation.</span></Li>
+        </ul>
+      </Block>
+      <Block title="How To Start One">
+        Say {'“'}remind me protocol{'”'}, {'“'}keep them fresh{'”'}, {'“'}keep that open{'”'}, or park something with {'“'}come back to this.{'”'} The list starts with that item and rides on every reply from there. Answer by number whenever it suits: {'“'}2: yes. 7: mark.{'”'}
+      </Block>
+    </>
+  )
+}
+
 export default function LumenProtocolsPage() {
   const [pill, setPill] = useState('identity')
   return (
     <div style={S.page}>
       <Eyebrow>SYSTEM · PROTOCOLS</Eyebrow>
       <h1 style={S.h1}>Protocols</h1>
-      <p style={S.sub}>the formal loops the house runs on: Lumen, the mail door, the editing floor, and the briefing</p>
+      <p style={S.sub}>the formal loops the house runs on: Lumen, the mail door, the editing floor, the briefing, and the remind me list</p>
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', margin: '18px 0 22px' }}>
         {PILLS.map(p => (
           <button key={p.id} onClick={() => setPill(p.id)} style={{ fontSize: 11, letterSpacing: '0.06em', textTransform: 'uppercase', fontFamily: MONO, padding: '7px 14px', borderRadius: 999, cursor: 'pointer', border: `1px solid ${pill === p.id ? 'rgba(230,181,79,0.6)' : PANEL_BORDER}`, background: pill === p.id ? 'rgba(230,181,79,0.12)' : 'rgba(255,255,255,0.03)', color: pill === p.id ? GOLD : INK }}>{p.label}</button>
@@ -215,6 +266,7 @@ export default function LumenProtocolsPage() {
       {pill === 'mail' && <Mail />}
       {pill === 'editing' && <Editing />}
       {pill === 'briefing' && <Briefing />}
+      {pill === 'remind' && <RemindMe />}
     </div>
   )
 }
