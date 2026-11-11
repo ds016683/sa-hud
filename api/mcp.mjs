@@ -31,8 +31,14 @@ async function handleRpc(msg) {
       return rpcResult(id, { tools: TOOLS })
     case 'tools/call': {
       try {
-        const text = await callTool(params?.name, params?.arguments || {})
-        return rpcResult(id, { content: [{ type: 'text', text }], isError: false })
+        const out = await callTool(params?.name, params?.arguments || {})
+        // look_at_file answers with the file itself beside its words: pictures ride as image content.
+        if (out && typeof out === 'object' && Array.isArray(out.__attach)) {
+          const pics = out.__attach.filter(a => a.type === 'image').map(a => ({ type: 'image', data: a.source.data, mimeType: a.source.media_type }))
+          const docs = out.__attach.filter(a => a.type !== 'image').length
+          return rpcResult(id, { content: [{ type: 'text', text: String(out.text || '') + (docs ? ' (The PDF itself is not carried over this connection; read_file gives its words.)' : '') }, ...pics], isError: false })
+        }
+        return rpcResult(id, { content: [{ type: 'text', text: String(out) }], isError: false })
       } catch (e) {
         return rpcResult(id, { content: [{ type: 'text', text: `Tool error: ${String(e.message || e)}` }], isError: true })
       }

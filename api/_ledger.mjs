@@ -25,7 +25,8 @@ function zonedToIso(g) {
   return new Date(guess.getTime() - (asLocal - guess.getTime())).toISOString()
 }
 import { loadout, checkFit, equip, holster, extract, effortOf, sizeOf, SIZES, boardLog } from './_loadout.mjs'
-import { markdownToDocx, DOCX_MIME } from './_docx.mjs'
+import { markdownToDocx, DOCX_MIME, letterheadDocx, inspectDocx } from './_docx.mjs'
+import { createDraft } from './_draft.mjs'
 import { fillScorecard } from './_scorecard.mjs'
 
 const URL_BASE = 'https://cmuvomnmaoseccxpeuxq.supabase.co'
@@ -267,19 +268,104 @@ async function mailAttachments(token, encodedId) {
 
 // ---- file store (private bucket 'files'), walked recursively
 async function listFiles(prefix) {
+  // Folders at the same depth are read together (11/10: a search took 3 to 4.5 seconds walking them one at a time).
   const out = []
   const walk = async (pre) => {
     const res = await fetch(`${URL_BASE}/storage/v1/object/list/files`, { method: 'POST', headers: { ...sbHeaders(), 'Content-Type': 'application/json' }, body: JSON.stringify({ prefix: pre, limit: 1000, sortBy: { column: 'name', order: 'asc' } }) })
     if (!res.ok) throw new Error(`files list -> ${res.status}`)
+    const folders = []
     for (const e of await res.json()) {
       if (e.name === '.emptyFolderPlaceholder') continue
       const p = pre ? `${pre}/${e.name}` : e.name
       if (e.id) out.push({ path: p, size: e.metadata?.size || null, type: e.metadata?.mimetype || null, updated: e.updated_at || null })
-      else await walk(p)
+      else folders.push(p)
     }
+    await Promise.all(folders.map(walk))
   }
   await walk(prefix || '')
-  return out
+  return out.sort((x, y) => x.path.localeCompare(y.path))
+}
+
+// ---- one way to name a file (11/10) ---------------------------------------------------
+// Lumen reached for a file four ways in one evening and three of them missed: read_file
+// could not open a card's file, look_at_file lost a name with an underscore in it, and an
+// attachment asked for as "Chief_Analytics" was not found beside "Chief Analytics". Every
+// tool that takes a file now resolves it here: a path in either store (the file cabinet or
+// a card's files), or a name (the card first, then Live Files, then the cabinet), with
+// spaces, underscores, case and punctuation forgiven.
+const norm = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '')
+const nameLike = (s) => `*${String(s || '').split(/[^A-Za-z0-9]+/).filter(Boolean).join('*')}*`
+const encPath = (p) => String(p).split('/').map(encodeURIComponent).join('/')
+function pickAttachment(atts, want) {
+  const w = norm(want)
+  if (!w) return atts.length === 1 ? atts[0] : null
+  const exact = atts.filter(a => norm(a.name) === w || norm(a.name.replace(/\.[^.]+$/, '')) === w)
+  if (exact.length === 1) return exact[0]
+  const part = atts.filter(a => norm(a.name).includes(w))
+  return part.length === 1 ? part[0] : null
+}
+async function fetchObject(bucket, path) {
+  const r = await fetch(`${URL_BASE}/storage/v1/object/${bucket}/${encPath(path)}`, { headers: sbHeaders() })
+  return r.ok ? r : null
+}
+// The card a tool call names: { objective_id, project_id, root, files (where its files sit), title }.
+async function cardScope(args) {
+  if (args.side_mission) { const o = await findObjective(args.side_mission); return { objective_id: o.id, project_id: null, root: `objectives/${o.id}`, files: `objectives/${o.id}/files`, title: o.title } }
+  if (args.project) {
+    const q = esc(args.project)
+    const ps = await sb(`projects?select=id,name&status=neq.deleted&or=(key.ilike.${encodeURIComponent(q)},name.ilike.${encodeURIComponent(q)})&limit=2`)
+    if (ps.length !== 1) throw new Error(ps.length ? 'ambiguous project' : 'no such project')
+    return { objective_id: null, project_id: ps[0].id, root: ps[0].id, files: ps[0].id, title: ps[0].name }
+  }
+  return null
+}
+async function resolveFile(args) {
+  const path = String(args.path || '').replace(/^\/+/, '').trim()
+  if (path) {
+    const order = /^(objectives\/|[0-9a-f]{8}-[0-9a-f]{4}-)/i.test(path) ? ['project-files', 'files'] : ['files', 'project-files']
+    for (const bucket of order) {
+      const r = await fetchObject(bucket, path)
+      if (r) return { name: path.split('/').pop(), bucket, path, mime: r.headers.get('content-type') || null, bytes: Buffer.from(await r.arrayBuffer()), row: null }
+    }
+  }
+  const needle = String(args.name || (path ? path.split('/').pop() : '')).trim()
+  if (!needle) throw new Error('path or name required')
+  const card = await cardScope(args).catch(() => null)
+  const base = `live_files?select=id,name,bucket,path,mime,size,created_at,objective_id,project_id,note&superseded_by=is.null&bucket=neq.link&bucket=neq.request&name=ilike.${encodeURIComponent(nameLike(needle))}&order=created_at.desc&limit=12`
+  let rows = card ? await sb(`${base}&${card.objective_id ? `objective_id=eq.${card.objective_id}` : `project_id=eq.${card.project_id}`}`) : []
+  if (!rows.length) rows = await sb(base)
+  if (rows.length) {
+    const exact = rows.filter(r => norm(r.name) === norm(needle) || norm(r.name.replace(/\.[^.]+$/, '')) === norm(needle))
+    const names = [...new Set((exact.length ? exact : rows).map(r => r.name))]
+    if (names.length > 1) throw new Error(`"${needle}" matches more than one file: ${names.slice(0, 8).join(' | ')}. Name one exactly.`)
+    const row = (exact.length ? exact : rows)[0]
+    const r = await fetchObject(row.bucket, row.path)
+    if (r) return { name: row.name, bucket: row.bucket, path: row.path, mime: row.mime || r.headers.get('content-type') || null, bytes: Buffer.from(await r.arrayBuffer()), row }
+  }
+  const all = await listFiles('')
+  const hits = all.filter(f => norm(f.path.split('/').pop()).includes(norm(needle)))
+  if (hits.length > 1 && !hits.some(f => norm(f.path.split('/').pop().replace(/\.[^.]+$/, '')) === norm(needle))) throw new Error(`"${needle}" matches more than one file in the cabinet: ${hits.slice(0, 8).map(f => f.path).join(' | ')}. Give the path.`)
+  const hit = hits.find(f => norm(f.path.split('/').pop().replace(/\.[^.]+$/, '')) === norm(needle)) || hits[0]
+  if (hit) { const r = await fetchObject('files', hit.path); if (r) return { name: hit.path.split('/').pop(), bucket: 'files', path: hit.path, mime: r.headers.get('content-type') || null, bytes: Buffer.from(await r.arrayBuffer()), row: null } }
+  throw new Error(`no file matching "${needle}"${card ? ` on ${card.title},` : ''} in Live Files or in the file cabinet`)
+}
+// Letterheads: Word files in the cabinet under Third Horizon/Templates/Letterheads, named
+// for what they are ("Job Description"). Any other .docx can stand in as a one-off template.
+const LETTERHEADS = 'Third Horizon/Templates/Letterheads'
+async function letterheadNames() {
+  const res = await fetch(`${URL_BASE}/storage/v1/object/list/files`, { method: 'POST', headers: { ...sbHeaders(), 'Content-Type': 'application/json' }, body: JSON.stringify({ prefix: LETTERHEADS, limit: 200, sortBy: { column: 'name', order: 'asc' } }) })
+  return ((res.ok ? await res.json() : []) || []).filter(r => r.id && /\.docx$/i.test(r.name)).map(r => r.name)
+}
+async function findLetterhead(ref, args) {
+  const names = await letterheadNames()
+  const want = norm(String(ref).replace(/\.docx$/i, ''))
+  const hit = names.find(n => norm(n.replace(/\.docx$/i, '')) === want) || names.find(n => norm(n).includes(want))
+  if (hit) { const r = await fetchObject('files', `${LETTERHEADS}/${hit}`); if (r) return { label: hit.replace(/\.docx$/i, ''), registered: true, bytes: Buffer.from(await r.arrayBuffer()) } }
+  let f
+  try { f = await resolveFile(/\//.test(ref) ? { path: ref } : { name: ref, side_mission: args.side_mission, project: args.project }) }
+  catch (e) { throw new Error(`no letterhead "${ref}". Registered letterheads: ${names.map(n => n.replace(/\.docx$/i, '')).join(', ') || 'none yet'}. Any Word file can be the template instead: give its cabinet path or its name on the card. (${e.message})`) }
+  if (!/\.docx$/i.test(f.name)) throw new Error(`${f.name} is not a Word file; a letterhead has to be a .docx`)
+  return { label: f.name.replace(/\.docx$/i, ''), registered: false, bytes: f.bytes }
 }
 
 // ---- meetings: find a calendar event by words, and write its session row
@@ -356,12 +442,12 @@ export const TOOLS = [
   },
   {
     name: 'send_attachment',
-    description: "Pull an attachment off an email and post it into David's WhatsApp chat as a document he can open. message_id from search_mailbox or read_email; filename picks one attachment by (partial) name, otherwise the only or first file attachment is sent. Say what you sent in one line after.",
+    description: "Pull an attachment off an email and post it into David's WhatsApp chat as a document he can open. message_id from search_mailbox or read_email; filename picks one attachment by (partial) name (spaces, underscores and case do not matter), otherwise the only or first file attachment is sent. Say what you sent in one line after.",
     inputSchema: { type: 'object', properties: { message_id: { type: 'string' }, filename: { type: 'string' }, caption: { type: 'string', description: 'short caption shown under the file' } }, required: ['message_id'] },
   },
   {
     name: 'search_files',
-    description: "Find documents in David's file store (Supabase bucket 'files': panel packets, decks, contracts, anything he has dropped in) by words in the path or file name. Returns paths for send_file. Empty query lists everything.",
+    description: "Find documents by words in the name or folder, in both places David keeps them: the file cabinet (bucket 'files': packets, decks, contracts, templates) and the files on his cards. Returns cabinet paths, and on_cards with the card each file sits on. Any result can go to read_file, look_at_file, send_file, draft_email, or write_file as a letterhead. Empty query lists the cabinet.",
     inputSchema: { type: 'object', properties: { query: { type: 'string' }, limit: { type: 'integer', description: 'default 25' } }, required: [] },
   },
   {
@@ -386,8 +472,8 @@ export const TOOLS = [
   },
   {
     name: 'send_file',
-    description: "Post a document from David's file store into his WhatsApp chat so he can open it. path from search_files (exact). Say what you sent in one line after.",
-    inputSchema: { type: 'object', properties: { path: { type: 'string' }, caption: { type: 'string' } }, required: ['path'] },
+    description: "Post a document into David's WhatsApp chat so he can open it. A file is named by path (from search_files, list_folder, or a card file's path) or by name (part of the file name: the card first when side_mission or project is given, then Live Files, then the cabinet). Spaces, underscores and case do not matter. Say what you sent in one line after. On a card in the HUD the file is already in front of him; send it to WhatsApp only when he asks for it there.",
+    inputSchema: { type: 'object', properties: { path: { type: 'string' }, name: { type: 'string' }, side_mission: { type: 'string', description: 'the card to look on first' }, project: { type: 'string' }, caption: { type: 'string' } }, required: [] },
   },
   {
     name: 'get_transcript',
@@ -461,17 +547,17 @@ export const TOOLS = [
   },
   {
     name: 'write_file',
-    description: "Write a document into David's file store and, if asked, hand it to him on WhatsApp. content is markdown-ish text (# headings, - bullets, **bold**, 'Label: value' lines). path ends in .docx (a Word file, the default for anything he will forward), .md, or .txt. Put finished work next to its source, e.g. 'NACDD CEO Search/Round 2/Scorecard - Jeanne Alongi - David Smith.docx'. Drafts go under 'drafts/<day>/'. Overwrites a file of the same name.",
-    inputSchema: { type: 'object', properties: { path: { type: 'string' }, content: { type: 'string' }, send: { type: 'boolean', description: 'true to also send it to David on WhatsApp now' }, caption: { type: 'string' } }, required: ['path', 'content'] },
+    description: "Write a document. content is markdown-ish text: '# Title line', '## Section Heading', '### Sub-Heading', - bullets, 1. numbered lines, **bold**, 'Label: value' lines, and tables as consecutive '| Label | Value |' lines (<br> breaks a line inside a cell). path ends in .docx (a Word file, the default for anything he will forward), .md, or .txt. WHERE IT GOES: with side_mission or project it lands in that card's Files (path is then just the file name); without, it goes to the cabinet at path, next to its source, e.g. 'NACDD CEO Search/Round 2/Scorecard - Jeanne Alongi - David Smith.docx' (drafts under 'drafts/<day>/'). LETTERHEAD (.docx only): set letterhead to put the document on Third Horizon paper. It is either a registered letterhead by name (in the cabinet under Third Horizon/Templates/Letterheads, for example 'Job Description') or any existing Word file, by cabinet path or by its name on the card. The template's header, footer, logo, page setup and styles are kept exactly, and your content replaces its body in the template's own look (its title, section headings, sub-headings, body text, bullets and table), so follow the template's structure and section names; read_file it first. title fills the header where the template names the document; replace swaps other header or footer words ({ 'old words': 'new words' }). A wrong letterhead name returns the list of registered ones. Overwrites a file of the same name.",
+    inputSchema: { type: 'object', properties: { path: { type: 'string' }, content: { type: 'string' }, side_mission: { type: 'string', description: 'put it in this card\'s Files' }, project: { type: 'string', description: 'put it in this Main Mission\'s Files' }, letterhead: { type: 'string', description: 'a registered letterhead name, or a Word file to use as the template' }, title: { type: 'string', description: 'the document title for the letterhead\'s header' }, replace: { type: 'object', description: 'header or footer words to swap, old: new' }, send: { type: 'boolean', description: 'true to also send it to David on WhatsApp now' }, caption: { type: 'string' } }, required: ['path', 'content'] },
   },
   {
     name: 'read_file',
-    description: "Read the contents of a document in David's file store as text (PDF, Word, Excel, PowerPoint, text). Use it to answer questions about what a document says: interview questions, scorecards, packets, decks. path from search_files.",
-    inputSchema: { type: 'object', properties: { path: { type: 'string' }, max_chars: { type: 'integer', description: 'default 24000' } }, required: ['path'] },
+    description: "Read a document as text (PDF, Word, Excel, PowerPoint, text): a file on a card, a Live File, or one in the cabinet. Use it to answer questions about what a document says. A file is named by path (from search_files, list_folder, or a card file's path) or by name (part of the file name: the card first when side_mission or project is given, then Live Files, then the cabinet). Spaces, underscores and case do not matter. For how a Word file looks (its letterhead, logo, header and footer), look_at_file.",
+    inputSchema: { type: 'object', properties: { path: { type: 'string' }, name: { type: 'string' }, side_mission: { type: 'string', description: 'the card to look on first' }, project: { type: 'string' }, max_chars: { type: 'integer', description: 'default 24000' } }, required: [] },
   },
   {
     name: 'read_attachment',
-    description: 'Read an email attachment as text (PDF, Word, Excel, PowerPoint). message_id from search_mailbox; filename picks one attachment by (partial) name, otherwise the only or first file attachment.',
+    description: 'Read an email attachment as text (PDF, Word, Excel, PowerPoint). message_id from search_mailbox; filename picks one attachment by (partial) name (spaces, underscores and case do not matter), otherwise the only or first file attachment.',
     inputSchema: { type: 'object', properties: { message_id: { type: 'string' }, filename: { type: 'string' }, max_chars: { type: 'integer' } }, required: ['message_id'] },
   },
   {
@@ -526,8 +612,13 @@ export const TOOLS = [
   },
   {
     name: 'send_email',
-    description: "Send an email from Lumen's own address (lumen@thirdhorizon.com). Recipients are limited to David's addresses for now. Use when he asks you to email him something: a draft, a summary, a document's text, a list too long for WhatsApp.",
+    description: "Send an email from Lumen's own address (lumen@thirdhorizon.com). Recipients are limited to David's addresses for now. Use when he asks you to email him something: a draft, a summary, a document's text, a list too long for WhatsApp. For an email David will send to someone else, use draft_email: it lands in his own Outlook Drafts.",
     inputSchema: { type: 'object', properties: { to: { type: 'string', description: 'default david.smith@thirdhorizon.com' }, subject: { type: 'string' }, body: { type: 'string' } }, required: ['subject', 'body'] },
+  },
+  {
+    name: 'draft_email',
+    description: "Put an email in David's own Outlook Drafts, ready for him to read and send. It never sends: only David sends mail to other people. Use it whenever he asks for a draft, an email to someone, or to bring something into Outlook. to and cc take addresses ('Rich King <rich@example.com>, a@b.com'); find an address with search_mailbox when you only have a name, and leave to empty if you cannot find one. body is plain text exactly as it should read: no markdown, no asterisks, a blank line between paragraphs. Take the words from where David has been working on them (a Workbench tab, his own draft) and do not rewrite what he wrote. attachments is a list; each is { name } or { path } for a file on the card, in Live Files or in the cabinet, or { message_id, filename } for an attachment on an email. reply_to_message_id makes it a reply inside that thread, with body typed above the quoted message (reply_all for everyone on it). Returns a link that opens the draft: give it to him and say it is in Drafts, unsent.",
+    inputSchema: { type: 'object', properties: { to: { type: 'string' }, cc: { type: 'string' }, subject: { type: 'string' }, body: { type: 'string' }, attachments: { type: 'array', items: { type: 'object', properties: { name: { type: 'string' }, path: { type: 'string' }, message_id: { type: 'string' }, filename: { type: 'string' } } } }, reply_to_message_id: { type: 'string' }, reply_all: { type: 'boolean' }, side_mission: { type: 'string', description: 'the card whose files the attachment names are looked up on first' }, project: { type: 'string' } }, required: [] },
   },
   {
     name: 'update_meeting',
@@ -675,8 +766,8 @@ export const TOOLS = [
   },
   {
     name: 'look_at_file',
-    description: "Look at a file with your own eyes (10/22, Milestone 16.4): a sketch or markup David drew on the iPad Scratchpad (a PDF, one page per sheet), a photo, a PNG, a PDF deck or document from Live Files or the file store. name = part of the file name; 'sketch' or 'latest sketch' means the newest sketch. side_mission or project narrows the search. pages = which PDF pages to show, like '1-3' or '2' (default the first 5). The file is placed in front of you in this same turn, after the tool result: then describe what you actually see (what is drawn, written, crossed out, the layout, the words) in David's plain language, the way you would describe a sketch handed across a table. Never answer from the file name alone.",
-    inputSchema: { type: 'object', properties: { name: { type: 'string' }, side_mission: { type: 'string' }, project: { type: 'string' }, pages: { type: 'string' }, path: { type: 'string', description: 'a file-store path from search_files, instead of a Live Files name' } }, required: [] },
+    description: "Look at a file with your own eyes: a sketch or markup David drew on the iPad Scratchpad (a PDF, one page per sheet), a photo, a PNG, a PDF deck or document, or a Word file. A file is named by path (from search_files, list_folder, or a card file's path) or by name (part of the file name: the card first when side_mission or project is given, then Live Files, then the cabinet). Spaces, underscores and case do not matter. 'sketch' or 'latest sketch' means the newest sketch. pages = which PDF pages to show, like '1-3' or '2' (default the first 5). A Word file comes back as what it carries: the words in its headers and footers, the shape of its body, and each embedded picture (a logo, a chart) placed in front of you with where it sits; use it before saying a document has no logo or letterhead. The file is placed in front of you in this same turn, after the tool result: then describe what you actually see (what is drawn, written, crossed out, the layout, the words) in David's plain language, the way you would describe a sketch handed across a table. Never answer from the file name alone.",
+    inputSchema: { type: 'object', properties: { name: { type: 'string' }, path: { type: 'string', description: 'a cabinet path or a card file path, instead of a name' }, side_mission: { type: 'string' }, project: { type: 'string' }, pages: { type: 'string' } }, required: [] },
   },
   {
     name: 'fetch_url',
@@ -909,7 +1000,7 @@ export async function callTool(name, args = {}) {
       const atts = await mailAttachments(token, id)
       if (!atts.length) return JSON.stringify({ ok: false, error: 'that message has no file attachments' })
       const want = String(args.filename || '').toLowerCase()
-      const pick = want ? atts.find(a => a.name.toLowerCase() === want) || atts.find(a => a.name.toLowerCase().includes(want)) : (atts.length === 1 ? atts[0] : null)
+      const pick = pickAttachment(atts, want)
       if (!pick) return JSON.stringify({ ok: false, error: 'which one?', attachments: atts.map(a => a.name) })
       if (pick.size > 95 * 1024 * 1024) return JSON.stringify({ ok: false, error: `${pick.name} is too large for WhatsApp (${Math.round(pick.size / 1048576)} MB)` })
       const bin = await fetch(`https://graph.microsoft.com/v1.0/users/${MAILBOX}/messages/${id}/attachments/${encodeURIComponent(pick.id)}/$value`, { headers: { Authorization: `Bearer ${token}` } })
@@ -919,10 +1010,22 @@ export async function callTool(name, args = {}) {
       return JSON.stringify({ ok: true, sent: pick.name, size: pick.size, wa_message_id: sent || null })
     }
     case 'search_files': {
-      const q = String(args.query || '').toLowerCase().split(/\s+/).filter(Boolean)
-      const all = await listFiles('')
-      const hits = all.filter(f => q.every(w => f.path.toLowerCase().includes(w))).slice(0, Math.min(Number(args.limit) || 25, 100))
-      return JSON.stringify(hits, null, 2)
+      // The cabinet and the cards together (11/10): "Chief Analytics" came back empty while the
+      // file sat on two cards, because only the cabinet was searched.
+      const q = String(args.query || '').toLowerCase().split(/[^a-z0-9]+/).filter(Boolean)
+      const max = Math.min(Number(args.limit) || 25, 100)
+      const [all, live] = await Promise.all([
+        listFiles(''),
+        q.length ? sb(`live_files?select=name,bucket,path,size,note,objective_id,project_id,created_at&superseded_by=is.null&bucket=neq.link&bucket=neq.request&bucket=neq.files&name=ilike.${encodeURIComponent(nameLike(q.join(' ')))}&order=created_at.desc&limit=${max}`).catch(() => []) : [],
+      ])
+      const hay = (p) => p.toLowerCase().replace(/[^a-z0-9/]+/g, ' ')
+      const hits = all.filter(f => q.every(w => hay(f.path).includes(w))).slice(0, max)
+      const oids = [...new Set(live.map(r => r.objective_id).filter(Boolean))], pids = [...new Set(live.map(r => r.project_id).filter(Boolean))]
+      const [os, ps] = await Promise.all([oids.length ? sb(`objectives?select=id,title&id=in.(${oids.join(',')})`).catch(() => []) : [], pids.length ? sb(`projects?select=id,name&id=in.(${pids.join(',')})`).catch(() => []) : []])
+      const O = new Map(os.map(o => [o.id, o.title])), Pm = new Map(ps.map(x => [x.id, x.name]))
+      const onCards = live.map(r => ({ name: r.name, on_card: r.objective_id ? O.get(r.objective_id) || null : Pm.get(r.project_id) || null, path: r.path, size: r.size, note: r.note, added: r.created_at }))
+      if (!onCards.length) return JSON.stringify(hits, null, 2)
+      return JSON.stringify({ cabinet: hits, on_cards: onCards, note: 'read_file, look_at_file, send_file, draft_email and write_file (as a letterhead) all take either a path from here or a name.' }, null, 2)
     }
     case 'list_folder': {
       const pre = String(args.path || '').replace(/^\/+|\/+$/g, '')
@@ -950,13 +1053,12 @@ export async function callTool(name, args = {}) {
       return JSON.stringify({ ok: true, removed: p })
     }
     case 'send_file': {
-      const path = String(args.path || '').replace(/^\/+/, '')
-      const res = await fetch(`${URL_BASE}/storage/v1/object/files/${path.split('/').map(encodeURIComponent).join('/')}`, { headers: sbHeaders() })
-      if (!res.ok) return JSON.stringify({ ok: false, error: `no such file: ${path}` })
-      const mime = res.headers.get('content-type') || 'application/octet-stream'
-      const bytes = new Uint8Array(await res.arrayBuffer())
+      let f
+      try { f = await resolveFile(args) } catch (e) { return JSON.stringify({ ok: false, error: e.message }) }
+      const mime = f.mime || 'application/octet-stream'
+      const bytes = new Uint8Array(f.bytes)
       if (bytes.length > 95 * 1024 * 1024) return JSON.stringify({ ok: false, error: 'too large for WhatsApp' })
-      const filename = path.split('/').pop()
+      const filename = f.name
       const id = await waSendDocument(davidNumber(), bytes, { filename, mime, caption: args.caption || '' })
       return JSON.stringify({ ok: true, sent: filename, size: bytes.length, wa_message_id: id || null })
     }
@@ -1155,26 +1257,49 @@ export async function callTool(name, args = {}) {
       return JSON.stringify({ ok: true, path: outPath, bytes: bytes.length, missing, final: missing.length === 0, ...(args.send ? { sent: wa } : {}) })
     }
     case 'write_file': {
-      const path = String(args.path || '').replace(/^\/+/, '').trim()
-      if (!path || !args.content) throw new Error('path and content required')
-      const ext = (path.split('.').pop() || '').toLowerCase()
-      let bytes, mime
-      if (ext === 'docx') { bytes = await markdownToDocx(args.content); mime = DOCX_MIME }
-      else if (ext === 'md' || ext === 'txt') { bytes = new TextEncoder().encode(String(args.content)); mime = ext === 'md' ? 'text/markdown' : 'text/plain' }
+      const raw = String(args.path || '').replace(/^\/+/, '').trim()
+      if (!raw || !args.content) throw new Error('path and content required')
+      const ext = (raw.split('.').pop() || '').toLowerCase()
+      let bytes, mime, letterhead = null
+      if (ext === 'docx') {
+        if (args.letterhead) {
+          // On a letterhead (David 11/10): the template's header, footer, logo and styles stay; the body is typed in its look.
+          const tpl = await findLetterhead(String(args.letterhead), args)
+          const made = await letterheadDocx(tpl.bytes, args.content, { title: args.title || '', date: chiToday(), replace: args.replace && typeof args.replace === 'object' ? args.replace : {} })
+          bytes = made.bytes
+          const missing = Object.entries(made.look).filter(([, v]) => !v).map(([k]) => k)
+          letterhead = { name: tpl.label, registered: tpl.registered, ...(missing.length ? { plain_fallback_for: missing } : {}) }
+        } else bytes = await markdownToDocx(args.content)
+        mime = DOCX_MIME
+      } else if (ext === 'md' || ext === 'txt') { bytes = new TextEncoder().encode(String(args.content)); mime = ext === 'md' ? 'text/markdown' : 'text/plain' }
       else throw new Error('path must end in .docx, .md, or .txt')
-      await putFile(path, bytes, mime)
-      await indexLiveFile({ name: path.split('/').pop(), bucket: 'files', path, size: bytes.length, mime, note: args.caption || null })
+      const fname = raw.split('/').pop()
+      const note = args.caption || (letterhead ? `On the ${letterhead.name} letterhead` : null)
+      // On a card when a card is named (11/10: the cleaned job description went to the cabinet and
+      // WhatsApp while David sat on the card); in the cabinet otherwise.
+      const card = await cardScope(args)
+      let path = raw, where
+      if (card) {
+        path = `${card.files}/${fname.replace(/[^A-Za-z0-9._ -]/g, '_')}`
+        const up = await fetch(`${URL_BASE}/storage/v1/object/project-files/${encPath(path)}`, { method: 'POST', headers: { ...sbHeaders(), 'Content-Type': mime, 'x-upsert': 'true' }, body: Buffer.from(bytes) })
+        if (!up.ok) throw new Error(`file upload -> ${up.status}: ${(await up.text()).slice(0, 160)}`)
+        await indexLiveFile({ name: path.split('/').pop(), bucket: 'project-files', path, size: bytes.length, mime, objective_id: card.objective_id, project_id: card.project_id, note })
+        where = `in the Files of "${card.title}"`
+      } else {
+        await putFile(path, bytes, mime)
+        await indexLiveFile({ name: fname, bucket: 'files', path, size: bytes.length, mime, note })
+        where = 'in the file cabinet'
+      }
       let wa = null
-      if (args.send) { try { wa = await waSendDocument(davidNumber(), bytes, { filename: path.split('/').pop(), mime, caption: args.caption || '' }) } catch (e) { wa = `send failed: ${e.message}` } }
-      return JSON.stringify({ ok: true, path, bytes: bytes.length, format: ext, ...(args.send ? { sent: wa } : {}), note: 'David forwards finished documents himself; you can send_file it again any time.' })
+      if (args.send) { try { wa = await waSendDocument(davidNumber(), bytes, { filename: fname, mime, caption: args.caption || '' }) } catch (e) { wa = `send failed: ${e.message}` } }
+      return JSON.stringify({ ok: true, name: path.split('/').pop(), path, where, bytes: bytes.length, format: ext, ...(letterhead ? { letterhead } : {}), ...(args.send ? { sent: wa } : {}), note: 'David forwards finished documents himself. To put it in front of him in Outlook, draft_email with this name or path as an attachment.' })
     }
     case 'read_file': {
-      const path = String(args.path || '').replace(/^\/+/, '')
-      const res = await fetch(`${URL_BASE}/storage/v1/object/files/${path.split('/').map(encodeURIComponent).join('/')}`, { headers: sbHeaders() })
-      if (!res.ok) return JSON.stringify({ ok: false, error: `no such file: ${path}` })
-      const mime = res.headers.get('content-type') || ''
-      const doc = await extractText(new Uint8Array(await res.arrayBuffer()), path.split('/').pop(), mime)
-      return JSON.stringify({ ok: true, path, kind: doc.kind, pages: doc.pages, sheets: doc.sheets, slides: doc.slides, note: doc.note, text: clip(doc.text, Number(args.max_chars) || 24000) })
+      let f
+      try { f = await resolveFile(args) } catch (e) { return JSON.stringify({ ok: false, error: e.message }) }
+      const path = f.path
+      const doc = await extractText(new Uint8Array(f.bytes), f.name, f.mime || '')
+      return JSON.stringify({ ok: true, name: f.name, path, kind: doc.kind, pages: doc.pages, sheets: doc.sheets, slides: doc.slides, note: doc.note, text: clip(doc.text, Number(args.max_chars) || 24000) })
     }
     case 'read_attachment': {
       const token = await graphToken()
@@ -1182,7 +1307,7 @@ export async function callTool(name, args = {}) {
       const atts = await mailAttachments(token, id)
       if (!atts.length) return JSON.stringify({ ok: false, error: 'that message has no file attachments' })
       const want = String(args.filename || '').toLowerCase()
-      const pick = want ? atts.find(a => a.name.toLowerCase() === want) || atts.find(a => a.name.toLowerCase().includes(want)) : (atts.length === 1 ? atts[0] : null)
+      const pick = pickAttachment(atts, want)
       if (!pick) return JSON.stringify({ ok: false, error: 'which one?', attachments: atts.map(a => a.name) })
       const bin = await fetch(`https://graph.microsoft.com/v1.0/users/${MAILBOX}/messages/${id}/attachments/${encodeURIComponent(pick.id)}/$value`, { headers: { Authorization: `Bearer ${token}` } })
       if (!bin.ok) throw new Error(`attachment download -> ${bin.status}`)
@@ -1329,6 +1454,33 @@ export async function callTool(name, args = {}) {
     case 'send_email': {
       const out = await sendMail({ to: args.to || 'david.smith@thirdhorizon.com', subject: String(args.subject || '').slice(0, 200), text: String(args.body || '') })
       return JSON.stringify({ ok: true, ...out, to: args.to || 'david.smith@thirdhorizon.com' })
+    }
+    case 'draft_email': {
+      // A draft in David's own Outlook (11/10). Never sends: he reads it and presses Send.
+      const files = []
+      for (const a of Array.isArray(args.attachments) ? args.attachments : []) {
+        const ref = typeof a === 'string' ? (/\//.test(a) ? { path: a } : { name: a }) : (a || {})
+        if (ref.message_id) {
+          const token = await graphToken()
+          const id = encodeURIComponent(String(ref.message_id))
+          const atts = await mailAttachments(token, id)
+          const pick = pickAttachment(atts, ref.filename || ref.name || '')
+          if (!pick) return JSON.stringify({ ok: false, error: atts.length ? 'which attachment on that email?' : 'that email has no file attachments', attachments: atts.map(x => x.name) })
+          const bin = await fetch(`https://graph.microsoft.com/v1.0/users/${MAILBOX}/messages/${id}/attachments/${encodeURIComponent(pick.id)}/$value`, { headers: { Authorization: `Bearer ${token}` } })
+          if (!bin.ok) throw new Error(`attachment download -> ${bin.status}`)
+          files.push({ name: pick.name, mime: pick.contentType || 'application/octet-stream', bytes: Buffer.from(await bin.arrayBuffer()) })
+        } else {
+          let f
+          try { f = await resolveFile({ path: ref.path, name: ref.name, side_mission: ref.side_mission || args.side_mission, project: ref.project || args.project }) } catch (e) { return JSON.stringify({ ok: false, error: `attachment: ${e.message}` }) }
+          files.push({ name: f.name, mime: f.mime || 'application/octet-stream', bytes: f.bytes })
+        }
+      }
+      const total = files.reduce((n, f) => n + f.bytes.length, 0)
+      if (total > 24 * 1024 * 1024) return JSON.stringify({ ok: false, error: `the attachments come to ${(total / 1048576).toFixed(1)} MB; Outlook takes about 24 MB on one message` })
+      const subject = String(args.subject || '').slice(0, 250)
+      if (!args.reply_to_message_id && !subject.trim()) throw new Error('subject required')
+      const out = await createDraft({ to: args.to || [], cc: args.cc || [], subject, body: String(args.body || ''), files, replyTo: args.reply_to_message_id || null, replyAll: !!args.reply_all })
+      return JSON.stringify({ ok: true, drafted: out.subject, to: out.to, cc: out.cc, attachments: out.attachments, link: out.webLink, sent: false, note: 'It is in his Outlook Drafts, unsent. Say it is in Drafts for him to read and send, and give him the link. Never say it was sent.' })
     }
     case 'update_meeting': {
       const day = String(args.day || chiToday()).slice(0, 10)
@@ -1597,7 +1749,7 @@ export async function callTool(name, args = {}) {
       const atts = await mailAttachments(token, id)
       if (!atts.length) return JSON.stringify({ ok: false, error: 'that message has no file attachments' })
       const want = String(args.filename || '').toLowerCase()
-      const pick = want ? atts.find(a => a.name.toLowerCase() === want) || atts.find(a => a.name.toLowerCase().includes(want)) : (atts.length === 1 ? atts[0] : null)
+      const pick = pickAttachment(atts, want)
       if (!pick) return JSON.stringify({ ok: false, error: 'which one?', attachments: atts.map(a => a.name) })
       let root
       if (args.side_mission) { const o = await findObjective(args.side_mission); root = `objectives/${o.id}/files` }
@@ -1713,27 +1865,38 @@ export async function callTool(name, args = {}) {
       // Milestone 16.4: the file itself goes in front of the model. The
       // tool returns { __attach, text }: the brain appends the blocks to the
       // same user message as the tool_result (image or document blocks).
-      const wantSketch = !args.name || /sketch/i.test(args.name) || /latest/i.test(args.name)
-      let row = null
-      if (args.path) {
-        row = { name: String(args.path).split('/').pop(), bucket: 'files', path: args.path, mime: null }
-      } else {
+      const wantSketch = !args.path && (!args.name || /sketch/i.test(args.name) || /latest/i.test(args.name))
+      let row = null, bytes = null
+      if (wantSketch) {
         let f = 'superseded_by=is.null&bucket=neq.link&bucket=neq.request'
-        if (args.side_mission) { const o = await findObjective(args.side_mission); f += `&objective_id=eq.${o.id}` }
-        else if (args.project) { const q = esc(args.project); const ps = await sb(`projects?select=id&status=neq.deleted&or=(key.ilike.${encodeURIComponent(q)},name.ilike.${encodeURIComponent(q)})&limit=2`); if (ps.length !== 1) throw new Error(ps.length ? 'ambiguous project' : 'no such project'); f += `&project_id=eq.${ps[0].id}` }
-        const needle = wantSketch ? 'sketch' : esc(args.name)
-        f += `&name=ilike.*${encodeURIComponent(needle)}*`
-        const rows = await sb(`live_files?select=id,name,bucket,path,mime,size,created_at,objective_id,project_id,note&${f}&order=created_at.desc&limit=1`)
-        if (!rows.length) return JSON.stringify({ ok: false, error: `no file in Live Files matching "${needle}"${args.side_mission ? ` on ${args.side_mission}` : ''}; list_live_files shows what is there` })
+        const card = await cardScope(args)
+        if (card) f += card.objective_id ? `&objective_id=eq.${card.objective_id}` : `&project_id=eq.${card.project_id}`
+        const rows = await sb(`live_files?select=id,name,bucket,path,mime,size,created_at,objective_id,project_id,note&${f}&name=ilike.*sketch*&order=created_at.desc&limit=1`)
+        if (!rows.length) return JSON.stringify({ ok: false, error: `no sketch in Live Files${card ? ` on ${card.title}` : ''}; list_live_files shows what is there` })
         row = rows[0]
+        const r = await fetchObject(row.bucket, row.path)
+        if (!r) return JSON.stringify({ ok: false, error: `could not read ${row.name} from storage` })
+        bytes = Buffer.from(await r.arrayBuffer())
+        row.mime = row.mime || r.headers.get('content-type')
+      } else {
+        // Any file, named any way (11/10): a card's file, a Live File, a cabinet path.
+        let f
+        try { f = await resolveFile(args) } catch (e) { return JSON.stringify({ ok: false, error: e.message }) }
+        row = { ...(f.row || {}), name: f.name, bucket: f.bucket, path: f.path, mime: f.mime }
+        bytes = f.bytes
       }
-      const r = await fetch(`${URL_BASE}/storage/v1/object/${row.bucket}/${String(row.path).split('/').map(encodeURIComponent).join('/')}`, { headers: sbHeaders() })
-      if (!r.ok) return JSON.stringify({ ok: false, error: `could not read ${row.name} from storage (${r.status})` })
-      let bytes = Buffer.from(await r.arrayBuffer())
       const ext = (row.name.split('.').pop() || '').toLowerCase()
-      const mime = row.mime || r.headers.get('content-type') || ({ png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif', webp: 'image/webp', pdf: 'application/pdf' }[ext]) || 'application/octet-stream'
+      const known = { png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif', webp: 'image/webp', pdf: 'application/pdf' }[ext]
+      const mime = known || row.mime || 'application/octet-stream'
       const LIMIT = 4.5 * 1024 * 1024
       let shown = ''
+      if (ext === 'docx') {
+        // A Word file (11/10: "I can't see images inside a .docx"): what it carries, and its pictures in front of you.
+        const info = await inspectDocx(bytes)
+        const show = info.images.filter(i => i.mime && i.bytes.length <= LIMIT).slice(0, 4)
+        const skipped = info.images.filter(i => !show.includes(i)).map(i => `${i.name} (${i.mime ? 'too large to show' : 'a format that cannot be shown'})`)
+        return { __attach: show.map(i => ({ type: 'image', source: { type: 'base64', media_type: i.mime, data: i.bytes.toString('base64') } })), text: `${row.name} is a Word file. What it carries:\n${info.text}${skipped.length ? `\nNot shown: ${skipped.join(', ')}` : ''}\n${show.length ? `Its picture${show.length > 1 ? 's follow' : ' follows'} this result, in the order listed. Say what you see. This is what the file holds, not a rendering of the page; read_file gives its words.` : 'No picture to show. read_file gives its words.'}${/header/.test(info.text) ? ' To write a new document on this same letterhead: write_file with letterhead set to this file.' : ''}` }
+      }
       if (mime === 'application/pdf') {
         const { PDFDocument } = await import('pdf-lib')
         const src = await PDFDocument.load(bytes, { ignoreEncryption: true })
@@ -1756,7 +1919,7 @@ export async function callTool(name, args = {}) {
         shown = 'the image'
         var attach = [{ type: 'image', source: { type: 'base64', media_type: mime, data: bytes.toString('base64') } }]
       } else {
-        return JSON.stringify({ ok: false, error: `${row.name} is ${mime}; look_at_file shows images and PDFs. read_file reads documents as text.` })
+        return JSON.stringify({ ok: false, error: `${row.name} is ${mime}; look_at_file shows images, PDFs and Word files. read_file reads other documents as text.` })
       }
       let tied = ''
       if (row.objective_id) { const o = await sb(`objectives?select=title,state&id=eq.${row.objective_id}`).catch(() => []); if (o[0]) tied = `, tied to "${o[0].title}" (${o[0].state})` }

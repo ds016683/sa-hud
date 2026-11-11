@@ -135,3 +135,14 @@ The Files pill on a Side Mission, Milestone or Ad Hoc card is `CardFiles` (src/c
 - `dev/files.html` runs the pill on sample files with no sign-in (`?empty` for the empty state).
 
 The Main Mission page's Files still has its older layout (Bring In, In Play, the mission's storage with folders, artifacts and shares); it moves to this list when David says so.
+
+## Lumen's Hands On Files And Mail (11/10)
+
+David, 11/10, after Lumen named two hands he lacked on the Rich King card: "let's do some tooling ... powerful powerful way to work."
+
+- **One way to name a file.** Every Lumen tool that takes a file (`read_file`, `look_at_file`, `send_file`, the attachments on `draft_email`, the template on `write_file`) takes a path or a name and resolves it in one place (`resolveFile` in `api/_ledger.mjs`): the card first, then Live Files, then the cabinet. Spaces, underscores, case and punctuation are forgiven. `search_files` searches the cabinet and the cards together.
+- **A document lands where David is.** `write_file` with `side_mission` or `project` puts the document in that card's Files. Without one it goes to the cabinet. On a card, Lumen does not also send it to WhatsApp unless asked.
+- **Letterheads.** A letterhead is a Word file in the cabinet under `Third Horizon/Templates/Letterheads`, named for what it is ("Job Description"). `write_file` with `letterhead` keeps the template's header, footer, logo, page setup and styles and types the new body in the template's own look (title, section heading, sub-heading, body, bullets, table), learned from the template's body. `{{title}}` and `{{date}}` in a header or footer are filled. Any other Word file can stand in as a one-off template. The writer is `letterheadDocx` in `api/_docx.mjs`.
+- **Eyes on a Word file.** `look_at_file` on a .docx reports the words in its headers and footers, the shape of its body, and each embedded picture with where it sits, and puts the pictures in front of Lumen. It is what the file holds, not a rendering of the page.
+- **Mail to other people is drafted, never sent.** `draft_email` puts a message in David's Outlook Drafts with recipients, body and attachments (a reply stays in its thread). `send_email` is only for mail to David. One maker, `api/_draft.mjs`, serves `draft_email` and the Mail button on a file.
+- **Hand To Claude Code.** Under each Lumen reply in the panel. David's press sends that reply and the question before it to `project-files/handoffs/<card id>/<id>.json`; a Claude Code session reads it with `~/.claude/hud-board/handoff.py` (list, read, take, answer), builds what is missing, and its answer comes back into the card's thread as a message from Claude Code, which Lumen reads on his next turn. Only David's press creates a hand-off.

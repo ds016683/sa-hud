@@ -4,6 +4,26 @@ import { createRoot } from 'react-dom/client'
 import '../src/sa-hud.css'
 import LumenPanel from '../src/components/river/LumenPanel'
 
+// Sample doors: a short thread with a hand-off waiting, one answered, and one reply not yet handed over.
+const row = (id, direction, body, meta = {}) => ({ id, at: new Date(Date.now() - (20 - id) * 60000).toISOString(), direction, kind: 'text', body, meta })
+const THREAD = [
+  row(1, 'in', 'bring this into a draft in outlook'),
+  row(2, 'out', 'I checked everywhere, and it turns out I cannot do either of these myself.\n\n1. A way for write_file to start from an existing .docx as a template.\n2. A draft tool that creates a message in your Outlook Drafts.'),
+  row(3, 'out', 'Claude Code: Both hands are yours now. write_file takes a letterhead, and draft_email puts a message in Outlook Drafts with the files attached.', { from: 'claude-code' }),
+  row(4, 'in', 'can you see the logo now?'),
+  row(5, 'out', 'Yes. The file carries one picture, the Third Horizon logo, in the first-page header and the footer.'),
+  row(6, 'in', 'pull the board minutes from SharePoint'),
+  row(7, 'out', 'I have no hand on SharePoint. A tool would need to read a document library by path.'),
+]
+let HANDED = [{ id: 'ho-1', at: new Date().toISOString(), status: 'answered', message_id: 2 }]
+const api = {
+  loadThread: async () => THREAD,
+  listHandoffs: async () => HANDED,
+  handToClaudeCode: async ({ message_id }) => { await new Promise(r => setTimeout(r, 500)); const h = { id: `ho-${message_id}`, at: new Date().toISOString(), status: 'open', message_id }; HANDED = [...HANDED, h]; return h },
+  askLumen: async () => 'A sample reply from the harness.',
+  readWorkbook: async () => ({ v: 1, captures: [], notes: '' }),
+  listBuilds: async () => [],
+}
 const item = { kind: 'objective', id: '00000000-0000-0000-0000-000000000000', title: 'Read: Safety net hospital index article (Health Affairs Scholar)', root: 'Side Missions' }
 function App() {
   return (
@@ -17,7 +37,7 @@ function App() {
         <div style={{ padding: 24, height: 2600 }}>
           <div style={{ fontFamily: 'Lora, serif', fontSize: 22 }}>The item card overlay (tall, scrolls on its own)</div>
         </div>
-        <LumenPanel item={item} />
+        <LumenPanel item={item} api={api} />
       </div>
     </div>
   )

@@ -68,6 +68,20 @@ export async function askLumen({ text, where, item }) {
   return j.reply || ''
 }
 
+// Hand To Claude Code (11/10): David hands one of Lumen's replies (a hand he lacks, a tool that
+// failed) to a Claude Code session. Kept server side; the session's answer comes back into
+// this thread as a message whose meta.from is 'claude-code'.
+async function hudDoor(payload) {
+  const { data: { session } } = await supabase.auth.getSession()
+  if (!session) throw new Error('not signed in')
+  const r = await fetch('/api/lumen-hud', { method: 'POST', headers: { Authorization: `Bearer ${session.access_token}`, 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+  const j = await r.json().catch(() => ({}))
+  if (!r.ok || j.error) throw new Error(j.error || `lumen ${r.status}`)
+  return j
+}
+export const handToClaudeCode = ({ item, message_id, ask, gap }) => hudDoor({ action: 'handoff', item: { kind: item.kind, id: item.id }, title: item.title, message_id, ask, gap })
+export const listHandoffs = async (item) => (await hudDoor({ action: 'handoffs', item: { kind: item.kind, id: item.id } })).handoffs || []
+
 // The card refreshes itself when Lumen has acted (ItemDetail and the mission page listen).
 export const LEDGER_EVENT = 'hud:ledger-changed'
 export const fireLedgerChanged = (detail = {}) => { try { window.dispatchEvent(new CustomEvent(LEDGER_EVENT, { detail })) } catch { /* no window */ } }
