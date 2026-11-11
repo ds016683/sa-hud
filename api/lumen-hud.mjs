@@ -20,7 +20,7 @@
 export const config = { maxDuration: 300, api: { bodyParser: false } }
 
 import { think, remember } from './_lumen-brain.mjs'
-import { cardFrame } from './_ledger.mjs'
+import { cardFrame, callTool } from './_ledger.mjs'
 import { transcribe } from './_wa.mjs'
 
 const URL_BASE = 'https://cmuvomnmaoseccxpeuxq.supabase.co'
@@ -82,6 +82,12 @@ export default async function handler(req, res) {
     if (ev && ev.kind === 'stop_closed' && String(ev.text || '').trim()) {
       event = { kind: 'stop_closed', text: String(ev.text).trim().slice(0, 300), open: (Array.isArray(ev.open) ? ev.open : []).slice(0, 8).map(x => String(x).slice(0, 200)) }
       text = `Closed on the card: ${event.text}`
+    }
+    // Voice rounds run from a Claude Code session (David 11/11, on the third round: "so close. the accent is
+    // just a bit thick. try one more time."). The session calls Lumen's own two voice hands through this door,
+    // so a round does not need David to relay a line to Lumen first. Only these two hands; nothing else runs here.
+    if (body.action === 'voice_candidates' || body.action === 'keep_voice') {
+      try { return res.status(200).json(JSON.parse(await callTool(body.action, body.args && typeof body.args === 'object' ? body.args : {}))) } catch (e) { return res.status(500).json({ error: String(e.message || e).slice(0, 200) }) }
     }
     if (body.action === 'handoff' || body.action === 'handoffs') {
       if (!item) return res.status(400).json({ error: 'a card is required' })
