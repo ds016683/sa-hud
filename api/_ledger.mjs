@@ -314,7 +314,8 @@ function pickAttachment(atts, want) {
   return part.length === 1 ? part[0] : null
 }
 async function fetchObject(bucket, path) {
-  const r = await fetch(`${URL_BASE}/storage/v1/object/${bucket}/${encPath(path)}`, { headers: sbHeaders() })
+  // Past storage's cached copy: a document rewritten a moment ago must be read as it is now, not as it was.
+  const r = await fetch(`${URL_BASE}/storage/v1/object/${bucket}/${encPath(path)}?cb=${Date.now()}`, { headers: sbHeaders(), cache: 'no-store' })
   return r.ok ? r : null
 }
 // The card a tool call names: { objective_id, project_id, root, files (where its files sit), title }.

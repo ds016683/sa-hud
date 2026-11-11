@@ -29,7 +29,7 @@ async function fileRow(body) {
 }
 
 async function download(f) {
-  const r = await fetch(`${URL_BASE}/storage/v1/object/${f.bucket}/${enc(f.path)}`, { headers: hdr() })
+  const r = await fetch(`${URL_BASE}/storage/v1/object/${f.bucket}/${enc(f.path)}?cb=${Date.now()}`, { headers: hdr(), cache: 'no-store' })
   if (!r.ok) throw new Error(`storage read -> ${r.status}`)
   return { bytes: Buffer.from(await r.arrayBuffer()), mime: f.mime || r.headers.get('content-type') || 'application/octet-stream' }
 }
