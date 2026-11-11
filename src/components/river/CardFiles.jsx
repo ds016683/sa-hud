@@ -135,6 +135,69 @@ function AddModal({ api, owner, folders, onClose, onAdded }) {
 }
 
 // ---- the overlay: a quick synopsis first, the document and every action behind it ------------
+const SANS_FACE = /calibri|aptos|arial|helvetica|segoe|tahoma|verdana|gill|century gothic|trebuchet|franklin|avenir/i
+const SERIF_FACE = /cambria|times|georgia|garamond|palatino|book antiqua|baskerville|constantia/i
+const faceStack = (name) => SERIF_FACE.test(name) ? `${name}, Caladea, Georgia, 'Times New Roman', serif` : SANS_FACE.test(name) ? `${name}, Carlito, 'Helvetica Neue', Arial, sans-serif` : name
+
+// A Word file as its pages (David 11/10: "yes, render the actual page in the overlay"). The file
+// is drawn in the browser by docx-preview: the letterhead, the logo, the header and footer, the
+// tables and the styles, on white pages that scroll inside the overlay and shrink to fit its width.
+// The library is loaded only when a Word file is shown.
+function WordPages({ blob, box }) {
+  const host = useRef(null)
+  const [state, setState] = useState({ phase: 'loading' })
+  useEffect(() => {
+    let on = true
+    const el = host.current
+    const fit = () => {
+      const wrap = el?.querySelector('.hud-docx-wrapper'), page = wrap?.querySelector('section')
+      if (!wrap || !page) return
+      wrap.style.zoom = 1
+      const room = el.clientWidth - 32
+      wrap.style.zoom = Math.min(1, room / page.offsetWidth)
+    }
+    const draw = async () => {
+      const { renderAsync } = await import('docx-preview')
+      if (!on || !el) return
+      el.innerHTML = ''
+      await renderAsync(blob, el, null, { className: 'hud-docx', inWrapper: true, breakPages: true, renderHeaders: true, renderFooters: true, renderFootnotes: true, renderEndnotes: true, useBase64URL: true })
+      if (!on) return
+      const wrap = el.querySelector('.hud-docx-wrapper')
+      if (wrap) { wrap.style.background = 'transparent'; wrap.style.padding = '16px 0 0' }
+      // Office's own faces are not on every machine (Calibri ships inside Word, not in the browser), and a
+      // missing one falls to Times. Each face gets a stand-in of the same widths: Carlito for Calibri and
+      // the other sans faces, Caladea for Cambria and the serifs.
+      if (!document.getElementById('hud-docx-fonts')) {
+        const link = document.createElement('link')
+        link.id = 'hud-docx-fonts'; link.rel = 'stylesheet'
+        link.href = 'https://fonts.googleapis.com/css2?family=Carlito:ital,wght@0,400;0,700;1,400;1,700&family=Caladea:ital,wght@0,400;0,700;1,400;1,700&display=swap'
+        document.head.appendChild(link)
+      }
+      // Word's bullets are private glyphs in Symbol and Wingdings, which a browser draws as empty boxes: use the plain marks.
+      const MARKS = { '\uF0B7': '\u2022', '\uF0A7': '\u25AA', '\uF0D8': '\u27A2', '\uF0FC': '\u2713', '\uF076': '\u2756' }
+      for (const st of el.querySelectorAll('style')) st.textContent = st.textContent.replace(/[\uE000-\uF8FF]/g, (c) => MARKS[c] || '\u2022').replace(/font-family:\s*(Symbol|Wingdings ?\d?|Webdings);/g, "font-family: Arial, sans-serif;")
+      // One long page: give the footer room under the last line.
+      const air = document.createElement('style')
+      air.textContent = '.hud-docx-wrapper footer { margin-top: 28px; }'
+      el.appendChild(air)
+      for (const st of el.querySelectorAll('style')) st.textContent = st.textContent.replace(/(--docx-\w+-font:\s*)([^;]+);/g, (_, a, n) => `${a}${faceStack(n.trim())};`).replace(/(font-family:\s*)((?!var\()[^;]+);/g, (_, a, n) => `${a}${faceStack(n.trim())};`)
+      for (const node of el.querySelectorAll('[style*="font-family"]')) if (!/var\(/.test(node.style.fontFamily)) node.style.fontFamily = faceStack(node.style.fontFamily)
+      fit()
+      setState({ phase: 'ready' })
+    }
+    draw().catch(e => { if (on) setState({ phase: 'error', message: e.message }) })
+    window.addEventListener('resize', fit)
+    return () => { on = false; window.removeEventListener('resize', fit); if (el) el.innerHTML = '' }
+  }, [blob])
+  return (
+    <div style={{ ...box, position: 'relative' }}>
+      {state.phase === 'loading' && <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: INK2, fontSize: 14 }}>Drawing The Pages</div>}
+      {state.phase === 'error' && <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8, color: INK2, fontSize: 14, textAlign: 'center', padding: 24 }}><div style={{ color: INK, fontSize: 15 }}>The pages would not draw here.</div><div>{state.message}</div><div>Open it below to see it in Word.</div></div>}
+      <div ref={host} style={{ color: '#000' }} />
+    </div>
+  )
+}
+
 function FileSheet({ api, row, folder, folders, msg, onClose, onAct, onMove }) {
   const ext = extOf(row.name)
   const id = row.id
@@ -163,6 +226,12 @@ function FileSheet({ api, row, folder, folders, msg, onClose, onAct, onMove }) {
       if (isRequest(row)) return { state: 'waiting' }
       if (IMG.includes(ext)) return { state: 'image', url: await api.openLiveFile(row) }
       if (ext === 'pdf') return { state: 'frame', url: await api.openLiveFile(row) }
+      if (ext === 'docx') {
+        // A Word file is drawn as its own pages, in place (David 11/10: "render the actual page in the overlay").
+        const res = await fetch(await api.openLiveFile(row))
+        if (!res.ok) throw new Error(`could not read it (${res.status})`)
+        return { state: 'word', blob: await res.blob() }
+      }
       if (OFFICE.includes(ext)) {
         if ((row.bucket || 'project-files') !== 'project-files') return { state: 'none' }
         return { state: 'frame', url: await api.pdfUrl(row.path, 'project-files'), plain: true }
@@ -219,6 +288,8 @@ function FileSheet({ api, row, folder, folders, msg, onClose, onAct, onMove }) {
             {view.state === 'loading' && <div style={center}>Opening</div>}
             {view.state === 'image' && <div style={{ ...box, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><img src={view.url} alt={row.name} style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} /></div>}
             {view.state === 'frame' && <iframe title={row.name} src={view.url} style={{ ...box, width: '100%', display: 'block', background: '#fff' }} />}
+            {view.state === 'word' && <WordPages blob={view.blob} box={box} />}
+            {view.state === 'word' && <div style={{ fontSize: 12.5, color: MUTED, marginTop: 6 }}>Drawn from the Word file itself: its header, footer, pictures, tables and styles. It runs as one long page here; Word decides where the pages break.</div>}
             {view.state === 'html' && <iframe title={row.name} srcDoc={view.text} sandbox="allow-scripts" style={{ ...box, width: '100%', display: 'block', background: '#fff' }} />}
             {view.state === 'text' && <pre style={{ ...box, margin: 0, padding: 16, fontSize: 13, lineHeight: 1.6, color: INK, whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontFamily: 'var(--font-mono, monospace)' }}>{view.text}</pre>}
             {view.state === 'link' && <div style={center}><Link2 size={34} color={LABEL} /><div style={{ color: INK, fontSize: 15, wordBreak: 'break-all' }}>{row.path}</div>{row.note && <div>{row.note}</div>}</div>}

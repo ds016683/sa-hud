@@ -12,6 +12,7 @@ const bytes = {
   'a/notes.md': blobUrl('# Offer Parameters\n\nBase, bonus, equity, start date.\n\n- Draft one\n- Draft two', 'text/markdown'),
   'a/chart.svg': blobUrl(svg, 'image/svg+xml'),
   'a/page.html': blobUrl('<body style="font-family:Georgia;padding:24px"><h1>A built page</h1><p>Rendered in a sandbox.</p></body>', 'text/html'),
+  'a/jd.docx': '/dev/sample-letterhead.docx',   // a real Word file on the Job Description letterhead, sample words
   'a/table.csv': blobUrl('name,value\nBase,180000\nBonus,20%', 'text/csv'),
 }
 const ago = (h) => new Date(Date.now() - h * 3600e3).toISOString()
