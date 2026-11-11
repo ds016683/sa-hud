@@ -243,6 +243,15 @@ async function findObjective(title) {
   if (exact.length === 1) return exact[0]
   const like = await sb(`objectives?select=id,title,state,due_date,follow_up_date,activated_at,tags,effort&deleted_at=is.null&title=ilike.*${encodeURIComponent(q)}*&order=captured_at.desc&limit=5`)
   if (like.length === 1) return like[0]
+  if (!like.length) {
+    // A title with a comma, a parenthesis or an underscore in it lost those marks above and matched nothing (11/10):
+    // one more pass on the words alone, in order.
+    const loose = await sb(`objectives?select=id,title,state,due_date,follow_up_date,activated_at,tags,effort,north_star&deleted_at=is.null&title=ilike.${encodeURIComponent(nameLike(title))}&order=captured_at.desc&limit=6`)
+    const same = loose.filter(o => norm(o.title) === norm(title))
+    if (same.length === 1) return same[0]
+    if (loose.length === 1) return loose[0]
+    if (loose.length > 1) throw new Error(`"${title}" is ambiguous: ${loose.map(o => `${o.title} (${o.state})`).join(' | ')}`)
+  }
   if (!like.length) throw new Error(`no objective matches "${title}"`)
   throw new Error(`"${title}" is ambiguous: ${like.map(o => `${o.title} (${o.state})`).join(' | ')}`)
 }
