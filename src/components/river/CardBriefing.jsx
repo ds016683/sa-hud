@@ -37,7 +37,7 @@ const READS = ['ms', 'trail', 'end']
 const wait = (ms) => new Promise(r => setTimeout(r, ms))
 const Check = () => <svg viewBox="0 0 10 10" aria-hidden="true"><path d="M1.8 5.4 4.2 7.6 8.3 2.6" fill="none" stroke="var(--hud-on-accent)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>
 
-export default function CardBriefing({ obj, root, kindLabel, steps = [], kids = [], boardItems = [], loaded = null, due = null, isMilestone = false, onReload, onTab, onOpenCard, say, api = LEDGER }) {
+export default function CardBriefing({ obj, root, kindLabel, steps = [], kids = [], boardItems = [], loaded = null, due = null, isMilestone = false, isMythic = false, onReload, onTab, onOpenCard, say, api = LEDGER }) {
   const hasMilestones = kids.length > 0 && !isMilestone
   const [read, setRead] = useState(() => { try { const v = localStorage.getItem('hud:briefing:read'); return READS.includes(v) ? v : 'end' } catch { return 'end' } })
   const face = read === 'ms' && !hasMilestones ? 'end' : read
@@ -161,7 +161,7 @@ export default function CardBriefing({ obj, root, kindLabel, steps = [], kids = 
 
         {face === 'end' && (
           <>
-            <p className="brf-sub">{stops.some(s => !s.done) ? 'From where you are to Polaris: what still has to happen. Click a circle when it is done.' : 'From where you are to Polaris. The path fills from what you tell Lumen and what you add here.'}</p>
+            <p className="brf-sub">{isMythic ? 'From where you are to Polaris. A Mythic\'s path is its milestones; each one closes on its own card.' : stops.some(s => !s.done) ? 'From where you are to Polaris: what still has to happen. Click a circle when it is done.' : 'From where you are to Polaris. The path fills from what you tell Lumen and what you add here.'}</p>
             <div className="brf-trail">
               {stops.map(s => {
                 const isNext = s.key === nextKey, isClosing = s.type === 'step' && closing?.id === s.step.id
@@ -181,7 +181,9 @@ export default function CardBriefing({ obj, root, kindLabel, steps = [], kids = 
                   </div>
                 )
               })}
-              {steps.length < 5 && (
+              {/* No line to add a stop on a Mythic (David 11/11: "remove the add a stop line on a mythic"): its path is its
+                  milestones, each a card of its own, and a step typed here would have paid 10 miles like one. */}
+              {!isMythic && steps.length < 5 && (
                 <div className="brf-stop">
                   <span className="hit still"><span className="o" style={{ borderStyle: 'dotted' }} /></span>
                   <div className="brf-add"><input value={draft} disabled={busy} onChange={e => setDraft(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') add() }} placeholder={stops.length ? 'Add a stop, in your words' : 'The first stop, in your words'} aria-label="Add a stop" maxLength={300} /></div>

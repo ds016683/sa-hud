@@ -50,7 +50,7 @@ function App() {
       <div style={{ maxWidth: 1180, margin: '0 auto', padding: '32px 28px 120px' }}>
         <h1 style={{ ...S.h1, fontSize: 32 }}>{OBJ.title}</h1>
         <div style={{ marginTop: 24 }}>
-          <CardBriefing obj={OBJ} root="a" kindLabel={MYTHIC ? 'Mythic' : 'Bounty'} steps={steps} kids={KIDS} boardItems={[]} loaded={{ equipped: true, minutes_today: 12 }} due={new Date().toLocaleDateString('en-CA')} onReload={async () => bump(n => n + 1)} onTab={(t) => setMsg(`Would open the ${t} pill`)} onOpenCard={(id) => setMsg(`Would open the card ${id}`)} say={setMsg} api={api} />
+          <CardBriefing obj={OBJ} root="a" kindLabel={MYTHIC ? 'Mythic' : 'Bounty'} steps={steps} kids={KIDS} isMythic={MYTHIC} boardItems={[]} loaded={{ equipped: true, minutes_today: 12 }} due={new Date().toLocaleDateString('en-CA')} onReload={async () => bump(n => n + 1)} onTab={(t) => setMsg(`Would open the ${t} pill`)} onOpenCard={(id) => setMsg(`Would open the card ${id}`)} say={setMsg} api={api} />
         </div>
         {msg && <div role="status" style={{ fontSize: 13, color: 'var(--hud-ink-2)', marginTop: 14 }}>{msg}</div>}
       </div>

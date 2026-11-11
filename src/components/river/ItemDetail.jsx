@@ -380,7 +380,7 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
 
           {rel && tab === 'briefing' && (
             <div style={{ display: 'grid', gap: 22 }}>
-              {obj && <CardBriefing obj={obj} root={objRoot(obj.id)} kindLabel={rel.parent ? 'Milestone' : task ? 'Milestone' : item.kind === 'Ad Hoc' ? 'Ad Hoc item' : (SIZES[sizeOf(obj)]?.label || 'Side Mission')} steps={rel.steps || []} kids={rel.children || []} boardItems={boardStops} loaded={loaded} due={(task ? task.due_date : obj.due_date) || null} isMilestone={!!rel.parent} onReload={async () => { await load(); onChange && onChange() }} onTab={setTab} onOpenCard={openCard} say={setMsg} />}
+              {obj && <CardBriefing obj={obj} root={objRoot(obj.id)} kindLabel={rel.parent ? 'Milestone' : task ? 'Milestone' : item.kind === 'Ad Hoc' ? 'Ad Hoc item' : (SIZES[sizeOf(obj)]?.label || 'Side Mission')} steps={rel.steps || []} kids={rel.children || []} boardItems={boardStops} loaded={loaded} due={(task ? task.due_date : obj.due_date) || null} isMilestone={!!rel.parent} isMythic={!rel.parent && sizeOf(obj) === 'heavy'} onReload={async () => { await load(); onChange && onChange() }} onTab={setTab} onOpenCard={openCard} say={setMsg} />}
               {!obj && item.kind !== 'Event' && item.kind !== 'Session' && <WhereItStands rel={rel} task={task} taskId={taskId} linkedBoards={linkedBoards} />}
               {!obj && (item.description || task?.notes) && <div><Label>Back Story</Label><div style={{ fontSize: 14.5, lineHeight: 1.65, color: INK, whiteSpace: 'pre-wrap' }}>{item.description || task.notes}</div></div>}
               {item.event && (
