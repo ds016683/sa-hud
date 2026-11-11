@@ -68,13 +68,21 @@ export default async function handler(req, res) {
   if (!(await authorized(req))) return res.status(401).json({ error: 'unauthorized' })
   const ctype = String(req.headers['content-type'] || '')
   const raw = await readRaw(req)
-  let text = '', kind = 'text', where = String((req.query || {}).where || 'HUD').slice(0, 80), item = null
+  let text = '', kind = 'text', where = String((req.query || {}).where || 'HUD').slice(0, 80), item = null, event = null
   if (ctype.includes('application/json')) {
     const body = JSON.parse(raw.toString('utf8') || '{}')
     text = String(body.text || '').trim(); where = String(body.where || where).slice(0, 80)
     // The Lumen panel (11/4): the card David is in rides with the turn, and the brain gets its frame.
     const it = body.item && typeof body.item === 'object' ? body.item : null
     if (it && ['objective', 'project'].includes(it.kind) && /^[0-9a-f-]{8,}$/i.test(String(it.id || ''))) item = { kind: it.kind, id: String(it.id) }
+    // A card event (David 11/11: "when i do something like that the lumen chat window should be able to notice and
+    // ask a question (push)"): he clicked a stop on the card's path as done. It is kept in the thread as what
+    // happened, and Lumen is asked to notice it, not handed words David never typed.
+    const ev = body.event && typeof body.event === 'object' ? body.event : null
+    if (ev && ev.kind === 'stop_closed' && String(ev.text || '').trim()) {
+      event = { kind: 'stop_closed', text: String(ev.text).trim().slice(0, 300), open: (Array.isArray(ev.open) ? ev.open : []).slice(0, 8).map(x => String(x).slice(0, 200)) }
+      text = `Closed on the card: ${event.text}`
+    }
     if (body.action === 'handoff' || body.action === 'handoffs') {
       if (!item) return res.status(400).json({ error: 'a card is required' })
       try {
@@ -90,12 +98,15 @@ export default async function handler(req, res) {
     if (!text) return res.status(200).json({ error: 'nothing heard' })
   }
   if (!text) return res.status(400).json({ error: 'text required' })
-  const meta = item ? { where, item: item.id, item_kind: item.kind } : { where }
+  const meta = { where, ...(item ? { item: item.id, item_kind: item.kind } : {}), ...(event ? { event: event.kind } : {}) }
   await remember({ channel: 'hud', direction: 'in', kind, body: text, meta })
   let frame = null
   if (item) { try { frame = await cardFrame(item) } catch (e) { frame = `(the card could not be read: ${String(e.message || e).slice(0, 120)})` } }
   let reply
-  try { reply = await think({ channel: 'hud', spoken: false, text: `[${where}] ${text}`, frame }) }
+  const said = event
+    ? `[${where}] (A card event, not a message David typed.) David just clicked a stop on this card's path as done: "${event.text}". ${event.open.length ? `Still open on the path: ${event.open.map(x => `"${x}"`).join('; ')}.` : 'Nothing else is open on the path.'} Notice it in one or two sentences: ask him the one question this closing raises on this mission (a date, a name, a decision, how it went), or offer the one next thing you can do for him with your tools. Use only what he has told you and what is on the card. Do not add stops or anything else to the card, do not recap the card, and do not congratulate him.`
+    : `[${where}] ${text}`
+  try { reply = await think({ channel: 'hud', spoken: false, text: said, frame }) }
   catch (e) { reply = `I hit a wall on that one: ${String(e.message || e).slice(0, 160)}` }
   await remember({ channel: 'hud', direction: 'out', kind: 'text', body: reply, meta })
   return res.status(200).json({ reply, transcript: kind === 'audio' ? text : undefined })

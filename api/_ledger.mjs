@@ -224,7 +224,7 @@ export async function cardFrame(item) {
     const kids = await sb(`objectives?select=title,state,description&parent_id=eq.${item.id}&deleted_at=is.null&order=captured_at.asc&limit=10`).catch(() => [])
     if (kids.length) lines.push(`Milestones (${kids.length}):\n` + kids.map((k, i) => `- ${i + 1}. [${k.state}] ${k.title}${k.description ? ` (done when: ${String(k.description).slice(0, 120)})` : ''}`).join('\n'))
     const steps = await sb(`objective_steps?select=text,done&objective_id=eq.${item.id}&order=id.asc&limit=20`).catch(() => [])
-    if (steps.length) lines.push(`Marks:\n` + steps.map(s => `- [${s.done ? 'x' : ' '}] ${s.text}`).join('\n'))
+    if (steps.length) lines.push(`Stops on the path (End Of The Trail on the card):\n` + steps.map(s => `- [${s.done ? 'x' : ' '}] ${s.text}`).join('\n'))
   }
   const files = await sb(`live_files?select=name,note,bucket,path&${item.kind === 'project' ? 'project_id' : 'objective_id'}=eq.${item.id}&filed_at=is.null&superseded_by=is.null&order=created_at.desc&limit=30`).catch(() => [])
   const inPlay = files.filter(f => !(f.bucket === 'link' && /^claude:\/\//.test(String(f.path || ''))))
@@ -358,6 +358,18 @@ async function resolveFile(args) {
   const hit = hits.find(f => norm(f.path.split('/').pop().replace(/\.[^.]+$/, '')) === norm(needle)) || hits[0]
   if (hit) { const r = await fetchObject('files', hit.path); if (r) return { name: hit.path.split('/').pop(), bucket: 'files', path: hit.path, mime: r.headers.get('content-type') || null, bytes: Buffer.from(await r.arrayBuffer()), row: null } }
   throw new Error(`no file matching "${needle}"${card ? ` on ${card.title},` : ''} in Live Files or in the file cabinet`)
+}
+// Where a stop on a card's path came from (David 11/11: "shouldn't really be guess work. should be coming out of
+// the work with lumen"): kept beside the card's files at objectives/<id>/path.json, the same file the HUD reads
+// and writes (src/lib/path.js). by 'david' with his words in quote, or 'lumen' when he gave the word without them.
+async function notePathSource(objectiveId, stepId, src) {
+  const path = `objectives/${objectiveId}/path.json`
+  let doc = { v: 1, sources: {} }
+  const r = await fetchObject('project-files', path)
+  if (r) { try { const d = await r.json(); if (d && d.sources && typeof d.sources === 'object') doc = { v: 1, ...d } } catch { /* a fresh file */ } }
+  doc.sources[String(stepId)] = { at: new Date().toISOString(), ...src }
+  const up = await fetch(`${URL_BASE}/storage/v1/object/project-files/${encPath(path)}`, { method: 'POST', headers: { ...sbHeaders(), 'Content-Type': 'application/json', 'x-upsert': 'true' }, body: JSON.stringify(doc) })
+  if (!up.ok) throw new Error(`path.json -> ${up.status}`)
 }
 // Letterheads: Word files in the cabinet under Third Horizon/Templates/Letterheads, named
 // for what they are ("Job Description"). Any other .docx can stand in as a one-off template.
@@ -497,8 +509,8 @@ export const TOOLS = [
   },
   {
     name: 'add_step',
-    description: "Only when David himself asks in this turn (David 11/9: nothing is created on his board, no objective, task, milestone, step, maintenance or project, unless he commissions that item himself; a suggestion is a message to him, never a row). Add a milestone to a Mythic (five at most, 10 miles each, each a card of its own in the HUD; a sixth means it is a Main Mission) or a mark to a Contract (three at most, unpaid). Every one must be observable: a decision marked, a conversation had, a thing produced. Refuses on a Bounty; set_size first if David wants it to be a Mythic.",
-    inputSchema: { type: 'object', properties: { title: { type: 'string' }, text: { type: 'string' } }, required: ['title', 'text'] },
+    description: "Only when David himself asks in this turn (David 11/9: nothing is created on his board, no objective, task, milestone, step, maintenance or project, unless he commissions that item himself; a suggestion is a message to him, never a row). Add a stop to a card's path: the thing that still has to happen between here and Polaris, shown on the card's End Of The Trail as a circle he clicks when it is done. Any Bounty or Contract holds five stops at most; on a Mythic this adds a milestone instead (five at most, 10 miles each, each a card of its own). text is the stop, short and observable: a decision marked, a conversation had, a thing produced. said is REQUIRED in practice: David's own words that asked for it, verbatim, so the card can show where the stop came from (David 11/11: the path is never guesswork; it comes out of the work with you, only from what he tells you). If you think something belongs on the path and he has not said so, ask him in one line and wait for his yes.",
+    inputSchema: { type: 'object', properties: { title: { type: 'string' }, text: { type: 'string' }, said: { type: 'string', description: "David's own words that asked for this stop, verbatim" } }, required: ['title', 'text'] },
   },
   {
     name: 'complete_step',
@@ -1102,9 +1114,10 @@ export async function callTool(name, args = {}) {
     }
     case 'add_step': {
       const o = await findObjective(args.title)
-      const maxSteps = sizeOf(o) === 'heavy' ? 5 : sizeOf(o) === 'medium' ? 3 : 0
-      if (!maxSteps) return JSON.stringify({ ok: false, error: `"${o.title}" is a Bounty, one action; a Contract carries up to three marks, a Mythic five milestones. Ask David whether to make it a Mythic (set_size heavy, 3 slots) first.` })
-      if (maxSteps === 5) {
+      // Stops on the path (David 11/11): any card can carry them, five at most, and each keeps where it came from.
+      // A Mythic's stops are its milestones, cards of their own, as before.
+      const maxSteps = 5
+      if (sizeOf(o) === 'heavy') {
         // Mythic milestone (David 10/29): an objective of its own under the Mythic, a card in the HUD.
         const kids = await sb(`objectives?select=id&parent_id=eq.${o.id}&deleted_at=is.null`).catch(() => [])
         if (kids.length >= 5) return JSON.stringify({ ok: false, error: 'five milestones is the limit for a Mythic; a sixth means this is a Main Mission (create_project and add_project_task).' })
@@ -1113,9 +1126,11 @@ export async function callTool(name, args = {}) {
         return JSON.stringify({ ok: true, title: o.title, milestone: out?.[0]?.title, n: kids.length + 1, max: 5, pays: '10 miles when closed; it opens as its own card on the Mythic in the HUD' })
       }
       const steps = await sb(`objective_steps?select=id&objective_id=eq.${o.id}`).catch(() => [])
-      if (steps.length >= maxSteps) return JSON.stringify({ ok: false, error: maxSteps === 5 ? 'five gates is the limit for a Mythic; a sixth means this is a Main Mission (create_project and add_project_task).' : 'three marks is the limit for a Contract; more than that and it is a Mythic (set_size heavy).' })
+      if (steps.length >= maxSteps) return JSON.stringify({ ok: false, error: 'five stops is the most a card holds. If this needs more, it is a Mythic with milestones; ask David whether to make it one (set_size heavy).' })
       const out = await sbWrite('POST', 'objective_steps', { objective_id: o.id, text: String(args.text || '').trim().slice(0, 300), position: steps.length })
-      return JSON.stringify({ ok: true, title: o.title, step: out?.[0], count: steps.length + 1, max: maxSteps, pays: maxSteps === 5 ? '10 miles when closed' : 'unpaid; the Contract pays 15 on release' })
+      const said = String(args.said || '').trim().slice(0, 400)
+      if (out?.[0]?.id != null) await notePathSource(o.id, out[0].id, said ? { by: 'david', where: 'lumen', quote: said } : { by: 'lumen', where: 'lumen' }).catch(e => console.warn('path source', e.message))
+      return JSON.stringify({ ok: true, title: o.title, step: out?.[0], count: steps.length + 1, max: maxSteps, shows: 'on the card\'s End Of The Trail, with where it came from', pays: 'unpaid; the card pays on release' })
     }
     case 'complete_step':
     case 'remove_step': {

@@ -128,10 +128,11 @@ export const CARD_PILLS = [['briefing', 'Briefing'], ['workbench', 'Workbench'],
 export function CardPill({ active, children, onClick, count }) {
   return (
     <button onClick={onClick} style={{
-      padding: '5px 14px', borderRadius: 999, cursor: 'pointer', fontFamily: MONO, fontSize: 10, fontWeight: 600, letterSpacing: '1.2px', textTransform: 'uppercase',
+      // The body face at 13, Title Case, no tracking (David 11/9: the small tracked uppercase label is blacklisted).
+      padding: '6px 15px', borderRadius: 999, cursor: 'pointer', fontFamily: 'inherit', fontSize: 13, fontWeight: active ? 600 : 500,
       background: active ? BLUE : 'transparent', color: active ? NAVY_DEEP : 'rgba(234,241,248,0.66)', border: active ? `1px solid ${BLUE}` : `1px solid ${PANEL_BORDER}`,
       display: 'inline-flex', alignItems: 'center', gap: 6,
-    }}>{children}{count > 0 && <span style={{ fontSize: 9, opacity: 0.8 }}>· {count}</span>}</button>
+    }}>{children}{count > 0 && <span style={{ fontSize: 13, fontWeight: 400, opacity: 0.7 }}>· {count}</span>}</button>
   )
 }
 
@@ -142,7 +143,7 @@ export function Trail({ nodes, style }) {
   const up = [...nodes].reverse().find((n, i) => (i > 0 || nodes.length === 1) && n.onClick)
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', ...style }}>
-      {up && <button onClick={up.onClick} title={`Up to ${up.label}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontFamily: MONO, fontSize: 9.5, letterSpacing: '1px', textTransform: 'uppercase', padding: '4px 9px', borderRadius: 8, border: `1px solid ${PANEL_BORDER}`, background: 'transparent', color: LABEL, cursor: 'pointer' }}>↑ Up</button>}
+      {up && <button onClick={up.onClick} title={`Up to ${up.label}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontFamily: 'inherit', fontSize: 12.5, fontWeight: 500, padding: '4px 10px', borderRadius: 8, border: `1px solid ${PANEL_BORDER}`, background: 'transparent', color: LABEL, cursor: 'pointer' }}>↑ Up</button>}
       {nodes.map((n, i) => {
         const last = i === nodes.length - 1
         const inner = <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>{n.icon}{n.label}</span>

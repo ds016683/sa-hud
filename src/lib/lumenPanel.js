@@ -58,10 +58,11 @@ export async function loadThread(itemId, limit = 80) {
   return data || []
 }
 
-export async function askLumen({ text, where, item }) {
+// event (11/11): a card event instead of typed words, { kind: 'stop_closed', text, open }; Lumen notices it and asks.
+export async function askLumen({ text, where, item, event = null }) {
   const { data: { session } } = await supabase.auth.getSession()
   if (!session) throw new Error('not signed in')
-  const r = await fetch('/api/lumen-hud', { method: 'POST', headers: { Authorization: `Bearer ${session.access_token}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ text, where, item: { kind: item.kind, id: item.id } }) })
+  const r = await fetch('/api/lumen-hud', { method: 'POST', headers: { Authorization: `Bearer ${session.access_token}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ text, where, item: { kind: item.kind, id: item.id }, ...(event ? { event } : {}) }) })
   const j = await r.json().catch(() => ({}))
   if (!r.ok) throw new Error(j.error || `lumen ${r.status}`)
   if (j.error) throw new Error(j.error)

@@ -10,16 +10,17 @@ import { useCallback, useEffect, useState } from 'react'
 import { Play, Pause, Archive, ExternalLink, Mic, Check, Plus, Trash2, Terminal, Star } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { listArtifacts, readArtifact } from '../../lib/artifacts'
-import { fetchLoadout, equip, holster, stash, equipObjective, equipTask, fmtClock, SIZES } from '../../lib/loadout'
+import { fetchLoadout, equip, holster, stash, equipObjective, equipTask, fmtClock, SIZES, sizeOf } from '../../lib/loadout'
 import DocView from './DocView'
 import { fetchSteps, listObjectiveArtifacts, listObjectiveFiles, listObjectiveBoards, realmOf, setSize, updateObjective, objRoot, fetchMilestones } from '../../lib/objectives'
 import { renderMarkdown } from './MeetingCloseout'
-import { recall } from '../../lib/recall'
 import { fmtStamp, listLiveFiles, listEvidence, openLiveFile, isRequest, isLink } from '../../lib/livefiles'
 import { isOpenRow } from '../../lib/protocols'
 import CardFiles, { WrittenOnCard } from './CardFiles'
 import WorkbenchSheet from './WorkbenchSheet'
 import LumenPanel from './LumenPanel'
+import CardBriefing from './CardBriefing'
+import { dueWords } from '../../lib/path'
 import { openCard } from '../../lib/card'
 import { LEDGER_EVENT, fireLedgerChanged } from '../../lib/lumenPanel'
 import { INK, INK2, GRAY, PANEL_BORDER, GOLD, GOLD_BRIGHT, BLUE, GREEN, SUCCESS, RED, CAUTION, MONO, SERIF, S, Label, KIND_COLOR, KindIcon, NORTH_STAR_LABEL, NORTH_STAR_ASK, LABEL, MUTED, MYTHIC, alpha, NAVY_DEEP, CARD_PILLS, CardPill, Trail } from './canon'
@@ -33,8 +34,8 @@ const words = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9 ]/g, ' ').s
 const chiTime = (iso) => iso ? new Date(iso).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'America/Chicago' }) : ''
 
 const btn = (color = INK2, filled = false) => ({
-  display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: MONO, fontSize: 9.5, letterSpacing: '1px', textTransform: 'uppercase',
-  padding: '6px 11px', borderRadius: 8, border: `1px solid ${filled ? color : `${alpha(color, 40)}`}`, background: filled ? color : 'transparent', color: filled ? NAVY_DEEP : color, cursor: 'pointer',
+  display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: 'inherit', fontSize: 12.5, fontWeight: filled ? 600 : 500,
+  padding: '6px 12px', borderRadius: 8, border: `1px solid ${filled ? color : `${alpha(color, 40)}`}`, background: filled ? color : 'transparent', color: filled ? NAVY_DEEP : color, cursor: 'pointer',
 })
 // Equal-width pills on the facts row (David 10/29): one width fits Third Horizon, the longest label.
 const PILL_W = 124
@@ -154,14 +155,14 @@ function Evidence({ rows, onFiles, say }) {
     <div style={{ marginTop: 10, paddingLeft: 14 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: rows.length ? 4 : 0 }}>
         <Star size={11} color={GOLD_BRIGHT} fill={rows.length ? GOLD_BRIGHT : 'none'} />
-        <span style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '1.2px', textTransform: 'uppercase', color: rows.length ? GOLD_BRIGHT : LABEL }}>Evidence{rows.length ? ` · ${rows.length}` : ''}</span>
+        <span style={{ fontSize: 13, fontWeight: 600, color: rows.length ? GOLD_BRIGHT : LABEL }}>Evidence{rows.length ? ` · ${rows.length}` : ''}</span>
         {!rows.length && <span style={{ fontSize: 12.5, color: GRAY }}>nothing pinned yet; when the thing that proves the star exists, pin it under <button onClick={onFiles} style={{ background: 'transparent', border: 'none', color: BLUE, cursor: 'pointer', padding: 0, fontSize: 12.5, fontFamily: 'inherit' }}>Files</button></span>}
       </div>
       {rows.map(r => (
         <div key={r.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '4px 0' }}>
           <span style={{ width: 6, height: 6, borderRadius: 99, background: GOLD_BRIGHT, flexShrink: 0 }} />
-          <span style={{ flex: 1, fontSize: 13.5, color: INK, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.name}{r.version > 1 && <span style={{ fontFamily: MONO, fontSize: 9, color: GOLD, marginLeft: 8 }}>v{r.version}</span>}</span>
-          <span style={{ fontFamily: MONO, fontSize: 9.5, color: GRAY }}>{fmtStamp(r.created_at)}</span>
+          <span style={{ flex: 1, fontSize: 13.5, color: INK, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.name}{r.version > 1 && <span style={{ fontSize: 12.5, color: MUTED, marginLeft: 8 }}>Version {r.version}</span>}</span>
+          <span style={{ fontSize: 12.5, color: GRAY }}>{fmtStamp(r.created_at)}</span>
           <button onClick={() => openRow(r)} style={btn(INK2)}><ExternalLink size={11} /> Open</button>
         </div>
       ))}
@@ -169,17 +170,8 @@ function Evidence({ rows, onFiles, say }) {
   )
 }
 
-function WhereItStands({ item, rel, task, taskId, linkedBoards }) {
-  const [next, setNext] = useState(null)
-  const [thinking, setThinking] = useState(false)
-  const oid = item.objective_id || (item.kind !== 'Main Mission' && item.kind !== 'Event' && item.kind !== 'Session' ? item.id : null)
-  useEffect(() => {
-    let on = true
-    if (!oid && !taskId) { Promise.resolve().then(() => { if (on) setNext([]) }); return () => { on = false } }
-    Promise.resolve().then(() => { if (on) setThinking(true) })
-    recall({ objective_id: oid, task_id: taskId }).then(r => { if (on) setNext(Array.isArray(r?.next) ? r.next : []) }).catch(() => { if (on) setNext([]) }).finally(() => { if (on) setThinking(false) })
-    return () => { on = false }
-  }, [oid, taskId])
+function WhereItStands({ rel, task, taskId, linkedBoards }) {
+  // Lumen's guessed next steps are gone (David 11/11: "shouldn't really be guess work ... he should only be pulling the things i'm telling him").
   const steps = Array.isArray(rel.steps) ? rel.steps : []
   const kids = Array.isArray(rel.children) ? rel.children : []
   const boardItems = []
@@ -206,7 +198,7 @@ function WhereItStands({ item, rel, task, taskId, linkedBoards }) {
   const Row = ({ r, color, open }) => (
     <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start', padding: '4px 0' }}>
       <span style={{ width: 9, height: 9, borderRadius: 99, boxSizing: 'border-box', background: open ? 'transparent' : color, border: `1.5px solid ${color}`, marginTop: 6, flexShrink: 0 }} />
-      <span style={{ fontSize: 13.5, lineHeight: 1.5, color: INK, flex: 1 }}>{r.text}{r.meta && <span style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '0.8px', color: r.kind === 'blocked' ? CAUTION : GRAY, marginLeft: 8 }}>{r.meta}</span>}</span>
+      <span style={{ fontSize: 13.5, lineHeight: 1.5, color: INK, flex: 1 }}>{r.text}{r.meta && <span style={{ fontSize: 12.5, color: r.kind === 'blocked' ? CAUTION : GRAY, marginLeft: 8 }}>{r.meta}</span>}</span>
     </div>
   )
   return (
@@ -218,9 +210,7 @@ function WhereItStands({ item, rel, task, taskId, linkedBoards }) {
       <div>
         <Label>Next</Label>
         {needed.map((r, i) => <Row key={i} r={r} color={r.kind === 'blocked' ? CAUTION : INK2} open />)}
-        {thinking && <div style={{ fontFamily: MONO, fontSize: 10.5, letterSpacing: '1px', textTransform: 'uppercase', color: LABEL, padding: '4px 0' }}>Lumen is reading the trail</div>}
-        {!thinking && (next || []).map((t, i) => <div key={`n${i}`} style={{ display: 'flex', gap: 10, alignItems: 'flex-start', padding: '4px 0' }}><span style={{ width: 9, height: 9, borderRadius: 99, boxSizing: 'border-box', border: `1.5px solid ${INK2}`, marginTop: 6, flexShrink: 0 }} /><span style={{ fontSize: 13.5, lineHeight: 1.5, color: INK2, fontStyle: 'italic', flex: 1 }}>{t}<span style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '0.8px', color: GRAY, marginLeft: 8, fontStyle: 'normal' }}>Lumen</span></span></div>)}
-        {!thinking && !needed.length && !(next || []).length && <div style={{ fontSize: 13, color: GRAY, padding: '4px 0' }}>Nothing open. If the star is true, extract it.</div>}
+        {!needed.length && <div style={{ fontSize: 13, color: GRAY, padding: '4px 0' }}>Nothing open. If the star is true, extract it.</div>}
       </div>
     </div>
   )
@@ -261,6 +251,17 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
   const taskId = item.task_id || task?.id || null
   const linkedBoards = [...(rel?.objBoards || []), ...(rel?.boards || []).filter(b => b.linked)]
   const loaded = rel?.loadout?.items.find(i => i.id === (item.objective_id || item.id)) || null
+  const boardStops = (() => {
+    const all = []
+    for (const b of linkedBoards) for (const ph of (b.phases || [])) {
+      const tied = !taskId || ph.task_id === taskId || (ph.tasks || []).some(t => t.task_id === taskId)
+      if (!tied) continue
+      for (const t of (ph.tasks || [])) if (t.status !== 'done') all.push({ ...t, board: b.title })
+    }
+    const live = all.filter(t => t.status === 'blocked' || t.status === 'inmotion').slice(0, 5)
+    const rest = all.length - live.length
+    return rest > 0 ? [...live, { label: `${rest} more open on the session board${linkedBoards.length === 1 ? ` "${linkedBoards[0].title}"` : 's'}`, status: 'open', board: '' }] : live
+  })()
   const what = { item: item.kind === 'Event' ? 'meeting' : item.kind === 'Main Mission' ? 'task' : item.kind === 'Session' ? 'session' : 'mission' }
 
   const act = async (fn, after) => { try { await fn(); setMsg(after); await load(); onChange && onChange() } catch (e) { setMsg(`Could not do that: ${e.message}`) } }
@@ -278,6 +279,15 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
   const [copied, setCopied] = useState(false)
   const copyText = async (text) => { try { await navigator.clipboard.writeText(text); setCopied(true); setTimeout(() => setCopied(false), 1600) } catch { /* no clipboard */ } }
   const [editStar, setEditStar] = useState(false)
+  // Domain, Type and Target Completion (David 11/11): three chips beside the title; a click opens their controls.
+  const [metaOpen, setMetaOpen] = useState(false)
+  useEffect(() => {
+    if (!metaOpen) return
+    const away = (e) => { if (!e.target.closest('[data-card-meta]')) setMetaOpen(false) }
+    const esc = (e) => { if (e.key === 'Escape') { e.stopPropagation(); setMetaOpen(false) } }
+    document.addEventListener('mousedown', away); window.addEventListener('keydown', esc, true)
+    return () => { document.removeEventListener('mousedown', away); window.removeEventListener('keydown', esc, true) }
+  }, [metaOpen])
   const [reading, setReading] = useState(null)
   const [briefs, setBriefs] = useState({})
   const readObjArtifact = useCallback(async (root, slug) => { const { data, error } = await supabase.storage.from('project-files').download(`${root}/artifacts/${slug}.json`); if (error) throw new Error(error.message); return JSON.parse(await data.text()) }, [])
@@ -325,19 +335,37 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
           } else {
             nodes.push({ label: 'Side Missions', onClick: nav('side-missions') })
             head = 'Side Mission'
-            const sdef = item.size && SIZES[item.size] ? SIZES[item.size] : null
+            const sk = obj ? sizeOf(obj) : item.size   // the card's own row is the truth once it is read
+            const sdef = sk && SIZES[sk] ? SIZES[sk] : null
             chip = sdef ? { kind: 'Side Mission', label: sdef.label, color: sdef.color } : { kind: 'Side Mission', label: 'Side Mission', color: GOLD }
           }
           const name = task ? String(item.title || '').replace(/^\s*\d+\s*[·.:)-]\s*/, '') : item.title
+          // What the card is, in the chip: a Bounty, Milestone 2 Of 5, a Meeting at 1:00.
+          const chipLabel = task ? head : rel?.parent ? `${head}${rel.milestoneOf ? ` Of ${rel.milestoneOf}` : ''}` : item.kind === 'Event' ? `Meeting${chip?.label ? ` · ${chip.label}` : ''}` : chip?.label
           return (
             <div>
               <Trail nodes={nodes} />
-              <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap', marginTop: 16 }}>
-                <h1 style={{ ...S.h1, fontSize: 28, lineHeight: 1.2 }}>{head}</h1>
-                {chip && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7, fontFamily: MONO, fontSize: 10.5, letterSpacing: '1.4px', textTransform: 'uppercase', color: chip.color, border: `1px solid ${alpha(chip.color, 40)}`, borderRadius: 999, padding: '5px 12px', whiteSpace: 'nowrap' }}><KindIcon kind={chip.kind} size={13} color={chip.color} />{chip.label}</span>}
+              {/* The header (David 11/11, the Briefing mock-ups): the mission's own name is the title, and what it is
+                  (its kind, its domain, its date) sits beside it as three chips. Domain, Type and Target Completion
+                  "still take up wayyyy too much real estate"; a click on a chip opens their controls. */}
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 20, flexWrap: 'wrap', marginTop: 16 }}>
+                <h1 style={{ ...S.h1, fontSize: 32, lineHeight: 1.14, letterSpacing: '-0.012em', flex: '1 1 420px', minWidth: 0 }}>{name}</h1>
+                <div data-card-meta style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', position: 'relative', paddingTop: 6 }}>
+                  {chip && (obj && !rel?.parent && !task
+                    ? <button className="brf-chip" onClick={() => setMetaOpen(v => !v)} title="Change the type"><KindIcon kind={chip.kind} size={13} color={chip.color} />{chipLabel}</button>
+                    : <span className="brf-chip still"><KindIcon kind={chip.kind} size={13} color={chip.color} />{chipLabel}</span>)}
+                  {obj && <button className="brf-chip" onClick={() => setMetaOpen(v => !v)} title="Change the domain">{realmOf(obj) === 'personal' ? 'Personal' : 'Third Horizon'}</button>}
+                  {(obj || task) && (() => { const d = (task ? task.due_date : obj.due_date) || null; const w = d ? dueWords(d) : null; return <button className={`brf-chip${w?.late ? ' late' : ''}`} onClick={() => setMetaOpen(v => !v)} title="Target Completion">{w ? w.short : 'No Date'}</button> })()}
+                  {metaOpen && (obj || task) && (
+                    <div className="brf-editor">
+                      {obj && <div className="g"><span>Domain</span><div className="r">{[['third-horizon', 'Third Horizon'], ['personal', 'Personal']].map(([k, l]) => <button key={k} className={`o${realmOf(obj) === k ? ' on' : ''}`} onClick={() => patchObj({ tags: [...new Set([...(obj.tags || []).filter(t => t !== 'personal'), ...(k === 'personal' ? ['personal'] : [])])] })}>{l}</button>)}</div></div>}
+                      {obj && !rel?.parent && !task && <div className="g"><span>Type</span><div className="r">{Object.entries(SIZES).map(([k, sdef]) => <button key={k} title={sdef.sub} className={`o${sizeOf(obj) === k ? ' on' : ''}`} onClick={() => setSize(obj.id, k).then(async () => { await load(); onChange && onChange() })}>{sdef.label}</button>)}</div></div>}
+                      {(rel?.parent || task) && <div className="g"><span>Milestone</span><div style={{ fontSize: 13.5, color: INK, paddingTop: 4 }}>{rel.milestoneN || '?'} of {rel.milestoneOf || '?'} on {rel.parent ? rel.parent.title : (rel.project?.name || item.project || 'the Main Mission')} · {rel.parent ? '10 miles on close' : '1 mile on close'}</div></div>}
+                      <div className="g"><span>Target Completion</span><input type="date" value={(task ? task.due_date : obj.due_date) || ''} onChange={e => task ? patchTask({ due_date: e.target.value || null }) : patchObj({ due_date: e.target.value || null })} /></div>
+                    </div>
+                  )}
+                </div>
               </div>
-              <div style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 21, lineHeight: 1.3, color: INK, marginTop: 8, letterSpacing: '-0.005em' }}>{name}</div>
-              {obj?.north_star && <div onClick={() => setTab('polaris')} title="Polaris" style={{ fontFamily: SERIF, fontStyle: 'italic', fontSize: 14.5, color: INK2, lineHeight: 1.45, maxWidth: '72ch', cursor: 'pointer', marginTop: 6 }}>{obj.north_star}</div>}
               {/* The pills (David 11/4, the rebuild): one quiet row under the header, left, not fighting the trail. */}
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 18 }}>
                 {TABS.map(t => <CardPill key={t} active={tab === t} onClick={() => setTab(t)} count={counts[t]}>{TAB_LABEL[t]}</CardPill>)}
@@ -348,31 +376,12 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
 
         {/* No surface under the card (David 11/4): the content lives on the page itself, like the Main Mission page. */}
         <div style={{ marginTop: 20 }}>
-          {!rel && <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '1.4px', textTransform: 'uppercase', color: LABEL, padding: '10px 0' }}>Reading the Ledger</div>}
+          {!rel && <div style={{ fontSize: 13, color: LABEL, padding: '10px 0' }}>Reading the Ledger</div>}
 
           {rel && tab === 'briefing' && (
             <div style={{ display: 'grid', gap: 22 }}>
-              {obj && (() => { const sz = SIZES[item.size] ? item.size : 'light'; const realm = realmOf(obj); const field = { background: 'rgba(255,255,255,0.05)', border: `1px solid ${PANEL_BORDER}`, borderRadius: 8, color: INK, padding: '6px 9px', fontFamily: MONO, fontSize: 12, height: 32, width: '100%', boxSizing: 'border-box' }; return (
-                <>
-                  {(() => {
-                    // The header strip (David 11/4): one fence around Domain and Type, read as the card's upper header,
-                    // with the one date the card carries at its right: Target Completion. Pills are real pills, equal
-                    // width (10/29). Next Action Due By is retired; a Mythic's next milestone carries its own date on its own card.
-                    const seg = (on, color) => ({ ...btn(on ? color : INK2, on), padding: '6px 12px', whiteSpace: 'nowrap', borderRadius: 999, minWidth: PILL_W, justifyContent: 'center' })
-                    const cell = { display: 'grid', gap: 8, alignContent: 'start' }
-                    const fence = { display: 'flex', gap: 32, flexWrap: 'wrap', alignItems: 'flex-start', padding: '14px 18px 16px', borderRadius: 12, border: `1px solid ${PANEL_BORDER}`, boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.07), inset 0 -1px 0 rgba(0,0,0,0.18)' }
-                    return (
-                      <div style={fence}>
-                        <div style={cell}><Label style={{ marginBottom: 0 }}>Domain</Label><div style={{ display: 'flex', gap: 6 }}>{[['third-horizon', 'Third Horizon'], ['personal', 'Personal']].map(([k, l]) => <button key={k} onClick={() => patchObj({ tags: [...new Set([...(obj.tags || []).filter(t => t !== 'personal'), ...(k === 'personal' ? ['personal'] : [])])] })} style={seg(realm === k, BLUE)}>{l}</button>)}</div></div>
-                        {(rel.parent || task) ? <div style={cell}><Label style={{ marginBottom: 0 }}>Milestone</Label><div style={{ fontFamily: SERIF, fontSize: 15.5, color: INK, paddingTop: 5 }}>{rel.milestoneN || '?'} of {rel.milestoneOf || '?'} on {rel.parent ? rel.parent.title : (rel.project?.name || item.project || 'the Main Mission')}<span style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '1px', textTransform: 'uppercase', color: LABEL, marginLeft: 10 }}>{rel.parent ? '10 miles on close' : '1 mile on close'}</span></div></div> : <div style={cell}><Label style={{ marginBottom: 0 }}>Type</Label><div style={{ display: 'flex', gap: 6 }}>{Object.entries(SIZES).map(([k, sdef]) => <button key={k} onClick={() => setSize(obj.id, k).then(load)} title={sdef.sub} style={seg(sz === k, BLUE)}>{sdef.label}</button>)}</div></div>}
-                        <div style={{ ...cell, marginLeft: 'auto' }}><Label style={{ marginBottom: 0 }}>Target Completion</Label><input type="date" value={(task ? task.due_date : obj.due_date) || ''} onChange={e => task ? patchTask({ due_date: e.target.value || null }) : patchObj({ due_date: e.target.value || null })} style={{ ...field, width: 150 }} /></div>
-                      </div>
-                    ) })()}
-
-                  <WhereItStands item={item} rel={rel} task={task} taskId={taskId} linkedBoards={linkedBoards} />
-                </>
-              ) })()}
-              {!obj && item.kind !== 'Event' && item.kind !== 'Session' && <WhereItStands item={item} rel={rel} task={task} taskId={taskId} linkedBoards={linkedBoards} />}
+              {obj && <CardBriefing obj={obj} root={objRoot(obj.id)} kindLabel={rel.parent ? 'Milestone' : task ? 'Milestone' : item.kind === 'Ad Hoc' ? 'Ad Hoc item' : (SIZES[sizeOf(obj)]?.label || 'Side Mission')} steps={rel.steps || []} kids={rel.children || []} boardItems={boardStops} loaded={loaded} due={(task ? task.due_date : obj.due_date) || null} isMilestone={!!rel.parent} onReload={async () => { await load(); onChange && onChange() }} onTab={setTab} onOpenCard={openCard} say={setMsg} />}
+              {!obj && item.kind !== 'Event' && item.kind !== 'Session' && <WhereItStands rel={rel} task={task} taskId={taskId} linkedBoards={linkedBoards} />}
               {!obj && (item.description || task?.notes) && <div><Label>Back Story</Label><div style={{ fontSize: 14.5, lineHeight: 1.65, color: INK, whiteSpace: 'pre-wrap' }}>{item.description || task.notes}</div></div>}
               {item.event && (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 14 }}>
@@ -381,7 +390,7 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
                   <div style={{ gridColumn: '1 / -1' }}><Label>Attendees</Label><div style={{ fontSize: 13, color: INK2, lineHeight: 1.6 }}>{(item.event.attendees || []).map(a => a?.name || a?.email || a).filter(Boolean).join(', ') || 'none listed'}</div></div>
                 </div>
               )}
-              {task?.due_date && !obj && <div style={{ fontFamily: MONO, fontSize: 10.5, letterSpacing: '1px', color: LABEL, textTransform: 'uppercase' }}>{task.status} · due {task.due_date}</div>}
+              {task?.due_date && !obj && <div style={{ fontSize: 13, color: LABEL }}>{String(task.status || '').replace(/^./, c => c.toUpperCase())} · Due {task.due_date}</div>}
               {item.kind !== 'Event' && item.kind !== 'Session' && (
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', borderTop: `1px solid ${PANEL_BORDER}`, paddingTop: 16 }}>
                   {!rel?.parent && (loaded
@@ -391,7 +400,7 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
                     : <button onClick={startTimer} style={btn(GOLD, true)}><Play size={12} /> Equip</button>)}
                   <button onClick={() => copyText(briefCommand(item, requests))} title={briefCommand(item, requests)} style={btn(INK2)}><Terminal size={12} /> {copied ? 'Copied' : 'Cold Start'}</button>
                   {loaded && <button onClick={() => act(() => stash(loaded.id), 'Stashed')} style={btn(INK2)}><Archive size={12} /> Stash</button>}
-                  <span style={{ marginLeft: 'auto', fontFamily: MONO, fontSize: 10, letterSpacing: '1.2px', textTransform: 'uppercase', color: GRAY }}>{loaded ? (loaded.equipped ? 'Equipped' : 'Holstered') : 'Not loaded'} · <span style={{ color: loaded?.equipped ? GREEN : INK2 }}>{fmtClock(loaded?.minutes_today || 0)} today</span></span>
+                  <span style={{ marginLeft: 'auto', fontSize: 13, color: MUTED }}>{loaded ? (loaded.equipped ? 'Equipped' : 'Holstered') : 'Not Loaded'} · <span style={{ color: loaded?.equipped ? GREEN : INK2, fontWeight: 600 }}>{fmtClock(loaded?.minutes_today || 0)} Today</span></span>
                 </div>
               )}
             </div>
@@ -413,7 +422,7 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
                   <Evidence rows={rel.evidence || []} onFiles={() => setTab('files')} say={setMsg} />
 
               </>
-              {obj.state === 'released' && <div style={{ fontFamily: MONO, fontSize: 10.5, letterSpacing: '1.2px', textTransform: 'uppercase', color: SUCCESS }}>Released{obj.released_at ? ` · ${obj.released_at.slice(0, 10)}` : ''}</div>}
+              {obj.state === 'released' && <div style={{ fontSize: 13, fontWeight: 600, color: SUCCESS }}>Released{obj.released_at ? ` · ${obj.released_at.slice(0, 10)}` : ''}</div>}
             </div>
           ) : <None what={{ ...what, thing: 'a Polaris of its own' }} />)}
 
@@ -443,7 +452,7 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
             </div>
           )}
 
-          {msg && <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '1px', textTransform: 'uppercase', color: msg.startsWith('Could') ? RED : GOLD_BRIGHT, marginTop: 14 }}>{msg}</div>}
+          {msg && <div role="status" style={{ fontSize: 13, color: msg.startsWith('Could') ? RED : MUTED, marginTop: 14 }}>{msg}</div>}
         </div>
       </div>
       {item.objective_id && <LumenPanel item={{ kind: 'objective', id: item.objective_id, title: item.title, root: objRoot(item.objective_id), summary: [obj?.north_star, item.description || obj?.description].filter(Boolean).join('\n\n') }} />}

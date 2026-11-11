@@ -15,11 +15,17 @@
 // Code session reads, and the session's answer comes back into this thread as its own
 // message. Labels here are in the body face at 12 px, Title Case (the small tracked
 // uppercase label is blacklisted, 11/9).
+//
+// Lumen notices (David 11/11: "when i do something like that the lumen chat window should be
+// able to notice and ask a question (push)"). When David closes a stop on the card's path, the
+// Briefing fires a card event (lib/path); this panel sends it to Lumen as what happened, and
+// his one question rises from the corner above the Lumen button. Reply opens the panel.
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Sparkles, X as XIcon, BookOpen, Hammer, ExternalLink, Download, Trash2, FileText, Printer, Plus, Wrench, Check } from 'lucide-react'
 import { INK, INK2, GRAY, PANEL_BORDER, GOLD, GOLD_BRIGHT, BLUE, RED, SERIF, LABEL, SUCCESS, alpha } from './canon'
 import { readWorkbook, writeWorkbook, listBuilds, buildUrl, readBuildHtml, removeBuild, loadThread, askLumen, fireLedgerChanged, handToClaudeCode, listHandoffs } from '../../lib/lumenPanel'
 import { hudConfirm } from '../../lib/dialog'
+import { CARD_EVENT } from '../../lib/path'
 
 // The panel's width: 460px on a wide window, less on a narrow one, so the page always keeps room beside it.
 const WIDTH = 460
@@ -83,6 +89,7 @@ export default function LumenPanel({ item, api = LEDGER }) {
   const [html, setHtml] = useState(null)
   const [msg, setMsg] = useState(null)
   const [handed, setHanded] = useState({})   // message id -> { status, at } of its hand-off to Claude Code
+  const [push, setPush] = useState(null)     // { state: 'waiting' | 'asked', text }: Lumen noticing a stop closed on the card
   const scrollRef = useRef(null)
   const saveTimer = useRef(null)
   const where = `Lumen panel · ${String(item.title || '').slice(0, 60)}`
@@ -94,6 +101,23 @@ export default function LumenPanel({ item, api = LEDGER }) {
   }, [api, item.id, item.kind, item.root])
   useEffect(() => { if (open) loadAll().catch(e => setMsg(`Could not read: ${e.message}`)) }, [open, loadAll])
   useEffect(() => { scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' }) }, [thread, pending, open, tab])
+  // A stop was closed on this card: tell Lumen what happened and show his question in the corner.
+  useEffect(() => {
+    const onEvent = async (e) => {
+      const d = e.detail || {}
+      if (!d.event || d.item?.id !== item.id) return
+      setPush({ state: 'waiting' })
+      try {
+        const reply = await api.askLumen({ where: `Lumen panel · ${String(item.title || '').slice(0, 60)}`, item: { kind: item.kind, id: item.id }, event: d.event })
+        setPush(reply ? { state: 'asked', text: reply } : null)
+        const t = await api.loadThread(item.id).catch(() => null)
+        if (t) setThread(t)
+        fireLedgerChanged({ kind: item.kind, id: item.id })
+      } catch { setPush(null) }
+    }
+    window.addEventListener(CARD_EVENT, onEvent)
+    return () => window.removeEventListener(CARD_EVENT, onEvent)
+  }, [api, item.id, item.kind, item.title])
   // Push-aside, always (David 11/4: "it should move the rest of the page in a bit instead of
   // overlapping it"): the HUD's scroll container takes a right padding the panel's width.
   useEffect(() => {
@@ -102,7 +126,7 @@ export default function LumenPanel({ item, api = LEDGER }) {
     // --lumen-aside on the root: the item card's own overlay (position fixed) reads it as its right edge; the mission page reads --lumen-w through .lumen-open.
     const apply = () => { const pw = panelWidth(); document.documentElement.style.setProperty('--lumen-w', `${pw}px`); document.documentElement.style.setProperty('--lumen-aside', `${pw}px`); app?.style.setProperty('--lumen-w', `${pw}px`) }
     apply(); app?.classList.add('lumen-open')
-    const onKey = (e) => { if (e.key === 'Escape') setOpen(false) }
+    const onKey = (e) => { if (e.key === 'Escape') { setOpen(false); setPush(null) } }
     window.addEventListener('keydown', onKey); window.addEventListener('resize', apply)
     return () => { window.removeEventListener('keydown', onKey); window.removeEventListener('resize', apply); app?.classList.remove('lumen-open'); document.documentElement.style.setProperty('--lumen-aside', '0px') }
   }, [open])
@@ -160,9 +184,17 @@ export default function LumenPanel({ item, api = LEDGER }) {
   return (
     <>
       {!open && (
-        <button onClick={() => setOpen(true)} aria-label="Open Lumen" title="Lumen, on this card" style={{ position: 'fixed', right: 22, bottom: 22, zIndex: 200, display: 'inline-flex', alignItems: 'center', gap: 8, padding: '10px 16px 10px 13px', borderRadius: 999, border: `1px solid ${alpha(GOLD_BRIGHT, 55)}`, background: 'var(--hud-surface-raised)', color: INK, fontFamily: SERIF, fontSize: 15, cursor: 'pointer', boxShadow: '0 10px 30px rgba(0,0,0,0.35)' }}>
+        <button onClick={() => { setOpen(true); setTab('lumen'); setPush(null) }} aria-label="Open Lumen" title="Lumen, on this card" style={{ position: 'fixed', right: 22, bottom: 22, zIndex: 200, display: 'inline-flex', alignItems: 'center', gap: 8, padding: '10px 16px 10px 13px', borderRadius: 999, border: `1px solid ${alpha(GOLD_BRIGHT, 55)}`, background: 'var(--hud-surface-raised)', color: INK, fontFamily: SERIF, fontSize: 15, cursor: 'pointer', boxShadow: '0 10px 30px rgba(0,0,0,0.35)' }}>
           <Sparkles size={15} color={GOLD_BRIGHT} /> Lumen
+          {push && <span className={`lumen-dot${push.state === 'waiting' ? ' wait' : ''}`} title={push.state === 'waiting' ? 'Lumen noticed' : 'Lumen asked something'} />}
         </button>
+      )}
+      {!open && push?.state === 'asked' && (
+        <div className="lumen-push" role="status">
+          <div className="who">Lumen Noticed<button onClick={() => setPush(null)} aria-label="Dismiss" style={{ marginLeft: 'auto', background: 'transparent', border: 'none', color: INK2, cursor: 'pointer', padding: 2, display: 'inline-flex' }}><XIcon size={13} /></button></div>
+          <div className="q">{push.text}</div>
+          <div className="acts"><button onClick={() => { setOpen(true); setTab('lumen'); setPush(null) }} style={btn(BLUE, true)}>Reply</button><button onClick={() => setPush(null)} style={btn(INK2)}>Not Now</button></div>
+        </div>
       )}
       <aside aria-label="Lumen" aria-hidden={!open} style={{ position: 'fixed', top: 0, right: 0, bottom: 0, zIndex: 210, width: 'var(--lumen-w, 460px)', transform: open ? 'translateX(0)' : 'translateX(104%)', transition: 'transform 220ms ease', background: 'var(--hud-surface-raised)', borderLeft: `1px solid ${PANEL_BORDER}`, boxShadow: open ? '-18px 0 40px rgba(0,0,0,0.35)' : 'none', display: 'flex', flexDirection: 'column', minWidth: 0, overflow: 'hidden', overscrollBehavior: 'contain' }}>
         <div style={{ padding: '16px 18px 12px', borderBottom: `1px solid ${PANEL_BORDER}` }}>
@@ -173,7 +205,7 @@ export default function LumenPanel({ item, api = LEDGER }) {
               <div style={{ ...eyebrow, marginTop: 4 }}>On This Card</div>
               <div style={{ fontSize: 12.5, color: INK2, marginTop: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={item.title}>{item.title}</div>
             </div>
-            <button onClick={() => setOpen(false)} aria-label="Close Lumen" style={{ width: 28, height: 28, borderRadius: 8, border: `1px solid ${PANEL_BORDER}`, background: 'transparent', color: INK2, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><XIcon size={14} /></button>
+            <button onClick={() => { setOpen(false); setPush(null) }} aria-label="Close Lumen" style={{ width: 28, height: 28, borderRadius: 8, border: `1px solid ${PANEL_BORDER}`, background: 'transparent', color: INK2, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><XIcon size={14} /></button>
           </div>
           <div style={{ display: 'flex', gap: 6, marginTop: 12, flexWrap: 'wrap' }}>
             <button onClick={() => setTab('lumen')} style={tabStyle('lumen')}><Sparkles size={11} /> Lumen</button>
