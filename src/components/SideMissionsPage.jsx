@@ -10,6 +10,7 @@
 // one color with the accent for selected, overdue in RED, released in
 // SUCCESS, GREEN only for the Board, gold on one primary action.
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useHeldOrder } from '../lib/heldOrder'
 import { Target, Play, Plus, Trash2, RotateCcw, Check } from 'lucide-react'
 import FileAway from './river/FileAway'
 import YayPage from './river/YayPage'
@@ -238,6 +239,10 @@ export default function SideMissionsPage({ onNavigate }) {
   const domains = useMemo(() => { const m = new Map(); inView.forEach(o => { const k = domainOf(o) || 'untagged'; m.set(k, (m.get(k) || 0) + 1) }); return [...DOMAIN_IDS.map(id => [id, m.get(id) || 0]).filter(x => x[1] > 0), ...(m.get('untagged') ? [['untagged', m.get('untagged')]] : [])] }, [inView])
   const people = useMemo(() => { const m = new Map(); inView.forEach(o => { const k = personOf(o); if (k) m.set(k, (m.get(k) || 0) + 1) }); return [...m.entries()].sort((a, b) => b[1] - a[1]).slice(0, 10) }, [inView])
   const viewCount = (v) => v === 'bin' ? bin.length : live.filter(o => VIEW[v][2](o, today)).length
+  const sourceOrder = useHeldOrder(sources.map(x => x[0]), view)
+  const peopleOrder = useHeldOrder(people.map(x => x[0]), view)
+  const sourcesHeld = sourceOrder.map(k => sources.find(x => x[0] === k)).filter(Boolean)
+  const peopleHeld = peopleOrder.map(k => people.find(x => x[0] === k)).filter(Boolean)
 
   const since = new Date(); since.setDate(since.getDate() - range)
   const shown = inView
@@ -247,12 +252,11 @@ export default function SideMissionsPage({ onNavigate }) {
     .filter(o => view !== 'released' || range === 0 || (o.released_at && new Date(o.released_at) >= since))
     .filter(o => !filter || o.title.toLowerCase().includes(filter.toLowerCase()))
     .sort((a, b) => view === 'released' ? String(b.released_at).localeCompare(String(a.released_at)) : String(a.due_date || '9').localeCompare(String(b.due_date || '9')) || String(b.captured_at).localeCompare(String(a.captured_at)))
-  const grouped = useMemo(() => {
-    if (view === 'released' || view === 'bin') return [[null, shown]]
-    const m = new Map(); shown.forEach(o => { const k = groupKey(o, groupBy, today); if (!m.has(k)) m.set(k, []); m.get(k).push(o) })
-    const keys = [...m.keys()].sort((a, b) => groupBy === 'week' ? WEEK_ORDER.indexOf(a) - WEEK_ORDER.indexOf(b) : m.get(b).length - m.get(a).length)
-    return keys.map(k => [k, m.get(k)])
-  }, [shown, groupBy, view, today])
+  const flat = view === 'released' || view === 'bin'
+  const byGroup = useMemo(() => { const m = new Map(); shown.forEach(o => { const k = groupKey(o, groupBy, today); if (!m.has(k)) m.set(k, []); m.get(k).push(o) }); return m }, [shown, groupBy, today])
+  const groupsBySize = useMemo(() => [...byGroup.keys()].sort((a, b) => groupBy === 'week' ? WEEK_ORDER.indexOf(a) - WEEK_ORDER.indexOf(b) : byGroup.get(b).length - byGroup.get(a).length), [byGroup, groupBy])
+  const heldGroups = useHeldOrder(groupsBySize, `${view}|${groupBy}|${source || ''}|${domain || ''}|${person || ''}`)
+  const grouped = flat ? [[null, shown]] : (groupBy === 'week' ? groupsBySize : heldGroups).map(k => [k, byGroup.get(k)])
   const loadItemFor = (o) => L?.items.find(i => i.id === o.id) || null
 
   const act = async (fn, after) => { try { const r = await fn(); if (r && r.ok === false) { setMsg(`Will not fit: ${r.reasons.join(' · ')}`); return } if (after) setMsg(after); await refresh() } catch (e) { setMsg(`Could not do that: ${e.message}`) } }
@@ -328,7 +332,7 @@ export default function SideMissionsPage({ onNavigate }) {
             {sources.length > 0 && <>
               <Label style={{ marginTop: 18 }}>Source</Label>
               <Facet on={!source} count={inView.length} onClick={() => setSource(null)}>Every Source</Facet>
-              {sources.map(([k, n]) => <Facet key={k} on={source === k} count={n} onClick={() => setSource(source === k ? null : k)}>{k}</Facet>)}
+              {sourcesHeld.map(([k, n]) => <Facet key={k} on={source === k} count={n} onClick={() => setSource(source === k ? null : k)}>{k}</Facet>)}
             </>}
             {domains.length > 0 && <>
               <Label style={{ marginTop: 18 }}>Domain</Label>
@@ -337,7 +341,7 @@ export default function SideMissionsPage({ onNavigate }) {
             </>}
             {people.length > 0 && <>
               <Label style={{ marginTop: 18 }}>Person</Label>
-              {people.map(([k, n]) => <Facet key={k} on={person === k} count={n} onClick={() => setPerson(person === k ? null : k)}>{k}</Facet>)}
+              {peopleHeld.map(([k, n]) => <Facet key={k} on={person === k} count={n} onClick={() => setPerson(person === k ? null : k)}>{k}</Facet>)}
             </>}
           </div>
 
