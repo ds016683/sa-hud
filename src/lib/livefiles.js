@@ -107,18 +107,28 @@ export async function listEvidence({ objectiveId = null, projectId = null } = {}
 }
 export async function noteLiveFile(id, note) { await q(supabase.from('live_files').update({ note }).eq('id', id).select()) }
 
+// A link to a file. The browser signs one itself; when that fails (11/10: Open and Download on a
+// card's file did nothing), the Live Files door signs it with the Ledger's own key.
+async function doorUrl(row, download) {
+  const { data: { session } } = await supabase.auth.getSession()
+  if (!session) throw new Error('not signed in')
+  const r = await fetch('/api/live-files', { method: 'POST', headers: { Authorization: `Bearer ${session.access_token}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'url', id: row.id, bucket: row.bucket, path: row.path, name: row.name, download }) })
+  const j = await r.json().catch(() => ({}))
+  if (!r.ok || j.error || !j.url) throw new Error(j.error || `link ${r.status}`)
+  return j.url
+}
 export async function openLiveFile(row) {
   const { data, error } = await supabase.storage.from(row.bucket || BUCKET).createSignedUrl(row.path, 600)
-  if (error) throw new Error(error.message)
-  return data.signedUrl
+  if (!error && data?.signedUrl) return data.signedUrl
+  return doorUrl(row, false)
 }
 
 // A download link (10/20): the same signed URL with a Content-Disposition
 // that makes the browser save the file under its own name.
 export async function downloadLiveFile(row) {
   const { data, error } = await supabase.storage.from(row.bucket || BUCKET).createSignedUrl(row.path, 600, { download: row.name })
-  if (error) throw new Error(error.message)
-  return data.signedUrl
+  if (!error && data?.signedUrl) return data.signedUrl
+  return doorUrl(row, true)
 }
 
 // Leave Live Files: the row remembers where it went; the bytes stay until the

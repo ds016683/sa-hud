@@ -1,10 +1,11 @@
-// Live Files door (David, 10/17). Three ops:
+// Live Files door (David, 10/17). Four ops:
 //   POST { action: 'draft', id }  or  { action: 'draft', bucket, path, name }
 //   -> creates a draft in David's Outlook with the file attached and returns
 //      { webLink } so the HUD can open it. Nothing is sent; he finishes the
 //      note in Outlook. The draft itself is made in api/_draft.mjs, the one
 //      maker Lumen's draft_email shares.
 //   POST { action: 'put', name, content_base64, ... } -> the HUD's own upload path.
+//   POST { action: 'url', id, download? } -> { url }: a ten-minute link to the file, signed here.
 //   POST { action: 'synopsis', id, refresh? } (David 11/10: "click it and a quick synopsis
 //      of the document ... in an overlay") -> { synopsis, partial, made_at, cached }. The
 //      document is read once by Lumen's model and the synopsis is kept beside the files
@@ -145,6 +146,15 @@ export default async function handler(req, res) {
       const meta = { v: 1, id: f.id, path: f.path, size: f.size || null, name: f.name, synopsis: made.synopsis, partial: made.partial, model: made.model, made_at: new Date().toISOString() }
       await writeMeta(f.id, meta)
       return res.status(200).json({ ok: true, synopsis: meta.synopsis, partial: meta.partial, made_at: meta.made_at, cached: false })
+    }
+    if (body.action === 'url') {
+      // A link to the file, signed here with the Ledger's own key (11/10: Open and Download on a card's
+      // file did nothing for David). The browser asks for one first; this is where it turns when that fails.
+      const f = await fileRow(body)
+      const sg = await fetch(`${URL_BASE}/storage/v1/object/sign/${f.bucket}/${enc(f.path)}`, { method: 'POST', headers: { ...hdr(), 'Content-Type': 'application/json' }, body: JSON.stringify({ expiresIn: 600 }) })
+      if (!sg.ok) throw new Error(`could not sign a link to ${f.name} (${sg.status})`)
+      const { signedURL } = await sg.json()
+      return res.status(200).json({ ok: true, name: f.name, url: `${URL_BASE}/storage/v1${encodeURI(signedURL)}${body.download ? `&download=${encodeURIComponent(f.name)}` : ''}` })
     }
     if (body.action === 'draft') {
       const f = await fileRow(body)

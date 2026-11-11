@@ -135,7 +135,7 @@ function AddModal({ api, owner, folders, onClose, onAdded }) {
 }
 
 // ---- the overlay: a quick synopsis first, the document and every action behind it ------------
-function FileSheet({ api, row, folder, folders, onClose, onAct, onMove }) {
+function FileSheet({ api, row, folder, folders, msg, onClose, onAct, onMove }) {
   const ext = extOf(row.name)
   const id = row.id
   const readable = canSynopsize(row)
@@ -245,6 +245,7 @@ function FileSheet({ api, row, folder, folders, onClose, onAct, onMove }) {
           <span style={{ flex: 1 }} />
           <button onClick={() => onAct('remove')} style={btn()}><Trash2 size={14} /> Remove</button>
         </div>
+        {msg && <div role="status" style={{ fontSize: 13, color: msg.startsWith('Could not') ? RED : MUTED, marginTop: 12 }}>{msg}</div>}
       </div>
     </div>
   )
@@ -292,9 +293,38 @@ export default function CardFiles({ objectiveId, onChanged, api = LEDGER }) {
 
   const act = async (row, what) => {
     try {
-      if (what === 'open') window.open(await api.openLiveFile(row), '_blank', 'noopener')
-      else if (what === 'download') window.open(await api.downloadLiveFile(row), '_blank', 'noopener')
-      else if (what === 'mail') { const d = await api.draftMail(row); if (d.webLink) window.open(d.webLink, '_blank', 'noopener'); setMsg(`Draft open in Outlook: ${row.name}`) }
+      // Open and Download (David 11/10: "it won't open or download"). Neither waits on a new tab opened
+      // after the link comes back, which a browser can block without a word. A file the browser can
+      // show opens in a tab made inside the click; anything else is saved to Downloads, by name, in place.
+      const ext = extOf(row.name)
+      const save = async () => {
+        const res = await fetch(await api.downloadLiveFile(row))
+        if (!res.ok) throw new Error(`the file would not come down (${res.status})`)
+        const a = document.createElement('a')
+        a.href = URL.createObjectURL(await res.blob()); a.download = row.name
+        document.body.appendChild(a); a.click(); a.remove()
+        setTimeout(() => URL.revokeObjectURL(a.href), 8000)
+      }
+      if (what === 'open' && (IMG.includes(ext) || ext === 'pdf' || ext === 'html' || TEXT.includes(ext))) {
+        const tab = window.open('', '_blank')
+        try {
+          const url = await api.openLiveFile(row)
+          if (tab) { tab.opener = null; tab.location.replace(url); setMsg(`Opened In A New Tab: ${row.name}`) }
+          else { await save(); setMsg(`The browser blocked a new tab, so it was saved to Downloads: ${row.name}`) }
+        } catch (e) { tab?.close(); throw e }
+      }
+      else if (what === 'open') { setMsg(`Bringing it down: ${row.name}`); await save(); setMsg(`Saved To Downloads: ${row.name}. It opens in ${ext === 'docx' || ext === 'doc' ? 'Word' : ext === 'xlsx' || ext === 'xls' ? 'Excel' : ext === 'pptx' ? 'PowerPoint' : 'its own app'} from there.`) }
+      else if (what === 'download') { setMsg(`Bringing it down: ${row.name}`); await save(); setMsg(`Saved To Downloads: ${row.name}`) }
+      else if (what === 'mail') {
+        // The tab is made inside the click for the same reason; the draft takes a few seconds to come back.
+        const tab = window.open('', '_blank')
+        try {
+          setMsg(`Drafting In Outlook: ${row.name}`)
+          const d = await api.draftMail(row)
+          if (tab && d.webLink) { tab.opener = null; tab.location.replace(d.webLink); setMsg(`Draft Open In Outlook: ${row.name}`) }
+          else { tab?.close(); setMsg(`The draft is in your Outlook Drafts: ${row.name}`) }
+        } catch (e) { tab?.close(); throw e }
+      }
       else if (what === 'pin') { await api.pinEvidence(row.id, !row.evidence); reload() }
       else if (what === 'remove') {
         if (!await hudConfirm({ title: `Remove ${row.name}?`, message: isLink(row) || isRequest(row) ? 'It leaves this card.' : 'The file is deleted from this card and cannot be brought back.', confirm: 'Remove', danger: true })) return
@@ -327,7 +357,7 @@ export default function CardFiles({ objectiveId, onChanged, api = LEDGER }) {
   const renderRow = (r) => {
     const src = sourceOf(r)
     return (
-      <button key={r.id} onClick={() => setPreviewId(r.id)} style={{ ...GRID, width: '100%', textAlign: 'left', fontFamily: 'inherit', background: 'transparent', border: 'none', borderTop: `1px solid ${PANEL_BORDER}`, padding: '12px 4px', cursor: 'pointer', color: INK }}
+      <button key={r.id} onClick={() => { setMsg(null); setPreviewId(r.id) }} style={{ ...GRID, width: '100%', textAlign: 'left', fontFamily: 'inherit', background: 'transparent', border: 'none', borderTop: `1px solid ${PANEL_BORDER}`, padding: '12px 4px', cursor: 'pointer', color: INK }}
         onMouseEnter={e => { e.currentTarget.style.background = PANEL_BG }} onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}>
         <span style={{ display: 'flex', alignItems: 'center', gap: 11, minWidth: 0 }}>
           <FileGlyph row={r} style={{ flexShrink: 0 }} />
@@ -350,7 +380,7 @@ export default function CardFiles({ objectiveId, onChanged, api = LEDGER }) {
   return (
     <div style={{ minWidth: 0 }}>
       {adding && <AddModal api={api} owner={{ objectiveId }} folders={folders} onClose={() => setAdding(false)} onAdded={added} />}
-      {preview && <FileSheet key={preview.id} api={api} row={preview} folder={index.of[preview.id] || null} folders={folders} onClose={() => setPreviewId(null)} onAct={(w) => act(preview, w)} onMove={(name) => move(preview, name)} />}
+      {preview && <FileSheet key={preview.id} api={api} row={preview} folder={index.of[preview.id] || null} folders={folders} msg={msg} onClose={() => { setPreviewId(null); setMsg(null) }} onAct={(w) => act(preview, w)} onMove={(name) => move(preview, name)} />}
 
       {empty ? (
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', gap: 12, padding: '54px 16px 46px' }}>

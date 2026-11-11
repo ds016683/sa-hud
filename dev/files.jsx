@@ -34,7 +34,7 @@ const api = {
   requestLiveFile: async (path, { note }) => { const r = { id: 'n' + rows.length, name: path.split('/').pop(), bucket: 'request', path, size: null, source: 'request', created_at: new Date().toISOString(), filed_at: null, evidence: false, version: 1, note }; rows = [r, ...rows]; return r },
   addLiveLink: async (url, { title, note }) => { const r = { id: 'n' + rows.length, name: title || url, bucket: 'link', path: url, size: null, source: 'david', created_at: new Date().toISOString(), filed_at: null, evidence: false, version: 1, note }; rows = [r, ...rows]; return r },
   openLiveFile: async (row) => { if (!bytes[row.path]) throw new Error('the harness holds no bytes for this one'); return bytes[row.path] },
-  downloadLiveFile: async (row) => bytes[row.path] || 'about:blank',
+  downloadLiveFile: async (row) => bytes[row.path] || `data:application/octet-stream;base64,${btoa('sample bytes for ' + row.name)}`,
   draftMail: async () => ({ webLink: null }),
   pinEvidence: async (id, on) => patch(id, { evidence: on }),
   fileSynopsis: async (id, { refresh } = {}) => {
