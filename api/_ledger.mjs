@@ -5,7 +5,7 @@
 // the service key; nothing here can reach the pipes or the identity bucket.
 
 import { graphToken, MAILBOX } from './_sync-core.mjs'
-import { waSendDocument, davidNumber } from './_wa.mjs'
+import { waSendDocument, waSendAudio, waSendText, davidNumber } from './_wa.mjs'
 import { extractText, clip } from './_docs.mjs'
 import { logHours, setHours } from './time.mjs'
 import { sendMail } from './_mail.mjs'
@@ -790,6 +790,16 @@ export const TOOLS = [
     name: 'look_at_file',
     description: "Look at a file with your own eyes: a sketch or markup David drew on the iPad Scratchpad (a PDF, one page per sheet), a photo, a PNG, a PDF deck or document, or a Word file. A file is named by path (from search_files, list_folder, or a card file's path) or by name (part of the file name: the card first when side_mission or project is given, then Live Files, then the cabinet). Spaces, underscores and case do not matter. 'sketch' or 'latest sketch' means the newest sketch. pages = which PDF pages to show, like '1-3' or '2' (default the first 5). A Word file comes back as what it carries: the words in its headers and footers, the shape of its body, and each embedded picture (a logo, a chart) placed in front of you with where it sits; use it before saying a document has no logo or letterhead. The file is placed in front of you in this same turn, after the tool result: then describe what you actually see (what is drawn, written, crossed out, the layout, the words) in David's plain language, the way you would describe a sketch handed across a table. Never answer from the file name alone.",
     inputSchema: { type: 'object', properties: { name: { type: 'string' }, path: { type: 'string', description: 'a cabinet path or a card file path, instead of a name' }, side_mission: { type: 'string' }, project: { type: 'string' }, pages: { type: 'string' } }, required: [] },
+  },
+  {
+    name: 'voice_candidates',
+    description: "Make voices for David to hear, when he asks to try a new voice for you or for anything else. ElevenLabs Voice Design turns a description into up to three candidate voices saying a sample line. description (20 to 1000 characters) says who is speaking: age, gender, accent, pitch, pace, character, recording quality. sample (100 to 1000 characters) is what the voice says: use a few sentences you would really say to him. Each candidate is kept in the cabinet under Lumen/Voice Candidates/<day>/ and sent to his WhatsApp as a voice note labeled with label and its number. Returns each candidate's generated_voice_id. Your own voice does not change. Call it once per character he wants to compare.",
+    inputSchema: { type: 'object', properties: { label: { type: 'string', description: 'a short name for this character, e.g. Old Master' }, description: { type: 'string' }, sample: { type: 'string' }, count: { type: 'integer', description: '1 to 3, default 3' }, send: { type: 'boolean', description: 'false to keep them in the cabinet without sending voice notes' } }, required: ['description', 'sample'] },
+  },
+  {
+    name: 'keep_voice',
+    description: "Save a voice David picked from voice_candidates to the ElevenLabs account by its generated_voice_id, with a name. Only when he says which one. Returns the voice_id. You do not speak in it until the voice setting is changed.",
+    inputSchema: { type: 'object', properties: { generated_voice_id: { type: 'string' }, name: { type: 'string' }, description: { type: 'string' } }, required: ['generated_voice_id'] },
   },
   {
     name: 'fetch_url',
@@ -1949,6 +1959,55 @@ export async function callTool(name, args = {}) {
       let tied = ''
       if (row.objective_id) { const o = await sb(`objectives?select=title,state&id=eq.${row.objective_id}`).catch(() => []); if (o[0]) tied = `, tied to "${o[0].title}" (${o[0].state})` }
       return { __attach: attach, text: `Showing you ${row.name} (${shown}, ${(bytes.length / 1024).toFixed(0)} KB, saved ${row.created_at ? row.created_at.slice(0, 16).replace('T', ' ') + 'Z' : 'in the file store'}${tied}${row.note ? `; note: ${row.note}` : ''}). It follows this result. Describe what you see.` }
+    }
+    case 'voice_candidates': {
+      // Voices to hear (David 11/11: "give me some wise japanese sensei voice options to listen to"). ElevenLabs
+      // Voice Design makes up to three candidates from a description; each is kept in the cabinet as an mp3
+      // and sent to David as a WhatsApp voice note. Nothing about Lumen's own voice changes here.
+      const desc = String(args.description || '').trim(), sample = String(args.sample || '').trim()
+      const label = String(args.label || 'Voice').replace(/[^A-Za-z0-9 ·'-]/g, '').trim().slice(0, 40) || 'Voice'
+      if (desc.length < 20 || desc.length > 1000) return JSON.stringify({ ok: false, error: 'description: 20 to 1000 characters saying who is speaking (age, accent, pitch, pace, character)' })
+      if (sample.length < 100 || sample.length > 1000) return JSON.stringify({ ok: false, error: 'sample: 100 to 1000 characters for the voice to say' })
+      if (!process.env.ELEVENLABS_API_KEY) return JSON.stringify({ ok: false, error: 'no ElevenLabs key on this deployment' })
+      const r = await fetch('https://api.elevenlabs.io/v1/text-to-voice/design?output_format=mp3_44100_128', {
+        method: 'POST', headers: { 'xi-api-key': process.env.ELEVENLABS_API_KEY, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ voice_description: desc, text: sample, model_id: 'eleven_ttv_v3' }),
+      })
+      const j = await r.json().catch(() => null)
+      if (!r.ok) return JSON.stringify({ ok: false, error: `ElevenLabs voice design -> ${r.status}: ${JSON.stringify(j).slice(0, 300)}` })
+      const previews = (j?.previews || []).slice(0, Math.min(Math.max(Number(args.count) || 3, 1), 3))
+      const day = chiToday(), to = davidNumber(), out = []
+      for (const [i, pv] of previews.entries()) {
+        const bytes = Uint8Array.from(Buffer.from(pv.audio_base_64, 'base64'))
+        const path = `Lumen/Voice Candidates/${day}/${label} ${i + 1}.mp3`
+        const row = { n: i + 1, generated_voice_id: pv.generated_voice_id, path, bytes: bytes.length }
+        try { await putFile(path, bytes, 'audio/mpeg') } catch (e) { row.kept = `not kept: ${e.message}` }
+        if (args.send !== false) {
+          try { await waSendText(to, `${label} · ${i + 1} of ${previews.length}`); row.sent = await waSendAudio(to, bytes) || true } catch (e) { row.sent = `not sent: ${String(e.message || e).slice(0, 160)}` }
+        }
+        out.push(row)
+      }
+      // The record of what was made, so a chosen one can be kept later by its id.
+      try {
+        const rec = 'lumen/voice-candidates.json'
+        const got = await fetchObject('project-files', rec)
+        const list = got ? await got.json().catch(() => []) : []
+        const next = [...(Array.isArray(list) ? list : []), { at: new Date().toISOString(), label, description: desc, candidates: out.map(c => ({ n: c.n, generated_voice_id: c.generated_voice_id, path: c.path })) }].slice(-60)
+        await fetch(`${URL_BASE}/storage/v1/object/project-files/${rec}`, { method: 'POST', headers: { ...sbHeaders(), 'Content-Type': 'application/json', 'x-upsert': 'true' }, body: JSON.stringify(next) })
+      } catch (e) { console.warn('voice record', e.message) }
+      return JSON.stringify({ ok: true, label, candidates: out, note: 'Each candidate is in the cabinet as an mp3 and, unless send was false, in David\'s WhatsApp as a voice note. keep_voice with a generated_voice_id saves the one he picks; a candidate that is not kept may not stay available.' })
+    }
+    case 'keep_voice': {
+      if (!process.env.ELEVENLABS_API_KEY) return JSON.stringify({ ok: false, error: 'no ElevenLabs key on this deployment' })
+      const gid = String(args.generated_voice_id || '').trim()
+      if (!gid) throw new Error('generated_voice_id required')
+      const r = await fetch('https://api.elevenlabs.io/v1/text-to-voice', {
+        method: 'POST', headers: { 'xi-api-key': process.env.ELEVENLABS_API_KEY, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ voice_name: String(args.name || 'Lumen Candidate').slice(0, 60), voice_description: String(args.description || 'A voice David chose for Lumen').slice(0, 500), generated_voice_id: gid }),
+      })
+      const j = await r.json().catch(() => null)
+      if (!r.ok) return JSON.stringify({ ok: false, error: `ElevenLabs save voice -> ${r.status}: ${JSON.stringify(j).slice(0, 300)}` })
+      return JSON.stringify({ ok: true, voice_id: j?.voice_id || null, name: j?.name || args.name || null, note: 'Saved to the ElevenLabs account. Lumen does not speak in it yet: his voice is the ELEVENLABS_VOICE_ID setting in Vercel, which David or a Claude Code session changes.' })
     }
     case 'fetch_url': {
       try { return JSON.stringify(await fetchUrlText(args.url, { find: args.find || null, max: Math.min(Math.max(Number(args.max_chars) || 12000, 2000), 40000) }), null, 1) }
