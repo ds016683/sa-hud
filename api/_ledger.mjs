@@ -2080,7 +2080,7 @@ export async function callTool(name, args = {}) {
       })
       if (!r.ok) return JSON.stringify({ ok: false, error: `ElevenLabs speech -> ${r.status}: ${(await r.text()).slice(0, 300)}` })
       const bytes = new Uint8Array(await r.arrayBuffer())
-      const path = String(args.path || '').startsWith('Lumen/') ? String(args.path) : `Lumen/Voice Candidates/${chiToday()}/${label}.mp3`
+      const path = String(args.path || '').startsWith('Lumen/') ? String(args.path) : `Lumen/Voice Candidates/${chiToday()}/${label.replace(/[^A-Za-z0-9 '-]/g, '').replace(/\s+/g, ' ').trim()}.mp3`  // storage refuses a middle dot in a file name
       const row = { voice_id: vid, label, path, bytes: bytes.length }
       try { await putFile(path, bytes, 'audio/mpeg') } catch (e) { row.kept = `not kept: ${e.message}` }
       if (args.send === true) {
