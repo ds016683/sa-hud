@@ -2026,7 +2026,7 @@ export async function callTool(name, args = {}) {
       })
       const j = await r.json().catch(() => null)
       if (!r.ok) return JSON.stringify({ ok: false, error: `ElevenLabs save voice -> ${r.status}: ${JSON.stringify(j).slice(0, 300)}` })
-      return JSON.stringify({ ok: true, voice_id: j?.voice_id || null, name: j?.name || args.name || null, note: 'Saved to the ElevenLabs account. Lumen does not speak in it yet: his voice is the ELEVENLABS_VOICE_ID setting in Vercel, which David or a Claude Code session changes.' })
+      return JSON.stringify({ ok: true, voice_id: j?.voice_id || null, name: j?.name || args.name || null, note: 'Saved to the ElevenLabs account. Lumen does not speak in it yet: his voice is the record at project-files/lumen/voice.json, which a Claude Code session changes when David says so.' })
     }
     case 'fetch_url': {
       try { return JSON.stringify(await fetchUrlText(args.url, { find: args.find || null, max: Math.min(Math.max(Number(args.max_chars) || 12000, 2000), 40000) }), null, 1) }

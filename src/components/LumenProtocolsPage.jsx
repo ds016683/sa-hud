@@ -16,6 +16,64 @@ const Block = ({ title, children }) => (
 )
 const Li = ({ children }) => <li style={{ marginBottom: 6 }}>{children}</li>
 
+// His voice (David 11/12: "this should be lumen's permanent voice ... documented in the right place in the hud
+// with the right build stack reference"). The voice itself is read live from the record Lumen speaks from, so
+// this page never goes stale and no person's name sits in the source; the stack reference under it is fixed text.
+const Row = ({ k, children }) => <Li><b style={{ color: INK }}>{k}</b>: {children}</Li>
+const code = { fontFamily: MONO, fontSize: 12.5, color: INK }
+function HisVoice() {
+  const [rec, setRec] = useState(undefined)
+  useEffect(() => {
+    let alive = true
+    // A signed link read past storage's cached copy, so a voice changed a minute ago shows as it is now.
+    supabase.storage.from('project-files').createSignedUrl('lumen/voice.json', 120)
+      .then(async ({ data, error }) => {
+        if (error || !data?.signedUrl) throw new Error('no link')
+        const r = await fetch(`${data.signedUrl}&cb=${Date.now()}`, { cache: 'no-store' })
+        if (!r.ok) throw new Error('not read')
+        const j = await r.json(); if (alive) setRec(j)
+      })
+      .catch(() => alive && setRec(null))
+    return () => { alive = false }
+  }, [])
+  const v = rec?.personas?.lumen
+  const st = v?.settings || {}
+  return (
+    <>
+      <Block title="His Voice">
+        {rec === undefined && <span style={{ color: MUTED }}>Reading the voice record.</span>}
+        {rec === null && <span style={{ color: MUTED }}>The voice record could not be read from here. Lumen falls back to the voice set in Vercel when that happens.</span>}
+        {v && (
+          <ul style={{ margin: 0, paddingLeft: 18 }}>
+            <Row k="Voice">{v.name}{v.kind ? ` (${v.kind})` : ''}</Row>
+            {v.set_at && <Row k="Locked In">{String(v.set_at).slice(0, 10)}{v.set_by ? `. ${v.set_by}` : ''}</Row>}
+            {v.source && <Row k="Made From">{v.source}</Row>}
+            {v.consent && <Row k="Permission">{v.consent}</Row>}
+            <Row k="Delivery">speed {st.speed ?? 1}, stability {st.stability ?? 0.5}, similarity {st.similarity ?? 0.8}, style {st.style ?? 0.15}</Row>
+            <Row k="Speech Model">{v.model || 'eleven_multilingual_v2'} for voice notes and the talk door{v.live_model ? `, ${v.live_model} for the live desk session` : ''}</Row>
+            <Row k="Voice Id"><span style={code}>{v.voice_id}</span></Row>
+          </ul>
+        )}
+        {Array.isArray(rec?.kept) && rec.kept.length > 0 && (
+          <div style={{ marginTop: 12 }}>
+            <b style={{ color: INK }}>Kept Close</b>: {rec.kept.map(k => k.name).join(', ')}. Saved in the same account, not in use.
+          </div>
+        )}
+      </Block>
+      <Block title="Voice Build Stack">
+        <ul style={{ margin: 0, paddingLeft: 18 }}>
+          <Row k="Provider">ElevenLabs. Text to speech for every spoken reply, Instant Voice Clone for a cloned voice, Voice Design and Remix for a designed one. The key is <span style={code}>ELEVENLABS_API_KEY</span> in Vercel on the sa-hud project.</Row>
+          <Row k="The Record">Ledger storage, <span style={code}>project-files/lumen/voice.json</span>. One entry per persona: voice id, model, delivery settings, where the voice came from and the permission behind it. Lumen reads it each time he speaks (held for a minute), so changing the record changes his voice with no deploy. If it cannot be read, <span style={code}>ELEVENLABS_VOICE_ID</span> in Vercel still speaks.</Row>
+          <Row k="Where He Speaks">WhatsApp voice notes (<span style={code}>api/lumen.mjs</span>), the talk door (<span style={code}>api/lumen-talk.mjs</span>), the live desk session (<span style={code}>api/lumen-realtime.mjs</span>). All three go through <span style={code}>speak()</span> and <span style={code}>voiceOf()</span> in <span style={code}>api/_wa.mjs</span>.</Row>
+          <Row k="Voice Hands">In <span style={code}>api/_ledger.mjs</span>: voice_candidates and keep_voice (Lumen has these), clone_voice, voice_sample and remove_voice (a Claude Code session only, through <span style={code}>api/lumen-hud.mjs</span>). A clone is refused without the speaker&rsquo;s permission written down.</Row>
+          <Row k="Records And Files">Clones and their permission lines: <span style={code}>project-files/lumen/voice-clones.json</span>. Designed candidates: <span style={code}>project-files/lumen/voice-candidates.json</span>. Audio in the Cabinet under Lumen, in Voice Samples and Voice Candidates.</Row>
+          <Row k="To Change It">Tell a Claude Code session which saved voice and which delivery. It rewrites the record; nothing is deployed.</Row>
+        </ul>
+      </Block>
+    </>
+  )
+}
+
 function Identity() {
   return (
     <>
@@ -27,7 +85,7 @@ function Identity() {
           <Li><b style={{ color: INK }}>WhatsApp</b>: the primary channel. Timers, close-outs, the morning and evening protocols, the board, mail and files, in conversation.</Li>
           <Li><b style={{ color: INK }}>The HUD</b>: the Command Center is his face. The River, the Board, the missions, Live Files, the Archive and the Cabinet are the same Ledger he reads and writes.</Li>
           <Li><b style={{ color: INK }}>Mail</b>: lumen@thirdhorizon.com, under the Mail Protocols on this page.</Li>
-          <Li><b style={{ color: INK }}>Voice</b>: the talk door for hands-free turns from the Mac and the iPhone (Milestone 4 of Lumen Production shapes his voice).</Li>
+          <Li><b style={{ color: INK }}>Voice</b>: voice notes on WhatsApp, the talk door for hands-free turns from the Mac and the iPhone, and the live desk session. His voice itself is under His Voice below.</Li>
         </ul>
       </Block>
       <Block title="What He Holds">
@@ -37,6 +95,7 @@ function Identity() {
           <Li>Hands: the Board (equip, holster, stash, extract, close out), the calendar, Harvest time, the mailbox and the web, documents and the Archive, and the daily close that mints the miles.</Li>
         </ul>
       </Block>
+      <HisVoice />
       <Block title="How He Speaks">
         Plain prose, shorter on WhatsApp, never an em dash, Title Case for labels, David's spelling of a name wins, his words carried verbatim for Polaris lines and Achieved. He asks once and never twice.
       </Block>

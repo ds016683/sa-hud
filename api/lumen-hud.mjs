@@ -21,7 +21,7 @@ export const config = { maxDuration: 300, api: { bodyParser: false } }
 
 import { think, remember } from './_lumen-brain.mjs'
 import { cardFrame, callTool } from './_ledger.mjs'
-import { transcribe } from './_wa.mjs'
+import { transcribe, speak, voiceOf, waSendAudio, davidNumber } from './_wa.mjs'
 
 const URL_BASE = 'https://cmuvomnmaoseccxpeuxq.supabase.co'
 const ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNtdXZvbW5tYW9zZWNjeHBldXhxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU0MDM5NjMsImV4cCI6MjA5MDk3OTk2M30.s_sIdbTqE5NdMhi-ZfiWTpneswGvi2U4bmNgNWF22UY'
@@ -87,6 +87,16 @@ export default async function handler(req, res) {
     // just a bit thick. try one more time."). The session calls Lumen's own two voice hands through this door,
     // so a round does not need David to relay a line to Lumen first. The three clone hands (11/12) run only here:
     // they are not in Lumen's own toolbox, and clone_voice refuses without the speaker's permission written down.
+    // voice_check: which voice Lumen speaks in right now (the record, or the old Vercel setting), and with say, one
+    // line spoken through his own speak() and sent to David, the same path a real voice reply takes.
+    if (body.action === 'voice_check') {
+      try {
+        const v = await voiceOf()
+        const out = { ok: true, from: v.from, voice_id: v.voice_id, model: v.model, settings: v.settings }
+        if (body.say) { const mp3 = await speak(String(body.say).slice(0, 600)); out.bytes = mp3.length; out.sent = await waSendAudio(davidNumber(), mp3) || true }
+        return res.status(200).json(out)
+      } catch (e) { return res.status(500).json({ error: String(e.message || e).slice(0, 200) }) }
+    }
     if (['voice_candidates', 'keep_voice', 'clone_voice', 'voice_sample', 'remove_voice'].includes(body.action)) {
       try { return res.status(200).json(JSON.parse(await callTool(body.action, body.args && typeof body.args === 'object' ? body.args : {}))) } catch (e) { return res.status(500).json({ error: String(e.message || e).slice(0, 200) }) }
     }

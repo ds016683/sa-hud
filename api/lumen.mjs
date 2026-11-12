@@ -42,7 +42,7 @@ export async function readImage(bytes, mime, caption) {
   } catch { return { scan: null, text: `[photo]${caption ? ' ' + caption : ''}` } }
 }
 
-import { GRAPH, waHeaders, allowed, waSendText, waSendTemplate, waSendAudio, waMarkRead, waDownloadMedia, speak, transcribe, davidNumber } from './_wa.mjs'
+import { GRAPH, waHeaders, allowed, waSendText, waSendTemplate, waSendAudio, waMarkRead, waDownloadMedia, speak, voiceOf, transcribe, davidNumber } from './_wa.mjs'
 
 export default async function handler(req, res) {
   // ---- admin: is the WhatsApp Business Account subscribed to this app? (?admin=waba&key=MCP_TOKEN)
@@ -198,7 +198,7 @@ export default async function handler(req, res) {
     try {
       const mp3 = await speak(String((req.query || {}).text || 'This is Lumen. The voice line is open.'))
       const id = await waSendAudio(to, mp3)
-      return res.status(200).json({ ok: true, bytes: mp3.length, message_id: id, voice: process.env.ELEVENLABS_VOICE_ID ? 'set' : 'missing', whisper_key: process.env.OPENAI_API_KEY ? 'set' : 'missing' })
+      return res.status(200).json({ ok: true, bytes: mp3.length, message_id: id, voice: (await voiceOf()).from, whisper_key: process.env.OPENAI_API_KEY ? 'set' : 'missing' })
     } catch (e) { return res.status(200).json({ ok: false, error: String(e.message || e) }) }
   }
 
