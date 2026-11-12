@@ -318,6 +318,7 @@ async function fetchObject(bucket, path) {
   const r = await fetch(`${URL_BASE}/storage/v1/object/${bucket}/${encPath(path)}?cb=${Date.now()}`, { headers: sbHeaders(), cache: 'no-store' })
   return r.ok ? r : null
 }
+const num01 = (v, d) => (v === undefined || v === null || Number.isNaN(Number(v))) ? d : Math.min(Math.max(Number(v), 0), 1)
 // The record of cloned voices: who it is, the voice id, the sample it came from and the permission behind it.
 const CLONES_REC = 'lumen/voice-clones.json'
 async function voiceClones() {
@@ -2076,12 +2077,14 @@ export async function callTool(name, args = {}) {
       if (text.length < 20 || text.length > 2500) return JSON.stringify({ ok: false, error: 'text: 20 to 2500 characters for the voice to say' })
       const r = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(vid)}?output_format=mp3_44100_128`, {
         method: 'POST', headers: { 'xi-api-key': process.env.ELEVENLABS_API_KEY, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text, model_id: String(args.model || 'eleven_multilingual_v2'), voice_settings: { stability: 0.5, similarity_boost: 0.8, style: 0.15, speed: 1.0 } }),
+        // The delivery can move while the voice stays (David 11/12, on the Tanya clone: "a tad slower and tad more warmth"):
+        // speed 0.7 to 1.2, stability (lower is more expressive), similarity, style (how far it leans into feeling).
+        body: JSON.stringify({ text, model_id: String(args.model || 'eleven_multilingual_v2'), voice_settings: { stability: num01(args.stability, 0.5), similarity_boost: num01(args.similarity, 0.8), style: num01(args.style, 0.15), speed: Math.min(Math.max(Number(args.speed) || 1.0, 0.7), 1.2) } }),
       })
       if (!r.ok) return JSON.stringify({ ok: false, error: `ElevenLabs speech -> ${r.status}: ${(await r.text()).slice(0, 300)}` })
       const bytes = new Uint8Array(await r.arrayBuffer())
       const path = String(args.path || '').startsWith('Lumen/') ? String(args.path) : `Lumen/Voice Candidates/${chiToday()}/${label.replace(/[^A-Za-z0-9 '-]/g, '').replace(/\s+/g, ' ').trim()}.mp3`  // storage refuses a middle dot in a file name
-      const row = { voice_id: vid, label, path, bytes: bytes.length }
+      const row = { voice_id: vid, label, path, bytes: bytes.length, settings: { speed: args.speed ?? 1.0, stability: args.stability ?? 0.5, similarity: args.similarity ?? 0.8, style: args.style ?? 0.15, model: args.model || 'eleven_multilingual_v2' } }
       try { await putFile(path, bytes, 'audio/mpeg') } catch (e) { row.kept = `not kept: ${e.message}` }
       if (args.send === true) {
         const to = davidNumber()
