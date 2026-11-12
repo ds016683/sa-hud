@@ -85,8 +85,9 @@ export default async function handler(req, res) {
     }
     // Voice rounds run from a Claude Code session (David 11/11, on the third round: "so close. the accent is
     // just a bit thick. try one more time."). The session calls Lumen's own two voice hands through this door,
-    // so a round does not need David to relay a line to Lumen first. Only these two hands; nothing else runs here.
-    if (body.action === 'voice_candidates' || body.action === 'keep_voice') {
+    // so a round does not need David to relay a line to Lumen first. The three clone hands (11/12) run only here:
+    // they are not in Lumen's own toolbox, and clone_voice refuses without the speaker's permission written down.
+    if (['voice_candidates', 'keep_voice', 'clone_voice', 'voice_sample', 'remove_voice'].includes(body.action)) {
       try { return res.status(200).json(JSON.parse(await callTool(body.action, body.args && typeof body.args === 'object' ? body.args : {}))) } catch (e) { return res.status(500).json({ error: String(e.message || e).slice(0, 200) }) }
     }
     if (body.action === 'handoff' || body.action === 'handoffs') {

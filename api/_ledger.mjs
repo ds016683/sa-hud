@@ -318,6 +318,17 @@ async function fetchObject(bucket, path) {
   const r = await fetch(`${URL_BASE}/storage/v1/object/${bucket}/${encPath(path)}?cb=${Date.now()}`, { headers: sbHeaders(), cache: 'no-store' })
   return r.ok ? r : null
 }
+// The record of cloned voices: who it is, the voice id, the sample it came from and the permission behind it.
+const CLONES_REC = 'lumen/voice-clones.json'
+async function voiceClones() {
+  const got = await fetchObject('project-files', CLONES_REC)
+  const list = got ? await got.json().catch(() => []) : []
+  return Array.isArray(list) ? list : []
+}
+async function saveVoiceClones(list) {
+  const r = await fetch(`${URL_BASE}/storage/v1/object/project-files/${CLONES_REC}`, { method: 'POST', headers: { ...sbHeaders(), 'Content-Type': 'application/json', 'x-upsert': 'true' }, body: JSON.stringify(list.slice(-100)) })
+  if (!r.ok) throw new Error(`clone record -> ${r.status}`)
+}
 // The card a tool call names: { objective_id, project_id, root, files (where its files sit), title }.
 async function cardScope(args) {
   if (args.side_mission) { const o = await findObjective(args.side_mission); return { objective_id: o.id, project_id: null, root: `objectives/${o.id}`, files: `objectives/${o.id}/files`, title: o.title } }
@@ -2023,6 +2034,71 @@ export async function callTool(name, args = {}) {
     case 'web_search': {
       try { return JSON.stringify(await webSearch(String(args.query || '')), null, 1) }
       catch (e) { return JSON.stringify({ ok: false, error: e.name === 'AbortError' ? 'timed out after 15s' : e.message }) }
+    }
+    // A voice cloned from a recording, a sample spoken in any saved voice, and taking a clone back out (David
+    // 11/12, on a friend's voice: "i'm getting her permission now ... let's go ahead and wire and before actually
+    // pushing to production i should have her permission"). These three are NOT in TOOLS: Lumen cannot reach
+    // them from a chat. They run from a Claude Code session through the Lumen door. A clone is only made with the
+    // speaker's permission written down (consent: who said yes, when, how), and that line is kept with the voice.
+    case 'clone_voice': {
+      if (!process.env.ELEVENLABS_API_KEY) return JSON.stringify({ ok: false, error: 'no ElevenLabs key on this deployment' })
+      const vname = String(args.name || '').trim().slice(0, 60)
+      const consent = String(args.consent || '').trim()
+      const paths = [].concat(args.sample_paths || args.sample_path || []).map(x => String(x).trim()).filter(Boolean).slice(0, 5)
+      if (!vname) return JSON.stringify({ ok: false, error: 'name required' })
+      if (consent.length < 20) return JSON.stringify({ ok: false, error: 'consent required: who gave permission for this voice to be cloned, when, and how. No clone without it.' })
+      if (!paths.length) return JSON.stringify({ ok: false, error: 'sample_path required: an audio file in the cabinet (files bucket)' })
+      const form = new FormData()
+      form.append('name', vname)
+      form.append('description', String(args.description || `Cloned with permission: ${consent}`).slice(0, 500))
+      if (args.remove_background_noise) form.append('remove_background_noise', 'true')
+      let total = 0
+      for (const sp of paths) {
+        const got = await fetchObject('files', sp)
+        if (!got) return JSON.stringify({ ok: false, error: `no such sample in the cabinet: ${sp}` })
+        const buf = await got.arrayBuffer(); total += buf.byteLength
+        form.append('files', new Blob([buf], { type: /\.wav$/i.test(sp) ? 'audio/wav' : /\.m4a$/i.test(sp) ? 'audio/mp4' : 'audio/mpeg' }), sp.split('/').pop())
+      }
+      const r = await fetch('https://api.elevenlabs.io/v1/voices/add', { method: 'POST', headers: { 'xi-api-key': process.env.ELEVENLABS_API_KEY }, body: form })
+      const j = await r.json().catch(() => null)
+      if (!r.ok || !j?.voice_id) return JSON.stringify({ ok: false, error: `ElevenLabs clone -> ${r.status}: ${JSON.stringify(j).slice(0, 300)}` })
+      try {
+        const list = await voiceClones()
+        await saveVoiceClones([...list, { at: new Date().toISOString(), name: vname, voice_id: j.voice_id, samples: paths, bytes: total, consent }])
+      } catch (e) { console.warn('clone record', e.message) }
+      return JSON.stringify({ ok: true, voice_id: j.voice_id, name: vname, requires_verification: !!j.requires_verification, sample_bytes: total, note: 'Cloned and saved to the ElevenLabs account. Nothing speaks in it until voice_sample is asked for, and Lumen\'s own voice has not changed.' })
+    }
+    case 'voice_sample': {
+      if (!process.env.ELEVENLABS_API_KEY) return JSON.stringify({ ok: false, error: 'no ElevenLabs key on this deployment' })
+      const vid = String(args.voice_id || '').trim(), text = String(args.text || '').trim()
+      const label = String(args.label || 'Voice Sample').replace(/[^A-Za-z0-9 ·'-]/g, '').trim().slice(0, 50) || 'Voice Sample'
+      if (!vid) return JSON.stringify({ ok: false, error: 'voice_id required' })
+      if (text.length < 20 || text.length > 2500) return JSON.stringify({ ok: false, error: 'text: 20 to 2500 characters for the voice to say' })
+      const r = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(vid)}?output_format=mp3_44100_128`, {
+        method: 'POST', headers: { 'xi-api-key': process.env.ELEVENLABS_API_KEY, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text, model_id: String(args.model || 'eleven_multilingual_v2'), voice_settings: { stability: 0.5, similarity_boost: 0.8, style: 0.15, speed: 1.0 } }),
+      })
+      if (!r.ok) return JSON.stringify({ ok: false, error: `ElevenLabs speech -> ${r.status}: ${(await r.text()).slice(0, 300)}` })
+      const bytes = new Uint8Array(await r.arrayBuffer())
+      const path = String(args.path || '').startsWith('Lumen/') ? String(args.path) : `Lumen/Voice Candidates/${chiToday()}/${label}.mp3`
+      const row = { voice_id: vid, label, path, bytes: bytes.length }
+      try { await putFile(path, bytes, 'audio/mpeg') } catch (e) { row.kept = `not kept: ${e.message}` }
+      if (args.send === true) {
+        const to = davidNumber()
+        try { await waSendText(to, label); row.sent = await waSendAudio(to, bytes) || true } catch (e) { row.sent = `not sent: ${String(e.message || e).slice(0, 160)}` }
+      }
+      return JSON.stringify({ ok: true, ...row })
+    }
+    case 'remove_voice': {
+      if (!process.env.ELEVENLABS_API_KEY) return JSON.stringify({ ok: false, error: 'no ElevenLabs key on this deployment' })
+      const vid = String(args.voice_id || '').trim()
+      const list = await voiceClones()
+      // Only a voice this door cloned can be taken out here; the designed voices and anything else are not touched.
+      if (!vid || !list.some(c => c.voice_id === vid && !c.removed_at)) return JSON.stringify({ ok: false, error: 'not a clone on record; only a voice made by clone_voice can be removed here' })
+      const r = await fetch(`https://api.elevenlabs.io/v1/voices/${encodeURIComponent(vid)}`, { method: 'DELETE', headers: { 'xi-api-key': process.env.ELEVENLABS_API_KEY } })
+      if (!r.ok) return JSON.stringify({ ok: false, error: `ElevenLabs remove -> ${r.status}: ${(await r.text()).slice(0, 300)}` })
+      await saveVoiceClones(list.map(c => c.voice_id === vid ? { ...c, removed_at: new Date().toISOString(), removed_why: String(args.why || '').slice(0, 200) || null } : c))
+      return JSON.stringify({ ok: true, voice_id: vid, note: 'Removed from the ElevenLabs account. The sample file in the cabinet is still there.' })
     }
     default:
       throw new Error(`unknown tool: ${name}`)
