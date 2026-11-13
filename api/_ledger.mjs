@@ -820,8 +820,13 @@ export const TOOLS = [
   },
   {
     name: 'web_search',
-    description: "Search the web (10/20): a keyless DuckDuckGo search returning up to 8 results (title, url, snippet). Use it to find a conference site, an agenda, a person, a venue, then fetch_url the best hit. Say what you searched and read; never present a snippet as something David wrote.",
+    description: "Search the web: up to 8 results (title, url, snippet), through treg since 11/13 (the result says via). Use it to find a conference site, an agenda, a person, a venue, a company, then fetch_url the best hit. Public questions only: never put David's private details, mail or file contents into a query. Say what you searched and read; never present a snippet as something David wrote.",
     inputSchema: { type: 'object', properties: { query: { type: 'string' } }, required: ['query'] },
+  },
+  {
+    name: 'find_places',
+    description: "Find businesses or places on Google Maps (11/13): give what and where in one query (\"convertible car rental Las Vegas NV\", \"coffee near Raleigh convention center\") and get up to 20 places with name, rating, review count, phone, address, website and a Maps link. Use it for any audit or shortlist of local businesses, a venue, a restaurant, a vendor. It is one source for a rating; when David asks for two sources, check the second with web_search and fetch_url and say which is which. A cell you could not fill stays blank and you say so. Each call costs a fraction of a cent from the treg balance.",
+    inputSchema: { type: 'object', properties: { query: { type: 'string' }, country: { type: 'string', description: 'two-letter country code, default us' }, limit: { type: 'number' } }, required: ['query'] },
   },
   {
     name: 'sent_proof',
@@ -875,7 +880,29 @@ async function fetchUrlText(url, { find = null, max = 12000 } = {}) {
   if (find) { const at = text.toLowerCase().indexOf(String(find).toLowerCase()); if (at >= 0) text = text.slice(Math.max(0, at - Math.floor(max / 4))) }
   return { ok: res.ok, status: res.status, url: res.url || url, title, chars: total, truncated: text.length > max, text: text.slice(0, max) }
 }
-async function webSearch(query) {
+// treg (David 11/13: "set up treg"; the tool came from Topher): one prepaid token in front of a catalog of
+// search and data providers, billed per call. Lumen uses it for public lookups only: the open web and places.
+// Nothing of David's (mail, files, the Ledger) is ever sent through it. Each call carries a hard cost ceiling.
+// The token is TREG_TOKEN in Vercel; without it these fall back or say so.
+async function tregCall(id, { method = 'POST', body, query, maxCost = 0.02 } = {}) {
+  const token = process.env.TREG_TOKEN
+  if (!token) return { ok: false, status: 0, error: 'no TREG_TOKEN on this deployment' }
+  const ctrl = new AbortController(); const timer = setTimeout(() => ctrl.abort(), 30000)
+  try {
+    const qs = query ? '?' + new URLSearchParams(query).toString() : ''
+    const res = await fetch(`https://treg.to/call/${id}${qs}`, {
+      method, signal: ctrl.signal,
+      headers: { 'X-Treg-Token': token, 'X-Treg-Route-Max-Cost': String(maxCost), ...(body ? { 'Content-Type': 'application/json' } : {}) },
+      body: body ? JSON.stringify(body) : undefined,
+    })
+    const j = await res.json().catch(() => null)
+    const cost_usd = Number(res.headers.get('x-treg-cost-micro') || 0) / 1e6
+    if (!res.ok) return { ok: false, status: res.status, cost_usd, error: res.status === 402 ? 'the treg balance is empty, or the call would cost more than its ceiling; David tops up at treg.to' : String(j?.error || j?.detail || `treg -> ${res.status}`).slice(0, 200) }
+    return { ok: true, status: res.status, data: j, cost_usd, served_by: res.headers.get('x-treg-served-by') || null }
+  } finally { clearTimeout(timer) }
+}
+
+async function duckSearch(query) {
   const ctrl = new AbortController(); const timer = setTimeout(() => ctrl.abort(), 15000)
   let res
   try { res = await fetch('https://html.duckduckgo.com/html/?q=' + encodeURIComponent(query), { headers: { 'user-agent': UA, accept: 'text/html' }, signal: ctrl.signal }) } finally { clearTimeout(timer) }
@@ -889,9 +916,44 @@ async function webSearch(query) {
     if (href.startsWith('//')) href = 'https:' + href
     out.push({ title: htmlToText(m[2]), url: href, snippet: htmlToText(m[3] || '') })
   }
-  return { ok: res.ok, status: res.status, query, results: out }
+  return { ok: res.ok, status: res.status, query, results: out, via: 'duckduckgo' }
 }
-
+// The web search Lumen uses. treg first (11/13: the keyless DuckDuckGo scrape had been refused with a 403 from
+// Vercel, so his research tabs came back empty); the old scrape only when treg is not set up or misses.
+async function webSearch(query) {
+  if (process.env.TREG_TOKEN) {
+    try {
+      const t = await tregCall('treg.web.search', { body: { q: query, limit: 8 } })
+      const rows = t.ok ? (t.data?.output?.results || []) : []
+      if (rows.length) return { ok: true, status: 200, query, via: `treg (${t.served_by || 'routed'})`, cost_usd: t.cost_usd, results: rows.slice(0, 8).map(r => ({ title: String(r.title || '').slice(0, 200), url: r.url || r.link || '', snippet: String(r.snippet || r.description || '').replace(/\s+/g, ' ').slice(0, 400) })) }
+      if (!t.ok && t.status === 402) return { ok: false, status: 402, query, error: t.error, results: [] }
+    } catch { /* fall through to the old search */ }
+  }
+  return duckSearch(query)
+}
+// Places (11/13, the car rental audit: "put the business name, rating (check two sources), contact info"):
+// Google Maps businesses for what-and-where, with rating, review count, phone, address and website.
+async function findPlaces(query, { country = 'us', limit = 12 } = {}) {
+  const t = await tregCall('treg.google.serp.maps', { body: { q: query, country } })
+  if (!t.ok) return { ok: false, query, error: t.error }
+  const rows = t.data?.output?.places || []
+  return {
+    ok: true, query, source: 'Google Maps', via: `treg (${t.served_by || 'routed'})`, cost_usd: t.cost_usd, count: rows.length,
+    // The routed tool answers from whichever provider is up, each in its own row shape, so read every known spelling.
+    places: rows.slice(0, Math.min(Math.max(Number(limit) || 12, 1), 20)).map(r => {
+      const num = (v) => (v === null || v === undefined || v === '' || Number.isNaN(Number(v))) ? null : Number(v)
+      const isMaps = (u) => /google\.[a-z.]+\/maps|maps\.google\./i.test(String(u || ''))
+      const site = r.website || (r.url && !isMaps(r.url) ? r.url : null) || (r.domain ? `https://${r.domain}` : null)
+      const maps = (isMaps(r.url) ? r.url : null) || r.check_url || (r.place_id ? `https://www.google.com/maps/place/?q=place_id:${r.place_id}` : r.cid ? `https://maps.google.com/?cid=${r.cid}` : null)
+      return {
+        name: r.name || r.title || null,
+        rating: num(typeof r.rating === 'object' && r.rating ? r.rating.value : r.rating),
+        reviews: num(r.review_count ?? r.reviews_count ?? r.ratingCount ?? r.reviews ?? (typeof r.rating === 'object' && r.rating ? r.rating.votes_count : null)),
+        phone: r.phone || r.phoneNumber || null, address: r.address || null, website: site, category: r.category || r.type || null, maps_url: maps,
+      }
+    }).filter(pl => pl.name),
+  }
+}
 
 // Sent-mail proof (David 10/21, the Stacie case): a follow-up Bounty closes on the
 // evidence that the note went out. Scan Sent Items since the item was captured and
@@ -2035,6 +2097,11 @@ export async function callTool(name, args = {}) {
     case 'web_search': {
       try { return JSON.stringify(await webSearch(String(args.query || '')), null, 1) }
       catch (e) { return JSON.stringify({ ok: false, error: e.name === 'AbortError' ? 'timed out after 15s' : e.message }) }
+    }
+    case 'find_places': {
+      if (!String(args.query || '').trim()) return JSON.stringify({ ok: false, error: 'query required: what and where' })
+      try { return JSON.stringify(await findPlaces(String(args.query), { country: String(args.country || 'us').toLowerCase().slice(0, 2), limit: args.limit }), null, 1) }
+      catch (e) { return JSON.stringify({ ok: false, error: e.name === 'AbortError' ? 'timed out after 30s' : e.message }) }
     }
     // A voice cloned from a recording, a sample spoken in any saved voice, and taking a clone back out (David
     // 11/12, on a friend's voice: "i'm getting her permission now ... let's go ahead and wire and before actually
