@@ -1589,7 +1589,7 @@ export async function callTool(name, args = {}) {
       const subject = String(args.subject || '').slice(0, 250)
       if (!args.reply_to_message_id && !subject.trim()) throw new Error('subject required')
       const out = await createDraft({ to: args.to || [], cc: args.cc || [], subject, body: String(args.body || ''), files, replyTo: args.reply_to_message_id || null, replyAll: !!args.reply_all })
-      return JSON.stringify({ ok: true, drafted: out.subject, to: out.to, cc: out.cc, attachments: out.attachments, link: out.webLink, sent: false, note: 'It is in his Outlook Drafts, unsent. Say it is in Drafts for him to read and send, and give him the link. Never say it was sent.' })
+      return JSON.stringify({ ok: true, drafted: out.subject, to: out.to, cc: out.cc, attachments: out.attachments, link: out.webLink, sent: false, note: 'It is in his Outlook Drafts, unsent. Say it is in Drafts for him to read and send, and give him the link. Never say it was sent.' + (out.attachments?.length ? ' Tell him once, plainly: in Outlook on the Mac an attachment on a draft you made shows greyed out, and it is attached all the same and goes when he sends (checked 11/13: a draft sent that way arrived with its file).' : '') })
     }
     case 'update_meeting': {
       const day = String(args.day || chiToday()).slice(0, 10)
