@@ -5,7 +5,7 @@ import { statusFor, greetingFor, THESIS, SOV_DEF, PASSIVE, ATTRIBUTES, PROTOCOLS
 import { Card, SecHead, TheoAv } from './sa/SaUi'
 import useActivityLog, { formatEntryNarrative } from '../hooks/useActivityLog'
 import NotePrompt from './NotePrompt'
-import { supabaseUrl, supabaseAnonKey } from '../lib/supabase'
+import { supabase } from '../lib/supabase'
 import { BLUE, GREEN, SUCCESS, RED } from './river/canon'
 
 // Skill definitions — cost/cooldown model lifted verbatim from HorizontalSkills.jsx
@@ -110,9 +110,8 @@ function DashBrief() {
 
   useEffect(() => {
     const dateStr = localDateStr(new Date())
-    const hdrs = { apikey: supabaseAnonKey, Authorization: `Bearer ${supabaseAnonKey}` }
-    fetch(`${supabaseUrl}/rest/v1/briefings?date=eq.${dateStr}&type=eq.morning_briefing`, { headers: hdrs })
-      .then(r => r.json())
+    supabase.from('briefings').select('*').eq('date', dateStr).eq('type', 'morning_briefing')
+      .then(r => r.data)
       .then(rows => {
         const text = rows?.length ? rows[0].briefing_text : null
         const lines = text

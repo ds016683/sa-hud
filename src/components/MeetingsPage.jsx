@@ -1,9 +1,8 @@
 import { useState, useEffect, useMemo } from 'react'
 import { ChevronDown, ExternalLink, Search, Calendar } from 'lucide-react'
 import { BLUE, GOLD, GRAY, GREEN, INK, NAVY_DEEP, PANEL_BG, PURPLE, alpha } from './river/canon'
+import { supabase } from '../lib/supabase'
 
-const SUPA_URL = 'https://cmuvomnmaoseccxpeuxq.supabase.co'
-const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNtdXZvbW5tYW9zZWNjeHBldXhxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU0MDM5NjMsImV4cCI6MjA5MDk3OTk2M30.s_sIdbTqE5NdMhi-ZfiWTpneswGvi2U4bmNgNWF22UY'
 
 const TH = {
   darkBlue:    INK,
@@ -209,9 +208,9 @@ export default function MeetingsPage() {
   const [query, setQuery] = useState('')
 
   useEffect(() => {
-    const hdrs = { apikey: SUPA_KEY, Authorization: `Bearer ${SUPA_KEY}` }
-    fetch(`${SUPA_URL}/rest/v1/granola_meetings?order=meeting_date.desc&limit=500`, { headers: hdrs })
-      .then(r => r.json())
+    // Read through David's signed-in session, like the rest of the HUD.
+    supabase.from('granola_meetings').select('*').order('meeting_date', { ascending: false }).limit(500)
+      .then(r => r.data)
       .then(rows => {
         setMeetings(Array.isArray(rows) ? rows : [])
         setLoading(false)

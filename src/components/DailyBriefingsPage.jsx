@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { ChevronDown, Calendar, Mic, FileText, CheckSquare, Copy, Check } from 'lucide-react'
 import { GOLD, GRAY, GREEN, INK, INK2, NAVY_DEEP, PANEL_BG, alpha } from './river/canon'
+import { supabase } from '../lib/supabase'
 
 // Lightweight markdown renderer: ### -> bold heading, ** -> bold, - bullet lines
 const MarkdownBlock = ({ text }) => {
@@ -54,8 +55,6 @@ const MarkdownBlock = ({ text }) => {
   return <div style={{ marginBottom: 12 }}>{elements}</div>
 }
 
-const SUPA_URL = 'https://cmuvomnmaoseccxpeuxq.supabase.co'
-const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNtdXZvbW5tYW9zZWNjeHBldXhxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU0MDM5NjMsImV4cCI6MjA5MDk3OTk2M30.s_sIdbTqE5NdMhi-ZfiWTpneswGvi2U4bmNgNWF22UY'
 
 const TH = {
   darkBlue: INK,
@@ -336,11 +335,12 @@ const DayView = ({ dateStr, emptyMessage, emptySub }) => {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const hdrs = { apikey: SUPA_KEY, Authorization: `Bearer ${SUPA_KEY}` }
+    // Read through David's signed-in session, like the rest of the HUD.
+    const day = (type, ordered) => { let q = supabase.from('briefings').select('*').eq('date', dateStr).eq('type', type); if (ordered) q = q.order('created_at', { ascending: true }); return q.then(r => r.data || []) }
     Promise.all([
-      fetch(`${SUPA_URL}/rest/v1/briefings?date=eq.${dateStr}&type=eq.morning_briefing`, { headers: hdrs }).then(r => r.json()),
-      fetch(`${SUPA_URL}/rest/v1/briefings?date=eq.${dateStr}&type=eq.call_note&order=created_at.asc`, { headers: hdrs }).then(r => r.json()),
-      fetch(`${SUPA_URL}/rest/v1/briefings?date=eq.${dateStr}&type=eq.daily_summary`, { headers: hdrs }).then(r => r.json()),
+      day('morning_briefing'),
+      day('call_note', true),
+      day('daily_summary'),
     ]).then(([briefing, calls, summary]) => {
       const processedCalls = (calls || []).map(row => {
         try { return JSON.parse(row.briefing_text) }
