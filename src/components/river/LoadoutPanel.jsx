@@ -18,7 +18,8 @@ import { supabase } from '../../lib/supabase'
 import { DispatchModal } from './AmbushPanel'
 import { pockets } from '../../lib/objectives'
 import FileAway from './FileAway'
-import { fetchLoadout, equip, holster, unload, stash, addImpromptu, fmtClock, SIZES, SLOTS, hoursOf, chiToday, fetchStash, returnToInventory, equipObjective, STASH_MAX, logBoard } from '../../lib/loadout'
+import StillOpen from './StillOpen'
+import { fetchLoadout, equip, holster, unload, stash, addImpromptu, fmtClock, SIZES, SLOTS, hoursOf, chiToday, fetchStash, returnToInventory, equipObjective, STASH_MAX, logBoard, stillOpen } from '../../lib/loadout'
 import { Undo2, ArrowUpToLine, ScrollText, Paperclip } from 'lucide-react'
 import ActivityLogModal from './ActivityLog'
 import LiveFilesModal, { ClipButton } from './LiveFiles'
@@ -447,6 +448,7 @@ export default function LoadoutPanel({ onChange, refreshKey = 0, bare = false })
   const [open, setOpen] = useState(null)
   const [dispatch, setDispatch] = useState(null)
   const [filing, setFiling] = useState(null)
+  const [blocked, setBlocked] = useState(null)   // { it, open }: an Extract refused because the item still has something open
   const [projects, setProjects] = useState([])
   const [msg, setMsg] = useState(null)
   const [recallOf, setRecallOf] = useState(null)
@@ -476,6 +478,8 @@ export default function LoadoutPanel({ onChange, refreshKey = 0, bare = false })
   // Extract gate: a Side Mission carrying artifacts, files, or a board is
   // opened instead so its content is filed away first (the Archive).
   const extractGate = async (it) => {
+    // Nothing extracts with something still open (David 11/16): the refusal lists it.
+    try { const still = await stillOpen(it.id); if (still.count) { setBlocked({ it, open: still }); return } } catch { /* the Extract itself refuses */ }
     if (it.kind === 'Side Mission' || it.kind === 'Ad Hoc') {
       try { const p = await pockets(it.id); if (p.carrying) { const { data } = await supabase.from('objectives').select('*').eq('id', it.id).limit(1); if (data?.[0]) { setFiling({ o: data[0], p }); return } } } catch { /* fall through */ }
     }
@@ -495,6 +499,7 @@ export default function LoadoutPanel({ onChange, refreshKey = 0, bare = false })
   return (
     <Wrap style={wrapStyle}>
       <style>{`.board-slots { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px } @media (max-width: 980px) { .board-slots { grid-template-columns: repeat(2, minmax(0, 1fr)) } }`}</style>
+      {blocked && <StillOpen mission={blocked.it} open={blocked.open} onClose={() => { setBlocked(null); bump() }} onReady={() => { const it = blocked.it; setBlocked(null); extractGate(it) }} />}
       {open && <YayPage objectiveId={open.id} onClose={() => setOpen(null)} extract={{ item: open, onDone: (r) => { setMsg(`Extracted: ${open.title} · ${fmtClock(r.minutes)}${r.personal ? ' · personal' : ''}`); logBoard(`Extracted: ${open.title} · ${fmtClock(r.minutes)}`); bump() } }} />}
       {filing && <FileAway objective={filing.o} pockets={filing.p} onClose={() => setFiling(null)} onDone={({ filed, released }) => { const id = filing.o.id; setFiling(null); setMsg(`Filed ${filed.length} to the Archive · extracted ${filing.o.title} · ${released.minutes}m`); logBoard(`Extracted: ${filing.o.title} · filed ${filed.length} to the Archive`); bump(); setYay(id) }} />}
       {recallOf && <RecallModal objectiveId={recallOf.id} taskId={recallOf.task_id || null} title={recallOf.title} onClose={() => setRecallOf(null)} />}

@@ -7,6 +7,7 @@ import { X as XIcon, Archive as ArchiveIcon, Sparkles, FileText, ListChecks, Pap
 import { supabase } from '../../lib/supabase'
 import { fileObjective } from '../../lib/archive'
 import { closeOut, realmOf } from '../../lib/objectives'
+import { stillOpen } from '../../lib/loadout'
 import { INK, INK2, GRAY, PANEL_BORDER, GOLD, GOLD_BRIGHT, BLUE, GREEN, RED, MONO, SERIF, Eyebrow, Label, LABEL, alpha } from './canon'
 
 const btn = (color = INK2, filled = false, extra = {}) => ({
@@ -39,6 +40,9 @@ export default function FileAway({ objective: o, pockets: P, onClose, onDone }) 
   const go = async () => {
     setBusy(true); setErr(null)
     try {
+      // Nothing is filed for a mission that cannot close yet (David 11/16).
+      const open = await stillOpen(o.id)
+      if (open.count) throw new Error(`Not ready to extract: ${open.count} still open (${[...open.steps.map(x => x.text), ...open.milestones.map(x => x.title)].join(' | ')}). Close what is open first.`)
       const filed = await fileObjective(o, P, { realm, summary, picks, notes })
       const r = await closeOut(o, { minutes: Number(minutes) || 0, note: `filed ${filed.length} to the Archive (${realm})` })
       onDone({ filed, released: r })

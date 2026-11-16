@@ -171,11 +171,27 @@ export async function unload(objectiveId) {
   if (error) throw new Error(error.message)
 }
 
+// What a mission still has open (David 11/16: "I shouldn't be able to extract from a Main
+// Mission with something still open"): its gates not yet closed and, on a Mythic, its
+// milestones not yet released. Extract refuses while this is not empty.
+export async function stillOpen(objectiveId) {
+  const [steps, kids] = await Promise.all([
+    supabase.from('objective_steps').select('id,text,done,position').eq('objective_id', objectiveId).order('position').order('id'),
+    supabase.from('objectives').select('id,title,state').eq('parent_id', objectiveId).is('deleted_at', null).neq('state', 'released').order('captured_at', { ascending: true }),
+  ])
+  const all = steps.error ? [] : (steps.data || [])
+  const open = all.filter(s => !s.done)
+  const milestones = kids.error ? [] : (kids.data || [])
+  return { steps: open, milestones, total: all.length, count: open.length + milestones.length }
+}
+
 // Extract: release the item, keep its clock in the Ledger (never Harvest),
 // close a linked Main Mission task, file a note if there is one.
 // day (David 11/9): the day it was really done, for items caught up in arrears; the
 // release and the day log land on that day, today when it is not given.
 export async function extract(item, { minutes, note, day } = {}) {
+  const open = await stillOpen(item.id)
+  if (open.count) { const e = new Error(`Not ready to extract: ${open.count} still open (${[...open.steps.map(s => s.text), ...open.milestones.map(m => m.title)].join(' | ')}). Close what is open first.`); e.code = 'still-open'; e.open = open; throw e }
   const clocked = await clockedMinutes(item.id)
   const fallback = item.activated_at ? Math.max(1, Math.round((Date.now() - new Date(item.activated_at).getTime()) / 60000)) : 0
   const mins = Number(minutes) > 0 ? Math.round(Number(minutes)) : (clocked || fallback)

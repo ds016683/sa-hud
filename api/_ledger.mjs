@@ -236,6 +236,18 @@ export async function cardFrame(item) {
   return lines.join('\n')
 }
 
+// Nothing extracts with something still open (David 11/16: "I shouldn't be able to extract
+// from a Main Mission with something still open"): a mission's gates not yet closed and, on
+// a Mythic, its milestones not yet released. close_out and a release both refuse on this.
+async function stillOpen(id) {
+  const [steps, kids] = await Promise.all([
+    sb(`objective_steps?select=text,done&objective_id=eq.${id}&order=position`).catch(() => []),
+    sb(`objectives?select=title&parent_id=eq.${id}&deleted_at=is.null&state=neq.released`).catch(() => []),
+  ])
+  return { gates: steps.filter(st => !st.done).map(st => st.text), milestones: kids.map(k => k.title) }
+}
+const refuseOpen = (o, open) => JSON.stringify({ ok: false, refused: 'still open', title: o.title, open_gates: open.gates, open_milestones: open.milestones, card: `https://sa-hud.vercel.app/#/side-missions/item/${o.id}`, note: 'Not ready to extract: this mission still has something open, and a mission closes only when everything on it is closed. Tell David exactly what is still open and give him the card link. Ask him about each one: complete_step for a gate that is done, remove_step for one that no longer belongs. Never close or remove one yourself to get the extract through.' })
+
 async function findObjective(title) {
   const q = esc(title || '')
   if (!q) throw new Error('title required')
@@ -536,7 +548,7 @@ export const TOOLS = [
   },
   {
     name: 'close_out',
-    description: "Close out a Side Mission the HUD's way. Before the final call, read the mission's North Star back to David and ask one question: 'Is it true? What's different now?' His answer is Achieved: pass it as `achieved`, in his words, never drafted. First call with just the title: it reports what the mission is carrying (artifacts, files, session boards, open steps). Carrying nothing: it releases at once (clock kept in the Ledger, linked task closed, miles on the next update) and files Achieved. Carrying something: it stops and asks; call again with file_away true (realm 'personal' | 'third-horizon') to file the content into the Archive and release, or discard true to release without filing. minutes and note as on move_objective.",
+    description: "Close out a Side Mission the HUD's way. It refuses while the mission has an open gate or an open milestone, and reports which (11/16). Before the final call, read the mission's North Star back to David and ask one question: 'Is it true? What's different now?' His answer is Achieved: pass it as `achieved`, in his words, never drafted. First call with just the title: it reports what the mission is carrying (artifacts, files, session boards, open steps). Carrying nothing: it releases at once (clock kept in the Ledger, linked task closed, miles on the next update) and files Achieved. Carrying something: it stops and asks; call again with file_away true (realm 'personal' | 'third-horizon') to file the content into the Archive and release, or discard true to release without filing. minutes and note as on move_objective.",
     inputSchema: { type: 'object', properties: { title: { type: 'string' }, achieved: { type: 'string', description: "David's answer to 'Is it true? What's different now?', verbatim" }, file_away: { type: 'boolean' }, discard: { type: 'boolean' }, realm: { type: 'string' }, summary: { type: 'string', description: 'legacy; use achieved' }, minutes: { type: 'number' }, note: { type: 'string' } }, required: ['title'] },
   },
   {
@@ -1250,6 +1262,8 @@ export async function callTool(name, args = {}) {
       const myBoards = boards.filter(b => (b.board && b.board.objective_id === o.id) || (b.phases || []).some(ph => (ph.tasks || []).some(t => t.objective_id === o.id)))
       const inventory = { artifacts: arts.map(f => f.name.replace(/\.json$/, '')), files: files.map(f => f.name), boards: myBoards.map(b => b.title), open_steps: steps.filter(st => !st.done).map(st => st.text) }
       const carrying = arts.length + files.length + myBoards.length > 0
+      const stillOpenNow = await stillOpen(o.id)
+      if (stillOpenNow.gates.length || stillOpenNow.milestones.length) return refuseOpen(o, stillOpenNow)
       if (carrying && !args.file_away && !args.discard) return JSON.stringify({ ok: false, carrying: true, inventory, note: 'This Side Mission is carrying content. Ask David: file it to the Archive (call again with file_away true, realm, and a two-sentence summary) or close without filing (discard true).' })
       const filed = []
       const realm = args.realm === 'personal' ? 'personal' : ((o.tags || []).includes('personal') ? 'personal' : 'third-horizon')
@@ -1733,6 +1747,7 @@ export async function callTool(name, args = {}) {
       const state = args.state
       if (!OBJ_STATES.includes(state)) throw new Error('bad state')
       if (o.state === state) return JSON.stringify({ ok: true, note: `already ${state}`, title: o.title })
+      if (state === 'released') { const open = await stillOpen(o.id); if (open.gates.length || open.milestones.length) return refuseOpen(o, open) }
       let fit = null
       if (state === 'active') {
         fit = await checkFit({ id: o.id, effort: o.effort }, { force: !!args.force })

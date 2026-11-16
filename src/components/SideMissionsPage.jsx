@@ -14,8 +14,9 @@ import { useHeldOrder } from '../lib/heldOrder'
 import { Target, Play, Plus, Trash2, RotateCcw, Check } from 'lucide-react'
 import FileAway from './river/FileAway'
 import YayPage from './river/YayPage'
+import StillOpen from './river/StillOpen'
 import { fetchObjectives, addObjective, route, updateObjective, binObjective, restoreObjective, purgeObjective, reopenObjective, closeOut, pockets, provenance, sizeOf, TAGS } from '../lib/objectives'
-import { fetchLoadout, SIZES } from '../lib/loadout'
+import { fetchLoadout, SIZES, stillOpen } from '../lib/loadout'
 import { IconVerb } from './river/LoadoutPanel'
 import { INK, INK2, GRAY, PANEL_BORDER, PANEL_BG, GOLD, BLUE, GREEN, RED, SUCCESS, LABEL, MUTED, NAVY_DEEP, MONO, SERIF, S, Panel, Label, SubLabel, TYPE, chiToday, NORTH_STAR_LABEL, NORTH_STAR_ASK, alpha } from './river/canon'
 import { hudConfirm, hudPrompt } from '../lib/dialog'
@@ -214,6 +215,7 @@ export default function SideMissionsPage({ onNavigate }) {
   const [sel, setSel] = useState(() => new Set())
   const [filing, setFiling] = useState(null)
   const [extracting, setExtracting] = useState(null)
+  const [blocked, setBlocked] = useState(null)   // { o, open }: an Extract refused because the mission still has something open
   const [yay, setYay] = useState(null)
   const [msg, setMsg] = useState(null)
   const [dateAsk, setDateAsk] = useState(null)   // 'target' | 'nudge' while the bulk date input is open
@@ -264,9 +266,11 @@ export default function SideMissionsPage({ onNavigate }) {
   const paysLine = (o) => { if ((o.tags || []).includes('impromptu')) return 'Ad Hoc · 1 mile at the close'; const e = Number(o.effort) || 1; return e >= 4 ? 'Mythic · 50 miles at the close' : e === 3 ? 'Contract · 15 miles at the close' : 'Bounty · 4 miles at the close' }
   const onDone = async (o) => {
     try {
+      // Nothing extracts with something still open (David 11/16): the refusal lists it.
+      const open = await stillOpen(o.id)
+      if (open.count) { setBlocked({ o, open }); return }
       const p = await pockets(o.id)
       if (p.carrying) { setFiling({ o, p }); return }
-      if (p.openSteps.length && !await hudConfirm(`${p.openSteps.length} step(s) still open. Close it out anyway?`)) return
       // The same close-out form as the Board's Extract (David 11/9): time, the day it was
       // really done, Achieved in his words; then the report.
       const tags = o.tags || []
@@ -297,7 +301,7 @@ export default function SideMissionsPage({ onNavigate }) {
     if (!await hudConfirm(`Extract ${picked.length} ${picked.length === 1 ? 'item' : 'items'}? Anything carrying files is skipped and stays for its own close-out.`)) return
     let ok = 0, skipped = 0
     for (const o of picked) { try { const p = await pockets(o.id); if (p.carrying) { skipped++; continue } await closeOut(o); ok++ } catch { skipped++ } }
-    setMsg(`Extracted ${ok}${skipped ? ` · ${skipped} skipped (carrying files or steps, close them one at a time)` : ''}`); clear(); await refresh()
+    setMsg(`Extracted ${ok}${skipped ? ` · ${skipped} skipped (carrying files or open gates, close them one at a time)` : ''}`); clear(); await refresh()
   }
   const binAll = async () => { if (!await hudConfirm(`Bin ${picked.length} ${picked.length === 1 ? 'item' : 'items'}? The Bin keeps them until you purge.`)) return; each(o => binObjective(o.id), 'Binned') }
 
@@ -306,6 +310,7 @@ export default function SideMissionsPage({ onNavigate }) {
   return (
     <div style={S.page}>
       {filing && <FileAway objective={filing.o} pockets={filing.p} onClose={() => setFiling(null)} onDone={({ filed, released }) => { const id = filing.o.id; const line = paysLine(filing.o); setFiling(null); setMsg(`Filed ${filed.length} to the Archive and released ${filing.o.title}${released.minutes ? ` · ${released.minutes} minutes on the clock` : ''} · ${line}`); refresh(); setYay(id) }} />}
+      {blocked && <StillOpen mission={blocked.o} open={blocked.open} onClose={() => { setBlocked(null); refresh() }} onReady={() => { const o = blocked.o; setBlocked(null); onDone(o) }} />}
       {extracting && <YayPage objectiveId={extracting.id} onClose={() => setExtracting(null)} extract={{ item: extracting, onDone: (r) => { const o = extracting; setMsg(`Extracted: ${o.title}${r.minutes ? ` · ${r.minutes} minutes on the clock` : ''}${r.day && r.day !== today ? ` · done on ${fmtDay(r.day)}` : ''}${r.personal ? ' · personal' : ''} · ${paysLine({ tags: o.tags, effort: o.size === 'heavy' ? 5 : o.size === 'medium' ? 3 : 1 })}`); refresh() } }} />}
       {yay && <YayPage objectiveId={yay} fresh onClose={() => setYay(null)} />}
       <div style={{ marginBottom: 18 }}>
