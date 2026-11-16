@@ -6,10 +6,25 @@
 // Voice: inbound audio is transcribed with Whisper; when David speaks, Lumen
 // speaks back (ElevenLabs), in addition to the text.
 // Env: WHATSAPP_TOKEN, WHATSAPP_PHONE_ID, LUMEN_VERIFY_TOKEN, LUMEN_ALLOWED_NUMBERS
-//      (comma-separated E.164 digits), OPENAI_API_KEY, ELEVENLABS_API_KEY,
+//      (comma-separated E.164 digits), WHATSAPP_APP_SECRET (the Meta app's secret,
+//      which signs every inbound post), OPENAI_API_KEY, ELEVENLABS_API_KEY,
 //      ELEVENLABS_VOICE_ID, ANTHROPIC_API_KEY, SUPABASE_SERVICE_KEY.
 
-export const config = { maxDuration: 800 }
+// The body is read raw so the signature Meta sends can be checked against the
+// exact bytes it signed.
+export const config = { maxDuration: 800, api: { bodyParser: false } }
+
+import { createHmac, timingSafeEqual } from 'node:crypto'
+
+function readRaw(req) { return new Promise((resolve, reject) => { const chunks = []; req.on('data', c => chunks.push(c)); req.on('end', () => resolve(Buffer.concat(chunks))); req.on('error', reject) }) }
+
+// Meta signs each post with the app secret: X-Hub-Signature-256: sha256=<hex>.
+export function signedByMeta(raw, header, secret = process.env.WHATSAPP_APP_SECRET) {
+  if (!secret || !header) return false
+  const want = Buffer.from('sha256=' + createHmac('sha256', secret).update(raw).digest('hex'))
+  const got = Buffer.from(String(header).trim())
+  return want.length === got.length && timingSafeEqual(want, got)
+}
 
 import { think, remember, alreadySeen, claimInbound, fillInbound } from './_lumen-brain.mjs'
 import { flushPending } from './pulse.mjs'
@@ -263,8 +278,13 @@ export default async function handler(req, res) {
   }
   if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' })
 
-  let body = req.body
-  if (typeof body === 'string') { try { body = JSON.parse(body) } catch { body = {} } }
+  const raw = await readRaw(req)
+  if (!signedByMeta(raw, req.headers['x-hub-signature-256'])) {
+    console.warn('lumen: post refused, signature missing or wrong')
+    return res.status(401).json({ error: 'unauthorized' })
+  }
+  let body
+  try { body = JSON.parse(raw.toString('utf8')) } catch { body = {} }
 
   // Meta posts statuses (delivered/read) on the same hook; only messages matter.
   const changes = (body?.entry || []).flatMap(e => e.changes || []).map(c => c.value).filter(Boolean)
