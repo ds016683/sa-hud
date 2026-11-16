@@ -17,9 +17,12 @@ const btn = (kind = 'ghost', off = false) => ({
   border: `1px solid ${kind === 'primary' ? GOLD : PANEL_BORDER}`, background: kind === 'primary' ? GOLD : 'transparent', color: kind === 'primary' ? NAVY_DEEP : INK2,
 })
 
+// The Ledger's hands, passed in so the dev harness can run the panel on sample data.
+const LEDGER = { toggleStep, stillOpen, openCard }
+
 // mission: { id, title }. open: what stillOpen(id) returned when the Extract was refused.
 // onReady: everything is closed, carry on to the Extract. onClose: step away, nothing changed.
-export default function StillOpen({ mission, open, onReady, onClose }) {
+export default function StillOpen({ mission, open, onReady, onClose, api = LEDGER }) {
   // The rows as they stood at the refusal; closing one keeps it on the list, checked, so the work shows.
   const [steps, setSteps] = useState(() => (open?.steps || []).map(s => ({ ...s, done: false })))
   const [milestones, setMilestones] = useState(open?.milestones || [])
@@ -27,20 +30,21 @@ export default function StillOpen({ mission, open, onReady, onClose }) {
   const [err, setErr] = useState(null)
   useEffect(() => { const k = (e) => { if (e.key === 'Escape') onClose() }; window.addEventListener('keydown', k); return () => window.removeEventListener('keydown', k) }, [onClose])
   const left = steps.filter(s => !s.done).length + milestones.length
-  const total = steps.length + milestones.length
+  const total = Math.max(open?.total || 0, steps.length) + milestones.length   // gates already closed count toward the whole
+  const noun = steps.length && milestones.length ? 'items' : milestones.length ? 'milestones' : 'gates'
   const flip = async (s) => {
     if (busy) return
     setBusy(s.id); setErr(null)
     try {
-      const row = await toggleStep(s.id, !s.done)
+      const row = await api.toggleStep(s.id, !s.done)
       if (!row) throw new Error('the Ledger did not take it')
       setSteps(list => list.map(x => x.id === s.id ? { ...x, done: !s.done } : x))
     } catch (e) { setErr(`Could not ${s.done ? 'reopen' : 'close'} that gate: ${e.message}`) } finally { setBusy(null) }
   }
   // Milestones close on their own cards; coming back here, read them again.
-  const recheck = async () => { try { const now = await stillOpen(mission.id); setMilestones(now.milestones) } catch { /* keep what is shown */ } }
+  const recheck = async () => { try { const now = await api.stillOpen(mission.id); setMilestones(now.milestones) } catch { /* keep what is shown */ } }
   useEffect(() => { const f = () => { recheck() }; window.addEventListener('focus', f); return () => window.removeEventListener('focus', f) })
-  const toMission = () => { onClose(); openCard(mission.id) }
+  const toMission = () => { onClose(); api.openCard(mission.id) }
   return (
     <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 320, background: 'rgba(5,16,28,0.86)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16, overflowY: 'auto' }}>
       <div onClick={e => e.stopPropagation()} role="alertdialog" aria-labelledby="still-open-title" style={{ width: 'min(640px, 100%)', maxHeight: '92vh', overflowY: 'auto', background: '#0F2338', border: `1px solid ${alpha(left ? RED : SUCCESS, 45)}`, borderRadius: 16, padding: '30px 30px 24px' }}>
@@ -54,7 +58,7 @@ export default function StillOpen({ mission, open, onReady, onClose }) {
 
         <div style={{ fontSize: 14.5, lineHeight: 1.55, color: left ? RED : INK2, margin: '14px 0 0' }}>
           {left
-            ? `Extract refused. ${left} of ${total} ${total === 1 ? 'item is' : 'items are'} still open on this mission, and a mission closes only when everything on it is closed.`
+            ? `Extract refused. ${left} of ${total} ${noun} ${left === 1 ? 'is' : 'are'} still open on this mission, and a mission closes only when everything on it is closed.`
             : 'Everything on this mission is closed. Carry on to the Extract.'}
         </div>
 
@@ -81,7 +85,7 @@ export default function StillOpen({ mission, open, onReady, onClose }) {
                 <div key={k.id} style={{ display: 'flex', gap: 12, alignItems: 'center', padding: '9px 12px', border: `1px solid ${PANEL_BORDER}`, borderRadius: 10 }}>
                   <span style={{ width: 18, height: 18, borderRadius: 99, flexShrink: 0, border: '1.5px solid rgba(234,241,248,0.4)' }} />
                   <span style={{ flex: 1, fontSize: 14.5, lineHeight: 1.4, color: INK }}>{k.title}</span>
-                  <button onClick={() => { onClose(); openCard(k.id) }} style={btn()}>Open Milestone <ArrowRight size={13} /></button>
+                  <button onClick={() => { onClose(); api.openCard(k.id) }} style={btn()}>Open Milestone <ArrowRight size={13} /></button>
                 </div>
               ))}
             </div>
