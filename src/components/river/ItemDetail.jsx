@@ -141,11 +141,18 @@ async function loadRelated(item) {
 const isSessionLink = (r) => isLink(r) && /^claude:\/\//.test(String(r.path || ''))
 const sessionLinks = (links) => (links || []).filter(isSessionLink).sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)))
 // The Cold Start (David 11/4): one button on the Briefing copies a briefed start for a fresh Claude session.
-function briefCommand(item, links) {
+// The command is pasted into a terminal, so the folder is spelled with $HOME (a ~ inside
+// quotes does not open) and a title's shell characters are escaped.
+const shq = (s) => String(s || '').replace(/"/g, "'").replace(/!/g, '').replace(/[\\$`]/g, '\\$&')
+function briefCommand(item, links, taskId) {
   const sessions = sessionLinks(links)
-  const cwd = (String(sessions[0]?.note || '').match(/^cd "([^"]+)"/) || [])[1] || '~/builds/sa-hud'
+  const cwd = (String(sessions[0]?.note || '').match(/^cd "([^"]+)"/) || [])[1] || '$HOME/builds/sa-hud'
   const oid = item.objective_id || item.id
-  return `cd "${cwd}" && claude "Pick up the ${item.kind || 'Side Mission'} '${String(item.title || '').replace(/"/g, "'")}' (${oid}): read its briefing with get_objectives and list_steps, its files with list_live_files, then continue from Next. Set the focus on it first."`
+  const milestone = item.kind === 'Main Mission'
+  const read = milestone
+    ? `read the mission and its milestones with get_projects${taskId ? ` (this milestone is task ${taskId})` : ''}, its files with list_live_files`
+    : 'read its briefing with get_objectives and list_steps, its files with list_live_files'
+  return `cd "${cwd}" && claude "Pick up the ${milestone ? 'Main Mission milestone' : (item.kind || 'Side Mission')} '${shq(item.title)}' (${oid}): ${read}, then pick up at the first open stop on its End Of The Trail. If no stop is open, ask David what the first one is. Set the focus on it first."`
 }
 // Evidence (David 10/23): the files pinned under Polaris as the proof the
 // objective was met. They lead the close-out record. Pinning happens in Files.
@@ -398,7 +405,7 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
                       ? <button onClick={() => act(() => holster(loaded.id), 'Timer off')} style={btn(GREEN, true)}><Pause size={12} /> Holster</button>
                       : <button onClick={() => act(() => equip(loaded.id), 'Timer on')} style={btn(GOLD, true)}><Play size={12} /> Equip</button>)
                     : <button onClick={startTimer} style={btn(GOLD, true)}><Play size={12} /> Equip</button>)}
-                  <button onClick={() => copyText(briefCommand(item, requests))} title={briefCommand(item, requests)} style={btn(INK2)}><Terminal size={12} /> {copied ? 'Copied' : 'Cold Start'}</button>
+                  <button onClick={() => copyText(briefCommand(item, requests, taskId))} title={briefCommand(item, requests, taskId)} style={btn(INK2)}><Terminal size={12} /> {copied ? 'Copied' : 'Cold Start'}</button>
                   {loaded && <button onClick={() => act(() => stash(loaded.id), 'Stashed')} style={btn(INK2)}><Archive size={12} /> Stash</button>}
                   <span style={{ marginLeft: 'auto', fontSize: 13, color: MUTED }}>{loaded ? (loaded.equipped ? 'Equipped' : 'Holstered') : 'Not Loaded'} · <span style={{ color: loaded?.equipped ? GREEN : INK2, fontWeight: 600 }}>{fmtClock(loaded?.minutes_today || 0)} Today</span></span>
                 </div>
