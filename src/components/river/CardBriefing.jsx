@@ -249,7 +249,7 @@ export default function CardBriefing({ obj, root, kindLabel, steps = [], kids = 
   const realFiles = side.files.filter(f => !isLink(f) && !isRequest(f))
   const blanks = side.latest ? blanksIn(side.latest.text).length : 0
   const mySteps = side.psteps.length, myStepsDone = side.psteps.filter(x => x.done).length
-  const here = hereText || `${fmtClock(loaded?.minutes_today || 0)} on the clock today. ${loaded ? (loaded.equipped ? 'The clock is running.' : 'Holstered.') : 'Not on the Board.'}`
+  const here = hereText || `${fmtClock(loaded?.minutes_today || 0)} on the clock today. ${loaded ? (loaded.equipped ? 'The clock is running.' : 'On the Loadout, clock off.') : 'Not on the Loadout.'}`
 
   return (
     <DndContext sensors={sensors} collisionDetection={nearestPlace} onDragStart={(e) => { dragged.current = true; setDrag(e.active?.data?.current?.kind || null) }} onDragEnd={dragEnd} onDragCancel={() => { setDrag(null); setTimeout(() => { dragged.current = false }, 0) }}>
