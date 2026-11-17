@@ -29,7 +29,8 @@ export async function fetchProtocolState() {
     readRun().then(d => d?.run || null).catch(() => null),
   ])
   const mins = (iso) => Math.max(0, Math.round((nowMs - new Date(iso).getTime()) / 60000))
-  const out = (id, label, color, title, detail, pct = null, since = null, blink = false) => ({ id, label, color, title, detail, pct, since, blink })
+  // ends, slots and live feed the pill's meter (see ProtocolHud): the run's end, the Loadout's two slots, a running clock.
+  const out = (id, label, color, title, detail, pct = null, since = null, blink = false, more = {}) => ({ id, label, color, title, detail, pct, since, blink, ...more })
 
   if (flags.length && !/cleared/i.test(flags[0].note || '')) return out('emergency', 'Emergency', RED, flags[0].note || 'Emergency protocol', 'flagged', null, flags[0].at, true)
 
@@ -39,13 +40,13 @@ export async function fetchProtocolState() {
   if (button) {
     const slug = button.event_id.split(':').slice(2).join(':')
     const color = slug === 'travel' ? TRAVEL : slug === 'morning-protocol' ? GOLD : (slug === 'evening-protocol' || button.event_id.startsWith('personal:')) ? PURPLE : GREEN
-    return out('console', button.subject || words(slug) || 'Console', color, `${mins(button.started_at)}m on the clock`, 'a Console button is on', null, button.started_at)
+    return out('console', button.subject || words(slug) || 'Console', color, null, `a Console button is on, ${mins(button.started_at)}m on the clock`, null, button.started_at)
   }
 
   if (run && run.state === 'running') {
     const left = Math.round((new Date(run.ends_at).getTime() - nowMs) / 60000)
     const span = new Date(run.ends_at).getTime() - new Date(run.started_at).getTime()
-    return out('run', 'In Run', GREEN, `Run ${run.n}`, left > 0 ? `${left}m left` : `${-left}m over`, Math.max(0, Math.min(100, Math.round((nowMs - new Date(run.started_at).getTime()) / span * 100))), run.started_at)
+    return out('run', 'In Run', GREEN, `Run ${run.n}`, left > 0 ? `${left}m left` : `${-left}m over`, Math.max(0, Math.min(100, Math.round((nowMs - new Date(run.started_at).getTime()) / span * 100))), run.started_at, false, { ends: run.ends_at })
   }
 
   const meeting = running.find(r => !ofConsole(r))
@@ -60,7 +61,10 @@ export async function fetchProtocolState() {
   const missions = active.filter(o => !has(o, 'session') && !has(o, 'impromptu'))
   if (missions.length) {
     const live = missions.find(o => clocks.some(c => c.objective_id === o.id)) || missions[0]
-    return out('mission', 'In Mission', GREEN, missions.length > 1 ? `${live.title} + ${missions.length - 1} more` : live.title, clocks.some(c => c.objective_id === live.id) ? 'the clock is running' : 'on the Board, clock off', null, live.activated_at)
+    const tick = clocks.find(c => c.objective_id === live.id) || null
+    // The pill is green only while a clock runs; a mission sitting on the Board with its clock off is the accent.
+    return out('mission', 'In Mission', tick ? GREEN : BLUE, missions.length > 1 ? `${live.title} + ${missions.length - 1} more` : live.title, tick ? 'the clock is running' : 'on the Board, clock off', null, tick ? tick.started_at : null, false,
+      { live: !!tick, slots: missions.slice(0, 2).map(o => ({ live: clocks.some(c => c.objective_id === o.id) })) })
   }
   return out('off', 'Off Protocol', OFF, 'Nothing on the Board', 'load a mission, start a run, or use the Console')
 }

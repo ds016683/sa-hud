@@ -4,6 +4,7 @@ import {
   FileText, Wallet, CreditCard, ListChecks, Compass, Waves, CalendarDays, BookOpen, Activity, Award, Wrench, GraduationCap, Sparkles, Archive as ArchiveIcon, FolderOpen, PenTool, Briefcase, Mic, Wand2, Bot, PenLine, Footprints } from 'lucide-react'
 import { getSession, onAuthStateChange, signOut } from './lib/auth'
 import { fetchProtocolState } from './lib/protocol'
+import ProtocolHud from './components/river/ProtocolHud'
 import LoginPage from './components/LoginPage'
 import ProjectsPage from './components/ProjectsPage'
 import StepReview from './components/river/StepReview'
@@ -11,7 +12,7 @@ import ClientsPage from './components/ClientsPage'
 import ItemDetail from './components/river/ItemDetail'
 import { itemFromObjective } from './lib/loadout'
 import { closeCard } from './lib/card'
-import { GOLD, MissionMark, alpha } from './components/river/canon'
+import { GOLD, MissionMark } from './components/river/canon'
 import EcosystemPage from './components/EcosystemPage'
 import MeetingNotesPage from './components/MeetingNotesPage'
 import SideMissionsPage from './components/SideMissionsPage'
@@ -162,11 +163,6 @@ function useProtocol() {
 function Topbar({ active, onBack }) {
   const proto = useProtocol()
   const navItem = NAV_ITEMS.find((n) => n.id === active) || {}
-  const ctx = navItem.group
-    ? (navItem.group === (navItem.label || '').toUpperCase()
-        ? navItem.group
-        : `${navItem.group} · ${(navItem.label || '').toUpperCase()}`)
-    : 'DAILY MONITOR'
   const title = navItem.label || 'Command Center'
 
   return (
@@ -178,17 +174,10 @@ function Topbar({ active, onBack }) {
         }}>← Back</button>
       )}
       <div className="crumb">
-        <div className="sa-tele ctx">{ctx}</div>
         <div className="ttl">{title}</div>
       </div>
       <div className="spacer"></div>
-      <div className="sa-protocol-pill" title={proto ? `${proto.title}${proto.detail ? ` · ${proto.detail}` : ''}` : 'reading the Ledger'} style={{ borderColor: proto ? `${alpha(proto.color, 40)}` : undefined, maxWidth: 420 }}>
-        <span className="dot" style={{ background: proto?.color, boxShadow: proto && proto.id !== 'off' ? `0 0 0 3px ${alpha(proto.color, 20)}` : 'none', animation: proto?.blink ? 'rcblink 1s ease-in-out infinite' : 'none' }}></span>
-        <span className="sa-tele">PROTOCOL</span>
-        <b style={{ fontSize: '12px', whiteSpace: 'nowrap' }}>{proto ? proto.label : '…'}</b>
-        {proto && proto.id !== 'off' && <span style={{ fontSize: 11, color: 'rgba(234,241,248,0.6)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 200 }}>· {proto.title}</span>}
-        {proto?.pct != null && <span style={{ display: 'inline-block', width: 54, height: 4, borderRadius: 99, background: 'rgba(255,255,255,0.1)', overflow: 'hidden', marginLeft: 6 }}><span style={{ display: 'block', width: `${proto.pct}%`, height: '100%', background: proto.color }} /></span>}
-      </div>
+      <ProtocolHud proto={proto} />
     </header>
   )
 }

@@ -275,6 +275,36 @@ body {
 .sa-protocol-pill .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--sa-accent); }
 .sa-protocol-pill b { color: var(--sa-ink); }
 
+/* The Protocol as a game's status readout (David 11/17): a targeting frame, a radar scope, a live meter. */
+.proto-hud { --c: var(--hud-accent); position: relative; display: inline-flex; align-items: center; gap: 10px; white-space: nowrap; max-width: min(560px, 60vw); padding: 7px 14px; border-radius: 8px; border: 1px solid color-mix(in srgb, var(--c) 28%, transparent); background: color-mix(in srgb, var(--c) 7%, transparent); color: var(--sa-ink); font-size: 13px; }
+.proto-hud::before, .proto-hud::after { content: ""; position: absolute; width: 8px; height: 8px; border: 2px solid var(--c); pointer-events: none; }
+.proto-hud::before { left: -2px; top: -2px; border-right: 0; border-bottom: 0; border-top-left-radius: 4px; }
+.proto-hud::after { right: -2px; bottom: -2px; border-left: 0; border-top: 0; border-bottom-right-radius: 4px; }
+.proto-hud b { font-weight: 600; color: #fff; }
+.proto-hud .what { color: rgba(234,241,248,0.62); font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; max-width: 230px; }
+.proto-hud .scope { position: relative; width: 16px; height: 16px; flex-shrink: 0; border-radius: 50%; border: 1.5px solid color-mix(in srgb, var(--c) 70%, transparent); overflow: hidden; }
+.proto-hud .scope::before { content: ""; position: absolute; inset: 0; background: conic-gradient(from 0deg, color-mix(in srgb, var(--c) 85%, transparent) 0deg, transparent 110deg); animation: protosweep 2.2s linear infinite; }
+.proto-hud .scope::after { content: ""; position: absolute; left: 50%; top: 50%; width: 3px; height: 3px; margin: -1.5px 0 0 -1.5px; border-radius: 50%; background: var(--c); }
+.proto-hud.idle { --c: rgba(234,241,248,0.4); }
+.proto-hud.idle .scope::before { display: none; }
+.proto-hud.idle b { color: rgba(234,241,248,0.7); font-weight: 500; }
+.proto-hud .t { font-family: var(--font-mono, monospace); font-size: 12.5px; font-variant-numeric: tabular-nums; color: var(--c); min-width: 44px; text-align: right; }
+.proto-hud .t.low, .proto-hud .t.over { color: var(--hud-neg); }
+.proto-hud .t.over { animation: protoblink 1s ease-in-out infinite; }
+.proto-hud .cells { display: inline-flex; gap: 2px; }
+.proto-hud .cells i { width: 7px; height: 11px; border-radius: 1.5px; background: rgba(234,241,248,0.13); }
+.proto-hud .cells i.on { background: var(--c); }
+.proto-hud .cells.low i.on { background: var(--hud-neg); animation: protoblink 1s ease-in-out infinite; }
+.proto-hud .pips { display: inline-flex; gap: 4px; }
+.proto-hud .pips i { width: 9px; height: 9px; border-radius: 2px; transform: rotate(45deg); border: 1.5px solid rgba(234,241,248,0.3); }
+.proto-hud .pips i.on { background: var(--hud-accent); border-color: var(--hud-accent); }
+.proto-hud .pips i.live { background: var(--hud-pos); border-color: var(--hud-pos); animation: protopip 1.6s ease-in-out infinite; }
+.proto-hud.alarm { animation: protoblink 1s ease-in-out infinite; }
+@keyframes protoblink { 0%, 100% { opacity: 1; } 50% { opacity: .25; } }
+@keyframes protosweep { to { transform: rotate(360deg); } }
+@keyframes protopip { 0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--hud-pos) 55%, transparent); } 50% { box-shadow: 0 0 0 4px transparent; } }
+@media (prefers-reduced-motion: reduce) { .proto-hud .scope::before, .proto-hud .pips i.live, .proto-hud .cells.low i.on, .proto-hud .t.over { animation: none; } }
+
 /* mini sovereignty in topbar */
 .sa-mini-sov { display: flex; align-items: center; gap: 10px; }
 .sa-mini-track { width: 78px; height: 6px; border-radius: 3px; background: var(--sa-border); overflow: hidden; }
