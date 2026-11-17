@@ -1422,6 +1422,18 @@ button.brf-chip:hover { border-color: var(--hud-accent); }
 @keyframes ldrun { 0%, 100% { border-color: var(--hud-pos); box-shadow: 0 0 0 1px var(--hud-pos), 0 0 0 6px color-mix(in srgb, var(--hud-pos) 16%, transparent); } 50% { border-color: color-mix(in srgb, var(--hud-pos) 45%, transparent); box-shadow: 0 0 0 1px color-mix(in srgb, var(--hud-pos) 30%, transparent), 0 0 0 2px color-mix(in srgb, var(--hud-pos) 0%, transparent); } }
 .ld-running { animation: ldrun 2.4s ease-in-out infinite; }
 @media (prefers-reduced-motion: reduce) { .ld-running { animation: none; box-shadow: 0 0 0 1px var(--hud-pos), 0 0 0 5px color-mix(in srgb, var(--hud-pos) 14%, transparent); } }
+/* The Run's results (David 11/17): the veil, the medallion landing, its ripples and sparks, the page rising. */
+@keyframes runveil { from { opacity: 0; } to { opacity: 1; } }
+@keyframes runpop { 0% { transform: scale(.5); opacity: 0; } 60% { transform: scale(1.08); opacity: 1; } 100% { transform: scale(1); opacity: 1; } }
+@keyframes runripple { 0% { transform: scale(.9); opacity: .6; } 100% { transform: scale(2.4); opacity: 0; } }
+@keyframes runspark { 0% { transform: rotate(var(--a)) translateY(-84px) scaleY(.3); opacity: 0; } 25% { opacity: 1; } 100% { transform: rotate(var(--a)) translateY(-158px) scaleY(1); opacity: 0; } }
+.run-veil { animation: runveil .25s ease both; }
+.run-medal { animation: runpop .7s cubic-bezier(.2, .9, .3, 1.2) both; }
+.run-ripple { position: absolute; inset: 0; border-radius: 50%; border: 2px solid var(--hud-success); animation: runripple 1.3s ease-out both; pointer-events: none; }
+.run-ripple.b { animation-delay: .24s; }
+.run-spark { position: absolute; left: 50%; top: 50%; width: 3px; margin: -8px 0 0 -1.5px; border-radius: 2px; background: var(--hud-success); opacity: 0; animation: runspark 1s ease-out .12s both; pointer-events: none; }
+.run-rise { animation: brfrise .5s ease both; }
+@media (prefers-reduced-motion: reduce) { .run-veil, .run-medal, .run-rise { animation: none; } .run-ripple, .run-spark { display: none; } }
 
 /* A slot's name (David 11/17): the same small tag on Primary, Secondary and Utility, full or empty. */
 .ld-slot-tag { display: inline-flex; align-items: center; font-size: 12px; font-weight: 600; line-height: 1; padding: 5px 10px; border-radius: 99px; border: 1px solid var(--hud-border); background: var(--hud-fill); color: var(--hud-ink-2); white-space: nowrap; flex-shrink: 0; }
