@@ -10,7 +10,8 @@ import { useCallback, useEffect, useState } from 'react'
 import { Play, Pause, Archive, ExternalLink, Mic, Check, Plus, Trash2, Terminal, Star } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { listArtifacts, readArtifact } from '../../lib/artifacts'
-import { fetchLoadout, equip, stash, unload, equipObjective, equipTask, fmtClock, SIZES, sizeOf } from '../../lib/loadout'
+import { fetchLoadout, equip, stash, unload, equipObjective, equipTask, SIZES, sizeOf } from '../../lib/loadout'
+import { GlyphLoadout, GlyphHolster, GlyphStash } from './glyphs'
 import DocView from './DocView'
 import { fetchSteps, listObjectiveArtifacts, listObjectiveFiles, listObjectiveBoards, realmOf, setSize, updateObjective, objRoot, fetchGates } from '../../lib/objectives'
 import { renderMarkdown } from './MeetingCloseout'
@@ -278,13 +279,10 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
     return act(() => stash(obj.id), 'In the Stash')
   }
   const where = obj ? (
-    <div className="brf-where">
-      <div className="seg" role="group" aria-label="Where this card is">
-        {[['loadout', 'Loadout', 'On the Loadout. A click here also starts its clock.'], ['holster', 'Holster', 'Off the Board, back on the Mission Board'], ['stash', 'Stash', 'Held in the Stash on the Board']].map(([id, label, tip]) => (
-          <button key={id} className={place === id ? 'on' : ''} aria-pressed={place === id} title={tip} onClick={() => moveTo(id)}>{label}</button>
-        ))}
-      </div>
-      <div className="clock">{loaded ? (loaded.equipped ? <><i className="run" />Clock running</> : 'Clock off') : 'Not on the Loadout'} · <b style={loaded?.equipped ? { color: 'var(--hud-pos)' } : undefined}>{fmtClock(loaded?.minutes_today || 0)} today</b></div>
+    <div className="brf-where" role="group" aria-label="Where this card is">
+      {[['loadout', 'On the Loadout', <GlyphLoadout key="g" size={19} />], ['holster', 'Holster · Back on the Mission Board', <GlyphHolster key="g" size={19} />], ['stash', 'Stash · Held on the Board', <GlyphStash key="g" size={19} />]].map(([id, tip, glyph]) => (
+        <button key={id} className={place === id ? 'on' : ''} aria-pressed={place === id} aria-label={tip} title={tip} onClick={() => moveTo(id)}>{glyph}</button>
+      ))}
     </div>
   ) : null
   const [editStar, setEditStar] = useState(false)

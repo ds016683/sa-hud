@@ -6,6 +6,7 @@
 // Empty slots stay visible on purpose (David, 10/7: the structure is the point).
 import { useEffect, useState, useCallback } from 'react'
 import { createPortal } from 'react-dom'
+import { GlyphHolster, GlyphStash } from './glyphs'
 import { Play, Pause, PackageCheck, Archive, X as XIcon, Zap, Phone, Swords } from 'lucide-react'
 import BadgeMedallion from '../BadgeArt'
 import RecallModal, { BrainButton } from './Recall'
@@ -67,7 +68,6 @@ function ClockStrip({ minutes = 0, hours = 1, running = false, onToggle }) {
 // The verbs (David 11/7): loaded is equipped, so there are three, as glyphs at the bottom left in the Marathon map idiom
 // (a reticle ring, an arrow, ticks): Holster sends the item back to its repository, Stash holds it on the board, Extract
 // closes it and banks the miles. Lumen keeps the bottom right. Chrome is one color at rest, Extract the one gold action.
-const GLYPH = { fill: 'none', stroke: 'currentColor', strokeWidth: 1.7, strokeLinecap: 'round', strokeLinejoin: 'round' }
 // Extract is the Marathon exfil marker (David 11/7, from his frame): a peaked badge with a bold up-arrow. The marker is the
 // button's own shape, gold outline and arrow at rest, gold fill with the arrow in navy on hover, so it keeps the house palette.
 export function ExtractMarker({ title, onClick, size = 34 }) {
@@ -82,19 +82,6 @@ export function ExtractMarker({ title, onClick, size = 34 }) {
     </button>
   )
 }
-const GlyphHolster = ({ size = 15 }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" {...GLYPH}>
-    <path d="M9.5 4.5H4.5v15h5" />
-    <path d="M20 12H9M12.8 8.2 9 12l3.8 3.8" />
-    <path d="M19.5 7.5v-2M19.5 18.5v-2" />
-  </svg>
-)
-const GlyphStash = ({ size = 15 }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" {...GLYPH}>
-    <path d="M4 14.5l8 4 8-4M4 18l8 4 8-4" />
-    <path d="M12 2.5V13M8.3 9.3 12 13l3.7-3.7" />
-  </svg>
-)
 export function IconVerb({ color = INK2, title, onClick, children }) {
   const [hot, setHot] = useState(false)
   return (
