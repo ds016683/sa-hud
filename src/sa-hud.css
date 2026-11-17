@@ -1442,9 +1442,10 @@ table.fin-grid { width: 100%; border-collapse: collapse; font-family: var(--font
 .brf-m.closed .s { color: var(--hud-success); }
 .brf-side { display: grid; grid-template-columns: repeat(auto-fit, minmax(max(180px, 40%), 1fr)); grid-auto-rows: 1fr; gap: 14px; align-content: start; }
 /* Where the card is: Loadout, Holster, Stash, the one it is in lit in the accent (David 11/17: "not green"). */
-.brf-where { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-top: 14px; }
-.brf-where button { display: grid; place-items: center; height: 44px; border-radius: 12px; border: 1px solid var(--hud-border); background: transparent; color: var(--hud-ink-2); cursor: pointer; transition: border-color .15s, color .15s; }
-.brf-where button:hover { border-color: color-mix(in srgb, var(--hud-accent) 60%, transparent); color: var(--hud-ink); }
+/* The same round marks the Board's slots carry (David 11/17: "we have icons for this stuff"). */
+.brf-where { display: flex; align-items: center; gap: 9px; margin-top: 14px; }
+.brf-where button { width: 36px; height: 36px; padding: 0; flex-shrink: 0; display: inline-grid; place-items: center; border-radius: 99px; border: 1px solid color-mix(in srgb, var(--hud-ink-2) 40%, transparent); background: transparent; color: var(--hud-ink-2); cursor: pointer; transition: border-color .15s, background .15s; }
+.brf-where button:hover { border-color: color-mix(in srgb, var(--hud-ink-2) 85%, transparent); background: color-mix(in srgb, var(--hud-ink-2) 10%, transparent); }
 .brf-where button.on { background: var(--hud-accent); border-color: var(--hud-accent); color: var(--hud-on-accent); }
 .brf-tile { display: flex; flex-direction: column; min-width: 0; min-height: 158px; border: 1px solid var(--hud-border); border-radius: 14px; padding: 16px 18px 15px; background: var(--hud-fill); outline: none; }
 .brf-tile.go { cursor: pointer; transition: border-color .15s, transform .15s; }
