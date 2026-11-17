@@ -18,7 +18,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { Play, Square, Check, Plane, Pencil, CalendarCheck, Brain, Mail, Hash, Receipt, MessageSquare, Monitor, X as XIcon } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { upsertSession, logToHarvest, hoursBetween } from '../../lib/meetings'
-import { chiToday, fmtClock } from '../../lib/loadout'
+import { chiToday, fmtClock, utilityOccupant } from '../../lib/loadout'
 import { INK, INK2, GRAY, PANEL_BORDER, GOLD, GREEN, RED, BLUE, MONO, Label, fmtTime, LABEL, alpha } from './canon'
 import { Instrument, InstrumentGroup, groupMsg } from './Instrument'
 import { hudPrompt, hudConfirm } from '../../lib/dialog'
@@ -132,6 +132,8 @@ export default function RecurringPanel({ onChange }) {
       if (other) { setMsg(`${other.subject} is already running. Stop it first.`); return }
       const blocked = r.concurrent ? null : blockedBy(consoleRun.running, eid(day, r.slug))
       if (blocked) { setMsg(blocked); return }
+      // The Utility slot holds one thing: not a Console timer while the unplanned is in it (David 11/17).
+      if (!r.concurrent) { const held = await utilityOccupant(); if (held.unplanned) { setMsg(`The Utility slot holds "${held.unplanned}". Dispatch it first.`); return } }
       await upsertSession({ event_id: eid(day, r.slug), day, subject: r.label, started_at: new Date().toISOString(), stopped_at: null })
       setMsg(`${r.label} started`); await refresh(); onChange && onChange()
     } catch (e) { setMsg(`Could not start: ${e.message}`) }

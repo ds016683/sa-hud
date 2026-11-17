@@ -19,7 +19,7 @@ import { ArrowLeft, ArrowRight, Check, Sunrise, Moon, Play, Pause, Square, Rocke
 import { supabase, reportSoft } from '../../lib/supabase'
 import { useConsoleRun, blockedBy } from '../../lib/consoleRun'
 import { upsertSession, logToHarvest, hoursBetween, startMeetingTimer, stopMeetingTimer } from '../../lib/meetings'
-import { fetchLoadout, equipObjective, equipTask, equip, holster, startWithRoom, resolveObjectiveId, fmtClock, chiToday, SIZES, SLOTS } from '../../lib/loadout'
+import { fetchLoadout, equipObjective, equipTask, equip, holster, startWithRoom, resolveObjectiveId, fmtClock, chiToday, SIZES, SLOTS, utilityOccupant } from '../../lib/loadout'
 import { KIND_COLOR, PURPLE, LABEL, alpha, INK, INK2, GRAY, PANEL_BORDER, GOLD, GOLD_BRIGHT, GREEN, SUCCESS, RED, BLUE, MONO, SERIF, S, Label as BaseLabel, Panel, fmtTime } from './canon'
 const Label = ({ children, style }) => <BaseLabel style={{ color: BLUE, ...style }}>{children}</BaseLabel>
 import { HYGIENE_ITEMS } from '../../constants/hygiene'
@@ -370,6 +370,7 @@ function Protocol({ day, session, onClose, onFinished, onChange, onNavigate }) {
     try {
       const other = sessions.find(s => s.started_at && !s.stopped_at && !s.event_id.endsWith(':travel') && !s.event_id.endsWith(`:${MORNING_SLUG}`) && s.event_id !== `adhoc:${day}:${sys.slug}`)
       if (other) { setMsg(`${other.subject} is running. Stop it first.`); return }
+      const held = await utilityOccupant(); if (held.unplanned) { setMsg(`The Utility slot holds "${held.unplanned}". Dispatch it first.`); return }
       await upsertSession({ event_id: `adhoc:${day}:${sys.slug}`, day, subject: sys.label, started_at: new Date().toISOString(), stopped_at: null, hours: sysSession(sys.slug)?.hours || 0 })
       await loadAll()
     } catch (e) { setMsg(`Could not start: ${e.message}`) }

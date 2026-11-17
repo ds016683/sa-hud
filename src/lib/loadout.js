@@ -297,9 +297,23 @@ export async function deleteMission(project) {
 
 // Impromptu: something David is doing right now that was never planned. Goes on
 // the board tagged impromptu (1 mile on extract), Light, timer running.
+// The Utility slot holds one thing at a time (David 11/17: "i think they need to refuse each other. at
+// least for now. otherwise we risk making a mess"): a Console button's timer or the unplanned. Travel
+// runs alongside everything, as it always has.
+export async function utilityOccupant() {
+  const [runs, adhoc] = await Promise.all([
+    supabase.from('meeting_sessions').select('event_id,subject').eq('day', chiToday()).is('stopped_at', null).not('started_at', 'is', null).or('event_id.like.adhoc:%,event_id.like.personal:%'),
+    supabase.from('objectives').select('id,title').eq('state', 'active').is('deleted_at', null).contains('tags', ['impromptu']).limit(1),
+  ])
+  const run = (runs.data || []).find(s => !/:travel$/.test(String(s.event_id || ''))) || null
+  return { console: run ? (run.subject || 'A Console timer') : null, unplanned: adhoc.data && adhoc.data[0] ? adhoc.data[0].title : null }
+}
+
 export async function addImpromptu(title, { personal = false, tags = [] } = {}) {
   const text = String(title || '').trim()
   if (!text) throw new Error('say what you are doing')
+  const held = await utilityOccupant()
+  if (held.console) return { ok: false, reasons: [`The Utility slot is running ${held.console}. Stop it first.`] }
   const L = await fetchLoadout()
   const reasons = fitReasons(L, 'light', { adhoc: true })
   if (reasons.length) return { ok: false, reasons }

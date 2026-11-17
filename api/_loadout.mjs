@@ -80,7 +80,7 @@ export async function loadout() {
     hours: { free_hours: freeHours, loaded_hours: loaded, meetings_left_hours: Math.round(meetingsLeft * 10) / 10, day_end: `${DAY_END_HOUR}:00 CT`, after_hours: hoursToDayEnd() === 0, note: hoursToDayEnd() === 0 ? 'After 6 PM: stamina is not enforced, slots and Heavy still are.' : 'Loaded hours must fit within free hours before 6 PM.' },
     equipped: items.find(i => i.equipped) || null,
     items, sessions: items.filter(i => i.session), adhoc,
-    rules: `Two mission slots, Primary and Secondary; every mission takes one, whatever its size. One clock running. The third slot is the Utility slot: only a Console button (E-mail, Slack Review, Bill Pay and the others) or the unplanned (a phone call or a non-mission task, 1 mile each), which must be dispatched before another lands. Both mission slots taken: stash (park) one first.`,
+    rules: `Two mission slots, Primary and Secondary; every mission takes one, whatever its size. One clock running. The third slot is the Utility slot: only a Console button (E-mail, Slack Review, Bill Pay and the others) or the unplanned (a phone call or a non-mission task, 1 mile each), which must be dispatched before another lands. The Utility slot holds one thing at a time: a Console timer and the unplanned refuse each other (stop or dispatch the one that is on first). Both mission slots taken: stash (park) one first.`,
   }
 }
 
