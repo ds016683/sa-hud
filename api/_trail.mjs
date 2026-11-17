@@ -113,7 +113,7 @@ Matching: use the mission whose work the event plainly belongs to. A session eve
 ${list.map(m => `- ${m.id} · ${m.kind} · ${m.title}${m.key ? ` (key ${m.key})` : ''}${m.gates && m.gates.length ? `\n  open gates: ${m.gates.join(' | ')}` : ''}`).join('\n')}
 
 ## Events
-${events.map(e => `- ref ${e.ref} · ${e.source === 'email' ? 'email David sent' : 'work a Claude Code session closed for David'} · ${e.at}${e.hint ? ` · project key ${e.hint}` : ''}\n  ${e.basis}${e.detail ? `\n  ${e.detail}` : ''}`).join('\n')}
+${events.map((e, i) => `- ref e${i + 1} · ${e.source === 'email' ? 'email David sent' : 'work a Claude Code session closed for David'} · ${e.at}${e.hint ? ` · project key ${e.hint}` : ''}\n  ${e.basis}${e.detail ? `\n  ${e.detail}` : ''}`).join('\n')}
 
 Reply with one JSON object and nothing else: {"steps":[{"ref":"<the event ref>","mission":"<mission id, or null>","text":"<the step, or null>"}]} with one entry for every event.`
 }
@@ -144,11 +144,12 @@ export async function capture({ model }) {
   const text = (body.content || []).filter(c => c.type === 'text').map(c => c.text).join('')
   const steps = parseJson(text).steps
   if (!Array.isArray(steps)) throw new Error('the reply held no steps')
+  // The prompt names each event e1, e2, ... (a mail id is too long to copy back reliably).
   const byRef = new Map(steps.map(s => [String(s.ref), s]))
   const byId = new Map(list.map(m => [m.id, m]))
   const added = [], skipped = []
-  for (const e of events) {
-    const s = byRef.get(e.ref)
+  for (const [i, e] of events.entries()) {
+    const s = byRef.get(`e${i + 1}`)
     const line = s && s.text ? clean(s.text) : ''
     if (!line) { skipped.push({ ref: e.ref, source: e.source, at: e.at, basis: e.basis }); continue }
     const m = s.mission ? byId.get(String(s.mission)) : null
