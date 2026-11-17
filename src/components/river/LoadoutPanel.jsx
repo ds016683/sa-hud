@@ -152,8 +152,9 @@ function MeetingSlot({ it, act }) {
         <BadgeMedallion id="toastmaster" size={50} color={BLUE} />
         <div style={{ flex: 1, minWidth: 0, display: 'grid', gap: 2 }}>
           <div style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 14.5, color: INK, lineHeight: 1.25 }}>In a meeting</div>
-          <div style={{ fontSize: 12.5, fontWeight: 600, color: BLUE }}>Utility · Meeting</div>
+          <div style={{ fontSize: 12.5, fontWeight: 600, color: BLUE }}>Meeting</div>
         </div>
+        <span className="ld-slot-tag">Utility</span>
       </div>
       <div style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 18, color: '#fff', lineHeight: 1.28, flex: 1 }}>{it.title}</div>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', borderTop: `1px solid ${PANEL_BORDER}`, borderBottom: `1px solid ${PANEL_BORDER}` }}>
@@ -199,7 +200,7 @@ export function FilledSlot({ it, n, act, onOpen, onExtract, onRecall, dropFromSt
             </div>
           )}
         </div>
-        <span style={{ fontSize: 12.5, fontWeight: 600, color: MUTED, whiteSpace: 'nowrap' }}>{SLOT_NAMES[n - 1] || ''}</span>
+        <span className="ld-slot-tag">{SLOT_NAMES[n - 1] || ''}</span>
       </div>
       {task
         ? <div onClick={() => onOpen(it)} title={task} style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 18, color: '#fff', lineHeight: 1.28, cursor: 'pointer', flex: 1, display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{task}</div>
@@ -225,9 +226,9 @@ export function EmptySlot({ n, dropFromStash }) {
   const [over, setOver] = useState(false)
   return (
     <div onDragOver={e => { e.preventDefault(); setOver(true) }} onDragLeave={() => setOver(false)} onDrop={e => { setOver(false); const d = readDrag(e); if (d.kind === 'stash' && dropFromStash) { e.preventDefault(); dropFromStash(d.id) } }}
-      style={{ ...slotBox(over ? BLUE : EMPTY_EDGE, over ? 'rgba(169,201,232,0.08)' : 'transparent', true), justifyContent: 'center', alignItems: 'center', textAlign: 'center' }}>
-      <div style={{ fontSize: 14, fontWeight: 600, color: GRAY }}>{SLOT_NAMES[n - 1] || `Slot ${n}`} · Empty</div>
-      <div style={{ fontSize: 12.5, color: GRAY, lineHeight: 1.5 }}>Load a mission from the Stash or the Mission Board, or tell Lumen</div>
+      style={{ ...slotBox(over ? BLUE : EMPTY_EDGE, over ? 'rgba(169,201,232,0.08)' : 'transparent', true), position: 'relative', justifyContent: 'center', alignItems: 'center', textAlign: 'center' }}>
+      <span className="ld-slot-tag" style={{ position: 'absolute', top: 12, right: 14 }}>{SLOT_NAMES[n - 1] || `Slot ${n}`}</span>
+      <div title="Load a mission from the Stash or the Mission Board, or tell Lumen" style={{ fontSize: 14, fontWeight: 600, color: GRAY }}>Empty</div>
     </div>
   )
 }
@@ -258,9 +259,9 @@ export function AdHocSlot({ item, act, onDispatch, onOpen, onChanged, onRecall }
           <BadgeMedallion id="impromptu" size={50} color={BLUE} />
           <div style={{ flex: 1, minWidth: 0, display: 'grid', gap: 2 }}>
             <div style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 14.5, color: INK, lineHeight: 1.25 }}>The Unplanned</div>
-            <div style={{ fontSize: 12.5, fontWeight: 600, color: BLUE }}>Utility · {item.call ? 'Phone Call' : 'Non-Mission Task'}</div>
+            <div style={{ fontSize: 12.5, fontWeight: 600, color: BLUE }}>{item.call ? 'Phone Call' : 'Non-Mission Task'}</div>
           </div>
-          {item.call ? <Phone size={14} color={BLUE} /> : <Zap size={14} color={BLUE} />}
+          <span className="ld-slot-tag">Utility</span>
         </div>
         <div onClick={() => onOpen(item)} style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 18, color: '#fff', lineHeight: 1.28, cursor: 'pointer', flex: 1 }}>{item.title}</div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', borderTop: `1px solid ${PANEL_BORDER}`, borderBottom: `1px solid ${PANEL_BORDER}` }}>
@@ -278,11 +279,10 @@ export function AdHocSlot({ item, act, onDispatch, onOpen, onChanged, onRecall }
   // Empty: the Utility slot's own face (David 11/17: "the unplanned should have buttons below too. one is for
   // a phone call. another is for a non-mission task. they award the same miles").
   return (
-    <div style={{ ...slotBox(EMPTY_EDGE, 'transparent', true), flex: '1 1 auto' }}>
-      <div style={{ fontSize: 14, fontWeight: 600, color: GRAY }}>Utility · Empty</div>
-      <div style={{ fontSize: 12.5, color: GRAY, lineHeight: 1.5 }}>Runs a Console button (E-mail, Slack Review, Bill Pay and the rest) or the unplanned.</div>
-      <div style={{ marginTop: 'auto', display: 'grid', gap: 8 }}>
-        <div style={{ fontSize: 12.5, color: MUTED }}>The Unplanned · 1 Mile Each</div>
+    <div style={{ ...slotBox(EMPTY_EDGE, 'transparent', true), position: 'relative', flex: '1 1 auto' }}>
+      <span className="ld-slot-tag" style={{ position: 'absolute', top: 12, right: 14 }}>Utility</span>
+      <div title="Runs a Console button (E-mail, Slack Review, Bill Pay and the rest) or the unplanned: a phone call or a non-mission task, 1 mile each" style={{ flex: 1, display: 'grid', placeItems: 'center', fontSize: 14, fontWeight: 600, color: GRAY }}>Empty</div>
+      <div style={{ display: 'grid', gap: 8 }}>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           {[['call', 'Phone Call'], ['task', 'Non-Mission Task']].map(([k, l]) => (
             <button key={k} className="ld-btn" onClick={() => { setMode(k); setOpen(true); setErr(null) }} style={open && mode === k ? { borderColor: BLUE, background: 'rgba(169,201,232,0.10)' } : undefined}>{k === 'call' ? <Phone size={15} /> : <Zap size={15} />} {l}</button>
@@ -423,8 +423,8 @@ function RoutineSlot({ tick, onChanged, onState }) {
   if (running) return (
     <div className="ld-running" style={{ ...slotBox(GREEN, 'rgba(169,201,232,0.08)'), minHeight: 0, flex: '0 0 auto' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-        <Icon size={14} color={GREEN} /><span style={{ fontSize: 12.5, fontWeight: 600, color: GREEN }}>Utility · Console</span><span style={{ flex: 1 }} />
-        <span style={{ fontFamily: MONO, fontSize: 10, color: GREEN, letterSpacing: '0.6px' }}>running · {fmtClock(mins)}</span>
+        <Icon size={14} color={GREEN} /><span style={{ fontSize: 12.5, fontWeight: 600, color: GREEN }}>Running · {fmtClock(mins)}</span><span style={{ flex: 1 }} />
+        <span className="ld-slot-tag">Utility</span>
       </div>
       <div style={{ fontFamily: SERIF, fontSize: 16, fontWeight: 500, color: '#fff', lineHeight: 1.3, flex: 1 }}>{running.subject}</div>
       <div style={{ fontFamily: MONO, fontSize: 9.5, color: GRAY, letterSpacing: '0.6px' }}>{chore ? 'Console chore' : `started by ${slugOf(running.event_id).includes('-') ? 'Lumen' : 'hand'}`}{running.special_notes === 'personal' ? ' · personal' : ' · logs to Harvest on stop'}</div>

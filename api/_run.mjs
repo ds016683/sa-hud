@@ -13,32 +13,25 @@
 //   index.json   { v, runs: [ the face of every run ] }
 //   <id>.json    { id, cursor, seen, seen_events, unread, log, mac }   the working log of one run
 import { sb } from './_ledger.mjs'
-import { syncEmail } from './_sync-core.mjs'
 import { missions } from './_trail.mjs'
+import { canvass, eventsBetween, namer, readJson, writeJson, chiDay, flat } from './_canvass.mjs'
 
-const URL_BASE = 'https://cmuvomnmaoseccxpeuxq.supabase.co'
-const svc = () => ({ apikey: process.env.SUPABASE_SERVICE_KEY, Authorization: `Bearer ${process.env.SUPABASE_SERVICE_KEY}` })
 export const RUN_MINUTES = 45
 export const DEBRIEF_MINUTES = 10
 export const RUN_MILES = 10
-const CANVASS_MAX_MIN = 180      // a run left open stops being canvassed after three hours; it still waits for Extract
 const INDEX = 'runs/index.json'
 const logPath = (id) => `runs/${id}.json`
-
-async function readJson(path, blank) {
-  const r = await fetch(`${URL_BASE}/storage/v1/object/project-files/${path}?cb=${Date.now()}`, { headers: { ...svc(), 'Cache-Control': 'no-cache' }, cache: 'no-store' })
-  if (!r.ok) return blank
-  try { return { ...blank, ...(await r.json()) } } catch { return blank }
-}
-async function writeJson(path, doc) {
-  const r = await fetch(`${URL_BASE}/storage/v1/object/project-files/${path}`, { method: 'POST', headers: { ...svc(), 'Content-Type': 'application/json', 'x-upsert': 'true' }, body: JSON.stringify(doc) })
-  if (!r.ok) throw new Error(`run save ${r.status}: ${(await r.text()).slice(0, 160)}`)
-}
-const chiDay = (iso) => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Chicago', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(iso))
 const chiTime = (iso) => new Date(iso).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'America/Chicago' })
-const flat = (t, max) => String(t || '').replace(/\s+/g, ' ').trim().slice(0, max)
 const enc = encodeURIComponent
 const plus = (iso, min) => new Date(new Date(iso).getTime() + min * 60000).toISOString()
+
+// A run's log: the stream inside its window (see _canvass.mjs), plus what its own file holds: the Mac's
+// samples and the run's start and extract marks.
+async function runLog(run, to = new Date().toISOString()) {
+  const [stream, doc] = await Promise.all([eventsBetween(run.started_at, run.extracted_at || to), readJson(logPath(run.id), { log: [], mac: [] })])
+  const log = [...stream.map(e => ({ at: e.at, source: e.source, text: e.text, mission: e.mission || null })), ...(doc.log || [])].sort((a, b) => String(a.at).localeCompare(String(b.at)))
+  return { log, mac: doc.mac || [] }
+}
 
 export async function readIndex() { const d = await readJson(INDEX, { v: 1, runs: [] }); return Array.isArray(d.runs) ? d.runs : [] }
 const saveIndex = (runs) => writeJson(INDEX, { v: 1, runs: runs.slice(-400) })
@@ -52,82 +45,8 @@ export async function runState() {
   const on = activeOf(runs)
   const last = on || [...mine].reverse().find(r => r.state === 'filed') || null
   let log = [], logged = last ? last.logged : 0
-  if (on) { const doc = await readJson(logPath(on.id), { log: [] }); log = (doc.log || []).slice(-40); logged = (doc.log || []).length }
+  if (on) { const full = (await runLog(on)).log; log = full.slice(-40); logged = full.length }
   return { run: last ? { ...last, log, logged } : null, today: { runs: mine.filter(r => r.state === 'filed').length, miles: mine.reduce((s, r) => s + (r.state === 'filed' ? (r.miles || 0) : 0), 0) } }
-}
-
-// ---- the canvass --------------------------------------------------------------------------------
-// Names for what a row belongs to: an objective's own title, or its Main Mission when it is a gate's card.
-async function namer() {
-  const [projects, tasks] = await Promise.all([sb('projects?select=id,key,name'), sb('project_tasks?select=id,project_id,objective_id&objective_id=not.is.null')])
-  const proj = new Map(projects.map(p => [p.id, p.name])), byKey = new Map(projects.filter(p => p.key).map(p => [p.key, p.name]))
-  const viaTask = new Map(tasks.map(t => [t.objective_id, proj.get(t.project_id)]))
-  const cache = new Map()
-  const objective = async (id) => {
-    if (!id) return { title: null, mission: null }
-    if (cache.has(id)) return cache.get(id)
-    const [o] = await sb(`objectives?select=id,title,tags&id=eq.${id}`).catch(() => [])
-    const out = !o ? { title: null, mission: null } : { title: o.title, mission: (o.tags || []).includes('session') ? null : (viaTask.get(id) || o.title), session: (o.tags || []).includes('session') }
-    cache.set(id, out); return out
-  }
-  return { objective, project: (id) => proj.get(id) || null, key: (k) => byKey.get(k) || null }
-}
-
-async function gather(doc, now) {
-  const since = doc.cursor, events = [], names = await namer()
-  const add = (at, source, text, mission = null) => { if (text) events.push({ at: at || now, source, text: flat(text, 200), mission: mission || null }) }
-  await syncEmail().catch(() => null)
-  const [sent, inbox, clocks, steps, tasks, released, boards, files, said, cal] = await Promise.all([
-    sb(`emails?select=id,subject,to_names,received_at&folder=eq.sent&received_at=gt.${enc(since)}&order=received_at.asc&limit=40`).catch(() => []),
-    sb(`emails?select=id,subject,from_name,is_read&folder=eq.inbox&received_at=gt.${enc(plus(now, -48 * 60))}&limit=400`).catch(() => []),
-    sb(`clocks?select=objective_id,started_at,stopped_at&or=(started_at.gt.${enc(since)},stopped_at.gt.${enc(since)})&order=started_at.asc`).catch(() => []),
-    sb(`objective_steps?select=id,text,objective_id,done_at&done=eq.true&done_at=gt.${enc(since)}`).catch(() => []),
-    sb(`project_tasks?select=id,text,project_id,released_at&status=eq.done&released_at=gt.${enc(since)}`).catch(() => []),
-    sb(`objectives?select=id,title,tags,released_at&state=eq.released&released_at=gt.${enc(since)}&deleted_at=is.null`).catch(() => []),
-    sb(`session_boards?select=project,title,phases,updated_at&updated_at=gt.${enc(doc.started_at)}`).catch(() => []),
-    sb(`live_files?select=name,objective_id,project_id,created_at,bucket&created_at=gt.${enc(since)}&order=created_at.asc&limit=40`).catch(() => []),
-    sb(`lumen_messages?select=at,channel,direction,kind,body&direction=eq.in&at=gt.${enc(since)}&order=at.asc&limit=30`).catch(() => []),
-    sb(`calendar_events?select=id,subject,start_at,end_at,is_all_day&is_cancelled=eq.false&start_at=lte.${enc(now)}&end_at=gte.${enc(now)}`).catch(() => []),
-  ])
-  for (const e of sent) add(e.received_at, 'mail', `Sent: ${flat(e.subject, 80) || '(no subject)'}${(e.to_names || []).length ? ` (to ${(e.to_names || []).slice(0, 3).join(', ')})` : ''}`)
-  // Mail he opened during the run: unread at the last look, read now.
-  const was = new Set(doc.unread || [])
-  for (const e of inbox) if (e.is_read && was.has(e.id)) add(now, 'mail', `Read: ${flat(e.subject, 80) || '(no subject)'}${e.from_name ? ` (from ${e.from_name})` : ''}`)
-  doc.unread = inbox.filter(e => !e.is_read).map(e => e.id)
-  for (const c of clocks) {
-    const n = await names.objective(c.objective_id); if (!n.title || n.session) continue
-    if (c.started_at > since) add(c.started_at, 'hud', `Clock started: ${n.title}`, n.mission)
-    if (c.stopped_at && c.stopped_at > since) add(c.stopped_at, 'hud', `Clock stopped: ${n.title}`, n.mission)
-  }
-  for (const s of steps) { const n = await names.objective(s.objective_id); if (!n.session) add(s.done_at, 'hud', `Gate closed: ${s.text}`, n.mission) }
-  for (const t of tasks) add(t.released_at, 'hud', `Gate closed: ${t.text}`, names.project(t.project_id))
-  for (const o of released) if (!(o.tags || []).includes('session') && !(o.tags || []).includes('mission-task')) add(o.released_at, 'hud', `Closed out: ${o.title}`, o.title)
-  for (const b of boards) {
-    const done = []; for (const ph of (b.phases || [])) for (const t of (ph.tasks || [])) if (t.status === 'done') done.push({ id: String(t.id), label: t.label })
-    const known = doc.seen[b.project] || []
-    for (const t of done.filter(t => !known.includes(t.id)).slice(-12)) add(b.updated_at, 'session', flat(t.label, 160), names.key(b.project))
-    doc.seen[b.project] = done.map(t => t.id)
-  }
-  for (const f of files) { if (f.bucket === 'request') continue; const n = f.objective_id ? await names.objective(f.objective_id) : { mission: names.project(f.project_id) }; add(f.created_at, 'hud', `File added: ${f.name}`, n.mission) }
-  // What David wrote in Slack. The Slack pipe lands every five minutes, so a message can arrive after the
-  // minute it was sent: each one is taken once by id, from the start of the run.
-  const me = process.env.SLACK_USER_ID
-  const slackRows = me ? await sb(`slack_messages?select=id,ts,channel_name,channel_type,body_preview,text&user_id=eq.${enc(me)}&ts=gt.${enc(doc.started_at)}&order=ts.asc&limit=80`).catch(() => []) : []
-  for (const m of slackRows) {
-    if ((doc.seen_slack || []).includes(m.id)) continue
-    add(m.ts, 'slack', `${m.channel_type === 'im' || m.channel_type === 'mpim' ? 'Direct message' : `#${m.channel_name || 'channel'}`}: ${flat(m.body_preview || m.text, 90)}`)
-    doc.seen_slack = [...(doc.seen_slack || []), m.id]
-  }
-  for (const m of said) add(m.at, 'lumen', `To Lumen (${m.channel}${m.kind === 'audio' ? ', voice' : ''}): ${flat(m.body, 90)}`)
-  for (const ev of cal) { if (ev.is_all_day || (doc.seen_events || []).includes(ev.id)) continue; add(now, 'calendar', `On the calendar now: ${flat(ev.subject, 90)}`); doc.seen_events = [...(doc.seen_events || []), ev.id] }
-  return events.sort((a, b) => String(a.at).localeCompare(String(b.at)))
-}
-
-async function seedSeen() {
-  const boards = await sb('session_boards?select=project,phases').catch(() => [])
-  const seen = {}
-  for (const b of boards) { const ids = []; for (const ph of (b.phases || [])) for (const t of (ph.tasks || [])) if (t.status === 'done') ids.push(String(t.id)); seen[b.project] = ids }
-  return seen
 }
 
 // ---- the verbs ----------------------------------------------------------------------------------
@@ -137,33 +56,21 @@ export async function startRun() {
   const now = new Date().toISOString(), day = chiDay(now)
   const n = runs.filter(r => r.day === day).length + 1
   const run = { id: `${day}-${n}-${Date.now().toString(36)}`, day, n, state: 'running', started_at: now, ends_at: plus(now, RUN_MINUTES), extracted_at: null, debrief_ends_at: null, filed_at: null, miles: 0, logged: 0, summary: null, hits: [], rogue: [], word: null }
-  await syncEmail().catch(() => null)
-  const [inbox, seen, cal] = await Promise.all([
-    sb(`emails?select=id,is_read&folder=eq.inbox&received_at=gt.${enc(plus(now, -48 * 60))}&limit=400`).catch(() => []), seedSeen(),
-    sb(`calendar_events?select=id&is_cancelled=eq.false&start_at=lte.${enc(now)}&end_at=gte.${enc(now)}`).catch(() => []),
-  ])
-  await writeJson(logPath(run.id), { id: run.id, started_at: now, cursor: now, seen, seen_events: cal.map(e => e.id), unread: inbox.filter(e => !e.is_read).map(e => e.id), log: [{ at: now, source: 'hud', text: `Run ${n} started`, mission: null }], mac: [] })
+  await writeJson(logPath(run.id), { id: run.id, log: [{ at: now, source: 'hud', text: `Run ${n} started`, mission: null }], mac: [] })
   await saveIndex([...runs, { ...run, logged: 1 }])
   return run
 }
 
-// One minute's look. Called by the schedule; does nothing unless a run is on.
+// The schedule's minute. This is the canvass's caller (Extract takes one last look of its own): every
+// minute while a run is on, every fifth minute otherwise (David 11/17: one system, one set of protocols, faster only when a run is on).
 export async function tick() {
   const runs = await readIndex(), run = activeOf(runs)
-  if (!run) return { active: false }
-  const now = new Date().toISOString()
-  if (run.state === 'debrief') {
-    // The debrief ran out: the report files as Lumen wrote it.
-    if (now > run.debrief_ends_at) { const filed = await fileRun({ word: null }); return { active: false, filed: filed.id } }
-    return { active: true, state: 'debrief' }
-  }
-  if (new Date(now) - new Date(run.started_at) > CANVASS_MAX_MIN * 60000) return { active: true, state: 'running', idle: true }
-  const doc = await readJson(logPath(run.id), { log: [], mac: [], seen: {}, seen_events: [], unread: [], cursor: run.started_at, started_at: run.started_at })
-  const events = await gather(doc, now)
-  doc.log = [...doc.log, ...events].slice(-1500); doc.cursor = now
-  await writeJson(logPath(run.id), doc)
-  if (events.length) { const all = await readIndex(); await saveIndex(all.map(r => r.id === run.id ? { ...r, logged: doc.log.length } : r)) }
-  return { active: true, state: 'running', added: events.length, logged: doc.log.length }
+  const now = new Date()
+  if (run && run.state === 'debrief' && now.toISOString() > run.debrief_ends_at) await fileRun({ word: null })   // the debrief ran out: it files as written
+  const running = !!run && run.state === 'running'
+  if (!running && now.getUTCMinutes() % 5 !== 0) return { active: !!run, looked: false }
+  const out = await canvass()
+  return { active: !!run, looked: true, ...out }
 }
 
 // The watcher on the Mac sends what is in front once a minute. Kept only while a run is on.
@@ -237,11 +144,12 @@ export async function extractRun({ model }) {
   const runs = await readIndex(), run = runs.find(r => r.state === 'running')
   if (!run) throw new Error('no run is on')
   const now = new Date().toISOString()
-  const doc = await readJson(logPath(run.id), { log: [], mac: [], seen: {}, seen_events: [], unread: [], cursor: run.started_at, started_at: run.started_at })
-  try { const events = await gather(doc, now); doc.log = [...doc.log, ...events] } catch { /* the log stands as it is */ }
+  try { await canvass() } catch { /* the stream stands as it is */ }
+  const own = await readJson(logPath(run.id), { log: [], mac: [] })
   const full = new Date(now) - new Date(run.started_at) >= RUN_MINUTES * 60000 - 5000
-  doc.log = [...doc.log, { at: now, source: 'hud', text: `Run ${run.n} extracted${full ? '' : ' early'}`, mission: null }]; doc.cursor = now
-  await writeJson(logPath(run.id), doc)
+  own.log = [...(own.log || []), { at: now, source: 'hud', text: `Run ${run.n} extracted${full ? '' : ' early'}`, mission: null }]
+  await writeJson(logPath(run.id), own)
+  const doc = await runLog({ ...run, extracted_at: now })
   const next = { ...run, state: 'debrief', extracted_at: now, debrief_ends_at: plus(now, DEBRIEF_MINUTES), miles: full ? RUN_MILES : 0, logged: doc.log.length }
   const rep = await report(next, doc, model)
   const out = { ...next, ...rep }

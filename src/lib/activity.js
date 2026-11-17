@@ -32,6 +32,8 @@ export const KINDS = {
   'Activity':      { color: INK2 },
   'Said to Lumen': { color: PURPLE },
   'Board':         { color: BLUE },
+  'Session':       { color: PERIWINKLE },
+  'Slack':         { color: PURPLE },
 }
 export const LOG_KIND_LABEL = { discomfort: 'Discomfort', hygiene: 'Hygiene', exercise: 'Exercise', sleep: 'Sleep', note: 'Thought', activity: 'Activity' }
 
@@ -40,7 +42,22 @@ export const LOG_KIND_LABEL = { discomfort: 'Discomfort', hygiene: 'Hygiene', ex
 // matcher the Board, Notes, and the River use, so "documented" agrees everywhere.
 export const truncate = (s, n) => { const t = String(s || '').replace(/\s+/g, ' ').trim(); return t.length > n ? t.slice(0, n - 1).trimEnd() + '…' : t }
 
+// The day's stream (David 11/17: "the activity log actually tracks with the stop stuff too ... one system
+// running one set of protocols"): what the canvass wrote, the same lines the Run and Proposed Steps read.
+async function fetchStream(day) {
+  try {
+    const { data, error } = await supabase.storage.from('project-files').createSignedUrl(`events/${day}.json`, 60)
+    if (error || !data?.signedUrl) return null
+    const res = await fetch(`${data.signedUrl}&cb=${Date.now()}`, { cache: 'no-store' })
+    if (!res.ok) return null
+    const d = await res.json()
+    return { from: d.from || null, events: Array.isArray(d.events) ? d.events : [] }
+  } catch { return null }
+}
+const STREAM_KIND = { mail: 'Email', session: 'Session', slack: 'Slack' }
+
 export async function fetchDay(day) {
+  const stream = await fetchStream(day)
   const { lo, hi } = windowFor(day)
   const q = (p) => p.then(r => { if (r.error) console.warn('activity fetch', r.error.message); return Array.isArray(r.data) ? r.data : [] })
   const [emails, calendar, granola, time, objectives, doneTasks, promotedTasks, projects, logs, workouts, lumen] = await Promise.all([
@@ -56,7 +73,7 @@ export async function fetchDay(day) {
     q(supabase.from('workouts').select('day,minutes,summary,harvest_entry_id').eq('day', day)),
     q(supabase.from('lumen_messages').select('at,channel,direction,kind,body').eq('direction', 'in').in('channel', ['whatsapp', 'voice']).gte('at', lo).lt('at', hi)),
   ])
-  return { emails, calendar, granola, time, objectives, doneTasks, promotedTasks, projects, logs, workouts, lumen }
+  return { emails, calendar, granola, time, objectives, doneTasks, promotedTasks, projects, logs, workouts, lumen, stream }
 }
 
 export function build(raw, day, nowMs) {
@@ -65,8 +82,19 @@ export function build(raw, day, nowMs) {
   const isToday = day === today
   const isPast = day < today
 
-  // Emails sent
+  // The stream: mail sent and read, session work, Slack, and the Board's clocks and files. Gates, close-outs,
+  // meetings and what was said to Lumen are drawn below from their own tables, so the stream's copies of
+  // those are left out here and nothing shows twice.
+  const stream = raw.stream
+  for (const e of (stream?.events || [])) {
+    const kind = STREAM_KIND[e.source] || (e.source === 'hud' && /^(Clock|File added)/.test(e.text) ? 'Board' : null)
+    if (!kind) continue
+    rows.push({ at: e.at, kind, text: e.text, meta: e.mission || null, src: 'the canvass stream', fields: { source: e.source, mission: e.mission || null, at: e.at } })
+  }
+
+  // Emails sent (only what the stream does not cover: a day before it began, or the hours before it began)
   for (const e of raw.emails) {
+    if (stream && (!stream.from || (e.received_at && e.received_at >= stream.from))) continue
     const to = Array.isArray(e.to_names) ? e.to_names.filter(Boolean).join(', ') : ''
     rows.push({ at: e.received_at || noonOf(day), kind: 'Email', text: `Sent: ${e.subject || '(no subject)'}${to ? ` → ${to}` : ''}`, src: 'emails (sent)', fields: { subject: e.subject, to: to || null, received_at: e.received_at } })
   }

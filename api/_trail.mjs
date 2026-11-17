@@ -16,15 +16,13 @@
 //   proposals.json  { v, proposals, skipped, cursor, ran_at }       written here only
 //   rulings.json    { v, rulings: { <id>: { verdict, why, at } } }  written by the HUD only
 import { sb } from './_ledger.mjs'
-import { syncEmail } from './_sync-core.mjs'
+import { eventsAfter, chiDay } from './_canvass.mjs'
 
 const URL_BASE = 'https://cmuvomnmaoseccxpeuxq.supabase.co'
 const svc = () => ({ apikey: process.env.SUPABASE_SERVICE_KEY, Authorization: `Bearer ${process.env.SUPABASE_SERVICE_KEY}` })
 export const PROPOSALS = 'trail-steps/proposals.json'
 export const RULINGS = 'trail-steps/rulings.json'
 export const CLEAR_AT = 15          // his rule: at 15 or more waiting, he is reminded on every turn
-const FIRST_DAYS = 3                // a first run reads this far back
-const FIRST_SAMPLE = 8              // and takes this many closed tasks from a board it has not seen
 const KEEP = 600
 
 async function readJson(path, blank) {
@@ -48,28 +46,11 @@ export async function stepsWaiting() { try { return pendingOf(await readSteps())
 
 const flat = (t, max) => String(t || '').replace(/\s+/g, ' ').trim().slice(0, max)
 
-// What David did since the last run. Each event: { ref, source, at, basis, detail, hint }.
-async function sentMail(after) {
-  const rows = await sb(`emails?select=id,subject,to_names,preview,received_at&folder=eq.sent&received_at=gt.${encodeURIComponent(after)}&order=received_at.asc&limit=80`)
-  return rows.map(e => {
-    const to = (Array.isArray(e.to_names) ? e.to_names : []).slice(0, 4).join(', ') || 'no one named'
-    return { ref: `email:${e.id}`, source: 'email', at: e.received_at, basis: `To ${to}: ${flat(e.subject, 90) || '(no subject)'}`, detail: flat(e.preview, 220), hint: null }
-  })
-}
-async function sessionWork(seen, since) {
-  const boards = await sb(`session_boards?select=project,title,phases,updated_at&updated_at=gt.${encodeURIComponent(since)}&order=updated_at.asc`)
-  const events = [], next = { ...seen }
-  for (const b of boards) {
-    const done = []
-    for (const ph of (Array.isArray(b.phases) ? b.phases : [])) for (const t of (ph.tasks || [])) if (t.status === 'done') done.push({ id: String(t.id), label: t.label, phase: ph.title })
-    const known = seen[b.project]
-    let fresh = known ? done.filter(t => !known.includes(t.id)) : done.slice(-FIRST_SAMPLE)
-    fresh = fresh.slice(-20)
-    for (const t of fresh) events.push({ ref: `session:${b.project}:${t.id}`, source: 'session', at: b.updated_at, basis: `Session board ${flat(b.title, 60)}: ${flat(t.label, 140)}`, detail: flat(t.phase, 120), hint: b.project })
-    next[b.project] = done.map(t => t.id)
-  }
-  return { events, seen: next }
-}
+// What David did since the last proposal run, read from the one stream the canvass writes (David 11/17:
+// "one system running one set of protocols ... feedding information to whatever endpoints"). Steps are
+// proposed from his own outgoing work only: mail he sent, what he wrote in Slack, what a session closed.
+const STEP_SOURCE = (e) => e.source === 'mail' ? (/^Sent:/.test(e.text) ? 'email' : null) : e.source === 'session' ? 'session' : e.source === 'slack' ? 'slack' : null
+const asEvent = (e) => ({ ref: `ev:${e.day}:${e.seq}`, source: STEP_SOURCE(e), at: e.at, basis: e.text, detail: e.detail || '', hint: e.mission || null })
 
 // The missions a step can sit on: every active Main Mission (with its open gates, for matching)
 // and every open Side Mission. A card opened for a Main Mission's gate folds into that mission.
@@ -110,34 +91,32 @@ How a step reads: one line, past tense, the verb first, what he did and for or t
 
 What is not a step: an editorial change (wording, a caption, a color, a label, italics, spacing, a number restated to match another page) unless it changes the structure of the piece (a page or section added, removed or reordered, a model or a number rebuilt, a deliverable produced or sent); a reply that only thanks, confirms or sets a time; anything personal; housekeeping about the board, the missions or the tools themselves unless a listed mission is about those tools. For those, give text null. When several events are the same piece of work, only the material one is a step. When in doubt, leave it out: a short true trail beats a full one.
 
-Matching: use the mission whose work the event plainly belongs to. A session event carries the project key its board ran under; that is a strong hint, not proof. If the event is real work but no listed mission fits, give mission null and still write the text. Never force a match.${learned}
+Matching: use the mission whose work the event plainly belongs to. An event may carry a likely mission; that is a strong hint, not proof. If the event is real work but no listed mission fits, give mission null and still write the text. Never force a match.${learned}
 
 ## Missions
 ${list.map(m => `- ${m.id} · ${m.kind} · ${m.title}${m.key ? ` (key ${m.key})` : ''}${m.gates && m.gates.length ? `\n  open gates: ${m.gates.join(' | ')}` : ''}`).join('\n')}
 
 ## Events
-${events.map((e, i) => `- ref e${i + 1} · ${e.source === 'email' ? 'email David sent' : 'work a Claude Code session closed for David'} · ${e.at}${e.hint ? ` · project key ${e.hint}` : ''}\n  ${e.basis}${e.detail ? `\n  ${e.detail}` : ''}`).join('\n')}
+${events.map((e, i) => `- ref e${i + 1} · ${e.source === 'email' ? 'email David sent' : e.source === 'slack' ? 'Slack message David wrote' : 'work a Claude Code session closed for David'} · ${e.at}${e.hint ? ` · likely mission: ${e.hint}` : ''}\n  ${e.basis}${e.detail ? `\n  ${e.detail}` : ''}`).join('\n')}
 
 Reply with one JSON object and nothing else: {"steps":[{"ref":"<the event ref>","mission":"<mission id, or null>","text":"<the step, or null>"}]} with one entry for every event.`
 }
 
 // One run: gather, ask, append. Returns { events, added, skipped, pending }.
-// redo: put back everything David has not ruled on and read the first window again (after the
-// rule for what counts as a step changes). His rulings stay, and a ruled event is never re-proposed.
+// redo: put back everything David has not ruled on and read today's stream again from its start (after
+// the rule for what counts as a step changes). His rulings stay, and a ruled event is never re-proposed.
 export async function capture({ model, redo = false }) {
   if (!model) throw new Error('no model named for the capture')
   const state = await readSteps()
-  if (redo) { state.proposals = state.proposals.filter(p => state.rulings[p.id]); state.skipped = []; state.cursor = {}; state.ran_at = null }
-  // Sent mail reaches the Ledger on the half hour; pull it now so a step shows within minutes.
-  await syncEmail().catch(() => null)
-  const first = !state.ran_at
-  const since = state.ran_at || new Date(Date.now() - FIRST_DAYS * 864e5).toISOString()
-  const mailAfter = state.cursor.mail_after || since
-  const [mail, work, list] = await Promise.all([sentMail(mailAfter), sessionWork(state.cursor.seen || {}, first ? since : new Date(new Date(since).getTime() - 36e5).toISOString()), missions()])
+  const now = new Date().toISOString(), today = chiDay(now)
+  if (redo) { state.proposals = state.proposals.filter(p => state.rulings[p.id]); state.skipped = []; state.cursor = { stream: { day: today, seq: 0 } } }
+  // The first run after the stream exists starts at its end: nothing behind it is pulled in.
+  const at = state.cursor.stream
+  const read = at ? await eventsAfter(at.day, at.seq) : { events: [], cursor: (await eventsAfter(today, 0)).cursor }
+  const list = await missions()
   const had = new Set([...state.proposals.map(p => p.id), ...state.skipped.map(s => s.ref)])
-  const events = [...mail, ...work.events].filter(e => !had.has(e.ref))
-  const now = new Date().toISOString()
-  const cursor = { mail_after: mail.length ? mail[mail.length - 1].at : mailAfter, seen: work.seen }
+  const events = read.events.filter(e => STEP_SOURCE(e)).map(asEvent).filter(e => !had.has(e.ref)).slice(-80)
+  const cursor = { stream: read.cursor }
   if (!events.length) {
     await writeJson(PROPOSALS, { v: 1, proposals: state.proposals, skipped: state.skipped, cursor, ran_at: now })
     return { events: 0, added: 0, skipped: 0, pending: pendingOf(state).length }

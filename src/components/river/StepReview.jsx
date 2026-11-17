@@ -65,7 +65,7 @@ export default function StepReview({ api = LEDGER, onNavigate }) {
         <div style={{ flex: 1, minWidth: 280 }}>
           <h1 style={S.h1}>Proposed Steps</h1>
           <div style={{ fontSize: 14, lineHeight: 1.6, color: INK2, margin: '8px 0 0', maxWidth: 760 }}>
-            The small steps between a mission&rsquo;s gates, as Lumen would write them from what you did: the mail you sent and the work a Claude session closed. Nothing here is on a card. Accept keeps a step for the trail. Reject asks why, and Lumen reads your reasons before he proposes again.
+            The small steps between a mission&rsquo;s gates, as Lumen would write them from what you did: the mail you sent, what you wrote in Slack and the work a Claude session closed. Nothing here is on a card. Accept keeps a step for the trail. Reject asks why, and Lumen reads your reasons before he proposes again.
           </div>
         </div>
         <div style={{ textAlign: 'right' }}>
@@ -92,7 +92,7 @@ export default function StepReview({ api = LEDGER, onNavigate }) {
 
       {!shown.length && (
         <div style={{ fontSize: 14, color: MUTED, marginTop: 18 }}>
-          {view === 'open' ? (data.ran_at ? 'Nothing to clear.' : 'Nothing proposed yet. Capture Now reads the last three days of sent mail and session work.') : view === 'accept' ? 'Nothing accepted yet.' : 'Nothing rejected yet.'}
+          {view === 'open' ? (data.ran_at ? 'Nothing to clear.' : 'Nothing proposed yet.') : view === 'accept' ? 'Nothing accepted yet.' : 'Nothing rejected yet.'}
         </div>
       )}
 

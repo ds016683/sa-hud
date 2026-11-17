@@ -1422,3 +1422,6 @@ button.brf-chip:hover { border-color: var(--hud-accent); }
 @keyframes ldrun { 0%, 100% { border-color: var(--hud-pos); box-shadow: 0 0 0 1px var(--hud-pos), 0 0 0 6px color-mix(in srgb, var(--hud-pos) 16%, transparent); } 50% { border-color: color-mix(in srgb, var(--hud-pos) 45%, transparent); box-shadow: 0 0 0 1px color-mix(in srgb, var(--hud-pos) 30%, transparent), 0 0 0 2px color-mix(in srgb, var(--hud-pos) 0%, transparent); } }
 .ld-running { animation: ldrun 2.4s ease-in-out infinite; }
 @media (prefers-reduced-motion: reduce) { .ld-running { animation: none; box-shadow: 0 0 0 1px var(--hud-pos), 0 0 0 5px color-mix(in srgb, var(--hud-pos) 14%, transparent); } }
+
+/* A slot's name (David 11/17): the same small tag on Primary, Secondary and Utility, full or empty. */
+.ld-slot-tag { display: inline-flex; align-items: center; font-size: 12px; font-weight: 600; line-height: 1; padding: 5px 10px; border-radius: 99px; border: 1px solid var(--hud-border); background: var(--hud-fill); color: var(--hud-ink-2); white-space: nowrap; flex-shrink: 0; }
