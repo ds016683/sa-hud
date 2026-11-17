@@ -544,7 +544,9 @@ export default function LoadoutPanel({ onChange, refreshKey = 0, bare = false })
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 10, flexWrap: 'wrap' }}>
             {/* The Loadout's two doors (David 11/17): the Activity Log and the Proposed Steps waiting on his ruling. Live Files and Live Protocols left this row on his word. */}
             <button className="ld-btn" onClick={() => setLogOpen(true)}><ScrollText size={15} /> Activity Log</button>
-            <button className="ld-btn" onClick={toSteps} title="What Lumen proposes to write on each mission's trail, waiting for Accept or Reject"><Footprints size={15} /> Proposed Steps{stepsWaiting !== null && <span className={`n${stepsWaiting >= CLEAR_AT ? ' over' : ''}`}>{stepsWaiting}</span>}</button>
+            {/* At 15 or more waiting the button pulses red, and faster for every ten past that (David 11/17: "red pulse might
+                be better? Faster ever extra 10 over i am"): 2.4s at 15, 1.8s at 25, 1.2s at 35, 0.6s from 45. */}
+            <button className={`ld-btn${stepsWaiting >= CLEAR_AT ? ' over' : ''}`} style={stepsWaiting >= CLEAR_AT ? { animationDuration: `${Math.max(0.6, 2.4 - 0.6 * Math.floor((stepsWaiting - CLEAR_AT) / 10))}s` } : undefined} onClick={toSteps} title={stepsWaiting >= CLEAR_AT ? `${stepsWaiting} proposed steps are waiting on your Accept or Reject` : "What Lumen proposes to write on each mission's trail, waiting for Accept or Reject"}><Footprints size={15} /> Proposed Steps{stepsWaiting !== null && <span className={`n${stepsWaiting >= CLEAR_AT ? ' over' : ''}`}>{stepsWaiting}</span>}</button>
             {msg && msg.startsWith('Could not') && <span style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '1px', color: RED, textTransform: 'uppercase' }}>{msg}</span>}
           </div>
         </>
