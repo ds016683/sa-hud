@@ -25,6 +25,7 @@ import { listArtifacts as listProjArtifacts, readArtifact as readProjArtifact } 
 import { supabase as sbClient } from '../lib/supabase'
 import { hudPrompt, hudConfirm, hudNotice } from '../lib/dialog'
 import { openCard } from '../lib/card'
+import MissionTrail from './river/MissionTrail'
 // =============================================================================
 // STYLE TOKENS (CIP canon, matches ObjectivesPage dark stage)
 // =============================================================================
@@ -437,6 +438,10 @@ function ProjectDetail({ project, board: boardProp, api, onBack, initialTab, ini
   const closed = tasks.filter(t => !isOpen(t)).length
   const pct = tasks.length ? Math.round(closed / tasks.length * 100) : 0
   const [showHistory, setShowHistory] = useState(false)
+  // The Briefing's two reads (David 11/17: the Trail is the Main Mission's face too): what has happened, and the gates still open.
+  const [read, setRead] = useState(() => { try { return localStorage.getItem('hud:mission:read') === 'trail' ? 'trail' : 'end' } catch { return 'end' } })
+  const pickRead = (v) => { setRead(v); try { localStorage.setItem('hud:mission:read', v) } catch { /* private window */ } }
+  const [showClosed, setShowClosed] = useState(false)
   const [award, setAward] = useState(null)
 
   const closeMission = async ({ achieved, closeOpen, fileThem, files }) => {
@@ -553,9 +558,26 @@ function ProjectDetail({ project, board: boardProp, api, onBack, initialTab, ini
 
       <div style={{ ...S.panel, marginTop: 20 }}>
         {tab === 'briefing' && (
+          <div className="brf-seg" role="tablist" aria-label="Read" style={{ marginBottom: 6 }}>
+            <button role="tab" aria-selected={read === 'trail'} className={read === 'trail' ? 'on' : ''} onClick={() => pickRead('trail')}>The Trail</button>
+            <button role="tab" aria-selected={read === 'end'} className={read === 'end' ? 'on' : ''} onClick={() => pickRead('end')}>End Of The Trail<i>{tasks.filter(isOpen).length} open</i></button>
+          </div>
+        )}
+        {tab === 'briefing' && read === 'trail' && (
+          <MissionTrail project={project} gates={[...tasks, ...history].map(t => ({ id: t.id, text: stripNum(t.text), done: !isOpen(t), done_at: t.released_at }))}
+            here={`${tasks.filter(t => !isOpen(t)).length} of ${tasks.length} gates closed.${nowMilestone(plan) ? ` Next: ${stripNum(nowMilestone(plan).t.text)}` : ''}`} onEnd={() => pickRead('end')} />
+        )}
+        {tab === 'briefing' && read === 'end' && (
           <div>
-            {!tasks.length && <div style={{ fontSize: 13, color: GRAY, padding: '10px 0' }}>No gates yet. Add the first one below: a thing that will be verifiably true.</div>}
-            {plan.map(({ t, n }) => <MilestoneRow key={t.id} n={n} project={project} task={t} board={board} api={api} onNavigate={onNavigate} onBoardChange={setBoard} onAward={setAward} objState={objState} />)}
+            <p className="brf-sub" style={{ marginTop: 12 }}>The gates still open: what must be true for this mission to close.</p>
+            {!tasks.length && <div style={{ fontSize: 13, color: GRAY, padding: '10px 0' }}>No gates yet. Add the first one below: what must be true for this mission to close.</div>}
+            {plan.filter(({ t }) => isOpen(t)).map(({ t, n }) => <MilestoneRow key={t.id} n={n} project={project} task={t} board={board} api={api} onNavigate={onNavigate} onBoardChange={setBoard} onAward={setAward} objState={objState} />)}
+            {plan.some(({ t }) => !isOpen(t)) && (
+              <div style={{ borderTop: `1px solid ${PANEL_BORDER}`, padding: '10px 0 0' }}>
+                <button onClick={() => setShowClosed(x => !x)} style={{ fontSize: 13, fontWeight: 600, color: INK2, background: 'transparent', border: 'none', padding: 0, cursor: 'pointer' }}>{showClosed ? 'Hide' : 'Show'} Closed Gates · {plan.filter(({ t }) => !isOpen(t)).length}</button>
+                {showClosed && plan.filter(({ t }) => !isOpen(t)).map(({ t, n }) => <MilestoneRow key={t.id} n={n} project={project} task={t} board={board} api={api} onNavigate={onNavigate} onBoardChange={setBoard} onAward={setAward} objState={objState} />)}
+              </div>
+            )}
             {history.length > 0 && (
               <div style={{ borderTop: `1px solid ${PANEL_BORDER}`, padding: '10px 0 0' }}>
                 <button onClick={() => setShowHistory(x => !x)} style={{ ...S.btnGhost, padding: '4px 9px', fontSize: 10 }}>{showHistory ? 'Hide' : 'Show'} earlier work · {history.length} closed before this plan</button>
