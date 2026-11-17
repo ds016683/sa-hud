@@ -3,7 +3,8 @@
 // hitting, rogue emails, whatever ... and then furnish a run report. A run awards 10 miles. When the
 // timer hits 0, it can only close out if i hit something to extract from the run. (should have
 // another 10 minute timer after close out to do a report and get a post run summary from Lumen that
-// gets documented)." His rulings the same day: four paid runs a day at most.
+// gets documented)." His rulings: "i can extract early, but no miles until i've hit 45. no limits on the
+// number of runs taht can award miles."
 //
 // This is the face only: it draws whatever run it is handed and calls back on Start, Extract, File
 // and Walk Away. Nothing here reads or writes the Ledger; dev/run.html runs it on sample data.
@@ -14,7 +15,6 @@ import { INK, INK2, MUTED, GRAY, PANEL_BORDER, PANEL_BG, GOLD, GREEN, RED, SUCCE
 export const RUN_MINUTES = 45
 export const DEBRIEF_MINUTES = 10
 export const RUN_MILES = 10
-export const RUNS_PAID_A_DAY = 4
 
 const clock = (iso) => new Date(iso).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'America/Chicago' })
 const mmss = (ms) => { const s = Math.max(0, Math.round(ms / 1000)); return `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}` }
@@ -54,14 +54,13 @@ const Head = ({ n, title, note }) => (
 // run: null (no run on) or { n, state: 'running' | 'overtime' | 'debrief' | 'filed', started_at, ends_at,
 //   extracted_at, debrief_ends_at, log: [{ at, source, text, mission }], hits: [{ mission, kind, minutes, what }],
 //   rogue: [{ text, minutes }], summary, word }
-// today: { paid, cap } runs paid so far today.
-export default function RunPanel({ run, today = { paid: 0, cap: RUNS_PAID_A_DAY }, onStart, onExtract, onFile, onWalkAway }) {
+// today: { runs, miles } filed so far today. busy: a verb is in flight. error: the last thing that went wrong.
+export default function RunPanel({ run, today = { runs: 0, miles: 0 }, busy = false, error = null, onStart, onExtract, onFile, onWalkAway }) {
   const [now, setNow] = useState(() => Date.now())
   const [word, setWord] = useState(run?.word || '')
   useEffect(() => { const t = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(t) }, [])
 
   const state = run?.state || 'idle'
-  const pays = today.paid < today.cap
   const left = run ? new Date(run.ends_at).getTime() - now : 0
   const over = state === 'overtime' || (state === 'running' && left <= 0)
   const live = state === 'running' && !over
@@ -76,11 +75,11 @@ export default function RunPanel({ run, today = { paid: 0, cap: RUNS_PAID_A_DAY 
         {live && <Ring frac={left / (RUN_MINUTES * 60000)} color={GREEN} label={mmss(left)} sub="Left" />}
         {over && <Ring frac={1} color={RED} label={`+${mmss(-left)}`} sub="Over" />}
         {state === 'debrief' && <Ring frac={debriefLeft / (DEBRIEF_MINUTES * 60000)} color={LABEL} label={mmss(debriefLeft)} sub="To Debrief" />}
-        {state === 'filed' && <Ring frac={1} color={SUCCESS} label={`+${run.miles ?? RUN_MILES}`} sub="Miles" />}
+        {state === 'filed' && <Ring frac={1} color={SUCCESS} label={`+${run.miles ?? 0}`} sub="Miles" />}
 
         <div style={{ flex: 1, minWidth: 260 }}>
           <h2 style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 26, letterSpacing: '-0.01em', color: INK, margin: 0, lineHeight: 1.15 }}>
-            {state === 'idle' ? 'Start A Run' : `Run ${run.n}`}
+            {state === 'idle' ? 'Start A Run' : `Run ${run.n}`}{state === 'filed' ? ' · Filed' : ''}
           </h2>
           <div style={{ fontSize: 14.5, lineHeight: 1.55, color: INK2, marginTop: 7, maxWidth: 560 }}>
             {state === 'idle' && `${RUN_MINUTES} minutes on the clock. Lumen logs what you do each minute: the missions you hit, the mail you send, where the time goes. Extract when it ends, then ${DEBRIEF_MINUTES} minutes for the report.`}
@@ -90,20 +89,26 @@ export default function RunPanel({ run, today = { paid: 0, cap: RUNS_PAID_A_DAY 
             {state === 'filed' && `Filed. ${clock(run.started_at)} to ${clock(run.extracted_at)}. The report is in the run log.`}
           </div>
           <div style={{ fontSize: 13, color: MUTED, marginTop: 8 }}>
-            {pays ? `${RUN_MILES} miles on extract` : 'No miles on this one'} <span style={{ color: GRAY }}>·</span> {today.paid} of {today.cap} paid runs today
-            {(live || over) && <> <span style={{ color: GRAY }}>·</span> {log.length} logged <span style={{ color: GRAY }}>·</span> {hits.length} {hits.length === 1 ? 'mission' : 'missions'} hit</>}
+            {state === 'idle' && `${RUN_MILES} miles for a run seen through its ${RUN_MINUTES} minutes`}
+            {live && `${RUN_MILES} miles once the ${RUN_MINUTES} minutes are up; none if you extract early`}
+            {over && `${RUN_MILES} miles on Extract`}
+            {(state === 'debrief' || state === 'filed') && (run.miles > 0 ? `${run.miles} miles earned` : 'Extracted early, so no miles')}
+            {' '}<span style={{ color: GRAY }}>·</span> {today.runs} {today.runs === 1 ? 'run' : 'runs'} filed today
+            {(live || over) && <> <span style={{ color: GRAY }}>·</span> {run.logged ?? log.length} logged</>}
           </div>
         </div>
 
         <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-          {state === 'idle' && <button onClick={onStart} style={btn('primary')}><Play size={15} /> Start Run</button>}
+          {state === 'idle' && <button onClick={onStart} disabled={busy} style={{ ...btn('primary'), opacity: busy ? 0.6 : 1 }}><Play size={15} /> {busy ? 'Starting' : 'Start Run'}</button>}
           {live && <button onClick={onWalkAway} title="Ends the run with no miles; the log so far is kept" style={btn()}>Walk Away</button>}
-          {live && <button onClick={onExtract} style={btn()}><LogOut size={15} /> Extract Early</button>}
-          {over && <button onClick={onExtract} style={btn('primary')}><LogOut size={15} /> Extract</button>}
-          {state === 'filed' && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7, fontSize: 14, fontWeight: 600, color: SUCCESS }}><Check size={16} /> Extracted</span>}
+          {live && <button onClick={onExtract} disabled={busy} title="Closes the run now. No miles before the 45 minutes are up." style={btn()}><LogOut size={15} /> {busy ? 'Extracting' : 'Extract Early'}</button>}
+          {over && <button onClick={onExtract} disabled={busy} style={{ ...btn('primary'), opacity: busy ? 0.6 : 1 }}><LogOut size={15} /> {busy ? 'Extracting' : 'Extract'}</button>}
+          {state === 'filed' && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7, fontSize: 14, fontWeight: 600, color: SUCCESS }}><Check size={16} /> Filed</span>}
+          {state === 'filed' && <button onClick={onStart} disabled={busy} style={{ ...btn('primary'), opacity: busy ? 0.6 : 1 }}><Play size={15} /> {busy ? 'Starting' : 'Start Another'}</button>}
         </div>
       </div>
 
+      {error && <div style={{ fontSize: 13.5, color: RED, marginTop: 12 }}>{error}</div>}
       {(live || over) && log.length > 0 && (
         <div style={{ marginTop: 20, borderTop: `1px solid ${PANEL_BORDER}`, paddingTop: 14 }}>
           <div style={{ fontSize: 14, fontWeight: 600, color: LABEL, marginBottom: 8 }}>Run Log</div>
@@ -113,7 +118,7 @@ export default function RunPanel({ run, today = { paid: 0, cap: RUNS_PAID_A_DAY 
                 <span style={{ color: MUTED, width: 62, flexShrink: 0, fontVariantNumeric: 'tabular-nums' }}>{clock(e.at)}</span>
                 <span style={{ color: LABEL, width: 108, flexShrink: 0 }}>{SOURCE[e.source] || e.source}</span>
                 <span style={{ color: INK, flex: 1, minWidth: 0 }}>{e.text}</span>
-                <span style={{ color: e.mission ? INK2 : RED, flexShrink: 0, maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.mission || 'No Mission'}</span>
+                <span style={{ color: e.mission ? INK2 : GRAY, flexShrink: 0, maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.mission || 'Placed At The Debrief'}</span>
               </div>
             ))}
           </div>
@@ -149,8 +154,8 @@ export default function RunPanel({ run, today = { paid: 0, cap: RUNS_PAID_A_DAY 
               <div style={{ fontSize: 14, fontWeight: 600, color: LABEL, marginBottom: 6 }}>Your Word</div>
               <textarea value={word} onChange={e => setWord(e.target.value)} rows={3} placeholder="What was this run for, and did it get there? Optional." aria-label="Your word on this run" style={{ width: '100%', maxWidth: 760, boxSizing: 'border-box', fontFamily: 'inherit', fontSize: 14.5, lineHeight: 1.5, padding: '10px 12px', borderRadius: 10, border: `1px solid ${PANEL_BORDER}`, background: 'rgba(255,255,255,0.04)', color: INK, outline: 'none', resize: 'vertical' }} />
               <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginTop: 12, flexWrap: 'wrap' }}>
-                <button onClick={() => onFile && onFile(word)} style={btn('primary')}><FileText size={15} /> File The Report</button>
-                <span style={{ fontSize: 13, color: MUTED }}>{pays ? `${RUN_MILES} miles when it is filed.` : 'This run is past the four paid today, so it files with no miles.'} If the {DEBRIEF_MINUTES} minutes run out, it files as written.</span>
+                <button onClick={() => onFile && onFile(word)} disabled={busy} style={{ ...btn('primary'), opacity: busy ? 0.6 : 1 }}><FileText size={15} /> {busy ? 'Filing' : 'File The Report'}</button>
+                <span style={{ fontSize: 13, color: MUTED }}>If the {DEBRIEF_MINUTES} minutes run out, it files as written.</span>
               </div>
             </div>
           )}

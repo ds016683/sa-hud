@@ -73,7 +73,7 @@ async function sessionWork(seen, since) {
 
 // The missions a step can sit on: every active Main Mission (with its open gates, for matching)
 // and every open Side Mission. A card opened for a Main Mission's gate folds into that mission.
-async function missions() {
+export async function missions() {
   const [projects, tasks, objs] = await Promise.all([
     sb('projects?select=id,key,name&status=eq.active'),
     sb('project_tasks?select=project_id,text,objective_id,done&limit=3000'),

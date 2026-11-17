@@ -33,7 +33,7 @@ const make = (state) => {
   if (state === 'running') { const s = min(-28); return { ...base, state, started_at: s, ends_at: min(RUN_MINUTES - 28), log: LOG(s).filter(e => e.at <= new Date().toISOString()), hits: HITS.slice(0, 2) } }
   if (state === 'overtime') { const s = min(-RUN_MINUTES - 2.2); return { ...base, state, started_at: s, ends_at: min(-2.2), log: LOG(s) } }
   const s = min(-RUN_MINUTES - 5), x = min(-3)
-  if (state === 'debrief') return { ...base, state, started_at: s, ends_at: min(-5), extracted_at: x, debrief_ends_at: min(DEBRIEF_MINUTES - 3), log: LOG(s) }
+  if (state === 'debrief') return { ...base, state, started_at: s, ends_at: min(-5), extracted_at: x, debrief_ends_at: min(DEBRIEF_MINUTES - 3), log: LOG(s), miles: 10 }
   return { ...base, state: 'filed', started_at: s, ends_at: min(-5), extracted_at: x, log: LOG(s), miles: 10, word: 'The deck is where it needed to be. The inbox pull after each send is the thing to watch.' }
 }
 const STATES = ['idle', 'running', 'overtime', 'debrief', 'filed']
@@ -50,7 +50,7 @@ function Mock() {
           <span style={{ fontSize: 13, color: 'var(--hud-ink-2)' }}>Mock-up, made-up data. State:</span>
           {STATES.map(s => <button key={s} onClick={() => go(s)} style={{ fontFamily: 'inherit', fontSize: 13, fontWeight: 600, padding: '6px 12px', borderRadius: 8, cursor: 'pointer', border: '1px solid var(--hud-border)', background: s === state ? 'var(--hud-fill-2)' : 'transparent', color: 'var(--hud-ink)' }}>{s[0].toUpperCase() + s.slice(1)}</button>)}
         </div>
-        <RunPanel key={state} run={run} today={{ paid: state === 'filed' ? 2 : 1, cap: 4 }} onStart={() => go('running')} onExtract={() => go('debrief')} onFile={() => go('filed')} onWalkAway={() => go('idle')} />
+        <RunPanel key={state} run={run} today={{ runs: state === 'filed' ? 2 : 1, miles: state === 'filed' ? 20 : 10 }} onStart={() => go('running')} onExtract={() => go('debrief')} onFile={() => go('filed')} onWalkAway={() => go('idle')} />
       </div>
     </div>
   )

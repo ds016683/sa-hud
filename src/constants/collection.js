@@ -11,6 +11,7 @@ export const RIVER_START_DAY = '2026-09-23'
 
 export const BADGES = {
   'main-mission':       { label: 'Main Mission Complete', miles: 100,  Icon: Flag,       repeatable: true,  desc: 'A whole Main Mission (project) marked complete', lore: 'The map moves when the mission moves.' },
+  'run':                { label: 'Run Extracted',         miles: 10,   Icon: Target,     repeatable: true,  desc: 'A 45 minute run seen through to Extract, with its report', lore: 'In, through, and out with what you came for.' },
   'gate':               { label: 'Gate Closed',           miles: 7,    Icon: Flag,       repeatable: true,  silent: true, desc: 'A gate closed on any mission: what had to be true for the mission to close', lore: 'One plank at a time, the bridge.' },
   'mission-task':       { label: 'Mission Task Closed',   miles: 10,   Icon: Flag,       repeatable: true,  silent: true, legacy: true, desc: 'A component task of a Main Mission closed (before 11/17, when every gate became 7)', lore: 'One plank at a time, the bridge.' },
   'impromptu':          { label: 'Ad Hoc Done',        miles: 1,   Icon: Target,     repeatable: true,  silent: true, desc: 'An impromptu item posted to the board and finished', lore: 'Quick water.' },

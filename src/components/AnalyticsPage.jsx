@@ -10,13 +10,13 @@ import { supabase } from '../lib/supabase'
 import { INK, INK2, GRAY, PANEL_BORDER, PANEL_BG, MONO, SERIF, LABEL, alpha, chiToday, fmtDay, fmtTime } from './river/canon'
 
 export const FAMILIES = [
-  { id: 'missions', label: 'Missions', color: '#B78223', badges: ['main-mission', 'gate', 'mission-task', 'mythic', 'mythic-task', 'contract', 'bounty', 'side-mission', 'impromptu'] },
+  { id: 'missions', label: 'Missions', color: '#B78223', badges: ['main-mission', 'gate', 'run', 'mission-task', 'mythic', 'mythic-task', 'contract', 'bounty', 'side-mission', 'impromptu'] },
   { id: 'day',      label: 'The Day', color: '#3F86C8', badges: ['full-day', 'work-horse', 'clean-close', 'toastmaster', 'clean-slack', 'bill-pay', 'cartographer', 'maintenance-bundle'] },
   { id: 'body',     label: 'Body',    color: '#2F9C72', badges: ['exercise', 'lift', 'sleep', 'hygiene', 'hygiene-item', 'regimen', 'dose', 'discomforter', 'devotional'] },
   { id: 'other',    label: 'Other',   color: '#8A74D4', badges: [] },
 ]
 const familyOf = (badge) => FAMILIES.find(f => f.badges.includes(badge)) || FAMILIES[3]
-const BADGE_LABEL = { 'main-mission': 'Main Mission Complete', 'gate': 'Gate Closed', 'mission-task': 'Gate Closed', 'mythic': 'Mythic', 'mythic-task': 'Mythic Gate', 'contract': 'Contract', 'bounty': 'Bounty', 'side-mission': 'Side Mission', 'impromptu': 'Ad Hoc', 'full-day': 'Full Day', 'work-horse': 'Work Horse', 'clean-close': 'Clean Close', 'toastmaster': 'Toastmaster', 'clean-slack': 'Clean Slack', 'bill-pay': 'Bill Pay', 'cartographer': 'Cartographer', 'maintenance-bundle': 'Maintenance', 'exercise': 'Exercise', 'lift': 'Lift', 'sleep': 'Sleep', 'hygiene': 'Hygiene', 'hygiene-item': 'Hygiene Item', 'regimen': 'On Regimen', 'dose': 'Dose', 'discomforter': 'Discomforter', 'devotional': 'Devotional' }
+const BADGE_LABEL = { 'main-mission': 'Main Mission Complete', 'gate': 'Gate Closed', 'run': 'Run Extracted', 'mission-task': 'Gate Closed', 'mythic': 'Mythic', 'mythic-task': 'Mythic Gate', 'contract': 'Contract', 'bounty': 'Bounty', 'side-mission': 'Side Mission', 'impromptu': 'Ad Hoc', 'full-day': 'Full Day', 'work-horse': 'Work Horse', 'clean-close': 'Clean Close', 'toastmaster': 'Toastmaster', 'clean-slack': 'Clean Slack', 'bill-pay': 'Bill Pay', 'cartographer': 'Cartographer', 'maintenance-bundle': 'Maintenance', 'exercise': 'Exercise', 'lift': 'Lift', 'sleep': 'Sleep', 'hygiene': 'Hygiene', 'hygiene-item': 'Hygiene Item', 'regimen': 'On Regimen', 'dose': 'Dose', 'discomforter': 'Discomforter', 'devotional': 'Devotional' }
 const labelOf = (b) => BADGE_LABEL[b] || String(b || '').replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
 const SPANS = [{ id: 'day', label: 'Day', days: 1 }, { id: 'w2', label: '14 Days', days: 14 }, { id: 'm1', label: '30 Days', days: 30 }, { id: 'q1', label: '90 Days', days: 90 }]
 const fmt = (n) => Number.isInteger(n) ? String(n) : n.toFixed(2).replace(/\.?0+$/, '')

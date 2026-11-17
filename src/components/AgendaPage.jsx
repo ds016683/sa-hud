@@ -12,6 +12,7 @@ import { ConsoleRunProvider } from '../lib/consoleRun'
 import { matchNotes, hoursBetween, upsertSession, logToHarvest } from '../lib/meetings'
 import MeetingCloseout, { renderMarkdown, CloseoutBlock, friendlyError, fmtHours } from './river/MeetingCloseout'
 import LoadoutPanel from './river/LoadoutPanel'
+import RunDock from './river/RunDock'
 import RecurringPanel from './river/RecurringPanel'
 import ReleasePanel from './river/ReleasePanel'
 import ProtocolsPanel from './river/MorningProtocol'
@@ -487,6 +488,8 @@ export default function AgendaPage({ onNavigate } = {}) {
             {/* The Stash (David 10/25): off the Loadout, a tall column down the Console's right side; the instrument
                 groups wrap into two tight rows beside it. LoadoutPanel renders the Stash here through a portal. */}
             <ConsoleRunProvider tick={refreshKey}>
+            {/* The Run (David 11/17): down with the Console's buttons, distinct and bigger than the others. */}
+            <div style={{ marginBottom: 20 }}><RunDock refreshKey={refreshKey} onChange={refresh} /></div>
             <div className="console-grid" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 320px', gap: 30, alignItems: 'start' }}>
               <div className="console-row" style={{ display: 'flex', gap: 0, flexWrap: 'wrap', alignItems: 'flex-start', justifyContent: 'space-around', rowGap: 30, alignContent: 'flex-start', padding: '6px 0' }}>
                 <ProtocolsPanel onChange={refresh} onNavigate={onNavigate} />

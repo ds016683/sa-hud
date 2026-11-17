@@ -58,7 +58,7 @@ export const RATES_FROM = '2026-10-08'
 // 'mythic-task' stay in the table only so the days before it still read as they were struck.
 export const GATES_FROM = '2026-11-17'
 export const MILES = {
-  'gate': 7,
+  'gate': 7, 'run': 10,
   'main-mission': 100, 'mission-task': 10, 'bounty': 4, 'contract': 15, 'mythic': 50, 'mythic-task': 10, 'side-mission': 4, 'impromptu': 1,
   'maintenance-bundle': 1, 'cartographer': 2, 'exercise': 5, 'lift': 1, 'sleep': 4,
   'toastmaster': 4, 'full-day': 4, 'work-horse': 10, 'clean-close': 2, 'clean-slack': 10, 'bill-pay': 25, 'discomforter': 5, 'hygiene': 3, 'hygiene-item': 0.25, 'devotional': 2, 'dose': 0.5, 'regimen': 2,
@@ -109,6 +109,13 @@ export async function computeAwards(day, { closing = false } = {}) {
 
   const onDay = (ts) => ts && ts >= from && ts <= to
   for (const p of doneProjects) if (onDay(p.archived_at) || onDay(p.last_activity_at)) add('main-mission', p.id, `Main Mission complete: ${p.name}`)
+  // Runs (David 11/17): "A run awards 10 miles", "no miles until i've hit 45", "no limits on the number of
+  // runs". A run that reached its 45 minutes pays on the day it was extracted.
+  if (gates) {
+    const idx = await fetch(`${URL_BASE}/storage/v1/object/project-files/runs/index.json?cb=${Date.now()}`, { headers: hdr(), cache: 'no-store' }).then(r => r.ok ? r.json() : { runs: [] }).catch(() => ({ runs: [] }))
+    const chi = (iso) => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Chicago', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(iso))
+    for (const r of (idx.runs || [])) if (r.miles > 0 && r.extracted_at && (r.state === 'filed' || r.state === 'debrief') && chi(r.extracted_at) === day) add('run', r.id, `Run ${r.n} extracted at the full 45 minutes: ${(r.hits || []).length} ${(r.hits || []).length === 1 ? 'mission' : 'missions'} hit`)
+  }
   for (const t of doneTasks) gates ? add('gate', t.id, `Gate closed: ${t.text}`) : add('mission-task', t.id, `Mission task closed: ${t.text}`)
   // Mythic gates (David 10/29): a released objective whose parent is a Mythic
   // pays like a Mythic task, the first five closed on that Mythic, never as a Bounty.
