@@ -565,7 +565,7 @@ function ProjectDetail({ project, board: boardProp, api, onBack, initialTab, ini
           </div>
         )}
         {tab === 'briefing' && read === 'trail' && (
-          <MissionTrail project={project} gates={[...tasks, ...history].map(t => ({ id: t.id, text: stripNum(t.text), done: !isOpen(t), done_at: t.released_at }))}
+          <MissionTrail project={project} onOpenGate={openCard} gates={[...plan.map(({ t, n }) => ({ t, n })), ...history.map(t => ({ t, n: null }))].map(({ t, n }) => ({ id: t.id, n, text: stripNum(t.text), done: !isOpen(t), done_at: t.released_at, objective_id: n ? t.objective_id : null }))}
             here={`${tasks.filter(t => !isOpen(t)).length} of ${tasks.length} gates closed.${nowGate(plan) ? ` Next: ${stripNum(nowGate(plan).t.text)}` : ''}`} onEnd={() => pickRead('end')} />
         )}
         {tab === 'briefing' && read === 'end' && (

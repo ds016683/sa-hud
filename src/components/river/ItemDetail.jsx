@@ -101,8 +101,8 @@ async function loadRelated(item) {
           out.gateOf = numbered.length ? numbered.length + unnumberedOpen.length : all.length
           const n = numOf(task)
           out.gateN = n !== null ? n : (all.findIndex(t => t.id === task.id) + 1 || null)
-          // The mission's gates around this one (David 11/17: the card's trail shows the gates behind it and the
-          // gates still ahead, "the whole point in the beginning"). Numbered ones by number, the rest by creation.
+          // The mission's gates, for this gate's place among them ("gate 31 of 32"). The card itself tells only
+          // this gate's story (David 11/17, later the same day); the mission's trail carries the others.
           const strip = (t) => String(t || '').replace(/^\s*(?:gate\s+)?\d+\s*[·.:)-]\s*/i, '')
           const nOf = (t, i) => { const k = numOf(t); return k !== null ? k : i + 1 }
           out.missionGates = all.map((t, i) => ({ id: t.id, n: nOf(t, i), text: strip(t.text), done: t.status === 'done' || !!t.done, done_at: t.released_at, objective_id: t.objective_id, current: t.id === task.id })).sort((x, y) => x.n - y.n)

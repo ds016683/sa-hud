@@ -75,15 +75,15 @@ export default function CardBriefing({ obj, root, kindLabel, steps = [], kids = 
     ...shownClosed.map(s => ({ key: `s${s.id}`, type: 'step', done: true, text: s.text, step: s })),
     ...openSteps.map(s => ({ key: `s${s.id}`, type: 'step', text: s.text, step: s })),
     ...(isGate ? [] : openKids.map(k => ({ key: `k${k.id}`, type: 'gate', text: k.title, kid: k, n: kids.indexOf(k) + 1 }))),
-    // On a Main Mission gate's card, the mission's other open gates are the road ahead (David 11/17).
-    ...missionGates.filter(g => !g.done).map(g => ({ key: `g${g.id}`, type: 'mission', text: g.text, gate: g })),
+    // A Main Mission gate's card tells its own story (David 11/17: "each gate probably needs its own story,
+    // that feeds the meta story"): the one stop from the mission is this gate. The other gates are on the mission's trail.
+    ...missionGates.filter(g => g.current && !g.done).map(g => ({ key: `g${g.id}`, type: 'mission', text: g.text, gate: g })),
     ...openBoard.map((t, i) => ({ key: `b${i}`, type: 'board', text: t.label, note: t.status === 'blocked' ? (t.note || 'Blocked') : t.status === 'inmotion' ? 'In motion in a Claude session' : `On the session board ${t.board || ''}`.trim(), blocked: t.status === 'blocked' })),
   ]
   const nextKey = (stops.find(s => !s.done && s.type !== 'mission') || {}).key || null
-  const total = steps.length + (isGate ? 0 : kids.length) + missionGates.length
-  const closed = steps.filter(s => s.done).length + (isGate ? 0 : kids.filter(k => k.state === 'released').length) + missionGates.filter(g => g.done).length
+  const total = steps.length + (isGate ? 0 : kids.length)
+  const closed = steps.filter(s => s.done).length + (isGate ? 0 : kids.filter(k => k.state === 'released').length)
   const thisGate = missionGates.find(g => g.current) || null
-  const ahead = missionGates.filter(g => !g.done && !g.current).length
 
   const close = async (st, e) => {
     if (closing || busy) return
@@ -118,7 +118,7 @@ export default function CardBriefing({ obj, root, kindLabel, steps = [], kids = 
     } catch (err) { say(`Could not add it: ${err.message}`) } finally { setBusy(false) }
   }
 
-  const trail = useMemo(() => buildTrail({ obj, kindLabel, steps: [...steps, ...missionGates.filter(g => g.done && !g.current).map(g => ({ done: true, done_at: g.done_at, text: `Gate ${g.n}: ${g.text}` }))], children: isGate ? [] : kids, files: side.files, tabs: side.tabs, builds: side.builds }), [obj, kindLabel, steps, kids, isGate, side, missionGates])
+  const trail = useMemo(() => buildTrail({ obj, kindLabel, steps, children: isGate ? [] : kids, files: side.files, tabs: side.tabs, builds: side.builds }), [obj, kindLabel, steps, kids, isGate, side])
   const shownTrail = allTrail ? trail : trail.slice(-6)
   const dw = due ? dueWords(due) : null
   const realFiles = side.files.filter(f => !isLink(f) && !isRequest(f))
@@ -153,7 +153,7 @@ export default function CardBriefing({ obj, root, kindLabel, steps = [], kids = 
 
         {face === 'trail' && (
           <>
-            <p className="brf-sub">What has come in and what has happened, oldest first.</p>
+            <p className="brf-sub">{mission ? `What has come in and what has happened on this gate, oldest first. The mission's trail on ${mission.name} carries every gate's.` : 'What has come in and what has happened, oldest first.'}</p>
             <div className="brf-trail">
               {trail.length > shownTrail.length && <div className="brf-ev more" onClick={() => setAllTrail(true)}><div className="what">{trail.length - shownTrail.length} earlier, from {stamp(trail[0].at)}</div></div>}
               {shownTrail.map((ev, i) => <div key={`${ev.at}${i}`} className={`brf-ev${ev.gate ? ' gate' : ''}`}><div className="when">{stamp(ev.at)}<span className="kind">{ev.kind}</span></div><div className="what">{ev.text}</div></div>)}
@@ -166,7 +166,7 @@ export default function CardBriefing({ obj, root, kindLabel, steps = [], kids = 
         {face === 'end' && (
           <>
             <p className="brf-sub">{mission
-              ? `${thisGate ? `This is gate ${thisGate.n} of ${missionGates.length}` : 'This is a gate'} on ${mission.name}. ${ahead ? `Ahead of it: the mission's ${ahead} other open ${ahead === 1 ? 'gate' : 'gates'}, then Polaris.` : 'It is the last open gate before Polaris.'}`
+              ? `${thisGate ? `This is gate ${thisGate.n} of ${missionGates.length}` : 'This is a gate'} on ${mission.name}. What is left on this gate, then Polaris.`
               : stops.some(s => !s.done) ? 'From where you are to Polaris: the gates still open, what must be true for this mission to close. Click a circle when one is closed.' : 'From where you are to Polaris. A gate is yours to set: add one here or tell Lumen.'}</p>
             <div className="brf-trail">
               {stops.map(s => {
@@ -183,13 +183,13 @@ export default function CardBriefing({ obj, root, kindLabel, steps = [], kids = 
                     {s.done && <><span className="when">Closed just now</span><button className="tool" onClick={() => reopen(s.step)}>Reopen</button></>}
                     {!s.done && s.type === 'step' && <div className="src">{src.lead}{src.quote && <> <q>{src.quote}</q></>}<button className="tool gone" onClick={() => drop(s.step)}>Take It Off</button></div>}
                     {s.type === 'gate' && <div className="src">Gate {s.n} of {kids.length}{s.kid.due_date ? ` · ${dueWords(s.kid.due_date).short}` : ''}. It closes on its own card.</div>}
-                    {s.type === 'mission' && <div className="src">Gate {s.gate.n} of {missionGates.length} on {mission?.name || 'the mission'}{s.gate.current ? '. You are on its card.' : ''}{s.gate.objective_id && !s.gate.current && <button className="tool" onClick={() => onOpenCard && onOpenCard(s.gate.objective_id)}>Open Its Card</button>}</div>}
+                    {s.type === 'mission' && <div className="src">Gate {s.gate.n} of {missionGates.length} on {mission?.name || 'the mission'}</div>}
                     {s.type === 'board' && <div className="src" style={s.blocked ? { color: 'var(--hud-warn)' } : undefined}>{s.note}</div>}
                   </div>
                 )
               })}
               {/* Any mission takes as many gates as it needs (David 11/16), a Mythic included (11/17: one card for every mission). */}
-              {mission && onOpenMission && <div className="brf-ev go" onClick={onOpenMission}><div className="what">Gates are added on the mission: open {mission.name}</div></div>}
+              {mission && onOpenMission && <div className="brf-ev go" onClick={onOpenMission}><div className="what">Every gate's story is on the mission's trail: open {mission.name}</div></div>}
               {!mission && (
                 <div className="brf-stop">
                   <span className="hit still"><span className="o" style={{ borderStyle: 'dotted' }} /></span>

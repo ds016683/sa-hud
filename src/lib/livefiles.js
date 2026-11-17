@@ -22,6 +22,7 @@ export async function listLiveFiles(filter = {}, { includeOld = false, includeFi
   if (!includeFiled) sel = sel.is('filed_at', null)
   if (!includeOld) sel = sel.is('superseded_by', null)
   if (filter.objectiveId) sel = sel.eq('objective_id', filter.objectiveId)
+  if (filter.objectiveIds) sel = sel.in('objective_id', filter.objectiveIds)
   if (filter.projectId) sel = sel.eq('project_id', filter.projectId)
   let rows
   try { rows = await q(sel) } catch (e) { reportSoft('live files list', e); return { rows: [], missing: /live_files/.test(e.message) } }
