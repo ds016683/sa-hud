@@ -440,8 +440,8 @@ function ProjectDetail({ project, board: boardProp, api, onBack, initialTab, ini
   const pct = tasks.length ? Math.round(closed / tasks.length * 100) : 0
   const [showHistory, setShowHistory] = useState(false)
   // The Briefing's two reads (David 11/17: the Trail is the Main Mission's face too): what has happened, and the gates still open.
-  const [read, setRead] = useState(() => { try { return localStorage.getItem('hud:mission:read') === 'trail' ? 'trail' : 'end' } catch { return 'end' } })
-  const pickRead = (v) => { setRead(v); try { localStorage.setItem('hud:mission:read', v) } catch { /* private window */ } }
+  // One line (David 11/17): the trail behind opens folded, the path forward opens with its gates showing.
+  const [aheadOpen, setAheadOpen] = useState(true)
   const [showClosed, setShowClosed] = useState(false)
   const [award, setAward] = useState(null)
 
@@ -559,16 +559,10 @@ function ProjectDetail({ project, board: boardProp, api, onBack, initialTab, ini
 
       <div style={{ ...S.panel, marginTop: 20 }}>
         {tab === 'briefing' && (
-          <div className="brf-seg" role="tablist" aria-label="Read" style={{ marginBottom: 6 }}>
-            <button role="tab" aria-selected={read === 'trail'} className={read === 'trail' ? 'on' : ''} onClick={() => pickRead('trail')}>The Trail</button>
-            <button role="tab" aria-selected={read === 'end'} className={read === 'end' ? 'on' : ''} onClick={() => pickRead('end')}>End Of The Trail<i>{tasks.filter(isOpen).length} open</i></button>
-          </div>
-        )}
-        {tab === 'briefing' && read === 'trail' && (
           <MissionTrail project={project} onOpenGate={openCard} gates={[...plan.map(({ t, n }) => ({ t, n })), ...history.map(t => ({ t, n: null }))].map(({ t, n }) => ({ id: t.id, n, text: stripNum(t.text), done: !isOpen(t), done_at: t.released_at, objective_id: n ? t.objective_id : null }))}
-            here={`${tasks.filter(t => !isOpen(t)).length} of ${tasks.length} gates closed.${nowGate(plan) ? ` Next: ${stripNum(nowGate(plan).t.text)}` : ''}`} onEnd={() => pickRead('end')} />
+            here={`${tasks.filter(t => !isOpen(t)).length} of ${tasks.length} gates closed.${nowGate(plan) ? ` Next: ${stripNum(nowGate(plan).t.text)}` : ''}`} ahead={{ open: aheadOpen, count: tasks.filter(isOpen).length, onToggle: () => setAheadOpen(o => !o) }} />
         )}
-        {tab === 'briefing' && read === 'end' && (
+        {tab === 'briefing' && aheadOpen && (
           <div>
             <p className="brf-sub" style={{ marginTop: 12 }}>The gates still open: what must be true for this mission to close.</p>
             {!tasks.length && <div style={{ fontSize: 13, color: GRAY, padding: '10px 0' }}>No gates yet. Add the first one below: what must be true for this mission to close.</div>}

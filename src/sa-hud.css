@@ -1359,6 +1359,13 @@ table.fin-grid { width: 100%; border-collapse: collapse; font-family: var(--font
 .brf-spark { position: absolute; left: -24px; top: 14px; width: 7px; height: 7px; border-radius: 50%; background: var(--hud-success); box-shadow: 0 0 10px 2px color-mix(in srgb, var(--hud-success) 70%, transparent); animation: brftravel .6s .25s ease-in both; pointer-events: none; }
 .brf-stop.fresh { animation: brfrise .45s ease both; }
 .brf-ev.end.lit::before { animation: brfstar .8s ease 2; }
+/* One line (David 11/17): the trail behind and the path forward fold on the line itself; the chevron is the mark. */
+.brf-ev.fold { cursor: pointer; padding-bottom: 15px; outline: none; }
+.brf-ev.fold::before { display: none; }
+.brf-ev.fold .chev { position: absolute; left: -31px; top: 0; width: 18px; height: 18px; display: grid; place-items: center; border-radius: 50%; background: var(--hud-surface-deep); border: 1px solid var(--hud-border); color: var(--hud-accent); }
+.brf-ev.fold:hover .chev, .brf-ev.fold:focus-visible .chev { border-color: var(--hud-accent); }
+.brf-ev.fold .what { font-size: 14px; font-weight: 600; color: var(--hud-accent); }
+.brf-ev.fold .what i { font-style: normal; font-weight: 400; color: var(--hud-ink-3); margin-left: 8px; }
 /* By hand (David 11/17): a step or a gate, dragged from the tray onto the line. The marks match the trail's own. */
 .brf-tray { display: inline-flex; align-items: center; gap: 8px; }
 .brf-tray .pick { display: inline-flex; align-items: center; gap: 8px; font-size: 13.5px; font-weight: 600; color: var(--hud-ink); border: 1px dashed var(--hud-border); border-radius: 10px; padding: 7px 12px; cursor: grab; user-select: none; }
