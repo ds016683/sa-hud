@@ -87,12 +87,9 @@ export async function reopenObjective(id) { return updateObjective(id, { state: 
 // ---- steps: what needs to happen to close this out ---------------------------
 const soft = async (p) => { try { return await q(p) } catch (e) { if (/objective_steps|schema cache|does not exist/i.test(e.message)) return null; throw e } }
 export const fetchSteps = (objectiveId) => soft(supabase.from('objective_steps').select('*').eq('objective_id', objectiveId).order('position').order('id'))
-export const MYTHIC_STEPS_MAX = 5
-export const CONTRACT_MARKS_MAX = 3
-export const stepsMaxFor = (size) => size === 'heavy' ? MYTHIC_STEPS_MAX : size === 'medium' ? CONTRACT_MARKS_MAX : 0
+// Gates (David 11/16): "ANY mission should be able to have as many gates as it needs." The old
+// limits (five on a Mythic, three marks on a Contract) are gone.
 export async function addStep(objectiveId, text, position = 0) {
-  const existing = await fetchSteps(objectiveId)
-  if (existing && existing.length >= MYTHIC_STEPS_MAX) throw new Error(`a Mythic holds ${MYTHIC_STEPS_MAX} milestones at most; a sixth means this is a Main Mission`)
   return soft(supabase.from('objective_steps').insert({ objective_id: objectiveId, text: String(text).trim().slice(0, 300), position }).select().single())
 }
 export const toggleStep = (id, done) => soft(supabase.from('objective_steps').update({ done, done_at: done ? new Date().toISOString() : null }).eq('id', id).select().single())
@@ -102,14 +99,11 @@ export const removeStep = (id) => soft(supabase.from('objective_steps').delete()
 // "Gateways should be called Milestones and have the same structural treatment
 // as a Milestone card for a mission." A Mythic's milestones are objectives of
 // their own, parent_id = the Mythic, so each opens as a card with the five pills.
-// Five at most, 10 miles each on close (the River pays mythic-task), never on
+// As many as it needs, 7 miles each on close like any gate (11/17), never on
 // the Board or in the Stash on their own: the Mythic carries them.
-export const MYTHIC_MILESTONES_MAX = MYTHIC_STEPS_MAX
 export const fetchMilestones = (parentId) => q(supabase.from('objectives').select('*').eq('parent_id', parentId).is('deleted_at', null).order('captured_at', { ascending: true }))
 export async function addMilestone(parent, title, doneWhen = null) {
   const text = String(title || '').trim(); if (!text) throw new Error('give the milestone a name')
-  const have = await fetchMilestones(parent.id)
-  if (have.length >= MYTHIC_MILESTONES_MAX) throw new Error(`a Mythic holds ${MYTHIC_MILESTONES_MAX} milestones at most; a sixth means this is a Main Mission`)
   const tags = (parent.tags || []).filter(t => t === 'personal' || t === 'third-horizon')
   return q(supabase.from('objectives').insert({ user_id: DAVID, parent_id: parent.id, title: text.slice(0, 200), state: 'parked', kind: 'execution', effort: 2, importance: 2, needs_sizing: false, tags, description: doneWhen ? String(doneWhen).trim().slice(0, 600) || null : null, captured_at: new Date().toISOString() }).select().single())
 }

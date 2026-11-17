@@ -49,7 +49,7 @@ export default function SessionBoard({ board, onChange, compact = false, focusTa
           {live && <span className="sb-pulse" style={{ width: 7, height: 7, borderRadius: '50%', background: GREEN }} />}
           {live ? 'live' : 'idle'} · {stats.done}/{stats.total} done · updated {fmtTime(board.updated_at)}
         </span>
-        {hasTied && <button onClick={() => setWhole(w => !w)} style={{ marginLeft: 'auto', background: 'transparent', border: `1px solid ${PANEL_BORDER}`, borderRadius: 7, color: GRAY, fontFamily: MONO, fontSize: 9.5, letterSpacing: '1px', textTransform: 'uppercase', padding: '3px 8px', cursor: 'pointer' }}>{whole ? 'This milestone only' : 'Whole board'}</button>}
+        {hasTied && <button onClick={() => setWhole(w => !w)} style={{ marginLeft: 'auto', background: 'transparent', border: `1px solid ${PANEL_BORDER}`, borderRadius: 7, color: GRAY, fontFamily: MONO, fontSize: 9.5, letterSpacing: '1px', textTransform: 'uppercase', padding: '3px 8px', cursor: 'pointer' }}>{whole ? 'This gate only' : 'Whole board'}</button>}
       </div>
       {shown.map(([p, pi]) => {
         const pd = (p.tasks || []).filter(t => t.status === 'done').length

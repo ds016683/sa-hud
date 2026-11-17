@@ -16,6 +16,7 @@
 //   proposals.json  { v, proposals, skipped, cursor, ran_at }       written here only
 //   rulings.json    { v, rulings: { <id>: { verdict, why, at } } }  written by the HUD only
 import { sb } from './_ledger.mjs'
+import { syncEmail } from './_sync-core.mjs'
 
 const URL_BASE = 'https://cmuvomnmaoseccxpeuxq.supabase.co'
 const svc = () => ({ apikey: process.env.SUPABASE_SERVICE_KEY, Authorization: `Bearer ${process.env.SUPABASE_SERVICE_KEY}` })
@@ -101,11 +102,13 @@ function prompt(events, list, state) {
 
 His rule, in his words: "What i want you documenting are the smaller steps that happen between gates, which are ultimately just documenting my work. If i make a change to slide 6 it would get documented here. Pithy. Succinct. I don't need old versions, integration sourcing, etc. Just document what i have actively done."
 
-For each event below, decide whether it is a step on one of the listed missions, and if it is, write the step.
+His second rule, after reading the first batch: "one line per relevant event. relevant, should be material and part of the tasks actual construction. Not changing a word to italics. We don't need editorial changes documented unless they are structural."
+
+For each event below, decide whether it is a relevant step on one of the listed missions, and if it is, write the step.
 
 How a step reads: one line, past tense, the verb first, what he did and for or to whom. Twelve words at most. No em dashes. No adjectives or praise. No file versions, tool names or system names, and nothing about where the fact came from. The shape, not the words: "Sent the revised scope to the client." "Changed slide 6."
 
-What is not a step: a reply that only thanks, confirms or sets a time; anything personal; work that built or repaired the tools themselves unless a listed mission is about those tools. For those, give text null.
+What is not a step: an editorial change (wording, a caption, a color, a label, italics, spacing, a number restated to match another page) unless it changes the structure of the piece (a page or section added, removed or reordered, a model or a number rebuilt, a deliverable produced or sent); a reply that only thanks, confirms or sets a time; anything personal; housekeeping about the board, the missions or the tools themselves unless a listed mission is about those tools. For those, give text null. When several events are the same piece of work, only the material one is a step. When in doubt, leave it out: a short true trail beats a full one.
 
 Matching: use the mission whose work the event plainly belongs to. A session event carries the project key its board ran under; that is a strong hint, not proof. If the event is real work but no listed mission fits, give mission null and still write the text. Never force a match.${learned}
 
@@ -119,9 +122,14 @@ Reply with one JSON object and nothing else: {"steps":[{"ref":"<the event ref>",
 }
 
 // One run: gather, ask, append. Returns { events, added, skipped, pending }.
-export async function capture({ model }) {
+// redo: put back everything David has not ruled on and read the first window again (after the
+// rule for what counts as a step changes). His rulings stay, and a ruled event is never re-proposed.
+export async function capture({ model, redo = false }) {
   if (!model) throw new Error('no model named for the capture')
   const state = await readSteps()
+  if (redo) { state.proposals = state.proposals.filter(p => state.rulings[p.id]); state.skipped = []; state.cursor = {}; state.ran_at = null }
+  // Sent mail reaches the Ledger on the half hour; pull it now so a step shows within minutes.
+  await syncEmail().catch(() => null)
   const first = !state.ran_at
   const since = state.ran_at || new Date(Date.now() - FIRST_DAYS * 864e5).toISOString()
   const mailAfter = state.cursor.mail_after || since

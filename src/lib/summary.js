@@ -7,13 +7,23 @@ import { BADGES } from '../constants/collection'
 import { GREEN, PURPLE } from '../components/river/canon'
 
 const q = (p) => p.then(r => (r.error ? [] : (Array.isArray(r.data) ? r.data : [])))
-export const MILES = { bounty: 4, contract: 15, mythic: 50, gate: 10, gatesPaid: 5, mmt: 10, mainMission: 100, adhoc: 1 }
+// Gates (David 11/17): "a gate should pay 7 miles. any gate. all others stay the same." No cap, any
+// mission; the Main Mission milestone's 10 and the Mythic's first five at 10 are retired. A mission
+// closed before GATES_FROM reads at the rates it was paid.
+export const GATES_FROM = '2026-11-17'
+export const MILES = { bounty: 4, contract: 15, mythic: 50, gate: 7, mmt: 7, mainMission: 100, adhoc: 1 }
+export const baseMiles = (size) => size === 'heavy' ? MILES.mythic : size === 'medium' ? MILES.contract : MILES.bounty
 export const kindOf = (o, linked) => linked ? 'Main Mission' : (o?.tags || []).includes('impromptu') ? 'Ad Hoc' : 'Side Mission'
-export const typeOf = (kind, size) => kind === 'Main Mission' ? 'Main Mission task' : kind === 'Ad Hoc' ? 'Ad Hoc' : SIZES[size].label
-export const badgeOf = (kind, size) => kind === 'Main Mission' ? 'mission-task' : kind === 'Ad Hoc' ? 'impromptu' : size === 'heavy' ? 'mythic' : size === 'medium' ? 'contract' : 'bounty'
+export const typeOf = (kind, size) => kind === 'Main Mission' ? 'Main Mission Gate' : kind === 'Ad Hoc' ? 'Ad Hoc' : SIZES[size].label
+export const badgeOf = (kind, size) => kind === 'Main Mission' ? 'gate' : kind === 'Ad Hoc' ? 'impromptu' : size === 'heavy' ? 'mythic' : size === 'medium' ? 'contract' : 'bounty'
 // Medallion color: a Side Mission takes its type's color (Bounty gold, Contract baby blue, Mythic purple); a Main Mission task is purple; Ad Hoc green.
 export const colorOf = (kind, size) => kind === 'Main Mission' ? PURPLE : kind === 'Ad Hoc' ? GREEN : SIZES[size].color
-export const milesFor = (kind, size, gatesDone = 0) => kind === 'Main Mission' ? MILES.mmt : kind === 'Ad Hoc' ? MILES.adhoc : size === 'heavy' ? MILES.mythic + MILES.gate * Math.min(gatesDone, MILES.gatesPaid) : size === 'medium' ? MILES.contract : MILES.bounty
+export const milesFor = (kind, size, gatesDone = 0, closed = null) => {
+  const old = !!closed && String(closed).slice(0, 10) < GATES_FROM
+  if (kind === 'Main Mission') return old ? 10 : MILES.gate
+  if (kind === 'Ad Hoc') return MILES.adhoc
+  return old ? baseMiles(size) + (size === 'heavy' ? 10 * Math.min(gatesDone, 5) : 0) : baseMiles(size) + MILES.gate * gatesDone
+}
 
 export async function missionSummary(objectiveId) {
   const [o] = await q(supabase.from('objectives').select('*').eq('id', objectiveId).limit(1))
@@ -31,7 +41,7 @@ export async function missionSummary(objectiveId) {
   const kind = kindOf(o, !!link)
   const type = typeOf(kind, size)
   const gatesDone = steps.filter(s => s.done).length
-  const miles = milesFor(kind, size, gatesDone)
+  const miles = milesFor(kind, size, gatesDone, o.released_at || link?.released_at || null)
   const badge = badgeOf(kind, size)
   const minutes = clocks.reduce((s, c) => s + (c.stopped_at ? Number(c.minutes) || 0 : (Date.now() - new Date(c.started_at)) / 60000), 0)
   const opened = o.captured_at || o.activated_at || null
@@ -46,7 +56,7 @@ export async function missionSummary(objectiveId) {
     id: o.id, title: o.title, kind, type, size, badge, color: colorOf(kind, size), objective: o, badgeLabel: BADGES[badge]?.label, lore: BADGES[badge]?.lore,
     project: project?.name || null, projectKey: project?.key || null, task: link ? link.text : null,
     personal: tags.includes('personal'), state: o.state, released_kind: o.released_kind,
-    miles, gatesDone, gatesTotal: steps.length, gatesPaid: Math.min(gatesDone, MILES.gatesPaid),
+    miles, gatesDone, gatesTotal: steps.length, gatesPaid: gatesDone,
     opened, closed, days, minutes: Math.round(minutes),
     gates: steps, achieved, origin, achievedFrom: sum?.body?.achieved ? 'achieved' : sum ? 'archive' : null,
     north_star: link ? (project?.description || null) : (o.north_star || null),

@@ -533,7 +533,7 @@ export const TOOLS = [
   },
   {
     name: 'add_step',
-    description: "Only when David himself asks in this turn (David 11/9: nothing is created on his board, no objective, task, milestone, step, maintenance or project, unless he commissions that item himself; a suggestion is a message to him, never a row). Add a stop to a card's path: the thing that still has to happen between here and Polaris, shown on the card's End Of The Trail as a circle he clicks when it is done. Any Bounty or Contract holds five stops at most; on a Mythic this adds a milestone instead (five at most, 10 miles each, each a card of its own). text is the stop, short and observable: a decision marked, a conversation had, a thing produced. said is REQUIRED in practice: David's own words that asked for it, verbatim, so the card can show where the stop came from (David 11/11: the path is never guesswork; it comes out of the work with you, only from what he tells you). If you think something belongs on the path and he has not said so, ask him in one line and wait for his yes.",
+    description: "Only when David himself asks in this turn (David 11/9: nothing is created on his board, no objective, task, milestone, step, maintenance or project, unless he commissions that item himself; a suggestion is a message to him, never a row). Add a gate to a card's path (David 11/16: a gate is a critical step or event the mission cannot close without; what must be true): the thing that still has to happen between here and Polaris, shown on the card's End Of The Trail as a circle he clicks when it is done. Any mission takes as many gates as it needs and each pays 7 miles when closed; on a Mythic the gate opens as a card of its own. text is the stop, short and observable: a decision marked, a conversation had, a thing produced. said is REQUIRED in practice: David's own words that asked for it, verbatim, so the card can show where the stop came from (David 11/11: the path is never guesswork; it comes out of the work with you, only from what he tells you). If you think something belongs on the path and he has not said so, ask him in one line and wait for his yes.",
     inputSchema: { type: 'object', properties: { title: { type: 'string' }, text: { type: 'string' }, said: { type: 'string', description: "David's own words that asked for this stop, verbatim" } }, required: ['title', 'text'] },
   },
   {
@@ -782,7 +782,7 @@ export const TOOLS = [
   },
   {
     name: 'set_size',
-    description: "Set a Side Mission's type by title: light = Bounty (1 slot, one discrete action under an hour, 4 miles), medium = Contract (2 slots, a standard piece of work with a deliverable, a couple of hours, 15 miles), heavy = Mythic (3 slots, several ordered steps done within days, the only type with steps, five at most, 50 miles plus 10 per step). Bigger than a Mythic is a Main Mission.",
+    description: "Set a Side Mission's type by title: light = Bounty (1 slot, one discrete action under an hour, 4 miles), medium = Contract (2 slots, a standard piece of work with a deliverable, a couple of hours, 15 miles), heavy = Mythic (3 slots, a large piece of work done within days, 50 miles). Any of them can carry gates, as many as the mission needs, and every closed gate pays 7 (David 11/17). Bigger than a Mythic is a Main Mission.",
     inputSchema: { type: 'object', properties: { title: { type: 'string' }, size: { type: 'string', enum: ['light', 'medium', 'heavy'] } }, required: ['title', 'size'] },
   },
   {
@@ -1203,30 +1203,27 @@ export async function callTool(name, args = {}) {
       if (sizeOf(o) === 'heavy') {
         // A Mythic's milestones are objectives of their own (parent_id), each a card (David 10/29).
         const kids = await sb(`objectives?select=id,title,state,description,released_at,captured_at&parent_id=eq.${o.id}&deleted_at=is.null&order=captured_at.asc`).catch(() => [])
-        return JSON.stringify({ ok: true, title: o.title, type: 'Mythic', milestones: kids.map((k, i) => ({ n: i + 1, title: k.title, done: k.state === 'released', done_when: k.description, closed_at: k.released_at })), max: 5, note: 'Mythic milestones, 10 miles each on close, five at most; each opens as a card in the HUD.' })
+        return JSON.stringify({ ok: true, title: o.title, type: 'Mythic', milestones: kids.map((k, i) => ({ n: i + 1, title: k.title, done: k.state === 'released', done_when: k.description, closed_at: k.released_at })), note: 'The gates of this Mythic, 7 miles each on close like any gate; each opens as a card in the HUD.' })
       }
       const steps = await sb(`objective_steps?select=id,text,done,done_at,position&objective_id=eq.${o.id}&order=position.asc,id.asc`).catch(() => [])
       return JSON.stringify({ ok: true, title: o.title, type: sizeOf(o) === 'heavy' ? 'Mythic' : sizeOf(o) === 'medium' ? 'Contract' : 'Bounty', steps, max: 5 })
     }
     case 'add_step': {
       const o = await findObjective(args.title)
-      // Stops on the path (David 11/11): any card can carry them, five at most, and each keeps where it came from.
-      // A Mythic's stops are its milestones, cards of their own, as before.
-      const maxSteps = 5
+      // Gates (David 11/16, 11/17): any mission takes as many as it needs, each keeps where it came from, and
+      // any closed gate pays 7. On a Mythic a gate still opens as a card of its own, as before.
       if (sizeOf(o) === 'heavy') {
         // Mythic milestone (David 10/29): an objective of its own under the Mythic, a card in the HUD.
         const kids = await sb(`objectives?select=id&parent_id=eq.${o.id}&deleted_at=is.null`).catch(() => [])
-        if (kids.length >= 5) return JSON.stringify({ ok: false, error: 'five milestones is the limit for a Mythic; a sixth means this is a Main Mission (create_project and add_project_task).' })
         const tags = (o.tags || []).filter(t => t === 'personal' || t === 'third-horizon')
         const out = await sbWrite('POST', 'objectives', { user_id: DAVID, parent_id: o.id, title: String(args.text || '').trim().slice(0, 200), state: 'parked', kind: 'execution', effort: 2, importance: 2, needs_sizing: false, tags, captured_at: new Date().toISOString() })
-        return JSON.stringify({ ok: true, title: o.title, milestone: out?.[0]?.title, n: kids.length + 1, max: 5, pays: '10 miles when closed; it opens as its own card on the Mythic in the HUD' })
+        return JSON.stringify({ ok: true, title: o.title, gate: out?.[0]?.title, n: kids.length + 1, pays: '7 miles when closed, like any gate; it opens as its own card on the Mythic in the HUD' })
       }
       const steps = await sb(`objective_steps?select=id&objective_id=eq.${o.id}`).catch(() => [])
-      if (steps.length >= maxSteps) return JSON.stringify({ ok: false, error: 'five stops is the most a card holds. If this needs more, it is a Mythic with milestones; ask David whether to make it one (set_size heavy).' })
       const out = await sbWrite('POST', 'objective_steps', { objective_id: o.id, text: String(args.text || '').trim().slice(0, 300), position: steps.length })
       const said = String(args.said || '').trim().slice(0, 400)
       if (out?.[0]?.id != null) await notePathSource(o.id, out[0].id, said ? { by: 'david', where: 'lumen', quote: said } : { by: 'lumen', where: 'lumen' }).catch(e => console.warn('path source', e.message))
-      return JSON.stringify({ ok: true, title: o.title, step: out?.[0], count: steps.length + 1, max: maxSteps, shows: 'on the card\'s End Of The Trail, with where it came from', pays: 'unpaid; the card pays on release' })
+      return JSON.stringify({ ok: true, title: o.title, step: out?.[0], count: steps.length + 1, shows: 'on the card\'s End Of The Trail, with where it came from', pays: '7 miles when closed, like any gate' })
     }
     case 'complete_step':
     case 'remove_step': {
@@ -1240,7 +1237,7 @@ export async function callTool(name, args = {}) {
         if (name === 'remove_step') { await sbWrite('PATCH', `objectives?id=eq.${ks[0].id}`, { deleted_at: new Date().toISOString() }, 'return=minimal'); return JSON.stringify({ ok: true, removed: ks[0].title }) }
         const done = args.done !== false
         await sbWrite('PATCH', `objectives?id=eq.${ks[0].id}`, done ? { state: 'released', released_kind: 'done', released_at: new Date().toISOString(), activated_at: null } : { state: 'parked', released_kind: null, released_at: null }, 'return=minimal')
-        return JSON.stringify({ ok: true, milestone: ks[0].title, done, note: done ? 'Mythic milestone closed: 10 miles on the next update (first five).' : 'reopened' })
+        return JSON.stringify({ ok: true, milestone: ks[0].title, done, note: done ? 'Gate closed: 7 miles on the next update.' : 'reopened' })
       }
       let ms = await sb(`objective_steps?select=id,text,done&objective_id=eq.${o.id}&text=ilike.${encodeURIComponent(q)}`).catch(() => [])
       if (ms.length !== 1) ms = await sb(`objective_steps?select=id,text,done&objective_id=eq.${o.id}&text=ilike.*${encodeURIComponent(q)}*`).catch(() => [])
@@ -1248,7 +1245,7 @@ export async function callTool(name, args = {}) {
       if (name === 'remove_step') { await sbWrite('DELETE', `objective_steps?id=eq.${ms[0].id}`, null, 'return=minimal'); return JSON.stringify({ ok: true, removed: ms[0].text }) }
       const done = args.done !== false
       await sbWrite('PATCH', `objective_steps?id=eq.${ms[0].id}`, { done, done_at: done ? new Date().toISOString() : null }, 'return=minimal')
-      return JSON.stringify({ ok: true, step: ms[0].text, done, note: done ? 'Mythic Task: 10 miles on the next update (first five steps).' : 'reopened' })
+      return JSON.stringify({ ok: true, step: ms[0].text, done, note: done ? 'Gate closed: 7 miles on the next update.' : 'reopened' })
     }
     case 'close_out': {
       const o = await findObjective(args.title)

@@ -68,10 +68,10 @@ export function excerpt(text, max = 240) {
 }
 
 // The Trail: what has come in and what has happened on this card, oldest first.
-// Each entry is { at, kind: 'Came In' | 'Happened', text }.
+// Each entry is { at, kind: 'Came In' | 'Happened' | 'Gate Closed', text, gate? }.
 export function buildTrail({ obj, kindLabel, steps = [], children = [], files = [], tabs = [], builds = [] }) {
   const out = []
-  const add = (at, kind, text) => { if (at && text) out.push({ at, kind, text }) }
+  const add = (at, kind, text, gate = false) => { if (at && text) out.push({ at, kind, text, ...(gate ? { gate: true } : {}) }) }
   if (obj) add(obj.captured_at, 'Happened', `Opened as a ${kindLabel || 'Side Mission'}`)
   for (const f of files) {
     if (isRequest(f)) continue
@@ -88,8 +88,9 @@ export function buildTrail({ obj, kindLabel, steps = [], children = [], files = 
   }
   for (const t of tabs) add(t.created_at || t.updated_at, 'Happened', `Tab on the Workbench: ${t.title}`)
   for (const b of builds) add(b.updated_at, 'Happened', `Page built on the Workbench: ${b.title || b.slug}`)
-  for (const st of steps) if (st.done && st.done_at) add(st.done_at, 'Happened', `Closed: ${st.text}`)
-  for (const k of children) if (k.state === 'released' && k.released_at) add(k.released_at, 'Happened', `Milestone closed: ${k.title}`)
+  // A closed gate is the big mark on the trail (David 11/16: "Gates have some type of visual distinction").
+  for (const st of steps) if (st.done && st.done_at) add(st.done_at, 'Gate Closed', st.text, true)
+  for (const k of children) if (k.state === 'released' && k.released_at) add(k.released_at, 'Gate Closed', k.title, true)
   if (obj?.state === 'released' && obj.released_at) add(obj.released_at, 'Happened', 'Closed out')
   return out.sort((a, b) => String(a.at).localeCompare(String(b.at)))
 }

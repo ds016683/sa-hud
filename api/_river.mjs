@@ -52,7 +52,13 @@ export async function computeRegimen(day) {
 // Nerf and buff as we go. Days before RATES_FROM keep the rates they were
 // struck under.
 export const RATES_FROM = '2026-10-08'
+// Gates (David 11/17): "a gate should pay 7 miles. any gate. all others stay the same. So we should
+// be removing Main Mission milestone mile allotments and Mythic gate or milestone allotments." From
+// GATES_FROM a closed gate is one badge, 'gate', on any mission and with no cap; 'mission-task' and
+// 'mythic-task' stay in the table only so the days before it still read as they were struck.
+export const GATES_FROM = '2026-11-17'
 export const MILES = {
+  'gate': 7,
   'main-mission': 100, 'mission-task': 10, 'bounty': 4, 'contract': 15, 'mythic': 50, 'mythic-task': 10, 'side-mission': 4, 'impromptu': 1,
   'maintenance-bundle': 1, 'cartographer': 2, 'exercise': 5, 'lift': 1, 'sleep': 4,
   'toastmaster': 4, 'full-day': 4, 'work-horse': 10, 'clean-close': 2, 'clean-slack': 10, 'bill-pay': 25, 'discomforter': 5, 'hygiene': 3, 'hygiene-item': 0.25, 'devotional': 2, 'dose': 0.5, 'regimen': 2,
@@ -98,15 +104,22 @@ export async function computeAwards(day, { closing = false } = {}) {
   const awards = []
   const rates = day >= RATES_FROM ? MILES : MILES_V1
   const v2 = day >= RATES_FROM
+  const gates = day >= GATES_FROM
   const add = (badge, key, evidence) => { if (rates[badge] == null) return; awards.push({ badge, key: String(key ?? ''), miles: rates[badge], evidence }) }
 
   const onDay = (ts) => ts && ts >= from && ts <= to
   for (const p of doneProjects) if (onDay(p.archived_at) || onDay(p.last_activity_at)) add('main-mission', p.id, `Main Mission complete: ${p.name}`)
-  for (const t of doneTasks) add('mission-task', t.id, `Mission task closed: ${t.text}`)
+  for (const t of doneTasks) gates ? add('gate', t.id, `Gate closed: ${t.text}`) : add('mission-task', t.id, `Mission task closed: ${t.text}`)
   // Mythic milestones (David 10/29): a released objective whose parent is a Mythic
   // pays like a Mythic task, the first five closed on that Mythic, never as a Bounty.
   const childReleased = released.filter(o => o.parent_id && o.state === 'released' && o.released_kind === 'done')
-  if (childReleased.length) {
+  if (gates && childReleased.length) {
+    // A card that sits under another mission is one of that mission's gates: 7, whatever the parent's size, no cap.
+    const pids = [...new Set(childReleased.map(o => o.parent_id))]
+    const parents = await sb(`objectives?select=id,title&id=in.(${pids.join(',')})`).catch(() => [])
+    const title = new Map(parents.map(p => [p.id, p.title]))
+    for (const o of childReleased) add('gate', `m:${o.id}`, `Gate closed on ${title.get(o.parent_id) || 'its mission'}: ${o.title}`)
+  } else if (childReleased.length) {
     const pids = [...new Set(childReleased.map(o => o.parent_id))]
     const [parents, sibs] = await Promise.all([
       sb(`objectives?select=id,title,effort&id=in.(${pids.join(',')})`).catch(() => []),
@@ -140,7 +153,16 @@ export async function computeAwards(day, { closing = false } = {}) {
   }
   // Mythic tasks (10/8): each step of a Mythic closed today pays like a Main
   // Mission task, the first five steps of that Mythic only.
-  if (v2 && stepsDone.length) {
+  if (gates && stepsDone.length) {
+    // Any gate on any card pays, no cap. A session's own focus item is not a mission.
+    const objIds = [...new Set(stepsDone.map(st => st.objective_id))]
+    const objs = await sb(`objectives?select=id,title,tags&id=in.(${objIds.join(',')})`).catch(() => [])
+    const byId = new Map(objs.map(o => [o.id, o]))
+    for (const st of stepsDone) {
+      const o = byId.get(st.objective_id); if (!o || (o.tags || []).includes('session')) continue
+      add('gate', st.id, `Gate closed on ${o.title}: ${st.text}`)
+    }
+  } else if (v2 && stepsDone.length) {
     const objIds = [...new Set(stepsDone.map(st => st.objective_id))]
     const [objs, allSteps] = await Promise.all([
       sb(`objectives?select=id,title,effort&id=in.(${objIds.join(',')})`).catch(() => []),

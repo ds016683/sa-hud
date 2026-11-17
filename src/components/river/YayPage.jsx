@@ -4,7 +4,7 @@
 import { useEffect, useState } from 'react'
 import { X as XIcon, Check, ExternalLink } from 'lucide-react'
 import BadgeMedallion from '../BadgeArt'
-import { missionSummary, fmtDay } from '../../lib/summary'
+import { missionSummary, fmtDay, baseMiles } from '../../lib/summary'
 import { extract as extractItem, fmtClock } from '../../lib/loadout'
 import { fileAchieved } from '../../lib/archive'
 import { signedUrl } from '../../lib/archive'
@@ -86,7 +86,7 @@ export default function YayPage({ objectiveId, onClose, fresh = false, onOpenMis
                 : <div style={{ fontSize: 13.5, color: GRAY }}>No star was written for this one.</div>}
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 14, borderTop: `1px solid ${PANEL_BORDER}`, borderBottom: `1px solid ${PANEL_BORDER}`, padding: '14px 0' }}>
-              <Fact label="Miles netted"><span style={{ fontSize: 30, color: GOLD }}>{m.miles}</span>{m.size === 'heavy' && m.kind === 'Side Mission' && <div style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '0.8px', color: GRAY, marginTop: 2 }}>50 + 10 × {m.gatesPaid} gates</div>}</Fact>
+              <Fact label="Miles netted"><span style={{ fontSize: 30, color: GOLD }}>{m.miles}</span>{m.kind === 'Side Mission' && m.gatesPaid > 0 && m.miles > baseMiles(m.size) && <div style={{ fontSize: 12.5, color: MUTED, marginTop: 2 }}>{baseMiles(m.size)} + {m.miles - baseMiles(m.size)} for {m.gatesPaid} {m.gatesPaid === 1 ? 'gate' : 'gates'}</div>}</Fact>
               <Fact label="Opened">{fmtDay(m.opened)}</Fact>
               {extracting
                 ? <div><Label>Done On</Label><input type="date" value={day} max={today} onChange={e => setDay(e.target.value)} style={field} /><div style={{ fontSize: 11, color: MUTED, marginTop: 4 }}>today unless it was done earlier</div></div>

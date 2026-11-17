@@ -190,6 +190,7 @@ const EMBLEMS = {
     </g>
   ),
 }
+EMBLEMS.gate = EMBLEMS['mission-task']   // a closed gate wears the flag on its post (11/17)
 
 // Unknown ids fall back to a plain struck coin: a single point at the center.
 const GENERIC = (

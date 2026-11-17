@@ -1301,13 +1301,17 @@ table.fin-grid { width: 100%; border-collapse: collapse; font-family: var(--font
 .brf-trail { position: relative; padding-left: 28px; }
 .brf-trail::before { content: ""; position: absolute; left: 6px; top: 8px; bottom: 14px; width: 1px; background: var(--hud-border); }
 .brf-ev { position: relative; padding: 0 0 15px; }
-.brf-ev::before { content: ""; position: absolute; left: -27px; top: 6px; width: 11px; height: 11px; border-radius: 50%; background: var(--hud-ink-2); }
+/* The small dots narrate; a closed gate is the big mark (David 11/16). */
+.brf-ev::before { content: ""; position: absolute; left: -25px; top: 8px; width: 7px; height: 7px; border-radius: 50%; background: var(--hud-ink-2); }
+.brf-ev.gate::before { left: -29px; top: 3px; width: 15px; height: 15px; background: var(--hud-success); box-shadow: 0 0 0 4px color-mix(in srgb, var(--hud-success) 18%, transparent); }
+.brf-ev.gate .what { font-weight: 600; font-size: 15.5px; }
+.brf-ev.gate .kind { color: var(--hud-success); font-weight: 600; }
 .brf-ev .when { font-size: 12.5px; color: var(--hud-ink-3); }
 .brf-ev .kind { font-size: 12.5px; color: var(--hud-accent); margin-left: 8px; white-space: nowrap; }
 .brf-ev .what { font-size: 14.5px; color: var(--hud-ink); line-height: 1.45; }
-.brf-ev.more::before, .brf-ev.go::before { background: transparent; border: 1.5px dotted var(--hud-ink-3); }
+.brf-ev.more::before, .brf-ev.go::before { background: transparent; border: 1.5px dotted var(--hud-ink-3); left: -27px; top: 6px; width: 11px; height: 11px; }
 .brf-ev.more .what, .brf-ev.go .what { color: var(--hud-accent); font-size: 14px; cursor: pointer; }
-.brf-ev.here::before { background: transparent; border: 2px solid var(--hud-pos); box-shadow: 0 0 0 5px color-mix(in srgb, var(--hud-pos) 14%, transparent); width: 13px; height: 13px; left: -28px; }
+.brf-ev.here::before { top: 5px; background: transparent; border: 2px solid var(--hud-pos); box-shadow: 0 0 0 5px color-mix(in srgb, var(--hud-pos) 14%, transparent); width: 13px; height: 13px; left: -28px; }
 .brf-ev.here .when { color: var(--hud-pos); font-weight: 600; font-size: 13.5px; }
 .brf-ev.here .what { font-family: 'Lora', Georgia, serif; font-size: 17px; line-height: 1.35; }
 .brf-ev.mark::before { background: transparent; border: 1.5px solid var(--hud-ink-3); border-radius: 2px; transform: rotate(45deg); width: 9px; height: 9px; left: -26px; }

@@ -11,12 +11,13 @@ export const RIVER_START_DAY = '2026-09-23'
 
 export const BADGES = {
   'main-mission':       { label: 'Main Mission Complete', miles: 100,  Icon: Flag,       repeatable: true,  desc: 'A whole Main Mission (project) marked complete', lore: 'The map moves when the mission moves.' },
-  'mission-task':       { label: 'Mission Task Closed',   miles: 10,   Icon: Flag,       repeatable: true,  silent: true, desc: 'A component task of a Main Mission closed', lore: 'One plank at a time, the bridge.' },
+  'gate':               { label: 'Gate Closed',           miles: 7,    Icon: Flag,       repeatable: true,  silent: true, desc: 'A gate closed on any mission: what had to be true for the mission to close', lore: 'One plank at a time, the bridge.' },
+  'mission-task':       { label: 'Mission Task Closed',   miles: 10,   Icon: Flag,       repeatable: true,  silent: true, legacy: true, desc: 'A component task of a Main Mission closed (before 11/17, when every gate became 7)', lore: 'One plank at a time, the bridge.' },
   'impromptu':          { label: 'Ad Hoc Done',        miles: 1,   Icon: Target,     repeatable: true,  silent: true, desc: 'An impromptu item posted to the board and finished', lore: 'Quick water.' },
   'bounty':             { label: 'Bounty Collected',      miles: 4,   Icon: Target,     repeatable: true,  desc: 'A Bounty (one slot) released as done', lore: 'Small tributaries still reach the sea.' },
   'contract':           { label: 'Contract Fulfilled',    miles: 15,  Icon: Target,     repeatable: true,  desc: 'A Contract (two slots) released as done', lore: 'The job was named, and the job was done.' },
   'mythic':             { label: 'Mythic Completed',      miles: 50,  Icon: Target,     repeatable: true,  desc: 'A Mythic (three slots, several steps) released as done', lore: 'A tale with a beginning, a middle, and an end.' },
-  'mythic-task':        { label: 'Mythic Task Closed',    miles: 10,  Icon: Flag,       repeatable: true,  silent: true, desc: 'One step of a Mythic closed (the first five pay)', lore: 'One chapter at a time.' },
+  'mythic-task':        { label: 'Mythic Task Closed',    miles: 10,  Icon: Flag,       repeatable: true,  silent: true, legacy: true, desc: 'One step of a Mythic closed, the first five (before 11/17, when every gate became 7)', lore: 'One chapter at a time.' },
   'side-mission':       { label: 'Side Mission Complete', miles: 4,   Icon: Target,     repeatable: true,  legacy: true, desc: 'A Side Mission released as done (before the 10/8 types)', lore: 'Small tributaries still reach the sea.' },
   'maintenance-bundle': { label: 'Maintenance Bundle',    miles: 1,   Icon: Wrench,     repeatable: true,  desc: 'Five maintenance items done', lore: 'The hull holds because someone checked the hull.' },
   'cartographer':       { label: 'Cartographer',          miles: 2,   Icon: Map,        repeatable: true,  desc: 'A Side Mission handed to other hands, with a named owner', lore: 'The map outlives the hand that drew it.' },

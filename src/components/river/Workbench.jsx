@@ -77,7 +77,7 @@ export default function WorkbenchTab({ project = null, objectiveId = null, intak
   )
   return (
     <div style={{ minWidth: 0 }}>
-      <div style={{ fontSize: 13, color: INK2, marginBottom: 12, lineHeight: 1.5 }}>{objectiveId ? 'The files in play on this item, one current version each. Sessions and Lumen put files here as they produce them; bring one in under Files.' : 'The files in play on this mission and its milestones, one current version each. Sessions and Lumen put files here as they produce them; bring one in under Files.'}</div>
+      <div style={{ fontSize: 13, color: INK2, marginBottom: 12, lineHeight: 1.5 }}>{objectiveId ? 'The files in play on this item, one current version each. Sessions and Lumen put files here as they produce them; bring one in under Files.' : 'The files in play on this mission and its gates, one current version each. Sessions and Lumen put files here as they produce them; bring one in under Files.'}</div>
       {intake && <div style={{ marginBottom: 14 }}>
         <DropZone busy={busy} onFiles={(fs) => fs.forEach(f => act(() => putLiveFile(f, objectiveId ? { objectiveId } : { projectId: project.id }), `In play: ${f.name}`))} onPath={(pth) => act(() => requestLiveFile(pth, objectiveId ? { objectiveId } : { projectId: project.id }), 'Requested; the next Claude session on the Mac puts it in play')} />
         <LinkForm onAdd={(u, t, n) => act(() => addLiveLink(u, objectiveId ? { title: t, note: n, objectiveId } : { title: t, note: n, projectId: project.id }), 'Launch link added')} />
@@ -88,7 +88,7 @@ export default function WorkbenchTab({ project = null, objectiveId = null, intak
         <div key={g.key} style={{ marginTop: 16 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2 }}>
             {g.item
-              ? <><span style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '1.2px', textTransform: 'uppercase', color: LABEL }}>Milestone</span><span style={{ fontSize: 14.5, fontWeight: 600, color: INK }}>{g.item.title}</span>{g.item.state === 'active' && <span style={{ fontFamily: MONO, fontSize: 9, letterSpacing: '1px', textTransform: 'uppercase', color: GREEN }}>on the board</span>}{g.item.stashed && <span style={{ fontFamily: MONO, fontSize: 9, letterSpacing: '1px', textTransform: 'uppercase', color: GRAY }}>in the stash</span>}</>
+              ? <><span style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '1.2px', textTransform: 'uppercase', color: LABEL }}>Gate</span><span style={{ fontSize: 14.5, fontWeight: 600, color: INK }}>{g.item.title}</span>{g.item.state === 'active' && <span style={{ fontFamily: MONO, fontSize: 9, letterSpacing: '1px', textTransform: 'uppercase', color: GREEN }}>on the board</span>}{g.item.stashed && <span style={{ fontFamily: MONO, fontSize: 9, letterSpacing: '1px', textTransform: 'uppercase', color: GRAY }}>in the stash</span>}</>
               : <span style={{ fontSize: 14.5, fontWeight: 600, color: INK }}>{objectiveId ? 'In play' : 'On the mission'}</span>}
           </div>
           {groupVersions(g.rows, { timeKey: 'created_at', rootKey: 'path' }).map(fam => (

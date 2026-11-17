@@ -90,7 +90,7 @@ function Identity() {
       </Block>
       <Block title="What He Holds">
         <ul style={{ margin: 0, paddingLeft: 18 }}>
-          <Li>The Ledger: objectives, missions and milestones, clocks, miles, calendar, meetings, mail previews, the Cabinet, Live Files, the Archive.</Li>
+          <Li>The Ledger: objectives, missions and gates, clocks, miles, calendar, meetings, mail previews, the Cabinet, Live Files, the Archive.</Li>
           <Li>His own memory of every conversation with David, folded into durable notes, and the rules David gives him (the Rules pill).</Li>
           <Li>Hands: the Board (equip, holster, stash, extract, close out), the calendar, Harvest time, the mailbox and the web, documents and the Archive, and the daily close that mints the miles.</Li>
         </ul>
@@ -106,13 +106,13 @@ function Identity() {
 const STANDING = [
   'One clock runs at a time. Equipping an item holsters every other clock.',
   'Three slots of planned work; a Bounty takes 1, a Contract 2, a Mythic 3; one Heavy at most. No stamina rule.',
-  'Miles pay only on verified completion. Ad Hoc 1, Bounty 4, Contract 15, Mythic 50, a Main Mission milestone 10, a Main Mission 100.',
-  'Main Missions and their milestones are David\'s. Agents never add them; agent work is Ad Hoc.',
+  'Miles pay only on verified completion. Ad Hoc 1, Bounty 4, Contract 15, Mythic 50, a Main Mission 100, and 7 for any gate closed on any mission.',
+  'Main Missions and gates are David\'s. Agents never add them; agent work is Ad Hoc.',
   'Files ride with their item. A live file is on the Board only while its item is; close-outs surface and file what an item carries.',
   'Every mission steers by one line, the Polaris Objective, in David\'s words. Close-out asks once: is it true, what is different now.',
   'Canceled meetings: canceled by them credits the meeting; canceled by David does not.',
   'A follow-up Bounty closes on proof: a sent note in David\'s Sent Items.',
-  'Processing pays: a milestone ruled downstream still closes for its miles; the idea goes to Future Development Ideas.',
+  'Processing pays: a gate ruled downstream still closes for its miles; the idea goes to Future Development Ideas.',
   'Never an em dash. Verbatim source language for mission, vision, copy and data.',
 ]
 
@@ -288,7 +288,7 @@ function RemindMe() {
         <ul style={{ margin: 0, paddingLeft: 18 }}>
           <Li>Only David closes an item. The session never rules for him, never drops an item because it is old, and never reads silence as a yes.</Li>
           <Li>One line per item, every turn. No re-explaining and no nagging in the body of the reply; the list at the bottom is the whole reminder.</Li>
-          <Li>Nothing is created from the list. An item is a question to David, not a task, a Side Mission or a milestone.</Li>
+          <Li>Nothing is created from the list. An item is a question to David, not a task, a Side Mission or a gate.</Li>
           <Li>With the Briefing Protocol on, its progress line is still the last line; the Remind Me list sits right above it.</Li>
           <Li>An empty list is silent.</Li>
         </ul>

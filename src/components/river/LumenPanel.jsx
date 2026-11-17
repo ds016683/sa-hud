@@ -219,7 +219,7 @@ export default function LumenPanel({ item, api = LEDGER }) {
             <div ref={scrollRef} style={{ flex: 1, overflowY: 'auto', overscrollBehavior: 'contain', padding: '14px 18px', minHeight: 0 }}>
               {thread.length === 0 && !pending && (
                 <div style={{ display: 'grid', gap: 8 }}>
-                  <div style={{ fontSize: 13, color: INK2, lineHeight: 1.55 }}>Same Lumen as WhatsApp and the strip, framed on this card. He can move its milestones, file to it, write tabs on its Workbench and build pages for it.</div>
+                  <div style={{ fontSize: 13, color: INK2, lineHeight: 1.55 }}>Same Lumen as WhatsApp and the strip, framed on this card. He can move its gates, file to it, write tabs on its Workbench and build pages for it.</div>
                   {SUGGEST.map(q => <button key={q} onClick={() => send(q)} style={{ textAlign: 'left', fontFamily: 'inherit', fontSize: 13, color: INK, background: 'rgba(255,255,255,0.04)', border: `1px solid ${PANEL_BORDER}`, borderRadius: 10, padding: '9px 12px', cursor: 'pointer' }}>{q}</button>)}
                 </div>
               )}

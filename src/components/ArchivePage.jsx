@@ -67,7 +67,7 @@ function MissionRow({ m, onYay, onReopen }) {
             <span style={{ color }}>{typeOf(kind, size)}{m.project ? ` · ${m.project}` : ''}</span>
             <span style={{ color: realm === 'personal' ? GOLD : PURPLE }}>{realm === 'personal' ? 'Personal' : 'Third Horizon'}</span>
             <span>closed {fmtDay(m.o.released_at)}{m.o.released_kind && m.o.released_kind !== 'done' ? ` · ${m.o.released_kind}` : ''}</span>
-            <span style={{ color: GOLD }}>{milesFor(kind, size, m.gatesDone)} mi</span>
+            <span style={{ color: GOLD }}>{milesFor(kind, size, m.gatesDone, m.o.released_at)} mi</span>
             {m.gatesTotal > 0 && <span>{m.gatesDone} of {m.gatesTotal} gates</span>}
             <span>{left.length ? `${left.length} left behind` : 'nothing filed'}</span>
           </div>

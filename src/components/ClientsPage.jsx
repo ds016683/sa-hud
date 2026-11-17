@@ -75,7 +75,7 @@ export function ClientCard({ client, anchor, missions, items, onOpen }) {
       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
         <span style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 14, color: INK }}>{closed} / {tasks.length}</span>
         <span style={{ flex: 1, height: 4, borderRadius: 99, background: 'rgba(255,255,255,0.08)', overflow: 'hidden' }}><span style={{ display: 'block', width: `${pct}%`, height: '100%', background: GOLD }} /></span>
-        <span style={{ fontFamily: MONO, fontSize: 10.5, letterSpacing: '1px', textTransform: 'uppercase', color: LABEL }}>milestones · {missions.length} missions</span>
+        <span style={{ fontFamily: MONO, fontSize: 10.5, letterSpacing: '1px', textTransform: 'uppercase', color: LABEL }}>gates · {missions.length} missions</span>
       </div>
       <div style={{ marginTop: 'auto' }}>
         {next
@@ -373,7 +373,7 @@ export function ItemModal({ client, item, onClose, onSave, onDelete, busy, exten
           <Field label="End"><input type="date" value={d.end_date || ''} onChange={set('end_date')} style={S.input} /></Field>
           <Field label="How The Date Reads"><input value={d.date_label} onChange={set('date_label')} placeholder="e.g. by 11/10 meeting" style={S.input} /></Field>
         </div>
-        <div style={{ fontSize: 11, color: MUTED, marginTop: -6 }}>A start alone draws a milestone on that day. A start and an end draw a bar.</div>
+        <div style={{ fontSize: 11, color: MUTED, marginTop: -6 }}>A start alone draws a gate on that day. A start and an end draw a bar.</div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
           <Field label="Owner"><input value={d.owner} onChange={set('owner')} placeholder="Who carries it" style={S.input} /></Field>
           <Field label="Source"><input value={d.source} onChange={set('source')} placeholder="Where it came from, e.g. Peter Schultz, October 17 note" style={S.input} /></Field>
@@ -468,7 +468,7 @@ function ClientDetail({ client, anchor, missions, tl, onBack, initialTab, onNavi
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '14px 0 0' }}>
         <span style={{ flex: 1, height: 5, borderRadius: 99, background: 'rgba(255,255,255,0.08)', overflow: 'hidden' }}><span style={{ display: 'block', width: `${pct}%`, height: '100%', background: GOLD }} /></span>
-        <span style={{ fontFamily: MONO, fontSize: 10.5, letterSpacing: '1px', textTransform: 'uppercase', color: LABEL }}>{closed} of {tasks.length} milestones closed</span>
+        <span style={{ fontFamily: MONO, fontSize: 10.5, letterSpacing: '1px', textTransform: 'uppercase', color: LABEL }}>{closed} of {tasks.length} gates closed</span>
       </div>
 
       <div style={{ ...S.panel, marginTop: 20 }}>
@@ -484,7 +484,7 @@ function ClientDetail({ client, anchor, missions, tl, onBack, initialTab, onNavi
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 15.5, color: INK }}>{m.name}</div>
                     <div style={{ fontSize: 12.5, color: TEXT_DIM, marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {now ? <><span style={{ color: now.objective_id ? GREEN : GOLD, fontFamily: MONO, fontSize: 9.5, letterSpacing: '1px', textTransform: 'uppercase', marginRight: 6 }}>{now.objective_id ? 'on the board' : 'now'}</span>{stripNum(now.text)}</> : <span style={{ color: GRAY }}>{ms.length ? 'Every milestone closed.' : 'No milestones yet.'}</span>}
+                      {now ? <><span style={{ color: now.objective_id ? GREEN : GOLD, fontFamily: MONO, fontSize: 9.5, letterSpacing: '1px', textTransform: 'uppercase', marginRight: 6 }}>{now.objective_id ? 'on the board' : 'now'}</span>{stripNum(now.text)}</> : <span style={{ color: GRAY }}>{ms.length ? 'Every gate closed.' : 'No gates yet.'}</span>}
                     </div>
                   </div>
                   <span style={{ fontFamily: MONO, fontSize: 10.5, letterSpacing: '1px', textTransform: 'uppercase', color: LABEL, whiteSpace: 'nowrap' }}>{ms.length - open.length} / {ms.length}</span>

@@ -10,7 +10,7 @@ import { Play, Pause, PackageCheck, Archive, X as XIcon, Zap, Phone, Swords, Lis
 import BadgeMedallion from '../BadgeArt'
 import RecallModal, { BrainButton } from './Recall'
 import YayPage from './YayPage'
-import { MILES, colorOf } from '../../lib/summary'
+import { MILES, baseMiles, colorOf } from '../../lib/summary'
 import { upsertSession, logToHarvest, hoursBetween, stopMeetingTimer } from '../../lib/meetings'
 import { RECURRING } from './RecurringPanel'
 import { Square, Mail, Hash, CalendarCheck, Brain, MessageSquare } from 'lucide-react'
@@ -176,11 +176,12 @@ export function FilledSlot({ it, n, act, onOpen, onExtract, onRecall, dropFromSt
   const gates = it.steps || []
   const gatesDone = gates.filter(g => g.done).length
   const gate = gates.find(g => !g.done) || null
-  const typeLine = main ? (it.task_n ? `MMT ${it.task_n} of ${it.task_total}` : 'Mission task')
-    : it.size === 'heavy' ? `Mythic · gate ${Math.min(gatesDone + 1, Math.max(gates.length, 1))} of ${gates.length || 5}${gates.length ? ` · ${gates.map(g => g.done ? '✓' : '○').join(' ')}` : ''}`
-    : it.size === 'medium' ? 'Contract · N/A' : 'Bounty · N/A'
-  const task = main ? (it.task_text || it.title) : it.size === 'heavy' ? (gate ? gate.text : gates.length ? 'Every gate closed. Extract.' : 'No gates yet. Tell Lumen the gates.') : null
-  const miles = main ? { n: MILES.mmt, sub: 'on close' } : it.size === 'heavy' ? { n: MILES.gate * Math.min(gatesDone, MILES.gatesPaid), sub: `of ${MILES.mythic + MILES.gate * MILES.gatesPaid} banked` } : it.size === 'medium' ? { n: MILES.contract, sub: 'on close' } : { n: MILES.bounty, sub: 'on close' }
+  // Any mission can carry gates (David 11/16), and any closed gate pays (11/17).
+  const sizeLabel = it.size === 'heavy' ? 'Mythic' : it.size === 'medium' ? 'Contract' : 'Bounty'
+  const typeLine = main ? (it.task_n ? `Gate ${it.task_n} of ${it.task_total}` : 'Main Mission gate')
+    : gates.length ? `${sizeLabel} · gate ${Math.min(gatesDone + 1, gates.length)} of ${gates.length} · ${gates.map(g => g.done ? '✓' : '○').join(' ')}` : `${sizeLabel} · no gates`
+  const task = main ? (it.task_text || it.title) : gates.length ? (gate ? gate.text : 'Every gate closed. Extract.') : null
+  const miles = main ? { n: MILES.gate, sub: 'on close' } : { n: baseMiles(it.size), sub: gatesDone ? `on close · ${MILES.gate * gatesDone} banked on gates` : 'on close' }
   const due = fmtDue(it.due_date)
   const late = it.due_date && it.due_date < new Date().toISOString().slice(0, 10)
   return (
@@ -344,7 +345,7 @@ function StashPeek({ it, act, onClose, onOpenFull, clips = 0, onFiles }) {
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 20, color: '#fff', lineHeight: 1.2 }}>{it.kind === 'Main Mission' ? (it.project || 'Main Mission') : it.kind}</div>
             <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginTop: 5 }}>
-              <span style={{ fontSize: 13, fontWeight: 600, color }}>{it.kind === 'Main Mission' ? `Main Mission${(it.task_text || '').match(/^\s*(\d+)\s*[·.:)-]/) ? ` · Milestone ${(it.task_text || '').match(/^\s*(\d+)\s*[·.:)-]/)[1]}` : ' · Milestone'}` : `${it.kind} · ${SIZES[it.size]?.label || ''}`}</span>
+              <span style={{ fontSize: 13, fontWeight: 600, color }}>{it.kind === 'Main Mission' ? `Main Mission${(it.task_text || '').match(/^\s*(\d+)\s*[·.:)-]/) ? ` · Gate ${(it.task_text || '').match(/^\s*(\d+)\s*[·.:)-]/)[1]}` : ' · Gate'}` : `${it.kind} · ${SIZES[it.size]?.label || ''}`}</span>
               <span style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '1.2px', textTransform: 'uppercase', color: LABEL }}>in the Stash</span>
             </div>
             <div style={{ fontSize: 15.5, lineHeight: 1.4, color: INK, marginTop: 10 }}>{title}</div>
@@ -356,7 +357,7 @@ function StashPeek({ it, act, onClose, onOpenFull, clips = 0, onFiles }) {
         {it.description && <div style={{ fontSize: 13, lineHeight: 1.55, color: INK2, display: '-webkit-box', WebkitLineClamp: 4, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{it.description}</div>}
         <div style={{ display: 'flex', gap: 18, fontFamily: MONO, fontSize: 10.5, letterSpacing: '1px', textTransform: 'uppercase', color: LABEL, flexWrap: 'wrap' }}>
           <span>{it.slots} slot{it.slots === 1 ? '' : 's'}</span>
-          <span>{it.kind === 'Main Mission' ? MILES.mmt : it.kind === 'Ad Hoc' ? MILES.adhoc : it.size === 'heavy' ? `${MILES.mythic} + gates` : it.size === 'medium' ? MILES.contract : MILES.bounty} mi on close</span>
+          <span>{it.kind === 'Main Mission' ? MILES.gate : it.kind === 'Ad Hoc' ? MILES.adhoc : `${baseMiles(it.size)}${(it.steps || []).length ? ' + gates' : ''}`} mi on close</span>
           {it.due_date && <span>due {new Date(`${it.due_date}T12:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>}
         </div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', borderTop: `1px solid ${PANEL_BORDER}`, paddingTop: 14 }}>

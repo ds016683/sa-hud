@@ -148,11 +148,11 @@ function briefCommand(item, links, taskId) {
   const sessions = sessionLinks(links)
   const cwd = (String(sessions[0]?.note || '').match(/^cd "([^"]+)"/) || [])[1] || '$HOME/builds/sa-hud'
   const oid = item.objective_id || item.id
-  const milestone = item.kind === 'Main Mission'
-  const read = milestone
-    ? `read the mission and its milestones with get_projects${taskId ? ` (this milestone is task ${taskId})` : ''}, its files with list_live_files`
+  const gate = item.kind === 'Main Mission'
+  const read = gate
+    ? `read the mission and its gates with get_projects${taskId ? ` (this gate is task ${taskId})` : ''}, its files with list_live_files`
     : 'read its briefing with get_objectives and list_steps, its files with list_live_files'
-  return `cd "${cwd}" && claude "Pick up the ${milestone ? 'Main Mission milestone' : (item.kind || 'Side Mission')} '${shq(item.title)}' (${oid}): ${read}, then pick up at the first open stop on its End Of The Trail. If no stop is open, ask David what the first one is. Set the focus on it first."`
+  return `cd "${cwd}" && claude "Pick up the ${gate ? 'Main Mission gate' : (item.kind || 'Side Mission')} '${shq(item.title)}' (${oid}): ${read}, then pick up at the first open stop on its End Of The Trail. If no stop is open, ask David what the first one is. Set the focus on it first."`
 }
 // Evidence (David 10/23): the files pinned under Polaris as the proof the
 // objective was met. They lead the close-out record. Pinning happens in Files.
@@ -188,17 +188,17 @@ function WhereItStands({ rel, task, taskId, linkedBoards }) {
     for (const t of (ph.tasks || [])) boardItems.push({ ...t, board: b.title })
   }
   const done = [
-    ...kids.filter(k => k.state === 'released').map(k => ({ text: k.title, meta: k.released_at ? `milestone · ${new Date(k.released_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}` : 'milestone', kind: 'milestone' })),
+    ...kids.filter(k => k.state === 'released').map(k => ({ text: k.title, meta: k.released_at ? `gate · ${new Date(k.released_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}` : 'gate', kind: 'milestone' })),
     ...steps.filter(st => st.done).map(st => ({ text: st.text, meta: st.done_at ? chiTime(st.done_at) : null, kind: 'gate' })),
     ...boardItems.filter(t => t.status === 'done').map(t => ({ text: t.label, meta: t.id, kind: 'board' })),
     ...(rel.objFiles || []).filter(f => f.evidence).map(f => ({ text: f.name, meta: 'deliverable', kind: 'made' })),
   ]
   const needed = [
-    ...kids.filter(k => k.state !== 'released').map((k, i) => ({ text: k.title, meta: `milestone ${i + 1}`, kind: 'milestone' })),
+    ...kids.filter(k => k.state !== 'released').map((k, i) => ({ text: k.title, meta: `gate ${i + 1}`, kind: 'milestone' })),
     ...steps.filter(st => !st.done).map(st => ({ text: st.text, meta: null, kind: 'gate' })),
     ...boardItems.filter(t => t.status !== 'done').map(t => ({ text: t.label, meta: t.status === 'blocked' ? (t.note || 'blocked') : t.status === 'inmotion' ? 'in motion' : t.id, kind: t.status === 'blocked' ? 'blocked' : 'board' })),
   ]
-  if (task && task.status === 'done') done.unshift({ text: 'Milestone closed', meta: task.released_at ? new Date(task.released_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : null, kind: 'board' })
+  if (task && task.status === 'done') done.unshift({ text: 'Gate closed', meta: task.released_at ? new Date(task.released_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : null, kind: 'board' })
   // The card palette (David 11/4): done is a filled ink dot, open is an ink ring, blocked is the caution tone; no purple
   // on the card below the header chip (David 11/4, "still have a rogue purple").
   const doneColor = INK2
@@ -328,7 +328,7 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
             nodes.push({ label: 'Main Missions', onClick: nav('main-missions') })
             nodes.push({ label: rel?.project?.name || item.project, onClick: rel?.project ? () => go([rel.project.id]) : null })
             const n = String(task?.text || '').match(/^\s*(\d+)\s*[·.:)-]/)
-            head = task ? `Milestone${n ? ` ${n[1]}` : ''}` : item.kind
+            head = task ? `Gate${n ? ` ${n[1]}` : ''}` : item.kind
             chip = { kind: 'Main Mission', label: 'Main Mission', color: KIND_COLOR['Main Mission'] }
           } else if (item.kind === 'Event' || item.kind === 'Session' || item.kind === 'Ad Hoc') {
             nodes.push({ label: 'Board', onClick: nav('agenda') })
@@ -337,7 +337,7 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
           } else if (rel?.parent) {
             nodes.push({ label: 'Side Missions', onClick: nav('side-missions') })
             nodes.push({ label: rel.parent.title, onClick: host === 'page' ? () => openCard(rel.parent.id) : onClose })
-            head = rel.milestoneN ? `Milestone ${rel.milestoneN}` : 'Milestone'
+            head = rel.milestoneN ? `Gate ${rel.milestoneN}` : 'Gate'
             chip = { kind: 'Side Mission', label: 'Mythic', color: MYTHIC }
           } else {
             nodes.push({ label: 'Side Missions', onClick: nav('side-missions') })
@@ -367,7 +367,7 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
                     <div className="brf-editor">
                       {obj && <div className="g"><span>Domain</span><div className="r">{[['third-horizon', 'Third Horizon'], ['personal', 'Personal']].map(([k, l]) => <button key={k} className={`o${realmOf(obj) === k ? ' on' : ''}`} onClick={() => patchObj({ tags: [...new Set([...(obj.tags || []).filter(t => t !== 'personal'), ...(k === 'personal' ? ['personal'] : [])])] })}>{l}</button>)}</div></div>}
                       {obj && !rel?.parent && !task && <div className="g"><span>Type</span><div className="r">{Object.entries(SIZES).map(([k, sdef]) => <button key={k} title={sdef.sub} className={`o${sizeOf(obj) === k ? ' on' : ''}`} onClick={() => setSize(obj.id, k).then(async () => { await load(); onChange && onChange() })}>{sdef.label}</button>)}</div></div>}
-                      {(rel?.parent || task) && <div className="g"><span>Milestone</span><div style={{ fontSize: 13.5, color: INK, paddingTop: 4 }}>{rel.milestoneN || '?'} of {rel.milestoneOf || '?'} on {rel.parent ? rel.parent.title : (rel.project?.name || item.project || 'the Main Mission')} · {rel.parent ? '10 miles on close' : '1 mile on close'}</div></div>}
+                      {(rel?.parent || task) && <div className="g"><span>Gate</span><div style={{ fontSize: 13.5, color: INK, paddingTop: 4 }}>{rel.milestoneN || '?'} of {rel.milestoneOf || '?'} on {rel.parent ? rel.parent.title : (rel.project?.name || item.project || 'the Main Mission')} · {rel.parent ? '10 miles on close' : '1 mile on close'}</div></div>}
                       <div className="g"><span>Target Completion</span><input type="date" value={(task ? task.due_date : obj.due_date) || ''} onChange={e => task ? patchTask({ due_date: e.target.value || null }) : patchObj({ due_date: e.target.value || null })} /></div>
                     </div>
                   )}
@@ -387,7 +387,7 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
 
           {rel && tab === 'briefing' && (
             <div style={{ display: 'grid', gap: 22 }}>
-              {obj && <CardBriefing obj={obj} root={objRoot(obj.id)} kindLabel={rel.parent ? 'Milestone' : task ? 'Milestone' : item.kind === 'Ad Hoc' ? 'Ad Hoc item' : (SIZES[sizeOf(obj)]?.label || 'Side Mission')} steps={rel.steps || []} kids={rel.children || []} boardItems={boardStops} loaded={loaded} due={(task ? task.due_date : obj.due_date) || null} isMilestone={!!rel.parent} isMythic={!rel.parent && sizeOf(obj) === 'heavy'} onReload={async () => { await load(); onChange && onChange() }} onTab={setTab} onOpenCard={openCard} say={setMsg} />}
+              {obj && <CardBriefing obj={obj} root={objRoot(obj.id)} kindLabel={rel.parent ? 'Gate' : task ? 'Gate' : item.kind === 'Ad Hoc' ? 'Ad Hoc item' : (SIZES[sizeOf(obj)]?.label || 'Side Mission')} steps={rel.steps || []} kids={rel.children || []} boardItems={boardStops} loaded={loaded} due={(task ? task.due_date : obj.due_date) || null} isMilestone={!!rel.parent} isMythic={!rel.parent && sizeOf(obj) === 'heavy'} onReload={async () => { await load(); onChange && onChange() }} onTab={setTab} onOpenCard={openCard} say={setMsg} />}
               {!obj && item.kind !== 'Event' && item.kind !== 'Session' && <WhereItStands rel={rel} task={task} taskId={taskId} linkedBoards={linkedBoards} />}
               {!obj && (item.description || task?.notes) && <div><Label>Back Story</Label><div style={{ fontSize: 14.5, lineHeight: 1.65, color: INK, whiteSpace: 'pre-wrap' }}>{item.description || task.notes}</div></div>}
               {item.event && (
@@ -441,7 +441,7 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
               {(item.description || obj?.description || task?.notes) && <div><Label>Back Story</Label><div style={{ fontSize: 14.5, lineHeight: 1.65, color: INK, whiteSpace: 'pre-wrap' }}>{item.description || obj?.description || task?.notes}</div></div>}
               {obj && (
                 <div>
-                  <Label>Notes On This {what.item === 'task' ? 'Milestone' : 'Mission'}</Label>
+                  <Label>Notes On This {what.item === 'task' ? 'Gate' : 'Mission'}</Label>
                   <textarea defaultValue={obj.notes || ''} rows={4} onBlur={e => { const v = e.target.value.trim() || null; if (v !== (obj.notes || null)) patchObj({ notes: v }) }} placeholder="A thought with nowhere else to land. Saved when you click away." style={{ width: '100%', boxSizing: 'border-box', background: 'rgba(255,255,255,0.05)', border: `1px solid ${PANEL_BORDER}`, borderRadius: 8, padding: '10px 12px', color: INK, fontSize: 14, fontFamily: 'inherit', lineHeight: 1.6, resize: 'vertical' }} />
                 </div>
               )}

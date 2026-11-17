@@ -146,7 +146,7 @@ function ProjectCard({ project, onOpen, edge = INK2, compact = false }) {
       </div>
       {now
         ? <div style={{ fontSize: 13.5, color: INK, lineHeight: 1.45, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', marginTop: 'auto' }}><span style={{ color: now.objective_id ? GREEN : GOLD, fontFamily: MONO, fontSize: 9.5, letterSpacing: '1px', textTransform: 'uppercase', marginRight: 6 }}>{now.objective_id ? 'on the board' : 'now'}</span>{stripNum(now.text)}</div>
-        : <div style={{ fontSize: 12.5, color: GRAY, marginTop: 'auto' }}>{ms.length ? 'Every milestone closed.' : 'No milestones yet.'}</div>}
+        : <div style={{ fontSize: 12.5, color: GRAY, marginTop: 'auto' }}>{ms.length ? 'Every gate closed.' : 'No gates yet.'}</div>}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, fontFamily: MONO, fontSize: 10.5, letterSpacing: '0.8px', color: LABEL, textTransform: 'uppercase' }}>
         {blocked > 0 && <span style={{ color: CAUTION, display: 'inline-flex', alignItems: 'center', gap: 4 }}><Hand size={10} /> {blocked} on David</span>}
         <span style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 6 }}><span style={{ width: 7, height: 7, borderRadius: 99, background: freshColor }} />touched {lastTouch}</span>
@@ -194,7 +194,7 @@ function MilestoneRow({ n, project, task, board, api, onBoardChange, onAward, ob
   }
   const load = async () => { setBusy(true); try { const r = await equipTask(task, project.name, { clock: false }); setMsg(r.ok ? 'On the Board' : `Will not fit: ${r.reasons.join(' · ')}`); if (r.ok) api.refresh() } catch (e) { setMsg(`Could not load: ${e.message}`) } finally { setBusy(false) } }
   const toStash = async () => { setBusy(true); try { await stashTask(task, project.name); setMsg('In the Stash'); api.refresh() } catch (e) { setMsg(`Could not stash: ${e.message}`) } finally { setBusy(false) } }
-  const rename = async () => { const t = await hudPrompt('Milestone', stripNum(task.text)); if (!t?.trim()) return; await api.updateTask(project.id, task.id, { text: t.trim() }) }
+  const rename = async () => { const t = await hudPrompt('Gate', stripNum(task.text)); if (!t?.trim()) return; await api.updateTask(project.id, task.id, { text: t.trim() }) }
   const doneWhen = async () => { const t = await hudPrompt('Done when…', task.notes || ''); if (t === null) return; await api.updateTask(project.id, task.id, { notes: t.trim() || null }) }
 
   return (
@@ -203,7 +203,7 @@ function MilestoneRow({ n, project, task, board, api, onBoardChange, onAward, ob
         <span style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 22, lineHeight: 1, color: open ? (onBoard ? GREEN : LABEL) : SUCCESS, width: 26, flexShrink: 0, paddingTop: 2 }}>{n}</span>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-            <span onClick={() => openCard(task.objective_id || `task:${task.id}`)} title="Open this milestone" style={{ fontSize: 15, lineHeight: 1.4, color: open ? INK : GRAY, textDecoration: open ? 'none' : 'line-through', cursor: 'pointer', flex: 1, minWidth: 220 }}>{stripNum(task.text)}</span>
+            <span onClick={() => openCard(task.objective_id || `task:${task.id}`)} title="Open this gate" style={{ fontSize: 15, lineHeight: 1.4, color: open ? INK : GRAY, textDecoration: open ? 'none' : 'line-through', cursor: 'pointer', flex: 1, minWidth: 220 }}>{stripNum(task.text)}</span>
             {!open && <Chip color={SUCCESS}>closed{task.released_at ? ` ${new Date(task.released_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}` : ''} · 10 mi</Chip>}
             {open && onBoard && <Chip color={GREEN}>on the board</Chip>}
             {stashed && <Chip color={INK2}>in the stash</Chip>}
@@ -231,9 +231,9 @@ function MilestoneRow({ n, project, task, board, api, onBoardChange, onAward, ob
             {open && <button onClick={doneWhen} style={{ ...S.btnGhost, padding: '4px 9px', fontSize: 10 }}>Done when</button>}
             {open && <button onClick={rename} style={{ ...S.btnGhost, padding: '4px 9px', fontSize: 10 }}>Rename</button>}
             {open
-              ? <button onClick={async () => { if (!await hudConfirm(`Close milestone ${n}? 10 miles on the next update.`)) return; await api.toggleTask(project.id, task); onAward && onAward({ n, title: stripNum(task.text) }) }} style={{ ...S.btnGhost, padding: '4px 9px', fontSize: 10 }}><Check size={10} /> Close milestone</button>
+              ? <button onClick={async () => { if (!await hudConfirm(`Close gate ${n}? 7 miles on the next update.`)) return; await api.toggleTask(project.id, task); onAward && onAward({ n, title: stripNum(task.text) }) }} style={{ ...S.btnGhost, padding: '4px 9px', fontSize: 10 }}><Check size={10} /> Close gate</button>
               : <button onClick={() => api.toggleTask(project.id, task)} style={{ ...S.btnGhost, padding: '4px 9px', fontSize: 10 }}>Reopen</button>}
-            <button onClick={async () => { if (await hudConfirm('Delete this milestone?')) api.deleteTask(project.id, task.id) }} title="Delete" style={{ background: 'transparent', border: 'none', color: alpha(INK, 25), cursor: 'pointer', padding: 4 }}><Trash2 size={12} /></button>
+            <button onClick={async () => { if (await hudConfirm('Delete this gate?')) api.deleteTask(project.id, task.id) }} title="Delete" style={{ background: 'transparent', border: 'none', color: alpha(INK, 25), cursor: 'pointer', padding: 4 }}><Trash2 size={12} /></button>
           </div>
           {msg && <div style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '1px', textTransform: 'uppercase', color: msg.startsWith('Could') || msg.startsWith('Will') || msg.startsWith('No session') ? RED : msg === 'In the Stash' ? BLUE : GOLD, marginTop: 6 }}>{msg}</div>}
         </div>
@@ -276,7 +276,7 @@ function CloseMissionModal({ project, tasks, onClose, onDone }) {
         <textarea value={achieved} onChange={e => setAchieved(e.target.value)} rows={3} placeholder="In your words. It lands in the Archive as Achieved and on the yay page under the star." style={{ ...S.input, width: '100%', marginTop: 8, resize: 'vertical', lineHeight: 1.5 }} autoFocus />
         {openTasks.length > 0 && (
           <div style={{ marginTop: 16, padding: '12px 14px', borderRadius: 10, border: `1px solid ${PANEL_BORDER}`, background: PANEL_BG }}>
-            <div style={{ fontSize: 13.5, fontWeight: 600, color: LABEL }}>{openTasks.length} milestone{openTasks.length === 1 ? '' : 's'} still open</div>
+            <div style={{ fontSize: 13.5, fontWeight: 600, color: LABEL }}>{openTasks.length} gate{openTasks.length === 1 ? '' : 's'} still open</div>
             <div style={{ fontSize: 12.5, color: TEXT_DIM, margin: '6px 0 8px', lineHeight: 1.5 }}>{openTasks.map(t => stripNum(t.text)).join(' · ')}</div>
             <label style={{ display: 'flex', gap: 8, alignItems: 'flex-start', fontSize: 13, color: '#fff', cursor: 'pointer' }}><input type="checkbox" checked={closeOpen} onChange={e => setCloseOpen(e.target.checked)} style={{ marginTop: 3 }} /><span>Close them as done with the mission (each pays its 10). Unchecked, they stay open in the mission's history and pay nothing.</span></label>
           </div>
@@ -519,7 +519,7 @@ function ProjectDetail({ project, board: boardProp, api, onBack, initialTab, ini
         {CARD_PILLS.map(([id, label]) => <CardPill key={id} active={tab === id} onClick={() => setTab(id)} count={id === 'briefing' ? tasks.length : id === 'polaris' ? evidence.length : 0}>{label}</CardPill>)}
       </div>
       <div style={{ ...S.sub, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
-        <span>{[project.key, '100 miles on completion · 10 per milestone'].filter(Boolean).join(' · ')}</span>
+        <span>{[project.key, '100 miles on completion · 7 per gate'].filter(Boolean).join(' · ')}</span>
         <span style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           {project.status !== 'completed' && !project.archived_at && (
             <button
@@ -533,7 +533,7 @@ function ProjectDetail({ project, board: boardProp, api, onBack, initialTab, ini
           {project.status !== 'completed' && (
             <button
               onClick={async () => {
-                const yes = await hudConfirm({ eyebrow: 'Delete Mission', title: project.name, message: 'Delete this mission? No miles are awarded. Milestones already closed keep theirs. Its artifacts and cabinet stay in the Ledger. It leaves every list.', confirm: 'Delete Mission', danger: true })
+                const yes = await hudConfirm({ eyebrow: 'Delete Mission', title: project.name, message: 'Delete this mission? No miles are awarded. Gates already closed keep theirs. Its artifacts and cabinet stay in the Ledger. It leaves every list.', confirm: 'Delete Mission', danger: true })
                 if (!yes) return
                 try { await deleteMission(project); await api.refresh(); onBack() } catch (e) { await hudNotice(`Could not delete: ${e.message}`) }
               }}
@@ -554,7 +554,7 @@ function ProjectDetail({ project, board: boardProp, api, onBack, initialTab, ini
       <div style={{ ...S.panel, marginTop: 20 }}>
         {tab === 'briefing' && (
           <div>
-            {!tasks.length && <div style={{ fontSize: 13, color: GRAY, padding: '10px 0' }}>No milestones yet. Add the first one below: a thing that will be verifiably true.</div>}
+            {!tasks.length && <div style={{ fontSize: 13, color: GRAY, padding: '10px 0' }}>No gates yet. Add the first one below: a thing that will be verifiably true.</div>}
             {plan.map(({ t, n }) => <MilestoneRow key={t.id} n={n} project={project} task={t} board={board} api={api} onNavigate={onNavigate} onBoardChange={setBoard} onAward={setAward} objState={objState} />)}
             {history.length > 0 && (
               <div style={{ borderTop: `1px solid ${PANEL_BORDER}`, padding: '10px 0 0' }}>
@@ -565,14 +565,14 @@ function ProjectDetail({ project, board: boardProp, api, onBack, initialTab, ini
               </div>
             )}
             <form onSubmit={submit} style={{ display: 'flex', gap: 8, marginTop: 16, borderTop: `1px solid ${PANEL_BORDER}`, paddingTop: 14 }}>
-              <input value={newTask} onChange={e => setNewTask(e.target.value)} placeholder="Say the milestone in your own words; Organize writes it up, or add it as typed (lead with its number to place it)" style={{ ...S.input, flex: 1 }} />
-              <button type="button" onClick={organize} disabled={drafting || !newTask.trim()} title="Lumen organizes what you typed into a milestone: Title Case, a done-when, three to five steps. You confirm before it lands." style={{ ...S.btnGhost, opacity: drafting || !newTask.trim() ? 0.5 : 1 }}>{drafting ? 'Organizing' : '✦ Organize'}</button>
-              <button type="submit" style={S.btnPrimary}><Plus size={13} /> Milestone</button>
+              <input value={newTask} onChange={e => setNewTask(e.target.value)} placeholder="Say the gate in your own words; Organize writes it up, or add it as typed (lead with its number to place it)" style={{ ...S.input, flex: 1 }} />
+              <button type="button" onClick={organize} disabled={drafting || !newTask.trim()} title="Lumen organizes what you typed into a gate: Title Case, a done-when, three to five steps. You confirm before it lands." style={{ ...S.btnGhost, opacity: drafting || !newTask.trim() ? 0.5 : 1 }}>{drafting ? 'Organizing' : '✦ Organize'}</button>
+              <button type="submit" style={S.btnPrimary}><Plus size={13} /> Gate</button>
             </form>
             {draftErr && <div style={{ fontSize: 12.5, color: RED, marginTop: 8 }}>{draftErr}</div>}
             {draft && (
               <div style={{ marginTop: 12, padding: '14px 16px', borderRadius: 10, border: `1px solid ${alpha(LABEL, 40)}`, background: alpha(LABEL, 6) }}>
-                <div style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: 10.5, letterSpacing: '0.14em', textTransform: 'uppercase', color: LABEL, marginBottom: 8 }}>Draft milestone · edit, then add</div>
+                <div style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: 10.5, letterSpacing: '0.14em', textTransform: 'uppercase', color: LABEL, marginBottom: 8 }}>Draft gate · edit, then add</div>
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                   <input value={draft.number ?? ''} onChange={e => setDraft({ ...draft, number: e.target.value ? Number(e.target.value) : null })} placeholder="#" style={{ ...S.input, width: 56 }} />
                   <input value={draft.title} onChange={e => setDraft({ ...draft, title: e.target.value })} style={{ ...S.input, flex: 1, fontWeight: 600 }} />
@@ -590,7 +590,7 @@ function ProjectDetail({ project, board: boardProp, api, onBack, initialTab, ini
                 <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 10 }}>
                   <button type="button" onClick={() => setDraft({ ...draft, steps: [...(draft.steps || []), ''] })} style={{ ...S.btnGhost, padding: '4px 9px', fontSize: 10 }}><Plus size={10} /> Step</button>
                   <button type="button" onClick={() => setDraft(null)} style={S.btnGhost}>Discard</button>
-                  <button type="button" onClick={addDraft} style={S.btnPrimary}><Plus size={13} /> Add This Milestone</button>
+                  <button type="button" onClick={addDraft} style={S.btnPrimary}><Plus size={13} /> Add This Gate</button>
                 </div>
                 {!board?.id && (draft.steps || []).length > 0 && <div style={{ fontSize: 11.5, color: GRAY, marginTop: 8 }}>Steps need a session board on this mission; the title and done-when land now, the steps once a session opens its board.</div>}
               </div>
@@ -635,7 +635,7 @@ function ProjectDetail({ project, board: boardProp, api, onBack, initialTab, ini
             <BadgeMedallion id="main-mission" size={136} glow />
             <div style={{ fontFamily: MONO, fontSize: 10.5, letterSpacing: '2.4px', textTransform: 'uppercase', color: GOLD }}>Main Mission Complete</div>
             <div style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 26, letterSpacing: '-0.01em', color: INK, lineHeight: 1.2 }}>{project.name}</div>
-            <div style={{ fontSize: 13.5, color: TEXT_DIM, lineHeight: 1.5 }}>{BADGES['main-mission'].label} · {BADGES['main-mission'].miles} miles on the River at the next update{celebrate.closed ? ` · ${celebrate.closed} milestone${celebrate.closed === 1 ? '' : 's'} closed with it, ${BADGES['mission-task'].miles} each` : ''}.</div>
+            <div style={{ fontSize: 13.5, color: TEXT_DIM, lineHeight: 1.5 }}>{BADGES['main-mission'].label} · {BADGES['main-mission'].miles} miles on the River at the next update{celebrate.closed ? ` · ${celebrate.closed} gate${celebrate.closed === 1 ? '' : 's'} closed with it, ${BADGES['gate'].miles} each` : ''}.</div>
             <div style={{ width: '100%', marginTop: 6, padding: '14px 16px', borderRadius: 10, border: `1px solid ${PANEL_BORDER}`, background: PANEL_BG, textAlign: 'left' }}>
               <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '1.6px', textTransform: 'uppercase', color: LABEL, marginBottom: 6 }}>What is true now, that was not true before</div>
               {project.description && <div style={{ fontFamily: SERIF, fontStyle: 'italic', fontSize: 16, color: INK, lineHeight: 1.5 }}>{project.description}</div>}
@@ -649,11 +649,11 @@ function ProjectDetail({ project, board: boardProp, api, onBack, initialTab, ini
       {award && (
         <div onClick={() => setAward(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(5,16,28,0.78)', display: 'grid', placeItems: 'center', zIndex: 60 }}>
           <div onClick={e => e.stopPropagation()} style={{ ...S.panel, width: 'min(440px, 92vw)', textAlign: 'center', padding: '34px 28px 26px', display: 'grid', gap: 12, justifyItems: 'center' }}>
-            <BadgeMedallion id="mission-task" size={112} glow />
+            <BadgeMedallion id="gate" size={112} glow />
             <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '2px', textTransform: 'uppercase', color: PURPLE }}>MMT badge awarded</div>
             <div style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 22, letterSpacing: '-0.01em', color: INK, lineHeight: 1.25 }}>{award.n} · {award.title}</div>
-            <div style={{ fontSize: 13, color: TEXT_DIM, lineHeight: 1.5 }}>{BADGES['mission-task'].label} · {BADGES['mission-task'].miles} miles on the River at the next update.</div>
-            <div style={{ fontFamily: SERIF, fontStyle: 'italic', fontSize: 13, color: GRAY }}>{BADGES['mission-task'].lore}</div>
+            <div style={{ fontSize: 13, color: TEXT_DIM, lineHeight: 1.5 }}>{BADGES['gate'].label} · {BADGES['gate'].miles} miles on the River at the next update.</div>
+            <div style={{ fontFamily: SERIF, fontStyle: 'italic', fontSize: 13, color: GRAY }}>{BADGES['gate'].lore}</div>
             <button onClick={() => setAward(null)} style={{ ...S.btnPrimary, marginTop: 6 }}>Continue</button>
           </div>
         </div>
@@ -758,7 +758,7 @@ export default function ProjectsPage({ deepLink = [], onNavigate } = {}) {
 
       {nowBand.length > 0 && (
         <div style={{ marginBottom: 26 }}>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginBottom: 10 }}><span style={{ fontFamily: MONO, fontSize: 10.5, letterSpacing: '1.4px', textTransform: 'uppercase', color: GREEN }}>Now</span><span style={{ flex: 1, height: 1, background: PANEL_BORDER }} /><span style={{ fontFamily: MONO, fontSize: 10, color: GRAY }}>a milestone in the Loadout (green) or the Stash (gold)</span></div>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginBottom: 10 }}><span style={{ fontFamily: MONO, fontSize: 10.5, letterSpacing: '1.4px', textTransform: 'uppercase', color: GREEN }}>Now</span><span style={{ flex: 1, height: 1, background: PANEL_BORDER }} /><span style={{ fontFamily: MONO, fontSize: 10, color: GRAY }}>a gate in the Loadout (green) or the Stash (gold)</span></div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 12 }}>
             {nowBand.map(({ p, b }) => <ProjectCard key={p.id} project={p} onOpen={setDetailId} edge={EDGE[b]} />)}
           </div>

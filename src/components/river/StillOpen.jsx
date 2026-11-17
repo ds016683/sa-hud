@@ -25,13 +25,13 @@ const LEDGER = { toggleStep, stillOpen, openCard }
 export default function StillOpen({ mission, open, onReady, onClose, api = LEDGER }) {
   // The rows as they stood at the refusal; closing one keeps it on the list, checked, so the work shows.
   const [steps, setSteps] = useState(() => (open?.steps || []).map(s => ({ ...s, done: false })))
-  const [milestones, setMilestones] = useState(open?.milestones || [])
+  const [gates, setMilestones] = useState(open?.milestones || [])
   const [busy, setBusy] = useState(null)
   const [err, setErr] = useState(null)
   useEffect(() => { const k = (e) => { if (e.key === 'Escape') onClose() }; window.addEventListener('keydown', k); return () => window.removeEventListener('keydown', k) }, [onClose])
-  const left = steps.filter(s => !s.done).length + milestones.length
-  const total = Math.max(open?.total || 0, steps.length) + milestones.length   // gates already closed count toward the whole
-  const noun = steps.length && milestones.length ? 'items' : milestones.length ? 'milestones' : 'gates'
+  const left = steps.filter(s => !s.done).length + gates.length
+  const total = Math.max(open?.total || 0, steps.length) + gates.length   // gates already closed count toward the whole
+  const noun = 'gates'
   const flip = async (s) => {
     if (busy) return
     setBusy(s.id); setErr(null)
@@ -77,19 +77,19 @@ export default function StillOpen({ mission, open, onReady, onClose, api = LEDGE
           </div>
         )}
 
-        {milestones.length > 0 && (
+        {gates.length > 0 && (
           <div style={{ marginTop: 20 }}>
-            <Label>Milestones · {milestones.length} Still Open</Label>
+            <Label>Gates With Their Own Card · {gates.length} Still Open</Label>
             <div style={{ display: 'grid', gap: 8 }}>
-              {milestones.map(k => (
+              {gates.map(k => (
                 <div key={k.id} style={{ display: 'flex', gap: 12, alignItems: 'center', padding: '9px 12px', border: `1px solid ${PANEL_BORDER}`, borderRadius: 10 }}>
                   <span style={{ width: 18, height: 18, borderRadius: 99, flexShrink: 0, border: '1.5px solid rgba(234,241,248,0.4)' }} />
                   <span style={{ flex: 1, fontSize: 14.5, lineHeight: 1.4, color: INK }}>{k.title}</span>
-                  <button onClick={() => { onClose(); api.openCard(k.id) }} style={btn()}>Open Milestone <ArrowRight size={13} /></button>
+                  <button onClick={() => { onClose(); api.openCard(k.id) }} style={btn()}>Open Gate <ArrowRight size={13} /></button>
                 </div>
               ))}
             </div>
-            <div style={{ fontSize: 12.5, color: MUTED, marginTop: 8 }}>A milestone closes on its own card.</div>
+            <div style={{ fontSize: 12.5, color: MUTED, marginTop: 8 }}>Each of these closes on its own card.</div>
           </div>
         )}
 
