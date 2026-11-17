@@ -24,7 +24,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { ChevronDown, ChevronRight } from 'lucide-react'
 import { Label } from './canon'
-import { addStep, toggleStep, removeStep, setStepOrder, addMissionGate } from '../../lib/objectives'
+import { addStep, toggleStep, removeStep, setStepOrder } from '../../lib/objectives'
 import { listPages, readPage } from '../../lib/workspace'
 import { listBuilds } from '../../lib/lumenPanel'
 import { listLiveFiles, isLink, isRequest } from '../../lib/livefiles'
@@ -33,7 +33,7 @@ import { fmtClock } from '../../lib/loadout'
 import { hudConfirm, hudPrompt } from '../../lib/dialog'
 
 // The Ledger's doors, as one object, so dev/briefing.html can run the page on sample data with no sign-in.
-const LEDGER = { addStep, toggleStep, removeStep, setStepOrder, addMissionGate, listPages, readPage, listBuilds, listLiveFiles, readPath, noteSource, savePathSteps }
+const LEDGER = { addStep, toggleStep, removeStep, setStepOrder, listPages, readPage, listBuilds, listLiveFiles, readPath, noteSource, savePathSteps }
 const wait = (ms) => new Promise(r => setTimeout(r, ms))
 const Check = () => <svg viewBox="0 0 10 10" aria-hidden="true"><path d="M1.8 5.4 4.2 7.6 8.3 2.6" fill="none" stroke="var(--hud-on-accent)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>
 
@@ -41,6 +41,10 @@ export default function CardBriefing({ obj, root, kindLabel, steps = [], kids = 
   // One line (David 11/17, on the two boxed reads: "one line, but make what is before or after collapsable
   // and expandable and the default view is where we are now, with the path forward expanded ... and the
   // trail behind collpased"). Every card opens that way; the folds are not kept between visits.
+  // A gate holds no gates of its own (David 11/17: "we don't need the ability to annotate gates inside a gate
+  // itself. but yes, each gate having its own trail and steps being added on the trail and having an
+  // isolated work bench"). So a gate's card takes steps only; a mission's card takes both.
+  const takesGates = !mission && !isGate
   const [behindOpen, setBehindOpen] = useState(false)
   const [aheadOpen, setAheadOpen] = useState(true)
 
@@ -139,11 +143,9 @@ export default function CardBriefing({ obj, root, kindLabel, steps = [], kids = 
     if (busy) return
     const onTrail = kind === 'step' && part === 'b'
     if (!onTrail) setAheadOpen(true)
-    const n = mission ? Math.max(0, ...missionGates.map(g => g.n)) + 1 : null
+    if (kind === 'gate' && !takesGates) return
     const ask = kind === 'gate'
-      ? (mission
-        ? { title: `A New Gate On ${mission.name}`, message: `A gate belongs to the mission, so this one goes on ${mission.name} as gate ${n}. What must be true?`, placeholder: 'What must be true', confirm: 'Add The Gate' }
-        : { title: 'A New Gate', message: 'What must be true for this mission to close. A gate pays 7 miles when it closes.', placeholder: 'What must be true', confirm: 'Add The Gate' })
+      ? { title: 'A New Gate', message: 'What must be true for this mission to close. A gate pays 7 miles when it closes.', placeholder: 'What must be true', confirm: 'Add The Gate' }
       : onTrail
         ? { title: 'A Step On The Trail', message: 'What you did, in a line. It lands where you set it.', placeholder: 'What you did', confirm: 'Add The Step' }
         : { title: 'A Step Ahead', message: 'What is to be done, in a line. Click its circle when it is done and it moves to The Trail.', placeholder: 'What is to be done', confirm: 'Add The Step' }
@@ -161,10 +163,6 @@ export default function CardBriefing({ obj, root, kindLabel, steps = [], kids = 
           const at = !next ? now : new Date(prev ? (t(prev) + t(next)) / 2 : t(next) - 60000).toISOString()
           await savePsteps(list => [...list, { ...row, done: true, at }])
         } else await savePsteps(list => [...list, { ...row, done: false, at: null, after: i == null ? null : i === 0 ? '^' : stops[i - 1].key }])
-      } else if (mission) {
-        await api.addMissionGate(mission.id, n, text)
-        say(`Added to ${mission.name} as gate ${n}.`)
-        await onReload()
       } else {
         const row = await api.addStep(obj.id, text, steps.length)
         if (row?.id != null) {
@@ -183,7 +181,7 @@ export default function CardBriefing({ obj, root, kindLabel, steps = [], kids = 
     try { await savePsteps(list => list.filter(x => x.id !== id)) } catch (err) { say(`Could not take it off: ${err.message}`) }
   }
   // A place on the line takes a drop: a step anywhere, a gate only on the path forward.
-  const takes = (part) => !!drag && (part === 'a' || drag === 'step')
+  const takes = (part) => !!drag && (drag === 'step' || (part === 'a' && takesGates))
   const dropAt = (part, i) => takes(part) ? { onDragOver: (e) => { e.preventDefault(); if (over !== `${part}${i}`) setOver(`${part}${i}`) }, onDrop: (e) => { e.preventDefault(); place(drag, part, i) } } : {}
   const zone = (part, i) => takes(part) ? <div key={`z${part}${i}`} className={`brf-drop${over === `${part}${i}` ? ' over' : ''}`} {...dropAt(part, i)}>{over === `${part}${i}` && <span>Set The {drag === 'gate' ? 'Gate' : 'Step'} Here</span>}</div> : null
   const fold = (open, toggle) => ({ role: 'button', tabIndex: 0, 'aria-expanded': open, onClick: toggle, onKeyDown: (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle() } } })
@@ -208,7 +206,7 @@ export default function CardBriefing({ obj, root, kindLabel, steps = [], kids = 
           <span style={{ flex: 1 }} />
           <div className="brf-tray">
             <span className="pick step" title="Drag a step onto the line, or click to set it at the end" {...pickUp('step')}><i className="m" />Step</span>
-            <span className="pick gate" title="Drag a gate onto the path forward, or click to set it at the end" {...pickUp('gate')}><i className="m" />Gate</span>
+            {takesGates && <span className="pick gate" title="Drag a gate onto the path forward, or click to set it at the end" {...pickUp('gate')}><i className="m" />Gate</span>}
             <span className="hint">Drag onto the line</span>
           </div>
         </div>
@@ -259,7 +257,7 @@ export default function CardBriefing({ obj, root, kindLabel, steps = [], kids = 
               {aheadOpen && zone('a', stops.length)}
               {/* Any mission takes as many gates as it needs (David 11/16), a Mythic included (11/17: one card for every mission). */}
               {aheadOpen && mission && onOpenMission && <div className="brf-ev go" onClick={onOpenMission}><div className="what">Every gate's story is on the mission's trail: open {mission.name}</div></div>}
-              {aheadOpen && !mission && (
+              {aheadOpen && takesGates && (
                 <div className="brf-stop">
                   <span className="hit still"><span className="o" style={{ borderStyle: 'dotted' }} /></span>
                   <div className="brf-add"><input value={draft} disabled={busy} onChange={e => setDraft(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') add() }} placeholder={stops.length ? 'Add a gate: what must be true' : 'The first gate: what must be true'} aria-label="Add a gate" maxLength={300} /></div>

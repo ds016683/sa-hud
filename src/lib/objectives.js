@@ -96,8 +96,7 @@ export const toggleStep = (id, done) => soft(supabase.from('objective_steps').up
 export const removeStep = (id) => soft(supabase.from('objective_steps').delete().eq('id', id))
 // The gates of a card in a new order (a gate dropped between two others): each takes its place in the list.
 export const setStepOrder = (ids) => Promise.all(ids.map((id, i) => soft(supabase.from('objective_steps').update({ position: i }).eq('id', id))))
-// A gate set by hand from a gate's card goes on the mission, numbered after its last.
-export const addMissionGate = (projectId, n, text) => soft(supabase.from('project_tasks').insert({ project_id: projectId, text: `${n} · ${String(text).trim().slice(0, 300)}`, status: 'open', done: false, source: 'manual' }).select().single())
+
 
 // ---- Cards under a card (10/29 to 11/17) -----------------------------------------
 // A Mythic's gates were once objectives of their own (parent_id), each a card. Since 11/17 a gate

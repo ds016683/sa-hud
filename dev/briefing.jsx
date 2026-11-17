@@ -47,7 +47,6 @@ const api = {
   readPath: async () => ({ v: 1, sources, steps: psteps }),
   savePathSteps: async (_r, fn) => { psteps = fn(psteps); return { v: 1, sources, steps: psteps } },
   setStepOrder: async (ids) => { steps = ids.map(id => steps.find(x => x.id === id)).filter(Boolean) },
-  addMissionGate: async () => ({}),
   noteSource: async (_r, id, src) => { sources[id] = { at: new Date().toISOString(), ...src } },
 }
 const lumenApi = {
