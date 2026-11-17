@@ -730,6 +730,7 @@ export default function ProjectsPage({ deepLink = [], onNavigate } = {}) {
           </div>
         </div>
         <div style={{ display: 'flex', gap: 8, paddingTop: 4 }}>
+          <button style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 600, padding: '7px 12px', borderRadius: 8, border: `1px solid ${PANEL_BORDER}`, background: 'transparent', color: INK2, cursor: 'pointer' }} onClick={() => onNavigate?.('main-missions', ['steps'])}>Proposed Steps</button>
           <button style={S.btnGhost} onClick={api.refresh}><RefreshCw size={13} /> Refresh</button>
           <button style={S.btnPrimary} onClick={() => setAdding(!adding)}><Plus size={13} /> Add project</button>
         </div>

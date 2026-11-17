@@ -3,8 +3,9 @@
 // inbound text and get the reply; they never talk to the model themselves.
 
 import { sb, sbWrite, identityDoc, chiToday, TOOLS, callTool } from './_ledger.mjs'
+import { stepsWaiting, CLEAR_AT } from './_trail.mjs'
 
-const MODEL = () => process.env.LUMEN_MODEL || 'claude-opus-5-5'
+export const MODEL = () => process.env.LUMEN_MODEL || 'claude-opus-5-5'
 const RECENT = 40          // messages of verbatim thread carried into each turn
 const FOLD_AT = 120        // when the unfolded thread exceeds this, write a memory summary
 
@@ -117,10 +118,11 @@ ${doc}`
 
 // One turn: returns the reply text. Runs the tool loop against the Ledger.
 export async function think({ channel = 'whatsapp', text, spoken = false, frame = null }) {
-  const [doc, ctx, constitution, rules] = await Promise.all([
+  const [doc, ctx, constitution, rules, waiting] = await Promise.all([
     identityDoc('operating-context.md'), threadContext(),
     identityDoc('constitution.md').catch(() => ''),
     sb('lumen_rules?select=id,text,kind,created_at&active=eq.true&order=id.asc&limit=200').catch(() => []),
+    stepsWaiting(),
   ])
   const transcript = ctx.recent.map(m => `[${m.at.slice(0, 16).replace('T', ' ')} ${m.direction === 'in' ? 'David' : 'Lumen'}${m.kind === 'audio' ? ' (voice)' : ''}] ${m.body}`).join('\n')
   const systemText = (constitution ? `${constitution}\n\n` : '')
@@ -129,12 +131,15 @@ export async function think({ channel = 'whatsapp', text, spoken = false, frame 
     + (ctx.memory ? `\n\n## Longer memory (summary of the thread before the recent messages)\n${ctx.memory.summary}` : '')
     + (transcript ? `\n\n## Recent thread\n${transcript}` : '')
     + (frame ? `\n\n## The card David is working in right now (the Lumen panel, 11/4)\n${frame}\n\nYou are open beside this card. Treat it as the subject unless he says otherwise: its title is the side_mission (or its key the project) in every tool call. Your hands on it: milestones and marks (add_step, complete_step, set_due, set_north_star, move_objective, close_out), its files (list_live_files, read_file, look_at_file, file_attachment, and write_file with side_mission so a document lands in the card's Files), email (draft_email puts a message in his Outlook Drafts with the card's files attached, for him to send), its Workbench tabs (workbench_tab, read_workbench_tab), and builds (build_page: a complete self-contained HTML page that opens as a tab on the Workbench, in the HUD's canon). The Workbench is the card's working surface and it is made of tabs: say "a tab on the Workbench", never "Workspace" or "Workspace page" (David's canon, 11/10). When he asks you to change the card, do it with the tools and say what changed in one line; the card refreshes on its own. A file he asks for while he is on the card goes onto the card (file_attachment for one on an email, write_file with side_mission for one you write), not to WhatsApp, unless he asks for it there. When he asks for a plan, an outline or a draft, put it on a Workbench tab and say which tab. When he asks for a tool, a mock-up, a page or a prototype, build_page it. Answer in a few plain sentences, longer only when he asks for a draft or a list.` : '')
+  // Proposed steps (David 11/17): "Everytime i get to 15 or more that need to be cleared, you need
+  // to remind me to go clear them on every turn." Below that count he hears nothing about them.
+  const stepsNote = waiting >= CLEAR_AT ? `\n\n## Proposed steps waiting on David\n${waiting} proposed steps wait for his Accept or Reject on the Proposed Steps page (HUD, Main Missions, Proposed Steps). His rule: at ${CLEAR_AT} or more, remind him to go clear them on every turn. Close this reply with one short line that says how many are waiting and where to clear them.` : ''
   // Stable prefix (everything before the memory + thread) gets the cache marker.
   const cut = systemText.indexOf('\n\n## Longer memory')
   const cut2 = cut >= 0 ? cut : systemText.indexOf('\n\n## Recent thread')
   const system = cut2 > 0
-    ? [{ type: 'text', text: systemText.slice(0, cut2), cache_control: { type: 'ephemeral' } }, { type: 'text', text: systemText.slice(cut2) }]
-    : [{ type: 'text', text: systemText, cache_control: { type: 'ephemeral' } }]
+    ? [{ type: 'text', text: systemText.slice(0, cut2), cache_control: { type: 'ephemeral' } }, { type: 'text', text: systemText.slice(cut2) + stepsNote }]
+    : [{ type: 'text', text: systemText, cache_control: { type: 'ephemeral' } }, ...(stepsNote ? [{ type: 'text', text: stepsNote }] : [])]
 
   const tools = TOOLS.map(t => ({ name: t.name, description: t.description, input_schema: t.inputSchema }))
   // Prompt caching: the tool list and the system prompt are identical on every

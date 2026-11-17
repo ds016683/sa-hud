@@ -8,6 +8,7 @@ import { fetchProtocolState } from './lib/protocol'
 import useGameState from './hooks/useGameState'
 import LoginPage from './components/LoginPage'
 import ProjectsPage from './components/ProjectsPage'
+import StepReview from './components/river/StepReview'
 import ClientsPage from './components/ClientsPage'
 import ItemDetail from './components/river/ItemDetail'
 import { itemFromObjective } from './lib/loadout'
@@ -300,7 +301,7 @@ export default function App() {
           {active === 'writings'         && <WritingsPage />}
           {active === 'ai-tools'         && <AiToolsPage />}
           {active === 'lumen-protocols'  && <LumenProtocolsPage />}
-          {active === 'main-missions'    && <ProjectsPage deepLink={params} onNavigate={setRoute} />}
+          {active === 'main-missions'    && (params[0] === 'steps' ? <StepReview onNavigate={setRoute} /> : <ProjectsPage deepLink={params} onNavigate={setRoute} />)}
           {active === 'clients'          && <ClientsPage deepLink={params} onNavigate={setRoute} />}
           {active === 'side-missions'    && <SideMissionsPage onNavigate={setRoute} />}
           {active === 'maintenance'      && <MaintenancePage deepLink={params} />}
