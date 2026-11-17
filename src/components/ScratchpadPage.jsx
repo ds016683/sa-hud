@@ -3,7 +3,7 @@
 // over a dropped screenshot, then Save: the sketch goes into Live Files as a
 // PNG, tied to a Loadout or Stash item if you pick one, and announces itself
 // to the next Claude session. The current sheet autosaves in this browser so
-// a reload does not lose it. Milestone 16 on Lumen Production.
+// a reload does not lose it. Gate 16 on Lumen Production.
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Eraser, Undo2, Trash2, Save, Image as ImageIcon, Pen, FilePlus } from 'lucide-react'
 import { putLiveFile, listLiveFiles, openLiveFile, fmtStamp } from '../lib/livefiles'

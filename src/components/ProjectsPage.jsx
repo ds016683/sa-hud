@@ -29,7 +29,7 @@ import MissionTrail from './river/MissionTrail'
 // =============================================================================
 // STYLE TOKENS (CIP canon, matches ObjectivesPage dark stage)
 // =============================================================================
-// Canon tokens (Milestone 18 scrub, 10/24): the page's own palette is gone; two local aliases remain.
+// Canon tokens (Gate 18 scrub, 10/24): the page's own palette is gone; two local aliases remain.
 const BLUE_DEEP = LABEL
 const TEXT_DIM = INK2
 
@@ -68,7 +68,7 @@ const CATEGORY_LABELS = {
 const CATEGORY_ORDER = ['q2-must', 'client', 'third-horizon', 'commercial-infra', 'biz-dev', 'personal', 'learning']
 
 // Horizon (David 10/25, edges 10/26): the page sorts by where the mission sits on
-// the Board, nothing subjective. A milestone in the Loadout gives the card a green
+// the Board, nothing subjective. A gate in the Loadout gives the card a green
 // edge; one in the Stash, gold; nothing on the Board, the accent blue. A mission
 // tagged 'horizon' has no clock on it and sits in the Horizon band as a chip.
 const isHorizon = (p) => (p.tags || []).includes('horizon')
@@ -88,10 +88,10 @@ const isBlocked = (t) => t.status === 'blocked'
 // =============================================================================
 // Baseball card
 // =============================================================================
-// Milestones. A milestone typed with a leading number ("3 · Smoke test…")
+// Gates. A gate typed with a leading number ("3 · Smoke test…")
 // keeps that number and sorts by it; the prefix is stripped from the text.
-// Milestones without a number follow in creation order and are numbered by
-// position. When a mission has numbered milestones, its unnumbered closed
+// Gates without a number follow in creation order and are numbered by
+// position. When a mission has numbered gates, its unnumbered closed
 // tasks are earlier work (history before the plan was reset) and fold away.
 const NUM_RE = /^\s*(\d+)\s*[·.:)-]\s*/
 const numOf = (t) => { const m = NUM_RE.exec(String(t?.text || '')); return m ? Number(m[1]) : null }
@@ -106,7 +106,7 @@ function planOf(project) {
   let n = Math.max(...numbered.map(numOf))
   return { plan: [...numbered.map(t => ({ t, n: numOf(t) })), ...open.map(t => ({ t, n: ++n }))], history }
 }
-const nowMilestone = (plan) => plan.find(({ t }) => isOpen(t) && t.objective_id) || plan.find(({ t }) => isOpen(t)) || null
+const nowGate = (plan) => plan.find(({ t }) => isOpen(t) && t.objective_id) || plan.find(({ t }) => isOpen(t)) || null
 
 // The ring (David 10/26): x of x closed, drawn once and grown on mount.
 function ProgressRing({ closed, total, size = 56, stroke = 5, color = LABEL }) {
@@ -129,7 +129,7 @@ function ProjectCard({ project, onOpen, edge = INK2, compact = false }) {
   const { plan } = planOf(project)
   const ms = plan.map(p => p.t)
   const closed = ms.filter(t => !isOpen(t)).length
-  const nowP = nowMilestone(plan)
+  const nowP = nowGate(plan)
   const now = nowP?.t || null
   const blocked = ms.filter(t => isOpen(t) && isBlocked(t)).length
   const fresh = freshnessOf(project.last_activity_at)
@@ -157,16 +157,16 @@ function ProjectCard({ project, onOpen, edge = INK2, compact = false }) {
 }
 
 // =============================================================================
-// Detail: milestone row. The steps under it come from the mission's session
+// Detail: gate row. The steps under it come from the mission's session
 // board: the phase that carries this task id (on the phase, or on one of its
 // items). Ticking a step or adding one writes that board, the same document
 // the agent writes. New steps never carry the task id themselves: the sync
 // closes the Ledger task when an item with its id is done, so only the step
-// that means "the milestone is true" should carry it.
+// that means "the gate is true" should carry it.
 // =============================================================================
 const Chip = ({ color, children }) => <span style={{ fontFamily: MONO, fontSize: 9, letterSpacing: '1px', textTransform: 'uppercase', color, border: `1px solid ${alpha(color, 33)}`, borderRadius: 999, padding: '2px 7px', whiteSpace: 'nowrap' }}>{children}</span>
 
-function MilestoneRow({ n, project, task, board, api, onBoardChange, onAward, objState }) {
+function GateRow({ n, project, task, board, api, onBoardChange, onAward, objState }) {
   const open = isOpen(task)
   const blocked = isBlocked(task)
   const ost = task.objective_id ? objState?.[task.objective_id] : null
@@ -403,9 +403,9 @@ function ProjectNotes({ project }) {
 }
 
 function ProjectDetail({ project, board: boardProp, api, onBack, initialTab, initialSlug, onNavigate }) {
-  // Milestones first, always (David 10/21). A tab in the hash only sticks when it
+  // Gates first, always (David 10/21). A tab in the hash only sticks when it
   // carries an artifact slug (a deep link from Lumen or a session); otherwise the
-  // page opens on Milestones, whatever tab the URL remembered.
+  // page opens on Gates, whatever tab the URL remembered.
   // The card canon (10/26): five pills, the old names still open the right one.
   const LEGACY = { tasks: 'briefing', artifacts: 'files', shares: 'files', planning: 'workbench', cabinet: 'files' }
   const [tab, setTab] = useState(CARD_PILLS.some(([id]) => id === initialTab) ? initialTab : (LEGACY[initialTab] || 'briefing'))
@@ -463,14 +463,14 @@ function ProjectDetail({ project, board: boardProp, api, onBack, initialTab, ini
     if (ok) setCelebrate({ achieved, closed: closeOpen ? (tasks || []).filter(x => x.status !== 'done').length : 0, total: (tasks || []).length })
     else onBack()
   }
-  // Natural language in, an organized milestone out (David 10/21): the door
-  // api/milestone-draft returns a title, a done-when and steps for him to confirm.
+  // Natural language in, an organized gate out (David 10/21): the door
+  // api/gate-draft returns a title, a done-when and steps for him to confirm.
   const organize = async () => {
     const text = newTask.trim(); if (!text) return
     setDrafting(true); setDraftErr(null)
     try {
       const { data: { session } } = await sbAuth.auth.getSession()
-      const r = await fetch('/api/milestone-draft', { method: 'POST', headers: { Authorization: `Bearer ${session?.access_token || ''}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ text, project: project.name, polaris: project.description || '', existing: (tasks || []).map(t => stripNum(t.text)) }) })
+      const r = await fetch('/api/gate-draft', { method: 'POST', headers: { Authorization: `Bearer ${session?.access_token || ''}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ text, project: project.name, polaris: project.description || '', existing: (tasks || []).map(t => stripNum(t.text)) }) })
       const j = await r.json().catch(() => ({}))
       if (!r.ok || j.error) throw new Error(j.error || `draft ${r.status}`)
       const n = j.number || (text.match(/^\s*(\d+)\s*[·.:)-]/) || [])[1] || null
@@ -481,7 +481,7 @@ function ProjectDetail({ project, board: boardProp, api, onBack, initialTab, ini
     if (!draft?.title?.trim()) return
     const n = draft.number
     const t = await api.addTask(project.id, `${n ? `${n} · ` : ''}${draft.title.trim()}`)
-    if (!t) { setDraftErr('Could not add the milestone'); return }
+    if (!t) { setDraftErr('Could not add the gate'); return }
     if (draft.done_when?.trim()) await api.updateTask(project.id, t.id, { notes: draft.done_when.trim() })
     const steps = (draft.steps || []).map(s => s.trim()).filter(Boolean)
     if (steps.length && board?.id) {
@@ -566,17 +566,17 @@ function ProjectDetail({ project, board: boardProp, api, onBack, initialTab, ini
         )}
         {tab === 'briefing' && read === 'trail' && (
           <MissionTrail project={project} gates={[...tasks, ...history].map(t => ({ id: t.id, text: stripNum(t.text), done: !isOpen(t), done_at: t.released_at }))}
-            here={`${tasks.filter(t => !isOpen(t)).length} of ${tasks.length} gates closed.${nowMilestone(plan) ? ` Next: ${stripNum(nowMilestone(plan).t.text)}` : ''}`} onEnd={() => pickRead('end')} />
+            here={`${tasks.filter(t => !isOpen(t)).length} of ${tasks.length} gates closed.${nowGate(plan) ? ` Next: ${stripNum(nowGate(plan).t.text)}` : ''}`} onEnd={() => pickRead('end')} />
         )}
         {tab === 'briefing' && read === 'end' && (
           <div>
             <p className="brf-sub" style={{ marginTop: 12 }}>The gates still open: what must be true for this mission to close.</p>
             {!tasks.length && <div style={{ fontSize: 13, color: GRAY, padding: '10px 0' }}>No gates yet. Add the first one below: what must be true for this mission to close.</div>}
-            {plan.filter(({ t }) => isOpen(t)).map(({ t, n }) => <MilestoneRow key={t.id} n={n} project={project} task={t} board={board} api={api} onNavigate={onNavigate} onBoardChange={setBoard} onAward={setAward} objState={objState} />)}
+            {plan.filter(({ t }) => isOpen(t)).map(({ t, n }) => <GateRow key={t.id} n={n} project={project} task={t} board={board} api={api} onNavigate={onNavigate} onBoardChange={setBoard} onAward={setAward} objState={objState} />)}
             {plan.some(({ t }) => !isOpen(t)) && (
               <div style={{ borderTop: `1px solid ${PANEL_BORDER}`, padding: '10px 0 0' }}>
                 <button onClick={() => setShowClosed(x => !x)} style={{ fontSize: 13, fontWeight: 600, color: INK2, background: 'transparent', border: 'none', padding: 0, cursor: 'pointer' }}>{showClosed ? 'Hide' : 'Show'} Closed Gates · {plan.filter(({ t }) => !isOpen(t)).length}</button>
-                {showClosed && plan.filter(({ t }) => !isOpen(t)).map(({ t, n }) => <MilestoneRow key={t.id} n={n} project={project} task={t} board={board} api={api} onNavigate={onNavigate} onBoardChange={setBoard} onAward={setAward} objState={objState} />)}
+                {showClosed && plan.filter(({ t }) => !isOpen(t)).map(({ t, n }) => <GateRow key={t.id} n={n} project={project} task={t} board={board} api={api} onNavigate={onNavigate} onBoardChange={setBoard} onAward={setAward} objState={objState} />)}
               </div>
             )}
             {history.length > 0 && (
@@ -622,7 +622,7 @@ function ProjectDetail({ project, board: boardProp, api, onBack, initialTab, ini
         )}
         {tab === 'workbench' && (
           /* The sheet (David 11/7): tabs across the top, one blank page each, a live protocol first with a tab of its own; the files in play read under Files. */
-          <div style={{ minWidth: 0 }}><WorkbenchSheet key={tick} root={project.id} project={project} scopes={planOf(project).plan.filter(({ t }) => t.objective_id).map(({ t, n }) => ({ objectiveId: t.objective_id, label: `Milestone ${n}` }))} /></div>
+          <div style={{ minWidth: 0 }}><WorkbenchSheet key={tick} root={project.id} project={project} scopes={planOf(project).plan.filter(({ t }) => t.objective_id).map(({ t, n }) => ({ objectiveId: t.objective_id, label: `Gate ${n}` }))} /></div>
         )}
         {tab === 'files' && (
           <div style={{ display: 'grid', gap: 30 }}>
@@ -701,7 +701,7 @@ export default function ProjectsPage({ deepLink = [], onNavigate } = {}) {
   const [newName, setNewName] = useState('')
   const [newCat, setNewCat] = useState('client')
   const [newHorizon, setNewHorizon] = useState(true)
-  // Board state of every promoted milestone, for the card edges and the bands.
+  // Board state of every promoted gate, for the card edges and the bands.
   const [objStates, setObjStates] = useState({})
   const allObjIds = projects.flatMap(p => (p.tasks || []).map(t => t.objective_id)).filter(Boolean).sort().join(',')
   useEffect(() => {

@@ -373,7 +373,7 @@ export function ItemModal({ client, item, onClose, onSave, onDelete, busy, exten
           <Field label="End"><input type="date" value={d.end_date || ''} onChange={set('end_date')} style={S.input} /></Field>
           <Field label="How The Date Reads"><input value={d.date_label} onChange={set('date_label')} placeholder="e.g. by 11/10 meeting" style={S.input} /></Field>
         </div>
-        <div style={{ fontSize: 11, color: MUTED, marginTop: -6 }}>A start alone draws a gate on that day. A start and an end draw a bar.</div>
+        <div style={{ fontSize: 11, color: MUTED, marginTop: -6 }}>A start alone draws a mark on that day. A start and an end draw a bar.</div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
           <Field label="Owner"><input value={d.owner} onChange={set('owner')} placeholder="Who carries it" style={S.input} /></Field>
           <Field label="Source"><input value={d.source} onChange={set('source')} placeholder="Where it came from, e.g. Peter Schultz, October 17 note" style={S.input} /></Field>

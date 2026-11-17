@@ -4,7 +4,7 @@
 //   Slots     three slots of planned work; an item takes 1, 2, or 3 of them
 //             (the slot economy, David 10/7: manage the bag, not a count)
 //   Type      Bounty (1 slot, a quick hit), Contract (2 slots, a standard job),
-//             Mythic (3 slots, several milestones, each a card of its own: objectives.parent_id)
+//             Mythic (3 slots, several gates, each a card of its own: objectives.parent_id)
 //   Equipped  exactly one clock runs at a time
 //   Hours     free hours before 6 PM Chicago after remaining meetings (shown, never enforced: David 10/21)
 //   Extract   release: stop the clock, sum the segments, bank the miles
@@ -52,7 +52,7 @@ export async function fetchLoadout() {
   const linked = links.filter(l => l.objective_id)
   const projByObj = new Map(linked.map(l => [l.objective_id, projName.get(l.project_id)]))
   const projIdByObj = new Map(linked.map(l => [l.objective_id, l.project_id]))
-  // The milestone's number and the mission's count: a typed "N · " wins, else position by creation.
+  // The gate's number and the mission's count: a typed "N · " wins, else position by creation.
   const NUM = /^\s*(\d+)\s*[·.:)-]\s*/
   const taskInfo = new Map()
   for (const l of linked) {
@@ -172,17 +172,13 @@ export async function unload(objectiveId) {
 }
 
 // What a mission still has open (David 11/16: "I shouldn't be able to extract from a Main
-// Mission with something still open"): its gates not yet closed and, on a Mythic, its
-// milestones not yet released. Extract refuses while this is not empty.
+// Mission with something still open"): its gates not yet closed. Extract refuses while this is
+// not empty.
 export async function stillOpen(objectiveId) {
-  const [steps, kids] = await Promise.all([
-    supabase.from('objective_steps').select('id,text,done,position').eq('objective_id', objectiveId).order('position').order('id'),
-    supabase.from('objectives').select('id,title,state').eq('parent_id', objectiveId).is('deleted_at', null).neq('state', 'released').order('captured_at', { ascending: true }),
-  ])
+  const steps = await supabase.from('objective_steps').select('id,text,done,position').eq('objective_id', objectiveId).order('position').order('id')
   const all = steps.error ? [] : (steps.data || [])
   const open = all.filter(s => !s.done)
-  const milestones = kids.error ? [] : (kids.data || [])
-  return { steps: open, milestones, total: all.length, count: open.length + milestones.length }
+  return { steps: open, total: all.length, count: open.length }
 }
 
 // Extract: release the item, keep its clock in the Ledger (never Harvest),
@@ -191,7 +187,7 @@ export async function stillOpen(objectiveId) {
 // release and the day log land on that day, today when it is not given.
 export async function extract(item, { minutes, note, day } = {}) {
   const open = await stillOpen(item.id)
-  if (open.count) { const e = new Error(`Not ready to extract: ${open.count} still open (${[...open.steps.map(s => s.text), ...open.milestones.map(m => m.title)].join(' | ')}). Close what is open first.`); e.code = 'still-open'; e.open = open; throw e }
+  if (open.count) { const e = new Error(`Not ready to extract: ${open.count} still open (${open.steps.map(s => s.text).join(' | ')}). Close what is open first.`); e.code = 'still-open'; e.open = open; throw e }
   const clocked = await clockedMinutes(item.id)
   const fallback = item.activated_at ? Math.max(1, Math.round((Date.now() - new Date(item.activated_at).getTime()) / 60000)) : 0
   const mins = Number(minutes) > 0 ? Math.round(Number(minutes)) : (clocked || fallback)
@@ -281,8 +277,8 @@ export async function stashTask(task, projectName) {
 }
 
 // Delete a Main Mission without miles: status 'deleted' (the River pays only
-// completed), its open milestones' bridge objectives soft-deleted so nothing
-// lingers in the Stash or the queue. Closed milestones keep what they banked.
+// completed), its open gates' bridge objectives soft-deleted so nothing
+// lingers in the Stash or the queue. Closed gates keep what they banked.
 export async function deleteMission(project) {
   const now = new Date().toISOString()
   const tasks = await q(supabase.from('project_tasks').select('id,objective_id,status').eq('project_id', project.id))
@@ -350,7 +346,7 @@ export async function logBoard(text) {
 
 // Rebuild a Board item from an objective id (for a refreshed Mission Briefing).
 export async function itemFromObjective(id) {
-  // task:<project task id>: a milestone with no objective behind it yet (one chassis, 11/4)
+  // task:<project task id>: a gate with no objective behind it yet (one chassis, 11/4)
   if (/^task:/.test(String(id))) {
     const t = (await q(supabase.from('project_tasks').select('id,project_id,text,notes,status,objective_id').eq('id', String(id).slice(5)).limit(1)))[0]
     if (!t) return null

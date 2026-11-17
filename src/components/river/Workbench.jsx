@@ -1,6 +1,6 @@
 // Workbench (David, 10/18): the fifth pill on a Main Mission. Everything live
 // that is being developed or parsed through on this mission: the files in play
-// tied to the mission itself and to its milestones' board items, one current
+// tied to the mission itself and to its gates' board items, one current
 // version each, the drop-or-path container on top. It gets more canonical as
 // we go; for now it is the mission's Live Files, nothing more.
 import { useCallback, useEffect, useState } from 'react'

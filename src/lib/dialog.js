@@ -9,7 +9,7 @@ import { INK, INK2, PURPLE, RED, alpha, LABEL, SERIF } from '../components/river
 // an entry block that is a real textarea at 15px. Enter submits a single-line
 // prompt, Cmd/Ctrl+Enter a multiline one, Escape cancels. Built on the DOM so
 // any handler can call it, inside React or not.
-// Canon tokens (Milestone 18): the dialogs read the same variables as every page.
+// Canon tokens (Gate 18): the dialogs read the same variables as every page.
 const NAVY = 'var(--hud-surface-raised)', PERI = PURPLE, BORDER = 'var(--hud-border)'
 const MONO = 'var(--font-label, sans-serif)', SANS = 'inherit'
 

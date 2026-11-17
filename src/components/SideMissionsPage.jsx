@@ -228,7 +228,7 @@ export default function SideMissionsPage({ onNavigate }) {
   const pickGroup = (g) => { setGroupBy(g); try { localStorage.setItem('sm-group', g) } catch { /* no-op */ } }
   const today = chiToday()
 
-  // Side Missions only (David 10/26): a promoted milestone is a Main Mission's item and a
+  // Side Missions only (David 10/26): a promoted gate is a Main Mission's item and a
   // session item is the Board's; neither belongs on this page.
   const live = useMemo(() => (rows || []).filter(o => !o.deleted_at && !(o.tags || []).includes('mission-task') && !(o.tags || []).includes('session')), [rows])
   const bin = useMemo(() => (rows || []).filter(o => o.deleted_at), [rows])

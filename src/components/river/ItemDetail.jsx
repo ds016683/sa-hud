@@ -12,7 +12,7 @@ import { supabase } from '../../lib/supabase'
 import { listArtifacts, readArtifact } from '../../lib/artifacts'
 import { fetchLoadout, equip, holster, stash, equipObjective, equipTask, fmtClock, SIZES, sizeOf } from '../../lib/loadout'
 import DocView from './DocView'
-import { fetchSteps, listObjectiveArtifacts, listObjectiveFiles, listObjectiveBoards, realmOf, setSize, updateObjective, objRoot, fetchMilestones } from '../../lib/objectives'
+import { fetchSteps, listObjectiveArtifacts, listObjectiveFiles, listObjectiveBoards, realmOf, setSize, updateObjective, objRoot, fetchGates } from '../../lib/objectives'
 import { renderMarkdown } from './MeetingCloseout'
 import { fmtStamp, listLiveFiles, listEvidence, openLiveFile, isRequest, isLink } from '../../lib/livefiles'
 import { isOpenRow } from '../../lib/protocols'
@@ -52,15 +52,15 @@ async function loadRelated(item) {
       fetchSteps(item.objective_id), listObjectiveArtifacts(item.objective_id), listObjectiveFiles(item.objective_id), listObjectiveBoards(item.objective_id),
     ])
     out.objective = orow?.[0] || null; out.steps = steps; out.objArtifacts = oa; out.objFiles = of; out.objBoards = ob
-    // Mythic milestones (David 10/29): the children of a Mythic, and for a milestone, its parent and its number.
-    try { out.children = await fetchMilestones(item.objective_id) } catch { out.children = [] }
-    out.parent = null; out.milestoneN = null; out.milestoneOf = null
+    // Mythic gates (David 10/29): the children of a Mythic, and for a gate, its parent and its number.
+    try { out.children = await fetchGates(item.objective_id) } catch { out.children = [] }
+    out.parent = null; out.gateN = null; out.gateOf = null
     if (out.objective?.parent_id) {
       try {
-        const [{ data: prow }, sibs] = await Promise.all([supabase.from('objectives').select('id,title,effort,tags,state').eq('id', out.objective.parent_id).limit(1), fetchMilestones(out.objective.parent_id)])
+        const [{ data: prow }, sibs] = await Promise.all([supabase.from('objectives').select('id,title,effort,tags,state').eq('id', out.objective.parent_id).limit(1), fetchGates(out.objective.parent_id)])
         out.parent = prow?.[0] || null
         const ix = sibs.findIndex(k => k.id === item.objective_id)
-        out.milestoneN = ix >= 0 ? ix + 1 : null; out.milestoneOf = sibs.length
+        out.gateN = ix >= 0 ? ix + 1 : null; out.gateOf = sibs.length
       } catch { out.parent = null }
     }
     // The Editing Protocol punchlist (10/22): count only; the pill loads the rows.
@@ -90,7 +90,7 @@ async function loadRelated(item) {
       out.projectFiles = (pf || []).filter(f => f.id !== null && !f.name.endsWith('.json')).map(f => ({ name: f.name, path: `${pid}/${f.name}`, bucket: 'project-files' }))
       const { data: sf } = await supabase.storage.from('files').list(p.name, { limit: 100 })
       out.storeFiles = (sf || []).map(f => ({ name: f.name, folder: f.id === null, path: `${p.name}/${f.name}`, bucket: 'files' }))
-      // A Main Mission milestone (David 11/4): its number and the mission's count, the same way the Main Mission page numbers them.
+      // A Main Mission gate (David 11/4): its number and the mission's count, the same way the Main Mission page numbers them.
       if (task) {
         try {
           const { data: pts } = await supabase.from('project_tasks').select('id,text,status,created_at').eq('project_id', pid).order('created_at')
@@ -98,9 +98,9 @@ async function loadRelated(item) {
           const all = pts || []
           const numbered = all.filter(t => numOf(t) !== null)
           const unnumberedOpen = all.filter(t => numOf(t) === null && t.status !== 'done')
-          out.milestoneOf = numbered.length ? numbered.length + unnumberedOpen.length : all.length
+          out.gateOf = numbered.length ? numbered.length + unnumberedOpen.length : all.length
           const n = numOf(task)
-          out.milestoneN = n !== null ? n : (all.findIndex(t => t.id === task.id) + 1 || null)
+          out.gateN = n !== null ? n : (all.findIndex(t => t.id === task.id) + 1 || null)
         } catch { /* the fence falls back to ? of ? */ }
       }
     }
@@ -129,7 +129,7 @@ async function loadRelated(item) {
 }
 
 // Where It Stands (David, 10/17; 11/4): above the facts, two lists. Done is the history,
-// a summary of what closed: milestones released, marks ticked, board items closed. Not
+// a summary of what closed: gates released, marks ticked, board items closed. Not
 // file names (11/4); a file stays only once it is pinned as evidence, the deliverable. Still needed:
 // the open gates, the open board items, and Lumen's two or three next steps
 // toward the star (the same brain as the Loadout card, loaded after).
@@ -188,13 +188,13 @@ function WhereItStands({ rel, task, taskId, linkedBoards }) {
     for (const t of (ph.tasks || [])) boardItems.push({ ...t, board: b.title })
   }
   const done = [
-    ...kids.filter(k => k.state === 'released').map(k => ({ text: k.title, meta: k.released_at ? `gate · ${new Date(k.released_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}` : 'gate', kind: 'milestone' })),
+    ...kids.filter(k => k.state === 'released').map(k => ({ text: k.title, meta: k.released_at ? `gate · ${new Date(k.released_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}` : 'gate', kind: 'gate' })),
     ...steps.filter(st => st.done).map(st => ({ text: st.text, meta: st.done_at ? chiTime(st.done_at) : null, kind: 'gate' })),
     ...boardItems.filter(t => t.status === 'done').map(t => ({ text: t.label, meta: t.id, kind: 'board' })),
     ...(rel.objFiles || []).filter(f => f.evidence).map(f => ({ text: f.name, meta: 'deliverable', kind: 'made' })),
   ]
   const needed = [
-    ...kids.filter(k => k.state !== 'released').map((k, i) => ({ text: k.title, meta: `gate ${i + 1}`, kind: 'milestone' })),
+    ...kids.filter(k => k.state !== 'released').map((k, i) => ({ text: k.title, meta: `gate ${i + 1}`, kind: 'gate' })),
     ...steps.filter(st => !st.done).map(st => ({ text: st.text, meta: null, kind: 'gate' })),
     ...boardItems.filter(t => t.status !== 'done').map(t => ({ text: t.label, meta: t.status === 'blocked' ? (t.note || 'blocked') : t.status === 'inmotion' ? 'in motion' : t.id, kind: t.status === 'blocked' ? 'blocked' : 'board' })),
   ]
@@ -337,7 +337,7 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
           } else if (rel?.parent) {
             nodes.push({ label: 'Side Missions', onClick: nav('side-missions') })
             nodes.push({ label: rel.parent.title, onClick: host === 'page' ? () => openCard(rel.parent.id) : onClose })
-            head = rel.milestoneN ? `Gate ${rel.milestoneN}` : 'Gate'
+            head = rel.gateN ? `Gate ${rel.gateN}` : 'Gate'
             chip = { kind: 'Side Mission', label: 'Mythic', color: MYTHIC }
           } else {
             nodes.push({ label: 'Side Missions', onClick: nav('side-missions') })
@@ -347,11 +347,11 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
             chip = sdef ? { kind: 'Side Mission', label: sdef.label, color: sdef.color } : { kind: 'Side Mission', label: 'Side Mission', color: GOLD }
           }
           const name = task ? String(item.title || '').replace(/^\s*\d+\s*[·.:)-]\s*/, '') : item.title
-          // What the card is, in the chip: a Bounty, Milestone 2 Of 5, a Meeting at 1:00.
-          const chipLabel = task ? head : rel?.parent ? `${head}${rel.milestoneOf ? ` Of ${rel.milestoneOf}` : ''}` : item.kind === 'Event' ? `Meeting${chip?.label ? ` · ${chip.label}` : ''}` : chip?.label
+          // What the card is, in the chip: a Bounty, Gate 2 Of 5, a Meeting at 1:00.
+          const chipLabel = task ? head : rel?.parent ? `${head}${rel.gateOf ? ` Of ${rel.gateOf}` : ''}` : item.kind === 'Event' ? `Meeting${chip?.label ? ` · ${chip.label}` : ''}` : chip?.label
           return (
             <div>
-              <Trail nodes={nodes} />
+              <Trail nodes={nodes} ancestors />
               {/* The header (David 11/11, the Briefing mock-ups): the mission's own name is the title, and what it is
                   (its kind, its domain, its date) sits beside it as three chips. Domain, Type and Target Completion
                   "still take up wayyyy too much real estate"; a click on a chip opens their controls. */}
@@ -367,7 +367,7 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
                     <div className="brf-editor">
                       {obj && <div className="g"><span>Domain</span><div className="r">{[['third-horizon', 'Third Horizon'], ['personal', 'Personal']].map(([k, l]) => <button key={k} className={`o${realmOf(obj) === k ? ' on' : ''}`} onClick={() => patchObj({ tags: [...new Set([...(obj.tags || []).filter(t => t !== 'personal'), ...(k === 'personal' ? ['personal'] : [])])] })}>{l}</button>)}</div></div>}
                       {obj && !rel?.parent && !task && <div className="g"><span>Type</span><div className="r">{Object.entries(SIZES).map(([k, sdef]) => <button key={k} title={sdef.sub} className={`o${sizeOf(obj) === k ? ' on' : ''}`} onClick={() => setSize(obj.id, k).then(async () => { await load(); onChange && onChange() })}>{sdef.label}</button>)}</div></div>}
-                      {(rel?.parent || task) && <div className="g"><span>Gate</span><div style={{ fontSize: 13.5, color: INK, paddingTop: 4 }}>{rel.milestoneN || '?'} of {rel.milestoneOf || '?'} on {rel.parent ? rel.parent.title : (rel.project?.name || item.project || 'the Main Mission')} · {rel.parent ? '10 miles on close' : '1 mile on close'}</div></div>}
+                      {(rel?.parent || task) && <div className="g"><span>Gate</span><div style={{ fontSize: 13.5, color: INK, paddingTop: 4 }}>{rel.gateN || '?'} of {rel.gateOf || '?'} on {rel.parent ? rel.parent.title : (rel.project?.name || item.project || 'the Main Mission')} · {rel.parent ? '10 miles on close' : '1 mile on close'}</div></div>}
                       <div className="g"><span>Target Completion</span><input type="date" value={(task ? task.due_date : obj.due_date) || ''} onChange={e => task ? patchTask({ due_date: e.target.value || null }) : patchObj({ due_date: e.target.value || null })} /></div>
                     </div>
                   )}
@@ -387,7 +387,7 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
 
           {rel && tab === 'briefing' && (
             <div style={{ display: 'grid', gap: 22 }}>
-              {obj && <CardBriefing obj={obj} root={objRoot(obj.id)} kindLabel={rel.parent ? 'Gate' : task ? 'Gate' : item.kind === 'Ad Hoc' ? 'Ad Hoc item' : (SIZES[sizeOf(obj)]?.label || 'Side Mission')} steps={rel.steps || []} kids={rel.children || []} boardItems={boardStops} loaded={loaded} due={(task ? task.due_date : obj.due_date) || null} isMilestone={!!rel.parent} isMythic={!rel.parent && sizeOf(obj) === 'heavy'} onReload={async () => { await load(); onChange && onChange() }} onTab={setTab} onOpenCard={openCard} say={setMsg} />}
+              {obj && <CardBriefing obj={obj} root={objRoot(obj.id)} kindLabel={rel.parent ? 'Gate' : task ? 'Gate' : item.kind === 'Ad Hoc' ? 'Ad Hoc item' : (SIZES[sizeOf(obj)]?.label || 'Side Mission')} steps={rel.steps || []} kids={rel.children || []} boardItems={boardStops} loaded={loaded} due={(task ? task.due_date : obj.due_date) || null} isGate={!!rel.parent} isMythic={!rel.parent && sizeOf(obj) === 'heavy'} onReload={async () => { await load(); onChange && onChange() }} onTab={setTab} onOpenCard={openCard} say={setMsg} />}
               {!obj && item.kind !== 'Event' && item.kind !== 'Session' && <WhereItStands rel={rel} task={task} taskId={taskId} linkedBoards={linkedBoards} />}
               {!obj && (item.description || task?.notes) && <div><Label>Back Story</Label><div style={{ fontSize: 14.5, lineHeight: 1.65, color: INK, whiteSpace: 'pre-wrap' }}>{item.description || task.notes}</div></div>}
               {item.event && (

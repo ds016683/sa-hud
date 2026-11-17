@@ -15,7 +15,7 @@
   --ease-out: cubic-bezier(0, 0, 0.2, 1);
   --th-accent-primary: #165E98;
 
-  /* ---- HUD tokens (Milestone 18, 10/24): the CIP canon. Dark is the feature
+  /* ---- HUD tokens (Gate 18, 10/24): the CIP canon. Dark is the feature
      navy; light is the CIP paper. canon.jsx points every component here. ---- */
   --hud-surface:        #0F2334;                 /* feature navy */
   --hud-surface-deep:   #0D1D2C;                 /* wells, insets */
@@ -1288,7 +1288,7 @@ table.fin-grid { width: 100%; border-collapse: collapse; font-family: var(--font
 /* Dark surface variant: full-bleed navy but the page scrolls (Session Boards) */
 .sa-dark-scroll .sa-content { overflow-y: auto; display: block; }
 
-/* ---- The Briefing's three reads (David 11/11: Option B). Milestones, The Trail, End Of The Trail.
+/* ---- The Briefing's three reads (David 11/11: Option B). Gates, The Trail, End Of The Trail.
    A stop on the path is a circle you click when it is done: the ring fills and pops, a check
    draws, a spark runs down the line to the next stop. ---- */
 .brf-grid { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr); gap: 44px; align-items: start; }

@@ -63,7 +63,7 @@ export async function loadout() {
     minutes_today: Math.round(minutesFor(o.id)),
     session: !isBoardItem(o),
     kind: (o.tags || []).includes('impromptu') ? 'impromptu' : (linkByObj.has(o.id) || (o.tags || []).includes('mission-task')) ? 'mission-task' : 'side-mission',
-    ...(linkByObj.has(o.id) ? { main_mission: projName.get(linkByObj.get(o.id).project_id) || null, milestone: linkByObj.get(o.id).text } : {}),
+    ...(linkByObj.has(o.id) ? { main_mission: projName.get(linkByObj.get(o.id).project_id) || null, gate: linkByObj.get(o.id).text } : {}),
     adhoc: (o.tags || []).includes('impromptu'),
   }))
   // A meeting with its timer running takes one slot while it runs (David, 10/14).

@@ -1,6 +1,6 @@
-// Milestone draft (David 10/21): natural language in, an organized milestone
-// out. The HUD's + Milestone box sends what he typed; this door asks Lumen's
-// model for a Title Case milestone, a "done when" that is verifiably true, and
+// Gate draft (David 10/21): natural language in, an organized gate
+// out. The HUD's + Gate box sends what he typed; this door asks Lumen's
+// model for a Title Case gate, a "done when" that is verifiably true, and
 // three to five steps, as JSON. Nothing is written here; the HUD shows the
 // draft for him to edit and confirm.
 import { authorized } from './lumen-hud.mjs'
@@ -15,15 +15,15 @@ export default async function handler(req, res) {
   if (!raw) return res.status(400).json({ error: 'text required' })
   if (!process.env.ANTHROPIC_API_KEY) return res.status(500).json({ error: 'no model key on this deployment' })
   const system = [
-    "You organize one milestone for David's Main Mission board. He types in natural language; you return JSON only, no prose, no code fence.",
+    "You organize one gate for David's Main Mission board. He types in natural language; you return JSON only, no prose, no code fence.",
     'Shape: {"title": string, "done_when": string, "steps": string[], "number": number|null}.',
     'title: Title Case, under 90 characters, the thing that will be true when it is done, no trailing period, never an em dash anywhere.',
     'done_when: one sentence, verifiable (a thing produced, a decision marked, a conversation had), in his words where he gave them.',
     'steps: three to five imperative steps in order, each under 110 characters; the last one is the verification. Name David as the owner only where only he can do it.',
-    'number: the milestone number if he led with one (e.g. "17 ·" or "17:"), else null.',
+    'number: the gate number if he led with one (e.g. "17 ·" or "17:"), else null.',
     'Keep his nouns and verbs. Do not invent scope he did not state. Commas, periods, parentheses; no em dashes.',
   ].join(' ')
-  const user = `Main Mission: ${project || '(unnamed)'}${polaris ? `\nPolaris Objective: ${polaris}` : ''}${existing.length ? `\nExisting milestones (do not duplicate): ${existing.slice(0, 30).join(' | ')}` : ''}\n\nDavid typed:\n${raw}`
+  const user = `Main Mission: ${project || '(unnamed)'}${polaris ? `\nPolaris Objective: ${polaris}` : ''}${existing.length ? `\nExisting gates (do not duplicate): ${existing.slice(0, 30).join(' | ')}` : ''}\n\nDavid typed:\n${raw}`
   try {
     const r = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -35,7 +35,7 @@ export default async function handler(req, res) {
     const out = (j.content || []).map(c => c.text || '').join('').trim().replace(/^```(?:json)?\s*|\s*```$/g, '')
     let draft
     try { draft = JSON.parse(out) } catch { const m = out.match(/\{[\s\S]*\}/); draft = m ? JSON.parse(m[0]) : null }
-    if (!draft || !draft.title) return res.status(502).json({ error: 'the model did not return a milestone', raw: out.slice(0, 400) })
+    if (!draft || !draft.title) return res.status(502).json({ error: 'the model did not return a gate', raw: out.slice(0, 400) })
     const clean = (s) => String(s || '').replace(/—/g, ',').replace(/\s+,/g, ',').trim()
     return res.status(200).json({
       title: clean(draft.title).slice(0, 120),

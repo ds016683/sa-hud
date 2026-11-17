@@ -117,7 +117,7 @@ export const KindChip = ({ kind }) => {
 export const NORTH_STAR_LABEL = "Polaris Objective"   // David, 10/18: the one line every mission steers by (was "What Will Be True, That Wasn't True Before")
 export const NORTH_STAR_ASK = "Polaris Objective: what will be true when this is done? One sentence."
 
-// The card canon (David 10/26): every Main Mission, Side Mission and Milestone page
+// The card canon (David 10/26): every Main Mission, Side Mission and Gate page
 // carries the same five pills in the same order. Briefing is where it stands.
 // Workbench is what is being built: the files in play, the live protocol rows, the
 // plan. Files is the filed and source material: the cabinet, the artifacts, the
@@ -138,9 +138,11 @@ export function CardPill({ active, children, onClick, count }) {
 
 // The trail (David 10/26): where you are and what you are under, with a way up.
 // nodes: [{ label, onClick, icon }] from the root to here; the last is where you are.
-export function Trail({ nodes, style }) {
-  // Up goes to the nearest ancestor; a one-node trail is all ancestor (the card header names the page).
-  const up = [...nodes].reverse().find((n, i) => (i > 0 || nodes.length === 1) && n.onClick)
+export function Trail({ nodes, style, ancestors = false }) {
+  // Up goes to the nearest ancestor. On a page the last node is the page itself; on a card (ancestors)
+  // every node is an ancestor, since the card's own name is its header, so Up goes to the last one
+  // (David 11/17: Up from a gate's card went to the Main Missions list, not the mission).
+  const up = [...nodes].reverse().find((n, i) => (ancestors || i > 0 || nodes.length === 1) && n.onClick)
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', ...style }}>
       {up && <button onClick={up.onClick} title={`Up to ${up.label}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontFamily: 'inherit', fontSize: 12.5, fontWeight: 500, padding: '4px 10px', borderRadius: 8, border: `1px solid ${PANEL_BORDER}`, background: 'transparent', color: LABEL, cursor: 'pointer' }}>↑ Up</button>}
@@ -150,7 +152,7 @@ export function Trail({ nodes, style }) {
         return (
           <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
             {i > 0 && <span style={{ color: GRAY, fontSize: 13 }}>›</span>}
-            {last || !n.onClick
+            {(last && !ancestors) || !n.onClick
               ? <span style={{ fontSize: 14, fontWeight: last ? 600 : 500, color: last ? INK : INK2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: last ? 420 : 300 }}>{inner}</span>
               : <button onClick={n.onClick} style={{ background: 'transparent', border: 'none', padding: 0, cursor: 'pointer', fontSize: 14, fontWeight: 500, color: LABEL, fontFamily: 'inherit', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 300 }}>{inner}</button>}
           </span>

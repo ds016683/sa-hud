@@ -5,7 +5,7 @@
 // workbench that can be ported later."
 //
 // A panel that slides in from the right of any Main Mission, Side Mission or
-// Milestone card. Three tabs: Lumen (the same brain as WhatsApp and the HUD
+// Gate card. Three tabs: Lumen (the same brain as WhatsApp and the HUD
 // strip, framed on this card, with his tools as hands), Workbook (captures of
 // his answers and of the card, notes, a PDF in the house frame), Build (pages
 // Lumen built with build_page, previewed live, portable later by a session).

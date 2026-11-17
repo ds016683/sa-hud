@@ -1,5 +1,5 @@
 // One chassis (David 11/4: "all pages down in a card should be matching the
-// parent"). A Side Mission, Milestone or Ad Hoc card is a page inside the shell,
+// parent"). A Side Mission, Gate or Ad Hoc card is a page inside the shell,
 // opened by route: #/<page>/<params>/item/<objective id | task:<task id>>. App
 // reads the hash, loads the item (itemFromObjective) and renders ItemDetail in
 // place of the page, sidebar and column inherited. Back is the browser's back.

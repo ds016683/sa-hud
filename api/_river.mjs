@@ -110,7 +110,7 @@ export async function computeAwards(day, { closing = false } = {}) {
   const onDay = (ts) => ts && ts >= from && ts <= to
   for (const p of doneProjects) if (onDay(p.archived_at) || onDay(p.last_activity_at)) add('main-mission', p.id, `Main Mission complete: ${p.name}`)
   for (const t of doneTasks) gates ? add('gate', t.id, `Gate closed: ${t.text}`) : add('mission-task', t.id, `Mission task closed: ${t.text}`)
-  // Mythic milestones (David 10/29): a released objective whose parent is a Mythic
+  // Mythic gates (David 10/29): a released objective whose parent is a Mythic
   // pays like a Mythic task, the first five closed on that Mythic, never as a Bounty.
   const childReleased = released.filter(o => o.parent_id && o.state === 'released' && o.released_kind === 'done')
   if (gates && childReleased.length) {
@@ -130,7 +130,7 @@ export async function computeAwards(day, { closing = false } = {}) {
     for (const o of childReleased) {
       const p = mythics.get(o.parent_id); if (!p) continue
       const n = rank.get(`child:${o.id}`) || 99
-      if (n <= MYTHIC_STEPS_MAX) add('mythic-task', `m:${o.id}`, `Mythic milestone ${n} of ${MYTHIC_STEPS_MAX} closed on ${p.title}: ${o.title}`)
+      if (n <= MYTHIC_STEPS_MAX) add('mythic-task', `m:${o.id}`, `Mythic gate ${n} of ${MYTHIC_STEPS_MAX} closed on ${p.title}: ${o.title}`)
     }
   }
   for (const o of released) {

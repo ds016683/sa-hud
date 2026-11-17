@@ -2,11 +2,10 @@
 // with something still open. Have the system post an error and show me what still needs
 // to be closed with a link to go back to the Main Mission or start working through some
 // of the close outs." This is that error. It stands in front of every Extract: the open
-// gates listed, each one closable right here, a Mythic's open milestones linked to their
-// own cards, and the way back to the mission. Extract opens only when nothing is left.
+// gates listed, each one closable right here, and the way back to the mission. Extract opens
+// only when nothing is left.
 import { useEffect, useState } from 'react'
-import { X as XIcon, Check, ArrowLeft, ArrowRight } from 'lucide-react'
-import { stillOpen } from '../../lib/loadout'
+import { X as XIcon, Check, ArrowLeft } from 'lucide-react'
 import { toggleStep } from '../../lib/objectives'
 import { openCard } from '../../lib/card'
 import { INK, INK2, GRAY, PANEL_BORDER, GOLD, SUCCESS, RED, SERIF, Label, MUTED, NAVY_DEEP, alpha } from './canon'
@@ -18,19 +17,18 @@ const btn = (kind = 'ghost', off = false) => ({
 })
 
 // The Ledger's hands, passed in so the dev harness can run the panel on sample data.
-const LEDGER = { toggleStep, stillOpen, openCard }
+const LEDGER = { toggleStep, openCard }
 
 // mission: { id, title }. open: what stillOpen(id) returned when the Extract was refused.
 // onReady: everything is closed, carry on to the Extract. onClose: step away, nothing changed.
 export default function StillOpen({ mission, open, onReady, onClose, api = LEDGER }) {
   // The rows as they stood at the refusal; closing one keeps it on the list, checked, so the work shows.
   const [steps, setSteps] = useState(() => (open?.steps || []).map(s => ({ ...s, done: false })))
-  const [gates, setMilestones] = useState(open?.milestones || [])
   const [busy, setBusy] = useState(null)
   const [err, setErr] = useState(null)
   useEffect(() => { const k = (e) => { if (e.key === 'Escape') onClose() }; window.addEventListener('keydown', k); return () => window.removeEventListener('keydown', k) }, [onClose])
-  const left = steps.filter(s => !s.done).length + gates.length
-  const total = Math.max(open?.total || 0, steps.length) + gates.length   // gates already closed count toward the whole
+  const left = steps.filter(s => !s.done).length
+  const total = Math.max(open?.total || 0, steps.length)   // gates already closed count toward the whole
   const noun = 'gates'
   const flip = async (s) => {
     if (busy) return
@@ -41,9 +39,6 @@ export default function StillOpen({ mission, open, onReady, onClose, api = LEDGE
       setSteps(list => list.map(x => x.id === s.id ? { ...x, done: !s.done } : x))
     } catch (e) { setErr(`Could not ${s.done ? 'reopen' : 'close'} that gate: ${e.message}`) } finally { setBusy(null) }
   }
-  // Milestones close on their own cards; coming back here, read them again.
-  const recheck = async () => { try { const now = await api.stillOpen(mission.id); setMilestones(now.milestones) } catch { /* keep what is shown */ } }
-  useEffect(() => { const f = () => { recheck() }; window.addEventListener('focus', f); return () => window.removeEventListener('focus', f) })
   const toMission = () => { onClose(); api.openCard(mission.id) }
   return (
     <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 320, background: 'rgba(5,16,28,0.86)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16, overflowY: 'auto' }}>
@@ -74,22 +69,6 @@ export default function StillOpen({ mission, open, onReady, onClose, api = LEDGE
                 </div>
               ))}
             </div>
-          </div>
-        )}
-
-        {gates.length > 0 && (
-          <div style={{ marginTop: 20 }}>
-            <Label>Gates With Their Own Card · {gates.length} Still Open</Label>
-            <div style={{ display: 'grid', gap: 8 }}>
-              {gates.map(k => (
-                <div key={k.id} style={{ display: 'flex', gap: 12, alignItems: 'center', padding: '9px 12px', border: `1px solid ${PANEL_BORDER}`, borderRadius: 10 }}>
-                  <span style={{ width: 18, height: 18, borderRadius: 99, flexShrink: 0, border: '1.5px solid rgba(234,241,248,0.4)' }} />
-                  <span style={{ flex: 1, fontSize: 14.5, lineHeight: 1.4, color: INK }}>{k.title}</span>
-                  <button onClick={() => { onClose(); api.openCard(k.id) }} style={btn()}>Open Gate <ArrowRight size={13} /></button>
-                </div>
-              ))}
-            </div>
-            <div style={{ fontSize: 12.5, color: MUTED, marginTop: 8 }}>Each of these closes on its own card.</div>
           </div>
         )}
 

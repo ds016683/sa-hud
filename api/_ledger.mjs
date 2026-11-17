@@ -200,7 +200,7 @@ const slugOf = (t) => String(t || 'page').toLowerCase().replace(/[^a-z0-9]+/g, '
 const rootOf = (item) => item.kind === 'project' ? item.id : `objectives/${item.id}`
 
 // The card frame (11/4): what Lumen sees of the card David is working in from the
-// Lumen panel. Title, Polaris, back story, state, milestones or steps, the files
+// Lumen panel. Title, Polaris, back story, state, gates or steps, the files
 // in play, the Workbench tabs, the builds. Short: it rides every turn.
 export async function cardFrame(item) {
   const lines = []
@@ -211,18 +211,18 @@ export async function cardFrame(item) {
     lines.push(`Main Mission: ${pr.name} (project key ${pr.key}, status ${pr.status}). Address it in tools as project "${pr.key}".`)
     if (pr.description) lines.push(`Description: ${String(pr.description).slice(0, 600)}`)
     const tasks = await sb(`project_tasks?select=text,status,notes&project_id=eq.${item.id}&order=id.asc&limit=40`).catch(() => [])
-    if (tasks.length) lines.push(`Milestones (${tasks.length}):\n` + tasks.map(t => `- [${t.status}] ${t.text}`).join('\n'))
+    if (tasks.length) lines.push(`Gates (${tasks.length}):\n` + tasks.map(t => `- [${t.status}] ${t.text}`).join('\n'))
   } else {
     const o = (await sb(`objectives?select=id,title,state,effort,tags,description,notes,north_star,due_date,follow_up_date,parent_id&id=eq.${item.id}&limit=1`))[0]
     if (!o) return `Side Mission ${item.id} (not found)`
     const size = Number(o.effort) >= 4 ? 'Mythic' : Number(o.effort) === 3 ? 'Contract' : 'Bounty'
-    lines.push(`${o.parent_id ? 'Milestone of a Mythic' : 'Side Mission'}: "${o.title}" (${size}, ${o.state}${(o.tags || []).includes('impromptu') ? ', Ad Hoc' : ''}). Address it in tools as side_mission "${o.title}".`)
+    lines.push(`${o.parent_id ? 'Gate of a Mythic' : 'Side Mission'}: "${o.title}" (${size}, ${o.state}${(o.tags || []).includes('impromptu') ? ', Ad Hoc' : ''}). Address it in tools as side_mission "${o.title}".`)
     if (o.north_star) lines.push(`Polaris: ${o.north_star}`)
     if (o.description) lines.push(`Back story: ${String(o.description).slice(0, 600)}`)
     if (o.notes) lines.push(`Notes: ${String(o.notes).slice(0, 400)}`)
     if (o.due_date || o.follow_up_date) lines.push(`Dates: due ${o.due_date || 'none'}, follow up ${o.follow_up_date || 'none'}`)
     const kids = await sb(`objectives?select=title,state,description&parent_id=eq.${item.id}&deleted_at=is.null&order=captured_at.asc&limit=10`).catch(() => [])
-    if (kids.length) lines.push(`Milestones (${kids.length}):\n` + kids.map((k, i) => `- ${i + 1}. [${k.state}] ${k.title}${k.description ? ` (done when: ${String(k.description).slice(0, 120)})` : ''}`).join('\n'))
+    if (kids.length) lines.push(`Gates (${kids.length}):\n` + kids.map((k, i) => `- ${i + 1}. [${k.state}] ${k.title}${k.description ? ` (done when: ${String(k.description).slice(0, 120)})` : ''}`).join('\n'))
     const steps = await sb(`objective_steps?select=text,done&objective_id=eq.${item.id}&order=id.asc&limit=20`).catch(() => [])
     if (steps.length) lines.push(`Stops on the path (End Of The Trail on the card):\n` + steps.map(s => `- [${s.done ? 'x' : ' '}] ${s.text}`).join('\n'))
   }
@@ -237,16 +237,13 @@ export async function cardFrame(item) {
 }
 
 // Nothing extracts with something still open (David 11/16: "I shouldn't be able to extract
-// from a Main Mission with something still open"): a mission's gates not yet closed and, on
-// a Mythic, its milestones not yet released. close_out and a release both refuse on this.
+// from a Main Mission with something still open"): a mission's gates not yet closed.
+// close_out and a release both refuse on this.
 async function stillOpen(id) {
-  const [steps, kids] = await Promise.all([
-    sb(`objective_steps?select=text,done&objective_id=eq.${id}&order=position`).catch(() => []),
-    sb(`objectives?select=title&parent_id=eq.${id}&deleted_at=is.null&state=neq.released`).catch(() => []),
-  ])
-  return { gates: steps.filter(st => !st.done).map(st => st.text), milestones: kids.map(k => k.title) }
+  const steps = await sb(`objective_steps?select=text,done&objective_id=eq.${id}&order=position`).catch(() => [])
+  return { gates: steps.filter(st => !st.done).map(st => st.text) }
 }
-const refuseOpen = (o, open) => JSON.stringify({ ok: false, refused: 'still open', title: o.title, open_gates: open.gates, open_milestones: open.milestones, card: `https://sa-hud.vercel.app/#/side-missions/item/${o.id}`, note: 'Not ready to extract: this mission still has something open, and a mission closes only when everything on it is closed. Tell David exactly what is still open and give him the card link. Ask him about each one: complete_step for a gate that is done, remove_step for one that no longer belongs. Never close or remove one yourself to get the extract through.' })
+const refuseOpen = (o, open) => JSON.stringify({ ok: false, refused: 'still open', title: o.title, open_gates: open.gates, card: `https://sa-hud.vercel.app/#/side-missions/item/${o.id}`, note: 'Not ready to extract: this mission still has something open, and a mission closes only when everything on it is closed. Tell David exactly what is still open and give him the card link. Ask him about each one: complete_step for a gate that is done, remove_step for one that no longer belongs. Never close or remove one yourself to get the extract through.' })
 
 async function findObjective(title) {
   const q = esc(title || '')
@@ -533,7 +530,7 @@ export const TOOLS = [
   },
   {
     name: 'add_step',
-    description: "Only when David himself asks in this turn (David 11/9: nothing is created on his board, no objective, task, milestone, step, maintenance or project, unless he commissions that item himself; a suggestion is a message to him, never a row). Add a gate to a card's path (David 11/16: a gate is a critical step or event the mission cannot close without; what must be true): the thing that still has to happen between here and Polaris, shown on the card's End Of The Trail as a circle he clicks when it is done. Any mission takes as many gates as it needs and each pays 7 miles when closed; a gate is a line on the card, whatever the mission's size. text is the stop, short and observable: a decision marked, a conversation had, a thing produced. said is REQUIRED in practice: David's own words that asked for it, verbatim, so the card can show where the stop came from (David 11/11: the path is never guesswork; it comes out of the work with you, only from what he tells you). If you think something belongs on the path and he has not said so, ask him in one line and wait for his yes.",
+    description: "Only when David himself asks in this turn (David 11/9: nothing is created on his board, no objective, task, gate, step, maintenance or project, unless he commissions that item himself; a suggestion is a message to him, never a row). Add a gate to a card's path (David 11/16: a gate is a critical step or event the mission cannot close without; what must be true): the thing that still has to happen between here and Polaris, shown on the card's End Of The Trail as a circle he clicks when it is done. Any mission takes as many gates as it needs and each pays 7 miles when closed; a gate is a line on the card, whatever the mission's size. text is the stop, short and observable: a decision marked, a conversation had, a thing produced. said is REQUIRED in practice: David's own words that asked for it, verbatim, so the card can show where the stop came from (David 11/11: the path is never guesswork; it comes out of the work with you, only from what he tells you). If you think something belongs on the path and he has not said so, ask him in one line and wait for his yes.",
     inputSchema: { type: 'object', properties: { title: { type: 'string' }, text: { type: 'string' }, said: { type: 'string', description: "David's own words that asked for this stop, verbatim" } }, required: ['title', 'text'] },
   },
   {
@@ -548,12 +545,12 @@ export const TOOLS = [
   },
   {
     name: 'close_out',
-    description: "Close out a Side Mission the HUD's way. It refuses while the mission has an open gate or an open milestone, and reports which (11/16). Before the final call, read the mission's North Star back to David and ask one question: 'Is it true? What's different now?' His answer is Achieved: pass it as `achieved`, in his words, never drafted. First call with just the title: it reports what the mission is carrying (artifacts, files, session boards, open steps). Carrying nothing: it releases at once (clock kept in the Ledger, linked task closed, miles on the next update) and files Achieved. Carrying something: it stops and asks; call again with file_away true (realm 'personal' | 'third-horizon') to file the content into the Archive and release, or discard true to release without filing. minutes and note as on move_objective.",
+    description: "Close out a Side Mission the HUD's way. It refuses while the mission has an open gate, and reports which (11/16). Before the final call, read the mission's North Star back to David and ask one question: 'Is it true? What's different now?' His answer is Achieved: pass it as `achieved`, in his words, never drafted. First call with just the title: it reports what the mission is carrying (artifacts, files, session boards, open steps). Carrying nothing: it releases at once (clock kept in the Ledger, linked task closed, miles on the next update) and files Achieved. Carrying something: it stops and asks; call again with file_away true (realm 'personal' | 'third-horizon') to file the content into the Archive and release, or discard true to release without filing. minutes and note as on move_objective.",
     inputSchema: { type: 'object', properties: { title: { type: 'string' }, achieved: { type: 'string', description: "David's answer to 'Is it true? What's different now?', verbatim" }, file_away: { type: 'boolean' }, discard: { type: 'boolean' }, realm: { type: 'string' }, summary: { type: 'string', description: 'legacy; use achieved' }, minutes: { type: 'number' }, note: { type: 'string' } }, required: ['title'] },
   },
   {
     name: 'update_project_task',
-    description: "Edit a Main Mission task matched by its text (exact-then-contains, refuses ambiguity): new_text to rewrite it as a milestone, due_date, notes (back story), status ('open' | 'blocked' | 'promoted'). Use when working through a mission's tasks with David.",
+    description: "Edit a Main Mission task matched by its text (exact-then-contains, refuses ambiguity): new_text to rewrite it as a gate, due_date, notes (back story), status ('open' | 'blocked' | 'promoted'). Use when working through a mission's tasks with David.",
     inputSchema: { type: 'object', properties: { text: { type: 'string' }, new_text: { type: 'string' }, due_date: { type: 'string' }, notes: { type: 'string' }, status: { type: 'string', enum: ['open', 'blocked', 'promoted'] } }, required: ['text'] },
   },
   {
@@ -618,7 +615,7 @@ export const TOOLS = [
   },
   {
     name: 'add_maintenance',
-    description: "Only when David himself asks in this turn (David 11/9: nothing is created on his board, no objective, task, milestone, step, maintenance or project, unless he commissions that item himself; a suggestion is a message to him, never a row). Add a maintenance item (the small recurring upkeep of a life: content, hygiene, exercise, other). Five done in a day strike a Maintenance Bundle.",
+    description: "Only when David himself asks in this turn (David 11/9: nothing is created on his board, no objective, task, gate, step, maintenance or project, unless he commissions that item himself; a suggestion is a message to him, never a row). Add a maintenance item (the small recurring upkeep of a life: content, hygiene, exercise, other). Five done in a day strike a Maintenance Bundle.",
     inputSchema: { type: 'object', properties: { title: { type: 'string' }, category: { type: 'string', enum: ['content', 'hygiene', 'exercise', 'other'] }, cadence: { type: 'string' } }, required: ['title', 'category'] },
   },
   {
@@ -709,7 +706,7 @@ export const TOOLS = [
   // ---- writes (the hands)
   {
     name: 'add_objective',
-    description: "Only when David himself asks in this turn (David 11/9: nothing is created on his board, no objective, task, milestone, step, maintenance or project, unless he commissions that item himself; a suggestion is a message to him, never a row). Capture a new objective on David's board. Default state is 'inbox' (awaiting his triage); use 'active' only when he says to start it now, 'parked' for the queue, 'follow_up' with a follow_up_date when he wants to be nudged later, 'waiting' when the ball is in someone else's court. Never create duplicates of things already on the board: check get_objectives first when unsure.",
+    description: "Only when David himself asks in this turn (David 11/9: nothing is created on his board, no objective, task, gate, step, maintenance or project, unless he commissions that item himself; a suggestion is a message to him, never a row). Capture a new objective on David's board. Default state is 'inbox' (awaiting his triage); use 'active' only when he says to start it now, 'parked' for the queue, 'follow_up' with a follow_up_date when he wants to be nudged later, 'waiting' when the ball is in someone else's court. Never create duplicates of things already on the board: check get_objectives first when unsure.",
     inputSchema: { type: 'object', properties: {
       title: { type: 'string' },
       state: { type: 'string', enum: ['inbox', 'parked', 'active', 'follow_up', 'waiting'] },
@@ -737,7 +734,7 @@ export const TOOLS = [
   },
   {
     name: 'add_project_task',
-    description: 'Only when David himself asks in this turn (David 11/9: nothing is created on his board, no objective, task, milestone, step, maintenance or project, unless he commissions that item himself; a suggestion is a message to him, never a row). Add an open task to a project (by project key or name). Project tasks are the firm-level layer, distinct from personal Objectives.',
+    description: 'Only when David himself asks in this turn (David 11/9: nothing is created on his board, no objective, task, gate, step, maintenance or project, unless he commissions that item himself; a suggestion is a message to him, never a row). Add an open task to a project (by project key or name). Project tasks are the firm-level layer, distinct from personal Objectives.',
     inputSchema: { type: 'object', properties: { project: { type: 'string', description: 'project key or name' }, text: { type: 'string' }, due_date: { type: 'string' } }, required: ['project', 'text'] },
   },
   {
@@ -797,12 +794,12 @@ export const TOOLS = [
   },
   {
     name: 'create_project',
-    description: "Only when David himself asks in this turn (David 11/9: nothing is created on his board, no objective, task, milestone, step, maintenance or project, unless he commissions that item himself; a suggestion is a message to him, never a row). Create a project on the Projects layer (long-standing work with its own task list). Give it a key like 'Platform.Lumen' so the session board and Lumen can address it. category: client | third-horizon | personal | commercial-infra | q2-must | biz-dev | learning.",
+    description: "Only when David himself asks in this turn (David 11/9: nothing is created on his board, no objective, task, gate, step, maintenance or project, unless he commissions that item himself; a suggestion is a message to him, never a row). Create a project on the Projects layer (long-standing work with its own task list). Give it a key like 'Platform.Lumen' so the session board and Lumen can address it. category: client | third-horizon | personal | commercial-infra | q2-must | biz-dev | learning.",
     inputSchema: { type: 'object', properties: { name: { type: 'string' }, key: { type: 'string' }, category: { type: 'string' }, description: { type: 'string' } }, required: ['name'] },
   },
   {
     name: 'delete_project',
-    description: "Delete a Main Mission without miles, only on David's explicit word in this conversation (he must name it). The mission leaves every list; the River pays nothing; milestones already closed keep what they banked; its artifacts and cabinet stay in the Ledger. Open milestones' board items are removed from the Stash and the queue. Not for retiring finished work (that is the HUD's Mark mission complete).",
+    description: "Delete a Main Mission without miles, only on David's explicit word in this conversation (he must name it). The mission leaves every list; the River pays nothing; gates already closed keep what they banked; its artifacts and cabinet stay in the Ledger. Open gates' board items are removed from the Stash and the queue. Not for retiring finished work (that is the HUD's Mark mission complete).",
     inputSchema: { type: 'object', properties: { project: { type: 'string', description: 'the exact mission name or key' } }, required: ['project'] },
   },
   {
@@ -852,7 +849,7 @@ export const TOOLS = [
   },
   {
     name: 'workbench_tab',
-    description: "Write a tab on a card's Workbench (a Main Mission by project, or a Side Mission or Milestone by side_mission). The Workbench is the card's working surface and it is made of tabs; this opens a tab David can type in and draw over, or rewrites one. Use it to put a plan, an outline, a draft, a table in words, or a working analysis onto the card where he can keep working it. title names the tab (the slug comes from it unless you pass slug); text is the tab's content (plain text, headings as lines). Writing an existing slug replaces its text and keeps David's drawing. The words to use with David (his canon, 11/10): it is a tab on the card's Workbench. Never say Workspace, and never say Workspace page.",
+    description: "Write a tab on a card's Workbench (a Main Mission by project, or a Side Mission or Gate by side_mission). The Workbench is the card's working surface and it is made of tabs; this opens a tab David can type in and draw over, or rewrites one. Use it to put a plan, an outline, a draft, a table in words, or a working analysis onto the card where he can keep working it. title names the tab (the slug comes from it unless you pass slug); text is the tab's content (plain text, headings as lines). Writing an existing slug replaces its text and keeps David's drawing. The words to use with David (his canon, 11/10): it is a tab on the card's Workbench. Never say Workspace, and never say Workspace page.",
     inputSchema: { type: 'object', properties: { project: { type: 'string' }, side_mission: { type: 'string' }, title: { type: 'string' }, slug: { type: 'string' }, text: { type: 'string' } }, required: ['title', 'text'] },
   },
   {
@@ -1239,7 +1236,7 @@ export async function callTool(name, args = {}) {
       const inventory = { artifacts: arts.map(f => f.name.replace(/\.json$/, '')), files: files.map(f => f.name), boards: myBoards.map(b => b.title), open_steps: steps.filter(st => !st.done).map(st => st.text) }
       const carrying = arts.length + files.length + myBoards.length > 0
       const stillOpenNow = await stillOpen(o.id)
-      if (stillOpenNow.gates.length || stillOpenNow.milestones.length) return refuseOpen(o, stillOpenNow)
+      if (stillOpenNow.gates.length) return refuseOpen(o, stillOpenNow)
       if (carrying && !args.file_away && !args.discard) return JSON.stringify({ ok: false, carrying: true, inventory, note: 'This Side Mission is carrying content. Ask David: file it to the Archive (call again with file_away true, realm, and a two-sentence summary) or close without filing (discard true).' })
       const filed = []
       const realm = args.realm === 'personal' ? 'personal' : ((o.tags || []).includes('personal') ? 'personal' : 'third-horizon')
@@ -1723,7 +1720,7 @@ export async function callTool(name, args = {}) {
       const state = args.state
       if (!OBJ_STATES.includes(state)) throw new Error('bad state')
       if (o.state === state) return JSON.stringify({ ok: true, note: `already ${state}`, title: o.title })
-      if (state === 'released') { const open = await stillOpen(o.id); if (open.gates.length || open.milestones.length) return refuseOpen(o, open) }
+      if (state === 'released') { const open = await stillOpen(o.id); if (open.gates.length) return refuseOpen(o, open) }
       let fit = null
       if (state === 'active') {
         fit = await checkFit({ id: o.id, effort: o.effort }, { force: !!args.force })
@@ -1905,7 +1902,7 @@ export async function callTool(name, args = {}) {
       if (ts.length !== 1) throw new Error(ts.length ? `task ambiguous: ${ts.map(t => t.text).join(' | ')}` : `no open task matches "${args.text}"`)
       const doneAt = new Date().toISOString()
       await sbWrite('PATCH', `project_tasks?id=eq.${ts[0].id}`, { status: 'done', done: true, released_at: doneAt }, 'return=minimal')
-      // The promoted objective follows its milestone (10/29): no ghost left in the Stash.
+      // The promoted objective follows its gate (10/29): no ghost left in the Stash.
       if (ts[0].objective_id) await sbWrite('PATCH', `objectives?id=eq.${ts[0].objective_id}&state=neq.released`, { state: 'released', released_kind: 'done', released_at: doneAt, activated_at: null }, 'return=minimal')
       return JSON.stringify({ ok: true, completed: ts[0].text })
     }
@@ -1940,7 +1937,7 @@ export async function callTool(name, args = {}) {
       if (openObjs.length) await sbWrite('PATCH', `objectives?id=in.(${openObjs.join(',')})`, { deleted_at: now, state: 'parked', activated_at: null }, 'return=minimal')
       await sbWrite('PATCH', `projects?id=eq.${p.id}`, { status: 'deleted', archived_at: now, last_activity_at: now }, 'return=minimal')
       boardLog(`Deleted Main Mission (no miles): ${p.name}`)
-      return JSON.stringify({ ok: true, deleted: p.name, closed_milestones_kept: tasks.filter(t => t.status === 'done').length, open_milestones_removed: tasks.length - tasks.filter(t => t.status === 'done').length, miles: 0 })
+      return JSON.stringify({ ok: true, deleted: p.name, closed_gates_kept: tasks.filter(t => t.status === 'done').length, open_gates_removed: tasks.length - tasks.filter(t => t.status === 'done').length, miles: 0 })
     }
     case 'list_live_files': {
       let f = 'filed_at=is.null&superseded_by=is.null'
@@ -1962,7 +1959,7 @@ export async function callTool(name, args = {}) {
       return JSON.stringify(await sb('standing_orders?select=id,text,cadence,next_at,last_fired_at&active=eq.true&order=next_at.asc.nullslast'), null, 2)
     }
     case 'look_at_file': {
-      // Milestone 16.4: the file itself goes in front of the model. The
+      // Gate 16.4: the file itself goes in front of the model. The
       // tool returns { __attach, text }: the brain appends the blocks to the
       // same user message as the tool_result (image or document blocks).
       const wantSketch = !args.path && (!args.name || /sketch/i.test(args.name) || /latest/i.test(args.name))

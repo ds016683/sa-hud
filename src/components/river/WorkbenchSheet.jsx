@@ -1,6 +1,6 @@
 // The Workbench sheet (David 11/7): "i want a blank canvas where i can put
 // whatever i want. tabs at the top, with the labels for whatever i'm doing
-// there." One surface on every card, Main Mission, Side Mission or Milestone,
+// there." One surface on every card, Main Mission, Side Mission or Gate,
 // with an Excel vibe: a strip of tabs across the top, each tab one Workspace
 // page (type on it, draw over it; src/lib/workspace.js, the session's hand is
 // ~/.claude/hud-board/workspace.py), the head of a tab saying when it was
@@ -34,7 +34,7 @@ const smallBtn = { display: 'inline-flex', alignItems: 'center', gap: 5, padding
 // The MMA Planning canvas is a tab too, only on the MMA missions or one that already carries a program plan (it used to render everywhere).
 const isMMA = (project) => /^Client\.MMA/i.test(String(project?.key || ''))
 
-// The protocols live on the item (or on a mission's milestones): one tab each.
+// The protocols live on the item (or on a mission's gates): one tab each.
 async function loadProtocols(scopes) {
   const ids = scopes.map(s => s.objectiveId).filter(Boolean)
   if (!ids.length) return []

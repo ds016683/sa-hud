@@ -95,21 +95,11 @@ export async function addStep(objectiveId, text, position = 0) {
 export const toggleStep = (id, done) => soft(supabase.from('objective_steps').update({ done, done_at: done ? new Date().toISOString() : null }).eq('id', id).select().single())
 export const removeStep = (id) => soft(supabase.from('objective_steps').delete().eq('id', id))
 
-// ---- Mythic milestones (David, 10/29) -------------------------------------------
-// "Gateways should be called Milestones and have the same structural treatment
-// as a Milestone card for a mission." A Mythic's milestones are objectives of
-// their own, parent_id = the Mythic, so each opens as a card with the five pills.
-// As many as it needs, 7 miles each on close like any gate (11/17), never on
-// the Board or in the Stash on their own: the Mythic carries them.
-export const fetchMilestones = (parentId) => q(supabase.from('objectives').select('*').eq('parent_id', parentId).is('deleted_at', null).order('captured_at', { ascending: true }))
-export async function addMilestone(parent, title, doneWhen = null) {
-  const text = String(title || '').trim(); if (!text) throw new Error('give the milestone a name')
-  const tags = (parent.tags || []).filter(t => t === 'personal' || t === 'third-horizon')
-  return q(supabase.from('objectives').insert({ user_id: DAVID, parent_id: parent.id, title: text.slice(0, 200), state: 'parked', kind: 'execution', effort: 2, importance: 2, needs_sizing: false, tags, description: doneWhen ? String(doneWhen).trim().slice(0, 600) || null : null, captured_at: new Date().toISOString() }).select().single())
-}
-export const closeMilestone = (id) => updateObjective(id, { state: 'released', released_kind: 'done', released_at: new Date().toISOString(), activated_at: null })
-export const reopenMilestone = (id) => updateObjective(id, { state: 'parked', released_kind: null, released_at: null })
-export const removeMilestone = (id) => updateObjective(id, { deleted_at: new Date().toISOString() })
+// ---- Cards under a card (10/29 to 11/17) -----------------------------------------
+// A Mythic's gates were once objectives of their own (parent_id), each a card. Since 11/17 a gate
+// is a line (objective_steps) on every mission; this reader stays for the cards that still point
+// at a parent.
+export const fetchGates = (parentId) => q(supabase.from('objectives').select('*').eq('parent_id', parentId).is('deleted_at', null).order('captured_at', { ascending: true }))
 
 // ---- pockets -------------------------------------------------------------------
 export const objRoot = (id) => `objectives/${id}`

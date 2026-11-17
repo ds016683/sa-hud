@@ -42,7 +42,7 @@ export default function FileAway({ objective: o, pockets: P, onClose, onDone }) 
     try {
       // Nothing is filed for a mission that cannot close yet (David 11/16).
       const open = await stillOpen(o.id)
-      if (open.count) throw new Error(`Not ready to extract: ${open.count} still open (${[...open.steps.map(x => x.text), ...open.milestones.map(x => x.title)].join(' | ')}). Close what is open first.`)
+      if (open.count) throw new Error(`Not ready to extract: ${open.count} still open (${open.steps.map(x => x.text).join(' | ')}). Close what is open first.`)
       const filed = await fileObjective(o, P, { realm, summary, picks, notes })
       const r = await closeOut(o, { minutes: Number(minutes) || 0, note: `filed ${filed.length} to the Archive (${realm})` })
       onDone({ filed, released: r })

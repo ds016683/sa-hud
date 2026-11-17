@@ -446,7 +446,7 @@ export default function DailyPerformancePage() {
   const [confirmClose, setConfirmClose] = useState(false)
   const [closing, setClosing] = useState(false)
   const [mint, setMint] = useState(null) // {day, miles, badges, signal} during the ceremony
-  const cip = true // Milestone 18 (10/24): one theme, the canon; the Light/CIP pill folded into the HUD
+  const cip = true // Gate 18 (10/24): one theme, the canon; the Light/CIP pill folded into the HUD
   const T = themeOf(cip)
 
   // The full-bleed navy stage lives on .sa-main; App listens for this event.

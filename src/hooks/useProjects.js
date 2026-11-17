@@ -106,7 +106,7 @@ export default function useProjects() {
     const out = await updateTask(projectId, task.id, nowDone
       ? { status: 'done', done: true, released_at: now }
       : { status: 'open', done: false, released_at: null })
-    // The promoted objective follows its milestone (10/29): closing the milestone
+    // The promoted objective follows its gate (10/29): closing the gate
     // releases it, reopening parks it again, so no ghost sits in the Stash after
     // the task is done. The River pays the task, never the linked objective.
     if (out && task.objective_id) {
@@ -134,7 +134,7 @@ export default function useProjects() {
       user_id: session.user.id,
       title: (task.text || '').slice(0, 120),
       state: 'parked', kind: 'execution', effort: 2, importance: 2, needs_sizing: true,
-      // mission-task keeps a Main Mission's milestone out of the Side Missions lists (the other
+      // mission-task keeps a Main Mission's gate out of the Side Missions lists (the other
       // promote paths in loadout.js and api/_ledger.mjs already tag it; David 10/29).
       tags: ['mission-task'],
       description: `Promoted from project: ${project.name}`,

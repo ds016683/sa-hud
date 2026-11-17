@@ -8,7 +8,7 @@ import { GREEN, PURPLE } from '../components/river/canon'
 
 const q = (p) => p.then(r => (r.error ? [] : (Array.isArray(r.data) ? r.data : [])))
 // Gates (David 11/17): "a gate should pay 7 miles. any gate. all others stay the same." No cap, any
-// mission; the Main Mission milestone's 10 and the Mythic's first five at 10 are retired. A mission
+// mission; the Main Mission gate's 10 and the Mythic's first five at 10 are retired. A mission
 // closed before GATES_FROM reads at the rates it was paid.
 export const GATES_FROM = '2026-11-17'
 export const MILES = { bounty: 4, contract: 15, mythic: 50, gate: 7, mmt: 7, mainMission: 100, adhoc: 1 }

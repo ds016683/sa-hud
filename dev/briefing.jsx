@@ -1,6 +1,6 @@
 // Dev harness: the Briefing's three reads (CardBriefing) on sample data, no sign-in and no Ledger.
-// ?empty is a brand-new card: an empty path and nothing beside it. ?mythic has milestones, so the
-// Milestones read shows. Everything a click does happens in memory; Lumen's question is canned.
+// ?empty is a brand-new card: an empty path and nothing beside it. ?mythic has gates, so the
+// Gates read shows. Everything a click does happens in memory; Lumen's question is canned.
 import { StrictMode, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import '../src/sa-hud.css'

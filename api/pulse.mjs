@@ -168,7 +168,7 @@ export default async function handler(req, res) {
     // he said he would do, as recommendations. One message per note. Nothing is
     // added to the board from notes (David 11/9); the recommendations live in
     // this message and in granola_meetings.action_items until a day-summary
-    // surface takes them (Milestone 19 territory).
+    // surface takes them (Gate 19 territory).
     if (kind === 'sweep' || kind === 'notes') {
       const notes = await sb(`granola_meetings?select=id,title,summary,action_items,key_decisions,meeting_date&meeting_date=eq.${TODAY}&summary=not.is.null&order=granola_created_at.asc&limit=6`).catch(() => [])
       for (const n of notes) {

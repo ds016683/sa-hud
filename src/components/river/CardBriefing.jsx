@@ -5,7 +5,7 @@
 // Milestones or the operation that indicates something else that needs to happen in the distance
 // between where we are and where we are trying to go.")
 //
-//   Milestones         the plan, when the card has milestones (a Mythic). Hidden otherwise.
+//   Gates         the plan, when the card has gates (a Mythic). Hidden otherwise.
 //   The Trail          what has come in and what has happened, oldest first, ending at You Are Here.
 //   End Of The Trail   from here to Polaris: the stops still open, the target date, Polaris at the end.
 //
@@ -37,10 +37,10 @@ const READS = ['ms', 'trail', 'end']
 const wait = (ms) => new Promise(r => setTimeout(r, ms))
 const Check = () => <svg viewBox="0 0 10 10" aria-hidden="true"><path d="M1.8 5.4 4.2 7.6 8.3 2.6" fill="none" stroke="var(--hud-on-accent)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>
 
-export default function CardBriefing({ obj, root, kindLabel, steps = [], kids = [], boardItems = [], loaded = null, due = null, isMilestone = false, onReload, onTab, onOpenCard, say, api = LEDGER }) {
-  const hasMilestones = kids.length > 0 && !isMilestone
+export default function CardBriefing({ obj, root, kindLabel, steps = [], kids = [], boardItems = [], loaded = null, due = null, isGate = false, onReload, onTab, onOpenCard, say, api = LEDGER }) {
+  const hasGates = kids.length > 0 && !isGate
   const [read, setRead] = useState(() => { try { const v = localStorage.getItem('hud:briefing:read'); return READS.includes(v) ? v : 'end' } catch { return 'end' } })
-  const face = read === 'ms' && !hasMilestones ? 'end' : read
+  const face = read === 'ms' && !hasGates ? 'end' : read
   const pick = (v) => { setRead(v); try { localStorage.setItem('hud:briefing:read', v) } catch { /* private window */ } }
 
   // What the card holds beside its steps: its Workbench tabs, its built pages, its files, and where each stop came from.
@@ -74,12 +74,12 @@ export default function CardBriefing({ obj, root, kindLabel, steps = [], kids = 
   const stops = [
     ...shownClosed.map(s => ({ key: `s${s.id}`, type: 'step', done: true, text: s.text, step: s })),
     ...openSteps.map(s => ({ key: `s${s.id}`, type: 'step', text: s.text, step: s })),
-    ...(isMilestone ? [] : openKids.map(k => ({ key: `k${k.id}`, type: 'milestone', text: k.title, kid: k, n: kids.indexOf(k) + 1 }))),
+    ...(isGate ? [] : openKids.map(k => ({ key: `k${k.id}`, type: 'gate', text: k.title, kid: k, n: kids.indexOf(k) + 1 }))),
     ...openBoard.map((t, i) => ({ key: `b${i}`, type: 'board', text: t.label, note: t.status === 'blocked' ? (t.note || 'Blocked') : t.status === 'inmotion' ? 'In motion in a Claude session' : `On the session board ${t.board || ''}`.trim(), blocked: t.status === 'blocked' })),
   ]
   const nextKey = (stops.find(s => !s.done) || {}).key || null
-  const total = steps.length + (isMilestone ? 0 : kids.length)
-  const closed = steps.filter(s => s.done).length + (isMilestone ? 0 : kids.filter(k => k.state === 'released').length)
+  const total = steps.length + (isGate ? 0 : kids.length)
+  const closed = steps.filter(s => s.done).length + (isGate ? 0 : kids.filter(k => k.state === 'released').length)
 
   const close = async (st, e) => {
     if (closing || busy) return
@@ -114,7 +114,7 @@ export default function CardBriefing({ obj, root, kindLabel, steps = [], kids = 
     } catch (err) { say(`Could not add it: ${err.message}`) } finally { setBusy(false) }
   }
 
-  const trail = useMemo(() => buildTrail({ obj, kindLabel, steps, children: isMilestone ? [] : kids, files: side.files, tabs: side.tabs, builds: side.builds }), [obj, kindLabel, steps, kids, isMilestone, side])
+  const trail = useMemo(() => buildTrail({ obj, kindLabel, steps, children: isGate ? [] : kids, files: side.files, tabs: side.tabs, builds: side.builds }), [obj, kindLabel, steps, kids, isGate, side])
   const shownTrail = allTrail ? trail : trail.slice(-6)
   const dw = due ? dueWords(due) : null
   const realFiles = side.files.filter(f => !isLink(f) && !isRequest(f))
@@ -126,7 +126,7 @@ export default function CardBriefing({ obj, root, kindLabel, steps = [], kids = 
     <div className={`brf-grid${hasSide ? '' : ' solo'}`}>
       <div style={{ minWidth: 0 }}>
         <div className="brf-seg" role="tablist" aria-label="Read">
-          {hasMilestones && <button role="tab" aria-selected={face === 'ms'} className={face === 'ms' ? 'on' : ''} onClick={() => pick('ms')}>Gates<i>{kids.filter(k => k.state === 'released').length} of {kids.length}</i></button>}
+          {hasGates && <button role="tab" aria-selected={face === 'ms'} className={face === 'ms' ? 'on' : ''} onClick={() => pick('ms')}>Gates<i>{kids.filter(k => k.state === 'released').length} of {kids.length}</i></button>}
           <button role="tab" aria-selected={face === 'trail'} className={face === 'trail' ? 'on' : ''} onClick={() => pick('trail')}>The Trail{trail.length > 0 && <i>{trail.length}</i>}</button>
           <button role="tab" aria-selected={face === 'end'} className={face === 'end' ? 'on' : ''} onClick={() => pick('end')}>End Of The Trail</button>
         </div>
@@ -170,13 +170,13 @@ export default function CardBriefing({ obj, root, kindLabel, steps = [], kids = 
                   <div key={s.key} className={`brf-stop${s.done ? ' done' : isNext ? ' next' : ''}${isClosing ? ' closing' : ''}${fresh === s.key && !s.done ? ' fresh' : ''}`}>
                     {s.type === 'step'
                       ? <button className="hit" title={s.done ? 'Reopen it' : 'Click when it is done'} aria-label={`${s.done ? 'Reopen' : 'Mark done'}: ${s.text}`} onClick={(e) => s.done ? reopen(s.step) : close(s.step, e)}><span className="o"><Check /></span></button>
-                      : <span className="hit still" title={s.type === 'milestone' ? 'This gate closes on its own card' : 'This one lives on a session board'}><span className="o" style={s.blocked ? { borderColor: 'var(--hud-warn)' } : undefined} /></span>}
+                      : <span className="hit still" title={s.type === 'gate' ? 'This gate closes on its own card' : 'This one lives on a session board'}><span className="o" style={s.blocked ? { borderColor: 'var(--hud-warn)' } : undefined} /></span>}
                     {isClosing && <span className="brf-spark" style={{ '--dy': `${closing.dy}px` }} />}
                     {isNext && <div className="when">Next Move</div>}
-                    <div className={`what${s.type === 'milestone' ? ' link' : ''}`} onClick={s.type === 'milestone' ? () => onOpenCard && onOpenCard(s.kid.id) : undefined}>{s.text}</div>
+                    <div className={`what${s.type === 'gate' ? ' link' : ''}`} onClick={s.type === 'gate' ? () => onOpenCard && onOpenCard(s.kid.id) : undefined}>{s.text}</div>
                     {s.done && <><span className="when">Closed just now</span><button className="tool" onClick={() => reopen(s.step)}>Reopen</button></>}
                     {!s.done && s.type === 'step' && <div className="src">{src.lead}{src.quote && <> <q>{src.quote}</q></>}<button className="tool gone" onClick={() => drop(s.step)}>Take It Off</button></div>}
-                    {s.type === 'milestone' && <div className="src">Gate {s.n} of {kids.length}{s.kid.due_date ? ` · ${dueWords(s.kid.due_date).short}` : ''}. It closes on its own card.</div>}
+                    {s.type === 'gate' && <div className="src">Gate {s.n} of {kids.length}{s.kid.due_date ? ` · ${dueWords(s.kid.due_date).short}` : ''}. It closes on its own card.</div>}
                     {s.type === 'board' && <div className="src" style={s.blocked ? { color: 'var(--hud-warn)' } : undefined}>{s.note}</div>}
                   </div>
                 )

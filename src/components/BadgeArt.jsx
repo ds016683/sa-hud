@@ -88,7 +88,7 @@ const EMBLEMS = {
     </g>
   ),
   // ---- River badges (miles_ledger). Same grammar: gold line art, faint fill.
-  // Mission Task Closed (the MMT badge) · a milestone post with its flag
+  // Mission Task Closed (the MMT badge) · a gate post with its flag
   'mission-task': (
     <g>
       <path d="M22 38 V16" />

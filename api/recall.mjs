@@ -39,8 +39,8 @@ async function gather({ objective_id, task_id }) {
     for (const s of steps) add(s.done_at || o.captured_at, `${s.done ? 'Gate closed' : 'Gate open'}: ${s.text}`)
   }
   if (task) {
-    add(task.created_at, `Milestone on ${project?.name || 'a Main Mission'}: ${stripNum(task.text)}${task.notes ? `. Done when: ${String(task.notes).slice(0, 200)}` : ''}`)
-    if (task.released_at) add(task.released_at, 'Milestone closed.')
+    add(task.created_at, `Gate on ${project?.name || 'a Main Mission'}: ${stripNum(task.text)}${task.notes ? `. Done when: ${String(task.notes).slice(0, 200)}` : ''}`)
+    if (task.released_at) add(task.released_at, 'Gate closed.')
     if (project) {
       const boards = await soft(sb(`session_boards?project=eq.${encodeURIComponent(project.key || project.name)}&select=title,phases,updated_at&order=updated_at.desc&limit=1`))
       for (const b of boards) {
