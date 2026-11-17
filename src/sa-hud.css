@@ -1417,3 +1417,8 @@ button.brf-chip:hover { border-color: var(--hud-accent); }
 .ld-btn svg { color: var(--hud-accent); flex-shrink: 0; }
 .ld-btn .n { font-size: 12.5px; font-weight: 600; padding: 3px 8px; border-radius: 99px; background: color-mix(in srgb, var(--hud-accent) 20%, transparent); color: var(--hud-ink); }
 .ld-btn .n.over { background: color-mix(in srgb, var(--hud-neg) 28%, transparent); }
+
+/* The slot whose clock is running (David 11/17): a green edge that breathes, so the live one is never in doubt. */
+@keyframes ldrun { 0%, 100% { border-color: var(--hud-pos); box-shadow: 0 0 0 1px var(--hud-pos), 0 0 0 6px color-mix(in srgb, var(--hud-pos) 16%, transparent); } 50% { border-color: color-mix(in srgb, var(--hud-pos) 45%, transparent); box-shadow: 0 0 0 1px color-mix(in srgb, var(--hud-pos) 30%, transparent), 0 0 0 2px color-mix(in srgb, var(--hud-pos) 0%, transparent); } }
+.ld-running { animation: ldrun 2.4s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .ld-running { animation: none; box-shadow: 0 0 0 1px var(--hud-pos), 0 0 0 5px color-mix(in srgb, var(--hud-pos) 14%, transparent); } }

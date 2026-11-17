@@ -121,6 +121,8 @@ const SizeChip = ({ size }) => {
 
 
 const field = { width: '100%', background: 'rgba(255,255,255,0.05)', border: `1px solid ${PANEL_BORDER}`, borderRadius: 8, color: INK, padding: '8px 10px', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }
+// An empty slot reads as empty: a neutral dashed edge, no fill, gray words (David 11/17: "kill the green hue").
+const EMPTY_EDGE = 'rgba(234,241,248,0.18)'
 const slotBox = (border, bg = 'rgba(255,255,255,0.03)', dashed = false) => ({
   display: 'flex', flexDirection: 'column', gap: 8, minHeight: 168, padding: '12px 14px', borderRadius: 14,
   border: `1px ${dashed ? 'dashed' : 'solid'} ${border}`, background: bg, minWidth: 0,
@@ -186,7 +188,7 @@ export function FilledSlot({ it, n, act, onOpen, onExtract, onRecall, dropFromSt
   const due = fmtDue(it.due_date)
   const late = it.due_date && it.due_date < new Date().toISOString().slice(0, 10)
   return (
-    <div draggable onDragStart={e => { e.dataTransfer.setData('text/plain', dragPayload('loadout', it.id)); e.dataTransfer.effectAllowed = 'move' }} onDragOver={e => { if (dropFromStash) e.preventDefault() }} onDrop={e => { const d = readDrag(e); if (d.kind === 'stash' && dropFromStash) { e.preventDefault(); dropFromStash(d.id) } }} title="Drag to the Stash" style={{ ...slotBox(it.equipped ? BLUE : `${alpha(BLUE, 40)}`, it.equipped ? 'rgba(169,201,232,0.08)' : 'rgba(169,201,232,0.035)'), gridColumn: `span ${span}`, cursor: 'grab' }}>
+    <div draggable onDragStart={e => { e.dataTransfer.setData('text/plain', dragPayload('loadout', it.id)); e.dataTransfer.effectAllowed = 'move' }} onDragOver={e => { if (dropFromStash) e.preventDefault() }} onDrop={e => { const d = readDrag(e); if (d.kind === 'stash' && dropFromStash) { e.preventDefault(); dropFromStash(d.id) } }} title="Drag to the Stash" className={it.equipped ? 'ld-running' : undefined} style={{ ...slotBox(it.equipped ? GREEN : `${alpha(BLUE, 40)}`, it.equipped ? 'rgba(169,201,232,0.08)' : 'rgba(169,201,232,0.035)'), gridColumn: `span ${span}`, cursor: 'grab' }}>
       <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
         <BadgeMedallion id={badgeFor(it)} size={50} color={colorOf(it.kind, it.size)} />
         <div style={{ flex: 1, minWidth: 0, display: 'grid', gap: 2 }}>
@@ -204,7 +206,6 @@ export function FilledSlot({ it, n, act, onOpen, onExtract, onRecall, dropFromSt
       {task
         ? <div onClick={() => onOpen(it)} title={task} style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 18, color: '#fff', lineHeight: 1.28, cursor: 'pointer', flex: 1, display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{task}</div>
         : <div style={{ flex: 1 }} />}
-      <div title={it.north_star ? `${NORTH_STAR_LABEL}: ${it.north_star}` : NORTH_STAR_LABEL} style={{ fontFamily: SERIF, fontStyle: 'italic', fontSize: 13, lineHeight: 1.45, color: it.north_star ? INK2 : GRAY, borderLeft: `2px solid ${it.north_star ? BLUE : PANEL_BORDER}`, paddingLeft: 9, display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{it.north_star || 'No star yet.'}</div>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', borderTop: `1px solid ${PANEL_BORDER}`, borderBottom: `1px solid ${PANEL_BORDER}` }}>
         <Fact label="Miles"><span style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 16, color: INK }}>{miles.n}</span><span style={{ fontFamily: MONO, fontSize: 10.5, letterSpacing: '1px', textTransform: 'uppercase', color: LABEL, marginLeft: 5 }}>{miles.sub}</span></Fact>
         <div style={{ borderLeft: `1px solid ${PANEL_BORDER}`, paddingLeft: 12 }}><Fact label="Due">{due ? <span style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 16, color: late ? RED : INK }}>{due}{late ? <span style={{ fontFamily: MONO, fontSize: 9, letterSpacing: '1px', textTransform: 'uppercase', marginLeft: 5 }}>overdue</span> : null}</span> : <span style={{ fontSize: 13, color: GRAY }}>none set</span>}</Fact></div>
@@ -226,11 +227,10 @@ function EmptySlot({ n, dropFromStash }) {
   const [over, setOver] = useState(false)
   return (
     <div onDragOver={e => { e.preventDefault(); setOver(true) }} onDragLeave={() => setOver(false)} onDrop={e => { setOver(false); const d = readDrag(e); if (d.kind === 'stash' && dropFromStash) { e.preventDefault(); dropFromStash(d.id) } }}
-      style={{ ...slotBox(over ? GREEN : `${alpha(GREEN, 60)}`, over ? 'rgba(67,211,146,0.12)' : 'rgba(67,211,146,0.03)', true), justifyContent: 'center', alignItems: 'center', textAlign: 'center' }}>
-      <Notches from={n - 1} span={1} color={`${alpha(GREEN, 53)}`} />
-      <Label style={{ marginBottom: 0, color: GREEN }}>Slot {n} · empty</Label>
-      <div style={{ fontFamily: SERIF, fontSize: 15, color: 'rgba(234,241,248,0.4)' }}>Load from what is due</div>
-      <div style={{ fontSize: 11, color: GRAY, lineHeight: 1.5 }}>a Side Mission, a Main Mission task, or tell Lumen</div>
+      style={{ ...slotBox(over ? BLUE : EMPTY_EDGE, over ? 'rgba(169,201,232,0.08)' : 'transparent', true), justifyContent: 'center', alignItems: 'center', textAlign: 'center' }}>
+      <Notches from={n - 1} span={1} color="rgba(234,241,248,0.3)" />
+      <div style={{ fontSize: 14, fontWeight: 600, color: GRAY }}>Slot {n} · Empty</div>
+      <div style={{ fontSize: 12.5, color: GRAY, lineHeight: 1.5 }}>Load a Side Mission or a Main Mission gate, or tell Lumen</div>
     </div>
   )
 }
@@ -255,7 +255,7 @@ function AdHocSlot({ item, act, onDispatch, onOpen, onChanged, onRecall }) {
   if (item) {
     const since = item.activated_at ? new Date(item.activated_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'America/Chicago' }) : null
     return (
-      <div style={{ ...slotBox(item.equipped ? BLUE : `${alpha(BLUE, 40)}`, item.equipped ? 'rgba(169,201,232,0.08)' : 'rgba(169,201,232,0.035)'), minHeight: 0, flex: '1 1 auto' }}>
+      <div className={item.equipped ? 'ld-running' : undefined} style={{ ...slotBox(item.equipped ? GREEN : `${alpha(BLUE, 40)}`, item.equipped ? 'rgba(169,201,232,0.08)' : 'rgba(169,201,232,0.035)'), minHeight: 0, flex: '1 1 auto' }}>
         <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
           <BadgeMedallion id="impromptu" size={50} color={BLUE} />
           <div style={{ flex: 1, minWidth: 0, display: 'grid', gap: 2 }}>
@@ -279,7 +279,7 @@ function AdHocSlot({ item, act, onDispatch, onOpen, onChanged, onRecall }) {
     )
   }
   return (
-    <div style={{ ...slotBox(`${alpha(GREEN, 60)}`, 'rgba(67,211,146,0.03)', true), minHeight: 0, flex: '1 1 auto' }}>
+    <div style={{ ...slotBox(EMPTY_EDGE, 'transparent', true), minHeight: 0, flex: '1 1 auto' }}>
       <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
         <BadgeMedallion id="impromptu" size={50} color={BLUE} earned={false} />
         <div style={{ flex: 1, minWidth: 0, display: 'grid', gap: 2 }}>
@@ -424,7 +424,7 @@ function RoutineSlot({ tick, onChanged }) {
     </div>
   )
   if (running) return (
-    <div style={{ ...slotBox(BLUE, 'rgba(169,201,232,0.08)'), minHeight: 0, flex: '0 0 auto' }}>
+    <div className="ld-running" style={{ ...slotBox(GREEN, 'rgba(169,201,232,0.08)'), minHeight: 0, flex: '0 0 auto' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
         <Icon size={12} color={GREEN} /><Label style={{ marginBottom: 0, color: GREEN }}>Routine · on</Label><span style={{ flex: 1 }} />
         <span style={{ fontFamily: MONO, fontSize: 10, color: GREEN, letterSpacing: '0.6px' }}>running · {fmtClock(mins)}</span>
@@ -438,12 +438,9 @@ function RoutineSlot({ tick, onChanged }) {
     </div>
   )
   return (
-    <div style={{ ...slotBox(`${alpha(GREEN, 60)}`, 'rgba(67,211,146,0.03)', true), minHeight: 0, flex: '0 0 auto' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-        <Label style={{ marginBottom: 0, color: GREEN }}>Routine · nothing on</Label>
-      </div>
-      <div style={{ fontFamily: SERIF, fontSize: 15, color: 'rgba(234,241,248,0.6)' }}>Nothing recurring is on</div>
-      <div style={{ fontSize: 11, color: GRAY, lineHeight: 1.5 }}>Start one from the Console below, or tell Lumen. It shows up here with its clock.</div>
+    <div style={{ ...slotBox(EMPTY_EDGE, 'transparent', true), minHeight: 0, flex: '0 0 auto' }}>
+      <div style={{ fontSize: 14, fontWeight: 600, color: GRAY }}>Routine · Nothing On</div>
+      <div style={{ fontSize: 12.5, color: GRAY, lineHeight: 1.5 }}>Start one from the Console below, or tell Lumen.</div>
       {msg && <div style={{ fontFamily: MONO, fontSize: 9.5, color: RED, letterSpacing: '0.6px', textTransform: 'uppercase' }}>{msg}</div>}
     </div>
   )
