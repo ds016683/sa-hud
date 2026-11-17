@@ -131,7 +131,7 @@ export default function CardBriefing({ obj, root, kindLabel, steps = [], kids = 
   const trail = useMemo(() => buildTrail({ obj, kindLabel, steps, children: isGate ? [] : kids, files: side.files, tabs: side.tabs, builds: side.builds, psteps: side.psteps }), [obj, kindLabel, steps, kids, isGate, side])
 
   const savePsteps = async (fn) => { const doc = await api.savePathSteps(root, fn); setSide(x => ({ ...x, psteps: doc.steps || [] })) }
-  // Set a step or a gate on the line. part is 'b' (the trail behind) or 'a' (the path forward); i is the place
+  // Set a step or a gate on the line. part is 'b' (the trail back; David's word for it, 11/17) or 'a' (the path forward); i is the place
   // it goes before (the trail's own index behind, the stop's ahead); none means the end of the line. A click
   // on the icon, with no drag, is the end too.
   const place = async (kind, part = 'a', i = null) => {
@@ -212,11 +212,11 @@ export default function CardBriefing({ obj, root, kindLabel, steps = [], kids = 
             <span className="hint">Drag onto the line</span>
           </div>
         </div>
-        <p className="brf-sub">{mission ? `${thisGate ? `This is gate ${thisGate.n} of ${missionGates.length}` : 'This is a gate'} on ${mission.name}. ` : ''}Behind you, where you are, and what is left before Polaris.</p>
+        <p className="brf-sub">{mission ? `${thisGate ? `This is gate ${thisGate.n} of ${missionGates.length}` : 'This is a gate'} on ${mission.name}. ` : ''}The trail back, where you are, and the path forward to Polaris.</p>
         <div className="brf-trail">
           <div className="brf-ev fold" {...fold(behindOpen, () => setBehindOpen(o => !o))} {...dropAt('b', trail.length)}>
             <span className="chev">{behindOpen ? <ChevronDown size={13} /> : <ChevronRight size={13} />}</span>
-            <div className="what">The Trail Behind<i>{trail.length} {trail.length === 1 ? 'line' : 'lines'}{!behindOpen && trail.length > 0 ? `, from ${stamp(trail[0].at)}` : ''}</i></div>
+            <div className="what">The Trail Back<i>{trail.length} {trail.length === 1 ? 'line' : 'lines'}{!behindOpen && trail.length > 0 ? `, from ${stamp(trail[0].at)}` : ''}</i></div>
           </div>
           {behindOpen && trail.map((ev, i) => [
             zone('b', i),

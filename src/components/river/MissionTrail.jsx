@@ -16,7 +16,7 @@ import { buildTrail, readPath, stamp } from '../../lib/path'
 // The Ledger's doors, as one object, so a dev harness can run this on sample data.
 const LEDGER = { listPages, listBuilds, listLiveFiles, readPath }
 
-// One line (David 11/17): the trail behind folds and opens folded; the path forward's fold is the last
+// One line (David 11/17): the trail back folds and opens folded; the path forward's fold is the last
 // mark on the line and the page draws the open gates under it.
 // gates: [{ id, n, text, done, done_at, objective_id }]. here: the one line for You Are Here.
 // ahead: { open, count, onToggle } for the path forward's fold. onOpenGate(objective_id): open a gate's card.
@@ -51,11 +51,11 @@ export default function MissionTrail({ project, gates, here, ahead, onOpenGate, 
   const fold = (isOpen, toggle) => ({ role: 'button', tabIndex: 0, 'aria-expanded': isOpen, onClick: toggle, onKeyDown: (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle() } } })
   return (
     <>
-      <p className="brf-sub">Behind this mission, where it stands, and what is left before it closes. A closed gate is the large mark; a line from a gate's own story says which gate.</p>
+      <p className="brf-sub">The trail back, where this mission stands, and the path forward. A closed gate is the large mark; a line from a gate's own story says which gate.</p>
       <div className="brf-trail">
         <div className="brf-ev fold" {...fold(open, () => setOpen(o => !o))}>
           <span className="chev">{open ? <ChevronDown size={13} /> : <ChevronRight size={13} />}</span>
-          <div className="what">The Trail Behind<i>{trail.length} {trail.length === 1 ? 'line' : 'lines'}{!open && trail.length > 0 ? `, from ${stamp(trail[0].at)}` : ''}</i></div>
+          <div className="what">The Trail Back<i>{trail.length} {trail.length === 1 ? 'line' : 'lines'}{!open && trail.length > 0 ? `, from ${stamp(trail[0].at)}` : ''}</i></div>
         </div>
         {open && trail.map((ev, i) => (
           <div key={`${ev.at}${i}`} className={`brf-ev${ev.gate ? ' gate' : ''}`}>
