@@ -3,9 +3,7 @@ import {
   LayoutGrid, Network, LogOut, Menu, X, Target, Users,
   FileText, Wallet, CreditCard, ListChecks, Compass, Waves, CalendarDays, BookOpen, Activity, Award, Wrench, GraduationCap, Sparkles, Archive as ArchiveIcon, FolderOpen, PenTool, Briefcase, Mic, Wand2, Bot, PenLine, Footprints } from 'lucide-react'
 import { getSession, onAuthStateChange, signOut } from './lib/auth'
-import { statusFor } from './constants/saDesign'
 import { fetchProtocolState } from './lib/protocol'
-import useGameState from './hooks/useGameState'
 import LoginPage from './components/LoginPage'
 import ProjectsPage from './components/ProjectsPage'
 import StepReview from './components/river/StepReview'
@@ -161,10 +159,9 @@ function useProtocol() {
   return p
 }
 
-function Topbar({ active, now, sov, onBack }) {
+function Topbar({ active, onBack }) {
   const proto = useProtocol()
   const navItem = NAV_ITEMS.find((n) => n.id === active) || {}
-  const st = statusFor(sov)
   const ctx = navItem.group
     ? (navItem.group === (navItem.label || '').toUpperCase()
         ? navItem.group
@@ -191,15 +188,6 @@ function Topbar({ active, now, sov, onBack }) {
         <b style={{ fontSize: '12px', whiteSpace: 'nowrap' }}>{proto ? proto.label : '…'}</b>
         {proto && proto.id !== 'off' && <span style={{ fontSize: 11, color: 'rgba(234,241,248,0.6)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 200 }}>· {proto.title}</span>}
         {proto?.pct != null && <span style={{ display: 'inline-block', width: 54, height: 4, borderRadius: 99, background: 'rgba(255,255,255,0.1)', overflow: 'hidden', marginLeft: 6 }}><span style={{ display: 'block', width: `${proto.pct}%`, height: '100%', background: proto.color }} /></span>}
-      </div>
-      <div className="sa-mini-sov" title="Sovereignty">
-        <span className="sa-tele" style={{ color: 'var(--sa-ink-3)' }}>SOV</span>
-        <div className="sa-mini-track"><div className="sa-mini-fill" style={{ width: `${sov}%`, background: st.color }}></div></div>
-        <span className="sa-mini-val">{sov}%</span>
-      </div>
-      <div className="sa-clock">
-        <div className="t">{now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</div>
-        <div className="d sa-tele">{now.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</div>
       </div>
     </header>
   )
@@ -252,18 +240,11 @@ export default function App() {
     window.addEventListener('popstate', onPop)
     return () => window.removeEventListener('popstate', onPop)
   }, [])
-  const [now, setNow] = useState(new Date())
-  const gameState = useGameState()
 
   useEffect(() => {
     getSession().then(s => setSession(s))
     const { data: { subscription } } = onAuthStateChange(s => setSession(s))
     return () => subscription.unsubscribe()
-  }, [])
-
-  useEffect(() => {
-    const id = setInterval(() => setNow(new Date()), 30000)
-    return () => clearInterval(id)
   }, [])
 
   if (session === undefined) {
@@ -285,7 +266,7 @@ export default function App() {
     <div className="sa-app">
       <Sidebar active={active} onChange={setActive} onSignOut={handleSignOut} />
       <div className={`sa-main sa-surface-dark${active === 'ecosystem' ? '' : ' sa-dark-scroll'}`}>
-        <Topbar active={active} now={now} sov={gameState.sovereigntyLevel} onBack={goBack} />
+        <Topbar active={active} onBack={goBack} />
         <div className="sa-content">
           {globalItem && <ItemDetail key={globalItem.id} host="page" item={globalItem} initialTab={globalItemTab || 'briefing'} onClose={closeCard} onNavigate={setRoute} />}
           <div hidden={!!globalItem} key={pageEpoch}>

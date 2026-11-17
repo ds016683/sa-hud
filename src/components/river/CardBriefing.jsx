@@ -44,7 +44,19 @@ const NONE = []
 // A place is a hairline between two lines of the trail; it only listens while something it takes is in the air.
 function Pick({ kind, title, onPlace }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id: `pick:${kind}`, data: { kind } })
-  return <span ref={setNodeRef} className={`pick ${kind}`} title={title} style={{ opacity: isDragging ? 0.35 : 1 }} {...attributes} {...listeners} onClick={onPlace} onKeyDown={(e) => { if (e.key === 'Enter') onPlace() }}><i className="m" />{kind === 'gate' ? 'Gate' : 'Step'}</span>
+  return <span ref={setNodeRef} className={`pick ${kind}`} title={title} style={{ opacity: isDragging ? 0.35 : 1 }} {...attributes} {...listeners} onClick={onPlace} onKeyDown={(e) => { if (e.key === 'Enter') onPlace() }}><b className="plus">+</b><i className="m" />{kind === 'gate' ? 'Gate' : 'Step'}</span>
+}
+// One tile on the side of the card: its name, a headline, one line under it, and where it leads.
+function Tile({ label, big, unit, none = false, detail = null, bar = null, go = null, onGo }) {
+  return (
+    <div className={`brf-tile${go ? ' go' : ''}`} onClick={onGo} role={go ? 'button' : undefined} tabIndex={go ? 0 : undefined} onKeyDown={go ? (e) => { if (e.key === 'Enter') onGo() } : undefined} title={go || undefined}>
+      <Label style={{ marginBottom: 0 }}>{label}</Label>
+      <div className={`big${none ? ' none' : ''}`}>{big}<small>{unit}</small></div>
+      <div className="line">{none ? 'Nothing to report thus far.' : detail}</div>
+      {bar != null && <div className="brf-bar"><i style={{ width: `${100 * bar}%` }} /></div>}
+      {go && <div className="to">{go}</div>}
+    </div>
+  )
 }
 function Place({ id, part, i, on, word }) {
   const { setNodeRef, isOver } = useDroppable({ id, data: { part, i }, disabled: !on })
@@ -244,11 +256,10 @@ export default function CardBriefing({ obj, root, kindLabel, steps = [], kids = 
       <div style={{ minWidth: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
           <div style={{ fontFamily: "'Lora', Georgia, serif", fontWeight: 500, fontSize: 20, color: 'var(--hud-ink)' }}>The Trail</div>
-          <span style={{ flex: 1 }} />
+          {/* At the top of the trail, off the line, with a plus and no instructions (David 11/17: "I'll know to drag it"). */}
           <div className="brf-tray">
             <Pick kind="step" title="Drag a step onto the line, or click to set it at the end" onPlace={click('step')} />
             {takesGates && <Pick kind="gate" title="Drag a gate onto the path forward, or click to set it at the end" onPlace={click('gate')} />}
-            <span className="hint">Drag onto the line</span>
           </div>
         </div>
         <p className="brf-sub">{mission ? `${thisGate ? `This is gate ${thisGate.n} of ${missionGates.length}` : 'This is a gate'} on ${mission.name}. ` : ''}The trail back, where you are, and the path forward to Polaris.</p>
@@ -313,38 +324,18 @@ export default function CardBriefing({ obj, root, kindLabel, steps = [], kids = 
         </div>
       </div>
 
-      {/* The side of the card always shows (David 11/17: "I liked the gates thing. i thought that was part of the
-          design. love workbench too. and files."): the count, what is on the Workbench, the files. */}
+      {/* The side of the card always shows (David 11/17: "I liked the gates thing ... love workbench too. and files."),
+          as four tiles of one size, each led by a headline ("symmetric and carry some kind of headline.... even a giant
+          0 or N/A or Nothing to Report Thus Far"). The count stays put; the other three open what they name. */}
       <div className="brf-side">
-        <div className="brf-card">
-          {takesGates
-            ? (total > 0
-              ? <><div className="n">{closed} of {total}<small>gates closed</small></div><div className="brf-bar"><i style={{ width: `${(100 * closed) / total}%` }} /></div></>
-              : <><Label style={{ marginBottom: 2 }}>Gates</Label><div className="brf-none">No gates yet. Drag one onto the line, or type it at the end.</div></>)
-            : (mySteps > 0
-              ? <><div className="n">{myStepsDone} of {mySteps}<small>steps done</small></div><div className="brf-bar"><i style={{ width: `${(100 * myStepsDone) / mySteps}%` }} /></div></>
-              : <><Label style={{ marginBottom: 2 }}>Steps</Label><div className="brf-none">No steps yet. Drag one onto the line.</div></>)}
-        </div>
-        {/* The side is the way in (David 11/17): each box opens what it names. */}
-        <div className={`brf-card go${side.latest ? ' lead' : ''}`} onClick={() => onTab('workbench')} title="Open the Workbench">
-          <Label style={{ marginBottom: 2 }}>On The Workbench</Label>
-          {side.latest
-            ? <><div className="q">"{excerpt(side.latest.text)}"</div><div className="f">{side.latest.title}{blanks > 0 && <> · <b>{blanks} {blanks === 1 ? 'blank' : 'blanks'} open</b></>}</div></>
-            : <div className="brf-none">{side.tabs.length ? `${side.tabs.length} ${side.tabs.length === 1 ? 'tab' : 'tabs'}, nothing written yet.` : 'Nothing on the Workbench yet.'}</div>}
-          <div style={{ marginTop: 12 }}><span className="brf-chip">Open The Workbench</span></div>
-        </div>
-        <div className="brf-card go" onClick={() => onTab('files')} title="Open Files">
-          <Label style={{ marginBottom: 2 }}>Files</Label>
-          {realFiles.slice(0, 3).map(f => <div key={f.id} className="brf-row"><b>{f.name}</b><span>{stamp(f.created_at).split(' · ')[0]}</span></div>)}
-          {realFiles.length > 3 && <div className="brf-row"><b>{realFiles.length - 3} more</b></div>}
-          {realFiles.length === 0 && <div className="brf-none">No files yet.</div>}
-          <div style={{ marginTop: 12 }}><span className="brf-chip">Open Files</span></div>
-        </div>
-        <div className="brf-card go" onClick={() => onTab('notes')} title="Open Notes">
-          <Label style={{ marginBottom: 2 }}>Notes</Label>
-          <div className="brf-none">{notesCount > 0 ? `${notesCount} ${notesCount === 1 ? 'note' : 'notes'} on this card.` : 'No notes yet.'}</div>
-          <div style={{ marginTop: 12 }}><span className="brf-chip">Open Notes</span></div>
-        </div>
+        {takesGates
+          ? <Tile label="Gates" big={total > 0 ? `${closed} of ${total}` : '0'} unit={total > 0 ? 'closed' : 'gates'} none={total === 0} bar={total > 0 ? closed / total : null} />
+          : <Tile label="Steps" big={mySteps > 0 ? `${myStepsDone} of ${mySteps}` : '0'} unit={mySteps > 0 ? 'done' : 'steps'} none={mySteps === 0} bar={mySteps > 0 ? myStepsDone / mySteps : null} />}
+        <Tile label="On The Workbench" big={side.tabs.length} unit={side.tabs.length === 1 ? 'tab' : 'tabs'} none={!side.latest && side.tabs.length === 0} go="Open The Workbench" onGo={() => onTab('workbench')}
+          detail={side.latest ? <>"{excerpt(side.latest.text, 110)}"{blanks > 0 && <> · <b>{blanks} {blanks === 1 ? 'blank' : 'blanks'} open</b></>}</> : side.tabs.length ? 'Nothing written yet.' : null} />
+        <Tile label="Files" big={realFiles.length} unit={realFiles.length === 1 ? 'file' : 'files'} none={realFiles.length === 0} go="Open Files" onGo={() => onTab('files')}
+          detail={realFiles[0] ? <>{realFiles[0].name}{realFiles.length > 1 && <> and {realFiles.length - 1} more</>}</> : null} />
+        <Tile label="Notes" big={notesCount || 0} unit={notesCount === 1 ? 'note' : 'notes'} none={!notesCount} go="Open Notes" onGo={() => onTab('notes')} />
       </div>
     </div>
     {/* What is in the air: the same icon, following the pointer. */}

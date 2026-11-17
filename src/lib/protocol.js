@@ -1,66 +1,66 @@
-// What David is doing right now, read from the Ledger (David, 10/8): the top
-// bar's protocol pill says it. One state at a time, highest first:
-//   Emergency   flagged only for now (a daily_logs row what 'emergency' today, not cleared)
-//   Meeting     a calendar meeting's timer is running, or a meeting is live on the calendar
-//   Morning / Evening   the protocol timer is running: working the morning, working the evening
-//   Travel      the Travel timer is running: on the road
-//   Mission     a clock is running on a loaded item: in mission
-//   Rest        a Release timer is running (Gaming, Nap, Drive): resting
-//   Off         nothing running
+// What David is doing right now, read from the Board (David 11/17: "Let's have the Protocol Match the
+// board"). The top bar's pill says it. One state at a time, highest first:
+//   Emergency                  flagged in the day's log and not cleared
+//   <a Console button's name>  "if one of those console buttons are on, it carries the anchor protocol":
+//                              Email, Slack, Bill Pay, Travel, a Release, the Morning or Evening Protocol
+//   In Run                     a run's timer is running
+//   In Meeting / Split Focus   a meeting's timer is running and so is a clock on other work
+//   In Meeting                 a meeting's timer is running and no other clock is
+//   Unplanned                  a Phone Call or a Non-Mission Task is in the Utility slot
+//   In Mission                 "Any mission or missions are on the board"
+//   Off Protocol               nothing on the Board
 import { supabase } from './supabase'
-import { chiToday, SIZES, sizeOf } from './loadout'
+import { chiToday } from './loadout'
+import { readRun } from './runs'
 import { BLUE, GOLD, GREEN, PURPLE, RED } from '../components/river/canon'
 
 const q = (p) => p.then(r => (Array.isArray(r.data) ? r.data : []))
-const readStep = (day) => { try { const v = Number(localStorage.getItem(`mp-step:${day}`)); return Number.isFinite(v) ? v : 0 } catch { return 0 } }
-
-export const PROTOCOLS = {
-  emergency: { label: 'Emergency', color: RED, blink: true },
-  meeting:   { label: 'In a meeting', color: BLUE },
-  morning:   { label: 'Working the morning', color: GOLD },
-  evening:   { label: 'Working the evening', color: PURPLE },
-  travel:    { label: 'On the road', color: '#5FC9C0' },
-  mission:   { label: 'In mission', color: GREEN },
-  rest:      { label: 'Resting', color: PURPLE },
-  off:       { label: 'Off protocol', color: 'rgba(234,241,248,0.35)' },
-}
+const OFF = 'rgba(234,241,248,0.35)'
+const TRAVEL = '#5FC9C0'
+const words = (slug) => String(slug || '').split('-').map(w => w ? w[0].toUpperCase() + w.slice(1) : w).join(' ')
 
 export async function fetchProtocolState() {
-  const day = chiToday(); const nowMs = Date.now(); const nowIso = new Date(nowMs).toISOString()
-  const [running, clocks, events, flags] = await Promise.all([
-    q(supabase.from('meeting_sessions').select('event_id,subject,started_at,stopped_at').eq('day', day).not('started_at', 'is', null).is('stopped_at', null)),
-    q(supabase.from('clocks').select('id,objective_id,started_at').is('stopped_at', null).limit(1)),
-    q(supabase.from('calendar_events').select('id,subject,start_at,end_at,is_all_day').eq('day', day).eq('is_cancelled', false)),
+  const day = chiToday(); const nowMs = Date.now()
+  const [running, clocks, active, flags, run] = await Promise.all([
+    q(supabase.from('meeting_sessions').select('event_id,subject,started_at').eq('day', day).not('started_at', 'is', null).is('stopped_at', null)),
+    q(supabase.from('clocks').select('id,objective_id,started_at').is('stopped_at', null)),
+    q(supabase.from('objectives').select('id,title,tags,activated_at').eq('state', 'active').is('deleted_at', null).order('activated_at', { ascending: true })),
     q(supabase.from('daily_logs').select('id,note,at').eq('day', day).eq('what', 'emergency').order('at', { ascending: false }).limit(1)),
+    readRun().then(d => d?.run || null).catch(() => null),
   ])
   const mins = (iso) => Math.max(0, Math.round((nowMs - new Date(iso).getTime()) / 60000))
-  const out = (id, title, detail, pct = null, since = null) => ({ id, ...PROTOCOLS[id], title, detail, pct, since })
+  const out = (id, label, color, title, detail, pct = null, since = null, blink = false) => ({ id, label, color, title, detail, pct, since, blink })
 
-  if (flags.length && !/cleared/i.test(flags[0].note || '')) return out('emergency', flags[0].note || 'Emergency protocol', 'flagged', null, flags[0].at)
+  if (flags.length && !/cleared/i.test(flags[0].note || '')) return out('emergency', 'Emergency', RED, flags[0].note || 'Emergency protocol', 'flagged', null, flags[0].at, true)
 
-  const byId = (pred) => running.find(r => pred(r.event_id))
-  const meetingTimer = byId(id => !id.startsWith('adhoc:') && !id.startsWith('personal:'))
-  if (meetingTimer) {
-    const ev = events.find(e => e.id === meetingTimer.event_id)
-    const pct = ev ? Math.min(100, Math.round((nowMs - new Date(ev.start_at)) / (new Date(ev.end_at) - new Date(ev.start_at)) * 100)) : null
-    return out('meeting', meetingTimer.subject || ev?.subject || 'Meeting', `${mins(meetingTimer.started_at)}m on the clock`, pct, meetingTimer.started_at)
+  // A Console button that is on carries the protocol, whatever else is on the Board.
+  const ofConsole = (r) => r.event_id.startsWith('adhoc:') || r.event_id.startsWith('personal:')
+  const button = running.filter(ofConsole).sort((a, b) => String(b.started_at).localeCompare(String(a.started_at)))[0]
+  if (button) {
+    const slug = button.event_id.split(':').slice(2).join(':')
+    const color = slug === 'travel' ? TRAVEL : slug === 'morning-protocol' ? GOLD : (slug === 'evening-protocol' || button.event_id.startsWith('personal:')) ? PURPLE : GREEN
+    return out('console', button.subject || words(slug) || 'Console', color, `${mins(button.started_at)}m on the clock`, 'a Console button is on', null, button.started_at)
   }
-  const live = events.find(e => !e.is_all_day && e.start_at <= nowIso && e.end_at >= nowIso)
-  const morning = byId(id => id.endsWith(':morning-protocol'))
-  if (morning) return out('morning', 'Morning Protocol', `step ${readStep(day) + 1} of 7 · ${mins(morning.started_at)}m`, Math.round(readStep(day) / 7 * 100), morning.started_at)
-  const evening = byId(id => id.endsWith(':evening-protocol'))
-  if (evening) return out('evening', 'Evening Protocol', `${mins(evening.started_at)}m`, null, evening.started_at)
-  if (live) return out('meeting', live.subject || 'Meeting', 'on the calendar now, no timer', Math.min(100, Math.round((nowMs - new Date(live.start_at)) / (new Date(live.end_at) - new Date(live.start_at)) * 100)), live.start_at)
-  const travel = byId(id => id.endsWith(':travel'))
-  if (travel) return out('travel', travel.subject || 'Travel', `${mins(travel.started_at)}m`, null, travel.started_at)
-  if (clocks.length) {
-    const { data: o } = await supabase.from('objectives').select('id,title,effort').eq('id', clocks[0].objective_id).limit(1)
-    const obj = o?.[0]; const m = mins(clocks[0].started_at); const hours = obj ? SIZES[sizeOf(obj)].hours : 1
-    return out('mission', obj?.title || 'Loaded item', `${m}m on the clock · ${obj ? SIZES[sizeOf(obj)].label : ''}`, Math.min(100, Math.round(m / (hours * 60) * 100)), clocks[0].started_at)
+
+  if (run && run.state === 'running') {
+    const left = Math.round((new Date(run.ends_at).getTime() - nowMs) / 60000)
+    const span = new Date(run.ends_at).getTime() - new Date(run.started_at).getTime()
+    return out('run', 'In Run', GREEN, `Run ${run.n}`, left > 0 ? `${left}m left` : `${-left}m over`, Math.max(0, Math.min(100, Math.round((nowMs - new Date(run.started_at).getTime()) / span * 100))), run.started_at)
   }
-  const rest = byId(id => id.startsWith('personal:'))
-  if (rest) return out('rest', rest.subject || 'Release', `${mins(rest.started_at)}m`, null, rest.started_at)
-  const adhoc = byId(id => id.startsWith('adhoc:'))
-  if (adhoc) return out('mission', adhoc.subject || 'Recurring', `${mins(adhoc.started_at)}m on the clock`, null, adhoc.started_at)
-  return out('off', 'Nothing running', 'load something, start a timer, or run a protocol')
+
+  const meeting = running.find(r => !ofConsole(r))
+  if (meeting) return clocks.length
+    ? out('split', 'In Meeting / Split Focus', BLUE, meeting.subject || 'Meeting', `${mins(meeting.started_at)}m in the meeting, and a clock is running on other work`, null, meeting.started_at)
+    : out('meeting', 'In Meeting', BLUE, meeting.subject || 'Meeting', `${mins(meeting.started_at)}m on the clock`, null, meeting.started_at)
+
+  const has = (o, t) => (o.tags || []).includes(t)
+  const unplanned = active.find(o => has(o, 'impromptu'))
+  if (unplanned) return out('unplanned', 'Unplanned', GREEN, unplanned.title, 'in the Utility slot', null, unplanned.activated_at)
+
+  const missions = active.filter(o => !has(o, 'session') && !has(o, 'impromptu'))
+  if (missions.length) {
+    const live = missions.find(o => clocks.some(c => c.objective_id === o.id)) || missions[0]
+    return out('mission', 'In Mission', GREEN, missions.length > 1 ? `${live.title} + ${missions.length - 1} more` : live.title, clocks.some(c => c.objective_id === live.id) ? 'the clock is running' : 'on the Board, clock off', null, live.activated_at)
+  }
+  return out('off', 'Off Protocol', OFF, 'Nothing on the Board', 'load a mission, start a run, or use the Console')
 }

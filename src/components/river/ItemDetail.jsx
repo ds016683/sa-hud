@@ -363,7 +363,9 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
                   "still take up wayyyy too much real estate"; a click on a chip opens their controls. */}
               <div style={{ display: 'flex', alignItems: 'flex-start', gap: 20, flexWrap: 'wrap', marginTop: 16 }}>
                 <h1 style={{ ...S.h1, fontSize: 32, lineHeight: 1.14, letterSpacing: '-0.012em', flex: '1 1 420px', minWidth: 0 }}>{/* the gate's number rides with its name (David 11/17) */}{(rel?.parent || task) && rel?.gateN ? <span style={{ color: 'var(--hud-accent)' }}>Gate {rel.gateN} · </span> : null}{name}</h1>
-                <div data-card-meta style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', position: 'relative', paddingTop: 6 }}>
+                {/* A gate's card carries none of the three chips (David 11/17: "none of that stuff needs to be on a gate
+                    card. leave it with. the mission card for now"): its number is in its name, its date is on the trail. */}
+                <div data-card-meta style={{ display: (rel?.parent || task) ? 'none' : 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', position: 'relative', paddingTop: 6 }}>
                   {chip && (obj && !rel?.parent && !task
                     ? <button className="brf-chip" onClick={() => setMetaOpen(v => !v)} title="Change the type"><KindIcon kind={chip.kind} size={13} color={chip.color} />{chipLabel}</button>
                     : <span className="brf-chip still"><KindIcon kind={chip.kind} size={13} color={chip.color} />{chipLabel}</span>)}
