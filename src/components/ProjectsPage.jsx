@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import {
   Plus, ArrowLeft, Check, Trash2, ArrowUpRight, Folder, FolderPlus, FileText,
   Upload, Download, Archive, ChevronRight, Hand, RefreshCw,
@@ -25,7 +25,11 @@ import { listArtifacts as listProjArtifacts, readArtifact as readProjArtifact } 
 import { supabase as sbClient } from '../lib/supabase'
 import { hudPrompt, hudConfirm, hudNotice } from '../lib/dialog'
 import { openCard } from '../lib/card'
-import MissionTrail from './river/MissionTrail'
+import CardBriefing from './river/CardBriefing'
+import useGateStories from './river/useGateStories'
+import { listPages, readPage } from '../lib/workspace'
+import { listBuilds } from '../lib/lumenPanel'
+import { readPath, noteSource, savePathSteps } from '../lib/path'
 // =============================================================================
 // STYLE TOKENS (CIP canon, matches ObjectivesPage dark stage)
 // =============================================================================
@@ -84,6 +88,7 @@ const EDGE = { loadout: GREEN, stash: INK2, off: INK2 }
 
 const isOpen = (t) => t.status !== 'done' && !t.done
 const isBlocked = (t) => t.status === 'blocked'
+const footBtn = { display: 'inline-flex', alignItems: 'center', gap: 7, fontFamily: 'inherit', fontSize: 13.5, fontWeight: 600, padding: '8px 14px', borderRadius: 9, border: `1px solid ${PANEL_BORDER}`, background: 'transparent', color: INK2, cursor: 'pointer', whiteSpace: 'nowrap' }
 
 // =============================================================================
 // Baseball card
@@ -157,90 +162,32 @@ function ProjectCard({ project, onOpen, edge = INK2, compact = false }) {
 }
 
 // =============================================================================
-// Detail: gate row. The steps under it come from the mission's session
-// board: the phase that carries this task id (on the phase, or on one of its
-// items). Ticking a step or adding one writes that board, the same document
-// the agent writes. New steps never carry the task id themselves: the sync
-// closes the Ledger task when an item with its id is done, so only the step
-// that means "the gate is true" should carry it.
+// Detail: what sits under an open gate on the mission's line (David 11/17: the Main Mission page is
+// the same card as every other, so a gate is a stop on the line, not a row of its own). Its place, its
+// card, the Board and the Stash, its done-when and its name. The gate closes from its circle.
 // =============================================================================
-const Chip = ({ color, children }) => <span style={{ fontFamily: MONO, fontSize: 9, letterSpacing: '1px', textTransform: 'uppercase', color, border: `1px solid ${alpha(color, 33)}`, borderRadius: 999, padding: '2px 7px', whiteSpace: 'nowrap' }}>{children}</span>
-
-function GateRow({ n, project, task, board, api, onBoardChange, onAward, objState }) {
-  const open = isOpen(task)
-  const blocked = isBlocked(task)
+function GateTools({ n, project, task, api, objState, takeOff, say }) {
   const ost = task.objective_id ? objState?.[task.objective_id] : null
-  const onBoard = open && !!task.objective_id && (ost ? ost.state === 'active' : true)
-  const stashed = open && !!ost && ost.state === 'parked' && (ost.tags || []).includes('stashed')
+  const onBoard = !!task.objective_id && (ost ? ost.state === 'active' : true)
+  const stashed = !!ost && ost.state === 'parked' && (ost.tags || []).includes('stashed')
   const [busy, setBusy] = useState(false)
-  const [msg, setMsg] = useState(null)
-  const phases = board?.phases || []
-  const pi = phases.findIndex(ph => ph.task_id === task.id || (ph.tasks || []).some(t => t.task_id === task.id))
-  const phase = pi >= 0 ? phases[pi] : null
-  const steps = phase ? (phase.tasks || []) : []
-  const stepsDone = steps.filter(t => t.status === 'done').length
-
-  const writeBoard = async (nextPhases) => {
-    if (!board?.id) { setMsg('No session board on this mission yet; steps live there.'); return }
-    const { error } = await sbClient2.from('session_boards').update({ phases: nextPhases, updated_at: new Date().toISOString() }).eq('id', board.id)
-    if (error) { setMsg(`Could not save: ${error.message}`); return }
-    onBoardChange && onBoardChange({ ...board, phases: nextPhases })
-  }
-  const toggleStep = (ti) => writeBoard(phases.map((ph, i) => i !== pi ? ph : { ...ph, tasks: ph.tasks.map((t, j) => j !== ti ? t : { ...t, status: t.status === 'done' ? 'open' : 'done' }) }))
-  const addStep = async () => {
-    const label = await hudPrompt('The step', ''); if (!label?.trim()) return
-    const item = { id: `${n}.${steps.length + 1}`, label: label.trim(), status: 'open' }
-    if (phase) writeBoard(phases.map((ph, i) => i !== pi ? ph : { ...ph, tasks: [...(ph.tasks || []), item] }))
-    else writeBoard([...phases, { title: `${n} · ${stripNum(task.text)}`, task_id: task.id, tasks: [item] }])
-  }
-  const load = async () => { setBusy(true); try { const r = await equipTask(task, project.name, { clock: false }); setMsg(r.ok ? 'On the Board' : `Will not fit: ${r.reasons.join(' · ')}`); if (r.ok) api.refresh() } catch (e) { setMsg(`Could not load: ${e.message}`) } finally { setBusy(false) } }
-  const toStash = async () => { setBusy(true); try { await stashTask(task, project.name); setMsg('In the Stash'); api.refresh() } catch (e) { setMsg(`Could not stash: ${e.message}`) } finally { setBusy(false) } }
-  const rename = async () => { const t = await hudPrompt('Gate', stripNum(task.text)); if (!t?.trim()) return; await api.updateTask(project.id, task.id, { text: t.trim() }) }
-  const doneWhen = async () => { const t = await hudPrompt('Done when…', task.notes || ''); if (t === null) return; await api.updateTask(project.id, task.id, { notes: t.trim() || null }) }
-
+  const load = async () => { setBusy(true); try { const r = await equipTask(task, project.name, { clock: false }); say(r.ok ? `Gate ${n} is on the Board.` : `Will not fit: ${r.reasons.join(' · ')}`); if (r.ok) api.refresh() } catch (e) { say(`Could not load: ${e.message}`) } finally { setBusy(false) } }
+  const toStash = async () => { setBusy(true); try { await stashTask(task, project.name); say(`Gate ${n} is in the Stash.`); api.refresh() } catch (e) { say(`Could not stash: ${e.message}`) } finally { setBusy(false) } }
+  const rename = async () => { const t = await hudPrompt('Gate', stripNum(task.text)); if (!t?.trim()) return; await api.updateTask(project.id, task.id, { text: `${n} · ${t.trim()}` }) }
+  const doneWhen = async () => { const t = await hudPrompt({ title: 'Done When', value: task.notes || '', multiline: true }); if (t === null) return; await api.updateTask(project.id, task.id, { notes: t.trim() || null }) }
   return (
-    <div style={{ borderTop: `1px solid ${PANEL_BORDER}`, padding: '12px 0', opacity: open ? 1 : 0.55 }}>
-      <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
-        <span style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 22, lineHeight: 1, color: open ? (onBoard ? GREEN : LABEL) : SUCCESS, width: 26, flexShrink: 0, paddingTop: 2 }}>{n}</span>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-            {/* A gate is a line; it opens as a card only once it has been on the Board or in the Stash (David 11/17). */}
-            <span onClick={task.objective_id ? () => openCard(task.objective_id) : undefined} title={task.objective_id ? 'Open this gate\'s card' : 'A gate opens as a card once it is on the Board or in the Stash'} style={{ fontSize: 15, lineHeight: 1.4, color: open ? INK : GRAY, textDecoration: open ? 'none' : 'line-through', cursor: task.objective_id ? 'pointer' : 'default', flex: 1, minWidth: 220 }}>{stripNum(task.text)}</span>
-            {!open && <Chip color={SUCCESS}>closed{task.released_at ? ` ${new Date(task.released_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}` : ''}</Chip>}
-            {open && onBoard && <Chip color={GREEN}>on the board</Chip>}
-            {stashed && <Chip color={INK2}>in the stash</Chip>}
-            {open && blocked && <Chip color={CAUTION}>blocked · needs David</Chip>}
-            {steps.length > 0 && <Chip color={stepsDone === steps.length ? SUCCESS : GRAY}>{stepsDone} / {steps.length} steps</Chip>}
-          </div>
-          {task.notes && <div style={{ fontSize: 12.5, color: TEXT_DIM, marginTop: 3, lineHeight: 1.5 }}>Done when: {task.notes}</div>}
-          {steps.length > 0 && (
-            <div style={{ marginTop: 8, display: 'grid', gap: 2 }}>
-              {steps.map((st, ti) => (
-                <button key={st.id || ti} onClick={() => toggleStep(ti)} title={st.status === 'done' ? 'Reopen' : 'Mark done'} style={{ display: 'flex', alignItems: 'flex-start', gap: 9, background: 'transparent', border: 'none', padding: '3px 0', cursor: 'pointer', textAlign: 'left', color: INK }}>
-                  {st.status === 'done' ? <span style={{ width: 15, height: 15, borderRadius: 99, background: SUCCESS, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 2 }}><Check size={10} color={NAVY_DEEP} /></span>
-                    : <span style={{ width: 15, height: 15, borderRadius: 99, border: `1.5px solid ${st.status === 'inmotion' ? GREEN : st.status === 'blocked' ? CAUTION : alpha(INK, 30)}`, display: 'inline-block', flexShrink: 0, marginTop: 2 }} />}
-                  <span style={{ fontFamily: MONO, fontSize: 10, color: LABEL, letterSpacing: '0.5px', paddingTop: 2, flexShrink: 0 }}>{st.id}</span>
-                  <span style={{ fontSize: 13, lineHeight: 1.45, color: st.status === 'done' ? GRAY : INK, textDecoration: st.status === 'done' ? 'line-through' : 'none' }}>{st.label}{st.note && <span style={{ display: 'block', fontSize: 12, color: st.status === 'blocked' ? RED : GRAY }}>{st.note}</span>}</span>
-                </button>
-              ))}
-            </div>
-          )}
-          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
-            {task.objective_id && <button onClick={() => openCard(task.objective_id)} style={{ ...S.btnGhost, padding: '4px 9px', fontSize: 10 }}>Open</button>}
-            {open && !onBoard && <button onClick={load} disabled={busy} style={{ ...S.btnGhost, padding: '4px 9px', fontSize: 10 }}>Load</button>}
-            {open && !onBoard && !stashed && <button onClick={toStash} disabled={busy} title="Stage it in the Stash on the Board; no slot, no clock" style={{ ...S.btnGhost, padding: '4px 9px', fontSize: 10 }}>Stash</button>}
-            {open && <button onClick={addStep} style={{ ...S.btnGhost, padding: '4px 9px', fontSize: 10 }}><Plus size={10} /> Step</button>}
-            {open && <button onClick={doneWhen} style={{ ...S.btnGhost, padding: '4px 9px', fontSize: 10 }}>Done when</button>}
-            {open && <button onClick={rename} style={{ ...S.btnGhost, padding: '4px 9px', fontSize: 10 }}>Rename</button>}
-            {open
-              ? <button onClick={async () => { if (!await hudConfirm(`Close gate ${n}? 7 miles on the next update.`)) return; await api.toggleTask(project.id, task); onAward && onAward({ n, title: stripNum(task.text) }) }} style={{ ...S.btnGhost, padding: '4px 9px', fontSize: 10 }}><Check size={10} /> Close gate</button>
-              : <button onClick={() => api.toggleTask(project.id, task)} style={{ ...S.btnGhost, padding: '4px 9px', fontSize: 10 }}>Reopen</button>}
-            <button onClick={async () => { if (await hudConfirm('Delete this gate?')) api.deleteTask(project.id, task.id) }} title="Delete" style={{ background: 'transparent', border: 'none', color: alpha(INK, 25), cursor: 'pointer', padding: 4 }}><Trash2 size={12} /></button>
-          </div>
-          {msg && <div style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '1px', textTransform: 'uppercase', color: msg.startsWith('Could') || msg.startsWith('Will') || msg.startsWith('No session') ? RED : msg === 'In the Stash' ? BLUE : GOLD, marginTop: 6 }}>{msg}</div>}
-        </div>
+    <>
+      <div className="src">
+        Gate {n}{onBoard ? ' · On The Board' : stashed ? ' · In The Stash' : ''}{isBlocked(task) ? ' · Blocked, Needs David' : ''}
+        {task.objective_id && <button className="tool" onClick={() => openCard(task.objective_id)}>Open Its Card</button>}
+        {!onBoard && <button className="tool" disabled={busy} onClick={load} title="Put it on the Board, clock off">Load</button>}
+        {!onBoard && !stashed && <button className="tool" disabled={busy} onClick={toStash} title="Stage it in the Stash on the Board; no slot, no clock">Stash</button>}
+        <button className="tool" onClick={doneWhen}>Done When</button>
+        <button className="tool" onClick={rename}>Rename</button>
+        <button className="tool gone" onClick={takeOff}>Take It Off</button>
       </div>
-    </div>
+      {task.notes && <div className="done-when" title={task.notes}>Done when: {task.notes}</div>}
+    </>
   )
 }
 
@@ -402,7 +349,7 @@ function ProjectNotes({ project }) {
   )
 }
 
-function ProjectDetail({ project, board: boardProp, api, onBack, initialTab, initialSlug, onNavigate }) {
+function ProjectDetail({ project, board: boardProp, api, onBack, initialTab, initialSlug }) {
   // Gates first, always (David 10/21). A tab in the hash only sticks when it
   // carries an artifact slug (a deep link from Lumen or a session); otherwise the
   // page opens on Gates, whatever tab the URL remembered.
@@ -424,7 +371,7 @@ function ProjectDetail({ project, board: boardProp, api, onBack, initialTab, ini
 
   // mission hash (David, 10/17): the open mission and its tab ride the URL so a refresh lands back here.
   useEffect(() => { try { const suffix = ((window.location.hash || '').match(/\/item\/.*$/) || [''])[0]; window.history.replaceState(window.history.state, '', `#/main-missions/${project.id}/${tab}${suffix}`) } catch { /* no-op */ } }, [project.id, tab])
-  const { plan, history } = planOf(project)
+  const { plan } = planOf(project)
   const tasks = plan.map(p => p.t)
   const [objState, setObjState] = useState({})
   const [evidence, setEvidence] = useState([])
@@ -437,12 +384,25 @@ function ProjectDetail({ project, board: boardProp, api, onBack, initialTab, ini
     return () => { on = false }
   }, [objIds])
   const closed = tasks.filter(t => !isOpen(t)).length
-  const pct = tasks.length ? Math.round(closed / tasks.length * 100) : 0
-  const [showHistory, setShowHistory] = useState(false)
-  // The Briefing's two reads (David 11/17: the Trail is the Main Mission's face too): what has happened, and the gates still open.
-  // One line (David 11/17): the trail behind opens folded, the path forward opens with its gates showing.
-  const [aheadOpen, setAheadOpen] = useState(true)
-  const [showClosed, setShowClosed] = useState(false)
+  // The Briefing is the same card every mission and every gate has (David 11/17): CardBriefing, handed
+  // this mission's gates as its stops. The doors below turn its step calls into this mission's gates.
+  const [organizing, setOrganizing] = useState(false)
+  const live = useRef({ api, project, plan })
+  useEffect(() => { live.current = { api, project, plan } })
+  const gateSteps = useMemo(() => planOf(project).plan.map(({ t }) => ({ id: t.id, text: stripNum(t.text), done: !isOpen(t), done_at: t.released_at })), [project])
+  const cardGates = useMemo(() => planOf(project).plan.filter(({ t }) => t.objective_id).map(({ t, n }) => ({ n, text: stripNum(t.text), objective_id: t.objective_id })), [project])
+  const stories = useGateStories(cardGates)
+  const extraTrail = useMemo(() => [...stories, ...planOf(project).history.filter(t => t.released_at).map(t => ({ at: t.released_at, kind: 'Gate Closed', text: t.text, gate: true }))], [stories, project])
+  const missionObj = useMemo(() => ({ id: project.id, captured_at: project.created_at, north_star: project.description || null }), [project.id, project.created_at, project.description])
+  const missionApi = useMemo(() => ({
+    addStep: async (_id, text) => { const { api: a, plan: pl } = live.current; return a.addTask(project.id, NUM_RE.test(text) ? text : `${Math.max(0, ...pl.map(x => x.n)) + 1} · ${text}`) },
+    toggleStep: async (id) => { const { api: a, project: pr } = live.current; const t = (pr.tasks || []).find(x => x.id === id); if (!t) throw new Error('that gate is gone'); return a.toggleTask(project.id, t) },
+    removeStep: async (id) => live.current.api.deleteTask(project.id, id),
+    setStepOrder: async () => {},   // a mission's gates stand in number order
+    listPages, readPage, listBuilds, readPath, noteSource, savePathSteps,
+    // the mission's own files; a gate card's files come in with that gate's story
+    listLiveFiles: async () => { const cards = new Set((live.current.project.tasks || []).map(t => t.objective_id).filter(Boolean)); const r = await listLiveFiles({ projectId: project.id }); return { rows: (r.rows || []).filter(f => !cards.has(f.objective_id)) } },
+  }), [project.id])
   const [award, setAward] = useState(null)
 
   const closeMission = async ({ achieved, closeOpen, fileThem, files }) => {
@@ -509,79 +469,37 @@ function ProjectDetail({ project, board: boardProp, api, onBack, initialTab, ini
         <Trail nodes={[{ label: 'Main Missions', onClick: onBack }]} />
       </div>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-        <h1 style={{ ...S.h1, lineHeight: 1.2 }}>Main Mission</h1>
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: MONO, fontSize: 10.5, letterSpacing: '1px', textTransform: 'uppercase', color: KIND_COLOR['Main Mission'], border: `1px solid ${alpha(KIND_COLOR['Main Mission'], 40)}`, borderRadius: 999, padding: '3px 10px', whiteSpace: 'nowrap' }}>
-          <KindIcon kind="Main Mission" size={13} color={KIND_COLOR['Main Mission']} />{CATEGORY_LABELS[project.category] || project.category || 'Main Mission'}
+      {/* The header reads as every card's does (David 11/17): the name is the title, what it is sits to
+          the right as chips. Polaris ends the line below; the count is in the side of the Briefing. */}
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap' }}>
+        <h1 style={{ ...S.h1, lineHeight: 1.2, flex: 1, minWidth: 260 }}>{project.name}</h1>
+        <span style={{ display: 'flex', gap: 8, flexWrap: 'wrap', paddingTop: 4 }}>
+          <span className="brf-chip" style={{ cursor: 'default', gap: 6 }}><KindIcon kind="Main Mission" size={13} color={KIND_COLOR['Main Mission']} />Main Mission</span>
+          {(CATEGORY_LABELS[project.category] || project.category) && <span className="brf-chip" style={{ cursor: 'default' }}>{CATEGORY_LABELS[project.category] || project.category}</span>}
+          <button className="brf-chip" onClick={() => api.updateProject(project.id, { tags: isHorizon(project) ? (project.tags || []).filter(t => t !== 'horizon') : [...(project.tags || []), 'horizon'] })} title={isHorizon(project) ? 'On the horizon: no clock. Click to bring it into the standing missions.' : 'Click to put it on the horizon: no clock, a chip on the page.'}>{isHorizon(project) ? 'On The Horizon' : 'Standing'}</button>
         </span>
-        <button onClick={() => api.updateProject(project.id, { tags: isHorizon(project) ? (project.tags || []).filter(t => t !== 'horizon') : [...(project.tags || []), 'horizon'] })} title={isHorizon(project) ? 'On the horizon: no clock. Click to bring it into the standing missions.' : 'Click to put it on the horizon: no clock, a chip on the page.'} style={{ fontFamily: MONO, fontSize: 10.5, letterSpacing: '1px', textTransform: 'uppercase', padding: '3px 10px', borderRadius: 999, border: `1px ${isHorizon(project) ? 'dashed' : 'solid'} ${PANEL_BORDER}`, background: 'transparent', color: isHorizon(project) ? GRAY : LABEL, cursor: 'pointer' }}>{isHorizon(project) ? 'Horizon' : 'Standing'}</button>
-      </div>
-      <div style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 21, lineHeight: 1.3, color: INK, marginTop: 8, letterSpacing: '-0.005em' }}>{project.name}</div>
-      <div style={{ fontSize: 14, lineHeight: 1.6, color: TEXT_DIM, margin: '6px 0 0', maxWidth: '72ch' }}>
-        {project.description ? <span><span style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '1.4px', textTransform: 'uppercase', color: LABEL, marginRight: 8, display: 'block', marginBottom: 2 }}>{NORTH_STAR_LABEL}</span><span style={{ fontFamily: SERIF, fontStyle: 'italic', fontSize: 15.5, color: INK }}>{project.description}</span></span> : <button onClick={async () => { const d = await hudPrompt(`${NORTH_STAR_LABEL}? One sentence.`, ''); if (d?.trim()) await api.updateProject(project.id, { description: d.trim() }) }} style={{ ...S.btnGhost, padding: '3px 9px', fontSize: 10 }}>Write the Polaris Objective</button>}
       </div>
       {/* The pills (David 11/4, one chassis with the item card): one quiet row under the header, left. */}
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 18 }}>
         {CARD_PILLS.map(([id, label]) => <CardPill key={id} active={tab === id} onClick={() => setTab(id)} count={id === 'briefing' ? tasks.length : id === 'polaris' ? evidence.length : 0}>{label}</CardPill>)}
       </div>
-      <div style={{ ...S.sub, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
-        <span>{[project.key, '100 miles on completion · 7 per gate'].filter(Boolean).join(' · ')}</span>
-        <span style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          {project.status !== 'completed' && !project.archived_at && (
-            <button
-              onClick={() => setClosingMission(true)}
-              title="Whole mission complete: 100 miles on the River"
-              style={{ ...S.btnGhost, border: `1px solid ${alpha(SUCCESS, 50)}`, color: SUCCESS, padding: '4px 9px', fontSize: 10 }}
-            >
-              ✓ Mark Mission Complete
-            </button>
-          )}
-          {project.status !== 'completed' && (
-            <button
-              onClick={async () => {
-                const yes = await hudConfirm({ eyebrow: 'Delete Mission', title: project.name, message: 'Delete this mission? No miles are awarded. Gates already closed keep theirs. Its artifacts and cabinet stay in the Ledger. It leaves every list.', confirm: 'Delete Mission', danger: true })
-                if (!yes) return
-                try { await deleteMission(project); await api.refresh(); onBack() } catch (e) { await hudNotice(`Could not delete: ${e.message}`) }
-              }}
-              title="Delete this mission: no miles, gone from every list"
-              style={{ ...S.btnGhost, padding: '4px 9px', fontSize: 10 }}
-            >
-              <Trash2 size={12} /> Delete Mission
-            </button>
-          )}
-        </span>
-      </div>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '14px 0 0' }}>
-        <span style={{ flex: 1, height: 5, borderRadius: 99, background: alpha(INK, 8), overflow: 'hidden' }}><span style={{ display: 'block', width: `${pct}%`, height: '100%', background: LABEL }} /></span>
-        <span style={{ fontFamily: MONO, fontSize: 10.5, letterSpacing: '1px', textTransform: 'uppercase', color: LABEL }}>{closed} of {tasks.length} closed</span>
-      </div>
-
-      <div style={{ ...S.panel, marginTop: 20 }}>
+      <div style={tab === 'briefing' ? { marginTop: 24 } : { ...S.panel, marginTop: 20 }}>
         {tab === 'briefing' && (
-          <MissionTrail project={project} onOpenGate={openCard} gates={[...plan.map(({ t, n }) => ({ t, n })), ...history.map(t => ({ t, n: null }))].map(({ t, n }) => ({ id: t.id, n, text: stripNum(t.text), done: !isOpen(t), done_at: t.released_at, objective_id: n ? t.objective_id : null }))}
-            here={`${tasks.filter(t => !isOpen(t)).length} of ${tasks.length} gates closed.${nowGate(plan) ? ` Next: ${stripNum(nowGate(plan).t.text)}` : ''}`} ahead={{ open: aheadOpen, count: tasks.filter(isOpen).length, onToggle: () => setAheadOpen(o => !o) }} />
+          <CardBriefing obj={missionObj} root={project.id} kindLabel="Main Mission" steps={gateSteps} extraTrail={extraTrail} api={missionApi}
+            hereText={`${closed} of ${tasks.length} gates closed.${nowGate(plan) ? ` Next: ${stripNum(nowGate(plan).t.text)}` : ''}`}
+            nextStepId={nowGate(plan) ? nowGate(plan).t.id : null}
+            stopExtra={(st, h) => { const p = plan.find(x => x.t.id === st.id); return p ? <GateTools n={p.n} project={project} task={p.t} api={api} objState={objState} takeOff={h.takeOff} say={(m) => hudNotice(m)} /> : null }}
+            confirmClose={(st) => { const p = plan.find(x => x.t.id === st.id); return hudConfirm(`Close gate ${p ? p.n : ''}? 7 miles on the next update.`) }}
+            onClosed={(st) => { const p = plan.find(x => x.t.id === st.id); setAward({ n: p ? p.n : '', title: st.text }) }}
+            onReload={async () => { await api.refresh?.() }} onTab={setTab} onOpenCard={openCard} say={(m) => hudNotice(m)} />
         )}
-        {tab === 'briefing' && aheadOpen && (
-          <div>
-            <p className="brf-sub" style={{ marginTop: 12 }}>The gates still open: what must be true for this mission to close.</p>
-            {!tasks.length && <div style={{ fontSize: 13, color: GRAY, padding: '10px 0' }}>No gates yet. Add the first one below: what must be true for this mission to close.</div>}
-            {plan.filter(({ t }) => isOpen(t)).map(({ t, n }) => <GateRow key={t.id} n={n} project={project} task={t} board={board} api={api} onNavigate={onNavigate} onBoardChange={setBoard} onAward={setAward} objState={objState} />)}
-            {plan.some(({ t }) => !isOpen(t)) && (
-              <div style={{ borderTop: `1px solid ${PANEL_BORDER}`, padding: '10px 0 0' }}>
-                <button onClick={() => setShowClosed(x => !x)} style={{ fontSize: 13, fontWeight: 600, color: INK2, background: 'transparent', border: 'none', padding: 0, cursor: 'pointer' }}>{showClosed ? 'Hide' : 'Show'} Closed Gates · {plan.filter(({ t }) => !isOpen(t)).length}</button>
-                {showClosed && plan.filter(({ t }) => !isOpen(t)).map(({ t, n }) => <GateRow key={t.id} n={n} project={project} task={t} board={board} api={api} onNavigate={onNavigate} onBoardChange={setBoard} onAward={setAward} objState={objState} />)}
-              </div>
-            )}
-            {history.length > 0 && (
-              <div style={{ borderTop: `1px solid ${PANEL_BORDER}`, padding: '10px 0 0' }}>
-                <button onClick={() => setShowHistory(x => !x)} style={{ ...S.btnGhost, padding: '4px 9px', fontSize: 10 }}>{showHistory ? 'Hide' : 'Show'} earlier work · {history.length} closed before this plan</button>
-                {showHistory && history.map(t => (
-                  <div key={t.id} style={{ display: 'flex', gap: 10, padding: '6px 0', fontSize: 13, color: GRAY, textDecoration: 'line-through', opacity: 0.7 }}><Check size={12} color={SUCCESS} style={{ flexShrink: 0, marginTop: 3 }} /><span>{t.text}</span></div>
-                ))}
-              </div>
-            )}
-            <form onSubmit={submit} style={{ display: 'flex', gap: 8, marginTop: 16, borderTop: `1px solid ${PANEL_BORDER}`, paddingTop: 14 }}>
+        {tab === 'briefing' && (
+          <div style={{ marginTop: 24 }}>
+            {/* Lumen can still write a gate up from plain words (David 10/21); it sits behind one button now. */}
+            <button className="brf-chip" onClick={() => setOrganizing(o => !o)}>{organizing ? 'Hide The Organizer' : 'Organize A Gate With Lumen'}</button>
+            {organizing && <>
+            <form onSubmit={submit} style={{ display: 'flex', gap: 8, marginTop: 14 }}>
               <input value={newTask} onChange={e => setNewTask(e.target.value)} placeholder="Say the gate in your own words; Organize writes it up, or add it as typed (lead with its number to place it)" style={{ ...S.input, flex: 1 }} />
               <button type="button" onClick={organize} disabled={drafting || !newTask.trim()} title="Lumen organizes what you typed into a gate: Title Case, a done-when, three to five steps. You confirm before it lands." style={{ ...S.btnGhost, opacity: drafting || !newTask.trim() ? 0.5 : 1 }}>{drafting ? 'Organizing' : '✦ Organize'}</button>
               <button type="submit" style={S.btnPrimary}><Plus size={13} /> Gate</button>
@@ -612,6 +530,7 @@ function ProjectDetail({ project, board: boardProp, api, onBack, initialTab, ini
                 {!board?.id && (draft.steps || []).length > 0 && <div style={{ fontSize: 11.5, color: GRAY, marginTop: 8 }}>Steps need a session board on this mission; the title and done-when land now, the steps once a session opens its board.</div>}
               </div>
             )}
+            </>}
           </div>
         )}
         {tab === 'workbench' && (
@@ -646,6 +565,23 @@ function ProjectDetail({ project, board: boardProp, api, onBack, initialTab, ini
             {project.status === 'completed' && <div style={{ fontFamily: MONO, fontSize: 10.5, letterSpacing: '1.2px', textTransform: 'uppercase', color: SUCCESS }}>Complete{project.archived_at ? ` · ${String(project.archived_at).slice(0, 10)}` : ''}</div>}
           </div>
         )}
+        {/* The foot of the card, where a Side Mission keeps Equip and Stash: the mission's two moves and what it pays. */}
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', borderTop: `1px solid ${PANEL_BORDER}`, marginTop: 26, paddingTop: 16 }}>
+          {project.status !== 'completed' && !project.archived_at && (
+            <button onClick={() => setClosingMission(true)} title="Whole mission complete: 100 miles on the River" style={{ ...footBtn, border: `1px solid ${alpha(SUCCESS, 50)}`, color: SUCCESS }}><Check size={14} /> Mark Mission Complete</button>
+          )}
+          {project.status !== 'completed' && (
+            <button
+              onClick={async () => {
+                const yes = await hudConfirm({ eyebrow: 'Delete Mission', title: project.name, message: 'Delete this mission? No miles are awarded. Gates already closed keep theirs. Its artifacts and cabinet stay in the Ledger. It leaves every list.', confirm: 'Delete Mission', danger: true })
+                if (!yes) return
+                try { await deleteMission(project); await api.refresh(); onBack() } catch (e) { await hudNotice(`Could not delete: ${e.message}`) }
+              }}
+              title="Delete this mission: no miles, gone from every list" style={footBtn}
+            ><Trash2 size={13} /> Delete Mission</button>
+          )}
+          <span style={{ marginLeft: 'auto', fontSize: 13, color: INK2 }}>{[project.key, '100 miles on completion', '7 per gate'].filter(Boolean).join(' · ')}</span>
+        </div>
       {celebrate && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(5,16,28,0.84)', display: 'grid', placeItems: 'center', zIndex: 80 }}>
           <div style={{ ...S.panel, width: 'min(560px, 94vw)', textAlign: 'center', padding: '38px 32px 28px', display: 'grid', gap: 12, justifyItems: 'center', border: `1px solid ${alpha(GOLD, 45)}`, boxShadow: `0 0 90px ${alpha(GOLD, 18)}` }}>

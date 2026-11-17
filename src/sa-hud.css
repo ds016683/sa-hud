@@ -1359,6 +1359,10 @@ table.fin-grid { width: 100%; border-collapse: collapse; font-family: var(--font
 .brf-spark { position: absolute; left: -24px; top: 14px; width: 7px; height: 7px; border-radius: 50%; background: var(--hud-success); box-shadow: 0 0 10px 2px color-mix(in srgb, var(--hud-success) 70%, transparent); animation: brftravel .6s .25s ease-in both; pointer-events: none; }
 .brf-stop.fresh { animation: brfrise .45s ease both; }
 .brf-ev.end.lit::before { animation: brfstar .8s ease 2; }
+.brf-none { font-size: 14px; line-height: 1.5; color: var(--hud-ink-2); margin-top: 4px; }
+.brf-of { font-size: 13px; color: var(--hud-ink-2); margin-top: 3px; cursor: pointer; }
+.brf-of:hover { color: var(--hud-accent); }
+.brf-stop .done-when { font-size: 13px; line-height: 1.5; color: var(--hud-ink-2); margin-top: 4px; max-width: 70ch; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 /* One line (David 11/17): the trail behind and the path forward fold on the line itself; the chevron is the mark. */
 .brf-ev.fold { cursor: pointer; padding-bottom: 15px; outline: none; }
 .brf-ev.fold::before { display: none; }

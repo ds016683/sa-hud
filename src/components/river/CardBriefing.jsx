@@ -35,9 +35,18 @@ import { hudConfirm, hudPrompt } from '../../lib/dialog'
 // The Ledger's doors, as one object, so dev/briefing.html can run the page on sample data with no sign-in.
 const LEDGER = { addStep, toggleStep, removeStep, setStepOrder, listPages, readPage, listBuilds, listLiveFiles, readPath, noteSource, savePathSteps }
 const wait = (ms) => new Promise(r => setTimeout(r, ms))
+const NONE = []
 const Check = () => <svg viewBox="0 0 10 10" aria-hidden="true"><path d="M1.8 5.4 4.2 7.6 8.3 2.6" fill="none" stroke="var(--hud-on-accent)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>
 
-export default function CardBriefing({ obj, root, kindLabel, steps = [], kids = [], boardItems = [], loaded = null, due = null, isGate = false, missionGates = [], mission = null, onOpenMission, onReload, onTab, onOpenCard, say, api = LEDGER }) {
+// One template for every card (David 11/17, on the Main Mission page: "wouldn't this card look like the one
+// we've been building out?"). A Side Mission, a gate's card and a Main Mission all draw this. The Main Mission
+// page hands it its gates as the steps, plus the few things only it has:
+//   hereText      the line for You Are Here (a mission has no clock of its own)
+//   nextStepId    which open gate is the Next Move (the one on the Board, not simply the first)
+//   stopExtra     (step, { takeOff }) => what sits under an open gate in place of its source line
+//   extraTrail    lines for The Trail Back that come from elsewhere (each gate card's own story)
+//   confirmClose  (step) => true to go on closing it;  onClosed (step) after it closed
+export default function CardBriefing({ obj, root, kindLabel, steps = [], kids = [], boardItems = [], loaded = null, due = null, isGate = false, missionGates = [], mission = null, onOpenMission, onReload, onTab, onOpenCard, say, api = LEDGER, hereText = null, nextStepId = null, stopExtra = null, extraTrail = NONE, confirmClose = null, onClosed = null }) {
   // One line (David 11/17, on the two boxed reads: "one line, but make what is before or after collapsable
   // and expandable and the default view is where we are now, with the path forward expanded ... and the
   // trail behind collpased"). Every card opens that way; the folds are not kept between visits.
@@ -94,7 +103,7 @@ export default function CardBriefing({ obj, root, kindLabel, steps = [], kids = 
     const item = { key: ps.id, type: 'pstep', text: ps.text, ps }, at = stops.findIndex(x => x.key === ps.after)
     if (ps.after === '^') stops.unshift(item); else if (at >= 0) stops.splice(at + 1, 0, item); else stops.push(item)
   }
-  const nextKey = (stops.find(s => !s.done && s.type !== 'mission' && s.type !== 'pstep') || {}).key || null
+  const nextKey = (nextStepId != null && stops.some(s => s.key === `s${nextStepId}` && !s.done)) ? `s${nextStepId}` : (stops.find(s => !s.done && s.type !== 'mission' && s.type !== 'pstep') || {}).key || null
   const total = steps.length + (isGate ? 0 : kids.length)
   const closed = steps.filter(s => s.done).length + (isGate ? 0 : kids.filter(k => k.state === 'released').length)
   const thisGate = missionGates.find(g => g.current) || null
@@ -102,6 +111,7 @@ export default function CardBriefing({ obj, root, kindLabel, steps = [], kids = 
   const close = async (st, e) => {
     if (closing || busy) return
     const el = e.currentTarget.closest('.brf-stop'), nextEl = el?.nextElementSibling
+    if (confirmClose && !(await confirmClose(st))) return
     setClosing({ id: st.id, dy: nextEl ? nextEl.offsetTop - el.offsetTop - 10 : 50 })
     const remaining = openSteps.filter(x => x.id !== st.id)
     try {
@@ -109,7 +119,8 @@ export default function CardBriefing({ obj, root, kindLabel, steps = [], kids = 
       await Promise.all([api.toggleStep(st.id, true), wait(780)])
       setJustClosed(j => [...j, st.id]); setFresh(remaining[0] ? `s${remaining[0].id}` : null)
       await onReload()
-      fireCardEvent({ item: { kind: 'objective', id: obj.id }, event: { kind: 'stop_closed', text: st.text, open: [...remaining.map(x => x.text), ...openKids.map(k => k.title)] } })
+      if (onClosed) onClosed(st)
+      else fireCardEvent({ item: { kind: 'objective', id: obj.id }, event: { kind: 'stop_closed', text: st.text, open: [...remaining.map(x => x.text), ...openKids.map(k => k.title)] } })
     } catch (err) { say(`Could not close it: ${err.message}`) } finally { setClosing(null) }
   }
   const reopen = async (st) => {
@@ -132,7 +143,10 @@ export default function CardBriefing({ obj, root, kindLabel, steps = [], kids = 
     } catch (err) { say(`Could not add it: ${err.message}`) } finally { setBusy(false) }
   }
 
-  const trail = useMemo(() => buildTrail({ obj, kindLabel, steps, children: isGate ? [] : kids, files: side.files, tabs: side.tabs, builds: side.builds, psteps: side.psteps }), [obj, kindLabel, steps, kids, isGate, side])
+  const trail = useMemo(() => {
+    const own = buildTrail({ obj, kindLabel, steps, children: isGate ? [] : kids, files: side.files, tabs: side.tabs, builds: side.builds, psteps: side.psteps })
+    return extraTrail.length ? [...own, ...extraTrail].sort((a, b) => String(a.at).localeCompare(String(b.at))) : own
+  }, [obj, kindLabel, steps, kids, isGate, side, extraTrail])
 
   const savePsteps = async (fn) => { const doc = await api.savePathSteps(root, fn); setSide(x => ({ ...x, psteps: doc.steps || [] })) }
   // Set a step or a gate on the line. part is 'b' (the trail back; David's word for it, 11/17) or 'a' (the path forward); i is the place
@@ -195,11 +209,11 @@ export default function CardBriefing({ obj, root, kindLabel, steps = [], kids = 
   const dw = due ? dueWords(due) : null
   const realFiles = side.files.filter(f => !isLink(f) && !isRequest(f))
   const blanks = side.latest ? blanksIn(side.latest.text).length : 0
-  const hasSide = total > 0 || !!side.latest || realFiles.length > 0
-  const here = `${fmtClock(loaded?.minutes_today || 0)} on the clock today. ${loaded ? (loaded.equipped ? 'The clock is running.' : 'Holstered.') : 'Not on the Board.'}`
+  const mySteps = side.psteps.length, myStepsDone = side.psteps.filter(x => x.done).length
+  const here = hereText || `${fmtClock(loaded?.minutes_today || 0)} on the clock today. ${loaded ? (loaded.equipped ? 'The clock is running.' : 'Holstered.') : 'Not on the Board.'}`
 
   return (
-    <div className={`brf-grid${hasSide ? '' : ' solo'}`}>
+    <div className="brf-grid">
       <div style={{ minWidth: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
           <div style={{ fontFamily: "'Lora', Georgia, serif", fontWeight: 500, fontSize: 20, color: 'var(--hud-ink)' }}>The Trail</div>
@@ -218,7 +232,7 @@ export default function CardBriefing({ obj, root, kindLabel, steps = [], kids = 
           </div>
           {behindOpen && trail.map((ev, i) => [
             zone('b', i),
-            <div key={`${ev.at}${i}`} className={`brf-ev${ev.gate ? ' gate' : ''}`} {...dropAt('b', i + 1)}><div className="when">{stamp(ev.at)}<span className="kind">{ev.kind}</span></div><div className="what">{ev.text}{ev.pid && <button className="brf-tool" onClick={() => dropStep(ev.pid, ev.text)}>Take It Off</button>}</div></div>,
+            <div key={`${ev.at}${i}`} className={`brf-ev${ev.gate ? ' gate' : ''}`} {...dropAt('b', i + 1)}><div className="when">{stamp(ev.at)}<span className="kind">{ev.kind}</span></div><div className="what">{ev.text}{ev.pid && <button className="brf-tool" onClick={() => dropStep(ev.pid, ev.text)}>Take It Off</button>}</div>{ev.of && <div className="brf-of" onClick={() => onOpenCard && ev.of.objective_id && onOpenCard(ev.of.objective_id)} title="Open this gate's card">On Gate {ev.of.n}: {ev.of.text}</div>}</div>,
           ])}
           {zone('b', trail.length)}
           <div className="brf-ev here" {...dropAt('b', trail.length)}><div className="when">You Are Here</div><div className="what">{here}</div></div>
@@ -247,7 +261,7 @@ export default function CardBriefing({ obj, root, kindLabel, steps = [], kids = 
                     {isNext && <div className="when">{s.type === 'mission' ? 'This Gate' : 'Next Move'}</div>}
                     <div className={`what${s.type === 'gate' ? ' link' : ''}`} onClick={s.type === 'gate' ? () => onOpenCard && onOpenCard(s.kid.id) : undefined}>{s.text}</div>
                     {s.done && <><span className="when">Closed just now</span><button className="tool" onClick={() => reopen(s.step)}>Reopen</button></>}
-                    {!s.done && s.type === 'step' && <div className="src">{src.lead}{src.quote && <> <q>{src.quote}</q></>}<button className="tool gone" onClick={() => drop(s.step)}>Take It Off</button></div>}
+                    {!s.done && s.type === 'step' && (stopExtra ? stopExtra(s.step, { takeOff: () => drop(s.step) }) : <div className="src">{src.lead}{src.quote && <> <q>{src.quote}</q></>}<button className="tool gone" onClick={() => drop(s.step)}>Take It Off</button></div>)}
                     {s.type === 'gate' && <div className="src">Gate {s.n} of {kids.length}{s.kid.due_date ? ` · ${dueWords(s.kid.due_date).short}` : ''}. It closes on its own card.</div>}
                     {s.type === 'mission' && <div className="src">Gate {s.gate.n} of {missionGates.length} on {mission?.name || 'the mission'}</div>}
                     {s.type === 'board' && <div className="src" style={s.blocked ? { color: 'var(--hud-warn)' } : undefined}>{s.note}</div>}
@@ -272,26 +286,32 @@ export default function CardBriefing({ obj, root, kindLabel, steps = [], kids = 
         </div>
       </div>
 
-      {hasSide && (
-        <div className="brf-side">
-          {total > 0 && <div className="brf-card"><div className="n">{closed} of {total}<small>gates closed</small></div><div className="brf-bar"><i style={{ width: `${(100 * closed) / total}%` }} /></div></div>}
-          {side.latest && (
-            <div className="brf-card lead">
-              <Label style={{ marginBottom: 2 }}>On The Workbench</Label>
-              <div className="q">"{excerpt(side.latest.text)}"</div>
-              <div className="f">{side.latest.title}{blanks > 0 && <> · <b>{blanks} {blanks === 1 ? 'blank' : 'blanks'} open</b></>}</div>
-              <div style={{ marginTop: 12 }}><button className="brf-chip" onClick={() => onTab('workbench')}>Open The Workbench</button></div>
-            </div>
-          )}
-          {realFiles.length > 0 && (
-            <div className="brf-card">
-              <Label style={{ marginBottom: 2 }}>Files</Label>
-              {realFiles.slice(0, 3).map(f => <div key={f.id} className="brf-row" onClick={() => onTab('files')}><b>{f.name}</b><span>{stamp(f.created_at).split(' · ')[0]}</span></div>)}
-              {realFiles.length > 3 && <div className="brf-row" onClick={() => onTab('files')}><b>{realFiles.length - 3} more</b></div>}
-            </div>
-          )}
+      {/* The side of the card always shows (David 11/17: "I liked the gates thing. i thought that was part of the
+          design. love workbench too. and files."): the count, what is on the Workbench, the files. */}
+      <div className="brf-side">
+        <div className="brf-card">
+          {takesGates
+            ? (total > 0
+              ? <><div className="n">{closed} of {total}<small>gates closed</small></div><div className="brf-bar"><i style={{ width: `${(100 * closed) / total}%` }} /></div></>
+              : <><Label style={{ marginBottom: 2 }}>Gates</Label><div className="brf-none">No gates yet. Drag one onto the line, or type it at the end.</div></>)
+            : (mySteps > 0
+              ? <><div className="n">{myStepsDone} of {mySteps}<small>steps done</small></div><div className="brf-bar"><i style={{ width: `${(100 * myStepsDone) / mySteps}%` }} /></div></>
+              : <><Label style={{ marginBottom: 2 }}>Steps</Label><div className="brf-none">No steps yet. Drag one onto the line.</div></>)}
         </div>
-      )}
+        <div className={`brf-card${side.latest ? ' lead' : ''}`}>
+          <Label style={{ marginBottom: 2 }}>On The Workbench</Label>
+          {side.latest
+            ? <><div className="q">"{excerpt(side.latest.text)}"</div><div className="f">{side.latest.title}{blanks > 0 && <> · <b>{blanks} {blanks === 1 ? 'blank' : 'blanks'} open</b></>}</div></>
+            : <div className="brf-none">{side.tabs.length ? `${side.tabs.length} ${side.tabs.length === 1 ? 'tab' : 'tabs'}, nothing written yet.` : 'Nothing on the Workbench yet.'}</div>}
+          <div style={{ marginTop: 12 }}><button className="brf-chip" onClick={() => onTab('workbench')}>Open The Workbench</button></div>
+        </div>
+        <div className="brf-card">
+          <Label style={{ marginBottom: 2 }}>Files</Label>
+          {realFiles.slice(0, 3).map(f => <div key={f.id} className="brf-row" onClick={() => onTab('files')}><b>{f.name}</b><span>{stamp(f.created_at).split(' · ')[0]}</span></div>)}
+          {realFiles.length > 3 && <div className="brf-row" onClick={() => onTab('files')}><b>{realFiles.length - 3} more</b></div>}
+          {realFiles.length === 0 && <><div className="brf-none">No files yet.</div><div style={{ marginTop: 12 }}><button className="brf-chip" onClick={() => onTab('files')}>Open Files</button></div></>}
+        </div>
+      </div>
     </div>
   )
 }

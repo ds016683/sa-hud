@@ -55,6 +55,12 @@ const lumenApi = {
   readWorkbook: async () => ({ v: 1, captures: [], notes: '' }), listBuilds: async () => [],
 }
 const ITEM = { kind: 'objective', id: OBJ.id, title: OBJ.title, root: 'a' }
+// ?mission: the same card drawn as a Main Mission page draws it (its gates as the stops, the lines its gates bring).
+const MAIN = new URLSearchParams(location.search).has('mission')
+const EXTRA = [
+  { at: ago(60), kind: 'Gate Closed', text: 'An earlier sample gate', gate: true },
+  { at: ago(6), kind: 'Happened', text: 'A Claude Code session added Sample Notes.md', of: { n: 2, text: 'Get it on the letterhead', objective_id: 'o2' } },
+]
 
 function App() {
   const [, bump] = useState(0)
@@ -64,7 +70,12 @@ function App() {
       <div style={{ maxWidth: 1180, margin: '0 auto', padding: '32px 28px 120px' }}>
         <h1 style={{ ...S.h1, fontSize: 32 }}>{OBJ.title}</h1>
         <div style={{ marginTop: 24 }}>
-          <CardBriefing obj={OBJ} root="a" kindLabel={GATE ? 'Gate' : MYTHIC ? 'Mythic' : 'Bounty'} steps={GATE ? [] : steps} kids={KIDS} missionGates={MISSION_GATES} mission={MISSION} onOpenMission={GATE ? () => setMsg('Would open the mission') : undefined} boardItems={[]} loaded={{ equipped: true, minutes_today: 12 }} due={new Date().toLocaleDateString('en-CA')} onReload={async () => bump(n => n + 1)} onTab={(t) => setMsg(`Would open the ${t} pill`)} onOpenCard={(id) => setMsg(`Would open the card ${id}`)} say={setMsg} api={api} />
+          <CardBriefing obj={OBJ} root="a" kindLabel={GATE ? 'Gate' : MYTHIC ? 'Mythic' : 'Bounty'} steps={GATE ? [] : steps} kids={KIDS} missionGates={MISSION_GATES} mission={MISSION} onOpenMission={GATE ? () => setMsg('Would open the mission') : undefined} boardItems={[]} loaded={{ equipped: true, minutes_today: 12 }} due={new Date().toLocaleDateString('en-CA')} onReload={async () => bump(n => n + 1)} onTab={(t) => setMsg(`Would open the ${t} pill`)} onOpenCard={(id) => setMsg(`Would open the card ${id}`)} say={setMsg} api={api}
+            {...(MAIN ? {
+              kindLabel: 'Main Mission', loaded: null, due: null, extraTrail: EXTRA, hereText: '0 of 3 gates closed. Next: Get it on the letterhead', nextStepId: 2,
+              stopExtra: (st, h) => <><div className="src">Gate {st.id} · On The Board<button className="tool" onClick={() => setMsg('Would open its card')}>Open Its Card</button><button className="tool">Done When</button><button className="tool">Rename</button><button className="tool gone" onClick={h.takeOff}>Take It Off</button></div><div className="done-when">Done when: the sample is true, the sample is checked, and a long line of sample words runs on far enough to show how the done-when is held to two lines on the card before it is cut short with the rest behind the Done When button.</div></>,
+              confirmClose: async () => true, onClosed: (st) => setMsg(`Would show the award for: ${st.text}`),
+            } : {})} />
         </div>
         {msg && <div role="status" style={{ fontSize: 13, color: 'var(--hud-ink-2)', marginTop: 14 }}>{msg}</div>}
       </div>
