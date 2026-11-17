@@ -19,6 +19,17 @@ let steps = EMPTY || MYTHIC ? [] : [
   { id: 3, text: 'Send it', done: false, done_at: null, position: 2, created_at: ago(7) },
 ]
 const sources = { 1: { by: 'david', where: 'card', at: ago(19) }, 2: { by: 'david', where: 'lumen', quote: "let's clean it up and get it on a letterhead", at: ago(8) }, 3: { by: 'lumen', where: 'lumen', at: ago(7) } }
+// ?gate: the card of a Main Mission's gate, with the mission's other gates behind it and ahead of it.
+const GATE = new URLSearchParams(location.search).has('gate')
+const HOURS = (h) => new Date(Date.now() - h * 36e5).toISOString()
+const MISSION_GATES = GATE ? [
+  { id: 't1', n: 1, text: 'Port the sample model', done: true, done_at: HOURS(200), objective_id: null, current: false },
+  { id: 't2', n: 2, text: 'Sketch the week by week plan', done: true, done_at: HOURS(90), objective_id: 'o2', current: false },
+  { id: 't3', n: 3, text: 'Six sample descriptions, finalized', done: false, done_at: null, objective_id: null, current: false },
+  { id: 't4', n: 4, text: 'Relaunch the sample deck', done: false, done_at: null, objective_id: 'o4', current: true },
+  { id: 't5', n: 5, text: 'Develop a full list of sample targets', done: false, done_at: null, objective_id: 'o5', current: false },
+] : []
+const MISSION = GATE ? { id: 'p1', name: 'Sample Main Mission', polaris: 'A sample plan, fully documented.' } : null
 const KIDS = MYTHIC ? [
   { id: 'k1', title: 'Repo attached and the working branch cut', state: 'released', released_at: ago(30), due_date: null },
   { id: 'k2', title: 'Pages 10 to 13 populated with the numbers', state: 'active', due_date: new Date(Date.now() + 2 * 86400e3).toISOString().slice(0, 10) },
@@ -50,7 +61,7 @@ function App() {
       <div style={{ maxWidth: 1180, margin: '0 auto', padding: '32px 28px 120px' }}>
         <h1 style={{ ...S.h1, fontSize: 32 }}>{OBJ.title}</h1>
         <div style={{ marginTop: 24 }}>
-          <CardBriefing obj={OBJ} root="a" kindLabel={MYTHIC ? 'Mythic' : 'Bounty'} steps={steps} kids={KIDS} isMythic={MYTHIC} boardItems={[]} loaded={{ equipped: true, minutes_today: 12 }} due={new Date().toLocaleDateString('en-CA')} onReload={async () => bump(n => n + 1)} onTab={(t) => setMsg(`Would open the ${t} pill`)} onOpenCard={(id) => setMsg(`Would open the card ${id}`)} say={setMsg} api={api} />
+          <CardBriefing obj={OBJ} root="a" kindLabel={GATE ? 'Gate' : MYTHIC ? 'Mythic' : 'Bounty'} steps={GATE ? [] : steps} kids={KIDS} missionGates={MISSION_GATES} mission={MISSION} onOpenMission={GATE ? () => setMsg('Would open the mission') : undefined} boardItems={[]} loaded={{ equipped: true, minutes_today: 12 }} due={new Date().toLocaleDateString('en-CA')} onReload={async () => bump(n => n + 1)} onTab={(t) => setMsg(`Would open the ${t} pill`)} onOpenCard={(id) => setMsg(`Would open the card ${id}`)} say={setMsg} api={api} />
         </div>
         {msg && <div role="status" style={{ fontSize: 13, color: 'var(--hud-ink-2)', marginTop: 14 }}>{msg}</div>}
       </div>

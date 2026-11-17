@@ -6,7 +6,7 @@
 // Empty slots stay visible on purpose (David, 10/7: the structure is the point).
 import { useEffect, useState, useCallback } from 'react'
 import { createPortal } from 'react-dom'
-import { Play, Pause, PackageCheck, Archive, X as XIcon, Zap, Phone, Swords, ListChecks } from 'lucide-react'
+import { Play, Pause, PackageCheck, Archive, X as XIcon, Zap, Phone, Swords } from 'lucide-react'
 import BadgeMedallion from '../BadgeArt'
 import RecallModal, { BrainButton } from './Recall'
 import YayPage from './YayPage'
@@ -20,11 +20,10 @@ import { pockets } from '../../lib/objectives'
 import FileAway from './FileAway'
 import StillOpen from './StillOpen'
 import { fetchLoadout, equip, holster, unload, stash, addImpromptu, fmtClock, SIZES, SLOTS, hoursOf, chiToday, fetchStash, returnToInventory, equipObjective, STASH_MAX, logBoard, stillOpen } from '../../lib/loadout'
-import { Undo2, ArrowUpToLine, ScrollText, Paperclip } from 'lucide-react'
+import { Undo2, ArrowUpToLine, ScrollText, Footprints } from 'lucide-react'
+import { loadSteps, CLEAR_AT } from '../../lib/trailsteps'
 import ActivityLogModal from './ActivityLog'
 import LiveFilesModal, { ClipButton } from './LiveFiles'
-import { LiveProtocolsModal } from './Protocols'
-import { liveProtocolCounts } from '../../lib/protocols'
 import { liveCounts } from '../../lib/livefiles'
 import ItemDetail from './ItemDetail'
 import { INK, INK2, GRAY, PANEL_BORDER, GOLD, GOLD_BRIGHT, BLUE, GREEN, RED, MONO, SERIF, S, Eyebrow, Label, Panel, KIND_COLOR, KindChip, NORTH_STAR_LABEL, LABEL, MUTED, alpha } from './canon'
@@ -316,7 +315,7 @@ function StashStack({ items, act, onOpen, dropFromLoadout, wide = false, column 
           <div key={it.id} draggable onDragStart={e => { e.dataTransfer.setData('text/plain', dragPayload('stash', it.id)); e.dataTransfer.effectAllowed = 'move' }} title="Drag onto the Loadout" style={{ display: 'flex', alignItems: 'center', gap: 8, height: tall ? 64 : undefined, boxSizing: 'border-box', padding: tall ? '8px 10px' : '4px 8px', borderRadius: 8, border: `1px solid ${alpha(BLUE, 33)}`, background: 'rgba(169,201,232,0.06)', minWidth: 0, cursor: 'grab' }}>
             <BadgeMedallion id={badgeFor(it)} size={20} color={colorOf(it.kind, it.size)} />
             <div onClick={() => onOpen(it)} title={`${it.title}${it.north_star ? ` · ${it.north_star}` : ''}`} style={{ flex: 1, minWidth: 0, cursor: 'pointer', display: 'grid', gap: 0 }}>
-              <div style={tall ? { fontFamily: SERIF, fontWeight: 500, fontSize: 13.5, color: INK, lineHeight: 1.25, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' } : { fontFamily: SERIF, fontWeight: 500, fontSize: 12.5, color: INK, lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{it.kind === 'Main Mission' ? (it.task_text || it.title).replace(/^\s*\d+\s*[·.:)-]\s*/, '') : it.title}</div>
+              <div style={tall ? { fontFamily: SERIF, fontWeight: 500, fontSize: 13.5, color: INK, lineHeight: 1.25, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' } : { fontFamily: SERIF, fontWeight: 500, fontSize: 12.5, color: INK, lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{it.kind === 'Main Mission' ? (it.task_text || it.title).replace(/^\s*(?:gate\s+)?\d+\s*[·.:)-]\s*/i, '') : it.title}</div>
               <div style={{ fontFamily: MONO, fontSize: 8, letterSpacing: '1px', textTransform: 'uppercase', color: colorOf(it.kind, it.size), whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{it.kind === 'Main Mission' ? `Main Mission · ${it.project || ''}` : `${it.kind} · ${SIZES[it.size]?.label || ''}`}</div>
             </div>
             <button onClick={() => act(async () => { const r = await equipObjective(it.id, { clock: true, ignoreStamina: true }); if (!r.ok) throw new Error(r.reasons.join(' · ')) }, `Loaded: ${it.title} · timer on`)} title="Load onto the Loadout" style={{ ...btn(BLUE), padding: '3px 6px' }}><ArrowUpToLine size={10} /></button>
@@ -336,7 +335,7 @@ function StashStack({ items, act, onOpen, dropFromLoadout, wide = false, column 
 function StashPeek({ it, act, onClose, onOpenFull, clips = 0, onFiles }) {
   useEffect(() => { const k = (e) => { if (e.key === 'Escape') onClose() }; window.addEventListener('keydown', k); return () => window.removeEventListener('keydown', k) }, [onClose])
   const color = colorOf(it.kind, it.size)
-  const title = it.kind === 'Main Mission' ? (it.task_text || it.title).replace(/^\s*\d+\s*[·.:)-]\s*/, '') : it.title
+  const title = it.kind === 'Main Mission' ? (it.task_text || it.title).replace(/^\s*(?:gate\s+)?\d+\s*[·.:)-]\s*/i, '') : it.title
   return (
     <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 270, background: 'rgba(5,16,28,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
       <div onClick={e => e.stopPropagation()} style={{ width: 'min(520px, 100%)', background: '#0F2338', border: `1px solid ${alpha(color, 33)}`, borderRadius: 14, padding: '22px 24px', display: 'grid', gap: 14 }}>
@@ -345,7 +344,7 @@ function StashPeek({ it, act, onClose, onOpenFull, clips = 0, onFiles }) {
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 20, color: '#fff', lineHeight: 1.2 }}>{it.kind === 'Main Mission' ? (it.project || 'Main Mission') : it.kind}</div>
             <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginTop: 5 }}>
-              <span style={{ fontSize: 13, fontWeight: 600, color }}>{it.kind === 'Main Mission' ? `Main Mission${(it.task_text || '').match(/^\s*(\d+)\s*[·.:)-]/) ? ` · Gate ${(it.task_text || '').match(/^\s*(\d+)\s*[·.:)-]/)[1]}` : ' · Gate'}` : `${it.kind} · ${SIZES[it.size]?.label || ''}`}</span>
+              <span style={{ fontSize: 13, fontWeight: 600, color }}>{it.kind === 'Main Mission' ? `Main Mission${(it.task_text || '').match(/^\s*(?:gate\s+)?(\d+)\s*[·.:)-]/i) ? ` · Gate ${(it.task_text || '').match(/^\s*(?:gate\s+)?(\d+)\s*[·.:)-]/i)[1]}` : ' · Gate'}` : `${it.kind} · ${SIZES[it.size]?.label || ''}`}</span>
               <span style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '1.2px', textTransform: 'uppercase', color: LABEL }}>in the Stash</span>
             </div>
             <div style={{ fontSize: 15.5, lineHeight: 1.4, color: INK, marginTop: 10 }}>{title}</div>
@@ -444,6 +443,10 @@ function RoutineSlot({ tick, onChanged }) {
 }
 
 export default function LoadoutPanel({ onChange, refreshKey = 0, bare = false }) {
+  // Proposed Steps waiting on David (11/17): the count on the Loadout's button, read when the Board opens or refreshes.
+  const [stepsWaiting, setStepsWaiting] = useState(null)
+  useEffect(() => { let on = true; loadSteps().then(d => { if (on) setStepsWaiting(d.proposals.filter(p => !d.rulings[p.id]).length) }).catch(() => {}); return () => { on = false } }, [refreshKey])
+  const toSteps = () => { try { window.history.pushState({ page: 'main-missions' }, '', '#/main-missions/steps') } catch { /* no-op */ } window.dispatchEvent(new PopStateEvent('popstate')) }
   const [L, setL] = useState(null)
   const [tick, setTick] = useState(0)
   const [open, setOpen] = useState(null)
@@ -459,13 +462,9 @@ export default function LoadoutPanel({ onChange, refreshKey = 0, bare = false })
   const [peek, setPeek] = useState(null)
   const [filesOpen, setFilesOpen] = useState(null)   // null | { objectiveId, title } | {}
   const [clips, setClips] = useState({})
-  // Live Protocols (10/23): the window beside Live Files, every item with a protocol on.
-  const [protoOpen, setProtoOpen] = useState(false)
   // The Stash lives on the Console when the page offers the mount (David 10/25).
   const [stashNode, setStashNode] = useState(null)
   useEffect(() => { const n = document.getElementById('console-stash'); if (n) setStashNode(n) }, [])
-  const [protoCount, setProtoCount] = useState(0)
-  useEffect(() => { let on = true; liveProtocolCounts().then(c => { if (on) setProtoCount(Object.values(c).reduce((a, b) => a + b, 0)) }).catch(() => {}); return () => { on = false } }, [protoOpen, refreshKey])
   const refresh = useCallback(() => Promise.all([fetchLoadout().then(setL), fetchStash().then(setHeld), liveCounts().then(setClips)]).catch(e => console.warn('loadout', e.message)), [])
   useEffect(() => { refresh() }, [refresh, tick, refreshKey])
   useEffect(() => { const t = setInterval(() => setTick(x => x + 1), 30_000); return () => clearInterval(t) }, [])
@@ -505,9 +504,8 @@ export default function LoadoutPanel({ onChange, refreshKey = 0, bare = false })
       {filing && <FileAway objective={filing.o} pockets={filing.p} onClose={() => setFiling(null)} onDone={({ filed, released }) => { const id = filing.o.id; setFiling(null); setMsg(`Filed ${filed.length} to the Archive · extracted ${filing.o.title} · ${released.minutes}m`); logBoard(`Extracted: ${filing.o.title} · filed ${filed.length} to the Archive`); bump(); setYay(id) }} />}
       {recallOf && <RecallModal objectiveId={recallOf.id} taskId={recallOf.task_id || null} title={recallOf.title} onClose={() => setRecallOf(null)} />}
       {logOpen && <ActivityLogModal onClose={() => setLogOpen(false)} />}
-      {protoOpen && <LiveProtocolsModal onClose={() => setProtoOpen(false)} onOpen={(it) => openCard(it.id)} />}
       {filesOpen && <LiveFilesModal onClose={() => setFilesOpen(null)} filter={filesOpen.objectiveId ? filesOpen : null} items={[...(L?.items || []).filter(x => !x.meeting).map(x => ({ ...x, stashed: false })), ...held.map(x => ({ ...x, stashed: true }))]} onChanged={refresh} />}
-      {peek && <StashPeek it={peek} act={act} clips={clips[peek.id] || 0} onFiles={(x) => { setPeek(null); setFilesOpen({ objectiveId: x.id, title: x.kind === 'Main Mission' ? (x.task_text || x.title).replace(/^\s*\d+\s*[·.:)-]\s*/, '') : x.title }) }} onClose={() => setPeek(null)} onOpenFull={(it) => openCard(it.id)} />}
+      {peek && <StashPeek it={peek} act={act} clips={clips[peek.id] || 0} onFiles={(x) => { setPeek(null); setFilesOpen({ objectiveId: x.id, title: x.kind === 'Main Mission' ? (x.task_text || x.title).replace(/^\s*(?:gate\s+)?\d+\s*[·.:)-]\s*/i, '') : x.title }) }} onClose={() => setPeek(null)} onOpenFull={(it) => openCard(it.id)} />}
       {yay && <YayPage objectiveId={yay} fresh onClose={() => setYay(null)} onOpenMission={(o) => { setYay(null); openCard(o.id) }} />}
       {dispatch && <DispatchModal item={dispatch} projects={projects} onClose={() => setDispatch(null)} onDone={(r) => { setDispatch(null); setMsg(`Dispatched: ${dispatch.title} · ${fmtClock(r.minutes)}${r.ported.length ? ` · ported ${r.ported.length}` : ' · nothing left'} · 1 mile on the next update`); logBoard(`Dispatched: ${dispatch.title} · ${fmtClock(r.minutes)}`); bump() }} />}
       {!L ? (
@@ -544,9 +542,9 @@ export default function LoadoutPanel({ onChange, refreshKey = 0, bare = false })
 
           {/* Sessions holder removed from the Board (David 10/25); a session's item still carries its clock on the Activity Board. */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 10, flexWrap: 'wrap' }}>
-            <button onClick={() => setLogOpen(true)} style={btn(BLUE)}><ScrollText size={11} /> Activity Log</button>
-            <button onClick={() => setFilesOpen({})} style={btn(BLUE)}><Paperclip size={11} /> Live Files{Object.values(clips).reduce((a, b) => a + b, 0) ? ` · ${Object.values(clips).reduce((a, b) => a + b, 0)}` : ''}</button>
-            <button onClick={() => setProtoOpen(true)} style={btn(protoCount ? GOLD : BLUE)}><ListChecks size={11} /> Live Protocols{protoCount ? ` · ${protoCount}` : ''}</button>
+            {/* The Loadout's two doors (David 11/17): the Activity Log and the Proposed Steps waiting on his ruling. Live Files and Live Protocols left this row on his word. */}
+            <button className="ld-btn" onClick={() => setLogOpen(true)}><ScrollText size={15} /> Activity Log</button>
+            <button className="ld-btn" onClick={toSteps} title="What Lumen proposes to write on each mission's trail, waiting for Accept or Reject"><Footprints size={15} /> Proposed Steps{stepsWaiting !== null && <span className={`n${stepsWaiting >= CLEAR_AT ? ' over' : ''}`}>{stepsWaiting}</span>}</button>
             {msg && msg.startsWith('Could not') && <span style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '1px', color: RED, textTransform: 'uppercase' }}>{msg}</span>}
           </div>
         </>

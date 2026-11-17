@@ -93,7 +93,7 @@ const isBlocked = (t) => t.status === 'blocked'
 // Gates without a number follow in creation order and are numbered by
 // position. When a mission has numbered gates, its unnumbered closed
 // tasks are earlier work (history before the plan was reset) and fold away.
-const NUM_RE = /^\s*(\d+)\s*[·.:)-]\s*/
+const NUM_RE = /^\s*(?:gate\s+)?(\d+)\s*[·.:)-]\s*/i
 const numOf = (t) => { const m = NUM_RE.exec(String(t?.text || '')); return m ? Number(m[1]) : null }
 const stripNum = (t) => String(t || '').replace(NUM_RE, '')
 const byCreated = (a, b) => new Date(a.created_at) - new Date(b.created_at)
@@ -473,7 +473,7 @@ function ProjectDetail({ project, board: boardProp, api, onBack, initialTab, ini
       const r = await fetch('/api/gate-draft', { method: 'POST', headers: { Authorization: `Bearer ${session?.access_token || ''}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ text, project: project.name, polaris: project.description || '', existing: (tasks || []).map(t => stripNum(t.text)) }) })
       const j = await r.json().catch(() => ({}))
       if (!r.ok || j.error) throw new Error(j.error || `draft ${r.status}`)
-      const n = j.number || (text.match(/^\s*(\d+)\s*[·.:)-]/) || [])[1] || null
+      const n = j.number || (text.match(/^\s*(?:gate\s+)?(\d+)\s*[·.:)-]/i) || [])[1] || null
       setDraft({ ...j, number: n ? Number(n) : null })
     } catch (e) { setDraftErr(e?.message || String(e)) } finally { setDrafting(false) }
   }

@@ -46,7 +46,7 @@ const monthName = (ms) => new Date(ms).toLocaleDateString('en-US', { month: 'sho
 const yearOf = (ms) => new Date(ms).getUTCFullYear()
 const dayLabel = (iso) => iso ? new Date(`${iso}T12:00:00Z`).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : ''
 const isOpenTask = (t) => t.status !== 'done' && !t.done
-const NUM_RE = /^\s*(\d+)\s*[·.:)-]\s*/
+const NUM_RE = /^\s*(?:gate\s+)?(\d+)\s*[·.:)-]\s*/i
 const stripNum = (t) => String(t || '').replace(NUM_RE, '')
 
 // =============================================================================

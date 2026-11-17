@@ -93,14 +93,20 @@ async function loadRelated(item) {
       // A Main Mission gate (David 11/4): its number and the mission's count, the same way the Main Mission page numbers them.
       if (task) {
         try {
-          const { data: pts } = await supabase.from('project_tasks').select('id,text,status,created_at').eq('project_id', pid).order('created_at')
-          const numOf = (t) => { const m = /^\s*(\d+)\s*[·.:)-]/.exec(String(t?.text || '')); return m ? Number(m[1]) : null }
+          const { data: pts } = await supabase.from('project_tasks').select('id,text,status,done,released_at,objective_id,created_at').eq('project_id', pid).order('created_at')
+          const numOf = (t) => { const m = /^\s*(?:gate\s+)?(\d+)\s*[·.:)-]/i.exec(String(t?.text || '')); return m ? Number(m[1]) : null }
           const all = pts || []
           const numbered = all.filter(t => numOf(t) !== null)
           const unnumberedOpen = all.filter(t => numOf(t) === null && t.status !== 'done')
           out.gateOf = numbered.length ? numbered.length + unnumberedOpen.length : all.length
           const n = numOf(task)
           out.gateN = n !== null ? n : (all.findIndex(t => t.id === task.id) + 1 || null)
+          // The mission's gates around this one (David 11/17: the card's trail shows the gates behind it and the
+          // gates still ahead, "the whole point in the beginning"). Numbered ones by number, the rest by creation.
+          const strip = (t) => String(t || '').replace(/^\s*(?:gate\s+)?\d+\s*[·.:)-]\s*/i, '')
+          const nOf = (t, i) => { const k = numOf(t); return k !== null ? k : i + 1 }
+          out.missionGates = all.map((t, i) => ({ id: t.id, n: nOf(t, i), text: strip(t.text), done: t.status === 'done' || !!t.done, done_at: t.released_at, objective_id: t.objective_id, current: t.id === task.id })).sort((x, y) => x.n - y.n)
+          out.mission = { id: pid, name: p.name, polaris: p.description || null }
         } catch { /* the fence falls back to ? of ? */ }
       }
     }
@@ -327,7 +333,7 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
           if (task || rel?.project || item.project) {
             nodes.push({ label: 'Main Missions', onClick: nav('main-missions') })
             nodes.push({ label: rel?.project?.name || item.project, onClick: rel?.project ? () => go([rel.project.id]) : null })
-            const n = String(task?.text || '').match(/^\s*(\d+)\s*[·.:)-]/)
+            const n = String(task?.text || '').match(/^\s*(?:gate\s+)?(\d+)\s*[·.:)-]/i)
             head = task ? `Gate${n ? ` ${n[1]}` : ''}` : item.kind
             chip = { kind: 'Main Mission', label: 'Main Mission', color: KIND_COLOR['Main Mission'] }
           } else if (item.kind === 'Event' || item.kind === 'Session' || item.kind === 'Ad Hoc') {
@@ -346,7 +352,7 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
             const sdef = sk && SIZES[sk] ? SIZES[sk] : null
             chip = sdef ? { kind: 'Side Mission', label: sdef.label, color: sdef.color } : { kind: 'Side Mission', label: 'Side Mission', color: GOLD }
           }
-          const name = task ? String(item.title || '').replace(/^\s*\d+\s*[·.:)-]\s*/, '') : item.title
+          const name = task ? String(item.title || '').replace(/^\s*(?:gate\s+)?\d+\s*[·.:)-]\s*/i, '') : item.title
           // What the card is, in the chip: a Bounty, Gate 2 Of 5, a Meeting at 1:00.
           const chipLabel = task ? head : rel?.parent ? `${head}${rel.gateOf ? ` Of ${rel.gateOf}` : ''}` : item.kind === 'Event' ? `Meeting${chip?.label ? ` · ${chip.label}` : ''}` : chip?.label
           return (
@@ -387,7 +393,7 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
 
           {rel && tab === 'briefing' && (
             <div style={{ display: 'grid', gap: 22 }}>
-              {obj && <CardBriefing obj={obj} root={objRoot(obj.id)} kindLabel={rel.parent ? 'Gate' : task ? 'Gate' : item.kind === 'Ad Hoc' ? 'Ad Hoc item' : (SIZES[sizeOf(obj)]?.label || 'Side Mission')} steps={rel.steps || []} kids={rel.children || []} boardItems={boardStops} loaded={loaded} due={(task ? task.due_date : obj.due_date) || null} isGate={!!rel.parent} isMythic={!rel.parent && sizeOf(obj) === 'heavy'} onReload={async () => { await load(); onChange && onChange() }} onTab={setTab} onOpenCard={openCard} say={setMsg} />}
+              {obj && <CardBriefing obj={obj} root={objRoot(obj.id)} kindLabel={rel.parent ? 'Gate' : task ? 'Gate' : item.kind === 'Ad Hoc' ? 'Ad Hoc item' : (SIZES[sizeOf(obj)]?.label || 'Side Mission')} steps={rel.steps || []} kids={rel.children || []} boardItems={boardStops} loaded={loaded} due={(task ? task.due_date : obj.due_date) || null} isGate={!!rel.parent} missionGates={task ? (rel.missionGates || []) : []} mission={task ? rel.mission : null} onOpenMission={rel?.project ? () => go([rel.project.id]) : undefined} onReload={async () => { await load(); onChange && onChange() }} onTab={setTab} onOpenCard={openCard} say={setMsg} />}
               {!obj && item.kind !== 'Event' && item.kind !== 'Session' && <WhereItStands rel={rel} task={task} taskId={taskId} linkedBoards={linkedBoards} />}
               {!obj && (item.description || task?.notes) && <div><Label>Back Story</Label><div style={{ fontSize: 14.5, lineHeight: 1.65, color: INK, whiteSpace: 'pre-wrap' }}>{item.description || task.notes}</div></div>}
               {item.event && (

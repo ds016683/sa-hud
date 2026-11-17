@@ -53,7 +53,7 @@ export async function fetchLoadout() {
   const projByObj = new Map(linked.map(l => [l.objective_id, projName.get(l.project_id)]))
   const projIdByObj = new Map(linked.map(l => [l.objective_id, l.project_id]))
   // The gate's number and the mission's count: a typed "N · " wins, else position by creation.
-  const NUM = /^\s*(\d+)\s*[·.:)-]\s*/
+  const NUM = /^\s*(?:gate\s+)?(\d+)\s*[·.:)-]\s*/i
   const taskInfo = new Map()
   for (const l of linked) {
     const all = links.filter(t => t.project_id === l.project_id).sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
@@ -352,7 +352,7 @@ export async function itemFromObjective(id) {
     if (!t) return null
     if (t.objective_id) return itemFromObjective(t.objective_id)
     const project = (await q(supabase.from('projects').select('id,name').eq('id', t.project_id).limit(1)))[0] || null
-    return { id: t.id, objective_id: null, task_id: t.id, kind: 'Main Mission', title: String(t.text || '').replace(/^\s*\d+\s*[·.:)-]\s*/, ''), project: project?.name || null, project_id: project?.id || null, task_text: t.text, description: t.notes, tags: [], size: 'light', north_star: null, personal: false }
+    return { id: t.id, objective_id: null, task_id: t.id, kind: 'Main Mission', title: String(t.text || '').replace(/^\s*(?:gate\s+)?\d+\s*[·.:)-]\s*/i, ''), project: project?.name || null, project_id: project?.id || null, task_text: t.text, description: t.notes, tags: [], size: 'light', north_star: null, personal: false }
   }
   const o = (await q(supabase.from('objectives').select('id,title,tags,effort,description,north_star,state,due_date').eq('id', id).limit(1)))[0]
   if (!o) return null

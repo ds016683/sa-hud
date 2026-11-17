@@ -1409,3 +1409,11 @@ button.brf-chip:hover { border-color: var(--hud-accent); }
 .lumen-dot.wait { animation: brfstar 1s ease infinite; }
 @media (max-width: 860px) { .brf-grid { grid-template-columns: minmax(0, 1fr); gap: 26px; } }
 @media (prefers-reduced-motion: reduce) { .brf-stop.closing .hit .o, .brf-stop.closing .hit::after, .brf-spark, .brf-stop.fresh, .brf-ev.end.lit::before, .lumen-push, .lumen-dot.wait { animation: none; } }
+
+/* The Loadout's doors (David 11/17): body face, Title Case, a quiet fill that lifts on hover; the count rides in a chip. */
+.ld-btn { display: inline-flex; align-items: center; gap: 9px; font-family: inherit; font-size: 13.5px; font-weight: 600; line-height: 1; padding: 10px 15px; border-radius: 11px; border: 1px solid var(--hud-border); background: var(--hud-fill); color: var(--hud-ink); cursor: pointer; transition: border-color .15s, background .15s, transform .15s; }
+.ld-btn:hover { border-color: color-mix(in srgb, var(--hud-accent) 55%, transparent); background: var(--hud-fill-2); transform: translateY(-1px); }
+.ld-btn:focus-visible { outline: 2px solid var(--hud-accent); outline-offset: 2px; }
+.ld-btn svg { color: var(--hud-accent); flex-shrink: 0; }
+.ld-btn .n { font-size: 12.5px; font-weight: 600; padding: 3px 8px; border-radius: 99px; background: color-mix(in srgb, var(--hud-accent) 20%, transparent); color: var(--hud-ink); }
+.ld-btn .n.over { background: color-mix(in srgb, var(--hud-neg) 28%, transparent); }
