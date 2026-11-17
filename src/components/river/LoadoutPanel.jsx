@@ -26,7 +26,7 @@ import ActivityLogModal from './ActivityLog'
 import LiveFilesModal, { ClipButton } from './LiveFiles'
 import { liveCounts } from '../../lib/livefiles'
 import ItemDetail from './ItemDetail'
-import { INK, INK2, GRAY, PANEL_BORDER, GOLD, GOLD_BRIGHT, BLUE, GREEN, RED, MONO, SERIF, S, Eyebrow, Label, Panel, KIND_COLOR, KindChip, NORTH_STAR_LABEL, LABEL, MUTED, alpha } from './canon'
+import { INK, INK2, GRAY, PANEL_BORDER, GOLD, GOLD_BRIGHT, BLUE, GREEN, RED, MONO, SERIF, S, Eyebrow, Label, Panel, KIND_COLOR, KindChip, NORTH_STAR_LABEL, LABEL, MUTED, SUCCESS, alpha } from './canon'
 import { openCard } from '../../lib/card'
 
 const btn = (color = INK2, filled = false) => ({
@@ -177,8 +177,10 @@ export function FilledSlot({ it, n, act, onOpen, onExtract, onRecall, dropFromSt
   const gate = gates.find(g => !g.done) || null
   // Any mission can carry gates (David 11/16), and any closed gate pays (11/17).
   const sizeLabel = it.size === 'heavy' ? 'Mythic' : it.size === 'medium' ? 'Contract' : 'Bounty'
-  const typeLine = main ? (it.task_n ? `Gate ${it.task_n} of ${it.task_total}` : 'Main Mission gate')
-    : gates.length ? `${sizeLabel} · gate ${Math.min(gatesDone + 1, gates.length)} of ${gates.length} · ${gates.map(g => g.done ? '✓' : '○').join(' ')}` : `${sizeLabel} · no gates`
+  // The face says which gate this is, then the mission's count in two plain numbers and a bar (David 11/17:
+  // "a clean, crisp way to put gates accomplished, gates remaining").
+  const typeLine = main ? `Main Mission${it.task_n ? ` · Gate ${it.task_n}` : ''}` : `${it.kind} · ${sizeLabel}`
+  const meter = main ? (it.task_total ? { closed: it.task_closed || 0, total: it.task_total } : null) : gates.length ? { closed: gatesDone, total: gates.length } : null
   const task = main ? (it.task_text || it.title) : gates.length ? (gate ? gate.text : 'Every gate closed. Extract.') : null
   const miles = main ? { n: MILES.gate, sub: 'on close' } : { n: baseMiles(it.size), sub: gatesDone ? `on close · ${MILES.gate * gatesDone} banked on gates` : 'on close' }
   const due = fmtDue(it.due_date)
@@ -189,8 +191,13 @@ export function FilledSlot({ it, n, act, onOpen, onExtract, onRecall, dropFromSt
         <BadgeMedallion id={badgeFor(it)} size={50} color={colorOf(it.kind, it.size)} />
         <div style={{ flex: 1, minWidth: 0, display: 'grid', gap: 2 }}>
           <div onClick={() => onOpen(it)} title={main ? (it.project || 'Main Mission') : it.title} style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 14.5, color: INK, lineHeight: 1.25, cursor: 'pointer', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{main ? (it.project || 'Main Mission') : it.title}</div>
-          <div style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '1.4px', textTransform: 'uppercase', color }}>{it.kind}{it.personal ? ' · personal' : ''}</div>
-          <div style={{ fontFamily: MONO, fontSize: 10.5, letterSpacing: '1.1px', textTransform: 'uppercase', color: LABEL }}>{typeLine}</div>
+          <div style={{ fontSize: 12.5, fontWeight: 600, color, lineHeight: 1.35 }}>{typeLine}{it.personal ? ' · Personal' : ''}</div>
+          {meter && (
+            <div title={`${meter.closed} of ${meter.total} gates closed`} style={{ marginTop: 3 }}>
+              <div style={{ fontSize: 12.5, color: MUTED, lineHeight: 1.3 }}><b style={{ color: INK, fontWeight: 600 }}>{meter.closed}</b> Closed <span style={{ color: GRAY }}>·</span> <b style={{ color: INK, fontWeight: 600 }}>{meter.total - meter.closed}</b> Open</div>
+              <div style={{ height: 4, borderRadius: 99, background: 'rgba(234,241,248,0.12)', marginTop: 5, overflow: 'hidden' }}><div style={{ width: `${meter.total ? (100 * meter.closed) / meter.total : 0}%`, height: '100%', borderRadius: 99, background: SUCCESS }} /></div>
+            </div>
+          )}
         </div>
         <Notches from={n - 1} span={span} color={SIZES[it.size]?.color || INK2} />
       </div>

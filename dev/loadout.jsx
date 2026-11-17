@@ -7,7 +7,7 @@ import { FilledSlot } from '../src/components/river/LoadoutPanel'
 
 const base = { id: 'x', due_date: null, north_star: 'A tool that assesses short term cash needs and the short/medium term decisions required for business continuity.', steps: [], tags: [] }
 const seed = [
-  { ...base, id: 'a', kind: 'Main Mission', project: 'Company Finance Review', title: 'Company Finance Review', task_text: 'Publish and Circulate the Strategy Review and Disseminate to the Board', task_n: 12, task_total: 12, effort: 1, size: 'light', slots: 1, equipped: false, minutes_today: 0 },
+  { ...base, id: 'a', kind: 'Main Mission', project: 'Company Finance Review', title: 'Company Finance Review', task_text: 'Publish and Circulate the Strategy Review and Disseminate to the Board', task_n: 12, task_total: 12, task_closed: 7, effort: 1, size: 'light', slots: 1, equipped: false, minutes_today: 0 },
   { ...base, id: 'b', kind: 'Side Mission', title: 'Rate Compass pricing memo', effort: 3, size: 'medium', slots: 2, equipped: true, minutes_today: 153, due_date: '2026-11-10' },
   { ...base, id: 'c', kind: 'Side Mission', title: 'Call Greg on the TKF SOW', effort: 1, size: 'light', slots: 1, equipped: false, minutes_today: 0, north_star: null },
 ]

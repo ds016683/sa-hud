@@ -58,7 +58,7 @@ export async function fetchLoadout() {
   for (const l of linked) {
     const all = links.filter(t => t.project_id === l.project_id).sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
     const m = NUM.exec(l.text || '')
-    taskInfo.set(l.objective_id, { task_id: l.id, task_text: String(l.text || '').replace(NUM, ''), task_n: m ? Number(m[1]) : all.indexOf(l) + 1, task_total: all.length })
+    taskInfo.set(l.objective_id, { task_id: l.id, task_text: String(l.text || '').replace(NUM, ''), task_n: m ? Number(m[1]) : all.indexOf(l) + 1, task_total: all.length, task_closed: all.filter(t => t.status === 'done').length })
   }
   const stepRows = active.length ? await q(supabase.from('objective_steps').select('objective_id,text,done,done_at,position').in('objective_id', active.map(o => o.id)).order('position')) : []
   const running = clocks.find(c => !c.stopped_at) || null
