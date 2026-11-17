@@ -7,7 +7,8 @@
 // early, but no miles until i've hit 45. no limits on the number of runs taht can award miles."
 //
 // How it is built: each minute the canvass gathers raw events with no model call; Lumen reads the
-// whole log once, at Extract, and writes the report. The run watches; the missions keep their own
+// whole log once, at Extract, and writes the report. Sources: mail, the mission clocks, gates, session
+// work, files, messages to Lumen, the calendar, his own Slack messages and the front app on his Mac. The run watches; the missions keep their own
 // clocks. Two kinds of file in project-files/runs, written here only:
 //   index.json   { v, runs: [ the face of every run ] }
 //   <id>.json    { id, cursor, seen, seen_events, unread, log, mac }   the working log of one run
@@ -108,6 +109,15 @@ async function gather(doc, now) {
     doc.seen[b.project] = done.map(t => t.id)
   }
   for (const f of files) { if (f.bucket === 'request') continue; const n = f.objective_id ? await names.objective(f.objective_id) : { mission: names.project(f.project_id) }; add(f.created_at, 'hud', `File added: ${f.name}`, n.mission) }
+  // What David wrote in Slack. The Slack pipe lands every five minutes, so a message can arrive after the
+  // minute it was sent: each one is taken once by id, from the start of the run.
+  const me = process.env.SLACK_USER_ID
+  const slackRows = me ? await sb(`slack_messages?select=id,ts,channel_name,channel_type,body_preview,text&user_id=eq.${enc(me)}&ts=gt.${enc(doc.started_at)}&order=ts.asc&limit=80`).catch(() => []) : []
+  for (const m of slackRows) {
+    if ((doc.seen_slack || []).includes(m.id)) continue
+    add(m.ts, 'slack', `${m.channel_type === 'im' || m.channel_type === 'mpim' ? 'Direct message' : `#${m.channel_name || 'channel'}`}: ${flat(m.body_preview || m.text, 90)}`)
+    doc.seen_slack = [...(doc.seen_slack || []), m.id]
+  }
   for (const m of said) add(m.at, 'lumen', `To Lumen (${m.channel}${m.kind === 'audio' ? ', voice' : ''}): ${flat(m.body, 90)}`)
   for (const ev of cal) { if (ev.is_all_day || (doc.seen_events || []).includes(ev.id)) continue; add(now, 'calendar', `On the calendar now: ${flat(ev.subject, 90)}`); doc.seen_events = [...(doc.seen_events || []), ev.id] }
   return events.sort((a, b) => String(a.at).localeCompare(String(b.at)))
