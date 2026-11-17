@@ -1,7 +1,8 @@
 // The Loadout (David, 9/27): what he carries into the day. Mirror of
 // api/_loadout.mjs for the HUD's own hands (the Board page and the River).
 //
-//   Slots     three slots of planned work; an item takes 1, 2, or 3 of them
+//   Slots     two mission slots, Primary and Secondary, one mission each; a third, the Utility slot,
+//             for the Console's buttons and the unplanned (David 11/17)
 //             (the slot economy, David 10/7: manage the bag, not a count)
 //   Type      Bounty (1 slot, a quick hit), Contract (2 slots, a standard job),
 //             Mythic (3 slots, several gates, each a card of its own: objectives.parent_id)
@@ -11,13 +12,17 @@
 import { supabase } from './supabase'
 import { BLUE, GOLD, MYTHIC } from '../components/river/canon'
 
-export const SLOTS = 3
+// The Loadout's slots (David 11/17): "each mission gets one slot. Then, we go down to a Primary and
+// Secondary slot. The third slot is a utility slot and can only be occupied by email, slack review,
+// bill pay, or any other of the buttons, or, unplanned." So two mission slots, one each, whatever the size.
+export const SLOTS = 2
+export const SLOT_NAMES = ['Primary', 'Secondary']
 export const HEAVY_MAX = 1
 export const DAY_END_HOUR = 18
 export const SIZES = {
-  light:  { label: 'Bounty',  slots: 1, hours: 1, effort: 1, color: GOLD, sub: 'one discrete action with a clear finish, under an hour: an email, a call, a read-and-reply · 1 slot · 4 miles' },
-  medium: { label: 'Contract',  slots: 2, hours: 4, effort: 3, color: BLUE, sub: 'a standard piece of work with a deliverable: a review, a concept paper, a research pass · 2 slots · 15 miles + 7 per gate' },
-  heavy:  { label: 'Mythic', slots: 3, hours: 8, effort: 5, color: MYTHIC, sub: 'a large piece of work with several gates, done within days · 3 slots · 50 miles + 7 per gate' },
+  light:  { label: 'Bounty',  slots: 1, hours: 1, effort: 1, color: GOLD, sub: 'one discrete action with a clear finish, under an hour: an email, a call, a read-and-reply · 4 miles' },
+  medium: { label: 'Contract',  slots: 1, hours: 4, effort: 3, color: BLUE, sub: 'a standard piece of work with a deliverable: a review, a concept paper, a research pass · 15 miles + 7 per gate' },
+  heavy:  { label: 'Mythic', slots: 1, hours: 8, effort: 5, color: MYTHIC, sub: 'a large piece of work with several gates, done within days · 50 miles + 7 per gate' },
 }
 export const slotsOf = (o) => SIZES[sizeOf(o)].slots
 export const sizeOf = (o) => { const e = Number(o?.effort) || 1; return e >= 4 ? 'heavy' : e === 3 ? 'medium' : 'light' }
@@ -85,15 +90,16 @@ export async function fetchLoadout() {
       equipped: true, running_since: ms.started_at, minutes_today: ((Number(ms.hours) || 0) * 60) + (now - new Date(ms.started_at).getTime()) / 60000,
       session: false, project: null, project_id: null, description: null, kind: 'Event', personal: false, adhoc: false, call: false, meeting: true, ends_at: ev?.end_at || null, steps: [], north_star: null })
   }
-  // Three slots for planned work; the Ad Hoc slot carries impromptu items
-  // (one at a time) and never counts against the three (David, 10/7).
-  const board = items.filter(i => !i.session && !i.adhoc)
+  // Two mission slots; the Utility slot carries the unplanned (one at a time), a running meeting and the
+  // Console's buttons, none of which count against the two (David 11/17).
+  const board = items.filter(i => !i.session && !i.adhoc && !i.meeting)
+  const meetings = items.filter(i => i.meeting)
   const adhoc = items.filter(i => !i.session && i.adhoc)
   const meetingsLeft = events.filter(e => !e.is_all_day && e.end_at > nowIso).reduce((s, e) => s + Math.max(0, (new Date(e.end_at) - Math.max(now, new Date(e.start_at))) / 3600e3), 0)
   const free = Math.max(0, Math.round((hoursToDayEnd() - meetingsLeft) * 10) / 10)
   const loaded = Math.round(board.reduce((s, i) => s + i.hours, 0) * 10) / 10
   return {
-    day, items, board, adhoc, sessions: items.filter(i => i.session),
+    day, items, board, adhoc, meetings, sessions: items.filter(i => i.session),
     equipped: items.find(i => i.equipped) || null,
     slots: { used: board.reduce((n, i) => n + i.slots, 0), max: SLOTS, items: board.length }, heavy: { used: board.filter(i => i.size === 'heavy').length, max: HEAVY_MAX },
     hours: { free, loaded, meetingsLeft: Math.round(meetingsLeft * 10) / 10, afterHours: hoursToDayEnd() === 0 },
@@ -215,11 +221,11 @@ export function fitReasons(L, size = 'light', { alreadyLoadedId, adhoc = false, 
   const reasons = []
   const already = alreadyLoadedId && L.items.some(i => i.id === alreadyLoadedId)
   if (already) return reasons
-  if (adhoc) { if (L.adhoc.length) reasons.push(`the Ad Hoc slot is taken: ${L.adhoc[0].title}. Dispatch it first.`); return reasons }
+  if (adhoc) { if (L.adhoc.length) reasons.push(`the Utility slot is taken: ${L.adhoc[0].title}. Dispatch it first.`); return reasons }
   const sz = SIZES[size] || SIZES.light
   const hours = sz.hours
   const free = SLOTS - L.slots.used
-  if (sz.slots > free) reasons.push(`${sz.label} takes ${sz.slots} slot${sz.slots === 1 ? '' : 's'} and the Board has ${free} free (${L.board.map(i => `${i.title} · ${i.slots}`).join(' | ') || 'empty'})`)
+  if (free < 1) reasons.push(`Primary and Secondary are both taken (${L.board.map(i => i.title).join(' | ')}). Stash or holster one first.`)
   return reasons
 }
 

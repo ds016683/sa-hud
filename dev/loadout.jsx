@@ -3,12 +3,12 @@
 import { StrictMode, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import '../src/sa-hud.css'
-import { FilledSlot } from '../src/components/river/LoadoutPanel'
+import { FilledSlot, EmptySlot, AdHocSlot } from '../src/components/river/LoadoutPanel'
 
 const base = { id: 'x', due_date: null, north_star: 'A tool that assesses short term cash needs and the short/medium term decisions required for business continuity.', steps: [], tags: [] }
 const seed = [
   { ...base, id: 'a', kind: 'Main Mission', project: 'Company Finance Review', title: 'Company Finance Review', task_text: 'Publish and Circulate the Strategy Review and Disseminate to the Board', task_n: 12, task_total: 12, task_closed: 7, effort: 1, size: 'light', slots: 1, equipped: false, minutes_today: 0 },
-  { ...base, id: 'b', kind: 'Side Mission', title: 'Rate Compass pricing memo', effort: 3, size: 'medium', slots: 2, equipped: true, minutes_today: 153, due_date: '2026-11-10' },
+  { ...base, id: 'b', kind: 'Side Mission', title: 'Rate Compass pricing memo', effort: 3, size: 'medium', slots: 1, equipped: true, minutes_today: 153, due_date: '2026-11-10' },
   { ...base, id: 'c', kind: 'Side Mission', title: 'Call Greg on the TKF SOW', effort: 1, size: 'light', slots: 1, equipped: false, minutes_today: 0, north_star: null },
 ]
 
@@ -24,8 +24,10 @@ function App() {
   let n = 1
   return (
     <div className="sa-dark" style={{ minHeight: '100vh', background: 'var(--hud-surface, #0E2336)', padding: 24, color: 'var(--hud-ink, #EAF1F8)', fontFamily: 'Instrument Sans, system-ui, sans-serif' }}><div style={{ maxWidth: 1480, margin: '0 auto' }}>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 14, alignItems: 'stretch' }}>
-        {items.map(it => { const at = n; n += it.slots; return <FilledSlot key={it.id} it={it} n={at} act={act} onOpen={() => {}} onExtract={() => console.log('extract')} onRecall={() => console.log('recall')} /> })}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 14, alignItems: 'stretch' }}>
+        {items.slice(0, 2).map(it => { const at = n; n += 1; return <FilledSlot key={it.id} it={it} n={at} act={act} onOpen={() => {}} onExtract={() => console.log('extract')} onRecall={() => console.log('recall')} /> })}
+        {items.length < 2 && <EmptySlot n={2} />}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, minWidth: 0 }}><AdHocSlot item={null} act={act} onDispatch={() => {}} onOpen={() => {}} onChanged={() => {}} onRecall={() => {}} /></div>
       </div>
     </div></div>
   )

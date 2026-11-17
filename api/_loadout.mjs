@@ -1,6 +1,6 @@
 // The Loadout (David, 9/27): what he carries into the day.
 //
-//   Slots     three slots of planned work; an item takes 1, 2, or 3 of them
+//   Slots     two mission slots, Primary and Secondary, one mission each; the Utility slot is the third
 //             (the slot economy, David 10/7)
 //   Type      Bounty (1 slot, a quick hit), Contract (2 slots, a standard job),
 //             Mythic (3 slots, several steps, the only type with a steps module); bigger than that is a Main
@@ -16,13 +16,13 @@
 // `clocks` (sql/2026-09-27-loadout.sql). Harvest is never touched.
 import { sb, sbWrite, chiToday } from './_ledger.mjs'
 
-export const SLOTS = 3
+export const SLOTS = 2   // Primary and Secondary, one mission each (David 11/17); the Utility slot is the third
 export const HEAVY_MAX = 1
 export const DAY_END_HOUR = 18
 export const SIZES = {
   light:  { label: 'Bounty',  slots: 1, hours: 1, effort: 1 },
-  medium: { label: 'Contract',  slots: 2, hours: 4, effort: 3 },
-  heavy:  { label: 'Mythic', slots: 3, hours: 8, effort: 5 },
+  medium: { label: 'Contract',  slots: 1, hours: 4, effort: 3 },
+  heavy:  { label: 'Mythic', slots: 1, hours: 8, effort: 5 },
 }
 export const sizeOf = (o) => { const e = Number(o?.effort) || 1; return e >= 4 ? 'heavy' : e === 3 ? 'medium' : 'light' }
 export const effortOf = (size) => (SIZES[String(size || '').toLowerCase()] || SIZES.light).effort
@@ -68,9 +68,9 @@ export async function loadout() {
   }))
   // A meeting with its timer running takes one slot while it runs (David, 10/14).
   for (const ms of meetingsRunning) items.push({ id: `meeting:${ms.event_id}`, title: ms.subject || 'Meeting', tags: [], size: 'light', size_label: 'Meeting', slots: 1, hours: 1, due_date: null, equipped: true, minutes_today: Math.round(((Number(ms.hours) || 0) * 60) + (Date.now() - new Date(ms.started_at).getTime()) / 60000), session: false, kind: 'meeting', adhoc: false, meeting: true })
-  // The three slots hold planned work. Impromptu items ride the Ad Hoc slot
-  // (one at a time) and never count against the three (David, 10/7).
-  const board = items.filter(i => !i.session && !i.adhoc)
+  // Two mission slots, Primary and Secondary. The unplanned, a running meeting and the Console's buttons
+  // ride the Utility slot and never count against the two (David 11/17).
+  const board = items.filter(i => !i.session && !i.adhoc && !i.meeting)
   const adhoc = items.filter(i => !i.session && i.adhoc)
   const meetingsLeft = events.filter(e => !e.is_all_day && e.end_at > nowIso).reduce((s, e) => s + Math.max(0, (new Date(e.end_at) - Math.max(Date.now(), new Date(e.start_at))) / 3600e3), 0)
   const freeHours = Math.max(0, Math.round((hoursToDayEnd() - meetingsLeft) * 10) / 10)
@@ -80,7 +80,7 @@ export async function loadout() {
     hours: { free_hours: freeHours, loaded_hours: loaded, meetings_left_hours: Math.round(meetingsLeft * 10) / 10, day_end: `${DAY_END_HOUR}:00 CT`, after_hours: hoursToDayEnd() === 0, note: hoursToDayEnd() === 0 ? 'After 6 PM: stamina is not enforced, slots and Heavy still are.' : 'Loaded hours must fit within free hours before 6 PM.' },
     equipped: items.find(i => i.equipped) || null,
     items, sessions: items.filter(i => i.session), adhoc,
-    rules: `${SLOTS} slots of planned work; a Bounty takes 1, a Contract 2, a Mythic all 3. One clock running. One Ad Hoc slot for the unplanned (impromptu items, calls), which must be dispatched before another lands. Over the limit: stash (park) something first.`,
+    rules: `Two mission slots, Primary and Secondary; every mission takes one, whatever its size. One clock running. The third slot is the Utility slot: only a Console button (E-mail, Slack Review, Bill Pay and the others) or the unplanned (a phone call or a non-mission task, 1 mile each), which must be dispatched before another lands. Both mission slots taken: stash (park) one first.`,
   }
 }
 
@@ -93,13 +93,13 @@ export async function checkFit(candidate, { force = false } = {}) {
   const reasons = []
   const impromptu = candidate.impromptu || (Array.isArray(candidate.tags) && candidate.tags.includes('impromptu'))
   if (impromptu && !already) {
-    if (L.adhoc.length) reasons.push(`the Ad Hoc slot is taken: "${L.adhoc[0].title}" (${L.adhoc[0].minutes_today}m on the clock). Dispatch it first.`)
+    if (L.adhoc.length) reasons.push(`the Utility slot is taken: "${L.adhoc[0].title}" (${L.adhoc[0].minutes_today}m on the clock). Dispatch it first.`)
     return { ok: force || reasons.length === 0, forced: force && reasons.length > 0, reasons, loadout: L }
   }
   if (!already) {
-    const need = (SIZES[size] || SIZES.light).slots, free = SLOTS - L.slots.used
-    if (need > free) reasons.push(`${(SIZES[size] || SIZES.light).label} takes ${need} slot${need === 1 ? '' : 's'} and the Board has ${free} free: ${L.items.filter(i => !i.session && !i.adhoc).map(i => `${i.title} (${i.slots})`).join(' | ') || 'empty'}`)
-    // The hours rule is gone (David 10/21): slots and one Heavy are the only fit rules.
+    const free = SLOTS - L.slots.used
+    if (free < 1) reasons.push(`Primary and Secondary are both taken: ${L.items.filter(i => !i.session && !i.adhoc && !i.meeting).map(i => i.title).join(' | ')}. Stash or holster one first.`)
+    // The only fit rule (David 11/17): two mission slots, one mission each.
   }
   return { ok: force || reasons.length === 0, forced: force && reasons.length > 0, reasons, loadout: L }
 }

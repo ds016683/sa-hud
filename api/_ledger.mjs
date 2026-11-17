@@ -779,7 +779,7 @@ export const TOOLS = [
   },
   {
     name: 'set_size',
-    description: "Set a Side Mission's type by title: light = Bounty (1 slot, one discrete action under an hour, 4 miles), medium = Contract (2 slots, a standard piece of work with a deliverable, a couple of hours, 15 miles), heavy = Mythic (3 slots, a large piece of work done within days, 50 miles). Any of them can carry gates, as many as the mission needs, and every closed gate pays 7 (David 11/17). Bigger than a Mythic is a Main Mission.",
+    description: "Set a Side Mission's type by title: light = Bounty (one discrete action under an hour, 4 miles), medium = Contract (a standard piece of work with a deliverable, a couple of hours, 15 miles), heavy = Mythic (a large piece of work done within days, 50 miles). Size sets the miles only: every mission takes one slot on the Board (David 11/17). Any of them can carry gates, as many as the mission needs, and every closed gate pays 7 (David 11/17). Bigger than a Mythic is a Main Mission.",
     inputSchema: { type: 'object', properties: { title: { type: 'string' }, size: { type: 'string', enum: ['light', 'medium', 'heavy'] } }, required: ['title', 'size'] },
   },
   {
