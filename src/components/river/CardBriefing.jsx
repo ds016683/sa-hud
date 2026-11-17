@@ -21,7 +21,8 @@
 // start as very very baasic, until i actually start doing things." So nothing here is suggested or
 // inferred. A new card shows an empty path and a line to type the first stop on. Every stop says
 // where it came from. Lumen's guessed next steps (the recall door) are gone from this page.
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { DndContext, DragOverlay, PointerSensor, useSensor, useSensors, useDraggable, useDroppable } from '@dnd-kit/core'
 import { ChevronDown, ChevronRight } from 'lucide-react'
 import { Label } from './canon'
 import { addStep, toggleStep, removeStep, setStepOrder } from '../../lib/objectives'
@@ -36,6 +37,31 @@ import { hudConfirm, hudPrompt } from '../../lib/dialog'
 const LEDGER = { addStep, toggleStep, removeStep, setStepOrder, listPages, readPage, listBuilds, listLiveFiles, readPath, noteSource, savePathSteps }
 const wait = (ms) => new Promise(r => setTimeout(r, ms))
 const NONE = []
+
+// The drag (David 11/17: "the step button to drag is a little janky. is there a different package you can
+// use to drive that?"). It runs on dnd-kit now, not the browser's own drag: the icon follows the pointer
+// from the first move, the nearest place on the line lights without the line shifting, and it works by touch.
+// A place is a hairline between two lines of the trail; it only listens while something it takes is in the air.
+function Pick({ kind, title, onPlace }) {
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id: `pick:${kind}`, data: { kind } })
+  return <span ref={setNodeRef} className={`pick ${kind}`} title={title} style={{ opacity: isDragging ? 0.35 : 1 }} {...attributes} {...listeners} onClick={onPlace} onKeyDown={(e) => { if (e.key === 'Enter') onPlace() }}><i className="m" />{kind === 'gate' ? 'Gate' : 'Step'}</span>
+}
+function Place({ id, part, i, on, word }) {
+  const { setNodeRef, isOver } = useDroppable({ id, data: { part, i }, disabled: !on })
+  return <div ref={setNodeRef} className={`brf-place${isOver ? ' over' : ''}`} aria-hidden="true">{isOver && <span>{word}</span>}</div>
+}
+// The place nearest the pointer, up or down the line, while the pointer is over the trail's column.
+const nearestPlace = ({ droppableContainers, droppableRects, pointerCoordinates }) => {
+  if (!pointerCoordinates) return []
+  let best = null
+  for (const c of droppableContainers) {
+    const r = droppableRects.get(c.id)
+    if (!r || pointerCoordinates.x < r.left - 80 || pointerCoordinates.x > r.right + 40) continue
+    const d = Math.abs(pointerCoordinates.y - r.top)
+    if (!best || d < best.d) best = { c, d }
+  }
+  return best && best.d < 90 ? [{ id: best.c.id, data: { droppableContainer: best.c, value: best.d } }] : []
+}
 const Check = () => <svg viewBox="0 0 10 10" aria-hidden="true"><path d="M1.8 5.4 4.2 7.6 8.3 2.6" fill="none" stroke="var(--hud-on-accent)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>
 
 // One template for every card (David 11/17, on the Main Mission page: "wouldn't this card look like the one
@@ -83,7 +109,8 @@ export default function CardBriefing({ obj, root, kindLabel, steps = [], kids = 
   // By hand (David 11/17): "a little icon for a step and then an icon for a gate that i could drag to the
   // location of the line, where then a little modal pops up".
   const [drag, setDrag] = useState(null)               // 'step' | 'gate' while one is being dragged
-  const [over, setOver] = useState(null)               // the place on the line it is over
+  const dragged = useRef(false)                        // a drag just ended: the click that follows it is not a click
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }))
 
   const openSteps = steps.filter(s => !s.done)
   const shownClosed = steps.filter(s => s.done && justClosed.includes(s.id))
@@ -154,7 +181,7 @@ export default function CardBriefing({ obj, root, kindLabel, steps = [], kids = 
   // it goes before (the trail's own index behind, the stop's ahead); none means the end of the line. A click
   // on the icon, with no drag, is the end too.
   const place = async (kind, part = 'a', i = null) => {
-    setDrag(null); setOver(null)
+    setDrag(null)
     if (busy) return
     const onTrail = kind === 'step' && part === 'b'
     if (!onTrail) setAheadOpen(true)
@@ -197,16 +224,14 @@ export default function CardBriefing({ obj, root, kindLabel, steps = [], kids = 
   }
   // A place on the line takes a drop: a step anywhere, a gate only on the path forward.
   const takes = (part) => !!drag && (drag === 'step' || (part === 'a' && takesGates))
-  const dropAt = (part, i) => takes(part) ? { onDragOver: (e) => { e.preventDefault(); if (over !== `${part}${i}`) setOver(`${part}${i}`) }, onDrop: (e) => { e.preventDefault(); place(drag, part, i) } } : {}
-  const zone = (part, i) => takes(part) ? <div key={`z${part}${i}`} className={`brf-drop${over === `${part}${i}` ? ' over' : ''}`} {...dropAt(part, i)}>{over === `${part}${i}` && <span>Set The {drag === 'gate' ? 'Gate' : 'Step'} Here</span>}</div> : null
+  const spot = (part, i) => <Place key={`p${part}${i}`} id={`${part}:${i}`} part={part} i={i} on={takes(part)} word={`Set The ${drag === 'gate' ? 'Gate' : 'Step'} Here`} />
   const fold = (open, toggle) => ({ role: 'button', tabIndex: 0, 'aria-expanded': open, onClick: toggle, onKeyDown: (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle() } } })
-  const pickUp = (kind) => ({
-    draggable: true, role: 'button', tabIndex: 0,
-    // the line changes a moment after the drag starts, so the browser keeps hold of what is being dragged
-    onDragStart: (e) => { e.dataTransfer.setData('text/plain', `hud-trail:${kind}`); e.dataTransfer.effectAllowed = 'copy'; setTimeout(() => setDrag(kind), 0) },
-    onDragEnd: () => { setDrag(null); setOver(null) },
-    onClick: () => place(kind), onKeyDown: (e) => { if (e.key === 'Enter') place(kind) },
-  })
+  const click = (kind) => () => { if (!dragged.current) place(kind) }
+  const dragEnd = (e) => {
+    const kind = e.active?.data?.current?.kind, to = e.over?.data?.current
+    setDrag(null); setTimeout(() => { dragged.current = false }, 0)
+    if (kind && to) place(kind, to.part, to.i)
+  }
   const dw = due ? dueWords(due) : null
   const realFiles = side.files.filter(f => !isLink(f) && !isRequest(f))
   const blanks = side.latest ? blanksIn(side.latest.text).length : 0
@@ -214,30 +239,31 @@ export default function CardBriefing({ obj, root, kindLabel, steps = [], kids = 
   const here = hereText || `${fmtClock(loaded?.minutes_today || 0)} on the clock today. ${loaded ? (loaded.equipped ? 'The clock is running.' : 'Holstered.') : 'Not on the Board.'}`
 
   return (
+    <DndContext sensors={sensors} collisionDetection={nearestPlace} onDragStart={(e) => { dragged.current = true; setDrag(e.active?.data?.current?.kind || null) }} onDragEnd={dragEnd} onDragCancel={() => { setDrag(null); setTimeout(() => { dragged.current = false }, 0) }}>
     <div className="brf-grid">
       <div style={{ minWidth: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
           <div style={{ fontFamily: "'Lora', Georgia, serif", fontWeight: 500, fontSize: 20, color: 'var(--hud-ink)' }}>The Trail</div>
           <span style={{ flex: 1 }} />
           <div className="brf-tray">
-            <span className="pick step" title="Drag a step onto the line, or click to set it at the end" {...pickUp('step')}><i className="m" />Step</span>
-            {takesGates && <span className="pick gate" title="Drag a gate onto the path forward, or click to set it at the end" {...pickUp('gate')}><i className="m" />Gate</span>}
+            <Pick kind="step" title="Drag a step onto the line, or click to set it at the end" onPlace={click('step')} />
+            {takesGates && <Pick kind="gate" title="Drag a gate onto the path forward, or click to set it at the end" onPlace={click('gate')} />}
             <span className="hint">Drag onto the line</span>
           </div>
         </div>
         <p className="brf-sub">{mission ? `${thisGate ? `This is gate ${thisGate.n} of ${missionGates.length}` : 'This is a gate'} on ${mission.name}. ` : ''}The trail back, where you are, and the path forward to Polaris.</p>
         <div className="brf-trail">
-          <div className="brf-ev fold" {...fold(behindOpen, () => setBehindOpen(o => !o))} {...dropAt('b', trail.length)}>
+          <div className="brf-ev fold" {...fold(behindOpen, () => setBehindOpen(o => !o))}>
             <span className="chev">{behindOpen ? <ChevronDown size={13} /> : <ChevronRight size={13} />}</span>
             <div className="what">The Trail Back<i>{trail.length} {trail.length === 1 ? 'line' : 'lines'}{!behindOpen && trail.length > 0 ? `, from ${stamp(trail[0].at)}` : ''}</i></div>
           </div>
           {behindOpen && trail.map((ev, i) => [
-            zone('b', i),
-            <div key={`${ev.at}${i}`} className={`brf-ev${ev.gate ? ' gate' : ''}`} {...dropAt('b', i + 1)}><div className="when">{stamp(ev.at)}<span className="kind">{ev.kind}</span></div><div className="what">{ev.text}{ev.pid && <button className="brf-tool" onClick={() => dropStep(ev.pid, ev.text)}>Take It Off</button>}</div>{ev.of && <div className="brf-of" onClick={() => onOpenCard && ev.of.objective_id && onOpenCard(ev.of.objective_id)} title="Open this gate's card">On Gate {ev.of.n}: {ev.of.text}</div>}</div>,
+            spot('b', i),
+            <div key={`${ev.at}${i}`} className={`brf-ev${ev.gate ? ' gate' : ''}`}><div className="when">{stamp(ev.at)}<span className="kind">{ev.kind}</span></div><div className="what">{ev.text}{ev.pid && <button className="brf-tool" onClick={() => dropStep(ev.pid, ev.text)}>Take It Off</button>}</div>{ev.of && <div className="brf-of" onClick={() => onOpenCard && ev.of.objective_id && onOpenCard(ev.of.objective_id)} title="Open this gate's card">On Gate {ev.of.n}: {ev.of.text}</div>}</div>,
           ])}
-          {zone('b', trail.length)}
-          <div className="brf-ev here" {...dropAt('b', trail.length)}><div className="when">You Are Here</div><div className="what">{here}</div></div>
-          <div className="brf-ev fold" {...fold(aheadOpen, () => setAheadOpen(o => !o))} {...dropAt('a', null)}>
+          {spot('b', trail.length)}
+          <div className="brf-ev here"><div className="when">You Are Here</div><div className="what">{here}</div></div>
+          <div className="brf-ev fold" {...fold(aheadOpen, () => setAheadOpen(o => !o))}>
             <span className="chev">{aheadOpen ? <ChevronDown size={13} /> : <ChevronRight size={13} />}</span>
             <div className="what">The Path Forward<i>{stops.filter(x => !x.done).length} open</i></div>
           </div>
@@ -245,16 +271,16 @@ export default function CardBriefing({ obj, root, kindLabel, steps = [], kids = 
                 const isNext = s.key === nextKey || (s.type === 'mission' && s.gate.current && !nextKey), isClosing = s.type === 'step' && closing?.id === s.step.id
                 const src = s.type === 'step' ? sourceLine(s.step, side.sources) : null
                 if (s.type === 'pstep') return [
-                  zone('a', si),
-                  <div key={s.key} className="brf-stop pstep" {...dropAt('a', si + 1)}>
+                  spot('a', si),
+                  <div key={s.key} className="brf-stop pstep">
                     <button className="hit" title="Click when it is done" aria-label={`Mark done: ${s.text}`} onClick={() => finishStep(s.ps)}><span className="o"><Check /></span></button>
                     <div className="what">{s.text}</div>
                     <div className="src">A step, from you, {stamp(s.ps.made_at)}<button className="tool gone" onClick={() => dropStep(s.ps.id, s.text)}>Take It Off</button></div>
                   </div>,
                 ]
                 return [
-                  zone('a', si),
-                  <div key={s.key} className={`brf-stop${s.done ? ' done' : isNext ? ' next' : ''}${isClosing ? ' closing' : ''}${fresh === s.key && !s.done ? ' fresh' : ''}`} {...dropAt('a', si + 1)}>
+                  spot('a', si),
+                  <div key={s.key} className={`brf-stop${s.done ? ' done' : isNext ? ' next' : ''}${isClosing ? ' closing' : ''}${fresh === s.key && !s.done ? ' fresh' : ''}`}>
                     {s.type === 'step'
                       ? <button className="hit" title={s.done ? 'Reopen it' : 'Click when it is done'} aria-label={`${s.done ? 'Reopen' : 'Mark done'}: ${s.text}`} onClick={(e) => s.done ? reopen(s.step) : close(s.step, e)}><span className="o"><Check /></span></button>
                       : <span className="hit still" title={s.type === 'gate' ? 'This gate closes on its own card' : s.type === 'mission' ? 'This gate closes on the mission\'s page, or on its own card once it is on the Board' : 'This one lives on a session board'}><span className="o" style={s.blocked ? { borderColor: 'var(--hud-warn)' } : undefined} /></span>}
@@ -269,7 +295,7 @@ export default function CardBriefing({ obj, root, kindLabel, steps = [], kids = 
                   </div>,
                 ]
               })}
-              {aheadOpen && zone('a', stops.length)}
+              {aheadOpen ? spot('a', stops.length) : spot('a', null)}
               {/* Any mission takes as many gates as it needs (David 11/16), a Mythic included (11/17: one card for every mission). */}
               {aheadOpen && mission && onOpenMission && <div className="brf-ev go" onClick={onOpenMission}><div className="what">Every gate's story is on the mission's trail: open {mission.name}</div></div>}
               {aheadOpen && takesGates && (
@@ -321,5 +347,8 @@ export default function CardBriefing({ obj, root, kindLabel, steps = [], kids = 
         </div>
       </div>
     </div>
+    {/* What is in the air: the same icon, following the pointer. */}
+    <DragOverlay dropAnimation={null}>{drag ? <div className="brf-tray"><span className={`pick ${drag} held`}><i className="m" />{drag === 'gate' ? 'Gate' : 'Step'}</span></div> : null}</DragOverlay>
+    </DndContext>
   )
 }
