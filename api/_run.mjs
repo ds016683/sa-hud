@@ -16,7 +16,7 @@ import { sb, sbWrite } from './_ledger.mjs'
 import { missions } from './_trail.mjs'
 import { canvass, eventsBetween, namer, readJson, writeJson, chiDay, flat } from './_canvass.mjs'
 import { strikeDay } from './_river.mjs'
-import { waSendText, davidNumber } from './_wa.mjs'
+import { waSendText, waSendTemplate, davidNumber } from './_wa.mjs'
 
 export const RUN_MINUTES = 45
 export const DEBRIEF_MINUTES = 10
@@ -64,16 +64,20 @@ export async function runState() {
   const last = on || [...mine].reverse().find(r => r.state === 'filed') || null
   let log = [], logged = last ? last.logged : 0
   if (on) { const full = (await runLog(on)).log; log = full.slice(-40); logged = full.length }
-  return { run: last ? { ...last, log, logged } : null, today: { runs: mine.filter(r => r.state === 'filed').length, miles: mine.reduce((s, r) => s + (r.state === 'filed' ? (r.miles || 0) : 0), 0) } }
+  // Whether Lumen's WhatsApp line to David is open, so the Board can say so while a run is running.
+  const wa_open = on && on.state === 'running' ? await waOpen().catch(() => null) : null
+  return { run: last ? { ...last, log, logged, wa_open } : null, today: { runs: mine.filter(r => r.state === 'filed').length, miles: mine.reduce((s, r) => s + (r.state === 'filed' ? (r.miles || 0) : 0), 0) } }
 }
 
 // ---- the verbs ----------------------------------------------------------------------------------
-export async function startRun() {
+// minutes: a shorter clock for a test (5 to 45). A run pays only at the full 45, so a test pays nothing.
+export async function startRun({ minutes = RUN_MINUTES } = {}) {
+  const span = Math.max(5, Math.min(RUN_MINUTES, Math.round(Number(minutes) || RUN_MINUTES)))
   const runs = await readIndex()
   if (activeOf(runs)) throw new Error('a run is already on; extract it first')
   const now = new Date().toISOString(), day = chiDay(now)
   const n = runs.filter(r => r.day === day).length + 1
-  const run = { id: `${day}-${n}-${Date.now().toString(36)}`, day, n, state: 'running', started_at: now, ends_at: plus(now, RUN_MINUTES), extracted_at: null, debrief_ends_at: null, filed_at: null, miles: 0, logged: 0, summary: null, hits: [], rogue: [], word: null }
+  const run = { id: `${day}-${n}-${Date.now().toString(36)}`, day, n, state: 'running', started_at: now, ends_at: plus(now, span), minutes: span, extracted_at: null, debrief_ends_at: null, filed_at: null, miles: 0, logged: 0, summary: null, hits: [], rogue: [], word: null }
   // What the ledger already holds, so Extract can tell what this run earned (see earnedIn).
   const ledger = await ledgerOf(day).then(rows => ({ day, keys: rows.map(ledgerKey) })).catch(() => null)
   await writeJson(logPath(run.id), { id: run.id, ledger, log: [{ at: now, source: 'hud', text: `Run ${n} started`, mission: null }], mac: [] })
@@ -86,13 +90,21 @@ export async function startRun() {
 // extract, that push notifcation gets turned off." Only a running run is warned, so Extract ends them. The
 // schedule's minute lands within half a minute of each mark; if minutes were missed, only the latest mark
 // that has passed goes out, and the ones before it are counted as said.
+// Run 3 (11/17) showed the catch: WhatsApp takes a plain line from Lumen and hands back an id whether or not it
+// will deliver, and it only delivers inside 24 hours of David's last message to him. So the line is checked
+// first. Open: the warning goes as written. Closed: it goes as the approved knock, whose one blank carries the
+// warning ("Your 10 minute warning on Run 3 from Lumen is ready..."), which does reach his phone.
 const MARKS = [
-  { key: '10', left: 10, say: (n) => `Run ${n}: 10 minutes left.` },
-  { key: '5', left: 5, say: (n) => `Run ${n}: 5 minutes left.` },
-  { key: '1', left: 1, say: (n) => `Run ${n}: 1 minute left.` },
-  { key: '0', left: 0, say: (n) => `Run ${n} is done. Extract when you are ready.` },
-  { key: '+7', left: -7, say: (n) => `Run ${n} is 7 minutes over. It stays open until you extract.` },
+  { key: '10', left: 10, say: (n) => `Run ${n}: 10 minutes left.`, knock: (n) => `10 minute warning on Run ${n}` },
+  { key: '5', left: 5, say: (n) => `Run ${n}: 5 minutes left.`, knock: (n) => `5 minute warning on Run ${n}` },
+  { key: '1', left: 1, say: (n) => `Run ${n}: 1 minute left.`, knock: (n) => `1 minute warning on Run ${n}` },
+  { key: '0', left: 0, say: (n) => `Run ${n} is done. Extract when you are ready.`, knock: (n) => `notice that Run ${n} is done` },
+  { key: '+7', left: -7, say: (n) => `Run ${n} is 7 minutes over. It stays open until you extract.`, knock: (n) => `notice that Run ${n} is 7 minutes over` },
 ]
+export async function waOpen() {
+  const since = new Date(Date.now() - 23.5 * 3600e3).toISOString()
+  return (await sb(`lumen_messages?select=id&channel=eq.whatsapp&direction=eq.in&at=gte.${since}&limit=1`)).length > 0
+}
 export const markDue = (run, now = Date.now()) => {
   const left = (new Date(run.ends_at).getTime() - now) / 60000
   const due = MARKS.filter(m => left <= m.left + 0.5), last = due[due.length - 1]
@@ -104,12 +116,15 @@ async function warn(run) {
   const due = markDue(run)
   if (!due) return null
   const text = due.mark.say(run.n)
-  let id = null, skipped = due.late ? 'late' : null
-  if (!skipped) try { id = await waSendText(davidNumber(), text) } catch (e) { skipped = String(e.message || e).slice(0, 200) }
+  let id = null, skipped = due.late ? 'late' : null, via = null
+  if (!skipped) try {
+    if (await waOpen().catch(() => false)) { via = 'text'; id = await waSendText(davidNumber(), text) }
+    else { via = 'knock'; id = await waSendTemplate(davidNumber(), due.mark.knock(run.n)) }
+  } catch (e) { skipped = String(e.message || e).slice(0, 200) }
   // On the record either way, and marked as said so a failed send is not retried every minute.
   await saveIndex((await readIndex()).map(r => r.id === run.id ? { ...r, warned: [...new Set([...(r.warned || []), ...due.keys])] } : r))
-  await sbWrite('POST', 'lumen_messages', { channel: 'pulse', direction: 'out', kind: skipped ? 'system' : 'text', body: text, external_id: id, meta: { kind: 'run', run: run.id, mark: due.mark.key, skipped } }, 'return=minimal').catch(() => null)
-  return { mark: due.mark.key, sent: !skipped, skipped }
+  await sbWrite('POST', 'lumen_messages', { channel: 'pulse', direction: 'out', kind: skipped ? 'system' : 'text', body: text, external_id: id, meta: { kind: 'run', run: run.id, mark: due.mark.key, via, skipped } }, 'return=minimal').catch(() => null)
+  return { mark: due.mark.key, sent: !skipped, via, skipped }
 }
 
 // The schedule's minute. This is the canvass's caller (Extract takes one last look of its own): every

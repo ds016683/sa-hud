@@ -74,7 +74,7 @@ export default function RunPanel({ run, today = { runs: 0, miles: 0 }, busy = fa
     <section className={live ? 'ld-running' : undefined} style={{ border: `1.5px solid ${edge}`, borderRadius: 16, background: PANEL_BG, padding: '22px 24px' }}>
       <div style={{ display: 'flex', gap: 26, alignItems: 'center', flexWrap: 'wrap' }}>
         {state === 'idle' && <Ring frac={1} color="rgba(234,241,248,0.28)" label={`${RUN_MINUTES}:00`} sub="Ready" />}
-        {live && <Ring frac={left / (RUN_MINUTES * 60000)} color={GREEN} label={mmss(left)} sub="Left" />}
+        {live && <Ring frac={left / ((run.minutes || RUN_MINUTES) * 60000)} color={GREEN} label={mmss(left)} sub="Left" />}
         {over && <Ring frac={1} color={RED} label={`+${mmss(-left)}`} sub="Over" />}
         {state === 'debrief' && <Ring frac={debriefLeft / (DEBRIEF_MINUTES * 60000)} color={LABEL} label={mmss(debriefLeft)} sub="To Debrief" />}
 
@@ -90,7 +90,7 @@ export default function RunPanel({ run, today = { runs: 0, miles: 0 }, busy = fa
           </div>
           <div style={{ fontSize: 13, color: MUTED, marginTop: 8 }}>
             {state === 'idle' && `${RUN_MILES} miles for a run seen through its ${RUN_MINUTES} minutes`}
-            {live && `${RUN_MILES} miles once the ${RUN_MINUTES} minutes are up; none if you extract early`}
+            {live && (run.minutes && run.minutes < RUN_MINUTES ? `A ${run.minutes} minute test: no miles` : `${RUN_MILES} miles once the ${RUN_MINUTES} minutes are up; none if you extract early`)}
             {over && `${RUN_MILES} miles on Extract`}
             {state === 'debrief' && (run.miles > 0 ? `${run.miles} miles earned` : 'Extracted early, so no miles')}
             {state === 'idle' && today.miles > 0 && <> <span style={{ color: GRAY }}>·</span> {today.miles} miles from runs today</>}
@@ -111,6 +111,8 @@ export default function RunPanel({ run, today = { runs: 0, miles: 0 }, busy = fa
       </div>
 
       {error && <div style={{ fontSize: 13.5, color: RED, marginTop: 12 }}>{error}</div>}
+      {/* Lumen's warnings ride WhatsApp, which only carries his own words inside 24 hours of David's last message to him. */}
+      {(live || over) && run.wa_open === false && <div style={{ fontSize: 13.5, lineHeight: 1.5, color: 'var(--hud-warn)', marginTop: 12 }}>Lumen's WhatsApp line to you is closed: you last wrote him more than a day ago. Send him any message and his warnings come through as written. Until then he can only knock.</div>}
       {(live || over) && log.length > 0 && (
         <div style={{ marginTop: 20, borderTop: `1px solid ${PANEL_BORDER}`, paddingTop: 14 }}>
           <button onClick={foldLog} aria-expanded={logOpen} style={{ display: 'flex', alignItems: 'center', gap: 6, width: '100%', fontFamily: 'inherit', fontSize: 14, fontWeight: 600, color: LABEL, background: 'transparent', border: 0, padding: 0, cursor: 'pointer', textAlign: 'left' }}>

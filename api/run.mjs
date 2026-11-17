@@ -23,7 +23,7 @@ export default async function handler(req, res) {
     const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {})
     const action = String(body.action || '')
     if (action === 'mac') return res.status(200).json(await macSample({ app: body.app, title: body.title, probe: !!body.probe }))
-    if (action === 'start') await startRun()
+    if (action === 'start') await startRun({ minutes: body.minutes })
     else if (action === 'extract') await extractRun({ model: MODEL() })
     else if (action === 'file') { const run = await fileRun({ word: body.word }); if (run.miles > 0) await strikeDay(chiToday()).catch(() => null) }
     else if (action === 'walk') await walkAway()

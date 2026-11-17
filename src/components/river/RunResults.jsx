@@ -22,7 +22,7 @@ const mmss = (ms) => { const t = Math.max(0, Math.round(ms / 1000)); return `${S
 const clock = (iso) => new Date(iso).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'America/Chicago' })
 // The order the server works in at Extract (see extractRun in api/_run.mjs).
 const STAGES = [[0, 'Taking One Last Look'], [14, 'Reading The Run Log'], [38, 'Lumen Is Writing The Report'], [84, 'Counting The Miles']]
-const stageAt = (pct) => [...STAGES].reverse().find(([from]) => pct >= from)[1]
+const stageAt = (pct) => ([...STAGES].reverse().find(([from]) => pct >= from) || STAGES[0])[1]
 const SPARKS = Array.from({ length: 16 }, (_, i) => i * 22.5)
 
 function Dial({ frac, color, size, children }) {
@@ -70,13 +70,15 @@ export default function RunResults({ run, pending = false, busy = false, error =
     let raf, doneAt = null, from = 0, at = 0
     const t0 = performance.now()
     const step = (t) => {
-      if (live.current) at = 92 * (1 - Math.exp(-(t - t0) / 9000))
+      // A frame's timestamp can be a hair earlier than the clock read above; never let the gauge go below zero
+      // (11/17: that negative first frame is what broke the Board at Extract).
+      if (live.current) at = 92 * (1 - Math.exp(-Math.max(0, t - t0) / 9000))
       else {
         if (doneAt == null) { doneAt = t; from = at }
         at = from + (100 - from) * Math.min(1, (t - doneAt) / 600)
         if (t - doneAt > 1100) { setShown(true); return }
       }
-      setPct(Math.floor(at))
+      setPct(Math.max(0, Math.min(100, Math.floor(at))))
       raf = requestAnimationFrame(step)
     }
     raf = requestAnimationFrame(step)
