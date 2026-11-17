@@ -34,6 +34,7 @@ async function writeJson(path, doc) {
   if (!r.ok) throw new Error(`run save ${r.status}: ${(await r.text()).slice(0, 160)}`)
 }
 const chiDay = (iso) => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Chicago', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(iso))
+const chiTime = (iso) => new Date(iso).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'America/Chicago' })
 const flat = (t, max) => String(t || '').replace(/\s+/g, ' ').trim().slice(0, max)
 const enc = encodeURIComponent
 const plus = (iso, min) => new Date(new Date(iso).getTime() + min * 60000).toISOString()
@@ -49,9 +50,9 @@ export async function runState() {
   const mine = runs.filter(r => r.day === today)
   const on = activeOf(runs)
   const last = on || [...mine].reverse().find(r => r.state === 'filed') || null
-  let log = []
-  if (on) { const doc = await readJson(logPath(on.id), { log: [] }); log = (doc.log || []).slice(-40) }
-  return { run: last ? { ...last, log } : null, today: { runs: mine.filter(r => r.state === 'filed').length, miles: mine.reduce((s, r) => s + (r.state === 'filed' ? (r.miles || 0) : 0), 0) } }
+  let log = [], logged = last ? last.logged : 0
+  if (on) { const doc = await readJson(logPath(on.id), { log: [] }); log = (doc.log || []).slice(-40); logged = (doc.log || []).length }
+  return { run: last ? { ...last, log, logged } : null, today: { runs: mine.filter(r => r.state === 'filed').length, miles: mine.reduce((s, r) => s + (r.state === 'filed' ? (r.miles || 0) : 0), 0) } }
 }
 
 // ---- the canvass --------------------------------------------------------------------------------
@@ -193,7 +194,7 @@ async function report(run, doc, model) {
   if (!model || !process.env.ANTHROPIC_API_KEY) return fallback
   const prompt = `You are Lumen. David just finished a run: a ${minutes} minute stretch of work he asked you to watch. Write the run report from the log below. He wants to see where the time really went: the missions he hit, and the rogue stretches that belonged to no mission (the inbox, a news site, a stray thread).
 
-Rules: plain and specific, no praise, no advice unless the log makes one pattern obvious, no em dashes. Minutes must add up to about ${minutes}. Use the clock minutes as the base for missions; use the Mac samples (one sample is about one minute) and the mail to find the rogue time and to place work the clocks missed. A mission must be one of the listed missions, named exactly. Anything else is rogue.
+Rules: times in the log are Chicago time; if you name a time, write it that way (9:05 AM). Plain and specific, no praise, no advice unless the log makes one pattern obvious, no em dashes. Minutes must add up to about ${minutes}. Use the clock minutes as the base for missions; use the Mac samples (one sample is about one minute) and the mail to find the rogue time and to place work the clocks missed. A mission must be one of the listed missions, named exactly. Anything else is rogue.
 
 ## Missions
 ${list.map(m => `- ${m.title} (${m.kind})`).join('\n') || '(none listed)'}
@@ -205,7 +206,7 @@ ${clocked.map(c => `- ${c.mission}: ${c.minutes}`).join('\n') || '(no mission cl
 ${[...apps.entries()].sort((a, b) => b[1] - a[1]).slice(0, 40).map(([k, n]) => `- ${n} × ${k}`).join('\n') || '(the Mac watcher sent nothing)'}
 
 ## Run log
-${doc.log.slice(-400).map(e => `- ${e.at.slice(11, 16)}Z · ${e.source} · ${e.text}${e.mission ? ` · ${e.mission}` : ''}`).join('\n')}
+${doc.log.slice(-400).map(e => `- ${chiTime(e.at)} · ${e.source} · ${e.text}${e.mission ? ` · ${e.mission}` : ''}`).join('\n')}
 
 Reply with one JSON object and nothing else: {"summary":"three or four sentences on where the run went","hits":[{"mission":"<exact mission title>","kind":"Main Mission|Side Mission","minutes":<number>,"what":"one line on what happened there"}],"rogue":[{"text":"what it was, in a few words","minutes":<number>}]}`
   try {
