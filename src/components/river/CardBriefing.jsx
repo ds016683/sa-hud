@@ -85,7 +85,8 @@ const Check = () => <svg viewBox="0 0 10 10" aria-hidden="true"><path d="M1.8 5.
 //   extraTrail    lines for The Trail Back that come from elsewhere (each gate card's own story)
 //   confirmClose  (step) => true to go on closing it;  onClosed (step) after it closed
 // notesCount: how many notes the card holds, for the Notes box on its side (any card).
-export default function CardBriefing({ obj, root, kindLabel, steps = [], kids = [], boardItems = [], loaded = null, due = null, isGate = false, missionGates = [], mission = null, onOpenMission, onReload, onTab, onOpenCard, say, api = LEDGER, hereText = null, nextStepId = null, stopExtra = null, extraTrail = NONE, confirmClose = null, onClosed = null, notesCount = null }) {
+// sideFoot: what sits under the four tiles (the card's Loadout, Holster, Stash switch).
+export default function CardBriefing({ obj, root, kindLabel, steps = [], kids = [], boardItems = [], loaded = null, due = null, isGate = false, missionGates = [], mission = null, onOpenMission, onReload, onTab, onOpenCard, say, api = LEDGER, hereText = null, nextStepId = null, stopExtra = null, extraTrail = NONE, confirmClose = null, onClosed = null, notesCount = null, sideFoot = null }) {
   // One line (David 11/17, on the two boxed reads: "one line, but make what is before or after collapsable
   // and expandable and the default view is where we are now, with the path forward expanded ... and the
   // trail behind collpased"). Every card opens that way; the folds are not kept between visits.
@@ -327,6 +328,7 @@ export default function CardBriefing({ obj, root, kindLabel, steps = [], kids = 
       {/* The side of the card always shows (David 11/17: "I liked the gates thing ... love workbench too. and files."),
           as four tiles of one size, each led by a headline ("symmetric and carry some kind of headline.... even a giant
           0 or N/A or Nothing to Report Thus Far"). The count stays put; the other three open what they name. */}
+      <div style={{ minWidth: 0 }}>
       <div className="brf-side">
         {takesGates
           ? <Tile label="Gates" big={total > 0 ? `${closed} of ${total}` : '0'} unit={total > 0 ? 'closed' : 'gates'} none={total === 0} bar={total > 0 ? closed / total : null} />
@@ -336,6 +338,8 @@ export default function CardBriefing({ obj, root, kindLabel, steps = [], kids = 
         <Tile label="Files" big={realFiles.length} unit={realFiles.length === 1 ? 'file' : 'files'} none={realFiles.length === 0} go="Open Files" onGo={() => onTab('files')}
           detail={realFiles[0] ? <>{realFiles[0].name}{realFiles.length > 1 && <> and {realFiles.length - 1} more</>}</> : null} />
         <Tile label="Notes" big={notesCount || 0} unit={notesCount === 1 ? 'note' : 'notes'} none={!notesCount} go="Open Notes" onGo={() => onTab('notes')} />
+      </div>
+      {sideFoot}
       </div>
     </div>
     {/* What is in the air: the same icon, following the pointer. */}

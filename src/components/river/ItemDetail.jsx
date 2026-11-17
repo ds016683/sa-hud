@@ -10,11 +10,11 @@ import { useCallback, useEffect, useState } from 'react'
 import { Play, Pause, Archive, ExternalLink, Mic, Check, Plus, Trash2, Terminal, Star } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { listArtifacts, readArtifact } from '../../lib/artifacts'
-import { fetchLoadout, equip, holster, stash, equipObjective, equipTask, fmtClock, SIZES, sizeOf } from '../../lib/loadout'
+import { fetchLoadout, equip, stash, unload, equipObjective, equipTask, fmtClock, SIZES, sizeOf } from '../../lib/loadout'
 import DocView from './DocView'
 import { fetchSteps, listObjectiveArtifacts, listObjectiveFiles, listObjectiveBoards, realmOf, setSize, updateObjective, objRoot, fetchGates } from '../../lib/objectives'
 import { renderMarkdown } from './MeetingCloseout'
-import { fmtStamp, listLiveFiles, listEvidence, openLiveFile, isRequest, isLink } from '../../lib/livefiles'
+import { fmtStamp, listEvidence, openLiveFile, isLink } from '../../lib/livefiles'
 import { isOpenRow } from '../../lib/protocols'
 import CardFiles, { WrittenOnCard } from './CardFiles'
 import WorkbenchSheet from './WorkbenchSheet'
@@ -140,26 +140,6 @@ async function loadRelated(item) {
 // the open gates, the open board items, and Lumen's two or three next steps
 // toward the star (the same brain as the Loadout card, loaded after).
 
-// Sessions (David 10/22): reopen the Claude Code session that worked this item, or
-// copy a terminal command that starts one briefed. The reopen links are launch links
-// in Live Files (claude://claude.ai/epitaxy/local_<session id>) that focus.py leaves on
-// the item; the note carries the resume command. The briefed command is built here.
-const isSessionLink = (r) => isLink(r) && /^claude:\/\//.test(String(r.path || ''))
-const sessionLinks = (links) => (links || []).filter(isSessionLink).sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)))
-// The Cold Start (David 11/4): one button on the Briefing copies a briefed start for a fresh Claude session.
-// The command is pasted into a terminal, so the folder is spelled with $HOME (a ~ inside
-// quotes does not open) and a title's shell characters are escaped.
-const shq = (s) => String(s || '').replace(/"/g, "'").replace(/!/g, '').replace(/[\\$`]/g, '\\$&')
-function briefCommand(item, links, taskId) {
-  const sessions = sessionLinks(links)
-  const cwd = (String(sessions[0]?.note || '').match(/^cd "([^"]+)"/) || [])[1] || '$HOME/builds/sa-hud'
-  const oid = item.objective_id || item.id
-  const gate = item.kind === 'Main Mission'
-  const read = gate
-    ? `read the mission and its gates with get_projects${taskId ? ` (this gate is task ${taskId})` : ''}, its files with list_live_files`
-    : 'read its briefing with get_objectives and list_steps, its files with list_live_files'
-  return `cd "${cwd}" && claude "Pick up the ${gate ? 'Main Mission gate' : (item.kind || 'Side Mission')} '${shq(item.title)}' (${oid}): ${read}, then pick up at the first open stop on its End Of The Trail. If no stop is open, ask David what the first one is. Set the focus on it first."`
-}
 // Evidence (David 10/23): the files pinned under Polaris as the proof the
 // objective was met. They lead the close-out record. Pinning happens in Files.
 function Evidence({ rows, onFiles, say }) {
@@ -236,9 +216,6 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
   const [rel, setRel] = useState(null)
   const [msg, setMsg] = useState(null)
   const [openNote, setOpenNote] = useState(null)
-  const [requests, setRequests] = useState([])
-  const objKey = item.objective_id || null
-  useEffect(() => { let on = true; if (!objKey) { Promise.resolve().then(() => { if (on) setRequests([]) }); return () => { on = false } } listLiveFiles({ objectiveId: objKey }).then(r => { if (on) setRequests((r.rows || []).filter(x => isRequest(x) || isLink(x))) }).catch(() => {}); return () => { on = false } }, [objKey, rel])
   const load = useCallback(() => loadRelated(item).then(setRel).catch(e => { console.warn('item detail', e.message); setRel({ project: null, task: null, artifacts: [], boards: [], projectFiles: [], storeFiles: [], meetings: [], loadout: null }) }), [item])
   useEffect(() => { load() }, [load])
   // Lumen acted on this card from the panel (11/4): reread it, and remount the Workbench's lists.
@@ -289,8 +266,27 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
 
   const counts = { workbench: (rel?.punchlist || []).filter(isOpenRow).length, polaris: (rel?.evidence || []).length, files: rel?.objFiles?.length || 0, notes: rel?.meetings.length || 0 }
   const obj = rel?.objective || null
-  const [copied, setCopied] = useState(false)
-  const copyText = async (text) => { try { await navigator.clipboard.writeText(text); setCopied(true); setTimeout(() => setCopied(false), 1600) } catch { /* no clipboard */ } }
+  // Where the card is (David 11/17: "we should have the same loadout, holster, and stash under the four access
+  // doors. whatever the actual status is at the time should be the only thing highlighted. and not green").
+  // Three places, as on the Board: on the Loadout, holstered (back on the Mission Board), in the Stash. The one
+  // it is in is lit in the accent; a click on another moves it there. Green is kept for the running clock alone.
+  const place = loaded ? 'loadout' : (obj && obj.state === 'parked' && (obj.tags || []).includes('stashed')) ? 'stash' : 'holster'
+  const moveTo = (to) => {
+    if (to === place && !(to === 'loadout' && loaded && !loaded.equipped)) return
+    if (to === 'loadout') return startTimer()
+    if (to === 'holster') return act(() => unload(obj.id), 'Holstered: back on the Mission Board')
+    return act(() => stash(obj.id), 'In the Stash')
+  }
+  const where = obj ? (
+    <div className="brf-where">
+      <div className="seg" role="group" aria-label="Where this card is">
+        {[['loadout', 'Loadout', 'On the Loadout. A click here also starts its clock.'], ['holster', 'Holster', 'Off the Board, back on the Mission Board'], ['stash', 'Stash', 'Held in the Stash on the Board']].map(([id, label, tip]) => (
+          <button key={id} className={place === id ? 'on' : ''} aria-pressed={place === id} title={tip} onClick={() => moveTo(id)}>{label}</button>
+        ))}
+      </div>
+      <div className="clock">{loaded ? (loaded.equipped ? <><i className="run" />Clock running</> : 'Clock off') : 'Not on the Loadout'} · <b style={loaded?.equipped ? { color: 'var(--hud-pos)' } : undefined}>{fmtClock(loaded?.minutes_today || 0)} today</b></div>
+    </div>
+  ) : null
   const [editStar, setEditStar] = useState(false)
   // Domain, Type and Target Completion (David 11/11): three chips beside the title; a click opens their controls.
   const [metaOpen, setMetaOpen] = useState(false)
@@ -400,7 +396,7 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
 
           {rel && tab === 'briefing' && (
             <div style={{ display: 'grid', gap: 22 }}>
-              {obj && <CardBriefing obj={obj} root={objRoot(obj.id)} kindLabel={rel.parent ? 'Gate' : task ? 'Gate' : item.kind === 'Ad Hoc' ? 'Ad Hoc item' : (SIZES[sizeOf(obj)]?.label || 'Side Mission')} steps={rel.steps || []} kids={rel.children || []} boardItems={boardStops} loaded={loaded} due={(task ? task.due_date : obj.due_date) || null} isGate={!!rel.parent} missionGates={task ? (rel.missionGates || []) : []} mission={task ? rel.mission : null} onOpenMission={rel?.project ? () => go([rel.project.id]) : undefined} onReload={async () => { await load(); onChange && onChange() }} onTab={setTab} onOpenCard={openCard} say={setMsg} notesCount={counts.notes} />}
+              {obj && <CardBriefing obj={obj} root={objRoot(obj.id)} kindLabel={rel.parent ? 'Gate' : task ? 'Gate' : item.kind === 'Ad Hoc' ? 'Ad Hoc item' : (SIZES[sizeOf(obj)]?.label || 'Side Mission')} steps={rel.steps || []} kids={rel.children || []} boardItems={boardStops} loaded={loaded} due={(task ? task.due_date : obj.due_date) || null} isGate={!!rel.parent} missionGates={task ? (rel.missionGates || []) : []} mission={task ? rel.mission : null} onOpenMission={rel?.project ? () => go([rel.project.id]) : undefined} onReload={async () => { await load(); onChange && onChange() }} onTab={setTab} onOpenCard={openCard} say={setMsg} notesCount={counts.notes} sideFoot={!rel.parent && obj.state !== 'released' ? where : null} />}
               {!obj && item.kind !== 'Event' && item.kind !== 'Session' && <WhereItStands rel={rel} task={task} taskId={taskId} linkedBoards={linkedBoards} />}
               {!obj && (item.description || task?.notes) && <div><Label>Back Story</Label><div style={{ fontSize: 14.5, lineHeight: 1.65, color: INK, whiteSpace: 'pre-wrap' }}>{item.description || task.notes}</div></div>}
               {item.event && (
@@ -411,16 +407,10 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
                 </div>
               )}
               {task?.due_date && !obj && <div style={{ fontSize: 13, color: LABEL }}>{String(task.status || '').replace(/^./, c => c.toUpperCase())} · Due {task.due_date}</div>}
-              {item.kind !== 'Event' && item.kind !== 'Session' && (
+              {/* An item with no card of its own yet keeps the one move it has: load it. */}
+              {!obj && item.kind !== 'Event' && item.kind !== 'Session' && (
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', borderTop: `1px solid ${PANEL_BORDER}`, paddingTop: 16 }}>
-                  {!rel?.parent && (loaded
-                    ? (loaded.equipped
-                      ? <button onClick={() => act(() => holster(loaded.id), 'Timer off')} style={btn(GREEN, true)}><Pause size={12} /> Holster</button>
-                      : <button onClick={() => act(() => equip(loaded.id), 'Timer on')} style={btn(GOLD, true)}><Play size={12} /> Equip</button>)
-                    : <button onClick={startTimer} style={btn(GOLD, true)}><Play size={12} /> Equip</button>)}
-                  <button onClick={() => copyText(briefCommand(item, requests, taskId))} title={briefCommand(item, requests, taskId)} style={btn(INK2)}><Terminal size={12} /> {copied ? 'Copied' : 'Cold Start'}</button>
-                  {loaded && <button onClick={() => act(() => stash(loaded.id), 'Stashed')} style={btn(INK2)}><Archive size={12} /> Stash</button>}
-                  <span style={{ marginLeft: 'auto', fontSize: 13, color: MUTED }}>{loaded ? (loaded.equipped ? 'Equipped' : 'Holstered') : 'Not Loaded'} · <span style={{ color: loaded?.equipped ? GREEN : INK2, fontWeight: 600 }}>{fmtClock(loaded?.minutes_today || 0)} Today</span></span>
+                  <button onClick={startTimer} style={btn(GOLD, true)}><Play size={12} /> Load</button>
                 </div>
               )}
             </div>
