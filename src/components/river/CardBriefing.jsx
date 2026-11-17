@@ -23,16 +23,16 @@
 // where it came from. Lumen's guessed next steps (the recall door) are gone from this page.
 import { useEffect, useMemo, useState } from 'react'
 import { Label } from './canon'
-import { addStep, toggleStep, removeStep } from '../../lib/objectives'
+import { addStep, toggleStep, removeStep, setStepOrder, addMissionGate } from '../../lib/objectives'
 import { listPages, readPage } from '../../lib/workspace'
 import { listBuilds } from '../../lib/lumenPanel'
 import { listLiveFiles, isLink, isRequest } from '../../lib/livefiles'
-import { readPath, noteSource, sourceLine, blanksIn, excerpt, buildTrail, stamp, dueWords, fireCardEvent } from '../../lib/path'
+import { readPath, noteSource, savePathSteps, sourceLine, blanksIn, excerpt, buildTrail, stamp, dueWords, fireCardEvent } from '../../lib/path'
 import { fmtClock } from '../../lib/loadout'
-import { hudConfirm } from '../../lib/dialog'
+import { hudConfirm, hudPrompt } from '../../lib/dialog'
 
 // The Ledger's doors, as one object, so dev/briefing.html can run the page on sample data with no sign-in.
-const LEDGER = { addStep, toggleStep, removeStep, listPages, readPage, listBuilds, listLiveFiles, readPath, noteSource }
+const LEDGER = { addStep, toggleStep, removeStep, setStepOrder, addMissionGate, listPages, readPage, listBuilds, listLiveFiles, readPath, noteSource, savePathSteps }
 const READS = ['ms', 'trail', 'end']
 const wait = (ms) => new Promise(r => setTimeout(r, ms))
 const Check = () => <svg viewBox="0 0 10 10" aria-hidden="true"><path d="M1.8 5.4 4.2 7.6 8.3 2.6" fill="none" stroke="var(--hud-on-accent)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>
@@ -44,7 +44,7 @@ export default function CardBriefing({ obj, root, kindLabel, steps = [], kids = 
   const pick = (v) => { setRead(v); try { localStorage.setItem('hud:briefing:read', v) } catch { /* private window */ } }
 
   // What the card holds beside its steps: its Workbench tabs, its built pages, its files, and where each stop came from.
-  const [side, setSide] = useState({ tabs: [], latest: null, builds: [], files: [], sources: {} })
+  const [side, setSide] = useState({ tabs: [], latest: null, builds: [], files: [], sources: {}, psteps: [] })
   useEffect(() => {
     let on = true
     const run = async () => {
@@ -54,7 +54,7 @@ export default function CardBriefing({ obj, root, kindLabel, steps = [], kids = 
       ])
       let latest = null
       if (tabs[0] && tabs[0].words > 0) { try { const d = await api.readPage(root, tabs[0].slug); latest = { slug: tabs[0].slug, title: d.title, text: d.text } } catch { /* the tab stays a name on the trail */ } }
-      if (on) setSide({ tabs, latest, builds, files, sources: pd.sources || {} })
+      if (on) setSide({ tabs, latest, builds, files, sources: pd.sources || {}, psteps: pd.steps || [] })
     }
     run()
     return () => { on = false }
@@ -66,12 +66,16 @@ export default function CardBriefing({ obj, root, kindLabel, steps = [], kids = 
   const [allTrail, setAllTrail] = useState(false)
   const [draft, setDraft] = useState('')
   const [busy, setBusy] = useState(false)
+  // By hand (David 11/17): "a little icon for a step and then an icon for a gate that i could drag to the
+  // location of the line, where then a little modal pops up".
+  const [drag, setDrag] = useState(null)               // 'step' | 'gate' while one is being dragged
+  const [over, setOver] = useState(null)               // the place on the line it is over
 
   const openSteps = steps.filter(s => !s.done)
   const shownClosed = steps.filter(s => s.done && justClosed.includes(s.id))
   const openKids = kids.filter(k => k.state !== 'released')
   const openBoard = boardItems.filter(t => t.status !== 'done')
-  const stops = [
+  const baseStops = [
     ...shownClosed.map(s => ({ key: `s${s.id}`, type: 'step', done: true, text: s.text, step: s })),
     ...openSteps.map(s => ({ key: `s${s.id}`, type: 'step', text: s.text, step: s })),
     ...(isGate ? [] : openKids.map(k => ({ key: `k${k.id}`, type: 'gate', text: k.title, kid: k, n: kids.indexOf(k) + 1 }))),
@@ -80,7 +84,13 @@ export default function CardBriefing({ obj, root, kindLabel, steps = [], kids = 
     ...missionGates.filter(g => g.current && !g.done).map(g => ({ key: `g${g.id}`, type: 'mission', text: g.text, gate: g })),
     ...openBoard.map((t, i) => ({ key: `b${i}`, type: 'board', text: t.label, note: t.status === 'blocked' ? (t.note || 'Blocked') : t.status === 'inmotion' ? 'In motion in a Claude session' : `On the session board ${t.board || ''}`.trim(), blocked: t.status === 'blocked' })),
   ]
-  const nextKey = (stops.find(s => !s.done && s.type !== 'mission') || {}).key || null
+  // The card's own steps still ahead take their places among the gates: each sits after the stop it was dropped behind.
+  const stops = [...baseStops]
+  for (const ps of side.psteps.filter(x => !x.done)) {
+    const item = { key: ps.id, type: 'pstep', text: ps.text, ps }, at = stops.findIndex(x => x.key === ps.after)
+    if (ps.after === '^') stops.unshift(item); else if (at >= 0) stops.splice(at + 1, 0, item); else stops.push(item)
+  }
+  const nextKey = (stops.find(s => !s.done && s.type !== 'mission' && s.type !== 'pstep') || {}).key || null
   const total = steps.length + (isGate ? 0 : kids.length)
   const closed = steps.filter(s => s.done).length + (isGate ? 0 : kids.filter(k => k.state === 'released').length)
   const thisGate = missionGates.find(g => g.current) || null
@@ -118,8 +128,72 @@ export default function CardBriefing({ obj, root, kindLabel, steps = [], kids = 
     } catch (err) { say(`Could not add it: ${err.message}`) } finally { setBusy(false) }
   }
 
-  const trail = useMemo(() => buildTrail({ obj, kindLabel, steps, children: isGate ? [] : kids, files: side.files, tabs: side.tabs, builds: side.builds }), [obj, kindLabel, steps, kids, isGate, side])
+  const trail = useMemo(() => buildTrail({ obj, kindLabel, steps, children: isGate ? [] : kids, files: side.files, tabs: side.tabs, builds: side.builds, psteps: side.psteps }), [obj, kindLabel, steps, kids, isGate, side])
   const shownTrail = allTrail ? trail : trail.slice(-6)
+  const hidden = trail.length - shownTrail.length
+
+  const savePsteps = async (fn) => { const doc = await api.savePathSteps(root, fn); setSide(x => ({ ...x, psteps: doc.steps || [] })) }
+  // Set a step or a gate on the line. i is the place it goes before (the trail's own index on The Trail, the
+  // stop's on End Of The Trail); none means the end. A click on the icon, with no drag, is the end too.
+  const place = async (kind, i = null) => {
+    setDrag(null); setOver(null)
+    if (busy) return
+    const onTrail = kind === 'step' && face === 'trail'
+    if (!onTrail && face !== 'end') pick('end')
+    const n = mission ? Math.max(0, ...missionGates.map(g => g.n)) + 1 : null
+    const ask = kind === 'gate'
+      ? (mission
+        ? { title: `A New Gate On ${mission.name}`, message: `A gate belongs to the mission, so this one goes on ${mission.name} as gate ${n}. What must be true?`, placeholder: 'What must be true', confirm: 'Add The Gate' }
+        : { title: 'A New Gate', message: 'What must be true for this mission to close. A gate pays 7 miles when it closes.', placeholder: 'What must be true', confirm: 'Add The Gate' })
+      : onTrail
+        ? { title: 'A Step On The Trail', message: 'What you did, in a line. It lands where you set it.', placeholder: 'What you did', confirm: 'Add The Step' }
+        : { title: 'A Step Ahead', message: 'What is to be done, in a line. Click its circle when it is done and it moves to The Trail.', placeholder: 'What is to be done', confirm: 'Add The Step' }
+    const text = String(await hudPrompt(ask) || '').replace(/\s+/g, ' ').trim().slice(0, 300)
+    if (!text) return
+    setBusy(true)
+    try {
+      const now = new Date().toISOString()
+      if (kind === 'step') {
+        const row = { id: `p${Date.now().toString(36)}`, text, by: 'david', made_at: now }
+        if (onTrail) {
+          // between the line before and the line after; past the last line it is now
+          const next = i == null ? null : trail[i] || null, prev = i == null ? null : trail[i - 1] || null
+          const t = (ev) => new Date(ev.at).getTime()
+          const at = !next ? now : new Date(prev ? (t(prev) + t(next)) / 2 : t(next) - 60000).toISOString()
+          await savePsteps(list => [...list, { ...row, done: true, at }])
+        } else await savePsteps(list => [...list, { ...row, done: false, at: null, after: i == null ? null : i === 0 ? '^' : stops[i - 1].key }])
+      } else if (mission) {
+        await api.addMissionGate(mission.id, n, text)
+        say(`Added to ${mission.name} as gate ${n}.`)
+        await onReload()
+      } else {
+        const row = await api.addStep(obj.id, text, steps.length)
+        if (row?.id != null) {
+          await api.noteSource(root, row.id, { by: 'david', where: 'card' }).catch(() => {})
+          // it goes ahead of the first open gate at or after where it was dropped
+          const ahead = i == null ? null : stops.slice(i).find(x => x.type === 'step' && !x.done)
+          if (ahead) { const ids = steps.map(x => x.id); ids.splice(ids.indexOf(ahead.step.id), 0, row.id); await api.setStepOrder(ids) }
+        }
+        await onReload()
+      }
+    } catch (err) { say(`Could not add it: ${err.message}`) } finally { setBusy(false) }
+  }
+  const finishStep = async (ps) => { try { await savePsteps(list => list.map(x => x.id === ps.id ? { ...x, done: true, at: new Date().toISOString() } : x)) } catch (err) { say(`Could not mark it: ${err.message}`) } }
+  const dropStep = async (id, text) => {
+    if (!await hudConfirm({ title: 'Take this step off the line?', message: text, confirm: 'Take It Off', danger: true })) return
+    try { await savePsteps(list => list.filter(x => x.id !== id)) } catch (err) { say(`Could not take it off: ${err.message}`) }
+  }
+  // A place on the line takes a drop: a step anywhere, a gate only on End Of The Trail.
+  const takes = !!drag && (face === 'end' || drag === 'step')
+  const dropAt = (i) => takes ? { onDragOver: (e) => { e.preventDefault(); if (over !== i) setOver(i) }, onDrop: (e) => { e.preventDefault(); place(drag, i) } } : {}
+  const zone = (i) => takes ? <div key={`z${i}`} className={`brf-drop${over === i ? ' over' : ''}`} {...dropAt(i)}>{over === i && <span>Set The {drag === 'gate' ? 'Gate' : 'Step'} Here</span>}</div> : null
+  const pickUp = (kind) => ({
+    draggable: true, role: 'button', tabIndex: 0,
+    // the line changes a moment after the drag starts, so the browser keeps hold of what is being dragged
+    onDragStart: (e) => { e.dataTransfer.setData('text/plain', `hud-trail:${kind}`); e.dataTransfer.effectAllowed = 'copy'; setTimeout(() => setDrag(kind), 0) },
+    onDragEnd: () => { setDrag(null); setOver(null) },
+    onClick: () => place(kind), onKeyDown: (e) => { if (e.key === 'Enter') place(kind) },
+  })
   const dw = due ? dueWords(due) : null
   const realFiles = side.files.filter(f => !isLink(f) && !isRequest(f))
   const blanks = side.latest ? blanksIn(side.latest.text).length : 0
@@ -129,10 +203,19 @@ export default function CardBriefing({ obj, root, kindLabel, steps = [], kids = 
   return (
     <div className={`brf-grid${hasSide ? '' : ' solo'}`}>
       <div style={{ minWidth: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
         <div className="brf-seg" role="tablist" aria-label="Read">
           {hasGates && <button role="tab" aria-selected={face === 'ms'} className={face === 'ms' ? 'on' : ''} onClick={() => pick('ms')}>Gates<i>{kids.filter(k => k.state === 'released').length} of {kids.length}</i></button>}
           <button role="tab" aria-selected={face === 'trail'} className={face === 'trail' ? 'on' : ''} onClick={() => pick('trail')}>The Trail{trail.length > 0 && <i>{trail.length}</i>}</button>
           <button role="tab" aria-selected={face === 'end'} className={face === 'end' ? 'on' : ''} onClick={() => pick('end')}>End Of The Trail</button>
+        </div>
+        {face !== 'ms' && (
+          <div className="brf-tray">
+            <span className="pick step" title="Drag a step onto the line, or click to set it at the end" {...pickUp('step')}><i className="m" />Step</span>
+            <span className="pick gate" title={face === 'trail' ? 'A gate goes on End Of The Trail: drag it there, or click' : 'Drag a gate onto the line, or click to set it at the end'} {...pickUp('gate')}><i className="m" />Gate</span>
+            <span className="hint">Drag onto the line</span>
+          </div>
+        )}
         </div>
 
         {face === 'ms' && (
@@ -155,9 +238,13 @@ export default function CardBriefing({ obj, root, kindLabel, steps = [], kids = 
           <>
             <p className="brf-sub">{mission ? `What has come in and what has happened on this gate, oldest first. The mission's trail on ${mission.name} carries every gate's.` : 'What has come in and what has happened, oldest first.'}</p>
             <div className="brf-trail">
-              {trail.length > shownTrail.length && <div className="brf-ev more" onClick={() => setAllTrail(true)}><div className="what">{trail.length - shownTrail.length} earlier, from {stamp(trail[0].at)}</div></div>}
-              {shownTrail.map((ev, i) => <div key={`${ev.at}${i}`} className={`brf-ev${ev.gate ? ' gate' : ''}`}><div className="when">{stamp(ev.at)}<span className="kind">{ev.kind}</span></div><div className="what">{ev.text}</div></div>)}
-              <div className="brf-ev here"><div className="when">You Are Here</div><div className="what">{here}</div></div>
+              {hidden > 0 && <div className="brf-ev more" onClick={() => setAllTrail(true)}><div className="what">{hidden} earlier, from {stamp(trail[0].at)}</div></div>}
+              {shownTrail.map((ev, i) => [
+                zone(hidden + i),
+                <div key={`${ev.at}${i}`} className={`brf-ev${ev.gate ? ' gate' : ''}`} {...dropAt(hidden + i + 1)}><div className="when">{stamp(ev.at)}<span className="kind">{ev.kind}</span></div><div className="what">{ev.text}{ev.pid && <button className="brf-tool" onClick={() => dropStep(ev.pid, ev.text)}>Take It Off</button>}</div></div>,
+              ])}
+              {zone(trail.length)}
+              <div className="brf-ev here" {...dropAt(trail.length)}><div className="when">You Are Here</div><div className="what">{here}</div></div>
               <div className="brf-ev go" style={{ paddingBottom: 0 }} onClick={() => pick('end')}><div className="what">See what is left, on End Of The Trail</div></div>
             </div>
           </>
@@ -169,11 +256,20 @@ export default function CardBriefing({ obj, root, kindLabel, steps = [], kids = 
               ? `${thisGate ? `This is gate ${thisGate.n} of ${missionGates.length}` : 'This is a gate'} on ${mission.name}. What is left on this gate, then Polaris.`
               : stops.some(s => !s.done) ? 'From where you are to Polaris: the gates still open, what must be true for this mission to close. Click a circle when one is closed.' : 'From where you are to Polaris. A gate is yours to set: add one here or tell Lumen.'}</p>
             <div className="brf-trail">
-              {stops.map(s => {
+              {stops.map((s, si) => {
                 const isNext = s.key === nextKey || (s.type === 'mission' && s.gate.current && !nextKey), isClosing = s.type === 'step' && closing?.id === s.step.id
                 const src = s.type === 'step' ? sourceLine(s.step, side.sources) : null
-                return (
-                  <div key={s.key} className={`brf-stop${s.done ? ' done' : isNext ? ' next' : ''}${isClosing ? ' closing' : ''}${fresh === s.key && !s.done ? ' fresh' : ''}`}>
+                if (s.type === 'pstep') return [
+                  zone(si),
+                  <div key={s.key} className="brf-stop pstep" {...dropAt(si + 1)}>
+                    <button className="hit" title="Click when it is done" aria-label={`Mark done: ${s.text}`} onClick={() => finishStep(s.ps)}><span className="o"><Check /></span></button>
+                    <div className="what">{s.text}</div>
+                    <div className="src">A step, from you, {stamp(s.ps.made_at)}<button className="tool gone" onClick={() => dropStep(s.ps.id, s.text)}>Take It Off</button></div>
+                  </div>,
+                ]
+                return [
+                  zone(si),
+                  <div key={s.key} className={`brf-stop${s.done ? ' done' : isNext ? ' next' : ''}${isClosing ? ' closing' : ''}${fresh === s.key && !s.done ? ' fresh' : ''}`} {...dropAt(si + 1)}>
                     {s.type === 'step'
                       ? <button className="hit" title={s.done ? 'Reopen it' : 'Click when it is done'} aria-label={`${s.done ? 'Reopen' : 'Mark done'}: ${s.text}`} onClick={(e) => s.done ? reopen(s.step) : close(s.step, e)}><span className="o"><Check /></span></button>
                       : <span className="hit still" title={s.type === 'gate' ? 'This gate closes on its own card' : s.type === 'mission' ? 'This gate closes on the mission\'s page, or on its own card once it is on the Board' : 'This one lives on a session board'}><span className="o" style={s.blocked ? { borderColor: 'var(--hud-warn)' } : undefined} /></span>}
@@ -185,9 +281,10 @@ export default function CardBriefing({ obj, root, kindLabel, steps = [], kids = 
                     {s.type === 'gate' && <div className="src">Gate {s.n} of {kids.length}{s.kid.due_date ? ` · ${dueWords(s.kid.due_date).short}` : ''}. It closes on its own card.</div>}
                     {s.type === 'mission' && <div className="src">Gate {s.gate.n} of {missionGates.length} on {mission?.name || 'the mission'}</div>}
                     {s.type === 'board' && <div className="src" style={s.blocked ? { color: 'var(--hud-warn)' } : undefined}>{s.note}</div>}
-                  </div>
-                )
+                  </div>,
+                ]
               })}
+              {zone(stops.length)}
               {/* Any mission takes as many gates as it needs (David 11/16), a Mythic included (11/17: one card for every mission). */}
               {mission && onOpenMission && <div className="brf-ev go" onClick={onOpenMission}><div className="what">Every gate's story is on the mission's trail: open {mission.name}</div></div>}
               {!mission && (

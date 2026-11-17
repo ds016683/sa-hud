@@ -13,6 +13,7 @@ const EMPTY = q.has('empty'), MYTHIC = q.has('mythic')
 const ago = (h) => new Date(Date.now() - h * 3600e3).toISOString()
 const OBJ = { id: '00000000-0000-0000-0000-000000000001', title: 'Sample Mission', state: 'active', captured_at: ago(20), north_star: MYTHIC ? 'The sample deck is in the reader\'s hands and they know what to do next.' : null }
 let nextId = 10
+let psteps = []
 let steps = EMPTY || MYTHIC ? [] : [
   { id: 1, text: 'Fill the blanks in the draft', done: false, done_at: null, position: 0, created_at: ago(19) },
   { id: 2, text: 'Get it on the letterhead', done: false, done_at: null, position: 1, created_at: ago(8) },
@@ -43,7 +44,10 @@ const api = {
   readPage: async () => ({ title: 'Sample Draft', text: 'Subject: A sample\n\nFriend,\n\nThank you for bearing with me through this. Here is where things stand, in my own words, with [one blank] and [another blank] still to fill.\n\nMore follows.' }),
   listBuilds: async () => [],
   listLiveFiles: async () => ({ rows: EMPTY ? [] : [{ id: 'f1', name: 'Sample Job Description.docx', bucket: 'project-files', path: 'a/jd.docx', source: 'email', note: 'Email · Sample Sender · Oct 21, 2026, 5:56 PM · Re: A Sample Thread', created_at: ago(17) }] }),
-  readPath: async () => ({ v: 1, sources }),
+  readPath: async () => ({ v: 1, sources, steps: psteps }),
+  savePathSteps: async (_r, fn) => { psteps = fn(psteps); return { v: 1, sources, steps: psteps } },
+  setStepOrder: async (ids) => { steps = ids.map(id => steps.find(x => x.id === id)).filter(Boolean) },
+  addMissionGate: async () => ({}),
   noteSource: async (_r, id, src) => { sources[id] = { at: new Date().toISOString(), ...src } },
 }
 const lumenApi = {

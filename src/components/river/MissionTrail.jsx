@@ -10,10 +10,10 @@ import { listPages } from '../../lib/workspace'
 import { listBuilds } from '../../lib/lumenPanel'
 import { listLiveFiles } from '../../lib/livefiles'
 import { objRoot } from '../../lib/objectives'
-import { buildTrail, stamp } from '../../lib/path'
+import { buildTrail, readPath, stamp } from '../../lib/path'
 
 // The Ledger's doors, as one object, so a dev harness can run this on sample data.
-const LEDGER = { listPages, listBuilds, listLiveFiles }
+const LEDGER = { listPages, listBuilds, listLiveFiles, readPath }
 
 // gates: [{ id, n, text, done, done_at, objective_id }]. here: the one line for You Are Here.
 // onEnd: go to End Of The Trail. onOpenGate(objective_id): open a gate's card.
@@ -30,7 +30,7 @@ export default function MissionTrail({ project, gates, here, onEnd, onOpenGate, 
       api.listLiveFiles({ projectId: project.id }).then(r => r.rows || []).catch(() => []),
       // a closed gate's files are filed away with it; they are still part of its story
       oids.length ? api.listLiveFiles({ objectiveIds: oids }, { includeFiled: true }).then(r => r.rows || []).catch(() => []) : [],
-      Promise.all(oids.map(async id => ({ id, tabs: await api.listPages(objRoot(id)).catch(() => []), builds: await api.listBuilds(objRoot(id)).catch(() => []) }))),
+      Promise.all(oids.map(async id => ({ id, tabs: await api.listPages(objRoot(id)).catch(() => []), builds: await api.listBuilds(objRoot(id)).catch(() => []), psteps: api.readPath ? (await api.readPath(objRoot(id))).steps || [] : [] }))),
     ]).then(([tabs, builds, files, gateFiles, cards]) => { if (on) setSide({ tabs, builds, files: [...files, ...gateFiles], cards }) })
     return () => { on = false }
   }, [api, project.id, cardKey])
@@ -41,7 +41,7 @@ export default function MissionTrail({ project, gates, here, onEnd, onOpenGate, 
     const own = buildTrail({ obj: { captured_at: project.created_at }, kindLabel: 'Main Mission', steps: gates, files: files.filter(f => !byCard.has(f.objective_id)), tabs: side.tabs, builds: side.builds })
     const fromGates = side.cards.flatMap(c => {
       const g = byCard.get(c.id)
-      return g ? buildTrail({ files: files.filter(f => f.objective_id === c.id), tabs: c.tabs, builds: c.builds }).map(ev => ({ ...ev, of: g })) : []
+      return g ? buildTrail({ files: files.filter(f => f.objective_id === c.id), tabs: c.tabs, builds: c.builds, psteps: c.psteps }).map(ev => ({ ...ev, of: g })) : []
     })
     return [...own, ...fromGates].sort((a, b) => String(a.at).localeCompare(String(b.at)))
   }, [project.created_at, gates, side])

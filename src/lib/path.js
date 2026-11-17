@@ -13,9 +13,14 @@
 import { supabase } from './supabase'
 import { sourceOf, isLink, isRequest } from './livefiles'
 
+// Steps David puts on the line by hand (11/17: "a little icon for a step and then an icon for a gate
+// that i could drag to the location of the line") live here too:
+//   steps: [{ id, text, by, made_at, done, at, after }]
+// done with an at: it is on The Trail at that time. Not done: it is ahead, on End Of The Trail, after
+// the stop whose key is in `after` ('^' is the top, none is the end). A step pays no miles; a gate does.
 const BUCKET = 'project-files'
 export const pathFile = (root) => `${root}/path.json`
-const blank = () => ({ v: 1, sources: {} })
+const blank = () => ({ v: 1, sources: {}, steps: [] })
 
 export async function readPath(root) {
   try {
@@ -24,8 +29,18 @@ export async function readPath(root) {
     const res = await fetch(`${data.signedUrl}&cb=${Date.now()}`, { cache: 'no-store' })
     if (!res.ok) return blank()
     const d = await res.json()
-    return { ...blank(), ...d, sources: d && typeof d.sources === 'object' && d.sources ? d.sources : {} }
+    return { ...blank(), ...d, sources: d && typeof d.sources === 'object' && d.sources ? d.sources : {}, steps: Array.isArray(d?.steps) ? d.steps : [] }
   } catch { return blank() }
+}
+const savePath = async (root, doc) => {
+  const { error } = await supabase.storage.from(BUCKET).upload(pathFile(root), new Blob([JSON.stringify(doc)], { type: 'application/json' }), { upsert: true, contentType: 'application/json' })
+  if (error) throw new Error(error.message)
+  return doc
+}
+// Change the card's own steps: fn takes the list and returns the new one.
+export async function savePathSteps(root, fn) {
+  const doc = await readPath(root)
+  return savePath(root, { ...doc, steps: fn(doc.steps) })
 }
 export async function noteSource(root, stepId, src) {
   const doc = await readPath(root)
@@ -69,7 +84,7 @@ export function excerpt(text, max = 240) {
 
 // The Trail: what has come in and what has happened on this card, oldest first.
 // Each entry is { at, kind: 'Came In' | 'Happened' | 'Gate Closed', text, gate? }.
-export function buildTrail({ obj, kindLabel, steps = [], children = [], files = [], tabs = [], builds = [] }) {
+export function buildTrail({ obj, kindLabel, steps = [], children = [], files = [], tabs = [], builds = [], psteps = [] }) {
   const out = []
   const add = (at, kind, text, gate = false) => { if (at && text) out.push({ at, kind, text, ...(gate ? { gate: true } : {}) }) }
   if (obj) add(obj.captured_at, 'Happened', `Opened as a ${kindLabel || 'Side Mission'}`)
@@ -91,6 +106,8 @@ export function buildTrail({ obj, kindLabel, steps = [], children = [], files = 
   // A closed gate is the big mark on the trail (David 11/16: "Gates have some type of visual distinction").
   for (const st of steps) if (st.done && st.done_at) add(st.done_at, 'Gate Closed', st.text, true)
   for (const k of children) if (k.state === 'released' && k.released_at) add(k.released_at, 'Gate Closed', k.title, true)
+  // A step set on the line by hand, or one that was ahead and is now done.
+  for (const p of psteps) if (p.done && p.at && p.text) out.push({ at: p.at, kind: 'Step', text: p.text, pid: p.id })
   if (obj?.state === 'released' && obj.released_at) add(obj.released_at, 'Happened', 'Closed out')
   return out.sort((a, b) => String(a.at).localeCompare(String(b.at)))
 }

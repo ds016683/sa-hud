@@ -1359,6 +1359,25 @@ table.fin-grid { width: 100%; border-collapse: collapse; font-family: var(--font
 .brf-spark { position: absolute; left: -24px; top: 14px; width: 7px; height: 7px; border-radius: 50%; background: var(--hud-success); box-shadow: 0 0 10px 2px color-mix(in srgb, var(--hud-success) 70%, transparent); animation: brftravel .6s .25s ease-in both; pointer-events: none; }
 .brf-stop.fresh { animation: brfrise .45s ease both; }
 .brf-ev.end.lit::before { animation: brfstar .8s ease 2; }
+/* By hand (David 11/17): a step or a gate, dragged from the tray onto the line. The marks match the trail's own. */
+.brf-tray { display: inline-flex; align-items: center; gap: 8px; }
+.brf-tray .pick { display: inline-flex; align-items: center; gap: 8px; font-size: 13.5px; font-weight: 600; color: var(--hud-ink); border: 1px dashed var(--hud-border); border-radius: 10px; padding: 7px 12px; cursor: grab; user-select: none; }
+.brf-tray .pick:hover, .brf-tray .pick:focus-visible { border-color: var(--hud-accent); outline: none; }
+.brf-tray .pick:active { cursor: grabbing; }
+.brf-tray .pick .m { display: inline-block; border-radius: 50%; }
+.brf-tray .pick.step .m { width: 7px; height: 7px; background: var(--hud-ink-2); }
+.brf-tray .pick.gate .m { width: 13px; height: 13px; background: var(--hud-success); box-shadow: 0 0 0 3px color-mix(in srgb, var(--hud-success) 18%, transparent); }
+.brf-tray .hint { font-size: 12.5px; color: var(--hud-ink-3); }
+.brf-drop { position: relative; height: 22px; margin: -17px 0 -5px; z-index: 2; }
+.brf-drop:first-child { margin-top: 0; }
+.brf-drop::before { content: ""; position: absolute; left: -24px; top: 9px; width: 5px; height: 5px; border-radius: 50%; background: color-mix(in srgb, var(--hud-accent) 55%, transparent); }
+.brf-drop.over { height: 36px; margin-bottom: 6px; }
+.brf-drop.over::before { left: -28px; top: 11px; width: 13px; height: 13px; box-sizing: border-box; background: var(--hud-surface-deep); border: 2px dashed var(--hud-accent); }
+.brf-drop.over span { position: absolute; left: 0; top: 8px; font-size: 13.5px; font-weight: 600; color: var(--hud-accent); pointer-events: none; }
+.brf-stop.pstep .hit .o { width: 9px; height: 9px; }
+.brf-stop.pstep .what { font-size: 14.5px; }
+.brf-tool { font-size: 12.5px; color: var(--hud-ink-3); margin-left: 10px; cursor: pointer; background: none; border: none; padding: 0; font-family: inherit; }
+.brf-tool:hover { color: var(--hud-accent); }
 .brf-add { display: flex; gap: 8px; align-items: center; }
 .brf-add input { flex: 1; min-width: 0; background: transparent; border: none; border-bottom: 1px dashed var(--hud-border); color: var(--hud-ink); font-family: inherit; font-size: 14.5px; padding: 4px 2px; outline: none; }
 .brf-add input:focus { border-bottom-color: var(--hud-accent); }
