@@ -104,7 +104,7 @@ export function buildTrail({ obj, kindLabel, steps = [], children = [], files = 
   for (const t of tabs) add(t.created_at || t.updated_at, 'Happened', `Tab on the Workbench: ${t.title}`)
   for (const b of builds) add(b.updated_at, 'Happened', `Page built on the Workbench: ${b.title || b.slug}`)
   // A closed gate is the big mark on the trail (David 11/16: "Gates have some type of visual distinction").
-  for (const st of steps) if (st.done && st.done_at) add(st.done_at, 'Gate Closed', st.text, true)
+  for (const st of steps) if (st.done && st.done_at) add(st.done_at, 'Gate Closed', st.n != null ? `Gate ${st.n} · ${st.text}` : st.text, true)
   for (const k of children) if (k.state === 'released' && k.released_at) add(k.released_at, 'Gate Closed', k.title, true)
   // A step set on the line by hand, or one that was ahead and is now done.
   for (const p of psteps) if (p.done && p.at && p.text) out.push({ at: p.at, kind: 'Step', text: p.text, pid: p.id })

@@ -12,10 +12,11 @@
 // clocks. Two kinds of file in project-files/runs, written here only:
 //   index.json   { v, runs: [ the face of every run ] }
 //   <id>.json    { id, ledger, log, mac }   one run's own lines: its marks, the Mac's samples, and what the ledger held at Start
-import { sb } from './_ledger.mjs'
+import { sb, sbWrite } from './_ledger.mjs'
 import { missions } from './_trail.mjs'
 import { canvass, eventsBetween, namer, readJson, writeJson, chiDay, flat } from './_canvass.mjs'
 import { strikeDay } from './_river.mjs'
+import { waSendText, davidNumber } from './_wa.mjs'
 
 export const RUN_MINUTES = 45
 export const DEBRIEF_MINUTES = 10
@@ -80,6 +81,37 @@ export async function startRun() {
   return run
 }
 
+// The warnings (David 11/17): "can lumen message me through whats app if the timer is still running to give a
+// 10 min warning, 5 min warning, and 1 min warning. and done and then 7 minutes over. obviously, when i
+// extract, that push notifcation gets turned off." Only a running run is warned, so Extract ends them. The
+// schedule's minute lands within half a minute of each mark; if minutes were missed, only the latest mark
+// that has passed goes out, and the ones before it are counted as said.
+const MARKS = [
+  { key: '10', left: 10, say: (n) => `Run ${n}: 10 minutes left.` },
+  { key: '5', left: 5, say: (n) => `Run ${n}: 5 minutes left.` },
+  { key: '1', left: 1, say: (n) => `Run ${n}: 1 minute left.` },
+  { key: '0', left: 0, say: (n) => `Run ${n} is done. Extract when you are ready.` },
+  { key: '+7', left: -7, say: (n) => `Run ${n} is 7 minutes over. It stays open until you extract.` },
+]
+export const markDue = (run, now = Date.now()) => {
+  const left = (new Date(run.ends_at).getTime() - now) / 60000
+  const due = MARKS.filter(m => left <= m.left + 0.5), last = due[due.length - 1]
+  if (!last || (run.warned || []).includes(last.key)) return null
+  // A countdown mark more than a minute and a half late would say the wrong number: it is counted, not sent.
+  return { mark: last, keys: due.map(m => m.key), late: last.left > 0 && left < last.left - 1.5 }
+}
+async function warn(run) {
+  const due = markDue(run)
+  if (!due) return null
+  const text = due.mark.say(run.n)
+  let id = null, skipped = due.late ? 'late' : null
+  if (!skipped) try { id = await waSendText(davidNumber(), text) } catch (e) { skipped = String(e.message || e).slice(0, 200) }
+  // On the record either way, and marked as said so a failed send is not retried every minute.
+  await saveIndex((await readIndex()).map(r => r.id === run.id ? { ...r, warned: [...new Set([...(r.warned || []), ...due.keys])] } : r))
+  await sbWrite('POST', 'lumen_messages', { channel: 'pulse', direction: 'out', kind: skipped ? 'system' : 'text', body: text, external_id: id, meta: { kind: 'run', run: run.id, mark: due.mark.key, skipped } }, 'return=minimal').catch(() => null)
+  return { mark: due.mark.key, sent: !skipped, skipped }
+}
+
 // The schedule's minute. This is the canvass's caller (Extract takes one last look of its own): every
 // minute while a run is on, every fifth minute otherwise (David 11/17: one system, one set of protocols, faster only when a run is on).
 export async function tick() {
@@ -87,9 +119,10 @@ export async function tick() {
   const now = new Date()
   if (run && run.state === 'debrief' && now.toISOString() > run.debrief_ends_at) await fileRun({ word: null })   // the debrief ran out: it files as written
   const running = !!run && run.state === 'running'
+  const warned = running ? await warn(run).catch(() => null) : null
   if (!running && now.getUTCMinutes() % 5 !== 0) return { active: !!run, looked: false }
   const out = await canvass()
-  return { active: !!run, looked: true, ...out }
+  return { active: !!run, looked: true, ...(warned ? { warned } : {}), ...out }
 }
 
 // The watcher on the Mac sends what is in front once a minute. Kept only while a run is on.

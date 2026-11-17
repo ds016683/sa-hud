@@ -50,6 +50,8 @@ function Mock() {
   const go = (s) => { setState(s); setRun(s === 'idle' || s === 'complete' ? null : make(s)) }
   const extract = () => { setResults({ pending: true }); setTimeout(() => { go('debrief'); setResults({ pending: false }) }, 7000) }
   const done = state === 'complete'
+  // As RunDock holds it: a run waiting on its report keeps the veil up.
+  const veil = results || (state === 'debrief' ? { pending: false } : null)
   return (
     <div className="sa-dark sa-app" style={{ minHeight: '100vh', padding: '24px 28px 60px', background: 'linear-gradient(180deg, var(--hud-surface) 0%, var(--hud-surface-deep) 100%)', color: 'var(--hud-ink)', fontFamily: 'Instrument Sans, system-ui, sans-serif' }}>
       <div style={{ maxWidth: 1120, margin: '0 auto' }}>
@@ -57,8 +59,8 @@ function Mock() {
           <span style={{ fontSize: 13, color: 'var(--hud-ink-2)' }}>Mock-up, made-up data. State:</span>
           {STATES.map(s => <button key={s} onClick={() => go(s)} style={{ fontFamily: 'inherit', fontSize: 13, fontWeight: 600, padding: '6px 12px', borderRadius: 8, cursor: 'pointer', border: '1px solid var(--hud-border)', background: s === state ? 'var(--hud-fill-2)' : 'transparent', color: 'var(--hud-ink)' }}>{s[0].toUpperCase() + s.slice(1)}</button>)}
         </div>
-        <RunPanel key={state} run={run} today={{ runs: done ? 2 : 1, miles: done ? 20 : 10 }} onStart={() => go('running')} onExtract={extract} onFile={() => go('complete')} onWalkAway={() => go('idle')} onResults={() => setResults({ run: { ...make('debrief'), state: 'filed', word: 'The deck is where it needed to be. The inbox pull after each send is the thing to watch.' } })} />
-        {results && <RunResults run={results.run || (results.pending ? null : run)} pending={!!results.pending} closeLabel={results.run ? 'Back To The Board' : 'To The Debrief'} onClose={() => setResults(null)} />}
+        <RunPanel key={state} run={run} today={{ runs: done ? 2 : 1, miles: done ? 20 : 10 }} onStart={() => go('running')} onExtract={extract} onWalkAway={() => go('idle')} onResults={() => setResults({ run: { ...make('debrief'), state: 'filed', word: 'The deck is where it needed to be. The inbox pull after each send is the thing to watch.' } })} />
+        {veil && <RunResults run={veil.run || (veil.pending ? null : run)} pending={!!veil.pending} closeLabel="Back To The Board" onFile={() => { setResults(null); go('complete') }} onClose={() => setResults(null)} />}
       </div>
     </div>
   )

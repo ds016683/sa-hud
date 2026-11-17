@@ -25,8 +25,12 @@ export default function RunDock({ refreshKey = 0, onChange, api = LEDGER }) {
     if (busy) return
     setBusy(true); setError(null)
     if (action === 'extract') setResults({ pending: true })
-    try { setData(await api.runVerb(action, more)); if (action === 'extract') setResults({ pending: false }); onChange && onChange() }
-    catch (e) { if (action === 'extract') setResults(null); setError(`That did not go through: ${e.message}`) } finally { setBusy(false) }
+    try {
+      setData(await api.runVerb(action, more))
+      if (action === 'extract') setResults({ pending: false })
+      if (action === 'file') setResults(null)      // filed: the veil closes and the panel is ready for the next run
+      onChange && onChange()
+    } catch (e) { if (action === 'extract') setResults(null); setError(`That did not go through: ${e.message}`) } finally { setBusy(false) }
   }
   const walk = async () => { if (await hudConfirm({ title: 'Walk away from this run?', message: 'It ends now with no miles. The log so far is kept.', confirm: 'Walk Away', danger: true })) verb('walk') }
   if (!data) return null
@@ -34,11 +38,13 @@ export default function RunDock({ refreshKey = 0, onChange, api = LEDGER }) {
   // that was walked away from, or yesterday's.
   const run = data.run && ['running', 'debrief'].includes(data.run.state) ? data.run : null
   const filed = data.run && data.run.state === 'filed' ? data.run : null
-  const seen = results && (results.run || (results.pending ? null : data.run))
+  // A run waiting on its report keeps the veil up, here or after a reload: the debrief is done in it.
+  const veil = results || (data.run && data.run.state === 'debrief' ? { pending: false } : null)
+  const seen = veil && (veil.run || (veil.pending ? null : data.run))
   return (
     <>
-      <RunPanel key={run ? `${run.id}:${run.state}` : 'idle'} run={run} today={data.today} busy={busy} error={error} onStart={() => verb('start')} onExtract={() => verb('extract')} onFile={(word) => verb('file', { word })} onWalkAway={walk} onResults={filed ? () => setResults({ run: filed }) : undefined} />
-      {results && <RunResults run={seen} pending={!!results.pending} closeLabel={results.run ? 'Back To The Board' : 'To The Debrief'} onClose={() => setResults(null)} />}
+      <RunPanel key={run ? `${run.id}:${run.state}` : 'idle'} run={run} today={data.today} busy={busy} error={veil ? null : error} onStart={() => verb('start')} onExtract={() => verb('extract')} onWalkAway={walk} onResults={filed ? () => setResults({ run: filed }) : undefined} />
+      {veil && (veil.pending || seen) && <RunResults run={seen} pending={!!veil.pending} busy={busy} error={error} closeLabel="Back To The Board" onFile={(word) => verb('file', { word })} onClose={() => setResults(null)} />}
     </>
   )
 }

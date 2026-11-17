@@ -178,7 +178,7 @@ function GateTools({ n, project, task, api, objState, takeOff, say }) {
   return (
     <>
       <div className="src">
-        Gate {n}{onBoard ? ' · On The Board' : stashed ? ' · In The Stash' : ''}{isBlocked(task) ? ' · Blocked, Needs David' : ''}
+        {[onBoard ? 'On The Board' : stashed ? 'In The Stash' : null, isBlocked(task) ? 'Blocked, Needs David' : null].filter(Boolean).join(' · ')}
         {task.objective_id && <button className="tool" onClick={() => openCard(task.objective_id)}>Open Its Card</button>}
         {!onBoard && <button className="tool" disabled={busy} onClick={load} title="Put it on the Board, clock off">Load</button>}
         {!onBoard && !stashed && <button className="tool" disabled={busy} onClick={toStash} title="Stage it in the Stash on the Board; no slot, no clock">Stash</button>}
@@ -389,7 +389,7 @@ function ProjectDetail({ project, board: boardProp, api, onBack, initialTab, ini
   const [organizing, setOrganizing] = useState(false)
   const live = useRef({ api, project, plan })
   useEffect(() => { live.current = { api, project, plan } })
-  const gateSteps = useMemo(() => planOf(project).plan.map(({ t }) => ({ id: t.id, text: stripNum(t.text), done: !isOpen(t), done_at: t.released_at })), [project])
+  const gateSteps = useMemo(() => planOf(project).plan.map(({ t, n }) => ({ id: t.id, n, text: stripNum(t.text), done: !isOpen(t), done_at: t.released_at })), [project])
   const cardGates = useMemo(() => planOf(project).plan.filter(({ t }) => t.objective_id).map(({ t, n }) => ({ n, text: stripNum(t.text), objective_id: t.objective_id })), [project])
   const stories = useGateStories(cardGates)
   const extraTrail = useMemo(() => [...stories, ...planOf(project).history.filter(t => t.released_at).map(t => ({ at: t.released_at, kind: 'Gate Closed', text: t.text, gate: true }))], [stories, project])

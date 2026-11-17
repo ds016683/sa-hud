@@ -7,12 +7,18 @@
 // so the percent is paced on the usual time and only reaches 100 when the report is really back. Then
 // the medallion lands and the page rises: Lumen's headline, the counts, what happened, what was
 // accomplished and the miles line by line. Opened later from the Run Complete badge it skips the gauge.
+//
+// The debrief lives here too (David 11/17: "the run debrief should just stay in the pop up and not take me
+// back to the Board to close out the run. then, when done with the report, it should go ahead and reset the
+// whole thing, with the run captured on the surface"). While the run waits on its report the page carries
+// Where The Time Went, Your Word and File The Report, and it does not close until the report is filed.
 // This is a face only: it draws the run it is handed. dev/run.html runs it on sample data.
 import { useEffect, useRef, useState } from 'react'
-import { Check, ArrowRight } from 'lucide-react'
-import { INK, INK2, MUTED, PANEL_BORDER, GOLD, SUCCESS, LABEL, SERIF, NAVY_DEEP, alpha } from './canon'
+import { Check, ArrowRight, FileText } from 'lucide-react'
+import { INK, INK2, MUTED, PANEL_BORDER, GOLD, SUCCESS, LABEL, RED, SERIF, NAVY_DEEP, alpha } from './canon'
 
 const RUN_MINUTES = 45
+const mmss = (ms) => { const t = Math.max(0, Math.round(ms / 1000)); return `${String(Math.floor(t / 60)).padStart(2, '0')}:${String(t % 60).padStart(2, '0')}` }
 const clock = (iso) => new Date(iso).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'America/Chicago' })
 // The order the server works in at Extract (see extractRun in api/_run.mjs).
 const STAGES = [[0, 'Taking One Last Look'], [14, 'Reading The Run Log'], [38, 'Lumen Is Writing The Report'], [84, 'Counting The Miles']]
@@ -52,8 +58,9 @@ const Section = ({ title, delay, children }) => (
   </div>
 )
 
-// run: the extracted run (null while pending). pending: Extract is still in flight.
-export default function RunResults({ run, pending = false, closeLabel = 'Done', onClose }) {
+// run: the extracted run (null while pending). pending: Extract is still in flight. busy: File is in flight.
+// A run in its debrief is filed from here (onFile(word)); a filed one only closes (onClose).
+export default function RunResults({ run, pending = false, busy = false, error = null, closeLabel = 'Done', onClose, onFile }) {
   const [pct, setPct] = useState(pending ? 0 : 100)
   const [shown, setShown] = useState(!pending)
   const live = useRef(pending)
@@ -76,12 +83,16 @@ export default function RunResults({ run, pending = false, closeLabel = 'Done', 
     return () => cancelAnimationFrame(raf)
   }, [shown])
   const ready = shown && !!run
+  const debrief = !!run && run.state === 'debrief'
+  const [word, setWord] = useState('')
+  const [now, setNow] = useState(() => Date.now())
+  useEffect(() => { if (!debrief) return undefined; const t = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(t) }, [debrief])
   useEffect(() => {
-    if (!ready) return undefined
+    if (!ready || debrief) return undefined
     const key = (e) => { if (e.key === 'Escape') onClose && onClose() }
     window.addEventListener('keydown', key)
     return () => window.removeEventListener('keydown', key)
-  }, [ready, onClose])
+  }, [ready, debrief, onClose])
 
   const hits = run?.hits || [], rogue = run?.rogue || []
   const earned = run ? (run.earned && run.earned.length ? run.earned : run.miles > 0 ? [{ badge: 'run', text: `Run ${run.n}, the full ${RUN_MINUTES} minutes`, miles: run.miles }] : []) : []
@@ -168,11 +179,43 @@ export default function RunResults({ run, pending = false, closeLabel = 'Done', 
           ) : <div style={{ fontSize: 15, lineHeight: 1.5, color: INK2 }}>No miles on this one. A run pays its 10 once the {RUN_MINUTES} minutes are up.</div>}
         </Section>
 
-        {run.word && <Section title="Your Word" delay={1.25}><div style={{ fontSize: 15, lineHeight: 1.55, color: INK }}>{run.word}</div></Section>}
+        <Section title="Where The Time Went" delay={1.25}>
+          <div style={{ display: 'grid', gap: 9 }}>
+            {[...hits.map(h => ({ ...h, rogue: false })), ...rogue.map(r => ({ mission: r.text, kind: 'Rogue', minutes: r.minutes, what: null, rogue: true }))].map((h, i, all) => {
+              const sum = all.reduce((t, x) => t + (x.minutes || 0), 0) || 1
+              return (
+                <div key={i}>
+                  <div style={{ display: 'flex', gap: 12, alignItems: 'baseline', fontSize: 14.5 }}>
+                    <span style={{ color: INK, fontWeight: 600, flex: 1, minWidth: 0 }}>{h.mission}</span>
+                    <span style={{ color: h.rogue ? RED : LABEL, fontSize: 13 }}>{h.kind}</span>
+                    <span style={{ color: INK, width: 58, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{h.minutes} min</span>
+                  </div>
+                  <div style={{ height: 5, borderRadius: 99, background: 'rgba(234,241,248,0.10)', marginTop: 5, overflow: 'hidden' }}><div style={{ width: `${(100 * (h.minutes || 0)) / sum}%`, height: '100%', borderRadius: 99, background: h.rogue ? alpha(RED, 70) : SUCCESS }} /></div>
+                  {h.what && <div style={{ fontSize: 13.5, color: INK2, lineHeight: 1.5, marginTop: 5 }}>{h.what}</div>}
+                </div>
+              )
+            })}
+            {hits.length + rogue.length === 0 && <div style={{ fontSize: 15, color: INK2 }}>Lumen could not place the minutes on this one.</div>}
+          </div>
+        </Section>
 
-        <div className="run-rise" style={{ animationDelay: '1.3s', display: 'flex', justifyContent: 'center', marginTop: 36 }}>
-          <button onClick={onClose} style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontFamily: 'inherit', fontSize: 15, fontWeight: 600, padding: '12px 22px', borderRadius: 11, cursor: 'pointer', border: `1px solid ${GOLD}`, background: GOLD, color: NAVY_DEEP }}>{closeLabel} <ArrowRight size={16} /></button>
-        </div>
+        {debrief ? (
+          <Section title="Your Word" delay={1.35}>
+            <textarea value={word} onChange={e => setWord(e.target.value)} rows={3} placeholder="What was this run for, and did it get there? Optional." aria-label="Your word on this run" style={{ width: '100%', boxSizing: 'border-box', fontFamily: 'inherit', fontSize: 15, lineHeight: 1.5, padding: '11px 13px', borderRadius: 10, border: `1px solid ${PANEL_BORDER}`, background: 'rgba(255,255,255,0.05)', color: INK, outline: 'none', resize: 'vertical' }} />
+            {error && <div style={{ fontSize: 13.5, color: RED, marginTop: 8 }}>{error}</div>}
+            <div style={{ display: 'flex', gap: 14, alignItems: 'center', justifyContent: 'center', flexWrap: 'wrap', marginTop: 22 }}>
+              <button onClick={() => onFile && onFile(word)} disabled={busy} style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontFamily: 'inherit', fontSize: 15, fontWeight: 600, padding: '12px 22px', borderRadius: 11, cursor: 'pointer', border: `1px solid ${GOLD}`, background: GOLD, color: NAVY_DEEP, opacity: busy ? 0.6 : 1 }}><FileText size={16} /> {busy ? 'Filing' : 'File The Report'}</button>
+              {run.debrief_ends_at && <span style={{ fontSize: 13.5, color: MUTED, fontVariantNumeric: 'tabular-nums' }}>It files as written in {mmss(new Date(run.debrief_ends_at).getTime() - now)}.</span>}
+            </div>
+          </Section>
+        ) : (
+          <>
+            {run.word && <Section title="Your Word" delay={1.35}><div style={{ fontSize: 15, lineHeight: 1.55, color: INK }}>{run.word}</div></Section>}
+            <div className="run-rise" style={{ animationDelay: '1.4s', display: 'flex', justifyContent: 'center', marginTop: 36 }}>
+              <button onClick={onClose} style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontFamily: 'inherit', fontSize: 15, fontWeight: 600, padding: '12px 22px', borderRadius: 11, cursor: 'pointer', border: `1px solid ${GOLD}`, background: GOLD, color: NAVY_DEEP }}>{closeLabel} <ArrowRight size={16} /></button>
+            </div>
+          </>
+        )}
       </div>
     </div>
   )

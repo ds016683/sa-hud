@@ -258,8 +258,8 @@ export default function CardBriefing({ obj, root, kindLabel, steps = [], kids = 
                       ? <button className="hit" title={s.done ? 'Reopen it' : 'Click when it is done'} aria-label={`${s.done ? 'Reopen' : 'Mark done'}: ${s.text}`} onClick={(e) => s.done ? reopen(s.step) : close(s.step, e)}><span className="o"><Check /></span></button>
                       : <span className="hit still" title={s.type === 'gate' ? 'This gate closes on its own card' : s.type === 'mission' ? 'This gate closes on the mission\'s page, or on its own card once it is on the Board' : 'This one lives on a session board'}><span className="o" style={s.blocked ? { borderColor: 'var(--hud-warn)' } : undefined} /></span>}
                     {isClosing && <span className="brf-spark" style={{ '--dy': `${closing.dy}px` }} />}
-                    {isNext && <div className="when">{s.type === 'mission' ? 'This Gate' : 'Next Move'}</div>}
-                    <div className={`what${s.type === 'gate' ? ' link' : ''}`} onClick={s.type === 'gate' ? () => onOpenCard && onOpenCard(s.kid.id) : undefined}>{s.text}</div>
+                    {isNext && <div className="when">{s.type === 'mission' ? `Gate ${s.gate.n} · This Gate` : 'Next Move'}</div>}
+                    <div className={`what${s.type === 'gate' ? ' link' : ''}`} onClick={s.type === 'gate' ? () => onOpenCard && onOpenCard(s.kid.id) : undefined}>{s.type === 'step' && s.step.n != null && <span className="gn">Gate {s.step.n}</span>}{s.text}</div>
                     {s.done && <><span className="when">Closed just now</span><button className="tool" onClick={() => reopen(s.step)}>Reopen</button></>}
                     {!s.done && s.type === 'step' && (stopExtra ? stopExtra(s.step, { takeOff: () => drop(s.step) }) : <div className="src">{src.lead}{src.quote && <> <q>{src.quote}</q></>}<button className="tool gone" onClick={() => drop(s.step)}>Take It Off</button></div>)}
                     {s.type === 'gate' && <div className="src">Gate {s.n} of {kids.length}{s.kid.due_date ? ` · ${dueWords(s.kid.due_date).short}` : ''}. It closes on its own card.</div>}

@@ -11,9 +11,9 @@
 // Complete"); the badge opens that run's results (RunResults).
 //
 // This is the face only: it draws whatever run it is handed and calls back on Start, Extract, File
-// and Walk Away. Nothing here reads or writes the Ledger; dev/run.html runs it on sample data.
+// and Walk Away. The debrief is done in the results pop-up (RunResults), not here. Nothing here reads or writes the Ledger; dev/run.html runs it on sample data.
 import { useEffect, useState } from 'react'
-import { Play, LogOut, Check, FileText, ChevronDown, ChevronRight } from 'lucide-react'
+import { Play, LogOut, Check, ChevronDown, ChevronRight } from 'lucide-react'
 import { INK, INK2, MUTED, GRAY, PANEL_BORDER, PANEL_BG, GOLD, GREEN, RED, SUCCESS, LABEL, SERIF, NAVY_DEEP, alpha } from './canon'
 
 export const RUN_MINUTES = 45
@@ -48,13 +48,6 @@ function Ring({ frac, color, label, sub, size = 132 }) {
   )
 }
 
-const Head = ({ n, title, note }) => (
-  <div style={{ margin: '22px 0 10px' }}>
-    <div style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 18, color: INK }}>Exhibit {n} · {title}</div>
-    {note && <div style={{ fontSize: 13, color: MUTED, marginTop: 3 }}>{note}</div>}
-  </div>
-)
-
 // run: null (no run on; a filed run counts as none) or { n, state: 'running' | 'overtime' | 'debrief', started_at, ends_at,
 //   extracted_at, debrief_ends_at, log: [{ at, source, text, mission }], hits: [{ mission, kind, minutes, what }],
 //   rogue: [{ text, minutes }], summary, word }
@@ -63,9 +56,8 @@ const Head = ({ n, title, note }) => (
 const LOG_OPEN = 'hud.run.log.open'
 const logOpenAtFirst = () => { try { return localStorage.getItem(LOG_OPEN) !== '0' } catch { return true } }
 
-export default function RunPanel({ run, today = { runs: 0, miles: 0 }, busy = false, error = null, onStart, onExtract, onFile, onWalkAway, onResults }) {
+export default function RunPanel({ run, today = { runs: 0, miles: 0 }, busy = false, error = null, onStart, onExtract, onWalkAway, onResults }) {
   const [now, setNow] = useState(() => Date.now())
-  const [word, setWord] = useState(run?.word || '')
   const [logOpen, setLogOpen] = useState(logOpenAtFirst)
   const foldLog = () => setLogOpen(o => { try { localStorage.setItem(LOG_OPEN, o ? '0' : '1') } catch { /* the fold is still kept for this visit */ } return !o })
   useEffect(() => { const t = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(t) }, [])
@@ -75,7 +67,7 @@ export default function RunPanel({ run, today = { runs: 0, miles: 0 }, busy = fa
   const over = state === 'overtime' || (state === 'running' && left <= 0)
   const live = state === 'running' && !over
   const edge = live ? GREEN : over ? RED : state === 'debrief' ? LABEL : PANEL_BORDER
-  const hits = run?.hits || [], rogue = run?.rogue || [], log = run?.log || []
+  const log = run?.log || []
   const debriefLeft = run?.debrief_ends_at ? new Date(run.debrief_ends_at).getTime() - now : 0
 
   return (
@@ -94,7 +86,7 @@ export default function RunPanel({ run, today = { runs: 0, miles: 0 }, busy = fa
             {state === 'idle' && `${RUN_MINUTES} minutes on the clock. Lumen logs what you do each minute: the missions you hit, the mail you send, where the time goes. Extract when it ends, then ${DEBRIEF_MINUTES} minutes for the report.`}
             {live && `Started ${clock(run.started_at)}. Lumen is logging each minute. Work as you would; the missions keep their own clocks.`}
             {over && 'The run is over. It stays open until you extract.'}
-            {state === 'debrief' && `Extracted ${clock(run.extracted_at)}. Read Lumen's report, add your word, and file it.`}
+            {state === 'debrief' && `Extracted ${clock(run.extracted_at)}. The report is open; file it there.`}
           </div>
           <div style={{ fontSize: 13, color: MUTED, marginTop: 8 }}>
             {state === 'idle' && `${RUN_MILES} miles for a run seen through its ${RUN_MINUTES} minutes`}
@@ -139,39 +131,6 @@ export default function RunPanel({ run, today = { runs: 0, miles: 0 }, busy = fa
         </div>
       )}
 
-      {state === 'debrief' && (
-        <div style={{ marginTop: 20, borderTop: `1px solid ${PANEL_BORDER}`, paddingTop: 4 }}>
-          <Head n={1} title="Run Report" note={`Run ${run.n}, ${clock(run.started_at)} to ${clock(run.extracted_at)}. Written by Lumen from the run log.`} />
-          <div style={{ fontFamily: SERIF, fontSize: 16.5, lineHeight: 1.6, color: INK, maxWidth: 760 }}>{run.summary}</div>
-
-          <Head n={2} title="Where The Time Went" note="Minutes by mission, from the clock, the mail and the Mac. Anything that matched no mission is listed as rogue." />
-          <div style={{ display: 'grid', gap: 9, maxWidth: 820 }}>
-            {[...hits.map(h => ({ ...h, rogue: false })), ...rogue.map(r => ({ mission: r.text, kind: 'Rogue', minutes: r.minutes, what: null, rogue: true }))].map((h, i, all) => {
-              const total = all.reduce((s, x) => s + x.minutes, 0) || 1
-              return (
-                <div key={i}>
-                  <div style={{ display: 'flex', gap: 12, alignItems: 'baseline', fontSize: 14 }}>
-                    <span style={{ color: INK, fontWeight: 600, flex: 1, minWidth: 0 }}>{h.mission}</span>
-                    <span style={{ color: h.rogue ? RED : LABEL, fontSize: 13 }}>{h.kind}</span>
-                    <span style={{ color: INK, width: 58, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{h.minutes} min</span>
-                  </div>
-                  <div style={{ height: 5, borderRadius: 99, background: 'rgba(234,241,248,0.10)', marginTop: 5, overflow: 'hidden' }}><div style={{ width: `${(100 * h.minutes) / total}%`, height: '100%', borderRadius: 99, background: h.rogue ? alpha(RED, 70) : SUCCESS }} /></div>
-                  {h.what && <div style={{ fontSize: 13, color: INK2, lineHeight: 1.5, marginTop: 5 }}>{h.what}</div>}
-                </div>
-              )
-            })}
-          </div>
-
-          <div style={{ marginTop: 22 }}>
-              <div style={{ fontSize: 14, fontWeight: 600, color: LABEL, marginBottom: 6 }}>Your Word</div>
-              <textarea value={word} onChange={e => setWord(e.target.value)} rows={3} placeholder="What was this run for, and did it get there? Optional." aria-label="Your word on this run" style={{ width: '100%', maxWidth: 760, boxSizing: 'border-box', fontFamily: 'inherit', fontSize: 14.5, lineHeight: 1.5, padding: '10px 12px', borderRadius: 10, border: `1px solid ${PANEL_BORDER}`, background: 'rgba(255,255,255,0.04)', color: INK, outline: 'none', resize: 'vertical' }} />
-              <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginTop: 12, flexWrap: 'wrap' }}>
-                <button onClick={() => onFile && onFile(word)} disabled={busy} style={{ ...btn('primary'), opacity: busy ? 0.6 : 1 }}><FileText size={15} /> {busy ? 'Filing' : 'File The Report'}</button>
-                <span style={{ fontSize: 13, color: MUTED }}>If the {DEBRIEF_MINUTES} minutes run out, it files as written.</span>
-              </div>
-          </div>
-        </div>
-      )}
     </section>
   )
 }
