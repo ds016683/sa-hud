@@ -379,10 +379,15 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
                   )}
                 </div>
               </div>
-              {/* The pills (David 11/4, the rebuild): one quiet row under the header, left, not fighting the trail. */}
-              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 18 }}>
-                {TABS.map(t => <CardPill key={t} active={tab === t} onClick={() => setTab(t)} count={counts[t]}>{TAB_LABEL[t]}</CardPill>)}
-              </div>
+              {/* One way in (David 11/17: "We technically have two ways to access the containers ... I'd like to just open
+                  with the Briefing ... let's kill the pills at the top"). The card opens on the Briefing; its right side
+                  leads to the Workbench, Files and Notes, Polaris opens from the trail, and each has this way back. */}
+              {tab !== 'briefing' && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap', marginTop: 18 }}>
+                  <button className="brf-chip" onClick={() => setTab('briefing')}>‹ Back To The Briefing</button>
+                  <span style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 20, color: INK }}>{TAB_LABEL[tab]}</span>
+                </div>
+              )}
             </div>
           )
         })()}
@@ -393,7 +398,7 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
 
           {rel && tab === 'briefing' && (
             <div style={{ display: 'grid', gap: 22 }}>
-              {obj && <CardBriefing obj={obj} root={objRoot(obj.id)} kindLabel={rel.parent ? 'Gate' : task ? 'Gate' : item.kind === 'Ad Hoc' ? 'Ad Hoc item' : (SIZES[sizeOf(obj)]?.label || 'Side Mission')} steps={rel.steps || []} kids={rel.children || []} boardItems={boardStops} loaded={loaded} due={(task ? task.due_date : obj.due_date) || null} isGate={!!rel.parent} missionGates={task ? (rel.missionGates || []) : []} mission={task ? rel.mission : null} onOpenMission={rel?.project ? () => go([rel.project.id]) : undefined} onReload={async () => { await load(); onChange && onChange() }} onTab={setTab} onOpenCard={openCard} say={setMsg} />}
+              {obj && <CardBriefing obj={obj} root={objRoot(obj.id)} kindLabel={rel.parent ? 'Gate' : task ? 'Gate' : item.kind === 'Ad Hoc' ? 'Ad Hoc item' : (SIZES[sizeOf(obj)]?.label || 'Side Mission')} steps={rel.steps || []} kids={rel.children || []} boardItems={boardStops} loaded={loaded} due={(task ? task.due_date : obj.due_date) || null} isGate={!!rel.parent} missionGates={task ? (rel.missionGates || []) : []} mission={task ? rel.mission : null} onOpenMission={rel?.project ? () => go([rel.project.id]) : undefined} onReload={async () => { await load(); onChange && onChange() }} onTab={setTab} onOpenCard={openCard} say={setMsg} notesCount={counts.notes} />}
               {!obj && item.kind !== 'Event' && item.kind !== 'Session' && <WhereItStands rel={rel} task={task} taskId={taskId} linkedBoards={linkedBoards} />}
               {!obj && (item.description || task?.notes) && <div><Label>Back Story</Label><div style={{ fontSize: 14.5, lineHeight: 1.65, color: INK, whiteSpace: 'pre-wrap' }}>{item.description || task.notes}</div></div>}
               {item.event && (

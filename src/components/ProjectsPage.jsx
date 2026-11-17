@@ -387,6 +387,8 @@ function ProjectDetail({ project, board: boardProp, api, onBack, initialTab, ini
   // The Briefing is the same card every mission and every gate has (David 11/17): CardBriefing, handed
   // this mission's gates as its stops. The doors below turn its step calls into this mission's gates.
   const [organizing, setOrganizing] = useState(false)
+  const [noteCount, setNoteCount] = useState(null)
+  useEffect(() => { let on = true; sbClient2.from('project_notes').select('id', { count: 'exact', head: true }).eq('project_id', project.id).then(({ count }) => { if (on) setNoteCount(count ?? null) }); return () => { on = false } }, [project.id, tab])
   const live = useRef({ api, project, plan })
   useEffect(() => { live.current = { api, project, plan } })
   const gateSteps = useMemo(() => planOf(project).plan.map(({ t, n }) => ({ id: t.id, n, text: stripNum(t.text), done: !isOpen(t), done_at: t.released_at })), [project])
@@ -479,10 +481,14 @@ function ProjectDetail({ project, board: boardProp, api, onBack, initialTab, ini
           <button className="brf-chip" onClick={() => api.updateProject(project.id, { tags: isHorizon(project) ? (project.tags || []).filter(t => t !== 'horizon') : [...(project.tags || []), 'horizon'] })} title={isHorizon(project) ? 'On the horizon: no clock. Click to bring it into the standing missions.' : 'Click to put it on the horizon: no clock, a chip on the page.'}>{isHorizon(project) ? 'On The Horizon' : 'Standing'}</button>
         </span>
       </div>
-      {/* The pills (David 11/4, one chassis with the item card): one quiet row under the header, left. */}
-      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 18 }}>
-        {CARD_PILLS.map(([id, label]) => <CardPill key={id} active={tab === id} onClick={() => setTab(id)} count={id === 'briefing' ? tasks.length : id === 'polaris' ? evidence.length : 0}>{label}</CardPill>)}
-      </div>
+      {/* One way in (David 11/17): no pills. The card opens on the Briefing; its right side leads to the
+          Workbench, Files and Notes, Polaris opens from the trail, and each has this way back. */}
+      {tab !== 'briefing' && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap', marginTop: 18 }}>
+          <button className="brf-chip" onClick={() => setTab('briefing')}>‹ Back To The Briefing</button>
+          <span style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 20, color: INK }}>{(CARD_PILLS.find(([id]) => id === tab) || [])[1]}</span>
+        </div>
+      )}
 
       <div style={tab === 'briefing' ? { marginTop: 24 } : { ...S.panel, marginTop: 20 }}>
         {tab === 'briefing' && (
@@ -492,7 +498,7 @@ function ProjectDetail({ project, board: boardProp, api, onBack, initialTab, ini
             stopExtra={(st, h) => { const p = plan.find(x => x.t.id === st.id); return p ? <GateTools n={p.n} project={project} task={p.t} api={api} objState={objState} takeOff={h.takeOff} say={(m) => hudNotice(m)} /> : null }}
             confirmClose={(st) => { const p = plan.find(x => x.t.id === st.id); return hudConfirm(`Close gate ${p ? p.n : ''}? 7 miles on the next update.`) }}
             onClosed={(st) => { const p = plan.find(x => x.t.id === st.id); setAward({ n: p ? p.n : '', title: st.text }) }}
-            onReload={async () => { await api.refresh?.() }} onTab={setTab} onOpenCard={openCard} say={(m) => hudNotice(m)} />
+            onReload={async () => { await api.refresh?.() }} onTab={setTab} onOpenCard={openCard} say={(m) => hudNotice(m)} notesCount={noteCount} />
         )}
         {tab === 'briefing' && (
           <div style={{ marginTop: 24 }}>

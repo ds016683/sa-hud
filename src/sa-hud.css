@@ -1361,6 +1361,9 @@ table.fin-grid { width: 100%; border-collapse: collapse; font-family: var(--font
 .brf-ev.end.lit::before { animation: brfstar .8s ease 2; }
 .brf-stop .gn { color: var(--hud-accent); margin-right: 9px; white-space: nowrap; }
 .brf-stop .src .tool:first-child { margin-left: 0; }
+.brf-card.go { cursor: pointer; transition: border-color .15s; }
+.brf-card.go:hover { border-color: color-mix(in srgb, var(--hud-accent) 55%, transparent); }
+.brf-card.go .brf-chip { pointer-events: none; }
 .brf-none { font-size: 14px; line-height: 1.5; color: var(--hud-ink-2); margin-top: 4px; }
 .brf-of { font-size: 13px; color: var(--hud-ink-2); margin-top: 3px; cursor: pointer; }
 .brf-of:hover { color: var(--hud-accent); }

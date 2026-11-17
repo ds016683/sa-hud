@@ -46,7 +46,8 @@ const Check = () => <svg viewBox="0 0 10 10" aria-hidden="true"><path d="M1.8 5.
 //   stopExtra     (step, { takeOff }) => what sits under an open gate in place of its source line
 //   extraTrail    lines for The Trail Back that come from elsewhere (each gate card's own story)
 //   confirmClose  (step) => true to go on closing it;  onClosed (step) after it closed
-export default function CardBriefing({ obj, root, kindLabel, steps = [], kids = [], boardItems = [], loaded = null, due = null, isGate = false, missionGates = [], mission = null, onOpenMission, onReload, onTab, onOpenCard, say, api = LEDGER, hereText = null, nextStepId = null, stopExtra = null, extraTrail = NONE, confirmClose = null, onClosed = null }) {
+// notesCount: how many notes the card holds, for the Notes box on its side (any card).
+export default function CardBriefing({ obj, root, kindLabel, steps = [], kids = [], boardItems = [], loaded = null, due = null, isGate = false, missionGates = [], mission = null, onOpenMission, onReload, onTab, onOpenCard, say, api = LEDGER, hereText = null, nextStepId = null, stopExtra = null, extraTrail = NONE, confirmClose = null, onClosed = null, notesCount = null }) {
   // One line (David 11/17, on the two boxed reads: "one line, but make what is before or after collapsable
   // and expandable and the default view is where we are now, with the path forward expanded ... and the
   // trail behind collpased"). Every card opens that way; the folds are not kept between visits.
@@ -278,9 +279,9 @@ export default function CardBriefing({ obj, root, kindLabel, steps = [], kids = 
                 </div>
               )}
               {dw && <div className={`brf-ev mark${dw.late ? ' late' : ''}`}><div className="when">Target Completion</div><div className="what">{dw.text}{dw.late ? ' (past)' : ''}</div></div>}
-              <div className={`brf-ev end${total > 0 && closed === total ? ' lit' : ''}`} style={{ paddingBottom: 0 }}>
+              <div className={`brf-ev end${total > 0 && closed === total ? ' lit' : ''}`} style={{ paddingBottom: 0, cursor: 'pointer' }} onClick={() => onTab('polaris')} title={obj.north_star ? 'Open Polaris' : 'Set Polaris'}>
                 <div className="when">Polaris</div>
-                <div className={`what${obj.north_star || mission?.polaris ? '' : ' empty'}`} onClick={() => onTab('polaris')} title={obj.north_star ? 'Open Polaris' : 'Set Polaris'}>{obj.north_star || mission?.polaris || 'No Polaris yet. What will be true when this is done?'}</div>
+                <div className={`what${obj.north_star || mission?.polaris ? '' : ' empty'}`}>{obj.north_star || mission?.polaris || 'No Polaris yet. What will be true when this is done?'}</div>
                 {total > 0 && closed === total && <div style={{ fontSize: 14, color: 'var(--hud-ink-2)', marginTop: 8 }}>The trail is walked. If the star is true, close it out.</div>}
               </div>
         </div>
@@ -298,18 +299,25 @@ export default function CardBriefing({ obj, root, kindLabel, steps = [], kids = 
               ? <><div className="n">{myStepsDone} of {mySteps}<small>steps done</small></div><div className="brf-bar"><i style={{ width: `${(100 * myStepsDone) / mySteps}%` }} /></div></>
               : <><Label style={{ marginBottom: 2 }}>Steps</Label><div className="brf-none">No steps yet. Drag one onto the line.</div></>)}
         </div>
-        <div className={`brf-card${side.latest ? ' lead' : ''}`}>
+        {/* The side is the way in (David 11/17): each box opens what it names. */}
+        <div className={`brf-card go${side.latest ? ' lead' : ''}`} onClick={() => onTab('workbench')} title="Open the Workbench">
           <Label style={{ marginBottom: 2 }}>On The Workbench</Label>
           {side.latest
             ? <><div className="q">"{excerpt(side.latest.text)}"</div><div className="f">{side.latest.title}{blanks > 0 && <> · <b>{blanks} {blanks === 1 ? 'blank' : 'blanks'} open</b></>}</div></>
             : <div className="brf-none">{side.tabs.length ? `${side.tabs.length} ${side.tabs.length === 1 ? 'tab' : 'tabs'}, nothing written yet.` : 'Nothing on the Workbench yet.'}</div>}
-          <div style={{ marginTop: 12 }}><button className="brf-chip" onClick={() => onTab('workbench')}>Open The Workbench</button></div>
+          <div style={{ marginTop: 12 }}><span className="brf-chip">Open The Workbench</span></div>
         </div>
-        <div className="brf-card">
+        <div className="brf-card go" onClick={() => onTab('files')} title="Open Files">
           <Label style={{ marginBottom: 2 }}>Files</Label>
-          {realFiles.slice(0, 3).map(f => <div key={f.id} className="brf-row" onClick={() => onTab('files')}><b>{f.name}</b><span>{stamp(f.created_at).split(' · ')[0]}</span></div>)}
-          {realFiles.length > 3 && <div className="brf-row" onClick={() => onTab('files')}><b>{realFiles.length - 3} more</b></div>}
-          {realFiles.length === 0 && <><div className="brf-none">No files yet.</div><div style={{ marginTop: 12 }}><button className="brf-chip" onClick={() => onTab('files')}>Open Files</button></div></>}
+          {realFiles.slice(0, 3).map(f => <div key={f.id} className="brf-row"><b>{f.name}</b><span>{stamp(f.created_at).split(' · ')[0]}</span></div>)}
+          {realFiles.length > 3 && <div className="brf-row"><b>{realFiles.length - 3} more</b></div>}
+          {realFiles.length === 0 && <div className="brf-none">No files yet.</div>}
+          <div style={{ marginTop: 12 }}><span className="brf-chip">Open Files</span></div>
+        </div>
+        <div className="brf-card go" onClick={() => onTab('notes')} title="Open Notes">
+          <Label style={{ marginBottom: 2 }}>Notes</Label>
+          <div className="brf-none">{notesCount > 0 ? `${notesCount} ${notesCount === 1 ? 'note' : 'notes'} on this card.` : 'No notes yet.'}</div>
+          <div style={{ marginTop: 12 }}><span className="brf-chip">Open Notes</span></div>
         </div>
       </div>
     </div>
