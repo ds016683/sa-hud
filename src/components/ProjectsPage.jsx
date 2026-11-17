@@ -204,8 +204,9 @@ function MilestoneRow({ n, project, task, board, api, onBoardChange, onAward, ob
         <span style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 22, lineHeight: 1, color: open ? (onBoard ? GREEN : LABEL) : SUCCESS, width: 26, flexShrink: 0, paddingTop: 2 }}>{n}</span>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-            <span onClick={() => openCard(task.objective_id || `task:${task.id}`)} title="Open this gate" style={{ fontSize: 15, lineHeight: 1.4, color: open ? INK : GRAY, textDecoration: open ? 'none' : 'line-through', cursor: 'pointer', flex: 1, minWidth: 220 }}>{stripNum(task.text)}</span>
-            {!open && <Chip color={SUCCESS}>closed{task.released_at ? ` ${new Date(task.released_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}` : ''} · 10 mi</Chip>}
+            {/* A gate is a line; it opens as a card only once it has been on the Board or in the Stash (David 11/17). */}
+            <span onClick={task.objective_id ? () => openCard(task.objective_id) : undefined} title={task.objective_id ? 'Open this gate\'s card' : 'A gate opens as a card once it is on the Board or in the Stash'} style={{ fontSize: 15, lineHeight: 1.4, color: open ? INK : GRAY, textDecoration: open ? 'none' : 'line-through', cursor: task.objective_id ? 'pointer' : 'default', flex: 1, minWidth: 220 }}>{stripNum(task.text)}</span>
+            {!open && <Chip color={SUCCESS}>closed{task.released_at ? ` ${new Date(task.released_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}` : ''}</Chip>}
             {open && onBoard && <Chip color={GREEN}>on the board</Chip>}
             {stashed && <Chip color={INK2}>in the stash</Chip>}
             {open && blocked && <Chip color={CAUTION}>blocked · needs David</Chip>}
@@ -225,7 +226,7 @@ function MilestoneRow({ n, project, task, board, api, onBoardChange, onAward, ob
             </div>
           )}
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
-            <button onClick={() => openCard(task.objective_id || `task:${task.id}`)} style={{ ...S.btnGhost, padding: '4px 9px', fontSize: 10 }}>Open</button>
+            {task.objective_id && <button onClick={() => openCard(task.objective_id)} style={{ ...S.btnGhost, padding: '4px 9px', fontSize: 10 }}>Open</button>}
             {open && !onBoard && <button onClick={load} disabled={busy} style={{ ...S.btnGhost, padding: '4px 9px', fontSize: 10 }}>Load</button>}
             {open && !onBoard && !stashed && <button onClick={toStash} disabled={busy} title="Stage it in the Stash on the Board; no slot, no clock" style={{ ...S.btnGhost, padding: '4px 9px', fontSize: 10 }}>Stash</button>}
             {open && <button onClick={addStep} style={{ ...S.btnGhost, padding: '4px 9px', fontSize: 10 }}><Plus size={10} /> Step</button>}

@@ -533,7 +533,7 @@ export const TOOLS = [
   },
   {
     name: 'add_step',
-    description: "Only when David himself asks in this turn (David 11/9: nothing is created on his board, no objective, task, milestone, step, maintenance or project, unless he commissions that item himself; a suggestion is a message to him, never a row). Add a gate to a card's path (David 11/16: a gate is a critical step or event the mission cannot close without; what must be true): the thing that still has to happen between here and Polaris, shown on the card's End Of The Trail as a circle he clicks when it is done. Any mission takes as many gates as it needs and each pays 7 miles when closed; on a Mythic the gate opens as a card of its own. text is the stop, short and observable: a decision marked, a conversation had, a thing produced. said is REQUIRED in practice: David's own words that asked for it, verbatim, so the card can show where the stop came from (David 11/11: the path is never guesswork; it comes out of the work with you, only from what he tells you). If you think something belongs on the path and he has not said so, ask him in one line and wait for his yes.",
+    description: "Only when David himself asks in this turn (David 11/9: nothing is created on his board, no objective, task, milestone, step, maintenance or project, unless he commissions that item himself; a suggestion is a message to him, never a row). Add a gate to a card's path (David 11/16: a gate is a critical step or event the mission cannot close without; what must be true): the thing that still has to happen between here and Polaris, shown on the card's End Of The Trail as a circle he clicks when it is done. Any mission takes as many gates as it needs and each pays 7 miles when closed; a gate is a line on the card, whatever the mission's size. text is the stop, short and observable: a decision marked, a conversation had, a thing produced. said is REQUIRED in practice: David's own words that asked for it, verbatim, so the card can show where the stop came from (David 11/11: the path is never guesswork; it comes out of the work with you, only from what he tells you). If you think something belongs on the path and he has not said so, ask him in one line and wait for his yes.",
     inputSchema: { type: 'object', properties: { title: { type: 'string' }, text: { type: 'string' }, said: { type: 'string', description: "David's own words that asked for this stop, verbatim" } }, required: ['title', 'text'] },
   },
   {
@@ -1200,25 +1200,14 @@ export async function callTool(name, args = {}) {
     }
     case 'list_steps': {
       const o = await findObjective(args.title)
-      if (sizeOf(o) === 'heavy') {
-        // A Mythic's milestones are objectives of their own (parent_id), each a card (David 10/29).
-        const kids = await sb(`objectives?select=id,title,state,description,released_at,captured_at&parent_id=eq.${o.id}&deleted_at=is.null&order=captured_at.asc`).catch(() => [])
-        return JSON.stringify({ ok: true, title: o.title, type: 'Mythic', milestones: kids.map((k, i) => ({ n: i + 1, title: k.title, done: k.state === 'released', done_when: k.description, closed_at: k.released_at })), note: 'The gates of this Mythic, 7 miles each on close like any gate; each opens as a card in the HUD.' })
-      }
       const steps = await sb(`objective_steps?select=id,text,done,done_at,position&objective_id=eq.${o.id}&order=position.asc,id.asc`).catch(() => [])
-      return JSON.stringify({ ok: true, title: o.title, type: sizeOf(o) === 'heavy' ? 'Mythic' : sizeOf(o) === 'medium' ? 'Contract' : 'Bounty', steps, max: 5 })
+      return JSON.stringify({ ok: true, title: o.title, type: sizeOf(o) === 'heavy' ? 'Mythic' : sizeOf(o) === 'medium' ? 'Contract' : 'Bounty', gates: steps, note: 'Every gate is a line on the card (David 11/17); 7 miles each when closed.' })
     }
     case 'add_step': {
       const o = await findObjective(args.title)
-      // Gates (David 11/16, 11/17): any mission takes as many as it needs, each keeps where it came from, and
-      // any closed gate pays 7. On a Mythic a gate still opens as a card of its own, as before.
-      if (sizeOf(o) === 'heavy') {
-        // Mythic milestone (David 10/29): an objective of its own under the Mythic, a card in the HUD.
-        const kids = await sb(`objectives?select=id&parent_id=eq.${o.id}&deleted_at=is.null`).catch(() => [])
-        const tags = (o.tags || []).filter(t => t === 'personal' || t === 'third-horizon')
-        const out = await sbWrite('POST', 'objectives', { user_id: DAVID, parent_id: o.id, title: String(args.text || '').trim().slice(0, 200), state: 'parked', kind: 'execution', effort: 2, importance: 2, needs_sizing: false, tags, captured_at: new Date().toISOString() })
-        return JSON.stringify({ ok: true, title: o.title, gate: out?.[0]?.title, n: kids.length + 1, pays: '7 miles when closed, like any gate; it opens as its own card on the Mythic in the HUD' })
-      }
+      // Gates (David 11/16, 11/17): any mission takes as many as it needs, each keeps where it came from, any closed
+      // gate pays 7, and a gate is a line on the card whatever the mission's size (a Mythic's gates were cards of
+      // their own until 11/17).
       const steps = await sb(`objective_steps?select=id&objective_id=eq.${o.id}`).catch(() => [])
       const out = await sbWrite('POST', 'objective_steps', { objective_id: o.id, text: String(args.text || '').trim().slice(0, 300), position: steps.length })
       const said = String(args.said || '').trim().slice(0, 400)
@@ -1229,19 +1218,9 @@ export async function callTool(name, args = {}) {
     case 'remove_step': {
       const o = await findObjective(args.title)
       const q = esc(args.step || '')
-      if (sizeOf(o) === 'heavy') {
-        // Mythic milestones live on objectives (parent_id), David 10/29.
-        let ks = await sb(`objectives?select=id,title,state&parent_id=eq.${o.id}&deleted_at=is.null&title=ilike.${encodeURIComponent(q)}`).catch(() => [])
-        if (ks.length !== 1) ks = await sb(`objectives?select=id,title,state&parent_id=eq.${o.id}&deleted_at=is.null&title=ilike.*${encodeURIComponent(q)}*`).catch(() => [])
-        if (ks.length !== 1) throw new Error(ks.length ? `milestone ambiguous: ${ks.map(k => k.title).join(' | ')}` : `no milestone matches "${args.step}" on ${o.title}`)
-        if (name === 'remove_step') { await sbWrite('PATCH', `objectives?id=eq.${ks[0].id}`, { deleted_at: new Date().toISOString() }, 'return=minimal'); return JSON.stringify({ ok: true, removed: ks[0].title }) }
-        const done = args.done !== false
-        await sbWrite('PATCH', `objectives?id=eq.${ks[0].id}`, done ? { state: 'released', released_kind: 'done', released_at: new Date().toISOString(), activated_at: null } : { state: 'parked', released_kind: null, released_at: null }, 'return=minimal')
-        return JSON.stringify({ ok: true, milestone: ks[0].title, done, note: done ? 'Gate closed: 7 miles on the next update.' : 'reopened' })
-      }
       let ms = await sb(`objective_steps?select=id,text,done&objective_id=eq.${o.id}&text=ilike.${encodeURIComponent(q)}`).catch(() => [])
       if (ms.length !== 1) ms = await sb(`objective_steps?select=id,text,done&objective_id=eq.${o.id}&text=ilike.*${encodeURIComponent(q)}*`).catch(() => [])
-      if (ms.length !== 1) throw new Error(ms.length ? `step ambiguous: ${ms.map(m => m.text).join(' | ')}` : `no step matches "${args.step}" on ${o.title}`)
+      if (ms.length !== 1) throw new Error(ms.length ? `gate ambiguous: ${ms.map(m => m.text).join(' | ')}` : `no gate matches "${args.step}" on ${o.title}`)
       if (name === 'remove_step') { await sbWrite('DELETE', `objective_steps?id=eq.${ms[0].id}`, null, 'return=minimal'); return JSON.stringify({ ok: true, removed: ms[0].text }) }
       const done = args.done !== false
       await sbWrite('PATCH', `objective_steps?id=eq.${ms[0].id}`, { done, done_at: done ? new Date().toISOString() : null }, 'return=minimal')
