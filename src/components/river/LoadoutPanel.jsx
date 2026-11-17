@@ -191,7 +191,7 @@ export function FilledSlot({ it, n, act, onOpen, onExtract, onRecall, dropFromSt
         <BadgeMedallion id={badgeFor(it)} size={50} color={colorOf(it.kind, it.size)} />
         <div style={{ flex: 1, minWidth: 0, display: 'grid', gap: 2 }}>
           <div onClick={() => onOpen(it)} title={main ? (it.project || 'Main Mission') : it.title} style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 14.5, color: INK, lineHeight: 1.25, cursor: 'pointer', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{main ? (it.project || 'Main Mission') : it.title}</div>
-          <div style={{ fontSize: 12.5, fontWeight: 600, color, lineHeight: 1.35 }}>{typeLine}{it.personal ? ' · Personal' : ''}</div>
+          <div style={{ fontSize: 12.5, fontWeight: 600, color, lineHeight: 1.35, whiteSpace: 'nowrap' }}>{typeLine}{it.personal ? ' · Personal' : ''}</div>
           {meter && (
             <div title={`${meter.closed} of ${meter.total} gates closed`} style={{ marginTop: 3 }}>
               <div style={{ fontSize: 12.5, color: MUTED, lineHeight: 1.3 }}><b style={{ color: INK, fontWeight: 600 }}>{meter.closed}</b> Closed <span style={{ color: GRAY }}>·</span> <b style={{ color: INK, fontWeight: 600 }}>{meter.total - meter.closed}</b> Open</div>
