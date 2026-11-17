@@ -280,7 +280,7 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
   }
   const where = obj ? (
     <div className="brf-where" role="group" aria-label="Where this card is">
-      {[['loadout', 'On the Loadout', <GlyphLoadout key="g" size={19} />], ['holster', 'Holster · Back on the Mission Board', <GlyphHolster key="g" size={19} />], ['stash', 'Stash · Held on the Board', <GlyphStash key="g" size={19} />]].map(([id, tip, glyph]) => (
+      {[['loadout', 'On the Loadout', <GlyphLoadout key="g" size={22} />], ['holster', 'Holster · Back on the Mission Board', <GlyphHolster key="g" size={22} />], ['stash', 'Stash · Held on the Board', <GlyphStash key="g" size={22} />]].map(([id, tip, glyph]) => (
         <button key={id} className={place === id ? 'on' : ''} aria-pressed={place === id} aria-label={tip} title={tip} onClick={() => moveTo(id)}>{glyph}</button>
       ))}
     </div>
