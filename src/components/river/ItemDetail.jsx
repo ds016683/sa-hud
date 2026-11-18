@@ -7,7 +7,7 @@
 // shows whatever checklist is running on the item. Files is the one place its
 // files live. Notes is the meetings and the item's own notes.
 import { useCallback, useEffect, useState } from 'react'
-import { Play, Pause, Archive, ExternalLink, Mic, Check, Plus, Trash2, Terminal, Star } from 'lucide-react'
+import { Play, Pause, Archive, ExternalLink, Check, Plus, Trash2, Terminal, Star } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { listArtifacts, readArtifact } from '../../lib/artifacts'
 import { splitNotes, plainNotes } from '../../lib/gateNotes'
@@ -16,7 +16,7 @@ import { GlyphLoadout, GlyphHolster, GlyphStash, ExtractMarker } from './glyphs'
 import useExtract from './useExtract'
 import DocView from './DocView'
 import { fetchSteps, listObjectiveArtifacts, listObjectiveFiles, listObjectiveBoards, realmOf, setSize, updateObjective, objRoot, fetchGates } from '../../lib/objectives'
-import { renderMarkdown } from './MeetingCloseout'
+import CardMeetingNotes from './CardMeetingNotes'
 import { fmtStamp, listEvidence, openLiveFile, isLink } from '../../lib/livefiles'
 import { isOpenRow } from '../../lib/protocols'
 import CardFiles, { WrittenOnCard } from './CardFiles'
@@ -218,7 +218,6 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
   useEffect(() => { if (host !== 'page') return; try { const h = window.location.hash || ''; if (!/\/item\//.test(h)) return; const next = h.replace(/(\/item\/[^/]+)(\/[^/]*)?$/, `$1/${tab}`); if (next !== h) window.history.replaceState(window.history.state, '', next) } catch { /* no-op */ } }, [tab, host])
   const [rel, setRel] = useState(null)
   const [msg, setMsg] = useState(null)
-  const [openNote, setOpenNote] = useState(null)
   const load = useCallback(() => loadRelated(item).then(setRel).catch(e => { console.warn('item detail', e.message); setRel({ project: null, task: null, artifacts: [], boards: [], projectFiles: [], storeFiles: [], meetings: [], loadout: null }) }), [item])
   useEffect(() => { load() }, [load])
   // Lumen acted on this card from the panel (11/4): reread it, and remount the Workbench's lists.
@@ -273,6 +272,8 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
   // doors. whatever the actual status is at the time should be the only thing highlighted. and not green").
   // Three places, as on the Board: on the Loadout, holstered (back on the Mission Board), in the Stash. The one
   // it is in is lit in the accent; a click on another moves it there. Green is kept for the running clock alone.
+  // The line the system writes when a gate is promoted is not a back story (the same rule as the Stash pop-up).
+  const backStory = item.description || (obj?.description && !/^(Promoted from project|Ad Hoc from a Claude session)/i.test(obj.description) ? obj.description : null) || plainNotes(task?.notes)
   const place = loaded ? 'loadout' : (obj && obj.state === 'parked' && (obj.tags || []).includes('stashed')) ? 'stash' : 'holster'
   const moveTo = (to) => {
     if (to === place && !(to === 'loadout' && loaded && !loaded.equipped)) return
@@ -444,7 +445,7 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
 
           {rel && tab === 'notes' && (
             <div style={{ display: 'grid', gap: 18 }}>
-              {(item.description || obj?.description || task?.notes) && <div><Label>Back Story</Label><div style={{ fontSize: 14.5, lineHeight: 1.65, color: INK, whiteSpace: 'pre-wrap' }}>{item.description || obj?.description || plainNotes(task?.notes)}</div></div>}
+              {backStory && <div><Label>Back Story</Label><div style={{ fontSize: 14.5, lineHeight: 1.65, color: INK, whiteSpace: 'pre-wrap' }}>{backStory}</div></div>}
               {obj && (
                 <div>
                   <Label>Notes On This {what.item === 'task' ? 'Gate' : 'Mission'}</Label>
@@ -452,15 +453,7 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
                 </div>
               )}
               <div>
-              {rel.meetings.map(m => (
-                <div key={m.id} style={{ borderTop: `1px solid ${PANEL_BORDER}`, padding: '13px 0' }}>
-                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, cursor: 'pointer' }} onClick={() => setOpenNote(openNote === m.id ? null : m.id)}>
-                    <Mic size={15} color={LABEL} style={{ flexShrink: 0 }} /><span style={{ flex: 1, minWidth: 0, fontFamily: SERIF, fontWeight: 500, fontSize: 16, lineHeight: 1.3, letterSpacing: '-0.005em', color: INK }}>{m.title}</span><span style={{ fontSize: 13, color: MUTED, whiteSpace: 'nowrap' }}>{m.meeting_date ? new Date(`${String(m.meeting_date).slice(0, 10)}T12:00:00`).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }) : ''}</span>
-                  </div>
-                  {openNote === m.id && <div style={{ marginTop: 12, maxWidth: '86ch', fontSize: 14.5, lineHeight: 1.7, color: INK2 }}>{m.summary ? renderMarkdown(m.summary, { size: 14.5 }) : <span style={{ color: GRAY }}>No summary stored.</span>}</div>}
-                </div>
-              ))}
-              {!rel.meetings.length && <None what={{ ...what, thing: 'meeting notes' }} />}
+              <CardMeetingNotes objectiveId={obj?.id || null} meetings={rel.meetings} say={setMsg} empty={<None what={{ ...what, thing: 'meeting notes' }} />} />
               </div>
             </div>
           )}
