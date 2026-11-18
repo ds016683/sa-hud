@@ -2,10 +2,10 @@
 // underneath, leaning into the dashboard aesthetic"). One square button per
 // timer or protocol, its reading or icon inside, the light at its corner, the
 // name under it. Groups sit side by side on the Console row.
-import { PANEL_BORDER, GREEN, INK, INK2, GRAY, MONO, SERIF, Label, alpha, GOLD, RED } from './canon'
+import { PANEL_BORDER, GREEN, INK, INK2, GRAY, MONO, SERIF, Label, alpha, GOLD, RED, BLUE } from './canon'
 import { useConsoleRun } from '../../lib/consoleRun'
 
-export const LEVEL_COLOR = { green: GREEN, gold: GOLD, red: RED, gray: 'rgba(234,241,248,0.25)' }
+export const LEVEL_COLOR = { green: GREEN, gold: GOLD, blue: BLUE, red: RED, gray: 'rgba(234,241,248,0.25)' }
 
 export function Instrument({ label, sub, reading, unit, icon, light, running, clock, tone = INK2, onClick, onLightClick, disabled, title, extra, width = 96 }) {
   const lc = light && light.level !== 'gray' ? (LEVEL_COLOR[light.level] || null) : null
