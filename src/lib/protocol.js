@@ -6,9 +6,11 @@
 //   In Run                     a run's timer is running
 //   In Meeting / Split Focus   a meeting's timer is running and so is a clock on other work
 //   In Meeting                 a meeting's timer is running and no other clock is
-//   Unplanned                  a Phone Call or a Non-Mission Task is in the Utility slot
-//   In Mission                 "Any mission or missions are on the board"
-//   Off Protocol               nothing on the Board
+//   Unplanned                  the clock is running on a Phone Call or a Non-Mission Task
+//   In Mission                 the clock is running on a mission
+//   Off Protocol               no clock, no run, no meeting, no Console button
+// The clock says it, not the Board (David 11/18: "the clock should be the thing saying what i'm doing, not
+// the board"): a card sitting in the Loadout with its clock off is Off Protocol.
 import { supabase } from './supabase'
 import { chiToday } from './loadout'
 import { readRun } from './runs'
@@ -55,16 +57,13 @@ export async function fetchProtocolState() {
     : out('meeting', 'In Meeting', BLUE, meeting.subject || 'Meeting', `${mins(meeting.started_at)}m on the clock`, null, meeting.started_at)
 
   const has = (o, t) => (o.tags || []).includes(t)
-  const unplanned = active.find(o => has(o, 'impromptu'))
-  if (unplanned) return out('unplanned', 'Unplanned', GREEN, unplanned.title, 'in the Utility slot', null, unplanned.activated_at)
+  const tickOn = (o) => clocks.find(c => c.objective_id === o.id) || null
+  const unplanned = active.find(o => has(o, 'impromptu') && tickOn(o))
+  if (unplanned) return out('unplanned', 'Unplanned', GREEN, unplanned.title, 'the clock is running', null, tickOn(unplanned).started_at)
 
   const missions = active.filter(o => !has(o, 'session') && !has(o, 'impromptu'))
-  if (missions.length) {
-    const live = missions.find(o => clocks.some(c => c.objective_id === o.id)) || missions[0]
-    const tick = clocks.find(c => c.objective_id === live.id) || null
-    // The pill is green only while a clock runs; a mission sitting on the Board with its clock off is the accent.
-    return out('mission', 'In Mission', tick ? GREEN : BLUE, missions.length > 1 ? `${live.title} + ${missions.length - 1} more` : live.title, tick ? 'the clock is running' : 'on the Board, clock off', null, tick ? tick.started_at : null, false,
-      { live: !!tick, slots: missions.slice(0, 2).map(o => ({ live: clocks.some(c => c.objective_id === o.id) })) })
-  }
-  return out('off', 'Off Protocol', OFF, 'Nothing on the Board', 'load a mission, start a run, or use the Console')
+  const live = missions.find(tickOn)
+  if (live) return out('mission', 'In Mission', GREEN, live.title, 'the clock is running', null, tickOn(live).started_at, false,
+    { live: true, slots: missions.slice(0, 2).map(o => ({ live: !!tickOn(o) })) })
+  return out('off', 'Off Protocol', OFF, 'No clock running', 'start a clock, start a run, or use the Console')
 }

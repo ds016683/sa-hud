@@ -50,7 +50,7 @@ export default function ReleasePanel({ onChange }) {
       const subject = detail ? `${t.label}: ${detail}` : t.label
       const { error } = await supabase.from('meeting_sessions').insert({ event_id: `${prefix(day, t.slug)}${stamp}`, day, subject, started_at: startedAt.toISOString(), attended_at: startedAt.toISOString(), harvest_logged: false })
       if (error) throw new Error(error.message)
-      setMsg(`${subject} started · personal, not Harvest`); await refresh(); onChange && onChange()
+      setMsg(null); await refresh(); onChange && onChange()
     } catch (e) { setMsg(`Could not start: ${e.message}`) }
   }
   const stop = async (t) => {
@@ -67,7 +67,7 @@ export default function ReleasePanel({ onChange }) {
         note: `personal · ${t.label.toLowerCase()} timer · ${chiClock(r.started_at)} to ${chiClock(stopped.toISOString())} CT`,
         source: `timer:${t.slug}`, at: stopped.toISOString(),
       })
-      setMsg(`${r.subject}: ${fmtClock(minutes)} · kept in the HUD only`); await refresh(); onChange && onChange()
+      setMsg(null); await refresh(); onChange && onChange()
     } catch (e) { setMsg(`Could not stop: ${e.message}`) }
   }
 

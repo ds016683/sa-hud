@@ -55,4 +55,4 @@ export function InstrumentGroup({ label, children, divider = false, footer }) {
   )
 }
 
-export const groupMsg = (msg, bad) => msg ? <div style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '0.8px', color: bad ? RED : GOLD, textTransform: 'uppercase', maxWidth: 420, lineHeight: 1.5 }}>{msg}</div> : null
+export const groupMsg = (msg, bad) => msg ? <div style={{ fontSize: 12.5, color: bad ? RED : INK2, maxWidth: 520, lineHeight: 1.5 }}>{msg}</div> : null
