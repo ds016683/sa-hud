@@ -479,6 +479,9 @@ export default function LoadoutPanel({ onChange, refreshKey = 0, bare = false, f
   const Wrap = bare ? 'div' : Panel
   const wrapStyle = bare ? {} : { marginBottom: 0 }
   // Only under a Focused Run is a slot wrapped, so the Board's own layout is untouched the rest of the time.
+  // Under a Focused Run the one thing takes the whole Loadout (David 11/18: "fill out the card that's on the board to
+  // stretch out and fill out the whole board"): its card grows from its slot to the full width and the empty slots step aside.
+  const focusWide = !!focusId && !!L && (layout.placed.some(p => p.it.id === focusId) || L.adhoc[0]?.id === focusId)
   const lockSlot = (key, locked, node) => focusId ? <FocusLock key={key} on={locked} label="Locked" style={{ display: 'flex', flexDirection: 'column' }}>{node}</FocusLock> : node
 
   return (
@@ -497,11 +500,11 @@ export default function LoadoutPanel({ onChange, refreshKey = 0, bare = false, f
         <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '1.4px', textTransform: 'uppercase', color: LABEL, padding: '12px 0' }}>Reading the board</div>
       ) : (
         <>
-          <div className="board-slots">
-            {layout.placed.map(({ it, n }) => lockSlot(it.id, it.id !== focusId, <FilledSlot key={it.id} it={it} n={n} act={act} onOpen={(it) => openCard(it.id)} onExtract={extractGate} onRecall={setRecallOf} dropFromStash={(id) => act(async () => { const r = await equipObjective(id, { clock: true, ignoreStamina: true }); if (!r.ok) throw new Error(r.reasons.join(' · ')) }, 'Loaded from the Stash · timer on')} />))}
-            {layout.empties.map(n => lockSlot(`empty-${n}`, true, <EmptySlot key={`empty-${n}`} n={n} dropFromStash={(id) => act(async () => { const r = await equipObjective(id, { clock: true, ignoreStamina: true }); if (!r.ok) throw new Error(r.reasons.join(' · ')) }, 'Loaded from the Stash · timer on')} />))}
+          <div className={`board-slots${focusWide ? ' focused' : ''}`}>
+            {layout.placed.map(({ it, n }) => focusWide && it.id === focusId ? <div key={it.id} className="focus-wide"><FilledSlot it={it} n={n} act={act} onOpen={(it) => openCard(it.id)} onExtract={extractGate} onRecall={setRecallOf} /></div> : lockSlot(it.id, it.id !== focusId, <FilledSlot key={it.id} it={it} n={n} act={act} onOpen={(it) => openCard(it.id)} onExtract={extractGate} onRecall={setRecallOf} dropFromStash={(id) => act(async () => { const r = await equipObjective(id, { clock: true, ignoreStamina: true }); if (!r.ok) throw new Error(r.reasons.join(' · ')) }, 'Loaded from the Stash · timer on')} />))}
+            {!focusWide && layout.empties.map(n => lockSlot(`empty-${n}`, true, <EmptySlot key={`empty-${n}`} n={n} dropFromStash={(id) => act(async () => { const r = await equipObjective(id, { clock: true, ignoreStamina: true }); if (!r.ok) throw new Error(r.reasons.join(' · ')) }, 'Loaded from the Stash · timer on')} />))}
             {/* The Utility slot (David 11/17): a Console button, a meeting, or the unplanned. Never a mission. */}
-            {lockSlot('utility', !(L.adhoc[0] && L.adhoc[0].id === focusId), <div key="utility" style={{ display: 'flex', flexDirection: 'column', gap: 10, minWidth: 0, alignSelf: 'stretch' }}>
+            {(!focusWide || L.adhoc[0]?.id === focusId || (L.meetings || []).length > 0) && lockSlot('utility', !(L.adhoc[0] && L.adhoc[0].id === focusId), <div key="utility" className={focusWide && L.adhoc[0]?.id === focusId ? 'focus-wide' : undefined} style={{ display: 'flex', flexDirection: 'column', gap: 10, minWidth: 0, alignSelf: 'stretch' }}>
               {(L.meetings || []).map(it => <MeetingSlot key={it.id} it={it} act={act} />)}
               <RoutineSlot tick={tick} onChanged={bump} onState={setRoutineOn} />
               {(L.adhoc[0] || (!routineOn && !(L.meetings || []).length)) && <AdHocSlot item={L.adhoc[0] || null} act={act} onDispatch={setDispatch} onOpen={(it) => openCard(it.id)} onChanged={bump} onRecall={setRecallOf} />}

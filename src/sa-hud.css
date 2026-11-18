@@ -1522,6 +1522,12 @@ button.brf-chip:hover { border-color: var(--hud-accent); }
 @keyframes runpop { 0% { transform: scale(.5); opacity: 0; } 60% { transform: scale(1.08); opacity: 1; } 100% { transform: scale(1); opacity: 1; } }
 @keyframes runripple { 0% { transform: scale(.9); opacity: .6; } 100% { transform: scale(2.4); opacity: 0; } }
 @keyframes runspark { 0% { transform: rotate(var(--a)) translateY(-84px) scaleY(.3); opacity: 0; } 25% { opacity: 1; } 100% { transform: rotate(var(--a)) translateY(-158px) scaleY(1); opacity: 0; } }
+/* A Focused Run: the one thing's card grows from its slot to fill the Loadout. */
+.board-slots.focused { display: block; }
+.board-slots.focused > * + * { margin-top: 12px; }
+.focus-wide { animation: focuswide .75s cubic-bezier(.2, .8, .2, 1) both; }
+@keyframes focuswide { from { width: calc((100% - 24px) / 3); } to { width: 100%; } }
+@media (prefers-reduced-motion: reduce) { .focus-wide { animation: none; } }
 .run-veil { animation: runveil .25s ease both; }
 .run-medal { animation: runpop .7s cubic-bezier(.2, .9, .3, 1.2) both; }
 .run-ripple { position: absolute; inset: 0; border-radius: 50%; border: 2px solid var(--hud-success); animation: runripple 1.3s ease-out both; pointer-events: none; }

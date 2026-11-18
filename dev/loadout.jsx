@@ -32,6 +32,7 @@ function App() {
   let n = 1
   return (
     <div className="sa-dark" style={{ minHeight: '100vh', background: 'var(--hud-surface, #0E2336)', padding: 24, color: 'var(--hud-ink, #EAF1F8)', fontFamily: 'Instrument Sans, system-ui, sans-serif' }}><div style={{ maxWidth: 1480, margin: '0 auto' }}>
+      {new URLSearchParams(location.search).get('focus') === '1' && <div className="board-slots focused" style={{ marginBottom: 24 }}><div className="focus-wide"><FilledSlot it={{ ...items[0], equipped: true }} n={1} act={act} onOpen={() => {}} onExtract={() => {}} onRecall={() => {}} /></div></div>}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 14, alignItems: 'stretch' }}>
         {items.slice(0, 2).map(it => { const at = n; n += 1; return <FilledSlot key={it.id} it={it} n={at} act={act} onOpen={() => {}} onExtract={() => console.log('extract')} onRecall={() => console.log('recall')} /> })}
         {items.length < 2 && <EmptySlot n={2} />}
