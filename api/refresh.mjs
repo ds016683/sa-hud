@@ -247,8 +247,9 @@ export default async function handler(req, res) {
           max_tokens: 24000,
           system: INSTRUCTIONS,
           tools: [SUBMIT_TOOL],
-          tool_choice: { type: 'tool', name: 'submit_update' },
-          messages: [{ role: 'user', content: `Ledger data:\n${JSON.stringify(payload)}` }],
+          // Offered, not forced: the model on this door turns back a forced tool (see api/close.mjs, 11/18).
+          tool_choice: { type: 'auto' },
+          messages: [{ role: 'user', content: `Ledger data:\n${JSON.stringify(payload)}\n\nRecord the update by calling the submit_update tool exactly once, with every field. Do not answer in prose.` }],
         }),
       })
       if (!ai.ok) throw new Error(`anthropic -> ${ai.status}: ${await ai.text()}`)

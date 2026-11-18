@@ -119,6 +119,9 @@ export default async function handler(req, res) {
   const requestedDay = String(reqBody?.day || '').match(/^\d{4}-\d{2}-\d{2}$/) ? reqBody.day : null
   const isBackfill = requestedDay && requestedDay < TARGET
   if (isBackfill) TARGET = requestedDay
+  // A dry close (cron secret only): gather, score and compose, then stop. No sweep, no strike on the River,
+  // nothing written, the day not locked. It proves the record can be written before a real close is asked for.
+  const isDry = isCron && reqBody?.dry === true
 
   try {
     // ---- finality check
@@ -133,7 +136,7 @@ export default async function handler(req, res) {
 
     // ---- final sweep + gather
     let pipes = null
-    try { pipes = await syncAll() } catch (e) { pipes = { error: String(e.message || e) } }
+    if (!isDry) { try { pipes = await syncAll() } catch (e) { pipes = { error: String(e.message || e) } } }
 
     const [meetings, calendar, time, emails, objectives, boards, tasks, doneTasks, prior] = await Promise.all([
       sb(`granola_meetings?select=title,attendees,summary&meeting_date=eq.${TARGET}`),
@@ -169,7 +172,7 @@ export default async function handler(req, res) {
 
     // Each award carries its citation: the concrete actions that earned it.
     let river = { badges: [], badge_evidence: {}, miles: 0, total: 0 }
-    try { river = await strikeDay(TARGET, { closing: true }) } catch (e) { console.error('river strike failed', e.message) }
+    if (!isDry) { try { river = await strikeDay(TARGET, { closing: true }) } catch (e) { console.error('river strike failed', e.message) } }
     const badges = river.badges, badgeWhy = river.badge_evidence, miles = river.miles
 
     const stateCounts = {}
@@ -237,14 +240,17 @@ export default async function handler(req, res) {
         headers: { 'x-api-key': process.env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
         body: JSON.stringify({
           model: process.env.LUMEN_MODEL || 'claude-opus-5-5', max_tokens: 24000, system: INSTRUCTIONS,
-          tools: [SUBMIT_TOOL], tool_choice: { type: 'tool', name: 'submit_close' },
-          messages: [{ role: 'user', content: `Ledger data for the day being closed:\n${JSON.stringify(payload)}` }],
+          // The model on this door turns back a forced tool (11/12 to 11/18: every close died on a 400 for
+          // tool_choice type "tool"), so the tool is offered and the ask to call it is in the message.
+          tools: [SUBMIT_TOOL], tool_choice: { type: 'auto' },
+          messages: [{ role: 'user', content: `Ledger data for the day being closed:\n${JSON.stringify(payload)}\n\nRecord the close by calling the submit_close tool exactly once, with every field. Do not answer in prose.` }],
         }),
       })
       if (!ai.ok) throw new Error(`anthropic -> ${ai.status}: ${await ai.text()}`)
       const msg = await ai.json()
       if (msg.stop_reason === 'max_tokens') { lastErr = 'truncated'; continue }
       const tu = (msg.content || []).find(c => c.type === 'tool_use' && c.name === 'submit_close')
+      if (!tu) { lastErr = `attempt ${attempt + 1}: no submit_close call`; continue }
       let cand = tu?.input
       if (typeof cand === 'string') { try { cand = JSON.parse(cand) } catch { /* noop */ } }
       // Legacy nesting tolerance: unwrap {row: {...}} if it still appears.
@@ -265,6 +271,8 @@ export default async function handler(req, res) {
       }
     }
     if (!out) throw new Error(`submit_close failed; ${lastErr}`)
+
+    if (isDry) return res.status(200).json({ ok: true, dry: true, day: TARGET, fields: Object.fromEntries(ROW_FIELDS.map(k => [k, Array.isArray(out.row[k]) ? out.row[k].length : String(out.row[k] || '').length])), summary_head: String(out.row.summary).slice(0, 240) })
 
     // ---- commit: replace any prior Daily Report rows for the day, then write
     for (const r of existing) await sb(`daily_performance?id=eq.${r.id}`, { method: 'DELETE' })
