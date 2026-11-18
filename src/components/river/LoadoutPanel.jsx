@@ -6,7 +6,7 @@
 // Empty slots stay visible on purpose (David, 10/7: the structure is the point).
 import { useEffect, useState, useCallback } from 'react'
 import { createPortal } from 'react-dom'
-import { GlyphHolster, GlyphStash } from './glyphs'
+import { GlyphLoadout, GlyphHolster, GlyphStash } from './glyphs'
 import { Play, Pause, PackageCheck, Archive, X as XIcon, Zap, Phone, Swords } from 'lucide-react'
 import BadgeMedallion from '../BadgeArt'
 import RecallModal, { BrainButton } from './Recall'
@@ -21,7 +21,7 @@ import { pockets } from '../../lib/objectives'
 import FileAway from './FileAway'
 import StillOpen from './StillOpen'
 import { fetchLoadout, equip, holster, unload, stash, addImpromptu, fmtClock, SIZES, SLOTS, SLOT_NAMES, hoursOf, chiToday, fetchStash, returnToInventory, equipObjective, STASH_MAX, logBoard, stillOpen } from '../../lib/loadout'
-import { Undo2, ArrowUpToLine, ScrollText, Footprints } from 'lucide-react'
+import { ArrowUpToLine, ScrollText, Footprints } from 'lucide-react'
 import { loadSteps, CLEAR_AT } from '../../lib/trailsteps'
 import ActivityLogModal from './ActivityLog'
 import LiveFilesModal, { ClipButton } from './LiveFiles'
@@ -320,41 +320,51 @@ function StashStack({ items, act, onOpen, dropFromLoadout, wide = false, column 
   )
 }
 
-// The Stash peek (David, 10/16): a light preview of a stashed item, not the
-// whole Briefing. Vitals, the star, the back story's first lines, and the
-// three moves: Load, Return, Open the Briefing.
-function StashPeek({ it, act, onClose, onOpenFull, clips = 0, onFiles }) {
+// The Stash peek (David, 10/16): a light preview of a stashed item, not the whole Briefing. Refreshed 11/17 onto
+// the card's look: the gate's number rides with its title, the mission under it, the facts as figures, the three
+// round marks the card and the Board slot carry (the Stash lit, since that is where it is), and one gold door.
+const GATE_NO = /^\s*(?:gate\s+)?(\d+)\s*[·.:)-]\s*/i
+const SYSTEM_NOTE = /^(Promoted from project|Ad Hoc from a Claude session)/i
+export function StashPeek({ it, act, onClose, onOpenFull, clips = 0, onFiles }) {
   useEffect(() => { const k = (e) => { if (e.key === 'Escape') onClose() }; window.addEventListener('keydown', k); return () => window.removeEventListener('keydown', k) }, [onClose])
   const color = colorOf(it.kind, it.size)
-  const title = it.kind === 'Main Mission' ? (it.task_text || it.title).replace(/^\s*(?:gate\s+)?\d+\s*[·.:)-]\s*/i, '') : it.title
+  const main = it.kind === 'Main Mission'
+  const raw = main ? (it.task_text || it.title) : it.title
+  const gate = main ? (GATE_NO.exec(raw) || [])[1] : null
+  const title = main ? raw.replace(GATE_NO, '') : raw
+  const of = main ? `${it.project || 'Main Mission'} · Main Mission` : [it.kind, SIZES[it.size]?.label].filter(Boolean).join(' · ')
+  const miles = main ? MILES.gate : it.kind === 'Ad Hoc' ? MILES.adhoc : baseMiles(it.size)
+  const note = it.description && !SYSTEM_NOTE.test(it.description) ? it.description : null
+  const due = it.due_date ? new Date(`${it.due_date}T12:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : null
+  const load = () => { onClose(); act(async () => { const r = await equipObjective(it.id, { clock: true, ignoreStamina: true }); if (!r.ok) throw new Error(r.reasons.join(' · ')) }, `Loaded: ${it.title} · timer on`) }
+  const back = () => { onClose(); act(() => returnToInventory(it.id), `Holstered: ${it.title}`) }
   return (
-    <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 270, background: 'rgba(5,16,28,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
-      <div onClick={e => e.stopPropagation()} style={{ width: 'min(520px, 100%)', background: '#0F2338', border: `1px solid ${alpha(color, 33)}`, borderRadius: 14, padding: '22px 24px', display: 'grid', gap: 14 }}>
-        <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
-          <BadgeMedallion id={badgeFor(it)} size={48} color={color} />
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 20, color: '#fff', lineHeight: 1.2 }}>{it.kind === 'Main Mission' ? (it.project || 'Main Mission') : it.kind}</div>
-            <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginTop: 5 }}>
-              <span style={{ fontSize: 13, fontWeight: 600, color }}>{it.kind === 'Main Mission' ? `Main Mission${(it.task_text || '').match(/^\s*(?:gate\s+)?(\d+)\s*[·.:)-]/i) ? ` · Gate ${(it.task_text || '').match(/^\s*(?:gate\s+)?(\d+)\s*[·.:)-]/i)[1]}` : ' · Gate'}` : `${it.kind} · ${SIZES[it.size]?.label || ''}`}</span>
-              <span style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '1.2px', textTransform: 'uppercase', color: LABEL }}>in the Stash</span>
-            </div>
-            <div style={{ fontSize: 15.5, lineHeight: 1.4, color: INK, marginTop: 10 }}>{title}</div>
+    <div className="peek-veil" onClick={onClose}>
+      <div className="peek" role="dialog" aria-modal="true" aria-label={title} onClick={e => e.stopPropagation()} style={{ '--peek': color }}>
+        <button className="peek-x" onClick={onClose} aria-label="Close" title="Close"><XIcon size={16} /></button>
+        <div className="peek-head">
+          <BadgeMedallion id={badgeFor(it)} size={54} color={color} />
+          <div style={{ minWidth: 0 }}>
+            <h3>{gate && <span className="gn">Gate {gate} · </span>}{title}</h3>
+            <div className="of">{of}</div>
           </div>
-          {onFiles && <ClipButton count={clips} onClick={() => onFiles(it)} />}
-          <button onClick={onClose} style={{ background: 'transparent', border: 'none', color: GRAY, cursor: 'pointer' }}><XIcon size={16} /></button>
         </div>
-        <div style={{ fontFamily: SERIF, fontStyle: 'italic', fontSize: 14, lineHeight: 1.45, color: it.north_star ? INK2 : GRAY, borderLeft: `2px solid ${it.north_star ? BLUE : PANEL_BORDER}`, paddingLeft: 10 }}>{it.north_star || 'No star yet.'}</div>
-        {it.description && <div style={{ fontSize: 13, lineHeight: 1.55, color: INK2, display: '-webkit-box', WebkitLineClamp: 4, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{it.description}</div>}
-        <div style={{ display: 'flex', gap: 18, fontFamily: MONO, fontSize: 10.5, letterSpacing: '1px', textTransform: 'uppercase', color: LABEL, flexWrap: 'wrap' }}>
-          <span>{it.slots} slot{it.slots === 1 ? '' : 's'}</span>
-          <span>{it.kind === 'Main Mission' ? MILES.gate : it.kind === 'Ad Hoc' ? MILES.adhoc : `${baseMiles(it.size)}${(it.steps || []).length ? ' + gates' : ''}`} mi on close</span>
-          {it.due_date && <span>due {new Date(`${it.due_date}T12:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>}
+        {it.north_star && <div className="peek-star">{it.north_star}</div>}
+        {note && <div className="peek-note">{note}</div>}
+        <div className="peek-facts">
+          <div><b>{it.slots}</b><span>Slot{it.slots === 1 ? '' : 's'}</span></div>
+          <div><b>{miles}</b><span>Mile{miles === 1 ? '' : 's'} On Close{!main && (it.steps || []).length ? ', Plus Gates' : ''}</span></div>
+          {onFiles && <button onClick={() => onFiles(it)} title="Open its files"><b className={clips ? '' : 'none'}>{clips}</b><span>File{clips === 1 ? '' : 's'}</span></button>}
+          {due && <div><b className="date">{due}</b><span>Target Completion</span></div>}
         </div>
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', borderTop: `1px solid ${PANEL_BORDER}`, paddingTop: 14 }}>
-          <button onClick={() => { onClose(); act(async () => { const r = await equipObjective(it.id, { clock: true, ignoreStamina: true }); if (!r.ok) throw new Error(r.reasons.join(' · ')) }, `Loaded: ${it.title} · timer on`) }} style={btn(BLUE, true)}><ArrowUpToLine size={11} /> Load onto the Loadout</button>
-          <button onClick={() => { onClose(); act(() => returnToInventory(it.id), `Returned to the inventory: ${it.title}`) }} style={btn(INK2)}><Undo2 size={11} /> Return to the inventory</button>
-          <span style={{ flex: 1 }} />
-          <button onClick={() => { onClose(); onOpenFull(it) }} style={btn(GOLD)}>Open the Briefing</button>
+        <div className="peek-foot">
+          <div className="brf-where" role="group" aria-label="Where this card is" style={{ marginTop: 0 }}>
+            <button aria-label="Load onto the Loadout, clock on" title="Load · Onto the Loadout, clock on" onClick={load}><GlyphLoadout size={17} /></button>
+            <button aria-label="Holster, back to the Mission Board" title="Holster · Back to the Mission Board" onClick={back}><GlyphHolster size={17} /></button>
+            <button className="on" aria-pressed="true" aria-label="In the Stash" title="In the Stash"><GlyphStash size={17} /></button>
+          </div>
+          <span className="peek-place">In The Stash</span>
+          <button className="peek-open" onClick={() => { onClose(); onOpenFull(it) }}>Open The Briefing</button>
         </div>
       </div>
     </div>

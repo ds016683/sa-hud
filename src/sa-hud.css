@@ -1522,3 +1522,29 @@ button.brf-chip:hover { border-color: var(--hud-accent); }
 
 /* A slot's name (David 11/17): the same small tag on Primary, Secondary and Utility, full or empty. */
 .ld-slot-tag { display: inline-flex; align-items: center; font-size: 12px; font-weight: 600; line-height: 1; padding: 5px 10px; border-radius: 99px; border: 1px solid var(--hud-border); background: var(--hud-fill); color: var(--hud-ink-2); white-space: nowrap; flex-shrink: 0; }
+
+/* The Stash peek (refreshed 11/17): the card's look in a small frame. */
+.peek-veil { position: fixed; inset: 0; z-index: 270; background: rgba(5,16,28,0.7); display: flex; align-items: center; justify-content: center; padding: 16px; animation: runveil .2s ease both; }
+.peek { position: relative; width: min(560px, 100%); background: var(--hud-surface); border: 1px solid color-mix(in srgb, var(--peek, var(--hud-accent)) 34%, transparent); border-radius: 16px; padding: 26px 28px 22px; display: grid; gap: 18px; box-shadow: 0 24px 60px rgba(0,0,0,0.38); }
+.peek-x { position: absolute; top: 14px; right: 14px; width: 30px; height: 30px; display: grid; place-items: center; border: none; border-radius: 99px; background: transparent; color: var(--hud-ink-3); cursor: pointer; }
+.peek-x:hover { color: var(--hud-ink); background: var(--hud-fill); }
+.peek-head { display: flex; gap: 16px; align-items: center; padding-right: 30px; }
+.peek-head h3 { margin: 0; font-family: 'Lora', Georgia, serif; font-weight: 500; font-size: 23px; line-height: 1.22; letter-spacing: -0.008em; color: var(--hud-ink); }
+.peek-head h3 .gn { color: var(--peek, var(--hud-accent)); white-space: nowrap; }
+.peek-head .of { margin-top: 6px; font-size: 13.5px; color: var(--hud-ink-2); }
+.peek-star { font-family: 'Lora', Georgia, serif; font-style: italic; font-size: 15px; line-height: 1.5; color: var(--hud-ink-2); border-left: 2px solid color-mix(in srgb, var(--peek, var(--hud-accent)) 60%, transparent); padding-left: 12px; }
+.peek-note { font-size: 13.5px; line-height: 1.55; color: var(--hud-ink-2); display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
+.peek-facts { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 10px; }
+.peek-facts > * { display: flex; flex-direction: column; gap: 6px; min-width: 0; text-align: left; font: inherit; border: 1px solid var(--hud-border); border-radius: 12px; padding: 13px 15px 12px; background: var(--hud-fill); color: inherit; }
+.peek-facts > button { cursor: pointer; transition: border-color .15s, transform .15s; }
+.peek-facts > button:hover, .peek-facts > button:focus-visible { border-color: color-mix(in srgb, var(--hud-accent) 60%, transparent); transform: translateY(-1px); outline: none; }
+.peek-facts b { font-family: 'Lora', Georgia, serif; font-weight: 500; font-size: 30px; line-height: 1; letter-spacing: -0.01em; color: var(--hud-ink); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.peek-facts b.none { color: var(--hud-ink-3); }
+.peek-facts b.date { font-size: 21px; line-height: 30px; letter-spacing: 0; }
+.peek-facts span { font-size: 12.5px; line-height: 1.3; color: var(--hud-ink-2); }
+.peek-foot { display: flex; align-items: center; gap: 12px; border-top: 1px solid var(--hud-border); padding-top: 18px; }
+.peek-place { font-size: 13px; color: var(--hud-ink-2); margin-right: auto; }
+.peek-open { font: inherit; font-size: 13.5px; font-weight: 600; padding: 10px 18px; border-radius: 10px; border: 1px solid var(--hud-gold); background: var(--hud-gold); color: #0F2334; cursor: pointer; transition: filter .15s, transform .15s; }
+.peek-open:hover { filter: brightness(1.06); transform: translateY(-1px); }
+@media (max-width: 520px) { .peek-facts { grid-auto-flow: row; grid-template-columns: 1fr 1fr; } .peek-place { display: none; } .peek-open { margin-left: auto; } }
+@media (prefers-reduced-motion: reduce) { .peek-veil { animation: none; } }

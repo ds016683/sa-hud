@@ -3,7 +3,7 @@
 import { StrictMode, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import '../src/sa-hud.css'
-import { FilledSlot, EmptySlot, AdHocSlot } from '../src/components/river/LoadoutPanel'
+import { FilledSlot, EmptySlot, AdHocSlot, StashPeek } from '../src/components/river/LoadoutPanel'
 
 const base = { id: 'x', due_date: null, north_star: 'A tool that assesses short term cash needs and the short/medium term decisions required for business continuity.', steps: [], tags: [] }
 const seed = [
@@ -12,6 +12,14 @@ const seed = [
   { ...base, id: 'c', kind: 'Side Mission', title: 'Call Greg on the TKF SOW', effort: 1, size: 'light', slots: 1, equipped: false, minutes_today: 0, north_star: null },
 ]
 
+// ?peek=gate | side | bare: the Stash peek on made-up items.
+const PEEKS = {
+  gate: { ...base, id: 'p1', kind: 'Main Mission', project: 'Sample Mission', title: 'Sample Mission', task_text: '31 · Build The Sample Architecture', size: 'light', slots: 1, north_star: null, description: 'Promoted from project: Sample Mission' },
+  side: { ...base, id: 'p2', kind: 'Side Mission', title: 'Sample pricing memo for the spring launch', size: 'medium', slots: 1, due_date: '2026-11-20', description: 'Two pages for the team on how the tiers were set, with the three open questions at the end.' },
+  bare: { ...base, id: 'p3', kind: 'Side Mission', title: 'Call a sample contact', size: 'light', slots: 1, north_star: null },
+}
+const PEEK = PEEKS[new URLSearchParams(location.search).get('peek')]
+const Peek = ({ peek }) => <div className="sa-dark" style={{ minHeight: '100vh', background: 'var(--hud-surface-deep, #0D1D2C)', color: 'var(--hud-ink, #EAF1F8)', fontFamily: 'Instrument Sans, system-ui, sans-serif' }}><StashPeek it={peek} act={(fn, msg) => console.log(msg)} clips={peek.id === 'p3' ? 0 : 1} onFiles={() => console.log('files')} onClose={() => console.log('close')} onOpenFull={() => console.log('open')} /></div>
 function App() {
   const [items, setItems] = useState(seed)
   // local act: the message names the verb; Equip and Holster flip the running state here, nothing touches the Ledger
@@ -32,4 +40,4 @@ function App() {
     </div></div>
   )
 }
-createRoot(document.getElementById('root')).render(<StrictMode><App /></StrictMode>)
+createRoot(document.getElementById('root')).render(<StrictMode>{PEEK ? <Peek peek={PEEK} /> : <App />}</StrictMode>)
