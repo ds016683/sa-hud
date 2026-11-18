@@ -216,7 +216,7 @@ export default function RecurringPanel({ onChange }) {
   const minutesOf = (s) => ((Number(s?.hours) || 0) * 60) + (isRunning(s) ? (now - new Date(s.started_at).getTime()) / 60000 : 0)
   const bad = msg && (msg.startsWith('Could not') || msg.includes('did not'))
   const travelRunning = isRunning(travelSession); const travelMin = minutesOf(travelSession)
-  const travelSub = travelRunning ? 'tap to stop' : legState === 'past' ? `log ${fmtClock(hoursBetween(nextLeg.start_at, nextLeg.end_at) * 60)}` : legState === 'live' ? `in the air` : nextLeg ? `${fmtTime(nextLeg.start_at)} leg` : travelMin > 0 ? `${fmtClock(travelMin)} today` : ''
+  const travelSub = travelRunning ? '' : legState === 'past' ? `log ${fmtClock(hoursBetween(nextLeg.start_at, nextLeg.end_at) * 60)}` : legState === 'live' ? `in the air` : nextLeg ? `${fmtTime(nextLeg.start_at)} leg` : travelMin > 0 ? `${fmtClock(travelMin)} today` : ''
   const travelTitle = nextLeg ? `${nextLeg.subject} · ${fmtTime(nextLeg.start_at)} to ${fmtTime(nextLeg.end_at)}` : 'Travel · tap to start, or edit a span'
   const travelTap = () => {
     if (travelRunning) return stop(RECURRING.find(x => x.slug === 'travel'))
@@ -230,14 +230,14 @@ export default function RecurringPanel({ onChange }) {
       <InstrumentGroup label="Tending" divider>
         {RECURRING.filter(r => r.group === 'tend').map(r => {
           const s = byId.get(eid(day, r.slug)); const running = isRunning(s); const mins = minutesOf(s)
-          if (!r.light) { const Icon = running ? Square : (r.icon || Play); return <Instrument key={r.slug} label={r.label} sub={running ? 'tap to stop' : mins > 0 ? `${fmtClock(mins)} today` : ''} icon={<Icon size={24} />} running={running} clock={fmtClock(mins)} onClick={() => running ? stop(r) : start(r)} /> }
+          if (!r.light) { const Icon = running ? Square : (r.icon || Play); return <Instrument key={r.slug} label={r.label} sub={!running && mins > 0 ? `${fmtClock(mins)} today` : ''} icon={<Icon size={24} />} running={running} clock={fmtClock(mins)} onClick={() => running ? stop(r) : start(r)} /> }
           const rule = RULES[r.light](lights)
-          // The light carries the state (David, 10/14); words only when there is no reading or something is being overlooked.
-          const sub = running ? 'tap to stop' : !lights ? 'reading…' : rule.level === 'gray' ? 'no reading' : rule.blink ? 'something is being overlooked' : (mins > 0 ? `${fmtClock(mins)} today` : '')
+          // The light carries the state (David, 10/14) and the hover says it in words; under the name, only time logged today.
+          const sub = !running && mins > 0 ? `${fmtClock(mins)} today` : ''
           return (
             <Instrument key={r.slug} label={r.label} sub={sub} title={rule.text} reading={lights ? rule.reading : '…'} unit={rule.unit} light={lights ? rule : { level: 'gray', text: 'reading…' }} running={running} clock={fmtClock(mins)}
               onClick={() => running ? stop(r) : start(r)} onLightClick={r.light === 'slack' && lights?.slack?.source !== 'slack' ? setSlackCount : undefined}
-              extra={r.clean ? <span onClick={markSlack} title="Clean Slack: 10 miles at the close" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontFamily: MONO, fontSize: 9, letterSpacing: '1px', textTransform: 'uppercase', color: slackClean ? GOLD : GRAY, cursor: 'pointer' }}><Check size={10} /> {slackClean ? 'clean · 10 mi' : 'mark clean'}</span> : (mins > 0 ? <span style={{ fontFamily: MONO, fontSize: 9, letterSpacing: '0.8px', color: GRAY }}>{fmtClock(mins)} today</span> : null)} />
+              extra={r.clean ? <span onClick={markSlack} title="Clean Slack: 10 miles at the close" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontFamily: MONO, fontSize: 9, letterSpacing: '1px', textTransform: 'uppercase', color: slackClean ? GOLD : GRAY, cursor: 'pointer' }}><Check size={10} /> {slackClean ? 'clean · 10 mi' : 'mark clean'}</span> : null} />
           )
         })}
       </InstrumentGroup>
@@ -245,7 +245,7 @@ export default function RecurringPanel({ onChange }) {
         {RECURRING.filter(r => r.group === 'timer' && !r.travel).map(r => {
           const s = byId.get(eid(day, r.slug)); const running = isRunning(s); const mins = minutesOf(s)
           const Icon = running ? Square : (r.icon || Play)
-          return <Instrument key={r.slug} label={r.label} sub={running ? 'tap to stop' : mins > 0 ? `${fmtClock(mins)} today` : ''} icon={<Icon size={24} />} running={running} clock={fmtClock(mins)} onClick={() => running ? stop(r) : start(r)} />
+          return <Instrument key={r.slug} label={r.label} sub={!running && mins > 0 ? `${fmtClock(mins)} today` : ''} icon={<Icon size={24} />} running={running} clock={fmtClock(mins)} onClick={() => running ? stop(r) : start(r)} />
         })}
         <Instrument label="Travel" sub={travelSub} title={travelTitle} icon={travelRunning ? <Square size={24} /> : <Plane size={24} />} running={travelRunning} clock={fmtClock(travelMin)} tone={BLUE} onClick={travelTap}
           light={nextLeg && !travelRunning ? { level: legState === 'live' ? 'green' : 'gold', text: travelTitle } : null}

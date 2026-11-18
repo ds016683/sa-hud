@@ -16,7 +16,7 @@ export function Instrument({ label, sub, reading, unit, icon, light, running, cl
   const dulled = !!consoleRun && !running
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width, gap: 6, opacity: disabled && !lc ? 0.45 : dulled ? 0.42 : 1, transition: 'opacity .35s ease', filter: dulled ? 'saturate(0.85)' : 'none' }}>
-      <button onClick={disabled ? undefined : onClick} title={title || label} className={running ? 'inst-on' : anim} style={{
+      <button onClick={disabled ? undefined : onClick} title={title || (running ? `${label} · tap to stop` : label)} className={running ? 'inst-on' : anim} style={{
         position: 'relative', width: 80, height: 80, borderRadius: 20, cursor: disabled ? 'default' : 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 2, padding: 0,
         border: running ? `2px solid ${GREEN}` : `1px solid ${border}`, background: running ? alpha(GREEN, 16) : 'rgba(255,255,255,0.035)', color: INK,
         boxShadow: running ? `0 0 0 4px ${alpha(GREEN, 14)}, 0 0 28px ${alpha(GREEN, 30)}` : 'inset 0 1px 0 rgba(255,255,255,0.04)', '--inst-glow': lc || 'transparent', transition: 'box-shadow .35s ease, border-color .35s ease, background .35s ease',
@@ -28,7 +28,9 @@ export function Instrument({ label, sub, reading, unit, icon, light, running, cl
         <span style={{ fontFamily: MONO, fontSize: 8.5, letterSpacing: '0.8px', textTransform: 'uppercase', color: running ? GREEN : GRAY }}>{running ? clock : unit || ''}</span>
       </button>
       <div style={{ fontSize: 12, color: running ? GREEN : INK, fontWeight: running ? 600 : 400, textAlign: 'center', lineHeight: 1.2, whiteSpace: 'nowrap' }}>{label}</div>
-      <div title={typeof sub === 'string' ? sub : undefined} style={{ fontFamily: MONO, fontSize: 8.5, letterSpacing: '0.6px', color: lc && !running ? lc : GRAY, textAlign: 'center', maxWidth: width + 6, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: -2, minHeight: 11 }}>{sub || ''}</div>
+      {/* Under the name: a fact only (time logged today, a travel leg). The state words are gone from the face
+          (David 11/18: "kill the smaller lettering that's not really doing any work"); the light and the hover carry them. */}
+      {sub ? <div title={typeof sub === 'string' ? sub : undefined} style={{ fontFamily: MONO, fontSize: 8.5, letterSpacing: '0.6px', color: GRAY, textAlign: 'center', maxWidth: width + 6, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: -2 }}>{sub}</div> : null}
       {extra}
     </div>
   )
