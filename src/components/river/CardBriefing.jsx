@@ -271,7 +271,7 @@ export default function CardBriefing({ obj, root, kindLabel, steps = [], kids = 
           </div>
           {behindOpen && trail.map((ev, i) => [
             spot('b', i),
-            <div key={`${ev.at}${i}`} className={`brf-ev${ev.gate ? ' gate' : ''}${ev.vetted ? ' vetted' : ''}`}><div className="when">{stamp(ev.at)}<span className="kind">{ev.kind}</span></div><div className="what">{ev.text}{ev.pid && <button className="brf-tool" onClick={() => dropStep(ev.pid, ev.text)}>Take It Off</button>}</div>{ev.of && <div className="brf-of" onClick={() => onOpenCard && ev.of.objective_id && onOpenCard(ev.of.objective_id)} title="Open this gate's card">On Gate {ev.of.n}: {ev.of.text}</div>}</div>,
+            <div key={`${ev.at}${i}`} className={`brf-ev${ev.gate ? ' gate' : ''}${ev.vetted ? ' vetted' : ''}`}><div className="when">{stamp(ev.at)}<span className="kind">{ev.kind}</span></div><div className="what">{ev.text}{ev.pid && <button className="brf-tool" onClick={() => dropStep(ev.pid, ev.text)}>Take It Off</button>}</div>{ev.note && <div className="note" title={ev.note}>{ev.note}</div>}{ev.of && <div className="brf-of" onClick={() => onOpenCard && ev.of.objective_id && onOpenCard(ev.of.objective_id)} title="Open this gate's card">On Gate {ev.of.n}: {ev.of.text}</div>}</div>,
           ])}
           {spot('b', trail.length)}
           <div className="brf-ev here"><div className="when">You Are Here</div><div className="what">{here}</div></div>

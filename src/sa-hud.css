@@ -1341,6 +1341,7 @@ table.fin-grid { width: 100%; border-collapse: collapse; font-family: var(--font
 .brf-ev.vetted .kind { color: var(--hud-ink-3); }
 .brf-ev.vetted .what { color: var(--hud-ink-2); }
 .brf-ev .what { font-size: 14.5px; color: var(--hud-ink); line-height: 1.45; }
+.brf-ev .note { font-size: 13px; line-height: 1.5; color: var(--hud-ink-2); margin-top: 2px; max-width: 70ch; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .brf-ev.more::before, .brf-ev.go::before { background: transparent; border: 1.5px dotted var(--hud-ink-3); left: -27px; top: 6px; width: 11px; height: 11px; }
 .brf-ev.more .what, .brf-ev.go .what { color: var(--hud-accent); font-size: 14px; cursor: pointer; }
 .brf-ev.here::before { top: 5px; background: transparent; border: 2px solid var(--hud-pos); box-shadow: 0 0 0 5px color-mix(in srgb, var(--hud-pos) 14%, transparent); width: 13px; height: 13px; left: -28px; }

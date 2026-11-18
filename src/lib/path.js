@@ -96,23 +96,27 @@ export function excerpt(text, max = 240) {
 // Each entry is { at, kind: 'Came In' | 'Happened' | 'Gate Closed', text, gate? }.
 export function buildTrail({ obj, kindLabel, steps = [], children = [], files = [], tabs = [], builds = [], psteps = [] }) {
   const out = []
-  const add = (at, kind, text, gate = false) => { if (at && text) out.push({ at, kind, text, ...(gate ? { gate: true } : {}) }) }
+  const add = (at, kind, text, gate = false, note = null) => { if (at && text) out.push({ at, kind, text, ...(gate ? { gate: true } : {}), ...(note ? { note } : {}) }) }
   if (obj) add(obj.captured_at, 'Happened', `Opened as a ${kindLabel || 'Side Mission'}`)
+  // A file or a link a session or Lumen put on the card says what it is, in the line written when it was put
+  // in play; with no such line it stays off the trail (David 11/18: "more specific ... and in the absence of
+  // more specific information, to omit altogether"). It is still in Files. An email's sender and David's own
+  // hand are specific on their own, so those lines always show.
   for (const f of files) {
     if (isRequest(f)) continue
+    const note = String(f.note || '').trim() || null
     if (isLink(f)) {
-      if (/^claude:\/\//.test(String(f.path || ''))) add(f.created_at, 'Happened', `A Claude Code session worked on this: ${String(f.name || '').replace(/^Claude session\s*·\s*/i, '')}`)
-      else add(f.created_at, 'Came In', `Link: ${f.name}`)
+      const name = /^claude:\/\//.test(String(f.path || '')) ? String(f.name || '').replace(/^Claude session\s*·\s*/i, '') : f.name
+      if (note) add(f.created_at, 'Came In', name, false, note)
       continue
     }
     const src = sourceOf(f)
     if (src.kind === 'Email') add(f.created_at, 'Came In', `${f.name}, from ${src.sender ? `${src.sender}'s` : 'an'}${src.day ? ` ${src.day}` : ''} email`)
-    else if (f.source === 'lumen') add(f.created_at, 'Happened', `Lumen wrote ${f.name}`)
-    else if (f.source === 'session') add(f.created_at, 'Happened', `A Claude Code session added ${f.name}`)
-    else add(f.created_at, 'Came In', `${f.name}, added by you`)
+    else if (f.source === 'lumen' || f.source === 'session') { if (note) add(f.created_at, 'Happened', f.name, false, note) }
+    else add(f.created_at, 'Came In', `${f.name}, added by you`, false, note)
   }
   for (const t of tabs) add(t.created_at || t.updated_at, 'Happened', `Tab on the Workbench: ${t.title}`)
-  for (const b of builds) add(b.updated_at, 'Happened', `Page built on the Workbench: ${b.title || b.slug}`)
+  for (const b of builds) add(b.updated_at, 'Happened', `Page built on the Workbench: ${b.title || b.slug}`, false, String(b.summary || b.description || '').trim() || null)
   // A closed gate is the big mark on the trail (David 11/16: "Gates have some type of visual distinction").
   for (const st of steps) if (st.done && st.done_at) add(st.done_at, 'Gate Closed', st.n != null ? `Gate ${st.n} · ${st.text}` : st.text, true)
   for (const k of children) if (k.state === 'released' && k.released_at) add(k.released_at, 'Gate Closed', k.title, true)

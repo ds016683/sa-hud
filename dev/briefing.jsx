@@ -59,7 +59,7 @@ const api = {
   listPages: async () => EMPTY ? [] : [{ slug: 'draft', title: 'Sample Draft', words: 120, created_at: ago(18), updated_at: ago(2) }],
   readPage: async () => ({ title: 'Sample Draft', text: 'Subject: A sample\n\nFriend,\n\nThank you for bearing with me through this. Here is where things stand, in my own words, with [one blank] and [another blank] still to fill.\n\nMore follows.' }),
   listBuilds: async () => [],
-  listLiveFiles: async () => ({ rows: EMPTY ? [] : [{ id: 'f1', name: 'Sample Job Description.docx', bucket: 'project-files', path: 'a/jd.docx', source: 'email', note: 'Email · Sample Sender · Oct 21, 2026, 5:56 PM · Re: A Sample Thread', created_at: ago(17) }] }),
+  listLiveFiles: async () => ({ rows: EMPTY ? [] : [{ id: 'f8', name: 'Sample Lab', bucket: 'link', path: 'https://example.com/lab', source: 'session', note: 'Live demo for the sample dinner; the gate first, then the sample experience.', created_at: ago(60 * 30) }, { id: 'f9', name: 'Sample Lab Repo', bucket: 'link', path: 'https://example.com/repo', source: 'session', note: null, created_at: ago(60 * 29) }, { id: 'f1', name: 'Sample Job Description.docx', bucket: 'project-files', path: 'a/jd.docx', source: 'email', note: 'Email · Sample Sender · Oct 21, 2026, 5:56 PM · Re: A Sample Thread', created_at: ago(17) }] }),
   readPath: async () => ({ v: 1, sources, steps: psteps }),
   savePathSteps: async (_r, fn) => { psteps = fn(psteps); return { v: 1, sources, steps: psteps } },
   setStepOrder: async (ids) => { steps = ids.map(id => steps.find(x => x.id === id)).filter(Boolean) },
