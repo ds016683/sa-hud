@@ -7,7 +7,7 @@
 // The words are sample data; ?d=<json> overrides any of them for a screenshot.
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
-import { Waves, Footprints, CalendarDays, BookOpen, Activity, Award, FileText, PenLine, Mic, Pencil, BookMarked, Mountain, Briefcase, Target, Wrench, Archive, FolderOpen, Landmark, Wallet, Sunrise, Moon, MessageSquare, Monitor, CalendarCheck, Brain, Plane, Gamepad2, Car, Flag } from 'lucide-react'
+import { Waves, Footprints, CalendarDays, BookOpen, Activity, Award, FileText, PenLine, Mic, Pencil, BookMarked, Mountain, Briefcase, Target, Wrench, Archive, FolderOpen, Landmark, Wallet, Sunrise, Moon, MessageSquare, Monitor, CalendarCheck, Brain, Plane, Gamepad2, Car, Flag, Zap } from 'lucide-react'
 import '../src/sa-hud.css'
 import { Instrument, InstrumentGroup } from '../src/components/river/Instrument'
 import ProtocolHud from '../src/components/river/ProtocolHud'
@@ -55,8 +55,16 @@ h1 { font:500 40px/1.1 var(--serif); letter-spacing:-.008em; margin:0; }
 .bd-note { font-size:13.5px; color:var(--ink2); margin-top:6px; line-height:1.7; }
 .bd-note a { color:var(--accent); display:block; }
 .bd-six { display:grid; grid-template-columns:repeat(6, minmax(0,1fr)); column-gap:18px; align-items:start; }
-.bd-six.bd-slots { align-items:stretch; }
-.bd-col { grid-column:span 2; border:1px solid var(--line); border-top:2px solid var(--line); border-radius:12px; padding:18px 20px 16px; min-height:236px; display:flex; flex-direction:column; }
+.bd-slots { display:grid; grid-template-columns:5fr 4fr 3fr; column-gap:18px; align-items:stretch; }
+.bd-slot { display:flex; flex-direction:column; min-width:0; }
+.bd-slotname { display:flex; align-items:center; gap:10px; font:500 17px/1 var(--serif); color:var(--ink2); margin:0 0 10px 4px; }
+.bd-slotname.bd-on { color:var(--ink); }
+.bd-pips { display:inline-flex; gap:4px; }
+.bd-pip { width:9px; height:9px; transform:rotate(45deg); border:1.5px solid var(--ink3); border-radius:1.5px; }
+.bd-pip.bd-me { border-color:var(--accent); }
+.bd-pip.bd-run { border-color:var(--green); background:var(--green); box-shadow:0 0 10px rgba(87,190,151,.7); }
+.bd-slotname svg { color:var(--purple); }
+.bd-col { flex:1; border:1px solid var(--line); border-top:2px solid var(--line); border-radius:12px; padding:18px 20px 16px; min-height:236px; display:flex; flex-direction:column; }
 .bd-col.bd-live { border-top-color:var(--green); }
 .bd-colhead { display:flex; align-items:baseline; justify-content:space-between; gap:12px; }
 .bd-colhead .bd-t { font:500 22px/1.2 var(--serif); }
@@ -76,8 +84,8 @@ h1 { font:500 40px/1.1 var(--serif); letter-spacing:-.008em; margin:0; }
 .bd-dial svg { position:absolute; inset:0; }
 .bd-dial b { font:500 30px/1 var(--serif); }
 .bd-dial span { display:block; font-size:13px; color:var(--ink2); margin-top:4px; text-align:center; }
-.bd-groups { display:grid; grid-template-columns:auto auto; justify-content:space-between; row-gap:34px; align-items:start; }
-.bd-groups > :nth-child(even) { justify-self:end; }
+.bd-groups { display:flex; justify-content:space-between; align-items:flex-start; }
+.bd-comms { display:flex; justify-content:center; margin-top:34px; padding-top:28px; border-top:1px solid rgba(255,255,255,.07); }
 .bd-acts { display:flex; flex-wrap:wrap; gap:7px; margin-top:auto; padding-top:16px; }
 .bd-acts .bd-quiet { font-size:13px; padding:6px 12px; }
 .bd-empty { color:var(--ink3); }
@@ -111,13 +119,15 @@ function Board() {
 
           <div className="bd-row">
             <div><div className="bd-name">Loadout</div><div className="bd-note">1 Of 2 Mission Slots<a>Activity Log</a><a>{`Proposed Steps · ${D.steps}`}</a></div></div>
-            <div className="bd-six bd-slots">
+            <div className="bd-slots">
+              <div className="bd-slot">
+              <div className="bd-slotname bd-on"><span className="bd-pips"><i className="bd-pip bd-run" /><i className="bd-pip" /></span>Primary</div>
               <div className="bd-col bd-live">
                 <div style={{ display: 'flex', gap: 14, alignItems: 'center' }}>
                   <span className="bd-medal"><Flag size={20} strokeWidth={1.7} /></span>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div className="bd-colhead"><span className="bd-t">{D.slot.title}</span></div>
-                    <div className="bd-under">{`Primary · ${D.slot.under}`}</div>
+                    <div className="bd-under">{D.slot.under}</div>
                   </div>
                 </div>
                 <div className="bd-facts">
@@ -129,12 +139,19 @@ function Board() {
                 </div>
                 <div className="bd-acts"><button className="bd-quiet">Holster</button><button className="bd-quiet">Stash</button><button className="bd-quiet">Extract</button></div>
               </div>
-              <div className="bd-col">
-                <div className="bd-colhead"><span className="bd-t bd-empty">Empty</span><span className="bd-s">Secondary</span></div>
               </div>
+              <div className="bd-slot">
+              <div className="bd-slotname"><span className="bd-pips"><i className="bd-pip" /><i className="bd-pip bd-me" /></span>Secondary</div>
               <div className="bd-col">
-                <div className="bd-colhead"><span className="bd-t bd-empty">Empty</span><span className="bd-s">Utility</span></div>
+                <div className="bd-colhead"><span className="bd-t bd-empty">Empty</span></div>
+              </div>
+              </div>
+              <div className="bd-slot">
+              <div className="bd-slotname"><Zap size={15} strokeWidth={1.8} />Utility</div>
+              <div className="bd-col">
+                <div className="bd-colhead"><span className="bd-t bd-empty">Empty</span></div>
                 <div className="bd-acts"><button className="bd-quiet">Phone Call</button><button className="bd-quiet">Non-Mission Task</button></div>
+              </div>
               </div>
             </div>
           </div>
@@ -155,17 +172,11 @@ function Board() {
 
           <div className="bd-row">
             <div><div className="bd-name">Console</div></div>
+            <div>
             <div className="bd-groups">
               <InstrumentGroup label="Protocols">
                 <Instrument label="Morning" title="Morning Protocol · done" icon={<Sunrise size={24} />} tone="var(--hud-success)" />
                 <Instrument label="Evening" title="Evening Protocol · from 6:00 PM" icon={<Moon size={24} />} disabled />
-              </InstrumentGroup>
-              <InstrumentGroup label="Tending">
-                <Instrument label="E-mail Refresh" sub="1h 58m today" reading={173} unit="unread" light={{ level: 'red', blink: true }} />
-                <Instrument label="Slack Review" reading={12} unit="unread" light={{ level: 'blue' }} />
-                <Instrument label="Bill Pay" reading={22} unit="days since" light={{ level: 'green' }} />
-                <Instrument label="Text Review" icon={<MessageSquare size={24} />} />
-                <Instrument label="Desktop" icon={<Monitor size={24} />} />
               </InstrumentGroup>
               <InstrumentGroup label="Timers">
                 <Instrument label="Calendar Sweep" icon={<CalendarCheck size={24} />} />
@@ -177,6 +188,16 @@ function Board() {
                 <Instrument label="Nap" icon={<Moon size={24} />} tone="var(--hud-purple)" />
                 <Instrument label="Drive" icon={<Car size={24} />} tone="var(--hud-purple)" />
               </InstrumentGroup>
+            </div>
+            <div className="bd-comms">
+              <InstrumentGroup label="Comms">
+                <Instrument label="E-mail Refresh" sub="1h 58m today" reading={173} unit="unread" light={{ level: 'red', blink: true }} />
+                <Instrument label="Slack Review" reading={12} unit="unread" light={{ level: 'blue' }} />
+                <Instrument label="Bill Pay" reading={22} unit="days since" light={{ level: 'green' }} />
+                <Instrument label="Text Review" icon={<MessageSquare size={24} />} />
+                <Instrument label="Desktop" icon={<Monitor size={24} />} />
+              </InstrumentGroup>
+            </div>
             </div>
           </div>
 
