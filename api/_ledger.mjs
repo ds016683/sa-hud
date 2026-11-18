@@ -30,6 +30,12 @@ import { createDraft } from './_draft.mjs'
 import { fillScorecard } from './_scorecard.mjs'
 
 const URL_BASE = 'https://cmuvomnmaoseccxpeuxq.supabase.co'
+// A gate's title is a few words; the detail that came with it rides in notes under one marker line, after
+// the done-when (the same marker as src/lib/gateNotes.js). David 11/18.
+const TITLE_WORDS = 10
+const DETAILS_MARK = '[Details]'
+const splitNotes = (notes) => { const t = String(notes || ''); const i = t.indexOf(DETAILS_MARK); return i < 0 ? { doneWhen: t.trim(), details: '' } : { doneWhen: t.slice(0, i).trim(), details: t.slice(i + DETAILS_MARK.length).trim() } }
+const joinNotes = (doneWhen, details) => { const a = String(doneWhen || '').trim(), b = String(details || '').trim(); return (b ? `${a}${a ? '\n\n' : ''}${DETAILS_MARK}\n${b}` : a) || null }
 export const DAVID = '9d28e8cf-3e35-48d9-a029-1327bd37fdd4'
 
 function sbHeaders() {
@@ -561,8 +567,8 @@ export const TOOLS = [
   },
   {
     name: 'update_project_task',
-    description: "Edit a Main Mission task matched by its text (exact-then-contains, refuses ambiguity): new_text to rewrite it as a gate, due_date, notes (back story), status ('open' | 'blocked' | 'promoted'). Use when working through a mission's tasks with David.",
-    inputSchema: { type: 'object', properties: { text: { type: 'string' }, new_text: { type: 'string' }, due_date: { type: 'string' }, notes: { type: 'string' }, status: { type: 'string', enum: ['open', 'blocked', 'promoted'] } }, required: ['text'] },
+    description: "Edit a Main Mission task matched by its text (exact-then-contains, refuses ambiguity): new_text to rewrite its title (a few words, never a sentence), due_date, notes (done when), details (the back story and every detail, shown on the gate's Briefing), status ('open' | 'blocked' | 'promoted'). Use when working through a mission's tasks with David.",
+    inputSchema: { type: 'object', properties: { text: { type: 'string' }, new_text: { type: 'string' }, due_date: { type: 'string' }, notes: { type: 'string', description: 'done when: what must be true for the gate to close' }, details: { type: 'string', description: 'everything else that came with the gate: who, dates, figures, where the files are' }, status: { type: 'string', enum: ['open', 'blocked', 'promoted'] } }, required: ['text'] },
   },
   {
     name: 'search_archive',
@@ -746,7 +752,7 @@ export const TOOLS = [
   {
     name: 'add_project_task',
     description: 'Only when David himself asks in this turn (David 11/9: nothing is created on his board, no objective, task, gate, step, maintenance or project, unless he commissions that item himself; a suggestion is a message to him, never a row). Add an open task to a project (by project key or name). Project tasks are the firm-level layer, distinct from personal Objectives.',
-    inputSchema: { type: 'object', properties: { project: { type: 'string', description: 'project key or name' }, text: { type: 'string' }, due_date: { type: 'string' } }, required: ['project', 'text'] },
+    inputSchema: { type: 'object', properties: { project: { type: 'string', description: 'project key or name' }, text: { type: 'string', description: "The gate's title: a few words, eight at most, naming the thing. No dates, no 'INBOUND', no figures, no sentences." }, details: { type: 'string', description: 'Everything else that came with it: who sent it, the dates, the figures, what was found, where the files are. Shown on the gate\'s Briefing under the title.' }, due_date: { type: 'string' } }, required: ['project', 'text'] },
   },
   {
     name: 'activate_project_task',
@@ -1265,13 +1271,21 @@ export async function callTool(name, args = {}) {
     }
     case 'update_project_task': {
       const q = esc(args.text || '')
-      let ts = await sb(`project_tasks?select=id,text,status,project_id&status=neq.done&text=ilike.${encodeURIComponent(q)}&limit=5`)
-      if (ts.length !== 1) ts = await sb(`project_tasks?select=id,text,status,project_id&status=neq.done&text=ilike.*${encodeURIComponent(q)}*&limit=5`)
+      let ts = await sb(`project_tasks?select=id,text,status,project_id,notes&status=neq.done&text=ilike.${encodeURIComponent(q)}&limit=5`)
+      if (ts.length !== 1) ts = await sb(`project_tasks?select=id,text,status,project_id,notes&status=neq.done&text=ilike.*${encodeURIComponent(q)}*&limit=5`)
       if (ts.length !== 1) throw new Error(ts.length ? `task ambiguous: ${ts.map(t => t.text).join(' | ')}` : `no open task matches "${args.text}"`)
       const patch = {}
-      if (args.new_text) patch.text = String(args.new_text).slice(0, 400)
+      if (args.new_text) {
+        const title = String(args.new_text).trim()
+        if (title.split(/\s+/).length > TITLE_WORDS) throw new Error(`the new title runs ${title.split(/\s+/).length} words; a gate's title is a few words (${TITLE_WORDS} at most). Put the rest in notes.`)
+        patch.text = title
+      }
       if (args.due_date !== undefined) patch.due_date = args.due_date || null
-      if (args.notes !== undefined) patch.notes = args.notes
+      // notes is the done-when; details is the rest. Each keeps the other.
+      if (args.notes !== undefined || args.details !== undefined) {
+        const cur = splitNotes(ts[0].notes)
+        patch.notes = joinNotes(args.notes !== undefined ? args.notes : cur.doneWhen, args.details !== undefined ? args.details : cur.details)
+      }
       if (args.status) patch.status = args.status
       if (!Object.keys(patch).length) throw new Error('nothing to change')
       await sbWrite('PATCH', `project_tasks?id=eq.${ts[0].id}`, patch, 'return=minimal')
@@ -1773,7 +1787,10 @@ export async function callTool(name, args = {}) {
       const q = esc(args.project || '')
       const ps = await sb(`projects?select=id,key,name&status=neq.deleted&or=(key.ilike.${encodeURIComponent(q)},name.ilike.*${encodeURIComponent(q)}*)&limit=5`)
       if (ps.length !== 1) throw new Error(ps.length ? `project ambiguous: ${ps.map(p => p.name).join(' | ')}` : `no project matches "${args.project}"`)
-      const out = await sbWrite('POST', 'project_tasks', { project_id: ps[0].id, text: String(args.text || '').trim(), status: 'open', source: 'lumen', due_date: args.due_date || null })
+      // A gate's title is a few words; the rest rides in details and reads on its Briefing (David 11/18).
+      const title = String(args.text || '').trim()
+      if (title.split(/\s+/).length > TITLE_WORDS) throw new Error(`the title runs ${title.split(/\s+/).length} words; a gate's title is a few words (${TITLE_WORDS} at most). Send a short title in text and put everything else in details.`)
+      const out = await sbWrite('POST', 'project_tasks', { project_id: ps[0].id, text: title, status: 'open', source: 'lumen', due_date: args.due_date || null, notes: joinNotes('', args.details) })
       return JSON.stringify({ ok: true, project: ps[0].name, task: out?.[0]?.text || args.text })
     }
     case 'activate_project_task': {

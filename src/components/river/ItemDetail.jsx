@@ -10,6 +10,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { Play, Pause, Archive, ExternalLink, Mic, Check, Plus, Trash2, Terminal, Star } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { listArtifacts, readArtifact } from '../../lib/artifacts'
+import { splitNotes, plainNotes } from '../../lib/gateNotes'
 import { fetchLoadout, equip, stash, unload, equipObjective, equipTask, SIZES, sizeOf } from '../../lib/loadout'
 import { GlyphLoadout, GlyphHolster, GlyphStash, ExtractMarker } from './glyphs'
 import useExtract from './useExtract'
@@ -95,7 +96,7 @@ async function loadRelated(item) {
       // A Main Mission gate (David 11/4): its number and the mission's count, the same way the Main Mission page numbers them.
       if (task) {
         try {
-          const { data: pts } = await supabase.from('project_tasks').select('id,text,status,done,released_at,objective_id,created_at').eq('project_id', pid).order('created_at')
+          const { data: pts } = await supabase.from('project_tasks').select('id,text,notes,status,done,released_at,objective_id,created_at').eq('project_id', pid).order('created_at')
           const numOf = (t) => { const m = /^\s*(?:gate\s+)?(\d+)\s*[·.:)-]/i.exec(String(t?.text || '')); return m ? Number(m[1]) : null }
           const all = pts || []
           const numbered = all.filter(t => numOf(t) !== null)
@@ -107,7 +108,7 @@ async function loadRelated(item) {
           // this gate's story (David 11/17, later the same day); the mission's trail carries the others.
           const strip = (t) => String(t || '').replace(/^\s*(?:gate\s+)?\d+\s*[·.:)-]\s*/i, '')
           const nOf = (t, i) => { const k = numOf(t); return k !== null ? k : i + 1 }
-          out.missionGates = all.map((t, i) => ({ id: t.id, n: nOf(t, i), text: strip(t.text), done: t.status === 'done' || !!t.done, done_at: t.released_at, objective_id: t.objective_id, current: t.id === task.id })).sort((x, y) => x.n - y.n)
+          out.missionGates = all.map((t, i) => ({ id: t.id, n: nOf(t, i), text: strip(t.text), details: splitNotes(t.notes).details, done: t.status === 'done' || !!t.done, done_at: t.released_at, objective_id: t.objective_id, current: t.id === task.id })).sort((x, y) => x.n - y.n)
           out.mission = { id: pid, name: p.name, polaris: p.description || null }
         } catch { /* the fence falls back to ? of ? */ }
       }
@@ -400,7 +401,7 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
             <div style={{ display: 'grid', gap: 22 }}>
               {obj && <CardBriefing obj={obj} root={objRoot(obj.id)} kindLabel={rel.parent ? 'Gate' : task ? 'Gate' : item.kind === 'Ad Hoc' ? 'Ad Hoc item' : (SIZES[sizeOf(obj)]?.label || 'Side Mission')} steps={rel.steps || []} kids={rel.children || []} boardItems={boardStops} loaded={loaded} due={(task ? task.due_date : obj.due_date) || null} isGate={!!rel.parent} missionGates={task ? (rel.missionGates || []) : []} mission={task ? rel.mission : null} onOpenMission={rel?.project ? () => go([rel.project.id]) : undefined} onReload={async () => { await load(); onChange && onChange() }} onTab={setTab} onOpenCard={openCard} say={setMsg} notesCount={counts.notes} sideFoot={!rel.parent && obj.state !== 'released' ? where : null} />}
               {!obj && item.kind !== 'Event' && item.kind !== 'Session' && <WhereItStands rel={rel} task={task} taskId={taskId} linkedBoards={linkedBoards} />}
-              {!obj && (item.description || task?.notes) && <div><Label>Back Story</Label><div style={{ fontSize: 14.5, lineHeight: 1.65, color: INK, whiteSpace: 'pre-wrap' }}>{item.description || task.notes}</div></div>}
+              {!obj && (item.description || task?.notes) && <div><Label>Back Story</Label><div style={{ fontSize: 14.5, lineHeight: 1.65, color: INK, whiteSpace: 'pre-wrap' }}>{item.description || plainNotes(task.notes)}</div></div>}
               {item.event && (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 14 }}>
                   <div><Label>When</Label><div style={{ fontSize: 13, color: INK }}>{chiTime(item.event.start_at)} to {chiTime(item.event.end_at)} CT</div></div>
@@ -443,7 +444,7 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
 
           {rel && tab === 'notes' && (
             <div style={{ display: 'grid', gap: 18 }}>
-              {(item.description || obj?.description || task?.notes) && <div><Label>Back Story</Label><div style={{ fontSize: 14.5, lineHeight: 1.65, color: INK, whiteSpace: 'pre-wrap' }}>{item.description || obj?.description || task?.notes}</div></div>}
+              {(item.description || obj?.description || task?.notes) && <div><Label>Back Story</Label><div style={{ fontSize: 14.5, lineHeight: 1.65, color: INK, whiteSpace: 'pre-wrap' }}>{item.description || obj?.description || plainNotes(task?.notes)}</div></div>}
               {obj && (
                 <div>
                   <Label>Notes On This {what.item === 'task' ? 'Gate' : 'Mission'}</Label>

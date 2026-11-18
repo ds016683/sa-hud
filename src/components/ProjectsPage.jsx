@@ -15,7 +15,9 @@ import { listShares, archiveShare, archiveSharesFor, shareUrl } from '../lib/sha
 import { fileProject } from '../lib/archive'
 import { listLiveFiles, markFiled, listEvidence, openLiveFile } from '../lib/livefiles'
 import { supabase as sbAuth } from '../lib/supabase'
-import { equipTask, stashTask, deleteMission } from '../lib/loadout'
+import { equipTask, stashTask, unload, deleteMission } from '../lib/loadout'
+import { splitNotes, joinNotes } from '../lib/gateNotes'
+import { GlyphLoadout, GlyphHolster, GlyphStash } from './river/glyphs'
 import { NORTH_STAR_LABEL, LABEL, alpha, INK, INK2, NAVY_DEEP, BLUE, GRAY, PANEL_BORDER, PANEL_BG, GOLD, GREEN, SUCCESS, RED, CAUTION, PURPLE, CARD_PILLS, CardPill, Label as CanonLabel, Trail, KIND_COLOR, KindIcon } from './river/canon'
 import { importProject } from '../lib/cabinet'
 import BadgeMedallion from './BadgeArt'
@@ -168,25 +170,36 @@ function ProjectCard({ project, onOpen, edge = INK2, compact = false }) {
 // =============================================================================
 function GateTools({ n, project, task, api, objState, takeOff, say }) {
   const ost = task.objective_id ? objState?.[task.objective_id] : null
-  const onBoard = !!task.objective_id && (ost ? ost.state === 'active' : true)
-  const stashed = !!ost && ost.state === 'parked' && (ost.tags || []).includes('stashed')
+  // Where the gate is, on the same three round marks as its card (David 11/18). A move shows at once; the
+  // Ledger's read catches up behind it.
+  const [moved, setMoved] = useState(null)
+  const onBoard = moved ? moved === 'loadout' : (!!task.objective_id && (ost ? ost.state === 'active' : true))
+  const stashed = moved ? moved === 'stash' : (!!ost && ost.state === 'parked' && (ost.tags || []).includes('stashed'))
+  const place = onBoard ? 'loadout' : stashed ? 'stash' : 'holster'
+  const { doneWhen: when, details } = splitNotes(task.notes)
   const [busy, setBusy] = useState(false)
-  const load = async () => { setBusy(true); try { const r = await equipTask(task, project.name, { clock: false }); say(r.ok ? `Gate ${n} is on the Board.` : `Will not fit: ${r.reasons.join(' · ')}`); if (r.ok) api.refresh() } catch (e) { say(`Could not load: ${e.message}`) } finally { setBusy(false) } }
-  const toStash = async () => { setBusy(true); try { await stashTask(task, project.name); say(`Gate ${n} is in the Stash.`); api.refresh() } catch (e) { say(`Could not stash: ${e.message}`) } finally { setBusy(false) } }
+  const load = async () => { setBusy(true); try { const r = await equipTask(task, project.name, { clock: false }); say(r.ok ? `Gate ${n} is on the Board.` : `Will not fit: ${r.reasons.join(' · ')}`); if (r.ok) { setMoved('loadout'); api.refresh() } } catch (e) { say(`Could not load: ${e.message}`) } finally { setBusy(false) } }
+  const toStash = async () => { setBusy(true); try { await stashTask(task, project.name); setMoved('stash'); say(`Gate ${n} is in the Stash.`); api.refresh() } catch (e) { say(`Could not stash: ${e.message}`) } finally { setBusy(false) } }
   const rename = async () => { const t = await hudPrompt('Gate', stripNum(task.text)); if (!t?.trim()) return; await api.updateTask(project.id, task.id, { text: `${n} · ${t.trim()}` }) }
-  const doneWhen = async () => { const t = await hudPrompt({ title: 'Done When', value: task.notes || '', multiline: true }); if (t === null) return; await api.updateTask(project.id, task.id, { notes: t.trim() || null }) }
+  const toHolster = async () => { if (!task.objective_id) return; setBusy(true); try { await unload(task.objective_id); setMoved('holster'); say(`Gate ${n} is back on the Mission Board.`); api.refresh() } catch (e) { say(`Could not holster: ${e.message}`) } finally { setBusy(false) } }
+  const moveTo = (to) => { if (busy || to === place) return; return to === 'loadout' ? load() : to === 'stash' ? toStash() : toHolster() }
+  const doneWhen = async () => { const t = await hudPrompt({ title: 'Done When', value: when || '', multiline: true }); if (t === null) return; await api.updateTask(project.id, task.id, { notes: joinNotes(t, details) }) }
   return (
     <>
-      <div className="src">
-        {[onBoard ? 'On The Board' : stashed ? 'In The Stash' : null, isBlocked(task) ? 'Blocked, Needs David' : null].filter(Boolean).join(' · ')}
+      <div className="src gate-row">
+        <span className="brf-where sm" role="group" aria-label={`Where gate ${n} is`}>
+          {[['loadout', 'Loadout · On the Board, clock off', <GlyphLoadout key="g" size={14} />], ['holster', 'Holster · On the Mission Board', <GlyphHolster key="g" size={14} />], ['stash', 'Stash · Held on the Board, no slot, no clock', <GlyphStash key="g" size={14} />]].map(([id, tip, glyph]) => (
+            <button key={id} className={place === id ? 'on' : ''} aria-pressed={place === id} aria-label={tip} title={tip} disabled={busy} onClick={() => moveTo(id)}>{glyph}</button>
+          ))}
+        </span>
+        {isBlocked(task) ? <span>Blocked, Needs David</span> : null}
         {task.objective_id && <button className="tool" onClick={() => openCard(task.objective_id)}>Open Its Card</button>}
-        {!onBoard && <button className="tool" disabled={busy} onClick={load} title="Put it on the Board, clock off">Load</button>}
-        {!onBoard && !stashed && <button className="tool" disabled={busy} onClick={toStash} title="Stage it in the Stash on the Board; no slot, no clock">Stash</button>}
         <button className="tool" onClick={doneWhen}>Done When</button>
         <button className="tool" onClick={rename}>Rename</button>
         <button className="tool gone" onClick={takeOff}>Take It Off</button>
       </div>
-      {task.notes && <div className="done-when" title={task.notes}>Done when: {task.notes}</div>}
+      {details && <div className="done-when" title={details}>{details}</div>}
+      {when && <div className="done-when" title={when}>Done when: {when}</div>}
     </>
   )
 }

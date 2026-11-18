@@ -302,6 +302,8 @@ export default function CardBriefing({ obj, root, kindLabel, steps = [], kids = 
                     {s.done && <><span className="when">Closed just now</span><button className="tool" onClick={() => reopen(s.step)}>Reopen</button></>}
                     {!s.done && s.type === 'step' && (stopExtra ? stopExtra(s.step, { takeOff: () => drop(s.step) }) : <div className="src">{src.lead}{src.quote && <> <q>{src.quote}</q></>}<button className="tool gone" onClick={() => drop(s.step)}>Take It Off</button></div>)}
                     {s.type === 'gate' && <div className="src">Gate {s.n} of {kids.length}{s.kid.due_date ? ` · ${dueWords(s.kid.due_date).short}` : ''}. It closes on its own card.</div>}
+                    {/* The title is a few words; the rest of what came in with the gate reads here (David 11/18: "Other data goes into the briefing"). */}
+                    {s.type === 'mission' && s.gate.details && <div className="more">{s.gate.details}</div>}
                     {s.type === 'mission' && <div className="src">Gate {s.gate.n} of {missionGates.length} on {mission?.name || 'the mission'}</div>}
                     {s.type === 'board' && <div className="src" style={s.blocked ? { color: 'var(--hud-warn)' } : undefined}>{s.note}</div>}
                   </div>,
@@ -331,8 +333,8 @@ export default function CardBriefing({ obj, root, kindLabel, steps = [], kids = 
       <div style={{ minWidth: 0 }}>
       <div className="brf-side">
         {takesGates
-          ? <Tile label="Gates" big={total > 0 ? `${closed} of ${total}` : '0'} unit={total > 0 ? 'closed' : 'gates'} none={total === 0} bar={total > 0 ? closed / total : null} />
-          : <Tile label="Steps" big={mySteps > 0 ? `${myStepsDone} of ${mySteps}` : '0'} unit={mySteps > 0 ? 'done' : 'steps'} none={mySteps === 0} detail={myStepsVetted ? `${myStepsVetted} archived as vetted.` : null} bar={mySteps > 0 ? myStepsDone / mySteps : null} />}
+          ? <Tile label="Gates" big={total > 0 ? `${closed}` : '0'} unit={total > 0 ? `of ${total} closed` : 'gates'} none={total === 0} bar={total > 0 ? closed / total : null} />
+          : <Tile label="Steps" big={mySteps > 0 ? `${myStepsDone}` : '0'} unit={mySteps > 0 ? `of ${mySteps} done` : 'steps'} none={mySteps === 0} detail={myStepsVetted ? `${myStepsVetted} archived as vetted.` : null} bar={mySteps > 0 ? myStepsDone / mySteps : null} />}
         <Tile label="On The Workbench" big={side.tabs.length} unit={side.tabs.length === 1 ? 'tab' : 'tabs'} none={!side.latest && side.tabs.length === 0} go="Open The Workbench" onGo={() => onTab('workbench')}
           detail={side.latest ? <>"{excerpt(side.latest.text, 110)}"{blanks > 0 && <> · <b>{blanks} {blanks === 1 ? 'blank' : 'blanks'} open</b></>}</> : side.tabs.length ? 'Nothing written yet.' : null} />
         <Tile label="Files" big={realFiles.length} unit={realFiles.length === 1 ? 'file' : 'files'} none={realFiles.length === 0} go="Open Files" onGo={() => onTab('files')}

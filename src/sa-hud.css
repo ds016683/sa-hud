@@ -1370,6 +1370,7 @@ table.fin-grid { width: 100%; border-collapse: collapse; font-family: var(--font
 .brf-stop .what.link { cursor: pointer; }
 .brf-stop.next .what { font-family: 'Lora', Georgia, serif; font-size: 22px; line-height: 1.3; font-weight: 500; letter-spacing: -0.005em; max-width: 34ch; }
 .brf-stop.done .what { color: var(--hud-ink-3); text-decoration: line-through; text-decoration-color: color-mix(in srgb, var(--hud-ink) 30%, transparent); font-size: 14px; }
+.brf-stop .more { font-size: 13.5px; line-height: 1.6; color: var(--hud-ink-2); margin-top: 6px; max-width: 70ch; white-space: pre-wrap; }
 .brf-stop .src { font-size: 12.5px; color: var(--hud-ink-3); margin-top: 2px; max-width: 70ch; }
 .brf-stop .src q { color: var(--hud-ink-2); font-style: italic; quotes: '"' '"'; }
 .brf-stop.done .src { display: none; }
@@ -1449,6 +1450,12 @@ table.fin-grid { width: 100%; border-collapse: collapse; font-family: var(--font
 .brf-where button { width: 36px; height: 36px; padding: 0; flex-shrink: 0; display: inline-grid; place-items: center; border-radius: 99px; border: 1px solid color-mix(in srgb, var(--hud-ink-2) 40%, transparent); background: transparent; color: var(--hud-ink-2); cursor: pointer; transition: border-color .15s, background .15s; }
 .brf-where button:hover { border-color: color-mix(in srgb, var(--hud-ink-2) 85%, transparent); background: color-mix(in srgb, var(--hud-ink-2) 10%, transparent); }
 .brf-where button.on { background: var(--hud-accent); border-color: var(--hud-accent); color: var(--hud-on-accent); }
+/* The same three marks beside a gate on a mission's trail: smaller, and drawn in full ink so they read on the line. */
+.brf-where.sm { display: inline-flex; gap: 7px; margin: 0 4px 0 0; vertical-align: middle; }
+.brf-where.sm button { width: 28px; height: 28px; color: var(--hud-ink); border-color: color-mix(in srgb, var(--hud-ink) 55%, transparent); }
+.brf-where.sm button.on { color: var(--hud-on-accent); border-color: var(--hud-accent); }
+.brf-where.sm button:disabled { opacity: .5; cursor: default; }
+.brf-stop .src.gate-row { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 0; margin-top: 6px; }
 .brf-tile { display: flex; flex-direction: column; min-width: 0; min-height: 158px; border: 1px solid var(--hud-border); border-radius: 14px; padding: 16px 18px 15px; background: var(--hud-fill); outline: none; }
 .brf-tile.go { cursor: pointer; transition: border-color .15s, transform .15s; }
 .brf-tile.go:hover, .brf-tile.go:focus-visible { border-color: color-mix(in srgb, var(--hud-accent) 60%, transparent); transform: translateY(-1px); }

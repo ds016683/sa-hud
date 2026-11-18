@@ -43,7 +43,7 @@ const MISSION_GATES = GATE ? [
   { id: 't1', n: 1, text: 'Port the sample model', done: true, done_at: HOURS(200), objective_id: null, current: false },
   { id: 't2', n: 2, text: 'Sketch the week by week plan', done: true, done_at: HOURS(90), objective_id: 'o2', current: false },
   { id: 't3', n: 3, text: 'Six sample descriptions, finalized', done: false, done_at: null, objective_id: null, current: false },
-  { id: 't4', n: 4, text: 'Relaunch the sample deck', done: false, done_at: null, objective_id: 'o4', current: true },
+  { id: 't4', n: 4, text: 'Relaunch the sample deck', details: 'INBOUND (sample date): the sample cost data is in, a full breakdown by quarter plus daily line items for the trend. A sample audit also found savings from resizing one sample machine. Both files are filed on this mission\'s page.', done: false, done_at: null, objective_id: 'o4', current: true },
   { id: 't5', n: 5, text: 'Develop a full list of sample targets', done: false, done_at: null, objective_id: 'o5', current: false },
 ] : []
 const MISSION = GATE ? { id: 'p1', name: 'Sample Main Mission', polaris: 'A sample plan, fully documented.' } : null
