@@ -97,6 +97,8 @@ export default function RunResults({ run, pending = false, busy = false, error =
   }, [ready, debrief, onClose])
 
   const hits = run?.hits || [], rogue = run?.rogue || []
+  // Time the protocol itself calls for (reading notes to Lumen in a Focused Run): its own rows, never red.
+  const inProtocol = run?.protocol || []
   const earned = run ? (run.earned && run.earned.length ? run.earned : run.miles > 0 ? [{ badge: 'run', text: `Run ${run.n}, the full ${RUN_MINUTES} minutes`, miles: run.miles }] : []) : []
   const total = Math.round(earned.reduce((s, e) => s + Number(e.miles || 0), 0) * 100) / 100
   const miles = useCount(total, ready)
@@ -183,7 +185,7 @@ export default function RunResults({ run, pending = false, busy = false, error =
 
         <Section title="Where The Time Went" delay={1.25}>
           <div style={{ display: 'grid', gap: 9 }}>
-            {[...hits.map(h => ({ ...h, rogue: false })), ...rogue.map(r => ({ mission: r.text, kind: 'Rogue', minutes: r.minutes, what: null, rogue: true }))].map((h, i, all) => {
+            {[...hits.map(h => ({ ...h, rogue: false })), ...inProtocol.map(r => ({ mission: r.text, kind: 'Protocol', minutes: r.minutes, what: null, rogue: false })), ...rogue.map(r => ({ mission: r.text, kind: 'Rogue', minutes: r.minutes, what: null, rogue: true }))].map((h, i, all) => {
               const sum = all.reduce((t, x) => t + (x.minutes || 0), 0) || 1
               return (
                 <div key={i}>
@@ -197,7 +199,7 @@ export default function RunResults({ run, pending = false, busy = false, error =
                 </div>
               )
             })}
-            {hits.length + rogue.length === 0 && <div style={{ fontSize: 15, color: INK2 }}>Lumen could not place the minutes on this one.</div>}
+            {hits.length + inProtocol.length + rogue.length === 0 && <div style={{ fontSize: 15, color: INK2 }}>Lumen could not place the minutes on this one.</div>}
           </div>
         </Section>
 
