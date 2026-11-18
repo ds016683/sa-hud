@@ -96,6 +96,14 @@ export async function focusHold() {
   const run = activeOf(await readIndex())
   return run && run.state === 'running' && run.focus ? { run: run.n, objective_id: run.focus.objective_id, title: run.focus.title } : null
 }
+// The run that is on, in a few facts, for Lumen (David 11/18, from inside a Focused Run: "i need lumen to know
+// what that is"). Null when no run is running.
+export async function runBrief(now = Date.now()) {
+  const run = (await readIndex()).find(r => r.state === 'running')
+  if (!run) return null
+  const left = Math.max(0, Math.ceil((new Date(run.ends_at).getTime() - now) / 60000))
+  return { run: run.n, focused: !!run.focus, one_thing: run.focus ? run.focus.title : null, mission: run.focus ? run.focus.mission || null : null, started_at: run.started_at, ends_at: run.ends_at, minutes_left: left }
+}
 export const focusRefusal = (hold) => JSON.stringify({ ok: false, refused: 'focused run', note: `Focused Run ${hold.run} is on: only "${hold.title}" is on the Board until it ends. Tell David that, and do not load or start anything else.` })
 
 async function focusStart(objectiveId, now) {

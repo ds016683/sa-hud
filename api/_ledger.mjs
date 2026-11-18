@@ -791,7 +791,7 @@ export const TOOLS = [
   },
   {
     name: 'get_loadout',
-    description: "The Loadout: what David carries right now. Slots used of 3 (a Bounty takes 1, a Contract 2, a Mythic 3), the equipped item (the one clock running) with minutes so far, every item on the board with its size and clocked minutes, and the day's hours (free before 6 PM Chicago after remaining meetings, and hours loaded; shown, not enforced). Read it before activating anything and whenever he asks what he is on or how much room he has.",
+    description: "The Loadout: what David carries right now. Slots used of 3 (a Bounty takes 1, a Contract 2, a Mythic 3), the equipped item (the one clock running) with minutes so far, every item on the board with its size and clocked minutes, and the day's hours (free before 6 PM Chicago after remaining meetings, and hours loaded; shown, not enforced), and run: the Run or Focused Run that is on right now (its one thing and the minutes left), or null. Read it before activating anything and whenever he asks what he is on or how much room he has.",
     inputSchema: { type: 'object', properties: {} },
   },
   {
@@ -1868,7 +1868,7 @@ export async function callTool(name, args = {}) {
       const equipped = state === 'active' ? await equip(obj[0].id, 'equipped on activate').catch(e => ({ error: String(e.message || e) })) : null
       return JSON.stringify({ ok: true, task: task.text, objective: obj[0].title, state, size, project: ps[0].name, ...(equipped ? { equipped } : {}), ...(fit?.forced ? { forced_over: fit.reasons } : {}) })
     }
-    case 'get_loadout': return JSON.stringify(await loadout())
+    case 'get_loadout': { const m = await import('./_run.mjs'); return JSON.stringify({ ...(await loadout()), run: await m.runBrief().catch(() => null) }) }
     case 'equip': {
       const o = await findObjective(args.title)
       { const m = await import('./_run.mjs'); const hold = await m.focusHold().catch(() => null); if (hold && hold.objective_id !== o.id) return m.focusRefusal(hold) }

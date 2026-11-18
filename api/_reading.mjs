@@ -19,6 +19,9 @@ const find = (books, name) => {
 // The book he is in now: the one reading with the latest note, else the latest started.
 const current = (books) => [...books].filter(b => b.status !== 'finished').sort((a, b) => String((b.notes || []).slice(-1)[0]?.at || b.started_at).localeCompare(String((a.notes || []).slice(-1)[0]?.at || a.started_at)))[0] || null
 
+// The book he is in now, by title, for Lumen's turn note.
+export async function currentBook() { const b = current((await readReading()).books); return b ? { title: b.title, author: b.author || null, notes: (b.notes || []).length } : null }
+
 export async function addBook({ title, author = null }) {
   const t = clean(title, 200)
   if (!t) throw new Error('title required')
