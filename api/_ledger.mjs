@@ -216,6 +216,26 @@ async function listStorage(prefix, limit = 200) {
 const slugOf = (t) => String(t || 'page').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 48) || 'page'
 const rootOf = (item) => item.kind === 'project' ? item.id : `objectives/${item.id}`
 
+// The card's Workbook, reached from a Lumen panel outside the HUD (a deck or an app on David's machine, through its
+// local door). One op at a time, each a read, a change and a write here, so that panel and the HUD's own panel do
+// not overwrite each other's captures.
+export async function workbookOp(item, op, args = {}) {
+  const path = `${rootOf(item)}/lumen/workbook.json`
+  const d = (await getStorageJson(path)) || {}
+  const wb = { v: 1, kind: 'lumen-workbook', notes: '', updated_at: null, ...d, captures: Array.isArray(d.captures) ? d.captures : [] }
+  if (op === 'read') return wb
+  if (op === 'capture') {
+    const title = String(args.title || '').trim().slice(0, 200), body = String(args.body || '').trim().slice(0, 20000)
+    if (!title && !body) throw new Error('nothing to capture')
+    wb.captures.push({ id: Math.random().toString(36).slice(2, 9), at: new Date().toISOString(), kind: ['answer', 'page', 'note'].includes(args.kind) ? args.kind : 'page', title: title || 'Capture', body })
+  } else if (op === 'drop') wb.captures = wb.captures.filter(c => c.id !== String(args.id || ''))
+  else if (op === 'notes') wb.notes = String(args.notes ?? '').slice(0, 50000)
+  else throw new Error('unknown workbook op')
+  wb.updated_at = new Date().toISOString()
+  await putStorage(path, JSON.stringify(wb), 'application/json')
+  return wb
+}
+
 // The card frame (11/4): what Lumen sees of the card David is working in from the
 // Lumen panel. Title, Polaris, back story, state, gates or steps, the files
 // in play, the Workbench tabs, the builds. Short: it rides every turn.

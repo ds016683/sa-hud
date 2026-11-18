@@ -42,7 +42,7 @@ const esc = (t) => String(t ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').
 function printWorkbook({ title, captures, notes }) {
   const w = window.open('', '_blank', 'width=900,height=1100')
   if (!w) return
-  const kick = (c) => c.kind === 'answer' ? 'From Lumen' : c.kind === 'card' ? 'The card' : 'Note'
+  const kick = (c) => c.kind === 'answer' ? 'From Lumen' : c.kind === 'card' ? 'The card' : c.kind === 'page' ? 'A page' : 'Note'
   const caps = captures.map(c => `<section class="cap"><div class="kick">${esc(kick(c))} · ${esc(c.at ? new Date(c.at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '')}</div><h2>${esc(c.title)}</h2><p>${esc(c.body).replace(/\n/g, '<br/>')}</p></section>`).join('')
   const nt = String(notes || '').trim() ? `<section class="cap"><div class="kick">Notes</div><p>${esc(notes).replace(/\n/g, '<br/>')}</p></section>` : ''
   w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Workbook · ${esc(title)}</title>
