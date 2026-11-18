@@ -59,7 +59,7 @@ Rules that go with it:
      stylized, marked "Illustration", and live in `media/<slug>/`.
   The team has no slide of its own (David 11/18). It sits on Scope Of Work:
   `team` on the `scope` slide draws a row of circle headshots above the gantt,
-  the lead (`lead: true`, the Chief Architect) larger and far left, the rest
+  the lead (`lead: true`, the Engagement Architect) larger and far left, the rest
   to the right, each with name and role. Small copies of the same circles
   stamp the Who column of each step (steps name people by first name).
   Hovering any circle, large or small, grays everyone else out and lifts that
