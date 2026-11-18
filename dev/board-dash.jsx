@@ -11,6 +11,7 @@ import { Waves, Footprints, CalendarDays, BookOpen, Activity, Award, FileText, P
 import '../src/sa-hud.css'
 import { Instrument, InstrumentGroup } from '../src/components/river/Instrument'
 import ProtocolHud from '../src/components/river/ProtocolHud'
+import { SectionTag } from '../src/components/river/canon'
 
 const D = {
   title: "Wednesday's Board", date: 'Wednesday, November 18, 2026 · Chicago',
@@ -24,7 +25,7 @@ const D = {
     { n: 4, at: '2:28 PM', min: 59, miles: 10, focused: true, mix: [88, 12, 0] },
     { n: 5, at: '4:02 PM', min: 47, miles: 10, focused: true, mix: [94, 6, 0] },
   ],
-  stash: { title: 'Sample Relaunch Plan', under: 'Main Mission · Sample Program', count: '1 of 5' },
+  stash: { title: 'Sample Relaunch Plan', under: 'Main Mission · Sample Program', count: '1 Of 5' },
   ...JSON.parse(new URLSearchParams(location.search).get('d') || '{}'),
 }
 const LEFT = Number(new URLSearchParams(location.search).get('run'))   // minutes left on a running clock, for the picture
@@ -56,10 +57,11 @@ body { margin:0; background:var(--navy); color:var(--ink); font-family:var(--san
 .bd-pill b { color:var(--ink); font-weight:600; }
 .bd-dot { display:inline-block; width:8px; height:8px; border-radius:99px; margin-right:8px; }
 .bd-page { max-width:1240px; margin:0 auto; padding:44px 40px 60px; }
-.bd-head { display:flex; align-items:flex-end; justify-content:space-between; margin-bottom:30px; }
+.bd-head { display:flex; align-items:flex-end; justify-content:space-between; margin-bottom:34px; }
 h1 { font:500 40px/1.1 var(--serif); letter-spacing:-.008em; margin:0; }
 .bd-sub { font-size:15.5px; color:var(--ink2); margin-top:8px; }
-.bd-row { display:grid; grid-template-columns:190px 1fr; border-top:1px solid var(--line); padding:26px 0; }
+.bd-row { padding:0 0 38px; }
+.bd-row a { color:var(--accent); }
 .bd-name { font:500 20px/1.25 var(--serif); }
 .bd-note { font-size:13.5px; color:var(--ink2); margin-top:6px; line-height:1.7; }
 .bd-note a { color:var(--accent); display:block; }
@@ -104,7 +106,7 @@ h1 { font:500 40px/1.1 var(--serif); letter-spacing:-.008em; margin:0; }
 .bd-runline.bd-off { color:var(--ink3); } .bd-runline.bd-off .bd-ra, .bd-runline.bd-off .bd-rmi { color:var(--ink3); }
 .bd-mix { display:flex; height:5px; border-radius:99px; overflow:hidden; background:rgba(255,255,255,.09); }
 .bd-mix i { display:block; height:100%; }
-.bd-runsum { display:flex; justify-content:space-between; font-size:13px; color:var(--ink2); padding-top:9px; margin-top:2px; border-top:1px solid rgba(255,255,255,.07); }
+.bd-runsum { display:flex; justify-content:flex-start; font-size:13px; color:var(--ink2); padding-top:9px; margin-top:2px; border-top:1px solid rgba(255,255,255,.07); }
 .bd-key { display:inline-flex; align-items:center; gap:6px; margin-right:14px; }
 .bd-key i { width:8px; height:8px; border-radius:99px; display:inline-block; }
 .bd-starts { display:flex; gap:22px; }
@@ -149,7 +151,6 @@ const ClockFace = () => {
   )
 }
 const Runs = () => {
-  const done = D.runs.filter(r => !r.walked)
   return (
     <div className="bd-runs">
       {D.runs.map(r => (
@@ -163,7 +164,6 @@ const Runs = () => {
       ))}
       <div className="bd-runsum">
         <span><span className="bd-key"><i style={{ background: MIX[0] }} />Mission</span><span className="bd-key"><i style={{ background: MIX[1] }} />Protocol</span><span className="bd-key"><i style={{ background: MIX[2] }} />Rogue</span></span>
-        <span>{`${done.length} Runs Complete · ${done.reduce((a, r) => a + r.miles, 0)} Miles Today`}</span>
       </div>
     </div>
   )
@@ -195,7 +195,7 @@ function Board() {
           </div>
 
           <div className="bd-row">
-            <div><div className="bd-name">Loadout</div><div className="bd-note">1 Of 2 Mission Slots<a>Activity Log</a><a>{`Proposed Steps · ${D.steps}`}</a></div></div>
+            <SectionTag name="Loadout"><span>1 Of 2 Mission Slots</span><a>Activity Log</a><a>{`Proposed Steps · ${D.steps}`}</a></SectionTag>
             <div className="bd-slots">
               <div className="bd-slot">
               <div className="bd-slotname bd-on"><span className="bd-pips"><i className="bd-pip bd-run" /><i className="bd-pip" /></span>Primary</div>
@@ -234,7 +234,7 @@ function Board() {
           </div>
 
           <div className="bd-row">
-            <div><div className="bd-name">Run</div></div>
+            <SectionTag name="Run"><span>{`${D.runs.filter(r => !r.walked).length} Runs Complete · ${D.runs.filter(r => !r.walked).reduce((a, r) => a + r.miles, 0)} Miles Today`}</span></SectionTag>
             <div className="bd-run">
               <ClockFace />
               <Runs />
@@ -246,7 +246,7 @@ function Board() {
           </div>
 
           <div className="bd-row">
-            <div><div className="bd-name">Console</div></div>
+            <SectionTag name="Console" />
             <div>
             <div className="bd-groups">
               <InstrumentGroup label="Protocols">
@@ -277,7 +277,7 @@ function Board() {
           </div>
 
           <div className="bd-row">
-            <div><div className="bd-name">Stash</div><div className="bd-note">{D.stash.count}</div></div>
+            <SectionTag name="Stash"><span>{D.stash.count}</span></SectionTag>
             <div className="bd-six">
               <div style={{ gridColumn: 'span 3' }}><div className="bd-stashT">{D.stash.title}</div><div className="bd-under">{D.stash.under}</div></div>
               <div style={{ gridColumn: 'span 3', display: 'flex', gap: 8, justifyContent: 'flex-end' }}><button className="bd-quiet">Load</button><button className="bd-quiet">Return To Inventory</button></div>

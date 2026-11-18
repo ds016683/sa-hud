@@ -56,6 +56,19 @@ export const titleCase = (t) => typeof t === 'string' ? t.replace(/(^|\s)([a-z])
 export const TYPE = { header: 16, subhead: 14.5, body: 13.5, meta: 10.5 }
 export const Label = ({ children, style }) => <div style={{ fontSize: TYPE.header, fontWeight: 600, color: LABEL, letterSpacing: '0.1px', marginBottom: 8, lineHeight: 1.3, ...style }}>{titleCase(children)}</div>
 export const SubLabel = ({ children, color = LABEL, style }) => <div style={{ fontSize: TYPE.subhead, fontWeight: 600, color, marginBottom: 5, ...style }}>{titleCase(children)}</div>
+// The section tag (David 11/18, on the Board mock-up: "find a different way to tag the different sections up on
+// the board and then figure out how to factor that into Canon for anything else in the system"). A section opens
+// with its own rule: a short accent tick, the name in the serif sitting on the line, the hairline running on, and
+// the section's count or links at the far end in the body face. Nothing sits above the name and no panel wraps it.
+// Proposed: in use on dev/board-dash only until David rules.
+export const SectionTag = ({ name, children, style }) => (
+  <div style={{ display: 'flex', alignItems: 'center', gap: 14, margin: '0 0 22px', ...style }}>
+    <span style={{ width: 26, height: 2, borderRadius: 2, background: BLUE, flex: '0 0 auto' }} />
+    <span style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 19, lineHeight: 1, color: INK, whiteSpace: 'nowrap' }}>{titleCase(name)}</span>
+    <span style={{ flex: 1, height: 1, background: PANEL_BORDER }} />
+    {children ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: 16, fontSize: 13.5, color: INK2, whiteSpace: 'nowrap' }}>{children}</span> : null}
+  </div>
+)
 export const Stat = ({ v, l, color = INK }) => (
   <div style={{ borderLeft: `2px solid ${alpha(BLUE, 33)}`, paddingLeft: 12 }}>
     <div style={{ fontFamily: SERIF, fontSize: 26, fontWeight: 500, color, lineHeight: 1.1, letterSpacing: '-0.01em' }}>{v}</div>
