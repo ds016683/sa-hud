@@ -69,7 +69,21 @@ export async function missions() {
   return list
 }
 
-const parseJson = (text) => { const a = text.indexOf('{'), b = text.lastIndexOf('}'); if (a < 0 || b < 0) throw new Error('no JSON in the reply'); return JSON.parse(text.slice(a, b + 1)) }
+// The first whole JSON object in a reply. A model sometimes writes a second object or a line of prose after its
+// answer (Run 6's report, 11/17), so cutting from the first brace to the last can hand JSON.parse two things.
+export const parseJson = (text) => {
+  const s = String(text || ''), a = s.indexOf('{'), b = s.lastIndexOf('}')
+  if (a < 0 || b < 0) throw new Error('no JSON in the reply')
+  let depth = 0, str = false, esc = false
+  for (let i = a; i < s.length; i++) {
+    const c = s[i]
+    if (str) { if (esc) esc = false; else if (c === '\\') esc = true; else if (c === '"') str = false; continue }
+    if (c === '"') str = true
+    else if (c === '{') depth++
+    else if (c === '}' && --depth === 0) { try { return JSON.parse(s.slice(a, i + 1)) } catch { break } }
+  }
+  return JSON.parse(s.slice(a, b + 1))
+}
 const clean = (t) => flat(t, 160).replace(/\s*[—–]\s*/g, ', ')
 
 function prompt(events, list, state) {

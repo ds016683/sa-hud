@@ -13,7 +13,7 @@
 //   index.json   { v, runs: [ the face of every run ] }
 //   <id>.json    { id, ledger, log, mac }   one run's own lines: its marks, the Mac's samples, and what the ledger held at Start
 import { sb, sbWrite } from './_ledger.mjs'
-import { missions } from './_trail.mjs'
+import { missions, parseJson } from './_trail.mjs'
 import { canvass, eventsBetween, namer, readJson, writeJson, chiDay, flat } from './_canvass.mjs'
 import { strikeDay } from './_river.mjs'
 import { waSendText, waSendTemplate, davidNumber } from './_wa.mjs'
@@ -155,7 +155,6 @@ export async function macSample({ app, title, probe = false }) {
   return { active: true }
 }
 
-const parseJson = (text) => { const a = text.indexOf('{'), b = text.lastIndexOf('}'); if (a < 0 || b < 0) throw new Error('no JSON in the reply'); return JSON.parse(text.slice(a, b + 1)) }
 
 // Minutes on each mission's own clock inside the run's window.
 async function clockMinutes(from, to) {
