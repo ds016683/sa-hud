@@ -7,6 +7,17 @@ import '../src/sa-hud.css'
 import CardBriefing from '../src/components/river/CardBriefing'
 import LumenPanel from '../src/components/river/LumenPanel'
 import { S } from '../src/components/river/canon'
+import { GlyphLoadout, GlyphHolster, GlyphStash, ExtractMarker } from '../src/components/river/glyphs'
+
+// The card's place marks and its Extract, as ItemDetail lays them under the four tiles (mock, nothing moves).
+const WHERE = (
+  <div className="brf-where" role="group" aria-label="Where this card is">
+    <button className="on" title="On the Loadout"><GlyphLoadout size={17} /></button>
+    <button title="Holster · Back on the Mission Board"><GlyphHolster size={17} /></button>
+    <button title="Stash · Held on the Board"><GlyphStash size={17} /></button>
+    <ExtractMarker size={36} title="Extract · Close it, bank the miles" onClick={() => console.log('extract')} />
+  </div>
+)
 
 const q = new URLSearchParams(location.search)
 const EMPTY = q.has('empty'), MYTHIC = q.has('mythic')
@@ -70,7 +81,7 @@ function App() {
       <div style={{ maxWidth: 1180, margin: '0 auto', padding: '32px 28px 120px' }}>
         <h1 style={{ ...S.h1, fontSize: 32 }}>{OBJ.title}</h1>
         <div style={{ marginTop: 24 }}>
-          <CardBriefing obj={OBJ} root="a" kindLabel={GATE ? 'Gate' : MYTHIC ? 'Mythic' : 'Bounty'} steps={GATE ? [] : steps} kids={KIDS} missionGates={MISSION_GATES} mission={MISSION} onOpenMission={GATE ? () => setMsg('Would open the mission') : undefined} boardItems={[]} loaded={{ equipped: true, minutes_today: 12 }} due={new Date().toLocaleDateString('en-CA')} onReload={async () => bump(n => n + 1)} onTab={(t) => setMsg(`Would open the ${t} pill`)} onOpenCard={(id) => setMsg(`Would open the card ${id}`)} say={setMsg} api={api}
+          <CardBriefing obj={OBJ} root="a" sideFoot={WHERE} kindLabel={GATE ? 'Gate' : MYTHIC ? 'Mythic' : 'Bounty'} steps={GATE ? [] : steps} kids={KIDS} missionGates={MISSION_GATES} mission={MISSION} onOpenMission={GATE ? () => setMsg('Would open the mission') : undefined} boardItems={[]} loaded={{ equipped: true, minutes_today: 12 }} due={new Date().toLocaleDateString('en-CA')} onReload={async () => bump(n => n + 1)} onTab={(t) => setMsg(`Would open the ${t} pill`)} onOpenCard={(id) => setMsg(`Would open the card ${id}`)} say={setMsg} api={api}
             {...(MAIN ? {
               kindLabel: 'Main Mission', loaded: null, due: null, extraTrail: EXTRA, hereText: '0 of 3 gates closed. Next: Get it on the letterhead', nextStepId: 2,
               stopExtra: (st, h) => <><div className="src">Gate {st.id} · On The Board<button className="tool" onClick={() => setMsg('Would open its card')}>Open Its Card</button><button className="tool">Done When</button><button className="tool">Rename</button><button className="tool gone" onClick={h.takeOff}>Take It Off</button></div><div className="done-when">Done when: the sample is true, the sample is checked, and a long line of sample words runs on far enough to show how the done-when is held to two lines on the card before it is cut short with the rest behind the Done When button.</div></>,

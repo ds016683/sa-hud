@@ -11,7 +11,8 @@ import { Play, Pause, Archive, ExternalLink, Mic, Check, Plus, Trash2, Terminal,
 import { supabase } from '../../lib/supabase'
 import { listArtifacts, readArtifact } from '../../lib/artifacts'
 import { fetchLoadout, equip, stash, unload, equipObjective, equipTask, SIZES, sizeOf } from '../../lib/loadout'
-import { GlyphLoadout, GlyphHolster, GlyphStash } from './glyphs'
+import { GlyphLoadout, GlyphHolster, GlyphStash, ExtractMarker } from './glyphs'
+import useExtract from './useExtract'
 import DocView from './DocView'
 import { fetchSteps, listObjectiveArtifacts, listObjectiveFiles, listObjectiveBoards, realmOf, setSize, updateObjective, objRoot, fetchGates } from '../../lib/objectives'
 import { renderMarkdown } from './MeetingCloseout'
@@ -278,11 +279,14 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
     if (to === 'holster') return act(() => unload(obj.id), 'Holstered: back on the Mission Board')
     return act(() => stash(obj.id), 'In the Stash')
   }
+  const exit = useExtract({ onDone: async (said) => { setMsg(said); await load(); onChange && onChange() } })
   const where = obj ? (
     <div className="brf-where" role="group" aria-label="Where this card is">
       {[['loadout', 'On the Loadout', <GlyphLoadout key="g" size={17} />], ['holster', 'Holster · Back on the Mission Board', <GlyphHolster key="g" size={17} />], ['stash', 'Stash · Held on the Board', <GlyphStash key="g" size={17} />]].map(([id, tip, glyph]) => (
         <button key={id} className={place === id ? 'on' : ''} aria-pressed={place === id} aria-label={tip} title={tip} onClick={() => moveTo(id)}>{glyph}</button>
       ))}
+      {/* Extract sits on the card too (David 11/17), the same gold marker as the Board slot: close it, bank the miles. */}
+      <ExtractMarker size={36} title="Extract · Close it, bank the miles" onClick={() => exit.start(loaded || { id: obj.id, title: obj.title, kind: task ? 'Main Mission' : item.kind, personal: (obj.tags || []).includes('personal'), activated_at: obj.activated_at, minutes_today: 0 })} />
     </div>
   ) : null
   const [editStar, setEditStar] = useState(false)
@@ -461,6 +465,7 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
           )}
 
           {msg && <div role="status" style={{ fontSize: 13, color: msg.startsWith('Could') ? RED : MUTED, marginTop: 14 }}>{msg}</div>}
+          {exit.node}
         </div>
       </div>
       {item.objective_id && <LumenPanel item={{ kind: 'objective', id: item.objective_id, title: item.title, root: objRoot(item.objective_id), summary: [obj?.north_star, item.description || obj?.description].filter(Boolean).join('\n\n') }} />}
