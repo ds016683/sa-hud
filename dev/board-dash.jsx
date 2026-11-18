@@ -16,10 +16,19 @@ const D = {
   title: "Wednesday's Board", date: 'Wednesday, November 18, 2026 · Chicago',
   pill: ['In Mission', 'Sample Client Proposal'],
   slot: { title: 'Sample Client Proposal', under: 'Sample Main Mission · Gate 3', clock: '3h 50m', gates: '2 of 3 closed', miles: '7 on close', due: 'None set' },
-  steps: 4, runs: '3 Runs Complete', runMiles: '30 Miles From Runs Today',
+  steps: 4,
+  runs: [
+    { n: 1, at: '5:55 AM', min: 45, miles: 10, mix: [80, 0, 20] },
+    { n: 2, at: '6:55 AM', min: 45, miles: 10, mix: [62, 0, 38] },
+    { n: 3, at: '10:31 AM', min: 1, miles: 0, walked: true, focused: true },
+    { n: 4, at: '2:28 PM', min: 59, miles: 10, focused: true, mix: [88, 12, 0] },
+    { n: 5, at: '4:02 PM', min: 47, miles: 10, focused: true, mix: [94, 6, 0] },
+  ],
   stash: { title: 'Sample Relaunch Plan', under: 'Main Mission · Sample Program', count: '1 of 5' },
   ...JSON.parse(new URLSearchParams(location.search).get('d') || '{}'),
 }
+const LEFT = Number(new URLSearchParams(location.search).get('run'))   // minutes left on a running clock, for the picture
+const RUNNING = LEFT > 0
 const PROTO = { id: 'mission', label: D.pill[0], color: 'var(--hud-pos)', title: D.pill[1], since: new Date(Date.now() - 24.9 * 60000).toISOString(), live: true, slots: [{ live: true }, { live: false }] }
 
 const NAV = [
@@ -80,6 +89,28 @@ h1 { font:500 40px/1.1 var(--serif); letter-spacing:-.008em; margin:0; }
 .bd-bar2 i { display:block; height:100%; width:66%; border-radius:99px; background:var(--purple); }
 .bd-medal { width:44px; height:44px; flex:0 0 44px; border-radius:99px; display:grid; place-items:center; color:var(--accent); border:1.5px solid rgba(138,202,255,.55); background:rgba(138,202,255,.08); }
 .bd-col.bd-live { box-shadow:0 0 0 1px rgba(87,190,151,.18), 0 0 34px rgba(87,190,151,.10); }
+.bd-run { display:grid; grid-template-columns:auto minmax(0,1fr) auto; column-gap:44px; align-items:center; }
+.bd-clockface { position:relative; width:252px; height:104px; display:grid; place-items:center; }
+.bd-clockface svg { position:absolute; inset:0; overflow:visible; }
+.bd-clockface b { font:500 44px/1 var(--font-mono, 'JetBrains Mono', ui-monospace, monospace); letter-spacing:.04em; font-variant-numeric:tabular-nums; color:var(--ink); }
+.bd-clockface b.bd-live { color:var(--green); text-shadow:0 0 18px rgba(87,190,151,.35); }
+.bd-clockface span { display:block; text-align:center; font-size:13px; color:var(--ink2); margin-top:7px; }
+.bd-runs { display:grid; row-gap:9px; }
+.bd-runline { display:grid; grid-template-columns:54px 74px minmax(0,1fr) 58px 44px; column-gap:14px; align-items:center; font-size:14px; }
+.bd-runline .bd-rn { font:500 15.5px var(--serif); }
+.bd-runline .bd-ra { color:var(--ink2); font-variant-numeric:tabular-nums; }
+.bd-runline .bd-rm { text-align:right; font-variant-numeric:tabular-nums; }
+.bd-runline .bd-rmi { text-align:right; color:var(--purple); font-variant-numeric:tabular-nums; }
+.bd-runline.bd-off { color:var(--ink3); } .bd-runline.bd-off .bd-ra, .bd-runline.bd-off .bd-rmi { color:var(--ink3); }
+.bd-mix { display:flex; height:5px; border-radius:99px; overflow:hidden; background:rgba(255,255,255,.09); }
+.bd-mix i { display:block; height:100%; }
+.bd-runsum { display:flex; justify-content:space-between; font-size:13px; color:var(--ink2); padding-top:9px; margin-top:2px; border-top:1px solid rgba(255,255,255,.07); }
+.bd-key { display:inline-flex; align-items:center; gap:6px; margin-right:14px; }
+.bd-key i { width:8px; height:8px; border-radius:99px; display:inline-block; }
+.bd-starts { display:flex; gap:22px; }
+.bd-start { display:flex; flex-direction:column; align-items:center; gap:8px; width:92px; font-size:12.5px; text-align:center; color:var(--ink); }
+.bd-start button { width:78px; height:78px; border-radius:99px; background:rgba(255,255,255,.03); border:1.5px solid var(--c); color:var(--c); display:grid; place-items:center; cursor:pointer; box-shadow:0 0 0 0 transparent; transition:box-shadow .3s; }
+.bd-start button:hover { box-shadow:0 0 22px color-mix(in srgb, var(--c) 40%, transparent); }
 .bd-dial { position:relative; width:118px; height:118px; display:grid; place-items:center; }
 .bd-dial svg { position:absolute; inset:0; }
 .bd-dial b { font:500 30px/1 var(--serif); }
@@ -91,6 +122,52 @@ h1 { font:500 40px/1.1 var(--serif); letter-spacing:-.008em; margin:0; }
 .bd-empty { color:var(--ink3); }
 .bd-stashT { font:500 18px/1.3 var(--serif); }
 `
+
+// A runner, drawn here: the icon set has none.
+const Runner = ({ size = 34, focus = false }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="15.2" cy="5" r="1.7" />
+    <path d="M13.6 8.6 11 13.4" />
+    <path d="M13.6 8.6l3.2 2.2 2.4-1" />
+    <path d="M13.4 8.7 10.4 8.3 8.6 10.6" />
+    <path d="M11 13.4l3.3 2.3-.9 4.4" />
+    <path d="M11 13.4 8.3 16.3H5.2" />
+    {focus && <path d="M2.5 6V2.5H6M18 2.5h3.5V6M21.5 18v3.5H18M6 21.5H2.5V18" strokeWidth="1.3" />}
+  </svg>
+)
+const MIX = ['var(--purple)', 'var(--accent)', 'var(--red)']
+// The clock as a digital face: the outline is the time left, draining as the run goes.
+const ClockFace = () => {
+  const frac = RUNNING ? Math.min(1, LEFT / 45) : 1
+  const mm = RUNNING ? String(Math.floor(LEFT)).padStart(2, '0') : '45', ss = RUNNING ? String(Math.round((LEFT % 1) * 60)).padStart(2, '0') : '00'
+  const c = RUNNING ? 'var(--green)' : 'var(--accent)'
+  return (
+    <div className="bd-clockface">
+      <svg viewBox="0 0 252 104"><rect x="2" y="2" width="248" height="100" rx="50" fill="rgba(255,255,255,.02)" stroke="rgba(255,255,255,.12)" strokeWidth="2.5" /><rect x="2" y="2" width="248" height="100" rx="50" fill="none" stroke={c} strokeWidth="2.5" strokeLinecap="round" pathLength="100" strokeDasharray={`${100 * frac} 100`} style={{ filter: `drop-shadow(0 0 6px ${RUNNING ? 'rgba(87,190,151,.5)' : 'rgba(138,202,255,.35)'})` }} /></svg>
+      <div><b className={RUNNING ? 'bd-live' : undefined}>{`${mm}:${ss}`}</b><span>{RUNNING ? 'Left In Run 6' : 'Ready'}</span></div>
+    </div>
+  )
+}
+const Runs = () => {
+  const done = D.runs.filter(r => !r.walked)
+  return (
+    <div className="bd-runs">
+      {D.runs.map(r => (
+        <div key={r.n} className={`bd-runline${r.walked ? ' bd-off' : ''}`}>
+          <span className="bd-rn">{`Run ${r.n}`}</span>
+          <span className="bd-ra">{r.at}</span>
+          {r.walked ? <span>Walked Away</span> : <span className="bd-mix">{(r.mix || []).map((w, i) => <i key={i} style={{ width: `${w}%`, background: MIX[i] }} />)}</span>}
+          <span className="bd-rm">{`${r.min} min`}</span>
+          <span className="bd-rmi">{`${r.miles} mi`}</span>
+        </div>
+      ))}
+      <div className="bd-runsum">
+        <span><span className="bd-key"><i style={{ background: MIX[0] }} />Mission</span><span className="bd-key"><i style={{ background: MIX[1] }} />Protocol</span><span className="bd-key"><i style={{ background: MIX[2] }} />Rogue</span></span>
+        <span>{`${done.length} Runs Complete · ${done.reduce((a, r) => a + r.miles, 0)} Miles Today`}</span>
+      </div>
+    </div>
+  )
+}
 
 const Fact = ({ k, children }) => <div className="bd-fact"><span>{k}</span><span>{children}</span></div>
 function Board() {
@@ -158,15 +235,13 @@ function Board() {
 
           <div className="bd-row">
             <div><div className="bd-name">Run</div></div>
-            <div className="bd-six" style={{ alignItems: 'center' }}>
-              <div style={{ gridColumn: 'span 2' }}>
-                <div className="bd-dial">
-                  <svg viewBox="0 0 118 118"><circle cx="59" cy="59" r="54" fill="none" stroke="rgba(255,255,255,.12)" strokeWidth="3" /><circle cx="59" cy="59" r="54" fill="none" stroke="var(--accent)" strokeWidth="3" strokeLinecap="round" strokeDasharray="339.3" strokeDashoffset="0" transform="rotate(-90 59 59)" opacity=".85" /></svg>
-                  <div><b>45:00</b><span>Ready</span></div>
-                </div>
+            <div className="bd-run">
+              <ClockFace />
+              <Runs />
+              <div className="bd-starts">
+                <div className="bd-start" style={{ '--c': 'var(--purple)' }}><button title="Start Focused Run"><Runner focus /></button>Focused Run</div>
+                <div className="bd-start" style={{ '--c': 'var(--accent)' }}><button title="Start Run"><Runner /></button>Start Run</div>
               </div>
-              <div style={{ gridColumn: 'span 2', fontSize: 14.5, lineHeight: 1.7 }}><div><span className="bd-dot" style={{ background: 'var(--purple)' }} />{D.runs}</div><div style={{ color: 'var(--ink2)', paddingLeft: 16 }}>{D.runMiles}</div></div>
-              <div style={{ gridColumn: 'span 2', display: 'flex', gap: 10, justifyContent: 'flex-end' }}><button className="bd-quiet" style={{ padding: '10px 18px' }}>Start Focused Run</button><button className="bd-go">Start Run</button></div>
             </div>
           </div>
 
