@@ -166,7 +166,9 @@ body {
   width: 264px; flex: 0 0 264px;
   height: 100vh;
   display: flex; flex-direction: column;
-  background: linear-gradient(177deg, var(--sa-shell-top) 0%, var(--sa-shell-bot) 86%);
+  /* The CIP's navy (David 11/18: "change the background to match the blue tones ... i think its a color contrast
+     thing for me. i'm addicted to the cip"): one flat deep tone, no gradient. Was the shell gradient, top to bottom. */
+  background: #0D1D2C;
   border-right: 1px solid var(--sa-shell-line);
   overflow: hidden;
 }
@@ -1100,7 +1102,9 @@ table.fin-grid { width: 100%; border-collapse: collapse; font-family: var(--font
    whole screen reads as one continuous navy field.
    ============================================================ */
 .sa-surface-dark {
-  background: linear-gradient(177deg, var(--sa-shell-top) 0%, var(--sa-shell-bot) 86%);
+  /* The CIP's feature navy, flat (David 11/18), so ink and panels sit on one deep tone the way they do in the deck.
+     Was linear-gradient(177deg, var(--sa-shell-top) 0%, var(--sa-shell-bot) 86%), which ran lighter across the top. */
+  background: #0F2334;
 }
 .sa-surface-dark .sa-topbar {
   background: transparent;
