@@ -16,7 +16,7 @@
 // Folders are an index beside the card's files (lib/livefiles readFileIndex), no schema.
 // Canon: labels in the body face, Title Case, nothing in small tracked capitals.
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { FileText, FileSpreadsheet, FileImage, Link2, Folder, FolderOpen, FolderPlus, Paperclip, Star, X as XIcon, ExternalLink, Download, Mail, Trash2, ChevronDown, ChevronRight, ArrowUp, ArrowDown, Search, Hourglass, Presentation, Eye, EyeOff } from 'lucide-react'
+import { FileText, FileSpreadsheet, FileImage, Link2, Folder, FolderOpen, FolderPlus, Paperclip, Star, X as XIcon, ExternalLink, Download, Mail, Trash2, ChevronDown, ChevronRight, ArrowUp, ArrowDown, Search, Hourglass, Presentation, Eye, EyeOff, Lock, LockOpen } from 'lucide-react'
 import { listLiveFiles, putLiveFile, requestLiveFile, addLiveLink, openLiveFile, downloadLiveFile, draftMail, pinEvidence, removeLiveRow, readFileIndex, writeFileIndex, fileSynopsis, sourceOf, isRequest, isLink, fmtSize, extOf } from '../../lib/livefiles'
 import { pdfUrl } from '../../lib/cabinet'
 import { LEDGER_EVENT } from '../../lib/lumenPanel'
@@ -198,7 +198,7 @@ function WordPages({ blob, box }) {
   )
 }
 
-function FileSheet({ api, row, folder, folders, msg, onClose, onAct, onMove }) {
+function FileSheet({ api, row, folder, folders, locked = false, msg, onClose, onAct, onMove }) {
   const ext = extOf(row.name)
   const id = row.id
   const readable = canSynopsize(row)
@@ -314,7 +314,7 @@ function FileSheet({ api, row, folder, folders, msg, onClose, onAct, onMove }) {
             </select>
           )}
           <span style={{ flex: 1 }} />
-          <button onClick={() => onAct('remove')} style={btn()}><Trash2 size={14} /> Remove</button>
+          <button onClick={() => onAct('remove')} disabled={locked} title={locked ? 'Locked · Unlock it in the list to remove' : undefined} style={{ ...btn(), ...(locked ? { opacity: 0.4, cursor: 'default' } : {}) }}>{locked ? <Lock size={14} /> : <Trash2 size={14} />} {locked ? 'Locked' : 'Remove'}</button>
         </div>
         {msg && <div role="status" style={{ fontSize: 13, color: msg.startsWith('Could not') ? RED : MUTED, marginTop: 12 }}>{msg}</div>}
       </div>
@@ -324,11 +324,11 @@ function FileSheet({ api, row, folder, folders, msg, onClose, onAct, onMove }) {
 
 // ---- the list --------------------------------------------------------------------------------
 const COLS = [['name', 'Name'], ['source', 'Source'], ['added', 'Added'], ['size', 'Size']]
-const GRID = { display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 176px 116px 80px', gap: 14, alignItems: 'center' }
+const GRID = { display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 176px 116px 80px 58px', gap: 14, alignItems: 'center' }
 
 export default function CardFiles({ objectiveId, onChanged, api = LEDGER }) {
   const [rows, setRows] = useState(null)
-  const [index, setIndex] = useState({ v: 1, folders: [], of: {} })
+  const [index, setIndex] = useState({ v: 1, folders: [], of: {}, locked: {} })
   const [tick, setTick] = useState(0)
   const [filter, setFilter] = useState('')
   const [sort, setSort] = useState(() => { try { const k = JSON.parse(localStorage.getItem('hud:files:sort')); return k ? { ...k, by: k.by === 'from' ? 'source' : k.by } : { by: 'added', dir: 'desc' } } catch { return { by: 'added', dir: 'desc' } } })
@@ -398,12 +398,24 @@ export default function CardFiles({ objectiveId, onChanged, api = LEDGER }) {
       }
       else if (what === 'pin') { await api.pinEvidence(row.id, !row.evidence); reload() }
       else if (what === 'remove') {
+        if (isLocked(row)) { setMsg(`${row.name} is locked. Unlock it first.`); return }
         if (!await hudConfirm({ title: `Remove ${row.name}?`, message: isLink(row) || isRequest(row) ? 'It leaves this card.' : 'The file is deleted from this card and cannot be brought back.', confirm: 'Remove', danger: true })) return
         await api.removeLiveRow(row)
-        if (index.of[row.id]) { const of = { ...index.of }; delete of[row.id]; await saveIndex({ ...index, of }) }
+        if (index.of[row.id] || index.locked?.[row.id]) { const of = { ...index.of }; delete of[row.id]; const locked = { ...(index.locked || {}) }; delete locked[row.id]; await saveIndex({ ...index, of, locked }) }
         setPreviewId(null); setMsg(`Removed: ${row.name}`); reload()
       }
     } catch (e) { setMsg(`Could not do that: ${e.message}`) }
+  }
+  // A lock holds a file on the card (David 11/18): the delete is off while it is on, and taking it off asks first.
+  // It lives in the card's file index beside the folders, no schema.
+  const isLocked = (row) => !!index.locked?.[row.id]
+  const toggleLock = async (row) => {
+    const locked = { ...(index.locked || {}) }
+    if (locked[row.id]) {
+      if (!await hudConfirm({ title: `Unlock ${row.name}?`, message: 'Unlocked, it can be deleted from this card.', confirm: 'Unlock' })) return
+      delete locked[row.id]
+    } else locked[row.id] = true
+    saveIndex({ ...index, locked })
   }
   const move = (row, name) => { const of = { ...index.of }; if (name) of[row.id] = name; else delete of[row.id]; saveIndex({ ...index, of }) }
   const newFolder = async () => {
@@ -442,6 +454,14 @@ export default function CardFiles({ objectiveId, onChanged, api = LEDGER }) {
         <span title={src.sender ? `Email from ${src.sender}, ${src.when}: ${src.subject}` : undefined} style={{ fontSize: 13, color: INK2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{src.label}</span>
         <span style={{ fontSize: 13, color: INK2 }}>{day(r.created_at)}</span>
         <span style={{ fontSize: 13, color: INK2, textAlign: 'right' }}>{r.size ? fmtSize(r.size) : ''}</span>
+        <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'flex-end', gap: 6 }}>
+          <span role="button" tabIndex={0} aria-pressed={isLocked(r)} aria-label={isLocked(r) ? `Unlock ${r.name}` : `Lock ${r.name}`} title={isLocked(r) ? 'Locked · Click to unlock' : 'Lock it in place'}
+            onClick={e => { e.stopPropagation(); toggleLock(r) }} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); toggleLock(r) } }}
+            style={{ display: 'inline-grid', placeItems: 'center', width: 24, height: 24, borderRadius: 6, color: isLocked(r) ? BLUE : MUTED, cursor: 'pointer' }}>{isLocked(r) ? <Lock size={14} /> : <LockOpen size={14} />}</span>
+          <span role="button" tabIndex={isLocked(r) ? -1 : 0} aria-disabled={isLocked(r)} aria-label={`Delete ${r.name}`} title={isLocked(r) ? 'Locked · Unlock it to delete' : 'Delete'}
+            onClick={e => { e.stopPropagation(); if (!isLocked(r)) act(r, 'remove') }} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); if (!isLocked(r)) act(r, 'remove') } }}
+            style={{ display: 'inline-grid', placeItems: 'center', width: 24, height: 24, borderRadius: 6, color: RED, opacity: isLocked(r) ? 0.25 : 1, cursor: isLocked(r) ? 'default' : 'pointer' }}><XIcon size={15} /></span>
+        </span>
       </button>
     )
   }
@@ -451,7 +471,7 @@ export default function CardFiles({ objectiveId, onChanged, api = LEDGER }) {
   return (
     <div style={{ minWidth: 0 }}>
       {adding && <AddModal api={api} owner={{ objectiveId }} folders={folders} onClose={() => setAdding(false)} onAdded={added} />}
-      {preview && <FileSheet key={preview.id} api={api} row={preview} folder={index.of[preview.id] || null} folders={folders} msg={msg} onClose={() => { setPreviewId(null); setMsg(null) }} onAct={(w) => act(preview, w)} onMove={(name) => move(preview, name)} />}
+      {preview && <FileSheet key={preview.id} api={api} row={preview} folder={index.of[preview.id] || null} folders={folders} locked={isLocked(preview)} msg={msg} onClose={() => { setPreviewId(null); setMsg(null) }} onAct={(w) => act(preview, w)} onMove={(name) => move(preview, name)} />}
 
       {empty ? (
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', gap: 12, padding: '54px 16px 46px' }}>

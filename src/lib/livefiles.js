@@ -240,18 +240,18 @@ export async function addLiveLink(url, { title = null, objectiveId = null, proje
 // can sit in a folder without a schema change. { v, folders: [name], of: { <live file id>: name } }
 const indexPath = (objectiveId) => `objectives/${objectiveId}/files-index.json`
 export async function readFileIndex(objectiveId) {
-  const empty = { v: 1, folders: [], of: {} }
+  const empty = { v: 1, folders: [], of: {}, locked: {} }
   try {
     const { data, error } = await supabase.storage.from(BUCKET).createSignedUrl(indexPath(objectiveId), 60)
     if (error || !data?.signedUrl) return empty
     const res = await fetch(`${data.signedUrl}&cb=${Date.now()}`, { cache: 'no-store' })
     if (!res.ok) return empty
     const j = await res.json()
-    return { v: 1, folders: Array.isArray(j.folders) ? j.folders : [], of: j.of && typeof j.of === 'object' ? j.of : {} }
+    return { v: 1, folders: Array.isArray(j.folders) ? j.folders : [], of: j.of && typeof j.of === 'object' ? j.of : {}, locked: j.locked && typeof j.locked === 'object' ? j.locked : {} }
   } catch { return empty }
 }
 export async function writeFileIndex(objectiveId, index) {
-  const { error } = await supabase.storage.from(BUCKET).upload(indexPath(objectiveId), new Blob([JSON.stringify({ v: 1, folders: index.folders || [], of: index.of || {} })], { type: 'application/json' }), { upsert: true, contentType: 'application/json' })
+  const { error } = await supabase.storage.from(BUCKET).upload(indexPath(objectiveId), new Blob([JSON.stringify({ v: 1, folders: index.folders || [], of: index.of || {}, locked: index.locked || {} })], { type: 'application/json' }), { upsert: true, contentType: 'application/json' })
   if (error) throw new Error(error.message)
 }
 // Put a filed file back on the Board, or take one off it (the row stays on the card either way).
