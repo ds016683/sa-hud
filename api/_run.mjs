@@ -14,7 +14,8 @@
 //   <id>.json    { id, ledger, log, mac }   one run's own lines: its marks, the Mac's samples, and what the ledger held at Start
 import { sb, sbWrite } from './_ledger.mjs'
 import { missions, parseJson } from './_trail.mjs'
-import { canvass, eventsBetween, namer, readJson, writeJson, chiDay, flat } from './_canvass.mjs'
+import { canvass, eventsBetween, eventsAfter, namer, readJson, writeJson, chiDay, flat } from './_canvass.mjs'
+import { loadout, equip as startClock, holster as stopClockOn, boardLog } from './_loadout.mjs'
 import { strikeDay } from './_river.mjs'
 import { waSendText, waSendTemplate, davidNumber } from './_wa.mjs'
 
@@ -69,18 +70,105 @@ export async function runState() {
   return { run: last ? { ...last, log, logged, wa_open } : null, today: { runs: mine.filter(r => r.state === 'filed').length, miles: mine.reduce((s, r) => s + (r.state === 'filed' ? (r.miles || 0) : 0), 0) } }
 }
 
+// ---- the Focused Run ----------------------------------------------------------------------------
+// David 11/18: "Two options for a run. A run and a focused run." His rules for focus: "only one thing is
+// allowed on the board. only one session can be running. If i'm doing something else that lumen sees (i'm
+// responding to an unrelated email or slack message that deviates from the only thing on the board) then i
+// get an alert text. When i turn off the focus button, the board resets."
+//   Start     the one thing keeps the Board and its clock runs; everything else on the Board is holstered and
+//             remembered on the run (focus.parked). A Console button that is on has to be stopped first.
+//   Each minute  mail he sent and Slack he wrote since the last look is read against the one thing; a line
+//             that shares nothing with it gets one text, at most once in five minutes.
+//   The end   Extract or Walk Away puts back what was holstered, clocks off, in the order it sat.
+// run.focus = { objective_id, title, mission, words, parked: [{ id, title, activated_at }], cursor, alerted_at, alerts }
+const DRIFT_QUIET_MIN = 5
+const COMMON = new Set(['with', 'from', 'that', 'this', 'into', 'about', 'your', 'have', 'will', 'gate', 'main', 'side', 'mission', 'review', 'plan', 'call', 'email', 'send', 'draft', 'team', 'third', 'horizon', 'full', 'list', 'final', 'update', 'meeting'])
+export const wordsOf = (...t) => [...new Set((t.join(' ').toLowerCase().match(/[a-z0-9]{4,}/g) || []))].filter(w => !COMMON.has(w)).slice(0, 24)
+export const related = (e, f) => {
+  if (e.mission && (e.mission === f.mission || e.mission === f.title)) return true
+  // Whole words only: "live" must not ride in on "deliver".
+  const said = new Set(`${e.text} ${e.detail || ''}`.toLowerCase().match(/[a-z0-9]{4,}/g) || [])
+  return (f.words || []).some(w => said.has(w))
+}
+
+// The focused run that is running now, or null. Lumen's hands ask this before they load or start anything.
+export async function focusHold() {
+  const run = activeOf(await readIndex())
+  return run && run.state === 'running' && run.focus ? { run: run.n, objective_id: run.focus.objective_id, title: run.focus.title } : null
+}
+export const focusRefusal = (hold) => JSON.stringify({ ok: false, refused: 'focused run', note: `Focused Run ${hold.run} is on: only "${hold.title}" is on the Board until it ends. Tell David that, and do not load or start anything else.` })
+
+async function focusStart(objectiveId, now) {
+  const L = await loadout()
+  const board = L.items.filter(i => !i.session && !i.meeting)
+  const one = objectiveId ? board.find(i => i.id === objectiveId) : (board.find(i => i.equipped) || (board.length === 1 ? board[0] : null))
+  if (!one) throw new Error(objectiveId ? 'that item is not on the Board' : board.length ? 'pick the one thing: more than one item is on the Board and no clock is running' : 'nothing is on the Board; load the one thing first')
+  const on = (await sb(`meeting_sessions?select=event_id,subject&day=eq.${L.day}&stopped_at=is.null&started_at=not.is.null`).catch(() => []))
+    .find(s => /^(adhoc|personal):/.test(s.event_id) && !/:travel$/.test(s.event_id))
+  if (on) throw new Error(`${on.subject || 'A Console button'} is on at the Console. Stop it first.`)
+  const others = board.filter(i => i.id !== one.id)
+  const rows = others.length ? await sb(`objectives?select=id,title,activated_at&id=in.(${others.map(o => o.id).join(',')})`) : []
+  for (const o of rows) { await stopClockOn(o.id); await sbWrite('PATCH', `objectives?id=eq.${o.id}`, { state: 'parked', activated_at: null }, 'return=minimal') }
+  await startClock(one.id, 'focused run')
+  if (rows.length) boardLog(`Focused Run: holstered ${rows.map(o => o.title).join(' | ')} until it ends`)
+  const { cursor } = await eventsAfter(chiDay(now), 0).catch(() => ({ cursor: { day: chiDay(now), seq: 0 } }))
+  return { objective_id: one.id, title: one.title, mission: one.main_mission || null, words: wordsOf(one.title, one.main_mission || ''), parked: rows.map(o => ({ id: o.id, title: o.title, activated_at: o.activated_at })), cursor, alerted_at: null, alerts: [] }
+}
+
+// The Board resets: what the run holstered goes back where it sat, clocks off. Anything David closed,
+// stashed or deleted in the meantime is left as he put it.
+async function focusEnd(run) {
+  const back = []
+  for (const p of (run.focus?.parked || [])) {
+    const o = (await sb(`objectives?select=id,state,tags,deleted_at&id=eq.${p.id}`).catch(() => []))[0]
+    if (!o || o.deleted_at || o.state !== 'parked' || (o.tags || []).includes('stashed')) continue
+    await sbWrite('PATCH', `objectives?id=eq.${p.id}`, { state: 'active', activated_at: p.activated_at || new Date().toISOString() }, 'return=minimal')
+    back.push(p.title)
+  }
+  if (back.length) boardLog(`Focused Run ended: back on the Board, ${back.join(' | ')}`)
+  return back
+}
+
+// One look for drift. Mail he sent and Slack he wrote, taken once each by their place in the stream.
+async function drift(run) {
+  const f = run.focus
+  const { events, cursor } = await eventsAfter(f.cursor?.day, f.cursor?.seq || 0)
+  const off = events.filter(e => e.at >= run.started_at && ((e.source === 'mail' && /^Sent:/.test(e.text)) || e.source === 'slack')).filter(e => !related(e, f))
+  const quiet = f.alerted_at && Date.now() - new Date(f.alerted_at).getTime() < DRIFT_QUIET_MIN * 60000
+  let alert = null
+  if (off.length && !quiet) {
+    const e = off[off.length - 1], now = new Date().toISOString()
+    const text = `Focused Run ${run.n}: ${e.source === 'mail' ? 'you just sent mail' : 'you just wrote in Slack'} that is not the one thing (${flat(e.text.replace(/^Sent:\s*/, ''), 90)}). The one thing is ${f.title}.`
+    let id = null, via = null, skipped = null
+    try {
+      if (await waOpen().catch(() => false)) { via = 'text'; id = await waSendText(davidNumber(), text) }
+      else { via = 'knock'; id = await waSendTemplate(davidNumber(), `focus check on Run ${run.n}`) }
+    } catch (x) { skipped = String(x.message || x).slice(0, 200) }
+    await sbWrite('POST', 'lumen_messages', { channel: 'pulse', direction: 'out', kind: skipped ? 'system' : 'text', body: text, external_id: id, meta: { kind: 'focus', run: run.id, via, skipped } }, 'return=minimal').catch(() => null)
+    const doc = await readJson(logPath(run.id), { log: [], mac: [] })
+    doc.log = [...(doc.log || []), { at: now, source: 'lumen', text: `Drift text ${skipped ? 'not sent' : 'sent'}: ${flat(e.text, 120)}`, mission: null }]
+    await writeJson(logPath(run.id), doc)
+    alert = { at: now, text: flat(e.text, 160), sent: !skipped, via }
+  }
+  await saveIndex((await readIndex()).map(r => r.id === run.id ? { ...r, focus: { ...r.focus, cursor, ...(alert ? { alerted_at: alert.at, alerts: [...(r.focus.alerts || []), alert].slice(-40) } : {}) } } : r))
+  return alert
+}
+
 // ---- the verbs ----------------------------------------------------------------------------------
 // minutes: a shorter clock for a test (5 to 45). A run pays only at the full 45, so a test pays nothing.
-export async function startRun({ minutes = RUN_MINUTES } = {}) {
+// focus: true, or { objective_id } naming the one thing, makes it a Focused Run (see above).
+export async function startRun({ minutes = RUN_MINUTES, focus = null } = {}) {
   const span = Math.max(5, Math.min(RUN_MINUTES, Math.round(Number(minutes) || RUN_MINUTES)))
   const runs = await readIndex()
   if (activeOf(runs)) throw new Error('a run is already on; extract it first')
   const now = new Date().toISOString(), day = chiDay(now)
   const n = runs.filter(r => r.day === day).length + 1
+  const held = focus ? await focusStart(typeof focus === 'object' ? focus.objective_id : null, now) : null
   const run = { id: `${day}-${n}-${Date.now().toString(36)}`, day, n, state: 'running', started_at: now, ends_at: plus(now, span), minutes: span, extracted_at: null, debrief_ends_at: null, filed_at: null, miles: 0, logged: 0, summary: null, hits: [], rogue: [], word: null }
   // What the ledger already holds, so Extract can tell what this run earned (see earnedIn).
   const ledger = await ledgerOf(day).then(rows => ({ day, keys: rows.map(ledgerKey) })).catch(() => null)
-  await writeJson(logPath(run.id), { id: run.id, ledger, log: [{ at: now, source: 'hud', text: `Run ${n} started`, mission: null }], mac: [] })
+  if (held) run.focus = held
+  await writeJson(logPath(run.id), { id: run.id, ledger, log: [{ at: now, source: 'hud', text: held ? `Focused Run ${n} started on ${held.title}` : `Run ${n} started`, mission: held ? (held.mission || held.title) : null }], mac: [] })
   await saveIndex([...runs, { ...run, logged: 1 }])
   return run
 }
@@ -137,7 +225,8 @@ export async function tick() {
   const warned = running ? await warn(run).catch(() => null) : null
   if (!running && now.getUTCMinutes() % 5 !== 0) return { active: !!run, looked: false }
   const out = await canvass()
-  return { active: !!run, looked: true, ...(warned ? { warned } : {}), ...out }
+  const drifted = running && run.focus ? await drift(run).catch(() => null) : null
+  return { active: !!run, looked: true, ...(warned ? { warned } : {}), ...(drifted ? { drifted } : {}), ...out }
 }
 
 // The watcher on the Mac sends what is in front once a minute. Kept only while a run is on.
@@ -182,7 +271,7 @@ Rules: times in the log are Chicago time; if you name a time, write it that way 
 ## Missions
 ${list.map(m => `- ${m.title} (${m.kind})`).join('\n') || '(none listed)'}
 
-## Minutes on each mission's own clock during the run
+${run.focus ? `## This was a Focused Run\nThe one thing on the Board was: ${run.focus.title}${run.focus.mission ? ` (${run.focus.mission})` : ''}. Everything else was locked. Say plainly how much of the run stayed on it. Drift texts Lumen sent: ${(run.focus.alerts || []).length ? run.focus.alerts.map(a => `${chiTime(a.at)} ${a.text}`).join(' | ') : 'none'}.\n\n` : ''}## Minutes on each mission's own clock during the run
 ${clocked.map(c => `- ${c.mission}: ${c.minutes}`).join('\n') || '(no mission clock ran)'}
 
 ## What was in front on the Mac (samples)
@@ -215,6 +304,7 @@ export async function extractRun({ model }) {
   const runs = await readIndex(), run = runs.find(r => r.state === 'running')
   if (!run) throw new Error('no run is on')
   const now = new Date().toISOString()
+  if (run.focus) await focusEnd(run).catch(() => null)
   try { await canvass() } catch { /* the stream stands as it is */ }
   const own = await readJson(logPath(run.id), { log: [], mac: [] })
   const full = new Date(now) - new Date(run.started_at) >= RUN_MINUTES * 60000 - 5000
@@ -244,6 +334,7 @@ export async function fileRun({ word }) {
 export async function walkAway() {
   const runs = await readIndex(), run = runs.find(r => r.state === 'running')
   if (!run) throw new Error('no run is on')
+  if (run.focus) await focusEnd(run).catch(() => null)
   const out = { ...run, state: 'walked', extracted_at: new Date().toISOString(), miles: 0 }
   await saveIndex(runs.map(r => r.id === run.id ? out : r))
   return out

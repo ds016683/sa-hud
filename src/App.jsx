@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import {
   LayoutGrid, Network, LogOut, Menu, X, Target, Users,
-  FileText, Wallet, CreditCard, ListChecks, Compass, Waves, CalendarDays, BookOpen, Activity, Award, Wrench, GraduationCap, Sparkles, Archive as ArchiveIcon, FolderOpen, PenTool, Briefcase, Mic, Wand2, Bot, PenLine, Footprints } from 'lucide-react'
+  FileText, Wallet, CreditCard, ListChecks, Compass, Waves, CalendarDays, BookOpen, Activity, Award, Wrench, GraduationCap, Sparkles, Archive as ArchiveIcon, FolderOpen, PenTool, Briefcase, Mic, Wand2, Bot, PenLine, Footprints, BookMarked } from 'lucide-react'
 import { getSession, onAuthStateChange, signOut } from './lib/auth'
 import { fetchProtocolState } from './lib/protocol'
 import ProtocolHud from './components/river/ProtocolHud'
@@ -32,6 +32,7 @@ import LearningPage from './components/LearningPage'
 import ScratchpadPage from './components/ScratchpadPage'
 import SpeechesPage from './components/SpeechesPage'
 import WritingsPage from './components/WritingsPage'
+import ReadingPage from './components/ReadingPage'
 import AiToolsPage from './components/AiToolsPage'
 import LumenProtocolsPage from './components/LumenProtocolsPage'
 import AnthropicPage from './components/AnthropicPage'
@@ -48,6 +49,7 @@ const NAV_ITEMS = [
   { id: 'scratchpad',       label: 'Scratchpad',            icon: PenTool,        group: 'MONITOR' },
   { id: 'speeches',         label: 'Speeches',              icon: Mic,            group: 'MONITOR' },
   { id: 'writings',         label: 'Writings',              icon: PenLine,        group: 'MONITOR' },
+  { id: 'reading',          label: 'Reading',               icon: BookMarked,     group: 'MONITOR' },
   { id: 'main-missions',    label: 'Main Missions',         icon: MissionMark,    group: 'MISSION BOARD' },
   { id: 'clients',          label: 'Clients',               icon: Briefcase,      group: 'MISSION BOARD' },
   { id: 'side-missions',    label: 'Side Missions',         icon: Target,         group: 'MISSION BOARD' },
@@ -269,6 +271,7 @@ export default function App() {
           {active === 'scratchpad'       && <ScratchpadPage />}
           {active === 'speeches'         && <SpeechesPage />}
           {active === 'writings'         && <WritingsPage />}
+          {active === 'reading'          && <ReadingPage />}
           {active === 'ai-tools'         && <AiToolsPage />}
           {active === 'lumen-protocols'  && <LumenProtocolsPage />}
           {active === 'main-missions'    && (params[0] === 'steps' ? <StepReview onNavigate={setRoute} /> : <ProjectsPage deepLink={params} onNavigate={setRoute} />)}

@@ -13,6 +13,7 @@ import { matchNotes, hoursBetween, upsertSession, logToHarvest } from '../lib/me
 import MeetingCloseout, { renderMarkdown, CloseoutBlock, friendlyError, fmtHours } from './river/MeetingCloseout'
 import LoadoutPanel from './river/LoadoutPanel'
 import RunDock from './river/RunDock'
+import FocusLock from './river/FocusLock'
 import RecurringPanel from './river/RecurringPanel'
 import ReleasePanel from './river/ReleasePanel'
 import ProtocolsPanel from './river/MorningProtocol'
@@ -397,6 +398,7 @@ export default function AgendaPage({ onNavigate } = {}) {
   const [sessions, setSessions] = useState([])
   // Bumped after any write so the day's data re-pulls without clearing the panels.
   const [refreshKey, setRefreshKey] = useState(0)
+  const [focusRun, setFocusRun] = useState(null)   // the Focused Run that is running, from the Run dock
   const [openEvent, setOpenEvent] = useState(null)
   const refresh = useCallback(() => setRefreshKey(k => k + 1), [])
   const [now, setNow] = useState(() => new Date())
@@ -482,14 +484,16 @@ export default function AgendaPage({ onNavigate } = {}) {
       {day === today && (
         <>
           <Panel heading="Loadout" style={{ marginBottom: 12 }}>
-            <LoadoutPanel bare onChange={refresh} refreshKey={refreshKey} onNavigate={onNavigate} />
+            <LoadoutPanel bare onChange={refresh} refreshKey={refreshKey} onNavigate={onNavigate} focusId={focusRun?.focus?.objective_id || null} />
           </Panel>
           <Panel heading="Console" style={{ marginBottom: 12 }}>
             {/* The Stash (David 10/25): off the Loadout, a tall column down the Console's right side; the instrument
                 groups wrap into two tight rows beside it. LoadoutPanel renders the Stash here through a portal. */}
             <ConsoleRunProvider tick={refreshKey}>
             {/* The Run (David 11/17): down with the Console's buttons, distinct and bigger than the others. */}
-            <div style={{ marginBottom: 20 }}><RunDock refreshKey={refreshKey} onChange={refresh} /></div>
+            <div style={{ marginBottom: 20 }}><RunDock refreshKey={refreshKey} onChange={refresh} onRun={setFocusRun} /></div>
+            {/* Under a Focused Run (David 11/18) the Console and the Stash sit back, locked, until the run ends. */}
+            <FocusLock on={!!focusRun} label="Console And Stash Are Locked For The Focused Run">
             <div className="console-grid" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 320px', gap: 30, alignItems: 'start' }}>
               <div className="console-row" style={{ display: 'flex', gap: 0, flexWrap: 'wrap', alignItems: 'flex-start', justifyContent: 'space-around', rowGap: 30, alignContent: 'flex-start', padding: '6px 0' }}>
                 <ProtocolsPanel onChange={refresh} onNavigate={onNavigate} />
@@ -498,6 +502,7 @@ export default function AgendaPage({ onNavigate } = {}) {
               </div>
               <div id="console-stash" style={{ minWidth: 0 }} />
             </div>
+            </FocusLock>
             </ConsoleRunProvider>
             <style>{`@media (max-width: 980px) { .console-grid { grid-template-columns: minmax(0, 1fr) !important } }`}</style>
           </Panel>

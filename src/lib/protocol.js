@@ -14,6 +14,7 @@
 import { supabase } from './supabase'
 import { chiToday } from './loadout'
 import { readRun } from './runs'
+import { setFocusHold } from './focus'
 import { BLUE, GOLD, GREEN, PURPLE, RED } from '../components/river/canon'
 
 const q = (p) => p.then(r => (Array.isArray(r.data) ? r.data : []))
@@ -30,6 +31,7 @@ export async function fetchProtocolState() {
     q(supabase.from('daily_logs').select('id,note,at').eq('day', day).eq('what', 'emergency').order('at', { ascending: false }).limit(1)),
     readRun().then(d => d?.run || null).catch(() => null),
   ])
+  setFocusHold(run && run.state === 'running' ? run.focus : null)
   const mins = (iso) => Math.max(0, Math.round((nowMs - new Date(iso).getTime()) / 60000))
   // ends, slots and live feed the pill's meter (see ProtocolHud): the run's end, the Loadout's two slots, a running clock.
   const out = (id, label, color, title, detail, pct = null, since = null, blink = false, more = {}) => ({ id, label, color, title, detail, pct, since, blink, ...more })
@@ -48,7 +50,7 @@ export async function fetchProtocolState() {
   if (run && run.state === 'running') {
     const left = Math.round((new Date(run.ends_at).getTime() - nowMs) / 60000)
     const span = new Date(run.ends_at).getTime() - new Date(run.started_at).getTime()
-    return out('run', 'In Run', GREEN, `Run ${run.n}`, left > 0 ? `${left}m left` : `${-left}m over`, Math.max(0, Math.min(100, Math.round((nowMs - new Date(run.started_at).getTime()) / span * 100))), run.started_at, false, { ends: run.ends_at })
+    return out('run', run.focus ? 'Focused Run' : 'In Run', GREEN, run.focus ? run.focus.title : `Run ${run.n}`, left > 0 ? `${left}m left` : `${-left}m over`, Math.max(0, Math.min(100, Math.round((nowMs - new Date(run.started_at).getTime()) / span * 100))), run.started_at, false, { ends: run.ends_at })
   }
 
   const meeting = running.find(r => !ofConsole(r))

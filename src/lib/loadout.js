@@ -10,6 +10,7 @@
 //   Hours     free hours before 6 PM Chicago after remaining meetings (shown, never enforced: David 10/21)
 //   Extract   release: stop the clock, sum the segments, bank the miles
 import { supabase } from './supabase'
+import { focusBlock } from './focus'
 import { vetOpenSteps } from './path'
 import { BLUE, GOLD, MYTHIC } from '../components/river/canon'
 
@@ -117,6 +118,7 @@ async function stopClock(c) {
 
 // Run this item's clock; holster every other clock.
 export async function equip(objectiveId) {
+  { const held = focusBlock(objectiveId); if (held) throw new Error(held) }
   const running = await q(supabase.from('clocks').select('id,objective_id,started_at').is('stopped_at', null))
   for (const c of running) {
     if (c.objective_id === objectiveId) return { already: true }
@@ -236,6 +238,7 @@ export function fitReasons(L, size = 'light', { alreadyLoadedId, adhoc = false, 
 // Protocol loads items without starting a clock (clock: false); Launch picks
 // the one that runs.
 export async function equipObjective(objectiveId, { size, clock = true, ignoreStamina = false } = {}) {
+  { const held = focusBlock(objectiveId); if (held) return { ok: false, reasons: [held] } }
   const L = await fetchLoadout()
   const o = (await q(supabase.from('objectives').select('id,title,state,effort,tags').eq('id', objectiveId).limit(1)))[0]
   if (!o) throw new Error('objective not found')
@@ -253,6 +256,7 @@ export async function equipObjective(objectiveId, { size, clock = true, ignoreSt
 // A Main Mission task onto the board: reuse its linked objective or create the
 // bridge (the same one Lumen's activate_project_task creates), then equip.
 export async function equipTask(task, projectName, { clock = true, ignoreStamina = false } = {}) {
+  { const held = focusBlock(task.objective_id || null); if (held) return { ok: false, reasons: [held] } }
   if (task.objective_id) return equipObjective(task.objective_id, { clock, ignoreStamina })
   const L = await fetchLoadout()
   const reasons = fitReasons(L, 'light', { ignoreStamina })

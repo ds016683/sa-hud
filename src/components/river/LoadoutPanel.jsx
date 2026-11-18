@@ -29,6 +29,7 @@ import { liveCounts } from '../../lib/livefiles'
 import ItemDetail from './ItemDetail'
 import { INK, INK2, GRAY, PANEL_BORDER, GOLD, GOLD_BRIGHT, BLUE, GREEN, RED, MONO, SERIF, S, Eyebrow, Label, Panel, KIND_COLOR, KindChip, NORTH_STAR_LABEL, LABEL, MUTED, SUCCESS, alpha } from './canon'
 import { openCard } from '../../lib/card'
+import FocusLock from './FocusLock'
 
 const btn = (color = INK2, filled = false) => ({
   display: 'inline-flex', alignItems: 'center', gap: 5, fontFamily: MONO, fontSize: 9.5, letterSpacing: '1px', textTransform: 'uppercase',
@@ -422,7 +423,8 @@ function RoutineSlot({ tick, onChanged, onState }) {
   return msg ? <div style={{ fontSize: 12.5, color: RED }}>{msg}</div> : null
 }
 
-export default function LoadoutPanel({ onChange, refreshKey = 0, bare = false }) {
+// focusId: the one thing a Focused Run holds on the Board; every other slot sits back, locked (David 11/18).
+export default function LoadoutPanel({ onChange, refreshKey = 0, bare = false, focusId = null }) {
   // Proposed Steps waiting on David (11/17): the count on the Loadout's button, read when the Board opens or refreshes.
   const [stepsWaiting, setStepsWaiting] = useState(null)
   const [routineOn, setRoutineOn] = useState(false)
@@ -476,6 +478,8 @@ export default function LoadoutPanel({ onChange, refreshKey = 0, bare = false })
   })()
   const Wrap = bare ? 'div' : Panel
   const wrapStyle = bare ? {} : { marginBottom: 0 }
+  // Only under a Focused Run is a slot wrapped, so the Board's own layout is untouched the rest of the time.
+  const lockSlot = (key, locked, node) => focusId ? <FocusLock key={key} on={locked} label="Locked" style={{ display: 'flex', flexDirection: 'column' }}>{node}</FocusLock> : node
 
   return (
     <Wrap style={wrapStyle}>
@@ -494,14 +498,14 @@ export default function LoadoutPanel({ onChange, refreshKey = 0, bare = false })
       ) : (
         <>
           <div className="board-slots">
-            {layout.placed.map(({ it, n }) => <FilledSlot key={it.id} it={it} n={n} act={act} onOpen={(it) => openCard(it.id)} onExtract={extractGate} onRecall={setRecallOf} dropFromStash={(id) => act(async () => { const r = await equipObjective(id, { clock: true, ignoreStamina: true }); if (!r.ok) throw new Error(r.reasons.join(' · ')) }, 'Loaded from the Stash · timer on')} />)}
-            {layout.empties.map(n => <EmptySlot key={`empty-${n}`} n={n} dropFromStash={(id) => act(async () => { const r = await equipObjective(id, { clock: true, ignoreStamina: true }); if (!r.ok) throw new Error(r.reasons.join(' · ')) }, 'Loaded from the Stash · timer on')} />)}
+            {layout.placed.map(({ it, n }) => lockSlot(it.id, it.id !== focusId, <FilledSlot key={it.id} it={it} n={n} act={act} onOpen={(it) => openCard(it.id)} onExtract={extractGate} onRecall={setRecallOf} dropFromStash={(id) => act(async () => { const r = await equipObjective(id, { clock: true, ignoreStamina: true }); if (!r.ok) throw new Error(r.reasons.join(' · ')) }, 'Loaded from the Stash · timer on')} />))}
+            {layout.empties.map(n => lockSlot(`empty-${n}`, true, <EmptySlot key={`empty-${n}`} n={n} dropFromStash={(id) => act(async () => { const r = await equipObjective(id, { clock: true, ignoreStamina: true }); if (!r.ok) throw new Error(r.reasons.join(' · ')) }, 'Loaded from the Stash · timer on')} />))}
             {/* The Utility slot (David 11/17): a Console button, a meeting, or the unplanned. Never a mission. */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, minWidth: 0, alignSelf: 'stretch' }}>
+            {lockSlot('utility', !(L.adhoc[0] && L.adhoc[0].id === focusId), <div key="utility" style={{ display: 'flex', flexDirection: 'column', gap: 10, minWidth: 0, alignSelf: 'stretch' }}>
               {(L.meetings || []).map(it => <MeetingSlot key={it.id} it={it} act={act} />)}
               <RoutineSlot tick={tick} onChanged={bump} onState={setRoutineOn} />
               {(L.adhoc[0] || (!routineOn && !(L.meetings || []).length)) && <AdHocSlot item={L.adhoc[0] || null} act={act} onDispatch={setDispatch} onOpen={(it) => openCard(it.id)} onChanged={bump} onRecall={setRecallOf} />}
-            </div>
+            </div>)}
             {!stashNode && <StashStack items={held} act={act} onOpen={setPeek} dropFromLoadout={(id) => act(() => stash(id), 'Stashed from the Loadout')} />}
           </div>
           {stashNode && createPortal(<StashStack column items={held} act={act} onOpen={setPeek} dropFromLoadout={(id) => act(() => stash(id), 'Stashed from the Loadout')} />, stashNode)}

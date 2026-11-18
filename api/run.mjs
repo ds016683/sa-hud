@@ -1,7 +1,7 @@
 // The Run's door (see _run.mjs).
 //   GET                 the minute's look (the schedule arrives as GET); does nothing unless a run is on
 //   GET  ?state=1       -> { run, today }                 what the Board shows
-//   POST { action }     start | extract | file { word } | walk | mac { app, title }
+//   POST { action }     start { focus: true | { objective_id } } | extract | file { word } | walk | mac { app, title }
 // Auth: David's session or CRON_SECRET (the Mac watcher uses the secret).
 export const config = { maxDuration: 300 }
 
@@ -23,7 +23,7 @@ export default async function handler(req, res) {
     const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {})
     const action = String(body.action || '')
     if (action === 'mac') return res.status(200).json(await macSample({ app: body.app, title: body.title, probe: !!body.probe }))
-    if (action === 'start') await startRun({ minutes: body.minutes })
+    if (action === 'start') await startRun({ minutes: body.minutes, focus: body.focus || null })
     else if (action === 'extract') await extractRun({ model: MODEL() })
     else if (action === 'file') { const run = await fileRun({ word: body.word }); if (run.miles > 0) await strikeDay(chiToday()).catch(() => null) }
     else if (action === 'walk') await walkAway()

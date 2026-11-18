@@ -750,6 +750,16 @@ export const TOOLS = [
     }, required: ['title', 'state'] },
   },
   {
+    name: 'reading_note',
+    description: "File a note David sends about what he is reading (a quote, a thought, a reaction, a page reference) under that book on his Reading page, in his own words, unchanged; never summarize or tidy it. book: the title, or leave it out for the book he is reading now. page: the page or chapter if he gives one. Use it whenever he sends a reading note, says 'from the book', 'reading note', 'note on <title>', or gives a page number with a thought. A book not yet on the page is added only when David names it himself in this turn. Confirm in one short line and do not comment on the note unless he asks.",
+    inputSchema: { type: 'object', properties: { note: { type: 'string', description: "David's words, verbatim" }, book: { type: 'string' }, author: { type: 'string', description: 'only for a book he is adding' }, page: { type: 'string' } }, required: ['note'] },
+  },
+  {
+    name: 'get_reading',
+    description: "David's Reading page: the books he is reading and the notes filed under each, oldest first. book narrows it to one.",
+    inputSchema: { type: 'object', properties: { book: { type: 'string' } } },
+  },
+  {
     name: 'add_project_task',
     description: 'Only when David himself asks in this turn (David 11/9: nothing is created on his board, no objective, task, gate, step, maintenance or project, unless he commissions that item himself; a suggestion is a message to him, never a row). Add an open task to a project (by project key or name). Project tasks are the firm-level layer, distinct from personal Objectives.',
     inputSchema: { type: 'object', properties: { project: { type: 'string', description: 'project key or name' }, text: { type: 'string', description: "The gate's title: a few words, eight at most, naming the thing. No dates, no 'INBOUND', no figures, no sentences." }, details: { type: 'string', description: 'Everything else that came with it: who sent it, the dates, the figures, what was found, where the files are. Shown on the gate\'s Briefing under the title.' }, due_date: { type: 'string' } }, required: ['project', 'text'] },
@@ -1634,6 +1644,7 @@ export async function callTool(name, args = {}) {
     case 'work_timer': {
       const day = chiToday()
       const title = String(args.title || '').trim()
+      { const m = await import('./_run.mjs'); const hold = await m.focusHold().catch(() => null); if (hold && args.action === 'start') return m.focusRefusal(hold) }
       if (!title) throw new Error('title required')
       const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
       const eid = `adhoc:${day}:${slug}`
@@ -1748,6 +1759,7 @@ export async function callTool(name, args = {}) {
       if (state === 'released') { const open = await stillOpen(o.id); if (open.gates.length) return refuseOpen(o, open) }
       let fit = null
       if (state === 'active') {
+        { const m = await import('./_run.mjs'); const hold = await m.focusHold().catch(() => null); if (hold && hold.objective_id !== o.id) return m.focusRefusal(hold) }
         fit = await checkFit({ id: o.id, effort: o.effort }, { force: !!args.force })
         if (!fit.ok) return JSON.stringify({ ok: false, refused: 'loadout', reasons: fit.reasons, loadout: fit.loadout, note: 'Ask David what to stash (park), or whether to force it.' })
       }
@@ -1783,6 +1795,18 @@ export async function callTool(name, args = {}) {
       }
       return JSON.stringify({ ok: true, title: o.title, from: o.state, to: state, follow_up_date: patch.follow_up_date || null, ...(equipped ? { equipped } : {}), ...(fit?.forced ? { forced_over: fit.reasons } : {}), ...(clock ? { clock, close_out: 'Tell David the time of activity. Ask once whether there is anything to file against it: a receipt, a photo, a conversation, a note. A photo he sends is filed automatically; a note goes in log_day activity with the same what.' } : {}) })
     }
+    case 'reading_note': {
+      const m = await import('./_reading.mjs')
+      const out = await m.addNote({ note: args.note, book: args.book || null, author: args.author || null, page: args.page || null, via: 'lumen' })
+      return JSON.stringify({ ok: true, filed_under: out.book, page: out.note.page, notes_on_this_book: out.notes })
+    }
+    case 'get_reading': {
+      const m = await import('./_reading.mjs')
+      const doc = await m.readReading()
+      const q = String(args.book || '').toLowerCase()
+      const books = doc.books.filter(b => !q || b.title.toLowerCase().includes(q))
+      return JSON.stringify({ books: books.map(b => ({ title: b.title, author: b.author, status: b.status, started_at: b.started_at, notes: (b.notes || []).map(n => ({ at: n.at, page: n.page, text: n.text })) })) }, null, 2)
+    }
     case 'add_project_task': {
       const q = esc(args.project || '')
       const ps = await sb(`projects?select=id,key,name&status=neq.deleted&or=(key.ilike.${encodeURIComponent(q)},name.ilike.*${encodeURIComponent(q)}*)&limit=5`)
@@ -1794,6 +1818,7 @@ export async function callTool(name, args = {}) {
       return JSON.stringify({ ok: true, project: ps[0].name, task: out?.[0]?.text || args.text })
     }
     case 'activate_project_task': {
+      { const m = await import('./_run.mjs'); const hold = await m.focusHold().catch(() => null); if (hold && args.state !== 'parked') return m.focusRefusal(hold) }
       const pq = esc(args.project || '')
       const ps = await sb(`projects?select=id,key,name&status=neq.deleted&or=(key.ilike.${encodeURIComponent(pq)},name.ilike.*${encodeURIComponent(pq)}*)&limit=5`)
       if (ps.length !== 1) throw new Error(ps.length ? `project ambiguous: ${ps.map(p => p.name).join(' | ')}` : `no project matches "${args.project}"`)
@@ -1826,6 +1851,7 @@ export async function callTool(name, args = {}) {
     case 'get_loadout': return JSON.stringify(await loadout())
     case 'equip': {
       const o = await findObjective(args.title)
+      { const m = await import('./_run.mjs'); const hold = await m.focusHold().catch(() => null); if (hold && hold.objective_id !== o.id) return m.focusRefusal(hold) }
       if (o.state !== 'active') {
         const fit = await checkFit({ id: o.id, effort: o.effort })
         if (!fit.ok) return JSON.stringify({ ok: false, refused: 'loadout', reasons: fit.reasons, note: `${o.title} is ${o.state}; the loadout has no room to activate it. Ask David what to stash.` })

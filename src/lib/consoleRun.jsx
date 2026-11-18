@@ -7,6 +7,7 @@
 import { createContext, useCallback, useContext, useEffect, useState } from 'react'
 import { supabase } from './supabase'
 import { chiToday } from './loadout'
+import { focusBlock } from './focus'
 
 const Ctx = createContext({ running: null, all: [], refresh: () => {} })
 const concurrent = (id) => /:travel$/.test(String(id || ''))
@@ -24,4 +25,4 @@ export function ConsoleRunProvider({ tick = 0, children }) {
 }
 export const useConsoleRun = () => useContext(Ctx)
 // The message a start gets when something else is on.
-export const blockedBy = (run, selfId) => run && run.event_id !== selfId ? `${run.subject} is on. Stop it first.` : null
+export const blockedBy = (run, selfId) => focusBlock() || (run && run.event_id !== selfId ? `${run.subject} is on. Stop it first.` : null)
