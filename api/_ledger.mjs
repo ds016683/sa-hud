@@ -191,6 +191,17 @@ async function getStorageJson(path) {
   const res = await fetch(`${URL_BASE}/storage/v1/object/project-files/${path.split('/').map(encodeURIComponent).join('/')}?cb=${Date.now()}`, { headers: { ...sbHeaders(), 'Cache-Control': 'no-cache' }, cache: 'no-store' })
   return res.ok ? res.json() : null
 }
+// Steps David set by hand on a card's line live in <root>/path.json. Left open when the card is closed, they are
+// archived as vetted (David 11/17: "any steps that weren't closed out just need to be archived as vetted").
+export async function vetOpenSteps(objectiveId, at = new Date().toISOString()) {
+  const path = `objectives/${objectiveId}/path.json`
+  const doc = await getStorageJson(path).catch(() => null)
+  const steps = Array.isArray(doc?.steps) ? doc.steps : []
+  const open = steps.filter(x => !x.done && !x.vetted).length
+  if (!open) return 0
+  await putStorage(path, JSON.stringify({ ...doc, steps: steps.map(x => (x.done || x.vetted) ? x : { ...x, vetted: true, at }) }), 'application/json')
+  return open
+}
 async function listStorage(prefix, limit = 200) {
   const res = await fetch(`${URL_BASE}/storage/v1/object/list/project-files`, { method: 'POST', headers: { ...sbHeaders(), 'Content-Type': 'application/json' }, body: JSON.stringify({ prefix, limit, sortBy: { column: 'updated_at', order: 'desc' } }) })
   if (!res.ok) return []
@@ -1742,6 +1753,7 @@ export async function callTool(name, args = {}) {
       else if (state !== 'released') await holster(o.id).catch(() => null)
       if (state === 'released') {
         await sbWrite('PATCH', `project_tasks?objective_id=eq.${o.id}&status=neq.done`, { status: 'done', done: true, released_at: new Date().toISOString() }, 'return=minimal').catch(() => {})
+        await vetOpenSteps(o.id).catch(() => 0)
         // Time rule (9/27): the item's clock (activated -> released) is kept in the
         // Ledger as an activity log, never in Harvest. Harvest is Third Horizon work
         // only; a Side Mission tagged personal is personal time. Both count as time
@@ -1904,6 +1916,7 @@ export async function callTool(name, args = {}) {
       await sbWrite('PATCH', `project_tasks?id=eq.${ts[0].id}`, { status: 'done', done: true, released_at: doneAt }, 'return=minimal')
       // The promoted objective follows its gate (10/29): no ghost left in the Stash.
       if (ts[0].objective_id) await sbWrite('PATCH', `objectives?id=eq.${ts[0].objective_id}&state=neq.released`, { state: 'released', released_kind: 'done', released_at: doneAt, activated_at: null }, 'return=minimal')
+      if (ts[0].objective_id) await vetOpenSteps(ts[0].objective_id, doneAt).catch(() => 0)
       return JSON.stringify({ ok: true, completed: ts[0].text })
     }
     case 'set_standing_order': {

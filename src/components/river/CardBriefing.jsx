@@ -140,7 +140,7 @@ export default function CardBriefing({ obj, root, kindLabel, steps = [], kids = 
   ]
   // The card's own steps still ahead take their places among the gates: each sits after the stop it was dropped behind.
   const stops = [...baseStops]
-  for (const ps of side.psteps.filter(x => !x.done)) {
+  for (const ps of side.psteps.filter(x => !x.done && !x.vetted)) {
     const item = { key: ps.id, type: 'pstep', text: ps.text, ps }, at = stops.findIndex(x => x.key === ps.after)
     if (ps.after === '^') stops.unshift(item); else if (at >= 0) stops.splice(at + 1, 0, item); else stops.push(item)
   }
@@ -248,7 +248,7 @@ export default function CardBriefing({ obj, root, kindLabel, steps = [], kids = 
   const dw = due ? dueWords(due) : null
   const realFiles = side.files.filter(f => !isLink(f) && !isRequest(f))
   const blanks = side.latest ? blanksIn(side.latest.text).length : 0
-  const mySteps = side.psteps.length, myStepsDone = side.psteps.filter(x => x.done).length
+  const mySteps = side.psteps.length, myStepsDone = side.psteps.filter(x => x.done).length, myStepsVetted = side.psteps.filter(x => x.vetted && !x.done).length
   const here = hereText || `${fmtClock(loaded?.minutes_today || 0)} on the clock today. ${loaded ? (loaded.equipped ? 'The clock is running.' : 'On the Loadout, clock off.') : 'Not on the Loadout.'}`
 
   return (
@@ -271,7 +271,7 @@ export default function CardBriefing({ obj, root, kindLabel, steps = [], kids = 
           </div>
           {behindOpen && trail.map((ev, i) => [
             spot('b', i),
-            <div key={`${ev.at}${i}`} className={`brf-ev${ev.gate ? ' gate' : ''}`}><div className="when">{stamp(ev.at)}<span className="kind">{ev.kind}</span></div><div className="what">{ev.text}{ev.pid && <button className="brf-tool" onClick={() => dropStep(ev.pid, ev.text)}>Take It Off</button>}</div>{ev.of && <div className="brf-of" onClick={() => onOpenCard && ev.of.objective_id && onOpenCard(ev.of.objective_id)} title="Open this gate's card">On Gate {ev.of.n}: {ev.of.text}</div>}</div>,
+            <div key={`${ev.at}${i}`} className={`brf-ev${ev.gate ? ' gate' : ''}${ev.vetted ? ' vetted' : ''}`}><div className="when">{stamp(ev.at)}<span className="kind">{ev.kind}</span></div><div className="what">{ev.text}{ev.pid && <button className="brf-tool" onClick={() => dropStep(ev.pid, ev.text)}>Take It Off</button>}</div>{ev.of && <div className="brf-of" onClick={() => onOpenCard && ev.of.objective_id && onOpenCard(ev.of.objective_id)} title="Open this gate's card">On Gate {ev.of.n}: {ev.of.text}</div>}</div>,
           ])}
           {spot('b', trail.length)}
           <div className="brf-ev here"><div className="when">You Are Here</div><div className="what">{here}</div></div>
@@ -332,7 +332,7 @@ export default function CardBriefing({ obj, root, kindLabel, steps = [], kids = 
       <div className="brf-side">
         {takesGates
           ? <Tile label="Gates" big={total > 0 ? `${closed} of ${total}` : '0'} unit={total > 0 ? 'closed' : 'gates'} none={total === 0} bar={total > 0 ? closed / total : null} />
-          : <Tile label="Steps" big={mySteps > 0 ? `${myStepsDone} of ${mySteps}` : '0'} unit={mySteps > 0 ? 'done' : 'steps'} none={mySteps === 0} bar={mySteps > 0 ? myStepsDone / mySteps : null} />}
+          : <Tile label="Steps" big={mySteps > 0 ? `${myStepsDone} of ${mySteps}` : '0'} unit={mySteps > 0 ? 'done' : 'steps'} none={mySteps === 0} detail={myStepsVetted ? `${myStepsVetted} archived as vetted.` : null} bar={mySteps > 0 ? myStepsDone / mySteps : null} />}
         <Tile label="On The Workbench" big={side.tabs.length} unit={side.tabs.length === 1 ? 'tab' : 'tabs'} none={!side.latest && side.tabs.length === 0} go="Open The Workbench" onGo={() => onTab('workbench')}
           detail={side.latest ? <>"{excerpt(side.latest.text, 110)}"{blanks > 0 && <> · <b>{blanks} {blanks === 1 ? 'blank' : 'blanks'} open</b></>}</> : side.tabs.length ? 'Nothing written yet.' : null} />
         <Tile label="Files" big={realFiles.length} unit={realFiles.length === 1 ? 'file' : 'files'} none={realFiles.length === 0} go="Open Files" onGo={() => onTab('files')}

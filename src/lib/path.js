@@ -15,7 +15,7 @@ import { sourceOf, isLink, isRequest } from './livefiles'
 
 // Steps David puts on the line by hand (11/17: "a little icon for a step and then an icon for a gate
 // that i could drag to the location of the line") live here too:
-//   steps: [{ id, text, by, made_at, done, at, after }]
+//   steps: [{ id, text, by, made_at, done, at, after, vetted }]
 // done with an at: it is on The Trail at that time. Not done: it is ahead, on End Of The Trail, after
 // the stop whose key is in `after` ('^' is the top, none is the end). A step pays no miles; a gate does.
 const BUCKET = 'project-files'
@@ -41,6 +41,16 @@ const savePath = async (root, doc) => {
 export async function savePathSteps(root, fn) {
   const doc = await readPath(root)
   return savePath(root, { ...doc, steps: fn(doc.steps) })
+}
+// Extract with steps still open (David 11/17: "it can all still go through. any steps that weren't closed out just
+// need to be archived as vetted."): each open step leaves the path and is kept on The Trail, marked Vetted, not done.
+// Returns how many were archived. A path that cannot be read is left alone.
+export async function vetOpenSteps(root, at = new Date().toISOString()) {
+  const doc = await readPath(root)
+  const open = doc.steps.filter(x => !x.done && !x.vetted).length
+  if (!open) return 0
+  await savePath(root, { ...doc, steps: doc.steps.map(x => (x.done || x.vetted) ? x : { ...x, vetted: true, at }) })
+  return open
 }
 export async function noteSource(root, stepId, src) {
   const doc = await readPath(root)
@@ -107,7 +117,8 @@ export function buildTrail({ obj, kindLabel, steps = [], children = [], files = 
   for (const st of steps) if (st.done && st.done_at) add(st.done_at, 'Gate Closed', st.n != null ? `Gate ${st.n} · ${st.text}` : st.text, true)
   for (const k of children) if (k.state === 'released' && k.released_at) add(k.released_at, 'Gate Closed', k.title, true)
   // A step set on the line by hand, or one that was ahead and is now done.
-  for (const p of psteps) if (p.done && p.at && p.text) out.push({ at: p.at, kind: 'Step', text: p.text, pid: p.id })
+  // One left open when the card was extracted is kept too, marked Vetted (David 11/17).
+  for (const p of psteps) if ((p.done || p.vetted) && p.at && p.text) out.push({ at: p.at, kind: p.vetted ? 'Step Vetted' : 'Step', text: p.text, pid: p.id, ...(p.vetted ? { vetted: true } : {}) })
   if (obj?.state === 'released' && obj.released_at) add(obj.released_at, 'Happened', 'Closed out')
   return out.sort((a, b) => String(a.at).localeCompare(String(b.at)))
 }

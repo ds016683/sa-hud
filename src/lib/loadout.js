@@ -10,6 +10,7 @@
 //   Hours     free hours before 6 PM Chicago after remaining meetings (shown, never enforced: David 10/21)
 //   Extract   release: stop the clock, sum the segments, bank the miles
 import { supabase } from './supabase'
+import { vetOpenSteps } from './path'
 import { BLUE, GOLD, MYTHIC } from '../components/river/canon'
 
 // The Loadout's slots (David 11/17): "each mission gets one slot. Then, we go down to a Primary and
@@ -203,13 +204,15 @@ export async function extract(item, { minutes, note, day } = {}) {
   const { error } = await supabase.from('objectives').update({ state: 'released', released_kind: 'done', released_at: now, activated_at: null }).eq('id', item.id)
   if (error) throw new Error(error.message)
   await supabase.from('project_tasks').update({ status: 'done', done: true, released_at: now }).eq('objective_id', item.id).neq('status', 'done')
+  // Steps set by hand and still open do not hold an Extract (David 11/17): they are archived as vetted.
+  const vetted = await vetOpenSteps(`objectives/${item.id}`, now).catch(() => 0)
   const personal = item.personal
   await supabase.from('daily_logs').insert({
     day: onDay, kind: 'activity', what: item.title, value: mins,
     note: `${personal ? 'personal' : 'work'} · ${item.kind} clock · ${clocked ? `${clocked} clocked` : 'no clock'}${Number(minutes) > 0 ? ` · David stated ${mins}` : ''}${note ? ` · ${note}` : ''}`,
     source: `objective:${item.id}`,
   })
-  return { minutes: mins, clocked, personal, day: onDay }
+  return { minutes: mins, clocked, personal, day: onDay, vetted }
 }
 
 // ---- Putting things on the board from the Board page itself -------------------

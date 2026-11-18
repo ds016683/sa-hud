@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
+import { vetOpenSteps } from '../lib/path'
 
 // Projects layer hook (8/29/2026). Schema-aware replacement for the legacy
 // usePortfolio task path: project_tasks now carries status/source/session_ref/
@@ -113,6 +114,8 @@ export default function useProjects() {
       await supabase.from('objectives').update(nowDone
         ? { state: 'released', released_kind: 'done', released_at: now, activated_at: null }
         : { state: 'parked', released_kind: null, released_at: null, activated_at: null }).eq('id', task.objective_id)
+      // Its hand-set steps still open are archived as vetted (David 11/17), the same as an Extract.
+      if (nowDone) await vetOpenSteps(`objectives/${task.objective_id}`, now).catch(() => 0)
     }
     return out
   }, [updateTask])

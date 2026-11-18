@@ -1338,6 +1338,8 @@ table.fin-grid { width: 100%; border-collapse: collapse; font-family: var(--font
 .brf-ev.gate .kind { color: var(--hud-success); font-weight: 600; }
 .brf-ev .when { font-size: 12.5px; color: var(--hud-ink-3); }
 .brf-ev .kind { font-size: 12.5px; color: var(--hud-accent); margin-left: 8px; white-space: nowrap; }
+.brf-ev.vetted .kind { color: var(--hud-ink-3); }
+.brf-ev.vetted .what { color: var(--hud-ink-2); }
 .brf-ev .what { font-size: 14.5px; color: var(--hud-ink); line-height: 1.45; }
 .brf-ev.more::before, .brf-ev.go::before { background: transparent; border: 1.5px dotted var(--hud-ink-3); left: -27px; top: 6px; width: 11px; height: 11px; }
 .brf-ev.more .what, .brf-ev.go .what { color: var(--hud-accent); font-size: 14px; cursor: pointer; }

@@ -24,7 +24,12 @@ const EMPTY = q.has('empty'), MYTHIC = q.has('mythic')
 const ago = (h) => new Date(Date.now() - h * 3600e3).toISOString()
 const OBJ = { id: '00000000-0000-0000-0000-000000000001', title: 'Sample Mission', state: 'active', captured_at: ago(20), north_star: MYTHIC ? 'The sample deck is in the reader\'s hands and they know what to do next.' : null }
 let nextId = 10
-let psteps = []
+// ?vetted: a card extracted with two steps still open, archived as vetted, and one done.
+let psteps = new URLSearchParams(location.search).has('vetted') ? [
+  { id: 'v1', text: 'Draft the sample outline', by: 'david', made_at: new Date(Date.now() - 3 * 3600e3).toISOString(), done: true, at: new Date(Date.now() - 2 * 3600e3).toISOString() },
+  { id: 'v2', text: 'Update the sample figures with new tagging', by: 'david', made_at: new Date(Date.now() - 3 * 3600e3).toISOString(), done: false, vetted: true, at: new Date(Date.now() - 600e3).toISOString() },
+  { id: 'v3', text: 'Put in the new sample model', by: 'david', made_at: new Date(Date.now() - 3 * 3600e3).toISOString(), done: false, vetted: true, at: new Date(Date.now() - 600e3).toISOString() },
+] : []
 let steps = EMPTY || MYTHIC ? [] : [
   { id: 1, text: 'Fill the blanks in the draft', done: false, done_at: null, position: 0, created_at: ago(19) },
   { id: 2, text: 'Get it on the letterhead', done: false, done_at: null, position: 1, created_at: ago(8) },
