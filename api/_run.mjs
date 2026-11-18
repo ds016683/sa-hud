@@ -199,7 +199,8 @@ Reply with one JSON object and nothing else: {"headline":"<the headline>","accom
     const res = await fetch('https://api.anthropic.com/v1/messages', { method: 'POST', headers: { 'x-api-key': process.env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' }, body: JSON.stringify({ model, max_tokens: 3000, messages: [{ role: 'user', content: prompt }] }) })
     if (!res.ok) throw new Error(`anthropic -> ${res.status}`)
     const out = parseJson(((await res.json()).content || []).filter(c => c.type === 'text').map(c => c.text).join(''))
-    const clean = (t) => flat(t, 600).replace(/\s*[—–]\s*/g, ', ')
+    // 1200: a report was cut mid-sentence at 600 (Run 4, 11/17)
+    const clean = (t) => flat(t, 1200).replace(/\s*[—–]\s*/g, ', ')
     return {
       summary: clean(out.summary) || fallback.summary,
       hits: (Array.isArray(out.hits) ? out.hits : []).slice(0, 12).map(h => ({ mission: flat(h.mission, 120), kind: flat(h.kind, 20) || 'Mission', minutes: Math.max(0, Math.round(Number(h.minutes) || 0)), what: h.what ? clean(h.what) : null })).filter(h => h.mission),

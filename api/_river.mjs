@@ -114,7 +114,7 @@ export async function computeAwards(day, { closing = false } = {}) {
   if (gates) {
     const idx = await fetch(`${URL_BASE}/storage/v1/object/project-files/runs/index.json?cb=${Date.now()}`, { headers: hdr(), cache: 'no-store' }).then(r => r.ok ? r.json() : { runs: [] }).catch(() => ({ runs: [] }))
     const chi = (iso) => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Chicago', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(iso))
-    for (const r of (idx.runs || [])) if (r.miles > 0 && r.extracted_at && (r.state === 'filed' || r.state === 'debrief') && chi(r.extracted_at) === day) add('run', r.id, `Run ${r.n} extracted at the full 45 minutes: ${(r.hits || []).length} ${(r.hits || []).length === 1 ? 'mission' : 'missions'} hit`)
+    for (const r of (idx.runs || [])) if (r.miles > 0 && r.extracted_at && (r.state === 'filed' || r.state === 'debrief') && chi(r.extracted_at) === day) add('run', r.id, r.credited ? `Run ${r.n} credited in full at David's word: ${(r.hits || []).length} ${(r.hits || []).length === 1 ? 'mission' : 'missions'} hit` : `Run ${r.n} extracted at the full 45 minutes: ${(r.hits || []).length} ${(r.hits || []).length === 1 ? 'mission' : 'missions'} hit`)
   }
   for (const t of doneTasks) gates ? add('gate', t.id, `Gate closed: ${t.text}`) : add('mission-task', t.id, `Mission task closed: ${t.text}`)
   // Mythic gates (David 10/29): a released objective whose parent is a Mythic
