@@ -13,7 +13,7 @@
 // This is the face only: it draws whatever run it is handed and calls back on Start, Extract, File
 // and Walk Away. The debrief is done in the results pop-up (RunResults), not here. Nothing here reads or writes the Ledger; dev/run.html runs it on sample data.
 import { useEffect, useState } from 'react'
-import { Play, LogOut, Check, ChevronDown, ChevronRight } from 'lucide-react'
+import { Play, LogOut, Check, ChevronDown, ChevronRight, Crosshair, Lock } from 'lucide-react'
 import { INK, INK2, MUTED, GRAY, PANEL_BORDER, PANEL_BG, GOLD, GREEN, RED, SUCCESS, LABEL, SERIF, NAVY_DEEP, alpha } from './canon'
 
 export const RUN_MINUTES = 45
@@ -56,7 +56,9 @@ function Ring({ frac, color, label, sub, size = 132 }) {
 const LOG_OPEN = 'hud.run.log.open'
 const logOpenAtFirst = () => { try { return localStorage.getItem(LOG_OPEN) !== '0' } catch { return true } }
 
-export default function RunPanel({ run, today = { runs: 0, miles: 0 }, busy = false, error = null, onStart, onExtract, onWalkAway, onResults }) {
+// A Focused Run (David 11/18: "Two options for a run. A run and a focused run"): run.focus = { title, mission }
+// names the one thing on the Board. The panel sits pressed in while it is on. onStartFocused shows the second option.
+export default function RunPanel({ run, today = { runs: 0, miles: 0 }, busy = false, error = null, onStart, onStartFocused, onExtract, onWalkAway, onResults }) {
   const [now, setNow] = useState(() => Date.now())
   const [logOpen, setLogOpen] = useState(logOpenAtFirst)
   const foldLog = () => setLogOpen(o => { try { localStorage.setItem(LOG_OPEN, o ? '0' : '1') } catch { /* the fold is still kept for this visit */ } return !o })
@@ -69,9 +71,11 @@ export default function RunPanel({ run, today = { runs: 0, miles: 0 }, busy = fa
   const edge = live ? GREEN : over ? RED : state === 'debrief' ? LABEL : PANEL_BORDER
   const log = run?.log || []
   const debriefLeft = run?.debrief_ends_at ? new Date(run.debrief_ends_at).getTime() - now : 0
+  const focus = run?.focus || null
+  const held = !!focus && (live || over)
 
   return (
-    <section className={live ? 'ld-running' : undefined} style={{ border: `1.5px solid ${edge}`, borderRadius: 16, background: PANEL_BG, padding: '22px 24px' }}>
+    <section className={live && !held ? 'ld-running' : undefined} style={{ border: `1.5px solid ${edge}`, borderRadius: 16, background: held ? 'rgba(4,12,20,0.55)' : PANEL_BG, padding: '22px 24px', boxShadow: held ? 'inset 0 4px 14px rgba(0,0,0,0.6), inset 0 -1px 0 rgba(255,255,255,0.05)' : undefined, transition: 'background .3s ease, box-shadow .3s ease' }}>
       <div style={{ display: 'flex', gap: 26, alignItems: 'center', flexWrap: 'wrap' }}>
         {state === 'idle' && <Ring frac={1} color="rgba(234,241,248,0.28)" label={`${RUN_MINUTES}:00`} sub="Ready" />}
         {live && <Ring frac={left / ((run.minutes || RUN_MINUTES) * 60000)} color={GREEN} label={mmss(left)} sub="Left" />}
@@ -80,16 +84,18 @@ export default function RunPanel({ run, today = { runs: 0, miles: 0 }, busy = fa
 
         <div style={{ flex: 1, minWidth: 260 }}>
           <h2 style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 26, letterSpacing: '-0.01em', color: INK, margin: 0, lineHeight: 1.15 }}>
-            {state === 'idle' ? 'Start A Run' : `Run ${run.n}`}
+            {state === 'idle' ? 'Start A Run' : focus ? `Focused Run ${run.n}` : `Run ${run.n}`}
           </h2>
           <div style={{ fontSize: 14.5, lineHeight: 1.55, color: INK2, marginTop: 7, maxWidth: 560 }}>
             {state === 'idle' && `${RUN_MINUTES} minutes on the clock. Lumen logs what you do each minute: the missions you hit, the mail you send, where the time goes. Extract when it ends, then ${DEBRIEF_MINUTES} minutes for the report.`}
-            {live && `Started ${clock(run.started_at)}. Lumen is logging each minute. Work as you would; the missions keep their own clocks.`}
+            {live && !focus && `Started ${clock(run.started_at)}. Lumen is logging each minute. Work as you would; the missions keep their own clocks.`}
+            {live && focus && <>One thing on the Board: <b style={{ color: INK, fontWeight: 600 }}>{focus.title}</b>{focus.mission ? ` (${focus.mission})` : ''}. Everything else is locked until this run ends. Lumen texts you if you answer mail or Slack that is not about it.</>}
             {over && 'The run is over. It stays open until you extract.'}
             {state === 'debrief' && `Extracted ${clock(run.extracted_at)}. The report is open; file it there.`}
           </div>
           <div style={{ fontSize: 13, color: MUTED, marginTop: 8 }}>
             {state === 'idle' && `${RUN_MILES} miles for a run seen through its ${RUN_MINUTES} minutes`}
+            {state === 'idle' && onStartFocused && <><br />A Focused Run holds one thing on the Board, locks the rest, and has Lumen text you if you drift.</>}
             {live && (run.minutes && run.minutes < RUN_MINUTES ? `A ${run.minutes} minute test: no miles` : `${RUN_MILES} miles once the ${RUN_MINUTES} minutes are up; none if you extract early`)}
             {over && `${RUN_MILES} miles on Extract`}
             {state === 'debrief' && (run.miles > 0 ? `${run.miles} miles earned` : 'Extracted early, so no miles')}
@@ -103,7 +109,9 @@ export default function RunPanel({ run, today = { runs: 0, miles: 0 }, busy = fa
               <Check size={15} /> {today.runs} {today.runs === 1 ? 'Run' : 'Runs'} Complete
             </button>
           )}
+          {state === 'idle' && onStartFocused && <button onClick={onStartFocused} disabled={busy} title="One thing on the Board, the rest locked, a text if you drift" style={{ ...btn(), color: INK, borderColor: 'color-mix(in srgb, var(--hud-ink) 45%, transparent)', opacity: busy ? 0.6 : 1 }}><Crosshair size={15} /> Start Focused Run</button>}
           {state === 'idle' && <button onClick={onStart} disabled={busy} style={{ ...btn('primary'), opacity: busy ? 0.6 : 1 }}><Play size={15} /> {busy ? 'Starting' : 'Start Run'}</button>}
+          {held && <span title="The Board is locked to one thing until this run ends" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 14, fontWeight: 600, padding: '11px 18px', borderRadius: 11, whiteSpace: 'nowrap', color: INK, border: '1px solid rgba(0,0,0,0.5)', background: 'rgba(0,0,0,0.35)', boxShadow: 'inset 0 3px 7px rgba(0,0,0,0.7), inset 0 -1px 0 rgba(255,255,255,0.07)', transform: 'translateY(1px)' }}><Lock size={15} /> Focus On</span>}
           {live && <button onClick={onWalkAway} title="Ends the run with no miles; the log so far is kept" style={btn()}>Walk Away</button>}
           {live && <button onClick={onExtract} disabled={busy} title="Closes the run now. No miles before the 45 minutes are up." style={btn()}><LogOut size={15} /> {busy ? 'Extracting' : 'Extract Early'}</button>}
           {over && <button onClick={onExtract} disabled={busy} style={{ ...btn('primary'), opacity: busy ? 0.6 : 1 }}><LogOut size={15} /> {busy ? 'Extracting' : 'Extract'}</button>}

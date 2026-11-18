@@ -7,6 +7,7 @@ import { createRoot } from 'react-dom/client'
 import '../src/sa-hud.css'
 import RunPanel, { RUN_MINUTES, DEBRIEF_MINUTES } from '../src/components/river/RunPanel'
 import RunResults from '../src/components/river/RunResults'
+import FocusLock from '../src/components/river/FocusLock'
 
 const min = (m) => new Date(Date.now() + m * 60000).toISOString()
 const LOG = (start) => [
@@ -40,14 +41,26 @@ const make = (state) => {
 }
 const STATES = ['idle', 'running', 'overtime', 'debrief', 'complete']
 
+function SampleSlot({ title, of, slot, live = false }) {
+  return (
+    <div style={{ border: `1.5px solid ${live ? 'var(--hud-pos)' : 'var(--hud-border)'}`, borderRadius: 14, padding: '16px 18px', minHeight: 96, background: 'var(--hud-fill)' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, fontSize: 12.5, color: 'var(--hud-ink-2)' }}><span>{of || 'Empty'}</span><span>{slot}</span></div>
+      <div style={{ fontFamily: "'Lora', Georgia, serif", fontSize: 18, marginTop: 8 }}>{title}</div>
+      {live && <div style={{ fontSize: 12.5, color: 'var(--hud-pos)', marginTop: 8 }}>The clock is running</div>}
+    </div>
+  )
+}
+
 function Mock() {
   const first = new URLSearchParams(location.search).get('state')
   const start = STATES.includes(first) ? first : first === 'analyzing' ? 'overtime' : first === 'results' || first === 'early' ? 'debrief' : 'idle'
   const [state, setState] = useState(start)
-  const [run, setRun] = useState(() => start === 'idle' || start === 'complete' ? null : make(first === 'early' ? 'early' : start))
+  const [run, setRun] = useState(() => start === 'idle' || start === 'complete' ? null : { ...make(first === 'early' ? 'early' : start), ...(new URLSearchParams(location.search).get('focus') === '1' ? { focus: { title: 'Sample Proposal For A Pilot', mission: 'Sample Client Renewal' } } : {}) })
   // The results veil, as RunDock holds it: { pending } through Extract, { run } from the badge.
   const [results, setResults] = useState(first === 'results' || first === 'early' ? { pending: false } : null)
-  const go = (s) => { setState(s); setRun(s === 'idle' || s === 'complete' ? null : make(s)) }
+  const [focused, setFocused] = useState(new URLSearchParams(location.search).get('focus') === '1')
+  const FOCUS = { title: 'Sample Proposal For A Pilot', mission: 'Sample Client Renewal' }
+  const go = (s, f = focused) => { setFocused(f); setState(s); setRun(s === 'idle' || s === 'complete' ? null : { ...make(s), ...(f ? { focus: FOCUS } : {}) }) }
   const extract = () => { setResults({ pending: true }); setTimeout(() => { go('debrief'); setResults({ pending: false }) }, 7000) }
   const done = state === 'complete'
   // As RunDock holds it: a run waiting on its report keeps the veil up.
@@ -59,7 +72,18 @@ function Mock() {
           <span style={{ fontSize: 13, color: 'var(--hud-ink-2)' }}>Mock-up, made-up data. State:</span>
           {STATES.map(s => <button key={s} onClick={() => go(s)} style={{ fontFamily: 'inherit', fontSize: 13, fontWeight: 600, padding: '6px 12px', borderRadius: 8, cursor: 'pointer', border: '1px solid var(--hud-border)', background: s === state ? 'var(--hud-fill-2)' : 'transparent', color: 'var(--hud-ink)' }}>{s[0].toUpperCase() + s.slice(1)}</button>)}
         </div>
-        <RunPanel key={state} run={run} today={{ runs: done ? 2 : 1, miles: done ? 20 : 10 }} onStart={() => go('running')} onExtract={extract} onWalkAway={() => go('idle')} onResults={() => setResults({ run: { ...make('debrief'), state: 'filed', word: 'The deck is where it needed to be. The inbox pull after each send is the thing to watch.' } })} />
+        <RunPanel key={state} run={run} today={{ runs: done ? 2 : 1, miles: done ? 20 : 10 }} onStart={() => go('running', false)} onStartFocused={() => go('running', true)} onExtract={extract} onWalkAway={() => go('idle', false)} onResults={() => setResults({ run: { ...make('debrief'), state: 'filed', word: 'The deck is where it needed to be. The inbox pull after each send is the thing to watch.' } })} />
+        {/* The rest of the Board, as it would sit under a Focused Run: the one thing stays lit, the rest is locked. */}
+        <div style={{ marginTop: 22, display: 'grid', gap: 18 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14 }}>
+            <SampleSlot title="Sample Proposal For A Pilot" of="Main Mission · Gate 3" slot="Primary" live={focused && state === 'running'} />
+            <FocusLock on={focused && (state === 'running' || state === 'overtime')} label="Locked"><SampleSlot title="Sample Board Deck" of="Side Mission" slot="Secondary" /></FocusLock>
+            <FocusLock on={focused && (state === 'running' || state === 'overtime')} label="Locked"><SampleSlot title="" of="" slot="Utility" /></FocusLock>
+          </div>
+          <FocusLock on={focused && (state === 'running' || state === 'overtime')} label="Console And Stash Are Locked For The Focused Run">
+            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>{['Morning', 'E-mail Refresh', 'Slack Review', 'Bill Pay', 'Thinking', 'Travel', 'Gaming'].map(l => <div key={l} style={{ width: 96, textAlign: 'center', fontSize: 12 }}><div style={{ width: 80, height: 80, margin: '0 auto 6px', borderRadius: 20, border: '1px solid var(--hud-border)', background: 'rgba(255,255,255,0.035)' }} />{l}</div>)}</div>
+          </FocusLock>
+        </div>
         {veil && <RunResults run={veil.run || (veil.pending ? null : run)} pending={!!veil.pending} closeLabel="Back To The Board" onFile={() => { setResults(null); go('complete') }} onClose={() => setResults(null)} />}
       </div>
     </div>
