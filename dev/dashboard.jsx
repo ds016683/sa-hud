@@ -254,7 +254,13 @@ const LogRow = ({ r, last }) => (
   </div>
 )
 const Log = ({ only }) => {
-  const rows = D.log.filter(r => !only || r.tag)
+  // Older lines (a kind and "10 miles" as prose) are read into the same shape: a tag, a miles figure, a recording mark.
+  const shape = (r) => {
+    const m = /^(\d+(?:\.\d+)?) miles?$/.exec(r.meta || '')
+    const tag = r.tag || (r.kind === 'Meeting' ? 'In Meeting' : r.kind === 'Main Mission' ? 'In Mission · Primary' : /^Run \d/.test(r.text || '') ? 'Mission Run' : null)
+    return { ...r, tag, miles: r.miles ?? (m ? Number(m[1]) : 0), meta: m ? null : r.meta, recorded: r.recorded ?? r.documented }
+  }
+  const rows = D.log.map(shape).filter(r => !only || r.tag)
   return (
     <>
       {rows.map((r, i) => <LogRow key={i} r={r} last={i === rows.length - 1} />)}
