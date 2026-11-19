@@ -67,7 +67,15 @@ export async function runState() {
   if (on) { const full = (await runLog(on)).log; log = full.slice(-40); logged = full.length }
   // Whether Lumen's WhatsApp line to David is open, so the Board can say so while a run is running.
   const wa_open = on && on.state === 'running' ? await waOpen().catch(() => null) : null
-  return { run: last ? { ...last, log, logged, wa_open } : null, today: { runs: mine.filter(r => r.state === 'filed').length, miles: mine.reduce((s, r) => s + (r.state === 'filed' ? (r.miles || 0) : 0), 0) } }
+  // The day's runs for the Board's list: when each started, how long it ran, its miles, and how the time split
+  // (mission, protocol, rogue minutes from its report).
+  const sum = (a) => (Array.isArray(a) ? a : []).reduce((t, x) => t + (Number(x.minutes) || 0), 0)
+  const list = mine.filter(r => r.state !== 'running').map(r => ({
+    id: r.id, n: r.n, state: r.state, started_at: r.started_at, focus: !!r.focus, miles: r.state === 'walked' ? 0 : (r.miles || 0),
+    minutes: Math.max(0, Math.round((new Date(r.extracted_at || r.walked_at || r.filed_at || r.ends_at) - new Date(r.started_at)) / 60000)),
+    mix: [sum(r.hits), sum(r.protocol), sum(r.rogue)],
+  }))
+  return { run: last ? { ...last, log, logged, wa_open } : null, today: { runs: mine.filter(r => r.state === 'filed').length, miles: mine.reduce((s, r) => s + (r.state === 'filed' ? (r.miles || 0) : 0), 0), list } }
 }
 
 // ---- the Focused Run ----------------------------------------------------------------------------

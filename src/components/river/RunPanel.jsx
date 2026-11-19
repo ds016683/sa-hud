@@ -13,8 +13,8 @@
 // This is the face only: it draws whatever run it is handed and calls back on Start, Extract, File
 // and Walk Away. The debrief is done in the results pop-up (RunResults), not here. Nothing here reads or writes the Ledger; dev/run.html runs it on sample data.
 import { useEffect, useState } from 'react'
-import { Play, LogOut, Check, ChevronDown, ChevronRight, Crosshair, Lock } from 'lucide-react'
-import { INK, INK2, MUTED, GRAY, PANEL_BORDER, PANEL_BG, GOLD, GREEN, RED, SUCCESS, LABEL, SERIF, NAVY_DEEP, alpha } from './canon'
+import { LogOut, ChevronDown, ChevronRight, X as XIcon } from 'lucide-react'
+import { INK, INK2, MUTED, GRAY, PANEL_BORDER, PANEL_BG, RED, LABEL, SERIF, alpha } from './canon'
 
 export const RUN_MINUTES = 45
 export const DEBRIEF_MINUTES = 10
@@ -24,25 +24,72 @@ const clock = (iso) => new Date(iso).toLocaleTimeString('en-US', { hour: 'numeri
 const mmss = (ms) => { const s = Math.max(0, Math.round(ms / 1000)); return `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}` }
 const SOURCE = { mail: 'Mail', session: 'Claude Session', hud: 'HUD', mac: 'On The Mac', calendar: 'Calendar', lumen: 'Lumen', slack: 'Slack', sms: 'Text' }
 
-const btn = (kind = 'ghost') => ({
-  display: 'inline-flex', alignItems: 'center', gap: 8, fontFamily: 'inherit', fontSize: 14, fontWeight: 600, padding: '11px 18px', borderRadius: 11, whiteSpace: 'nowrap', cursor: 'pointer',
-  border: `1px solid ${kind === 'primary' ? GOLD : PANEL_BORDER}`, background: kind === 'primary' ? GOLD : 'transparent', color: kind === 'primary' ? NAVY_DEEP : INK2,
-})
 
-// The ring: how much of the window is left, the time in its middle.
-function Ring({ frac, color, label, sub, size = 132 }) {
-  const r = (size - 12) / 2, c = 2 * Math.PI * r
+// The clock (David 11/18: "more of like a digital clock, like an oval ... a little bit bigger. And then you could
+// still have the outline counting down with the timer"). A digital face in an oval; its outline is the time left.
+const FACE_W = 216, FACE_H = 92
+function ClockFace({ frac, color, label, sub, glow = false }) {
   return (
-    <div style={{ position: 'relative', width: size, height: size, flexShrink: 0 }}>
-      <svg width={size} height={size} style={{ transform: 'rotate(-90deg)' }} aria-hidden="true">
-        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="rgba(234,241,248,0.10)" strokeWidth="6" />
-        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={color} strokeWidth="6" strokeLinecap="round" strokeDasharray={c} strokeDashoffset={c * (1 - Math.max(0, Math.min(1, frac)))} style={{ transition: 'stroke-dashoffset 1s linear' }} />
+    <div style={{ position: 'relative', width: FACE_W, height: FACE_H, flexShrink: 0, display: 'grid', placeItems: 'center' }}>
+      <svg width={FACE_W} height={FACE_H} viewBox={`0 0 ${FACE_W} ${FACE_H}`} style={{ position: 'absolute', inset: 0, overflow: 'visible' }} aria-hidden="true">
+        <rect x="2" y="2" width={FACE_W - 4} height={FACE_H - 4} rx={(FACE_H - 4) / 2} fill="rgba(255,255,255,0.02)" stroke="rgba(255,255,255,0.12)" strokeWidth="2.5" />
+        <rect x="2" y="2" width={FACE_W - 4} height={FACE_H - 4} rx={(FACE_H - 4) / 2} fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round" pathLength="100" strokeDasharray={`${100 * Math.max(0, Math.min(1, frac))} 100`} style={{ transition: 'stroke-dasharray 1s linear', filter: `drop-shadow(0 0 6px ${alpha(color, 45)})` }} />
       </svg>
-      <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', textAlign: 'center' }}>
-        <div>
-          <div style={{ fontFamily: SERIF, fontWeight: 500, fontSize: String(label).length > 5 ? 25 : 30, lineHeight: 1, color: INK, fontVariantNumeric: 'tabular-nums' }}>{label}</div>
-          <div style={{ fontSize: 12.5, color: MUTED, marginTop: 5 }}>{sub}</div>
-        </div>
+      <div style={{ textAlign: 'center' }}>
+        <div style={{ fontFamily: "var(--font-mono, 'JetBrains Mono', ui-monospace, monospace)", fontWeight: 500, fontSize: String(label).length > 5 ? 30 : 36, letterSpacing: '0.04em', lineHeight: 1, color: glow ? color : INK, fontVariantNumeric: 'tabular-nums' }}>{label}</div>
+        <div style={{ fontSize: 12.5, color: MUTED, marginTop: 6 }}>{sub}</div>
+      </div>
+    </div>
+  )
+}
+
+// A runner, drawn here: the icon set has none. The Mission Run's runner sits inside corner brackets.
+const Runner = ({ size = 32, focus = false }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <circle cx="15.2" cy="5" r="1.7" />
+    <path d="M13.6 8.6 11 13.4" />
+    <path d="M13.6 8.6l3.2 2.2 2.4-1" />
+    <path d="M13.4 8.7 10.4 8.3 8.6 10.6" />
+    <path d="M11 13.4l3.3 2.3-.9 4.4" />
+    <path d="M11 13.4 8.3 16.3H5.2" />
+    {focus && <path d="M2.5 6V2.5H6M18 2.5h3.5V6M21.5 18v3.5H18M6 21.5H2.5V18" strokeWidth="1.3" />}
+  </svg>
+)
+// The two runs (David 11/18: circles, the same size, a runner in each; a baby blue outline for the one, the purple
+// for the other; 11/18 names: "call a standard run a looting run ... a focused run a Mission Run").
+const MISSION = '#B4A3E8', LOOTING = '#8ACAFF'
+function Round({ color, label, title, onClick, disabled, children }) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, width: 88, fontSize: 12.5, color: INK, textAlign: 'center', opacity: disabled ? 0.55 : 1 }}>
+      <button onClick={onClick} disabled={disabled} title={title} aria-label={title || label} className="run-round" style={{ '--c': color, width: 74, height: 74, borderRadius: 99, background: 'rgba(255,255,255,0.03)', border: `1.5px solid ${color}`, color, display: 'grid', placeItems: 'center', cursor: disabled ? 'default' : 'pointer' }}>{children}</button>
+      {label}
+    </div>
+  )
+}
+// The day's runs, one line each: its number, when it started, how the time split, the minutes and the miles.
+const MIX = [MISSION, LOOTING, RED]
+function RunList({ list, onResults }) {
+  if (!list.length) return <div style={{ fontSize: 14, color: MUTED }}>No Runs Yet Today</div>
+  const lastFiled = [...list].reverse().find(r => r.state === 'filed')
+  return (
+    <div style={{ display: 'grid', rowGap: 8, minWidth: 0 }}>
+      {list.map(r => {
+        const off = r.state === 'walked', sum = (r.mix || []).reduce((a, x) => a + x, 0)
+        const open = onResults && lastFiled && r.id === lastFiled.id
+        return (
+          <div key={r.id || r.n} onClick={open ? onResults : undefined} title={open ? "Open this run's results" : undefined} style={{ display: 'grid', gridTemplateColumns: '48px 66px minmax(0,1fr) 50px 40px', columnGap: 12, alignItems: 'center', fontSize: 13.5, color: off ? GRAY : INK, cursor: open ? 'pointer' : 'default' }}>
+            <span style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 15 }}>Run {r.n}</span>
+            <span style={{ color: off ? GRAY : MUTED, fontVariantNumeric: 'tabular-nums' }}>{clock(r.started_at)}</span>
+            {off ? <span>Walked Away</span> : sum > 0
+              ? <span style={{ display: 'flex', height: 5, borderRadius: 99, overflow: 'hidden', background: 'rgba(255,255,255,0.09)' }}>{r.mix.map((w, i) => <i key={i} style={{ display: 'block', height: '100%', width: `${(100 * w) / sum}%`, background: MIX[i] }} />)}</span>
+              : <span style={{ color: MUTED }}>{r.state === 'debrief' ? 'Report Open' : 'No Split Recorded'}</span>}
+            <span style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{r.minutes} min</span>
+            <span style={{ textAlign: 'right', color: off ? GRAY : MISSION, fontVariantNumeric: 'tabular-nums' }}>{r.miles} mi</span>
+          </div>
+        )
+      })}
+      <div style={{ display: 'flex', gap: 14, fontSize: 12.5, color: MUTED, paddingTop: 8, borderTop: '1px solid rgba(255,255,255,0.07)' }}>
+        {[['Mission', MIX[0]], ['Protocol', MIX[1]], ['Rogue', MIX[2]]].map(([k, c]) => <span key={k} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><i style={{ width: 8, height: 8, borderRadius: 99, background: c, display: 'inline-block' }} />{k}</span>)}
       </div>
     </div>
   )
@@ -68,53 +115,45 @@ export default function RunPanel({ run, today = { runs: 0, miles: 0 }, busy = fa
   const left = run ? new Date(run.ends_at).getTime() - now : 0
   const over = state === 'overtime' || (state === 'running' && left <= 0)
   const live = state === 'running' && !over
-  const edge = live ? GREEN : over ? RED : state === 'debrief' ? LABEL : PANEL_BORDER
   const log = run?.log || []
   const debriefLeft = run?.debrief_ends_at ? new Date(run.debrief_ends_at).getTime() - now : 0
   const focus = run?.focus || null
   const held = !!focus && (live || over)
 
+  const tone = focus ? MISSION : LOOTING
+  const on = state !== 'idle'
+  const kind = focus ? 'Mission Run' : 'Looting Run'
   return (
-    <section className={live && !held ? 'ld-running' : undefined} style={{ border: `1.5px solid ${edge}`, borderRadius: 16, background: held ? 'rgba(4,12,20,0.55)' : PANEL_BG, padding: '22px 24px', boxShadow: held ? 'inset 0 4px 14px rgba(0,0,0,0.6), inset 0 -1px 0 rgba(255,255,255,0.05)' : undefined, transition: 'background .3s ease, box-shadow .3s ease' }}>
-      <div style={{ display: 'flex', gap: 26, alignItems: 'center', flexWrap: 'wrap' }}>
-        {state === 'idle' && <Ring frac={1} color="rgba(234,241,248,0.28)" label={`${RUN_MINUTES}:00`} sub="Ready" />}
-        {live && <Ring frac={left / ((run.minutes || RUN_MINUTES) * 60000)} color={GREEN} label={mmss(left)} sub="Left" />}
-        {over && <Ring frac={1} color={RED} label={`+${mmss(-left)}`} sub="Over" />}
-        {state === 'debrief' && <Ring frac={debriefLeft / (DEBRIEF_MINUTES * 60000)} color={LABEL} label={mmss(debriefLeft)} sub="To Debrief" />}
+    <section className={live && !held ? 'ld-running' : undefined} style={on ? { '--slot': tone, border: `1.5px solid ${over ? RED : state === 'debrief' ? LABEL : tone}`, borderRadius: 16, background: held ? 'rgba(4,12,20,0.55)' : PANEL_BG, padding: '20px 22px', boxShadow: held ? 'inset 0 4px 14px rgba(0,0,0,0.6), inset 0 -1px 0 rgba(255,255,255,0.05)' : undefined, transition: 'background .3s ease, box-shadow .3s ease' } : undefined}>
+      <style>{'.run-round { transition: box-shadow .3s } .run-round:not(:disabled):hover { box-shadow: 0 0 22px color-mix(in srgb, var(--c) 40%, transparent) }'}</style>
+      <div style={{ display: 'grid', gridTemplateColumns: 'auto minmax(0, 1fr) auto', columnGap: 30, rowGap: 18, alignItems: 'center' }}>
+        {state === 'idle' && <ClockFace frac={1} color={LOOTING} label={`${RUN_MINUTES}:00`} sub="Ready" />}
+        {live && <ClockFace frac={left / ((run.minutes || RUN_MINUTES) * 60000)} color={tone} glow label={mmss(left)} sub={`Left In ${kind} ${run.n}`} />}
+        {over && <ClockFace frac={1} color={RED} glow label={`+${mmss(-left)}`} sub="Over" />}
+        {state === 'debrief' && <ClockFace frac={debriefLeft / (DEBRIEF_MINUTES * 60000)} color={LABEL} label={mmss(debriefLeft)} sub="To Debrief" />}
 
-        <div style={{ flex: 1, minWidth: 260 }}>
-          <h2 style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 26, letterSpacing: '-0.01em', color: INK, margin: 0, lineHeight: 1.15 }}>
-            {state === 'idle' ? 'Start A Run' : focus ? `Focused Run ${run.n}` : `Run ${run.n}`}
-          </h2>
-          <div style={{ fontSize: 14.5, lineHeight: 1.55, color: INK2, marginTop: 7, maxWidth: 560 }}>
-            {state === 'idle' && `${RUN_MINUTES} minutes on the clock. Lumen logs what you do each minute: the missions you hit, the mail you send, where the time goes. Extract when it ends, then ${DEBRIEF_MINUTES} minutes for the report.`}
-            {live && !focus && `Started ${clock(run.started_at)}. Lumen is logging each minute. Work as you would; the missions keep their own clocks.`}
-            {live && focus && <>One thing on the Board: <b style={{ color: INK, fontWeight: 600 }}>{focus.title}</b>{focus.mission ? ` (${focus.mission})` : ''}. Everything else is locked until this run ends. Lumen texts you if you answer mail or Slack that is not about it.</>}
-            {over && 'The run is over. It stays open until you extract.'}
-            {state === 'debrief' && `Extracted ${clock(run.extracted_at)}. The report is open; file it there.`}
+        {state === 'idle' ? <RunList list={today.list || []} onResults={onResults} /> : (
+          <div style={{ minWidth: 0 }}>
+            <h2 style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 22, letterSpacing: '-0.01em', color: INK, margin: 0, lineHeight: 1.2 }}>{kind} {run.n}</h2>
+            <div style={{ fontSize: 14, lineHeight: 1.5, color: INK2, marginTop: 5 }}>
+              {live && !focus && `Started ${clock(run.started_at)}.`}
+              {live && focus && <>The one thing: <b style={{ color: INK, fontWeight: 600 }}>{focus.title}</b>{focus.mission ? ` (${focus.mission})` : ''}.</>}
+              {over && 'It stays open until you extract.'}
+              {state === 'debrief' && `Extracted ${clock(run.extracted_at)}. The report is open; file it there.`}
+            </div>
+            <div style={{ fontSize: 13, color: MUTED, marginTop: 5 }}>
+              {live && (run.minutes && run.minutes < RUN_MINUTES ? `A ${run.minutes} minute test: no miles` : `${RUN_MILES} miles at ${RUN_MINUTES} minutes; none if you extract early`)}
+              {over && `${RUN_MILES} miles on Extract`}
+              {state === 'debrief' && (run.miles > 0 ? `${run.miles} miles earned` : 'Extracted early, so no miles')}
+            </div>
           </div>
-          <div style={{ fontSize: 13, color: MUTED, marginTop: 8 }}>
-            {state === 'idle' && `${RUN_MILES} miles for a run seen through its ${RUN_MINUTES} minutes`}
-            {state === 'idle' && onStartFocused && <><br />A Focused Run holds one thing on the Board, locks the rest, and has Lumen text you if you drift.</>}
-            {live && (run.minutes && run.minutes < RUN_MINUTES ? `A ${run.minutes} minute test: no miles` : `${RUN_MILES} miles once the ${RUN_MINUTES} minutes are up; none if you extract early`)}
-            {over && `${RUN_MILES} miles on Extract`}
-            {state === 'debrief' && (run.miles > 0 ? `${run.miles} miles earned` : 'Extracted early, so no miles')}
-            {state === 'idle' && today.miles > 0 && <> <span style={{ color: GRAY }}>·</span> {today.miles} miles from runs today</>}
-                      </div>
-        </div>
+        )}
 
-        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-          {state === 'idle' && today.runs > 0 && onResults && (
-            <button onClick={onResults} title="Open the last run's results" style={{ display: 'inline-flex', alignItems: 'center', gap: 7, fontFamily: 'inherit', fontSize: 14, fontWeight: 600, padding: '9px 15px', borderRadius: 99, cursor: 'pointer', whiteSpace: 'nowrap', border: `1px solid ${alpha(SUCCESS, 55)}`, background: alpha(SUCCESS, 13), color: SUCCESS }}>
-              <Check size={15} /> {today.runs} {today.runs === 1 ? 'Run' : 'Runs'} Complete
-            </button>
-          )}
-          {state === 'idle' && onStartFocused && <button onClick={onStartFocused} disabled={busy} title="One thing on the Board, the rest locked, a text if you drift" style={{ ...btn(), color: INK, borderColor: 'color-mix(in srgb, var(--hud-ink) 45%, transparent)', opacity: busy ? 0.6 : 1 }}><Crosshair size={15} /> Start Focused Run</button>}
-          {state === 'idle' && <button onClick={onStart} disabled={busy} style={{ ...btn('primary'), opacity: busy ? 0.6 : 1 }}><Play size={15} /> {busy ? 'Starting' : 'Start Run'}</button>}
-          {held && <span title="The Board is locked to one thing until this run ends" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 14, fontWeight: 600, padding: '11px 18px', borderRadius: 11, whiteSpace: 'nowrap', color: INK, border: '1px solid rgba(0,0,0,0.5)', background: 'rgba(0,0,0,0.35)', boxShadow: 'inset 0 3px 7px rgba(0,0,0,0.7), inset 0 -1px 0 rgba(255,255,255,0.07)', transform: 'translateY(1px)' }}><Lock size={15} /> Focus On</span>}
-          {live && <button onClick={onWalkAway} title="Ends the run with no miles; the log so far is kept" style={btn()}>Walk Away</button>}
-          {live && <button onClick={onExtract} disabled={busy} title="Closes the run now. No miles before the 45 minutes are up." style={btn()}><LogOut size={15} /> {busy ? 'Extracting' : 'Extract Early'}</button>}
-          {over && <button onClick={onExtract} disabled={busy} style={{ ...btn('primary'), opacity: busy ? 0.6 : 1 }}><LogOut size={15} /> {busy ? 'Extracting' : 'Extract'}</button>}
+        <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
+          {state === 'idle' && onStartFocused && <Round color={MISSION} label="Mission Run" title="Mission Run: one thing on the Board, the rest locked, a text if you drift" onClick={onStartFocused} disabled={busy}><Runner focus /></Round>}
+          {state === 'idle' && <Round color={LOOTING} label={busy ? 'Starting' : 'Looting Run'} title={`Looting Run: ${RUN_MINUTES} minutes, logged by the minute`} onClick={onStart} disabled={busy}><Runner /></Round>}
+          {live && <Round color="rgba(243,241,234,0.5)" label="Walk Away" title="Ends the run with no miles; the log so far is kept" onClick={onWalkAway}><XIcon size={24} strokeWidth={1.6} /></Round>}
+          {(live || over) && <Round color={over ? RED : tone} label={busy ? 'Extracting' : over ? 'Extract' : 'Extract Early'} title={over ? 'Closes the run and banks its miles' : 'Closes the run now. No miles before the 45 minutes are up.'} onClick={onExtract} disabled={busy}><LogOut size={24} strokeWidth={1.6} /></Round>}
         </div>
       </div>
 
