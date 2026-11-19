@@ -14,6 +14,7 @@
 // as Business Administration when he launches (same door as Recurring). The
 // finish also writes daily_logs what 'morning-protocol' (minutes) so the
 // planning light and the River can see it ran. No miles for the timer.
+import SleepButton, { stopSleep } from './SleepButton'
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { ArrowLeft, ArrowRight, Check, Sunrise, Moon, Play, Pause, Square, Rocket, Send, ExternalLink, SkipForward, SkipBack, RotateCcw, Mic, Music, Sparkles, RefreshCw, ListMusic, X as XIcon } from 'lucide-react'
 import { supabase, reportSoft } from '../../lib/supabase'
@@ -761,6 +762,7 @@ export default function ProtocolsPanel({ onChange, onNavigate }) {
         const { data } = await supabase.from('meeting_sessions').select('event_id,started_at,stopped_at').eq('day', day).like('event_id', 'adhoc:%').is('stopped_at', null).not('started_at', 'is', null)
         const other = (data || []).find(s => s.event_id !== eid(day) && !s.event_id.endsWith(':travel'))
         if (other) { setMsg(`${other.event_id.split(':').pop()} is running. Stop it first.`); return }
+        await stopSleep().catch(() => null)   // waking: the Morning Protocol ends the night's sleep
         await upsertSession({ event_id: eid(day), day, subject: 'Morning Protocol', started_at: new Date().toISOString(), stopped_at: null, hours: session?.hours || 0 })
         await refresh()
       }
@@ -771,10 +773,11 @@ export default function ProtocolsPanel({ onChange, onNavigate }) {
 
   const liveMin = running ? (now - new Date(session.started_at).getTime()) / 60000 + (Number(session.hours) || 0) * 60 : (Number(session?.hours) || 0) * 60
   return (
-    <InstrumentGroup label="Protocols" footer={groupMsg(msg, msg && msg.startsWith('Could not'))}>
+    <InstrumentGroup label="Protocols" style={{ order: 1 }} footer={groupMsg(msg, msg && msg.startsWith('Could not'))}>
       {open && <Protocol day={day} session={session} onClose={() => { setOpen(false); refresh() }} onFinished={finished} onChange={onChange} onNavigate={onNavigate} />}
-      <Instrument label="Morning" sub={!running && done ? `${fmtTime(session.stopped_at)} · ${fmtClock(liveMin)}` : ''} title={running ? 'Morning Protocol · tap to resume' : done ? 'Morning Protocol · done' : (protocolLight('morning', now)?.text || 'Morning Protocol · from 5:00 AM')} icon={done ? <Check size={24} /> : <Sunrise size={24} />} running={running} clock={fmtClock(liveMin)} tone={done ? GREEN : GOLD} onClick={start} light={!done && !running ? protocolLight('morning', now) : null} />
+      <Instrument label="Morning" sub={!running && done ? `${fmtTime(session.stopped_at)} · ${fmtClock(liveMin)}` : ''} title={running ? 'Morning Protocol · tap to resume' : done ? 'Morning Protocol · done' : (protocolLight('morning', now)?.text || 'Morning Protocol · from 5:00 AM')} icon={done ? <Check size={24} /> : <Sunrise size={24} />} running={running} clock={fmtClock(liveMin)} tone={done ? '#B4A3E8' : BLUE} onClick={start} light={!done && !running ? protocolLight('morning', now) : null} />
       <Instrument label="Evening" title={protocolLight('evening', now)?.text || 'Evening Protocol · from 6:00 PM'} icon={<Moon size={24} />} tone={BLUE} disabled light={protocolLight('evening', now)} />
+      <SleepButton onChange={onChange} say={setMsg} />
     </InstrumentGroup>
   )
 }

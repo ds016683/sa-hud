@@ -496,12 +496,13 @@ export default function AgendaPage({ onNavigate } = {}) {
             <SectionTag name="Console" />
             {/* Under a Focused Run (David 11/18) the Console and the Stash sit back, locked, until the run ends. */}
             <FocusLock on={!!focusRun} label="Console And Stash Are Locked For The Focused Run">
-            <div className="console-grid" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 320px', gap: 30, alignItems: 'start' }}>
-              <div className="console-row" style={{ display: 'flex', gap: 0, flexWrap: 'wrap', alignItems: 'flex-start', justifyContent: 'space-around', rowGap: 30, alignContent: 'flex-start', padding: '6px 0' }}>
+            <div className="console-grid">
+              <div className="console-row" style={{ display: 'flex', gap: 0, flexWrap: 'wrap', alignItems: 'flex-start', justifyContent: 'space-between', rowGap: 28, alignContent: 'flex-start', padding: '6px 0 38px' }}>
                 <ProtocolsPanel onChange={refresh} onNavigate={onNavigate} />
                 <RecurringPanel onChange={refresh} />
                 <ReleasePanel onChange={refresh} />
               </div>
+              <SectionTag name="Stash" />
               <div id="console-stash" style={{ minWidth: 0 }} />
             </div>
             </FocusLock>

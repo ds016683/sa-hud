@@ -44,9 +44,9 @@ export const INSTRUMENT_CSS = `
 .inst-on { animation: inst-on 2.2s ease-in-out infinite }
 `
 
-export function InstrumentGroup({ label, children, divider = false, footer }) {
+export function InstrumentGroup({ label, children, divider = false, footer, style }) {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 10, padding: divider ? '0 0 0 26px' : 0, marginLeft: divider ? 26 : 0, borderLeft: divider ? `1px solid ${PANEL_BORDER}` : 'none' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 10, padding: divider ? '0 0 0 26px' : 0, marginLeft: divider ? 26 : 0, borderLeft: divider ? `1px solid ${PANEL_BORDER}` : 'none', ...style }}>
       <style>{INSTRUMENT_CSS}</style>
       <Label style={{ marginBottom: 0, textAlign: 'center' }}>{label}</Label>
       <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start', justifyContent: 'center' }}>{children}</div>

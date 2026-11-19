@@ -202,7 +202,9 @@ export default function RecurringPanel({ onChange }) {
   return (
     <>
       <style>{`@keyframes rcblink { 0%,100% { opacity: 1 } 50% { opacity: .15 } } .rc-blink { animation: rcblink 1s ease-in-out infinite }`}</style>
-      <InstrumentGroup label="Tending" divider>
+      {/* Comms (David 11/18: "let's make tending 'comms'. Move it to the bottom"): its own line under the other three. */}
+      <div style={{ flexBasis: '100%', order: 4, height: 0, borderTop: '1px solid rgba(255,255,255,0.07)' }} />
+      <InstrumentGroup label="Comms" style={{ order: 5, margin: '0 auto' }}>
         {RECURRING.filter(r => r.group === 'tend').map(r => {
           const s = byId.get(eid(day, r.slug)); const running = isRunning(s); const mins = minutesOf(s)
           if (!r.light) { const Icon = running ? Square : (r.icon || Play); return <Instrument key={r.slug} label={r.label} sub={!running && mins > 0 ? `${fmtClock(mins)} today` : ''} icon={<Icon size={24} />} running={running} clock={fmtClock(mins)} onClick={() => running ? stop(r) : start(r)} /> }
@@ -215,7 +217,7 @@ export default function RecurringPanel({ onChange }) {
           )
         })}
       </InstrumentGroup>
-      <InstrumentGroup label="Timers" divider>
+      <InstrumentGroup label="Timers" style={{ order: 2 }}>
         {RECURRING.filter(r => r.group === 'timer' && !r.travel).map(r => {
           const s = byId.get(eid(day, r.slug)); const running = isRunning(s); const mins = minutesOf(s)
           const Icon = running ? Square : (r.icon || Play)

@@ -13,7 +13,7 @@ export const RELEASE_TIMERS = [
   { slug: 'nap',    label: 'Nap', icon: Moon },
   { slug: 'drive',  label: 'Drive', icon: Car },
 ]
-const TEAL = '#5FC9C0'
+const TEAL = '#B4A3E8'   // Release wears the purple (the refresh, 11/19); the name stays for the one use below
 
 // One session row per run: personal:<day>:<slug>:<HHMMSS>. Stamps live in
 // meeting_sessions (started_at / stopped_at); the day's minutes land in
@@ -72,7 +72,7 @@ export default function ReleasePanel({ onChange }) {
   }
 
   return (
-    <InstrumentGroup label="Release" divider footer={groupMsg(msg, msg && msg.startsWith('Could not'))}>
+    <InstrumentGroup label="Release" style={{ order: 3 }} footer={groupMsg(msg, msg && msg.startsWith('Could not'))}>
       {RELEASE_TIMERS.map(t => {
         const r = runningFor(t.slug)
         const running = !!r
