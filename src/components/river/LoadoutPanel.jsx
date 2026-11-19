@@ -41,17 +41,36 @@ const btn = (color = INK2, filled = false) => ({
 // item's hour budget for the day (a Bounty's hour, a Contract's four, a Mythic's eight), the clock reads in serif like the
 // other figures on the card, and the state word says Running (green, the one thing green means here) or Holstered.
 const CLOCK_RING = 22
+// One color per slot (David 11/18: "Primary color should be purple. Secondary should be baby blue. Utility should be
+// green. All timers, gate indicator, border should match the color (as well as the icon on the card itself"). A slot's
+// color is its identity; the pulse and the word say a clock is running.
+const SLOT_TONE = ['#B4A3E8', '#8ACAFF'], UTILITY_TONE = '#57BE97'
+// The slot's name sits above its card: Primary and Secondary carry the Protocol readout's two diamonds, the slot's own
+// one lit (filled when a mission is in it, glowing when its clock runs); Utility carries a bolt.
+function SlotName({ n = 0, name, tone, filled = false, running = false }) {
+  const pip = (k) => {
+    const me = k === n - 1
+    return <i key={k} style={{ width: 9, height: 9, transform: 'rotate(45deg)', borderRadius: 1.5, border: `1.5px solid ${me ? tone : 'rgba(243,241,234,0.3)'}`, background: me && filled ? tone : 'transparent', boxShadow: me && running ? `0 0 10px ${alpha(tone, 75)}` : 'none' }} />
+  }
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontFamily: SERIF, fontWeight: 500, fontSize: 17, lineHeight: 1, color: filled ? INK : INK2, margin: '0 0 10px 4px' }}>
+      {n ? <span style={{ display: 'inline-flex', gap: 4 }}>{[0, 1].map(pip)}</span> : <Zap size={15} strokeWidth={1.8} color={tone} />}
+      {name}
+    </div>
+  )
+}
 // Click the strip to toggle the clock (David 11/7): running stops it, paused starts it and stops any other.
-function ClockStrip({ minutes = 0, hours = 1, running = false, onToggle }) {
+function ClockStrip({ minutes = 0, hours = 1, running = false, onToggle, color = null }) {
   const [hot, setHot] = useState(false)
   const r = (CLOCK_RING - 3) / 2, c = 2 * Math.PI * r
   const frac = Math.max(0, Math.min(1, (Number(minutes) || 0) / Math.max(hours * 60, 1)))
-  const tone = running ? GREEN : LABEL
-  const edge = running ? alpha(GREEN, hot ? 75 : 45) : alpha(BLUE, hot ? 55 : 22)
+  const live = color || GREEN, rest = color || BLUE
+  const tone = color || (running ? GREEN : LABEL)
+  const edge = running ? alpha(live, hot ? 75 : 45) : alpha(rest, hot ? 55 : 22)
   return (
     <div role="button" tabIndex={0} aria-pressed={running} onClick={onToggle} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onToggle?.() } }} onMouseEnter={() => setHot(true)} onMouseLeave={() => setHot(false)}
       title={running ? 'Stop the clock' : 'Start the clock on this item; any other clock stops'}
-      style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '5px 12px 5px 7px', borderRadius: 999, border: `1px solid ${edge}`, background: running ? alpha(GREEN, hot ? 10 : 6) : hot ? alpha(BLUE, 6) : 'transparent', cursor: 'pointer', userSelect: 'none', transition: 'border-color 0.15s, background 0.15s' }}>
+      style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '5px 12px 5px 7px', borderRadius: 999, border: `1px solid ${edge}`, background: running ? alpha(live, hot ? 12 : 7) : hot ? alpha(rest, 6) : 'transparent', cursor: 'pointer', userSelect: 'none', transition: 'border-color 0.15s, background 0.15s' }}>
       <svg width={CLOCK_RING} height={CLOCK_RING} viewBox={`0 0 ${CLOCK_RING} ${CLOCK_RING}`} style={{ flexShrink: 0 }}>
         <circle cx={CLOCK_RING / 2} cy={CLOCK_RING / 2} r={r} fill="none" stroke={alpha(INK2, 22)} strokeWidth={2} />
         <circle cx={CLOCK_RING / 2} cy={CLOCK_RING / 2} r={r} fill="none" stroke={tone} strokeWidth={2} strokeLinecap="round" strokeDasharray={`${c * frac} ${c}`} transform={`rotate(-90 ${CLOCK_RING / 2} ${CLOCK_RING / 2})`} style={{ transition: 'stroke-dasharray 0.6s' }} />
@@ -60,7 +79,7 @@ function ClockStrip({ minutes = 0, hours = 1, running = false, onToggle }) {
       <span style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 15, color: INK, lineHeight: 1 }}>{fmtClock(minutes)}</span>
       <span style={{ fontSize: 11.5, color: MUTED, lineHeight: 1, whiteSpace: 'nowrap' }}>of {hours}h</span>
       <span style={{ flex: 1 }} />
-      <span style={{ fontSize: 11.5, fontWeight: 600, color: running ? GREEN : MUTED, lineHeight: 1, whiteSpace: 'nowrap' }}>{running ? 'Running' : 'Paused'}</span>
+      <span style={{ fontSize: 11.5, fontWeight: 600, color: running ? live : MUTED, lineHeight: 1, whiteSpace: 'nowrap' }}>{running ? 'Running' : 'Paused'}</span>
       {running && <style>{'@keyframes hudClockPulse{0%,100%{opacity:1}50%{opacity:.3}}'}</style>}
     </div>
   )
@@ -116,7 +135,7 @@ const dragPayload = (kind, id) => JSON.stringify({ kind, id })
 const readDrag = (e) => { try { return JSON.parse(e.dataTransfer.getData('text/plain') || '{}') } catch { return {} } }
 const badgeFor = (it) => it.meeting ? 'toastmaster' : it.kind === 'Main Mission' ? 'mission-task' : it.kind === 'Ad Hoc' ? 'impromptu' : it.size === 'heavy' ? 'mythic' : it.size === 'medium' ? 'contract' : 'bounty'
 const fmtDue = (d) => d ? new Date(`${d}T12:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : null
-const Fact = ({ label, children }) => <div style={{ padding: '7px 0' }}><div style={{ fontFamily: MONO, fontSize: 10.5, letterSpacing: '1.3px', textTransform: 'uppercase', color: LABEL, marginBottom: 2 }}>{label}</div>{children}</div>
+const Fact = ({ label, children }) => <div style={{ padding: '7px 0' }}><div style={{ fontSize: 12.5, color: MUTED, marginBottom: 2 }}>{label}</div>{children}</div>
 
 function MeetingSlot({ it, act }) {
   const ends = it.ends_at ? new Date(it.ends_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'America/Chicago' }) : null
@@ -128,7 +147,6 @@ function MeetingSlot({ it, act }) {
           <div style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 14.5, color: INK, lineHeight: 1.25 }}>In a meeting</div>
           <div style={{ fontSize: 12.5, fontWeight: 600, color: BLUE }}>Meeting</div>
         </div>
-        <span className="ld-slot-tag">Utility</span>
       </div>
       <div style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 18, color: '#fff', lineHeight: 1.28, flex: 1 }}>{it.title}</div>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', borderTop: `1px solid ${PANEL_BORDER}`, borderBottom: `1px solid ${PANEL_BORDER}` }}>
@@ -144,8 +162,7 @@ function MeetingSlot({ it, act }) {
 }
 
 export function FilledSlot({ it, n, act, onOpen, onExtract, onRecall, dropFromStash }) {
-  const span = it.slots || 1
-  const color = KIND_COLOR[it.kind] || INK2
+  const color = SLOT_TONE[n - 1] || KIND_COLOR[it.kind] || INK2   // the slot's color, worn by everything on the card
   const main = it.kind === 'Main Mission'
   const gates = it.steps || []
   const gatesDone = gates.filter(g => g.done).length
@@ -161,34 +178,33 @@ export function FilledSlot({ it, n, act, onOpen, onExtract, onRecall, dropFromSt
   const due = fmtDue(it.due_date)
   const late = it.due_date && it.due_date < new Date().toISOString().slice(0, 10)
   return (
-    <div draggable onDragStart={e => { e.dataTransfer.setData('text/plain', dragPayload('loadout', it.id)); e.dataTransfer.effectAllowed = 'move' }} onDragOver={e => { if (dropFromStash) e.preventDefault() }} onDrop={e => { const d = readDrag(e); if (d.kind === 'stash' && dropFromStash) { e.preventDefault(); dropFromStash(d.id) } }} title="Drag to the Stash" className={it.equipped ? 'ld-running' : undefined} style={{ ...slotBox(it.equipped ? GREEN : `${alpha(BLUE, 40)}`, it.equipped ? 'rgba(169,201,232,0.08)' : 'rgba(169,201,232,0.035)'), gridColumn: `span ${span}`, cursor: 'grab' }}>
+    <div draggable onDragStart={e => { e.dataTransfer.setData('text/plain', dragPayload('loadout', it.id)); e.dataTransfer.effectAllowed = 'move' }} onDragOver={e => { if (dropFromStash) e.preventDefault() }} onDrop={e => { const d = readDrag(e); if (d.kind === 'stash' && dropFromStash) { e.preventDefault(); dropFromStash(d.id) } }} title="Drag to the Stash" className={it.equipped ? 'ld-running' : undefined} style={{ ...slotBox(it.equipped ? color : alpha(color, 40), alpha(color, it.equipped ? 7 : 3)), '--slot': color, flex: 1, cursor: 'grab' }}>
       <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
-        <BadgeMedallion id={badgeFor(it)} size={50} color={colorOf(it.kind, it.size)} />
+        <BadgeMedallion id={badgeFor(it)} size={50} color={color} />
         <div style={{ flex: 1, minWidth: 0, display: 'grid', gap: 2 }}>
           <div onClick={() => onOpen(it)} title={main ? (it.project || 'Main Mission') : it.title} style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 14.5, color: INK, lineHeight: 1.25, cursor: 'pointer', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{main ? (it.project || 'Main Mission') : it.title}</div>
           <div style={{ fontSize: 12.5, fontWeight: 600, color, lineHeight: 1.35, whiteSpace: 'nowrap' }}>{typeLine}{it.personal ? ' · Personal' : ''}</div>
           {meter && (
             <div title={`${meter.closed} of ${meter.total} gates closed`} style={{ marginTop: 3 }}>
               <div style={{ fontSize: 12.5, color: MUTED, lineHeight: 1.3 }}><b style={{ color: INK, fontWeight: 600 }}>{meter.closed}</b> Closed <span style={{ color: GRAY }}>·</span> <b style={{ color: INK, fontWeight: 600 }}>{meter.total - meter.closed}</b> Open</div>
-              <div style={{ height: 4, borderRadius: 99, background: 'rgba(234,241,248,0.12)', marginTop: 5, overflow: 'hidden' }}><div style={{ width: `${meter.total ? (100 * meter.closed) / meter.total : 0}%`, height: '100%', borderRadius: 99, background: SUCCESS }} /></div>
+              <div style={{ height: 4, borderRadius: 99, background: 'rgba(234,241,248,0.12)', marginTop: 5, overflow: 'hidden' }}><div style={{ width: `${meter.total ? (100 * meter.closed) / meter.total : 0}%`, height: '100%', borderRadius: 99, background: color }} /></div>
             </div>
           )}
         </div>
-        <span className="ld-slot-tag">{SLOT_NAMES[n - 1] || ''}</span>
       </div>
       {task
         ? <div onClick={() => onOpen(it)} title={task} style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 18, color: '#fff', lineHeight: 1.28, cursor: 'pointer', flex: 1, display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{task}</div>
         : <div style={{ flex: 1 }} />}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', borderTop: `1px solid ${PANEL_BORDER}`, borderBottom: `1px solid ${PANEL_BORDER}` }}>
-        <Fact label="Miles"><span style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 16, color: INK }}>{miles.n}</span><span style={{ fontFamily: MONO, fontSize: 10.5, letterSpacing: '1px', textTransform: 'uppercase', color: LABEL, marginLeft: 5 }}>{miles.sub}</span></Fact>
-        <div style={{ borderLeft: `1px solid ${PANEL_BORDER}`, paddingLeft: 12 }}><Fact label="Due">{due ? <span style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 16, color: late ? RED : INK }}>{due}{late ? <span style={{ fontFamily: MONO, fontSize: 9, letterSpacing: '1px', textTransform: 'uppercase', marginLeft: 5 }}>overdue</span> : null}</span> : <span style={{ fontSize: 13, color: GRAY }}>none set</span>}</Fact></div>
+        <Fact label="Miles"><span style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 16, color: INK }}>{miles.n}</span><span style={{ fontSize: 12.5, color: MUTED, marginLeft: 6 }}>{miles.sub}</span></Fact>
+        <div style={{ borderLeft: `1px solid ${PANEL_BORDER}`, paddingLeft: 12 }}><Fact label="Due">{due ? <span style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 16, color: late ? RED : INK }}>{due}{late ? <span style={{ fontFamily: 'var(--font-sans)', fontSize: 12.5, marginLeft: 6 }}>Overdue</span> : null}</span> : <span style={{ fontSize: 13, color: GRAY }}>none set</span>}</Fact></div>
       </div>
-      <ClockStrip minutes={it.minutes_today} hours={hoursOf(it)} running={!!it.equipped} onToggle={() => act(() => it.equipped ? holster(it.id) : equip(it.id), it.equipped ? `Clock stopped: ${it.title}` : `Clock running: ${it.title}`)} />
+      <ClockStrip color={color} minutes={it.minutes_today} hours={hoursOf(it)} running={!!it.equipped} onToggle={() => act(() => it.equipped ? holster(it.id) : equip(it.id), it.equipped ? `Clock stopped: ${it.title}` : `Clock running: ${it.title}`)} />
       <VerbRow
         verbs={[
-          <IconVerb key="holster" title="Holster · Back to the Mission Board" onClick={() => act(() => unload(it.id), `Holstered: ${it.title}`)}><GlyphHolster /></IconVerb>,
-          <IconVerb key="stash" title="Stash · hold it on the board" onClick={() => act(() => stash(it.id), `Stashed: ${it.title}`)}><GlyphStash /></IconVerb>,
-          <ExtractMarker key="extract" title="Extract · close it, bank the miles" onClick={() => onExtract(it)} />,
+          <IconVerb key="holster" color={color} title="Holster · Back to the Mission Board" onClick={() => act(() => unload(it.id), `Holstered: ${it.title}`)}><GlyphHolster /></IconVerb>,
+          <IconVerb key="stash" color={color} title="Stash · hold it on the board" onClick={() => act(() => stash(it.id), `Stashed: ${it.title}`)}><GlyphStash /></IconVerb>,
+          <ExtractMarker key="extract" color={color} title="Extract · close it, bank the miles" onClick={() => onExtract(it)} />,
         ]}
         tail={<BrainButton onClick={() => onRecall(it)} />}
       />
@@ -200,9 +216,8 @@ export function EmptySlot({ n, dropFromStash }) {
   const [over, setOver] = useState(false)
   return (
     <div onDragOver={e => { e.preventDefault(); setOver(true) }} onDragLeave={() => setOver(false)} onDrop={e => { setOver(false); const d = readDrag(e); if (d.kind === 'stash' && dropFromStash) { e.preventDefault(); dropFromStash(d.id) } }}
-      style={{ ...slotBox(over ? BLUE : EMPTY_EDGE, over ? 'rgba(169,201,232,0.08)' : 'transparent', true), position: 'relative', justifyContent: 'center', alignItems: 'center', textAlign: 'center' }}>
-      <span className="ld-slot-tag" style={{ position: 'absolute', top: 12, right: 14 }}>{SLOT_NAMES[n - 1] || `Slot ${n}`}</span>
-      <div title="Load a mission from the Stash or the Mission Board, or tell Lumen" style={{ fontSize: 14, fontWeight: 600, color: GRAY }}>Empty</div>
+      style={{ ...slotBox(over ? (SLOT_TONE[n - 1] || BLUE) : alpha(SLOT_TONE[n - 1] || BLUE, 30), over ? alpha(SLOT_TONE[n - 1] || BLUE, 8) : 'transparent'), flex: 1 }}>
+      <div title="Load a mission from the Stash or the Mission Board, or tell Lumen" style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 20, color: GRAY }}>Empty</div>
     </div>
   )
 }
@@ -235,7 +250,6 @@ export function AdHocSlot({ item, act, onDispatch, onOpen, onChanged, onRecall }
             <div style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 14.5, color: INK, lineHeight: 1.25 }}>The Unplanned</div>
             <div style={{ fontSize: 12.5, fontWeight: 600, color: BLUE }}>{item.call ? 'Phone Call' : 'Non-Mission Task'}</div>
           </div>
-          <span className="ld-slot-tag">Utility</span>
         </div>
         <div onClick={() => onOpen(item)} style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 18, color: '#fff', lineHeight: 1.28, cursor: 'pointer', flex: 1 }}>{item.title}</div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', borderTop: `1px solid ${PANEL_BORDER}`, borderBottom: `1px solid ${PANEL_BORDER}` }}>
@@ -254,7 +268,6 @@ export function AdHocSlot({ item, act, onDispatch, onOpen, onChanged, onRecall }
   // a phone call. another is for a non-mission task. they award the same miles").
   return (
     <div style={{ ...slotBox(EMPTY_EDGE, 'transparent', true), position: 'relative', flex: '1 1 auto' }}>
-      <span className="ld-slot-tag" style={{ position: 'absolute', top: 12, right: 14 }}>Utility</span>
       <div title="Runs a Console button (E-mail, Slack Review, Bill Pay and the rest) or the unplanned: a phone call or a non-mission task, 1 mile each" style={{ flex: 1, display: 'grid', placeItems: 'center', fontSize: 14, fontWeight: 600, color: GRAY }}>Empty</div>
       <div style={{ display: 'grid', gap: 8 }}>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
@@ -409,7 +422,6 @@ function RoutineSlot({ tick, onChanged, onState }) {
     <div className="ld-running" style={{ ...slotBox(GREEN, 'rgba(169,201,232,0.08)'), minHeight: 0, flex: '0 0 auto' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
         <Icon size={14} color={GREEN} /><span style={{ fontSize: 12.5, fontWeight: 600, color: GREEN }}>Running · {fmtClock(mins)}</span><span style={{ flex: 1 }} />
-        <span className="ld-slot-tag">Utility</span>
       </div>
       <div style={{ fontFamily: SERIF, fontSize: 16, fontWeight: 500, color: '#fff', lineHeight: 1.3, flex: 1 }}>{running.subject}</div>
       <div style={{ fontFamily: MONO, fontSize: 9.5, color: GRAY, letterSpacing: '0.6px' }}>{chore ? 'Console chore' : `started by ${slugOf(running.event_id).includes('-') ? 'Lumen' : 'hand'}`}{running.special_notes === 'personal' ? ' · personal' : ' · logs to Harvest on stop'}</div>
@@ -486,7 +498,7 @@ export default function LoadoutPanel({ onChange, refreshKey = 0, bare = false, f
 
   return (
     <Wrap style={wrapStyle}>
-      <style>{`.board-slots { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px } @media (max-width: 980px) { .board-slots { grid-template-columns: repeat(2, minmax(0, 1fr)) } }`}</style>
+      <style>{`.board-slots { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 4fr) minmax(0, 3fr); gap: 18px; align-items: stretch } .ld-col { display: flex; flex-direction: column; min-width: 0 } @media (max-width: 980px) { .board-slots { grid-template-columns: repeat(2, minmax(0, 1fr)) } }`}</style>
       {blocked && <StillOpen mission={blocked.it} open={blocked.open} onClose={() => { setBlocked(null); bump() }} onReady={() => { const it = blocked.it; setBlocked(null); extractGate(it) }} />}
       {open && <YayPage objectiveId={open.id} onClose={() => setOpen(null)} extract={{ item: open, onDone: (r) => { setMsg(`Extracted: ${open.title} · ${fmtClock(r.minutes)}${r.personal ? ' · personal' : ''}`); logBoard(`Extracted: ${open.title} · ${fmtClock(r.minutes)}`); bump() } }} />}
       {filing && <FileAway objective={filing.o} pockets={filing.p} onClose={() => setFiling(null)} onDone={({ filed, released }) => { const id = filing.o.id; setFiling(null); setMsg(`Filed ${filed.length} to the Archive · extracted ${filing.o.title} · ${released.minutes}m`); logBoard(`Extracted: ${filing.o.title} · filed ${filed.length} to the Archive`); bump(); setYay(id) }} />}
@@ -497,14 +509,15 @@ export default function LoadoutPanel({ onChange, refreshKey = 0, bare = false, f
       {yay && <YayPage objectiveId={yay} fresh onClose={() => setYay(null)} onOpenMission={(o) => { setYay(null); openCard(o.id) }} />}
       {dispatch && <DispatchModal item={dispatch} projects={projects} onClose={() => setDispatch(null)} onDone={(r) => { setDispatch(null); setMsg(`Dispatched: ${dispatch.title} · ${fmtClock(r.minutes)}${r.ported.length ? ` · ported ${r.ported.length}` : ' · nothing left'} · 1 mile on the next update`); logBoard(`Dispatched: ${dispatch.title} · ${fmtClock(r.minutes)}`); bump() }} />}
       {!L ? (
-        <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '1.4px', textTransform: 'uppercase', color: LABEL, padding: '12px 0' }}>Reading the board</div>
+        <div style={{ fontSize: 13.5, color: MUTED, padding: '12px 0' }}>Reading The Board</div>
       ) : (
         <>
           <div className={`board-slots${focusWide ? ' focused' : ''}`}>
-            {layout.placed.map(({ it, n }) => focusWide && it.id === focusId ? <div key={it.id} className="focus-wide"><FilledSlot it={it} n={n} act={act} onOpen={(it) => openCard(it.id)} onExtract={extractGate} onRecall={setRecallOf} /></div> : lockSlot(it.id, it.id !== focusId, <FilledSlot key={it.id} it={it} n={n} act={act} onOpen={(it) => openCard(it.id)} onExtract={extractGate} onRecall={setRecallOf} dropFromStash={(id) => act(async () => { const r = await equipObjective(id, { clock: true, ignoreStamina: true }); if (!r.ok) throw new Error(r.reasons.join(' · ')) }, 'Loaded from the Stash · timer on')} />))}
-            {!focusWide && layout.empties.map(n => lockSlot(`empty-${n}`, true, <EmptySlot key={`empty-${n}`} n={n} dropFromStash={(id) => act(async () => { const r = await equipObjective(id, { clock: true, ignoreStamina: true }); if (!r.ok) throw new Error(r.reasons.join(' · ')) }, 'Loaded from the Stash · timer on')} />))}
+            {layout.placed.map(({ it, n }) => focusWide && it.id === focusId ? <div key={it.id} className="focus-wide ld-col"><SlotName n={n} name={SLOT_NAMES[n - 1]} tone={SLOT_TONE[n - 1]} filled running={!!it.equipped} /><FilledSlot it={it} n={n} act={act} onOpen={(it) => openCard(it.id)} onExtract={extractGate} onRecall={setRecallOf} /></div> : lockSlot(it.id, it.id !== focusId, <div key={it.id} className="ld-col"><SlotName n={n} name={SLOT_NAMES[n - 1]} tone={SLOT_TONE[n - 1]} filled running={!!it.equipped} /><FilledSlot it={it} n={n} act={act} onOpen={(it) => openCard(it.id)} onExtract={extractGate} onRecall={setRecallOf} dropFromStash={(id) => act(async () => { const r = await equipObjective(id, { clock: true, ignoreStamina: true }); if (!r.ok) throw new Error(r.reasons.join(' · ')) }, 'Loaded from the Stash · timer on')} /></div>))}
+            {!focusWide && layout.empties.map(n => lockSlot(`empty-${n}`, true, <div key={`empty-${n}`} className="ld-col"><SlotName n={n} name={SLOT_NAMES[n - 1]} tone={SLOT_TONE[n - 1]} /><EmptySlot n={n} dropFromStash={(id) => act(async () => { const r = await equipObjective(id, { clock: true, ignoreStamina: true }); if (!r.ok) throw new Error(r.reasons.join(' · ')) }, 'Loaded from the Stash · timer on')} /></div>))}
             {/* The Utility slot (David 11/17): a Console button, a meeting, or the unplanned. Never a mission. */}
             {(!focusWide || L.adhoc[0]?.id === focusId || (L.meetings || []).length > 0) && lockSlot('utility', !(L.adhoc[0] && L.adhoc[0].id === focusId), <div key="utility" className={focusWide && L.adhoc[0]?.id === focusId ? 'focus-wide' : undefined} style={{ display: 'flex', flexDirection: 'column', gap: 10, minWidth: 0, alignSelf: 'stretch' }}>
+              <SlotName name="Utility" tone={UTILITY_TONE} filled={!!(L.adhoc[0] || routineOn || (L.meetings || []).length)} running={!!(L.adhoc[0] && L.adhoc[0].equipped)} />
               {(L.meetings || []).map(it => <MeetingSlot key={it.id} it={it} act={act} />)}
               <RoutineSlot tick={tick} onChanged={bump} onState={setRoutineOn} />
               {(L.adhoc[0] || (!routineOn && !(L.meetings || []).length)) && <AdHocSlot item={L.adhoc[0] || null} act={act} onDispatch={setDispatch} onOpen={(it) => openCard(it.id)} onChanged={bump} onRecall={setRecallOf} />}

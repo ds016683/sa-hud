@@ -21,7 +21,7 @@ import { fetchLoadout, startWithRoom, holster, sizeOf, SIZES } from '../lib/load
 import ItemDetail from './river/ItemDetail'
 import {
   INK, INK2, GRAY, NAVY_DEEP, PANEL_BORDER, GOLD, GOLD_BRIGHT, BLUE, PERIWINKLE, PURPLE, GREEN, SUCCESS, RED, MONO, SERIF,
-  S, Eyebrow, Label, Panel, chiToday, fmtTime, weekday, alpha } from './river/canon'
+  S, Eyebrow, Label, Panel, SectionTag, chiToday, fmtTime, weekday, alpha } from './river/canon'
 import { hudPrompt, hudConfirm } from '../lib/dialog'
 import { openCard } from '../lib/card'
 
@@ -48,8 +48,8 @@ const navBtn = (extra = {}) => ({
   display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
   height: 30, minWidth: 30, padding: '0 10px', borderRadius: 999,
   border: '1px solid rgba(255,255,255,0.16)', background: 'transparent',
-  color: 'rgba(234,241,248,0.7)', cursor: 'pointer', fontFamily: MONO,
-  fontSize: 10.5, letterSpacing: '0.8px', textTransform: 'uppercase', fontWeight: 600,
+  color: 'rgba(243,241,234,0.85)', cursor: 'pointer', fontFamily: 'inherit',
+  fontSize: 13.5, fontWeight: 500,
   ...extra,
 })
 
@@ -467,14 +467,13 @@ export default function AgendaPage({ onNavigate } = {}) {
 
       <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap', marginBottom: 18 }}>
         <div>
-          <Eyebrow>Board</Eyebrow>
-          <h1 style={S.h1}><CalendarDays size={22} color={BLUE} style={{ verticalAlign: '-3px', marginRight: 8 }} />{weekday(day)}&rsquo;s Board</h1>
-          <div style={S.sub}>{fmtFullDay(day)}{day === today ? ' · today' : ''} · Chicago</div>
+          <h1 style={{ ...S.h1, fontSize: 38, lineHeight: 1.1 }}>{weekday(day)}&rsquo;s Board</h1>
+          <div style={{ fontSize: 15.5, color: 'var(--hud-ink-2)', marginTop: 8 }}>{fmtFullDay(day)} · Chicago</div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <button onClick={() => go(addDays(day, -1))} title="Previous day" style={navBtn({ padding: 0 })}><ChevronLeft size={14} /></button>
           <button onClick={() => go(today)} disabled={day === today} style={navBtn({
-            background: day === today ? BLUE : 'transparent', color: day === today ? NAVY_DEEP : 'rgba(234,241,248,0.7)',
+            padding: '0 14px', background: 'transparent', color: day === today ? BLUE : 'rgba(243,241,234,0.85)',
             borderColor: day === today ? BLUE : 'rgba(255,255,255,0.16)', cursor: day === today ? 'default' : 'pointer',
           })}>Today</button>
           <button onClick={() => go(addDays(day, 1))} title="Next day" style={navBtn({ padding: 0 })}><ChevronRight size={14} /></button>
@@ -483,15 +482,18 @@ export default function AgendaPage({ onNavigate } = {}) {
 
       {day === today && (
         <>
-          <Panel heading="Loadout" style={{ marginBottom: 12 }}>
+          <section style={{ margin: '14px 0 38px' }}>
+            <SectionTag name="Loadout" />
             <LoadoutPanel bare onChange={refresh} refreshKey={refreshKey} onNavigate={onNavigate} focusId={focusRun?.focus?.objective_id || null} />
-          </Panel>
-          <Panel heading="Console" style={{ marginBottom: 12 }}>
+          </section>
+          <section style={{ marginBottom: 38 }}>
             {/* The Stash (David 10/25): off the Loadout, a tall column down the Console's right side; the instrument
                 groups wrap into two tight rows beside it. LoadoutPanel renders the Stash here through a portal. */}
             <ConsoleRunProvider tick={refreshKey}>
             {/* The Run (David 11/17): down with the Console's buttons, distinct and bigger than the others. */}
-            <div style={{ marginBottom: 20 }}><RunDock refreshKey={refreshKey} onChange={refresh} onRun={setFocusRun} /></div>
+            <SectionTag name="Run" />
+            <div style={{ marginBottom: 38 }}><RunDock refreshKey={refreshKey} onChange={refresh} onRun={setFocusRun} /></div>
+            <SectionTag name="Console" />
             {/* Under a Focused Run (David 11/18) the Console and the Stash sit back, locked, until the run ends. */}
             <FocusLock on={!!focusRun} label="Console And Stash Are Locked For The Focused Run">
             <div className="console-grid" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 320px', gap: 30, alignItems: 'start' }}>
@@ -505,7 +507,7 @@ export default function AgendaPage({ onNavigate } = {}) {
             </FocusLock>
             </ConsoleRunProvider>
             <style>{`@media (max-width: 980px) { .console-grid { grid-template-columns: minmax(0, 1fr) !important } }`}</style>
-          </Panel>
+          </section>
         </>
       )}
 

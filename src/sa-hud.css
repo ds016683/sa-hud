@@ -1520,7 +1520,7 @@ button.brf-chip:hover { border-color: var(--hud-accent); }
 @media (prefers-reduced-motion: reduce) { .ld-btn.over { animation: none; border-color: var(--hud-neg); box-shadow: 0 0 0 1px var(--hud-neg); } }
 
 /* The slot whose clock is running (David 11/17): a green edge that breathes, so the live one is never in doubt. */
-@keyframes ldrun { 0%, 100% { border-color: var(--hud-pos); box-shadow: 0 0 0 1px var(--hud-pos), 0 0 0 6px color-mix(in srgb, var(--hud-pos) 16%, transparent); } 50% { border-color: color-mix(in srgb, var(--hud-pos) 45%, transparent); box-shadow: 0 0 0 1px color-mix(in srgb, var(--hud-pos) 30%, transparent), 0 0 0 2px color-mix(in srgb, var(--hud-pos) 0%, transparent); } }
+@keyframes ldrun { 0%, 100% { border-color: var(--slot, var(--hud-pos)); box-shadow: 0 0 0 1px var(--slot, var(--hud-pos)), 0 0 0 6px color-mix(in srgb, var(--slot, var(--hud-pos)) 16%, transparent); } 50% { border-color: color-mix(in srgb, var(--slot, var(--hud-pos)) 45%, transparent); box-shadow: 0 0 0 1px color-mix(in srgb, var(--slot, var(--hud-pos)) 30%, transparent), 0 0 0 2px color-mix(in srgb, var(--slot, var(--hud-pos)) 0%, transparent); } }
 .ld-running { animation: ldrun 2.4s ease-in-out infinite; }
 @media (prefers-reduced-motion: reduce) { .ld-running { animation: none; box-shadow: 0 0 0 1px var(--hud-pos), 0 0 0 5px color-mix(in srgb, var(--hud-pos) 14%, transparent); } }
 /* The Run's results (David 11/17): the veil, the medallion landing, its ripples and sparks, the page rising. */
@@ -1532,7 +1532,7 @@ button.brf-chip:hover { border-color: var(--hud-accent); }
 .board-slots.focused { display: block; }
 .board-slots.focused > * + * { margin-top: 12px; }
 .focus-wide { animation: focuswide .75s cubic-bezier(.2, .8, .2, 1) both; }
-@keyframes focuswide { from { width: calc((100% - 24px) / 3); } to { width: 100%; } }
+@keyframes focuswide { from { width: 42%; } to { width: 100%; } }
 @media (prefers-reduced-motion: reduce) { .focus-wide { animation: none; } }
 .run-veil { animation: runveil .25s ease both; }
 .run-medal { animation: runpop .7s cubic-bezier(.2, .9, .3, 1.2) both; }
