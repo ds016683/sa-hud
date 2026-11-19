@@ -7,7 +7,7 @@
 // The words are sample data; ?d=<json> overrides any of them for a screenshot.
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
-import { Waves, Footprints, CalendarDays, BookOpen, Activity, Award, FileText, PenLine, Mic, Pencil, BookMarked, Mountain, Briefcase, Target, Wrench, Archive, FolderOpen, Landmark, Wallet, Sunrise, Moon, MessageSquare, Monitor, CalendarCheck, Brain, Plane, Gamepad2, Car, Zap, Play, Square, BedDouble } from 'lucide-react'
+import { Waves, Footprints, CalendarDays, BookOpen, Activity, Award, FileText, PenLine, Mic, Pencil, BookMarked, Mountain, Briefcase, Target, Wrench, Archive, FolderOpen, Landmark, Wallet, Sunrise, Moon, MessageSquare, Monitor, CalendarCheck, Brain, Plane, Gamepad2, Car, Zap, Play, Square, BedDouble, Handshake } from 'lucide-react'
 import '../src/sa-hud.css'
 import { Instrument, InstrumentGroup } from '../src/components/river/Instrument'
 import ProtocolHud from '../src/components/river/ProtocolHud'
@@ -142,7 +142,7 @@ h1 { font:500 40px/1.1 var(--serif); letter-spacing:-.008em; margin:0; }
 .bd-dial b { font:500 30px/1 var(--serif); }
 .bd-dial span { display:block; font-size:13px; color:var(--ink2); margin-top:4px; text-align:center; }
 .bd-groups { display:flex; justify-content:space-between; align-items:flex-start; }
-.bd-comms { display:flex; justify-content:center; margin-top:34px; padding-top:28px; border-top:1px solid rgba(255,255,255,.07); }
+.bd-comms { display:flex; justify-content:space-around; margin-top:34px; padding-top:28px; border-top:1px solid rgba(255,255,255,.07); }
 .bd-acts { display:flex; flex-wrap:wrap; gap:7px; margin-top:auto; padding-top:16px; }
 .bd-acts .bd-quiet { font-size:13px; padding:6px 12px; }
 .bd-empty { color:var(--ink3); }
@@ -314,6 +314,11 @@ function Board() {
                 <Instrument label="Bill Pay" reading={22} unit="days since" light={{ level: 'green' }} />
                 <Instrument label="Text Review" icon={<MessageSquare size={24} />} />
                 <Instrument label="Desktop" icon={<Monitor size={24} />} />
+              </InstrumentGroup>
+              <InstrumentGroup label="Dashboard">
+                <Instrument label="Calendar" title="Opens the day's calendar" reading={5} unit="today" light={{ level: 'green' }} />
+                <Instrument label="Proposed Steps" title="Opens the proposed steps" reading={5} unit="waiting" light={{ level: 'green' }} />
+                <Instrument label="Commitments" title="Opens what you said you would do" reading={4} unit="open" light={{ level: 'red', blink: true }} />
               </InstrumentGroup>
             </div>
             </div>

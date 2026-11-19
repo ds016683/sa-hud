@@ -7,7 +7,7 @@
 // or written. The words are sample data; ?d=<json> overrides any of them for a screenshot.
 import { StrictMode, useState } from 'react'
 import { createRoot } from 'react-dom/client'
-import { Waves, Footprints, CalendarDays, LayoutDashboard, BookOpen, Activity, Award, FileText, PenLine, Mic, Pencil, BookMarked, Mountain, Briefcase, Target, Wrench, Archive, FolderOpen, Landmark, Wallet, Check, X, FileText as PageIcon, CalendarRange, ScrollText, Medal, Play, Video, Tag } from 'lucide-react'
+import { Waves, Footprints, CalendarDays, LayoutDashboard, BookOpen, Activity, Award, FileText, PenLine, Mic, Pencil, BookMarked, Mountain, Briefcase, Target, Wrench, Archive, FolderOpen, Landmark, Wallet, Check, X, FileText as PageIcon, CalendarRange, ScrollText, Medal, Play, Video, Tag, Plus, Handshake } from 'lucide-react'
 import '../src/sa-hud.css'
 import ProtocolHud from '../src/components/river/ProtocolHud'
 import { SectionTag } from '../src/components/river/canon'
@@ -19,13 +19,20 @@ const D = {
   title: "Wednesday's Dashboard", date: 'Wednesday, November 18, 2026 · Chicago',
   pill: ['In Mission', 'Sample Client Proposal'],
   calendar: [
-    { from: '8:00 AM', to: '9:00 AM', title: 'Sample Weekly Sync', state: 'done', notes: true },
-    { from: '9:00 AM', to: '9:30 AM', title: 'Sample Introduction Call', state: 'done' },
-    { from: '10:00 AM', to: '10:45 AM', title: 'Sample Check-In', state: 'now' },
-    { from: '10:30 AM', to: '11:30 AM', title: 'Sample Planning Session', state: 'next' },
-    { from: '12:00 PM', to: '1:00 PM', title: 'Sample Team Meeting', state: 'next' },
+    { from: '8:00 AM', to: '9:00 AM', title: 'Sample Weekly Sync', state: 'done', notes: true, who: '9 People · Sample Organizer Set It Up', read: 'Weekly standing sync.', mission: 'Sample Main Mission' },
+    { from: '9:00 AM', to: '9:30 AM', title: 'Sample Introduction Call', state: 'done', who: '4 People · You Set It Up', read: 'First meeting with this group.' },
+    { from: '10:00 AM', to: '10:45 AM', title: 'Sample Check-In', state: 'now', who: '5 People · You Set It Up', read: 'Every two weeks; two asks open from last time.', mission: 'Sample Client Mission' },
+    { from: '10:30 AM', to: '11:30 AM', title: 'Sample Planning Session', state: 'next', who: '6 People · Sample Organizer Set It Up', read: 'Decides next year\'s delivery dates.', mission: 'Sample Main Mission' },
+    { from: '12:00 PM', to: '1:00 PM', title: 'Sample Team Meeting', state: 'next', who: '16 People · Sample Organizer Set It Up', read: 'Weekly standing meeting.' },
   ],
   calendarMeta: '5 Meetings · 4h 15m',
+  // Commitments: only what David said he would do, on a call or in a message he sent, or what he adds himself.
+  commitments: [
+    { what: 'Send the revised dates', by: 'By Friday', heard: 'Said on the Sample Planning Session, 10:52 AM', quote: '"I will send the revised dates by Friday."' },
+    { what: 'Confirm the second reviewer', by: 'By Tomorrow', heard: 'In a mail you sent to the client lead, 9:14 AM', quote: '"I will confirm the second reviewer tomorrow."' },
+    { what: 'Share the draft schedule', by: 'Was Due Yesterday', late: true, heard: 'Said on the Sample Weekly Sync, Monday', quote: '"I will get the draft to you by Tuesday."' },
+    { what: 'Call the vendor back', by: 'No Date', heard: 'You added this yourself, 1:05 PM', quote: '' },
+  ],
   // What the preview holds for a meeting: who is there, what Lumen found or inferred, the missions it touches.
   preview: {
     who: ['Sample Organizer · Set It Up', 'Sample Colleague', 'Sample Colleague', 'Sample Client Lead · Client'],
@@ -53,6 +60,7 @@ const D = {
   logMeta: '29 Lines',
   lights: {
     calendar: { level: 'green', why: 'On cadence: every meeting so far was started on time' },
+    commitments: { level: 'red', why: 'One commitment is past its date' },
     log: { level: 'red', why: 'Nothing logged for 42 minutes, and no Release or Off is on' },
   },
   earned: { run: 4, impromptu: 2, 'full-day': 1 },
@@ -163,6 +171,17 @@ h1 { font:500 40px/1.1 var(--serif); letter-spacing:-.008em; margin:0; }
 .bd-empty { color:var(--ink3); }
 .bd-stashT { font:500 18px/1.3 var(--serif); }
 
+.bd-views { display:inline-flex; gap:4px; padding:4px; border:1px solid rgba(255,255,255,.14); border-radius:99px; margin:-10px 0 30px; }
+.bd-views button { font:500 14px var(--sans); color:var(--ink2); background:transparent; border:0; border-radius:99px; padding:7px 18px; cursor:pointer; }
+.bd-views button.bd-von { color:#0D1D2C; background:var(--accent); }
+.bd-pair { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); column-gap:56px; align-items:stretch; }
+.bd-pair > .bd-row { display:flex; flex-direction:column; }
+.bd-row { padding-bottom:54px; }
+.bd-wide .bd-cal { grid-template-columns:36px 150px minmax(0,1.2fr) minmax(0,1fr) 190px 46px; }
+.bd-cwho { font-size:13px; color:var(--ink2); margin-top:2px; }
+.bd-cread { font-size:13.5px; line-height:1.45; color:var(--ink2); }
+.bd-cal.bd-done .bd-cread, .bd-cal.bd-done .bd-cwho { color:var(--ink3); }
+.bd-kind.bd-late { color:var(--red); }
 .bd-cols { display:grid; grid-template-columns:minmax(0,7fr) minmax(0,5fr); column-gap:48px; align-items:start; }
 .bd-cal { display:grid; grid-template-columns:36px 150px minmax(0,1fr) auto; column-gap:18px; align-items:baseline; padding:13px 0; border-top:1px solid rgba(255,255,255,.07); }
 .bd-cal:first-of-type { border-top:0; padding-top:2px; }
@@ -269,9 +288,10 @@ const Log = ({ only }) => {
   )
 }
 const Open = ({ what, label, Icon, set }) => <button className="bd-open" title={label} aria-label={label} onClick={() => set(what)}><Icon size={15} strokeWidth={1.7} /></button>
-const POPS = { calendar: 'Calendar', steps: 'Proposed Steps', log: 'Activity Log', badges: 'Badges' }
+const POPS = { calendar: 'Calendar', steps: 'Proposed Steps', commitments: 'Commitments', log: 'Activity Log', badges: 'Badges' }
 
 function Dashboard() {
+  const [view, setView] = useState(new URLSearchParams(location.search).get('view') === 'badges' ? 'Badges' : 'Today')
   const [tagged, setTagged] = useState(new URLSearchParams(location.search).get('tagged') === '1')
   const [open, setOpen] = useState(new URLSearchParams(location.search).get('open'))
   return (
@@ -334,6 +354,12 @@ function Dashboard() {
               </>
             )}
             {open === 'log' && <Log only={false} />}
+            {open === 'commitments' && D.commitments.map((c, i) => (
+              <div key={i} className="bd-det" style={{ gridTemplateColumns: 'minmax(0,1fr) auto' }}>
+                <div><div className="bd-ms2">{c.what}<span className={`bd-kind${c.late ? ' bd-late' : ''}`}>{c.by}</span></div><div className="bd-tx2">{c.heard}</div><div className="bd-tx2" style={{ color: 'var(--ink3)' }}>{c.quote}</div></div>
+                <div className="bd-yn"><button title="Done" style={{ '--c': 'var(--purple)' }}><Check size={16} /></button><button title="Drop it" style={{ '--c': 'rgba(243,241,234,.44)' }}><X size={16} /></button></div>
+              </div>
+            ))}
             {open === 'calendar' && D.calendar.map((e, i) => (
               <div key={i} className={`bd-cal bd-${e.state}`} style={{ gridTemplateColumns: '150px minmax(0,1fr) auto' }}><span className="bd-when">{`${e.from} to ${e.to}`}</span><span className="bd-what">{e.title}</span><span className="bd-st">{e.state === 'done' ? 'Done' : e.state === 'now' ? 'Now' : ''}</span></div>
             ))}
@@ -367,38 +393,55 @@ function Dashboard() {
             <div style={{ display: 'flex', gap: 8 }}><button className="bd-quiet">Earlier</button><button className="bd-quiet" style={{ borderColor: 'var(--accent)', color: 'var(--accent)' }}>Today</button><button className="bd-quiet">Later</button></div>
           </div>
 
-          <div className="bd-cols">
-            <div>
-              <div className="bd-row">
+          <div className="bd-views">
+            {['Today', 'Badges'].map(v => <button key={v} className={view === v ? 'bd-von' : undefined} onClick={() => setView(v)}>{v}</button>)}
+          </div>
+
+          {view === 'Today' ? (
+            <>
+              <div className="bd-row bd-wide">
                 <SectionTag name="Calendar"><Light {...D.lights.calendar} /><Open what="calendar" label="The Day's Calendar" Icon={CalendarRange} set={setOpen} /></SectionTag>
                 {D.calendar.map((e, i) => (
                   <div key={i} className={`bd-cal bd-${e.state}`}>
                     <button className={`bd-go2${e.state === 'done' ? ' bd-past' : e.state === 'now' ? ' bd-live2' : ''}`} title={e.state === 'now' ? 'On now' : 'Start · opens the Zoom link and starts the clock'}>{e.state === 'now' ? <Video size={14} /> : <Play size={13} fill="currentColor" style={{ marginLeft: 2 }} />}</button>
                     <span className="bd-when">{`${e.from} to ${e.to}`}</span>
-                    <span className="bd-what" title="Open the preview" onClick={() => setOpen(`meeting:${i}`)}>{e.title}</span>
+                    <div><span className="bd-what" title="Open the preview" onClick={() => setOpen(`meeting:${i}`)}>{e.title}</span><div className="bd-cwho">{e.who || ''}</div></div>
+                    <span className="bd-cread">{e.read || ''}</span>
+                    <span>{e.mission ? <span className="bd-chip" style={{ margin: 0 }}>{e.mission}</span> : null}</span>
                     <span className="bd-st">{e.notes ? <button className="bd-notes" title="The notes are in · open them" aria-label="Open the notes" onClick={() => setOpen(`notes:${i}`)}><ScrollText size={14} strokeWidth={1.8} /></button> : e.state === 'done' ? 'Done' : e.state === 'now' ? 'Now' : ''}</span>
                   </div>
                 ))}
               </div>
-              <div className="bd-row">
-                <SectionTag name="Proposed Steps"><Light {...stepsLight(D.stepsWaiting ?? D.steps.length)} /><Open what="steps" label="The Day's Proposed Steps" Icon={PageIcon} set={setOpen} /></SectionTag>
+
+              <div className="bd-pair">
+                <div className="bd-row">
+                  <SectionTag name="Proposed Steps"><Light {...stepsLight(D.stepsWaiting ?? D.steps.length)} /><Open what="steps" label="The Day's Proposed Steps" Icon={PageIcon} set={setOpen} /></SectionTag>
                 {D.steps.map((p, i) => (
                   <div key={i} className="bd-step">
                     <div><div className="bd-ms">{p.mission}<Kind p={p} /></div><div className="bd-tx">{p.text}</div></div>
                     <div className="bd-yn"><button title="Accept" style={{ '--c': 'var(--purple)' }}><Check size={16} /></button><button title="Reject" style={{ '--c': 'rgba(243,241,234,.44)' }}><X size={16} /></button></div>
                   </div>
                 ))}
+                </div>
+                <div className="bd-row">
+                  <SectionTag name="Commitments"><Light {...D.lights.commitments} /><button className="bd-open" title="Add one yourself" aria-label="Add a commitment"><Plus size={15} /></button><Open what="commitments" label="The Day's Commitments" Icon={Handshake} set={setOpen} /></SectionTag>
+                  {D.commitments.map((c, i) => (
+                    <div key={i} className="bd-step">
+                      <div><div className="bd-ms">{c.what}<span className={`bd-kind${c.late ? ' bd-late' : ''}`}>{c.by}</span></div><div className="bd-tx">{c.heard}</div></div>
+                      <div className="bd-yn"><button title="Done" style={{ '--c': 'var(--purple)' }}><Check size={16} /></button><button title="Drop it" style={{ '--c': 'rgba(243,241,234,.44)' }}><X size={16} /></button></div>
+                    </div>
+                  ))}
+                </div>
               </div>
-            </div>
-            <div className="bd-row">
-              <SectionTag name="Activity Log"><Light {...D.lights.log} /><button className={`bd-open${tagged ? ' bd-on2' : ''}`} title="Show only the lines that carry a tag" aria-pressed={tagged} onClick={() => setTagged(!tagged)}><Tag size={14} strokeWidth={1.8} /></button><Open what="log" label="The Day's Full Log" Icon={ScrollText} set={setOpen} /></SectionTag>
-              <Log only={tagged} />
-            </div>
-          </div>
 
-          <div className="bd-row">
-            <SectionTag name="Badges"><Open what="badges" label="The Day's Badges" Icon={Medal} set={setOpen} />
-            </SectionTag>
+              <div className="bd-row">
+                <SectionTag name="Activity Log"><Light {...D.lights.log} /><button className={`bd-open${tagged ? ' bd-on2' : ''}`} title="Show only the lines that carry a tag" aria-pressed={tagged} onClick={() => setTagged(!tagged)}><Tag size={14} strokeWidth={1.8} /></button><Open what="log" label="The Day's Full Log" Icon={ScrollText} set={setOpen} /></SectionTag>
+                <Log only={tagged} />
+              </div>
+            </>
+          ) : (
+            <div className="bd-row">
+              <SectionTag name="Badges"><Open what="badges" label="The Day's Badges" Icon={Medal} set={setOpen} /></SectionTag>
             <div className="bd-badges">
               {BADGE_IDS.map(id => {
                 const st = badgeState(id)
@@ -411,7 +454,8 @@ function Dashboard() {
                 )
               })}
             </div>
-          </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
