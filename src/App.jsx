@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import {
   LayoutGrid, Network, LogOut, Menu, X, Target, Users,
-  FileText, Wallet, CreditCard, ListChecks, Compass, Waves, CalendarDays, BookOpen, Activity, Award, Wrench, GraduationCap, Sparkles, Archive as ArchiveIcon, FolderOpen, PenTool, Briefcase, Mic, Wand2, Bot, PenLine, Footprints, BookMarked } from 'lucide-react'
+  FileText, Wallet, CreditCard, ListChecks, Compass, Waves, CalendarDays, LayoutDashboard, BookOpen, Activity, Award, Wrench, GraduationCap, Sparkles, Archive as ArchiveIcon, FolderOpen, PenTool, Briefcase, Mic, Wand2, Bot, PenLine, Footprints, BookMarked } from 'lucide-react'
 import { getSession, onAuthStateChange, signOut } from './lib/auth'
 import { fetchProtocolState } from './lib/protocol'
 import ProtocolHud from './components/river/ProtocolHud'
@@ -24,6 +24,7 @@ import PersonalFinancePage from './components/PersonalFinancePage'
 import MHPIPage from './components/MHPIPage'
 import LandingPage from './components/LandingPage'
 import AgendaPage from './components/AgendaPage'
+import DashboardPage from './components/DashboardPage'
 import NarrativePage from './components/NarrativePage'
 import ActivityPage from './components/ActivityPage'
 import AccomplishmentsPage from './components/AccomplishmentsPage'
@@ -42,6 +43,7 @@ const NAV_ITEMS = [
   { id: 'river',            label: 'The River',             icon: Waves,          group: 'LANDING' },
   { id: 'journey',          label: 'Journey',               icon: Footprints,     group: 'LANDING' },
   { id: 'agenda',           label: 'Board',                icon: CalendarDays,   group: 'MONITOR' },
+  { id: 'dashboard',        label: 'Dashboard',            icon: LayoutDashboard, group: 'MONITOR' },
   { id: 'narrative',        label: 'Narrative And Analytics', icon: BookOpen,     group: 'MONITOR' },
   { id: 'activity',         label: 'Activity',              icon: Activity,       group: 'MONITOR' },
   { id: 'accomplishments',  label: 'Accomplishments',       icon: Award,          group: 'MONITOR' },
@@ -264,6 +266,7 @@ export default function App() {
           {active === 'river'            && <LandingPage onNavigate={setActive} />}
           {active === 'journey'          && <JourneyPage onNavigate={setActive} />}
           {active === 'agenda'           && <AgendaPage onNavigate={setRoute} />}
+          {active === 'dashboard'        && <DashboardPage onNavigate={setRoute} />}
           {active === 'narrative'        && <NarrativePage />}
           {active === 'activity'         && <ActivityPage />}
           {active === 'accomplishments'  && <AccomplishmentsPage />}
