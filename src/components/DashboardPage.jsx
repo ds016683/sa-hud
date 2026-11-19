@@ -150,7 +150,7 @@ export default function DashboardPage({ onNavigate }) {
 
           <div className="dash-pair" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', columnGap: 56, alignItems: 'start', marginBottom: 46 }}>
             <section>
-              <SectionTag name="Proposed Steps"><Light {...stepsLight} /></SectionTag>
+              <SectionTag name="Proposed Steps" style={{ minHeight: 30 }}><Light {...stepsLight} /></SectionTag>
               {(steps || []).map((p, i) => (
                 <Row key={p.id} first={i === 0} cols="minmax(0, 1fr) auto">
                   <div style={{ minWidth: 0 }}>
@@ -165,7 +165,7 @@ export default function DashboardPage({ onNavigate }) {
               ))}
             </section>
             <section>
-              <SectionTag name="Commitments"><Light {...commitLight} /><Round title="Add one yourself" size={30} onClick={push}><Plus size={15} /></Round></SectionTag>
+              <SectionTag name="Commitments" style={{ minHeight: 30 }}><Light {...commitLight} /><Round title="Add one yourself" size={30} onClick={push}><Plus size={15} /></Round></SectionTag>
               {openCommits.map((c, i) => (
                 <Row key={c.id} first={i === 0} cols="minmax(0, 1fr) auto">
                   <div style={{ minWidth: 0 }}>
