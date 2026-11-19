@@ -30,8 +30,8 @@ const CSS = `
 .yay-miles span { font: 500 26px 'Lora', Georgia, serif; color: rgba(243,241,234,.8); }
 .yay-badges { display: flex; justify-content: center; gap: 40px; margin: 42px 0 38px; flex-wrap: wrap; }
 .yay-badge { width: 132px; display: flex; flex-direction: column; align-items: center; gap: 10px; animation: yaypop .7s cubic-bezier(.2,.9,.3,1.25) both; }
-.yay-badge .ring { position: relative; }
-.yay-badge .ring::after { content: ""; position: absolute; inset: 0; border-radius: 99px; border: 2px solid var(--c); animation: yayring 1.3s ease-out both; animation-delay: inherit; }
+.yay-badge .yay-ring { position: relative; display: inline-block; }
+.yay-badge .yay-ring::after { content: ""; position: absolute; inset: 0; border-radius: 99px; border: 2px solid var(--c); animation: yayring 1.3s ease-out both; animation-delay: inherit; }
 .yay-badge .nm { font: 500 16px/1.25 'Lora', Georgia, serif; }
 .yay-badge .mi { font-size: 15px; font-weight: 600; color: var(--c); font-variant-numeric: tabular-nums; }
 .yay-badge .x { position: absolute; right: -8px; top: -6px; min-width: 28px; height: 28px; padding: 0 7px; border-radius: 99px; display: grid; place-items: center; font-size: 13.5px; font-weight: 700; color: #0D1D2C; background: var(--c); }
@@ -71,7 +71,7 @@ export function AwardYay({ awards, done = [], banked, today, before, onContinue 
         <div className="yay-badges">
           {awards.map((a, i) => (
             <div key={a.badge} className="yay-badge" style={{ '--c': tone(a.badge, a.n), animationDelay: `${0.35 + i * 0.22}s` }}>
-              <span className="ring" style={{ animationDelay: `${0.5 + i * 0.22}s` }}><BadgeMedallion id={a.badge} size={96} color={tone(a.badge, a.n)} glow />{a.n > 1 && <span className="x">×{a.n}</span>}</span>
+              <span className="yay-ring" style={{ animationDelay: `${0.5 + i * 0.22}s` }}><BadgeMedallion id={a.badge} size={96} color={tone(a.badge, a.n)} glow />{a.n > 1 && <span className="x">×{a.n}</span>}</span>
               <span className="nm">{BADGES[a.badge]?.label || a.badge}</span>
               <span className="mi">+{Math.round(a.miles * 100) / 100}</span>
             </div>
