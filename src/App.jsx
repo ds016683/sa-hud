@@ -42,7 +42,7 @@ const NAV_ITEMS = [
   { id: 'river',            label: 'The River',             icon: Waves,          group: 'LANDING' },
   { id: 'journey',          label: 'Journey',               icon: Footprints,     group: 'LANDING' },
   { id: 'agenda',           label: 'Board',                icon: CalendarDays,   group: 'MONITOR' },
-  { id: 'narrative',        label: 'Narrative and Analytics', icon: BookOpen,     group: 'MONITOR' },
+  { id: 'narrative',        label: 'Narrative And Analytics', icon: BookOpen,     group: 'MONITOR' },
   { id: 'activity',         label: 'Activity',              icon: Activity,       group: 'MONITOR' },
   { id: 'accomplishments',  label: 'Accomplishments',       icon: Award,          group: 'MONITOR' },
   { id: 'notes',            label: 'Notes',                 icon: FileText,       group: 'MONITOR' },
@@ -124,7 +124,7 @@ function Sidebar({ active, onChange, onSignOut }) {
         <nav className="sa-nav">
           {groups.map((g) => (
             <div key={g.name}>
-              <div className="sa-nav-group">{g.name}</div>
+              <div className="sa-nav-group">{g.name.toLowerCase().replace(/\b\w/g, c => c.toUpperCase())}</div>
               {g.items.map(({ id, label, icon: Icon }) => (
                 <button
                   key={id}
@@ -171,9 +171,9 @@ function Topbar({ active, onBack }) {
     <header className="sa-topbar">
       {active !== 'river' && (
         <button onClick={onBack} title="Back" aria-label="Back" style={{
-          display: 'inline-flex', alignItems: 'center', gap: 6, marginRight: 14, padding: '6px 10px', borderRadius: 8, cursor: 'pointer',
-          border: '1px solid rgba(255,255,255,0.18)', background: 'rgba(255,255,255,0.05)', color: 'rgba(234,241,248,0.85)', fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase', fontFamily: 'var(--font-mono, monospace)',
-        }}>← Back</button>
+          display: 'inline-flex', alignItems: 'center', gap: 6, marginRight: 14, padding: '7px 15px', borderRadius: 999, cursor: 'pointer',
+          border: '1px solid rgba(255,255,255,0.22)', background: 'transparent', color: 'var(--hud-ink)', fontSize: 13.5, fontWeight: 500, fontFamily: 'var(--font-sans)',
+        }}>Back</button>
       )}
       <div className="crumb">
         <div className="ttl">{title}</div>
