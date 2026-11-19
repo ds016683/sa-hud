@@ -66,18 +66,23 @@ function Round({ color, label, title, onClick, disabled, children }) {
     </div>
   )
 }
+const DAY_RUNS = 4
 // The day's runs, one line each: its number, when it started, how the time split, the minutes and the miles.
 const MIX = [MISSION, LOOTING, RED]
 function RunList({ list, onResults }) {
-  if (!list.length) return <div style={{ fontSize: 14, color: MUTED }}>No Runs Yet Today</div>
+  // Four runs a day pay miles, so the day shows four tracks; one not yet run is an empty track, no words
+  // (David 11/19: "no random floating explainer text anywhere ... find a more visual way to relay it").
+  const open = Array.from({ length: Math.max(0, DAY_RUNS - list.length) }, (_, k) => (list.length ? Math.max(...list.map(r => r.n)) : 0) + k + 1)
+  const split = list.some(r => (r.mix || []).some(x => x > 0))
   const lastFiled = [...list].reverse().find(r => r.state === 'filed')
+  const cols = '48px 66px minmax(0,1fr) 50px 40px'
   return (
     <div style={{ display: 'grid', rowGap: 8, minWidth: 0 }}>
       {list.map(r => {
         const off = r.state === 'walked', sum = (r.mix || []).reduce((a, x) => a + x, 0)
-        const open = onResults && lastFiled && r.id === lastFiled.id
+        const opens = onResults && lastFiled && r.id === lastFiled.id
         return (
-          <div key={r.id || r.n} onClick={open ? onResults : undefined} title={open ? "Open this run's results" : undefined} style={{ display: 'grid', gridTemplateColumns: '48px 66px minmax(0,1fr) 50px 40px', columnGap: 12, alignItems: 'center', fontSize: 13.5, color: off ? GRAY : INK, cursor: open ? 'pointer' : 'default' }}>
+          <div key={r.id || r.n} onClick={opens ? onResults : undefined} title={opens ? "Open this run's results" : undefined} style={{ display: 'grid', gridTemplateColumns: cols, columnGap: 12, alignItems: 'center', fontSize: 13.5, color: off ? GRAY : INK, cursor: opens ? 'pointer' : 'default' }}>
             <span style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 15 }}>Run {r.n}</span>
             <span style={{ color: off ? GRAY : MUTED, fontVariantNumeric: 'tabular-nums' }}>{clock(r.started_at)}</span>
             {off ? <span>Walked Away</span> : sum > 0
@@ -88,9 +93,15 @@ function RunList({ list, onResults }) {
           </div>
         )
       })}
-      <div style={{ display: 'flex', gap: 14, fontSize: 12.5, color: MUTED, paddingTop: 8, borderTop: '1px solid rgba(255,255,255,0.07)' }}>
+      {open.map(n => (
+        <div key={`open-${n}`} aria-label={`Run ${n}, not run yet`} style={{ display: 'grid', gridTemplateColumns: '48px minmax(0,1fr)', columnGap: 12, alignItems: 'center', color: 'rgba(243,241,234,0.28)' }}>
+          <span style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 15 }}>Run {n}</span>
+          <span style={{ height: 5, borderRadius: 99, border: '1px dashed rgba(243,241,234,0.2)' }} />
+        </div>
+      ))}
+      {split && <div style={{ display: 'flex', gap: 14, fontSize: 12.5, color: MUTED, paddingTop: 8, borderTop: '1px solid rgba(255,255,255,0.07)' }}>
         {[['Mission', MIX[0]], ['Protocol', MIX[1]], ['Rogue', MIX[2]]].map(([k, c]) => <span key={k} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><i style={{ width: 8, height: 8, borderRadius: 99, background: c, display: 'inline-block' }} />{k}</span>)}
-      </div>
+      </div>}
     </div>
   )
 }
