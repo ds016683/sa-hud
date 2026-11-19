@@ -20,7 +20,7 @@ const D = {
   title: "Wednesday's Dashboard", date: 'Wednesday, November 18, 2026 · Chicago',
   pill: ['In Mission', 'Sample Client Proposal'],
   calendar: [
-    { from: '8:00 AM', to: '9:00 AM', title: 'Sample Weekly Sync', state: 'done' },
+    { from: '8:00 AM', to: '9:00 AM', title: 'Sample Weekly Sync', state: 'done', notes: true },
     { from: '9:00 AM', to: '9:30 AM', title: 'Sample Introduction Call', state: 'done' },
     { from: '10:00 AM', to: '10:45 AM', title: 'Sample Check-In', state: 'now' },
     { from: '10:30 AM', to: '11:30 AM', title: 'Sample Planning Session', state: 'next' },
@@ -34,6 +34,8 @@ const D = {
     missions: ['Sample Main Mission', 'Sample Side Mission'],
     link: 'Zoom · From The Outlook Invite',
   },
+  // What the notes pop-up holds once a call's notes are in and summarized.
+  notes: { summary: ['The group agreed the schedule for the first quarter.', 'Two items were left open and have owners.'], asks: ['Send the revised dates by Friday.', 'Confirm the second reviewer.'] },
   steps: [
     { at: '2:10 PM', text: 'Packaged a panel as a drop-in skill.', mission: 'Sample Main Mission' },
     { text: 'Added a Scope Of Work section to the proposal.', mission: 'Sample Client Mission' },
@@ -169,6 +171,8 @@ h1 { font:500 40px/1.1 var(--serif); letter-spacing:-.008em; margin:0; }
 .bd-go2.bd-past { border-color:rgba(243,241,234,.22); color:var(--ink3); background:transparent; }
 .bd-go2.bd-live2 { border-color:var(--green); color:var(--green); background:rgba(87,190,151,.1); animation:beat2 1.8s ease-in-out infinite; }
 @keyframes beat2 { 0%,100% { box-shadow:0 0 0 0 rgba(87,190,151,.5) } 50% { box-shadow:0 0 0 7px transparent } }
+.bd-notes { display:inline-grid; place-items:center; width:30px; height:30px; border-radius:99px; cursor:pointer; background:rgba(180,163,232,.1); border:1.5px solid var(--purple); color:var(--purple); animation:notes 2s ease-in-out infinite; }
+@keyframes notes { 0%,100% { box-shadow:0 0 0 0 rgba(180,163,232,.55) } 50% { box-shadow:0 0 0 7px transparent } }
 .bd-pv { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); column-gap:34px; row-gap:22px; padding-top:18px; border-top:1px solid rgba(255,255,255,.08); }
 .bd-pv h3 { font:500 17px/1.2 var(--serif); margin:0 0 9px; }
 .bd-pv li, .bd-pv p { font-size:14.5px; line-height:1.55; color:var(--ink); margin:0 0 4px; list-style:none; }
@@ -226,6 +230,24 @@ function Dashboard() {
                 <div style={{ gridColumn: '1 / -1' }}><h3>Connected Missions</h3>{pv.missions.map((m, k) => <span key={k} className="bd-chip">{m}</span>)}</div>
               </div>
               <div className="bd-popfoot"><span>It ends on its own when you start something else, or when its time is up.</span><button className="bd-startbig"><Play size={14} fill="currentColor" />Start · Opens Zoom</button></div>
+            </div>
+          </div>
+        )
+      })()}
+      {open && open.startsWith('notes:') && D.calendar[Number(open.slice(6))] && (() => {
+        const e = D.calendar[Number(open.slice(6))]
+        return (
+          <div className="bd-veil" onClick={() => setOpen(null)}>
+            <div className="bd-pop" role="dialog" aria-label={`Notes, ${e.title}`} onClick={ev => ev.stopPropagation()}>
+              <div className="bd-pophead">
+                <div><h2>{e.title}</h2><div>{`${e.from} to ${e.to} · Notes`}</div></div>
+                <button className="bd-quiet" onClick={() => setOpen(null)}>Close</button>
+              </div>
+              <div className="bd-pv">
+                <div><h3>Summary</h3>{D.notes.summary.map((f, k) => <p key={k}>{f}</p>)}</div>
+                <div><h3>What Was Asked Of You</h3>{D.notes.asks.map((f, k) => <p key={k}>{f}</p>)}</div>
+              </div>
+              <div className="bd-popfoot"><span>From the meeting's notes, summarized by Lumen.</span><button className="bd-quiet">Open The Full Notes</button></div>
             </div>
           </div>
         )
@@ -292,7 +314,7 @@ function Dashboard() {
                     <button className={`bd-go2${e.state === 'done' ? ' bd-past' : e.state === 'now' ? ' bd-live2' : ''}`} title={e.state === 'now' ? 'On now' : 'Start · opens the Zoom link and starts the clock'}>{e.state === 'now' ? <Video size={14} /> : <Play size={13} fill="currentColor" style={{ marginLeft: 2 }} />}</button>
                     <span className="bd-when">{`${e.from} to ${e.to}`}</span>
                     <span className="bd-what" title="Open the preview" onClick={() => setOpen(`meeting:${i}`)}>{e.title}</span>
-                    <span className="bd-st">{e.state === 'done' ? 'Done' : e.state === 'now' ? 'Now' : ''}</span>
+                    <span className="bd-st">{e.notes ? <button className="bd-notes" title="The notes are in · open them" aria-label="Open the notes" onClick={() => setOpen(`notes:${i}`)}><ScrollText size={14} strokeWidth={1.8} /></button> : e.state === 'done' ? 'Done' : e.state === 'now' ? 'Now' : ''}</span>
                   </div>
                 ))}
               </div>
