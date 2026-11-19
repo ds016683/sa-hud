@@ -26,6 +26,7 @@ import { supabase as sbClient2 } from '../lib/supabase'
 import { listArtifacts as listProjArtifacts, readArtifact as readProjArtifact } from '../lib/artifacts'
 import { supabase as sbClient } from '../lib/supabase'
 import { hudPrompt, hudConfirm, hudNotice } from '../lib/dialog'
+import { useGateView, onGate } from '../lib/gateView'
 import { openCard } from '../lib/card'
 import CardBriefing from './river/CardBriefing'
 import useGateStories from './river/useGateStories'
@@ -408,11 +409,13 @@ function ProjectDetail({ project, board: boardProp, api, onBack, initialTab, ini
   const cardGates = useMemo(() => planOf(project).plan.filter(({ t }) => t.objective_id).map(({ t, n }) => ({ n, text: stripNum(t.text), objective_id: t.objective_id })), [project])
   const stories = useGateStories(cardGates)
   const extraTrail = useMemo(() => [...stories, ...planOf(project).history.filter(t => t.released_at).map(t => ({ at: t.released_at, kind: 'Gate Closed', text: t.text, gate: true }))], [stories, project])
-  const missionObj = useMemo(() => ({ id: project.id, captured_at: project.created_at, north_star: project.description || null }), [project.id, project.created_at, project.description])
+  const missionObj = useMemo(() => ({ id: project.id, title: project.name, captured_at: project.created_at, north_star: project.description || null }), [project.id, project.name, project.created_at, project.description])
+  const gateView = useGateView()
   const missionApi = useMemo(() => ({
     addStep: async (_id, text) => { const { api: a, plan: pl } = live.current; return a.addTask(project.id, NUM_RE.test(text) ? text : `${Math.max(0, ...pl.map(x => x.n)) + 1} · ${text}`) },
     toggleStep: async (id) => { const { api: a, project: pr } = live.current; const t = (pr.tasks || []).find(x => x.id === id); if (!t) throw new Error('that gate is gone'); return a.toggleTask(project.id, t) },
     removeStep: async (id) => live.current.api.deleteTask(project.id, id),
+    renameStep: async (id, text) => { const { api: a, plan: pl } = live.current; const p = pl.find(x => x.t.id === id); return a.updateTask(project.id, id, { text: p ? `${p.n} · ${text}` : text }) },
     setStepOrder: async () => {},   // a mission's gates stand in number order
     listPages, readPage, listBuilds, readPath, noteSource, savePathSteps,
     // the mission's own files; a gate card's files come in with that gate's story
@@ -631,7 +634,7 @@ function ProjectDetail({ project, board: boardProp, api, onBack, initialTab, ini
         </div>
       )}
       </div>
-      <LumenPanel item={{ kind: 'project', id: project.id, title: project.name, root: project.id, summary: project.description || '' }} />
+      <LumenPanel item={onGate({ kind: 'project', id: project.id, title: project.name, root: project.id, summary: project.description || '' }, gateView)} />
     </div>
   )
 }

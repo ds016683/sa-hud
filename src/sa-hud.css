@@ -1570,3 +1570,8 @@ button.brf-chip:hover { border-color: var(--hud-accent); }
 .peek-open:hover { filter: brightness(1.06); transform: translateY(-1px); }
 @media (max-width: 520px) { .peek-facts { grid-auto-flow: row; grid-template-columns: 1fr 1fr; } .peek-place { display: none; } .peek-open { margin-left: auto; } }
 @media (prefers-reduced-motion: reduce) { .peek-veil { animation: none; } }
+
+/* Gate buttons on a card's trail (river/GatePage.jsx draws the page they open). */
+.gp-ic { width: 36px; height: 36px; border-radius: 99px; border: 1.5px solid var(--c, #8ACAFF); display: inline-grid; place-items: center; color: var(--c, #8ACAFF); background: transparent; flex-shrink: 0; cursor: pointer; padding: 0; transition: background .15s; }
+button.gp-ic:hover { background: color-mix(in srgb, var(--c, #8ACAFF) 16%, transparent); }
+.gp-ic.sm { width: 26px; height: 26px; border-width: 1.3px; }

@@ -9,6 +9,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Play, Pause, Archive, ExternalLink, Check, Plus, Trash2, Terminal, Star, Pencil } from 'lucide-react'
 import { hudPrompt } from '../../lib/dialog'
+import { useGateView, onGate } from '../../lib/gateView'
 import { supabase } from '../../lib/supabase'
 import { listArtifacts, readArtifact } from '../../lib/artifacts'
 import { splitNotes, plainNotes } from '../../lib/gateNotes'
@@ -215,6 +216,7 @@ function WhereItStands({ rel, task, taskId, linkedBoards }) {
 
 export default function ItemDetail({ item, onClose, onNavigate, onChange, initialTab = 'overview', host = 'overlay' }) {
   const [tab, setTab] = useState(TABS.includes(initialTab) ? initialTab : (LEGACY_TAB[initialTab] || 'briefing'))
+  const gateView = useGateView()
   // The open pill rides the card's address (David 11/7: a refresh while working with Lumen on a pill must land back on that pill).
   useEffect(() => { if (host !== 'page') return; try { const h = window.location.hash || ''; if (!/\/item\//.test(h)) return; const next = h.replace(/(\/item\/[^/]+)(\/[^/]*)?$/, `$1/${tab}`); if (next !== h) window.history.replaceState(window.history.state, '', next) } catch { /* no-op */ } }, [tab, host])
   const [rel, setRel] = useState(null)
@@ -463,7 +465,7 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
           {exit.node}
         </div>
       </div>
-      {item.objective_id && <LumenPanel item={{ kind: 'objective', id: item.objective_id, title: item.title, root: objRoot(item.objective_id), summary: [obj?.north_star, item.description || obj?.description].filter(Boolean).join('\n\n') }} />}
+      {item.objective_id && <LumenPanel item={onGate({ kind: 'objective', id: item.objective_id, title: item.title, root: objRoot(item.objective_id), summary: [obj?.north_star, item.description || obj?.description].filter(Boolean).join('\n\n') }, gateView)} />}
     </div>
   )
 }
