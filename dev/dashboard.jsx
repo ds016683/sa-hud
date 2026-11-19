@@ -38,8 +38,8 @@ const D = {
   notes: { summary: ['The group agreed the schedule for the first quarter.', 'Two items were left open and have owners.'], asks: ['Send the revised dates by Friday.', 'Confirm the second reviewer.'] },
   steps: [
     { at: '2:10 PM', text: 'Packaged a panel as a drop-in skill.', mission: 'Sample Main Mission' },
-    { text: 'Added a Scope Of Work section to the proposal.', mission: 'Sample Client Mission' },
-    { text: 'Drafted a starter pricing skill file.', mission: 'Sample Skill Mission' },
+    { text: 'Added a Scope Of Work section to the proposal.', mission: 'Sample Client Mission', kind: 'Main Mission', gate: 'Gate 3' },
+    { text: 'Drafted a starter pricing skill file.', mission: 'Sample Skill Mission', kind: 'Side Mission · Contract' },
     { text: 'Added a Protocol bucket to the run report.', mission: 'Sample Platform Mission' },
   ],
   log: [
@@ -190,6 +190,7 @@ h1 { font:500 40px/1.1 var(--serif); letter-spacing:-.008em; margin:0; }
 .bd-step { display:grid; grid-template-columns:minmax(0,1fr) auto; column-gap:14px; align-items:center; padding:11px 0; border-top:1px solid rgba(255,255,255,.07); }
 .bd-step:first-of-type { border-top:0; padding-top:2px; }
 .bd-step .bd-ms, .bd-det .bd-ms2 { font:500 16.5px/1.3 var(--serif); color:var(--ink); }
+.bd-kind { font:500 13px var(--sans); color:var(--accent); margin-left:10px; white-space:nowrap; }
 .bd-step .bd-tx, .bd-det .bd-tx2 { font-size:14.5px; line-height:1.45; color:var(--ink2); margin-top:3px; }
 .bd-light { width:11px; height:11px; border-radius:99px; background:var(--c); display:inline-block; animation:lite 2.6s ease-in-out infinite; }
 .bd-light.bd-fast { animation-duration:1.1s; }
@@ -221,6 +222,8 @@ h1 { font:500 40px/1.1 var(--serif); letter-spacing:-.008em; margin:0; }
 const LIGHT = { green: 'var(--green)', yellow: '#F8C761', blue: 'var(--accent)', red: 'var(--red)' }
 const stepsLight = (n) => ({ level: n >= 15 ? 'red' : n >= 10 ? 'yellow' : 'green', why: `${n} proposed step${n === 1 ? '' : 's'} waiting` })
 const Light = ({ level, why }) => <span className={`bd-light${level === 'red' ? ' bd-fast' : ''}`} style={{ '--c': LIGHT[level] }} title={why} aria-label={why} />
+// Placement after the mission's name: what kind of mission it is, and the gate the step touches, if any.
+const Kind = ({ p }) => <span className="bd-kind">{[p.kind || 'Main Mission', p.gate].filter(Boolean).join(' · ')}</span>
 const Open = ({ what, label, Icon, set }) => <button className="bd-open" title={label} aria-label={label} onClick={() => set(what)}><Icon size={15} strokeWidth={1.7} /></button>
 const POPS = { calendar: 'Calendar', steps: 'Proposed Steps', log: 'Activity Log', badges: 'Badges' }
 
@@ -278,7 +281,7 @@ function Dashboard() {
                 {D.steps.map((p, i) => (
                   <div key={i} className="bd-det">
                     <span className="bd-dt">{p.at || ''}</span>
-                    <div><div className="bd-ms2">{p.mission}</div><div className="bd-tx2">{p.text}</div><div className="bd-ms" style={{ font: '13px var(--sans)', color: 'var(--ink3)', marginTop: 3 }}>{`From ${p.from || 'A Claude Session'}`}</div></div>
+                    <div><div className="bd-ms2">{p.mission}<Kind p={p} /></div><div className="bd-tx2">{p.text}</div><div className="bd-ms" style={{ font: '13px var(--sans)', color: 'var(--ink3)', marginTop: 3 }}>{`From ${p.from || 'A Claude Session'}`}</div></div>
                     <div className="bd-yn"><button title="Accept" style={{ '--c': 'var(--purple)' }}><Check size={16} /></button><button title="Reject" style={{ '--c': 'rgba(243,241,234,.44)' }}><X size={16} /></button></div>
                   </div>
                 ))}
@@ -336,7 +339,7 @@ function Dashboard() {
                 <SectionTag name="Proposed Steps"><Light {...stepsLight(D.stepsWaiting ?? D.steps.length)} /><Open what="steps" label="The Day's Proposed Steps" Icon={PageIcon} set={setOpen} /></SectionTag>
                 {D.steps.map((p, i) => (
                   <div key={i} className="bd-step">
-                    <div><div className="bd-ms">{p.mission}</div><div className="bd-tx">{p.text}</div></div>
+                    <div><div className="bd-ms">{p.mission}<Kind p={p} /></div><div className="bd-tx">{p.text}</div></div>
                     <div className="bd-yn"><button title="Accept" style={{ '--c': 'var(--purple)' }}><Check size={16} /></button><button title="Reject" style={{ '--c': 'rgba(243,241,234,.44)' }}><X size={16} /></button></div>
                   </div>
                 ))}
