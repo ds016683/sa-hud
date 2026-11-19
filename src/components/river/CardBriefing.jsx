@@ -26,7 +26,7 @@ import { DndContext, DragOverlay, PointerSensor, useSensor, useSensors, useDragg
 import { ChevronDown, ChevronRight } from 'lucide-react'
 import { Label } from './canon'
 import { addStep, toggleStep, removeStep, setStepOrder } from '../../lib/objectives'
-import { listPages, readPage } from '../../lib/workspace'
+import { listPages, readPage, blankPage, writePage, slugify } from '../../lib/workspace'
 import { listBuilds } from '../../lib/lumenPanel'
 import { listLiveFiles, isLink, isRequest } from '../../lib/livefiles'
 import { readPath, noteSource, savePathSteps, sourceLine, blanksIn, excerpt, buildTrail, stamp, dueWords, fireCardEvent } from '../../lib/path'
@@ -115,6 +115,17 @@ export default function CardBriefing({ obj, root, kindLabel, steps = [], kids = 
   }, [api, root, obj.id, steps])
 
   const [closing, setClosing] = useState(null)        // { id, dy }: the stop whose circle was just clicked
+  // Open a gate (David 11/19: "i tried to open the gate ... so i could work on the workbench inside that gate, but it
+  // closed instead. i didn't see a place to open the gate."): its words open its own tab on this card's Workbench,
+  // made the first time; the circle is the only thing that closes it.
+  const openGate = async (st) => {
+    try {
+      const title = String(st.text || 'Gate').slice(0, 80), slug = slugify(`gate-${st.n != null ? st.n : ''}-${title}`)
+      if (!(await readPage(root, slug).catch(() => null))) await writePage(root, slug, blankPage(title))
+      try { localStorage.setItem(`hud:sheet:${root}`, `page:${slug}`) } catch { /* the Workbench opens on its last tab */ }
+      onTab('workbench')
+    } catch (e) { say && say(`Could not open the gate: ${e.message}`) }
+  }
   const [justClosed, setJustClosed] = useState([])     // closed in this sitting: they stay on the path, struck, with Reopen
   const [fresh, setFresh] = useState(null)             // the stop that just became the next move
   const [draft, setDraft] = useState('')
@@ -294,11 +305,11 @@ export default function CardBriefing({ obj, root, kindLabel, steps = [], kids = 
                   spot('a', si),
                   <div key={s.key} className={`brf-stop${s.done ? ' done' : isNext ? ' next' : ''}${isClosing ? ' closing' : ''}${fresh === s.key && !s.done ? ' fresh' : ''}`}>
                     {s.type === 'step'
-                      ? <button className="hit" title={s.done ? 'Reopen it' : 'Click when it is done'} aria-label={`${s.done ? 'Reopen' : 'Mark done'}: ${s.text}`} onClick={(e) => s.done ? reopen(s.step) : close(s.step, e)}><span className="o"><Check /></span></button>
+                      ? <button className="hit" title={s.done ? 'Reopen it' : 'Mark it done (click the gate\'s words to open it)'} aria-label={`${s.done ? 'Reopen' : 'Mark done'}: ${s.text}`} onClick={(e) => s.done ? reopen(s.step) : close(s.step, e)}><span className="o"><Check /></span></button>
                       : <span className="hit still" title={s.type === 'gate' ? 'This gate closes on its own card' : s.type === 'mission' ? 'This gate closes on the mission\'s page, or on its own card once it is on the Board' : 'This one lives on a session board'}><span className="o" style={s.blocked ? { borderColor: 'var(--hud-warn)' } : undefined} /></span>}
                     {isClosing && <span className="brf-spark" style={{ '--dy': `${closing.dy}px` }} />}
                     {isNext && <div className="when">{s.type === 'mission' ? `Gate ${s.gate.n} · This Gate` : 'Next Move'}</div>}
-                    <div className={`what${s.type === 'gate' ? ' link' : ''}`} onClick={s.type === 'gate' ? () => onOpenCard && onOpenCard(s.kid.id) : undefined}>{s.type === 'step' && s.step.n != null && <span className="gn">Gate {s.step.n}</span>}{s.text}</div>
+                    <div className={`what${s.type === 'gate' || (s.type === 'step' && !s.done) ? ' link' : ''}`} title={s.type === 'step' && !s.done ? 'Open this gate on the Workbench' : undefined} onClick={s.type === 'gate' ? () => onOpenCard && onOpenCard(s.kid.id) : s.type === 'step' && !s.done ? () => openGate(s.step) : undefined}>{s.type === 'step' && s.step.n != null && <span className="gn">Gate {s.step.n}</span>}{s.text}</div>
                     {s.done && <><span className="when">Closed just now</span><button className="tool" onClick={() => reopen(s.step)}>Reopen</button></>}
                     {!s.done && s.type === 'step' && (stopExtra ? stopExtra(s.step, { takeOff: () => drop(s.step) }) : <div className="src">{src.lead}{src.quote && <> <q>{src.quote}</q></>}<button className="tool gone" onClick={() => drop(s.step)}>Take It Off</button></div>)}
                     {s.type === 'gate' && <div className="src">Gate {s.n} of {kids.length}{s.kid.due_date ? ` · ${dueWords(s.kid.due_date).short}` : ''}. It closes on its own card.</div>}
