@@ -7,11 +7,10 @@
 // or written. The words are sample data; ?d=<json> overrides any of them for a screenshot.
 import { StrictMode, useState } from 'react'
 import { createRoot } from 'react-dom/client'
-import { Waves, Footprints, CalendarDays, LayoutDashboard, BookOpen, Activity, Award, FileText, PenLine, Mic, Pencil, BookMarked, Mountain, Briefcase, Target, Wrench, Archive, FolderOpen, Landmark, Wallet, Check, X, FileText as PageIcon, CalendarRange, ScrollText, Medal, Play, Video } from 'lucide-react'
+import { Waves, Footprints, CalendarDays, LayoutDashboard, BookOpen, Activity, Award, FileText, PenLine, Mic, Pencil, BookMarked, Mountain, Briefcase, Target, Wrench, Archive, FolderOpen, Landmark, Wallet, Check, X, FileText as PageIcon, CalendarRange, ScrollText, Medal, Play, Video, Tag } from 'lucide-react'
 import '../src/sa-hud.css'
 import ProtocolHud from '../src/components/river/ProtocolHud'
 import { SectionTag } from '../src/components/river/canon'
-import { TimelineRow } from '../src/components/river/ActivityLog'
 import BadgeMedallion from '../src/components/BadgeArt'
 import { BADGES } from '../src/constants/collection'
 
@@ -43,12 +42,13 @@ const D = {
     { text: 'Added a Protocol bucket to the run report.', mission: 'Sample Platform Mission' },
   ],
   log: [
-    { at: at(16, 49), kind: 'Activity', text: 'Run 5 extracted at the full 45 minutes', meta: '10 miles' },
-    { at: at(15, 31), kind: 'Main Mission', text: 'Added a Protocol bucket to the run report', meta: 'Sample Platform Mission' },
-    { at: at(14, 28), kind: 'Work', text: 'Full Day: 8 hours logged', meta: '4 miles' },
-    { at: at(12, 0), kind: 'Meeting', text: 'Sample Team Meeting', meta: '6 attendees', documented: true },
-    { at: at(10, 12), kind: 'Email', text: 'Sent: revised terms to the client', meta: null },
-    { at: at(8, 0), kind: 'Meeting', text: 'Sample Weekly Sync', meta: '9 attendees', documented: true },
+    { at: at(16, 49), tag: 'Mission Run', text: 'Run 5 extracted at the full 45 minutes', miles: 10 },
+    { at: at(15, 31), tag: 'In Mission · Primary', text: 'Added a Protocol bucket to the run report', meta: 'Sample Platform Mission' },
+    { at: at(14, 28), text: 'Full Day: 8 hours logged', miles: 4 },
+    { at: at(12, 0), tag: 'In Meeting', text: 'Sample Team Meeting', recorded: true },
+    { at: at(10, 12), text: 'Sent: revised terms to the client' },
+    { at: at(9, 40), tag: 'Comms', text: 'E-mail Refresh, 22 minutes' },
+    { at: at(8, 0), tag: 'In Meeting', text: 'Sample Weekly Sync', recorded: true },
   ],
   logMeta: '29 Lines',
   lights: {
@@ -192,6 +192,19 @@ h1 { font:500 40px/1.1 var(--serif); letter-spacing:-.008em; margin:0; }
 .bd-step .bd-ms, .bd-det .bd-ms2 { font:500 16.5px/1.3 var(--serif); color:var(--ink); }
 .bd-kind { font:500 13px var(--sans); color:var(--accent); margin-left:10px; white-space:nowrap; }
 .bd-step .bd-tx, .bd-det .bd-tx2 { font-size:14.5px; line-height:1.45; color:var(--ink2); margin-top:3px; }
+.bd-lg { display:grid; grid-template-columns:62px 14px minmax(0,1fr) 54px; column-gap:10px; align-items:start; }
+.bd-lg .bd-lt { font-size:13px; color:var(--ink2); text-align:right; padding-top:3px; font-variant-numeric:tabular-nums; }
+.bd-lg .bd-rail { position:relative; align-self:stretch; }
+.bd-lg .bd-rail i { position:absolute; left:3px; top:7px; width:8px; height:8px; border-radius:99px; background:var(--c); box-shadow:0 0 0 3px color-mix(in srgb, var(--c) 18%, transparent); }
+.bd-lg .bd-rail b { position:absolute; left:6.5px; top:20px; bottom:-4px; width:1px; background:rgba(255,255,255,.12); }
+.bd-lg .bd-lb { padding-bottom:16px; }
+.bd-tag { display:inline-block; font-size:12.5px; font-weight:500; color:var(--c); border:1px solid color-mix(in srgb, var(--c) 45%, transparent); border-radius:99px; padding:2px 10px; margin-bottom:5px; }
+.bd-lg .bd-lx { font-size:14.5px; line-height:1.45; } .bd-lg .bd-lm { font-size:13px; color:var(--ink2); margin-top:2px; }
+.bd-lg .bd-mi { text-align:right; font:500 15px var(--serif); color:var(--purple); padding-top:2px; font-variant-numeric:tabular-nums; }
+.bd-gran { display:inline-grid; place-items:center; width:20px; height:20px; border-radius:6px; margin-left:8px; vertical-align:-4px; cursor:pointer; background:#1F3B2C; border:1px solid #57BE97; color:#8FE3BD; font:700 11px var(--sans); }
+.bd-milesum { display:grid; grid-template-columns:minmax(0,1fr) auto; font-size:13.5px; color:var(--ink2); padding-top:10px; border-top:1px solid rgba(255,255,255,.08); }
+.bd-milesum b { font:500 16px var(--serif); color:var(--purple); }
+.bd-open.bd-on2 { border-color:var(--accent); background:rgba(138,202,255,.14); }
 .bd-light { width:11px; height:11px; border-radius:99px; background:var(--c); display:inline-block; animation:lite 2.6s ease-in-out infinite; }
 .bd-light.bd-fast { animation-duration:1.1s; }
 @keyframes lite { 0%,100% { box-shadow:0 0 0 0 transparent } 50% { box-shadow:0 0 12px 3px color-mix(in srgb, var(--c) 60%, transparent) } }
@@ -224,10 +237,36 @@ const stepsLight = (n) => ({ level: n >= 15 ? 'red' : n >= 10 ? 'yellow' : 'gree
 const Light = ({ level, why }) => <span className={`bd-light${level === 'red' ? ' bd-fast' : ''}`} style={{ '--c': LIGHT[level] }} title={why} aria-label={why} />
 // Placement after the mission's name: what kind of mission it is, and the gate the step touches, if any.
 const Kind = ({ p }) => <span className="bd-kind">{[p.kind || 'Main Mission', p.gate].filter(Boolean).join(' · ')}</span>
+// A log line's tag follows the Protocol readout and the Board, in their words and colors.
+const TAGC = { 'Mission Run': '#B4A3E8', 'Looting Run': '#8ACAFF', 'In Mission': '#B4A3E8', 'In Meeting': '#8ACAFF', Comms: '#8ACAFF', Timers: '#8ACAFF', Release: '#B4A3E8', Protocols: '#B4A3E8', Utility: '#57BE97' }
+const tagColor = (t) => t ? (t.includes('Secondary') ? '#8ACAFF' : t.includes('Utility') ? '#57BE97' : TAGC[t.split(' · ')[0]] || '#8ACAFF') : 'rgba(243,241,234,.4)'
+const fmt = (iso) => new Date(iso).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'America/Chicago' })
+const LogRow = ({ r, last }) => (
+  <div className="bd-lg" style={{ '--c': tagColor(r.tag) }}>
+    <span className="bd-lt">{fmt(r.at)}</span>
+    <span className="bd-rail"><i />{!last && <b />}</span>
+    <div className="bd-lb">
+      {r.tag && <span className="bd-tag">{r.tag}</span>}
+      <div className="bd-lx">{r.text}{r.recorded && <span className="bd-gran" title="Recorded in Granola · open the notes">G</span>}</div>
+      {r.meta && <div className="bd-lm">{r.meta}</div>}
+    </div>
+    <span className="bd-mi">{r.miles ? `+${r.miles}` : ''}</span>
+  </div>
+)
+const Log = ({ only }) => {
+  const rows = D.log.filter(r => !only || r.tag)
+  return (
+    <>
+      {rows.map((r, i) => <LogRow key={i} r={r} last={i === rows.length - 1} />)}
+      <div className="bd-milesum"><span>Miles From These Lines</span><b>{`+${rows.reduce((a, r) => a + (r.miles || 0), 0)}`}</b></div>
+    </>
+  )
+}
 const Open = ({ what, label, Icon, set }) => <button className="bd-open" title={label} aria-label={label} onClick={() => set(what)}><Icon size={15} strokeWidth={1.7} /></button>
 const POPS = { calendar: 'Calendar', steps: 'Proposed Steps', log: 'Activity Log', badges: 'Badges' }
 
 function Dashboard() {
+  const [tagged, setTagged] = useState(new URLSearchParams(location.search).get('tagged') === '1')
   const [open, setOpen] = useState(new URLSearchParams(location.search).get('open'))
   return (
     <div className="bd-shell sa-dark sa-app">
@@ -288,7 +327,7 @@ function Dashboard() {
                 <div className="bd-popfoot"><span>{`${D.steps.length} Waiting · 0 Accepted · 0 Rejected Today`}</span><button className="bd-quiet">Accept All</button></div>
               </>
             )}
-            {open === 'log' && D.log.map((r, i) => <TimelineRow key={i} r={r} last={i === D.log.length - 1} />)}
+            {open === 'log' && <Log only={false} />}
             {open === 'calendar' && D.calendar.map((e, i) => (
               <div key={i} className={`bd-cal bd-${e.state}`} style={{ gridTemplateColumns: '150px minmax(0,1fr) auto' }}><span className="bd-when">{`${e.from} to ${e.to}`}</span><span className="bd-what">{e.title}</span><span className="bd-st">{e.state === 'done' ? 'Done' : e.state === 'now' ? 'Now' : ''}</span></div>
             ))}
@@ -346,8 +385,8 @@ function Dashboard() {
               </div>
             </div>
             <div className="bd-row">
-              <SectionTag name="Activity Log"><Light {...D.lights.log} /><Open what="log" label="The Day's Full Log" Icon={ScrollText} set={setOpen} /></SectionTag>
-              {D.log.map((r, i) => <TimelineRow key={i} r={r} last={i === D.log.length - 1} />)}
+              <SectionTag name="Activity Log"><Light {...D.lights.log} /><button className={`bd-open${tagged ? ' bd-on2' : ''}`} title="Show only the lines that carry a tag" aria-pressed={tagged} onClick={() => setTagged(!tagged)}><Tag size={14} strokeWidth={1.8} /></button><Open what="log" label="The Day's Full Log" Icon={ScrollText} set={setOpen} /></SectionTag>
+              <Log only={tagged} />
             </div>
           </div>
 
