@@ -180,11 +180,13 @@ export default function LandingPage({ onNavigate }) {
       const closes = (runs || []).filter(r => r.model === 'Daily Report' && (r.scorecard || {}).closed_at)
       const latestClose = closes[0] || null
       const seen = readSeen()
-      const marker = { ledgerMaxId: maxId, updateAt: latest ? latest.generated_at : null, closedAt: latestClose ? latestClose.scorecard.closed_at : null }
+      // The miles marker belongs to the yay (river/AwardYay.jsx) since 11/19; the River keeps only its own two stamps.
+      const marker = { ledgerMaxId: seen && seen.ledgerMaxId != null ? seen.ledgerMaxId : maxId, updateAt: latest ? latest.generated_at : null, closedAt: latestClose ? latestClose.scorecard.closed_at : null }
       if (!seen) { writeSeen(marker); return }
+      const OLD_CEREMONIES = false   // the Haul and the day-close screen gave way to the one yay
       const fresh = rows.filter(r => (Number(r.id) || 0) > (seen.ledgerMaxId || 0))
       const evidence = (list) => { const e = {}; for (const r of list) e[r.badge] = e[r.badge] ? `${e[r.badge]} · ${r.evidence}` : r.evidence; return e }
-      if (latestClose && latestClose.scorecard.closed_at !== seen.closedAt) {
+      if (!OLD_CEREMONIES) { /* nothing to play here */ } else if (latestClose && latestClose.scorecard.closed_at !== seen.closedAt) {
         const day = latestClose.day
         const dayRows = rows.filter(r => r.day === day)
         setMint({ day, badges: [...new Set(dayRows.map(r => r.badge))], badge_evidence: evidence(dayRows), miles: sumMiles(dayRows), total: sumMiles(rows) })

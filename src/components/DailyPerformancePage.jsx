@@ -527,7 +527,9 @@ export default function DailyPerformancePage() {
         // normalized prose), so composer rephrasing can never re-drop loot.
         const items = buildHaulItems(now, fresh.filter(r => r.day === now.day))
         const badges = ((now.scorecard || {}).badges || []).filter(b => !prevBadges.includes(b))
-        setHaul({
+        // The yay (river/AwardYay.jsx) celebrates new miles from anywhere since 11/19, so this page's own Haul stays shut.
+        const OWN_HAUL = false
+        if (OWN_HAUL) setHaul({
           items, badges,
           badge_evidence: (now.scorecard || {}).badge_evidence || {},
           miles: (now.scorecard || {}).miles ?? null,
