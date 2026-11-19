@@ -32,7 +32,7 @@ import { openCard } from '../../lib/card'
 import FocusLock from './FocusLock'
 
 const btn = (color = INK2, filled = false) => ({
-  display: 'inline-flex', alignItems: 'center', gap: 5, fontFamily: MONO, fontSize: 9.5, letterSpacing: '1px', textTransform: 'uppercase',
+  display: 'inline-flex', alignItems: 'center', gap: 5, fontFamily: 'inherit', fontSize: 12.5,
   padding: '5px 9px', borderRadius: 8, border: `1px solid ${filled ? color : `${alpha(color, 40)}`}`, background: filled ? color : 'transparent',
   color: filled ? 'var(--hud-on-accent)' : color, cursor: 'pointer',
 })
@@ -253,7 +253,7 @@ export function AdHocSlot({ item, act, onDispatch, onOpen, onChanged, onRecall }
         </div>
         <div onClick={() => onOpen(item)} style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 18, color: '#fff', lineHeight: 1.28, cursor: 'pointer', flex: 1 }}>{item.title}</div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', borderTop: `1px solid ${PANEL_BORDER}`, borderBottom: `1px solid ${PANEL_BORDER}` }}>
-          <Fact label="Miles"><span style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 16, color: INK }}>1</span><span style={{ fontFamily: MONO, fontSize: 10.5, letterSpacing: '1px', textTransform: 'uppercase', color: LABEL, marginLeft: 5 }}>on dispatch</span></Fact>
+          <Fact label="Miles"><span style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 16, color: INK }}>1</span><span style={{ fontSize: 12.5, color: MUTED, marginLeft: 6 }}>on dispatch</span></Fact>
           <div style={{ borderLeft: `1px solid ${PANEL_BORDER}`, paddingLeft: 12 }}><Fact label="Landed">{since ? <span style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 16, color: INK }}>{since}</span> : <span style={{ fontSize: 13, color: GRAY }}>today</span>}</Fact></div>
         </div>
         <ClockStrip minutes={item.minutes_today} hours={hoursOf(item)} running={!!item.equipped} onToggle={() => act(() => item.equipped ? holster(item.id) : equip(item.id), item.equipped ? `Clock stopped: ${item.title}` : `Clock running: ${item.title}`)} />
@@ -415,7 +415,7 @@ function RoutineSlot({ tick, onChanged, onState }) {
       <span style={{ fontSize: 13.5, fontWeight: 600, color: INK }}>{running.subject}</span>
       <span style={{ fontFamily: MONO, fontSize: 10, color: GREEN, letterSpacing: '0.6px', marginLeft: 'auto' }}>{fmtClock(mins)}</span>
       <button onClick={stop} title="Stop the travel clock" style={{ ...btn(GREEN), padding: '3px 7px' }}><Square size={10} /> Stop</button>
-      {msg && <span style={{ fontFamily: MONO, fontSize: 9.5, color: msg.startsWith('Could') ? RED : GOLD_BRIGHT, letterSpacing: '0.6px', textTransform: 'uppercase' }}>{msg}</span>}
+      {msg && <span style={{ fontSize: 12.5, color: msg.startsWith('Could') ? RED : INK2 }}>{msg}</span>}
     </div>
   )
   if (running) return (
@@ -428,14 +428,14 @@ function RoutineSlot({ tick, onChanged, onState }) {
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
         <button onClick={stop} style={btn(GREEN, true)}><Square size={11} /> Stop</button>
       </div>
-      {msg && <div style={{ fontFamily: MONO, fontSize: 9.5, color: msg.startsWith('Could') ? RED : GOLD_BRIGHT, letterSpacing: '0.6px', textTransform: 'uppercase' }}>{msg}</div>}
+      {msg && <div style={{ fontSize: 12.5, color: msg.startsWith('Could') ? RED : INK2 }}>{msg}</div>}
     </div>
   )
   // Nothing on: the Utility slot's empty face says so (David 11/17).
   return msg ? <div style={{ fontSize: 12.5, color: RED }}>{msg}</div> : null
 }
 
-// focusId: the one thing a Focused Run holds on the Board; every other slot sits back, locked (David 11/18).
+// focusId: the one thing a Mission Run holds on the Board; every other slot sits back, locked (David 11/18).
 export default function LoadoutPanel({ onChange, refreshKey = 0, bare = false, focusId = null }) {
   // Proposed Steps waiting on David (11/17): the count on the Loadout's button, read when the Board opens or refreshes.
   const [stepsWaiting, setStepsWaiting] = useState(null)
@@ -490,8 +490,8 @@ export default function LoadoutPanel({ onChange, refreshKey = 0, bare = false, f
   })()
   const Wrap = bare ? 'div' : Panel
   const wrapStyle = bare ? {} : { marginBottom: 0 }
-  // Only under a Focused Run is a slot wrapped, so the Board's own layout is untouched the rest of the time.
-  // Under a Focused Run the one thing takes the whole Loadout (David 11/18: "fill out the card that's on the board to
+  // Only under a Mission Run is a slot wrapped, so the Board's own layout is untouched the rest of the time.
+  // Under a Mission Run the one thing takes the whole Loadout (David 11/18: "fill out the card that's on the board to
   // stretch out and fill out the whole board"): its card grows from its slot to the full width and the empty slots step aside.
   const focusWide = !!focusId && !!L && (layout.placed.some(p => p.it.id === focusId) || L.adhoc[0]?.id === focusId)
   const lockSlot = (key, locked, node) => focusId ? <FocusLock key={key} on={locked} label="Locked" style={{ display: 'flex', flexDirection: 'column' }}>{node}</FocusLock> : node
@@ -550,7 +550,7 @@ export default function LoadoutPanel({ onChange, refreshKey = 0, bare = false, f
             {/* At 15 or more waiting the button pulses red, and faster for every ten past that (David 11/17: "red pulse might
                 be better? Faster ever extra 10 over i am"): 2.4s at 15, 1.8s at 25, 1.2s at 35, 0.6s from 45. */}
             <button className={`ld-btn${stepsWaiting >= CLEAR_AT ? ' over' : ''}`} style={stepsWaiting >= CLEAR_AT ? { animationDuration: `${Math.max(0.6, 2.4 - 0.6 * Math.floor((stepsWaiting - CLEAR_AT) / 10))}s` } : undefined} onClick={toSteps} title={stepsWaiting >= CLEAR_AT ? `${stepsWaiting} proposed steps are waiting on your Accept or Reject` : "What Lumen proposes to write on each mission's trail, waiting for Accept or Reject"}><Footprints size={15} /> Proposed Steps{stepsWaiting !== null && <span className={`n${stepsWaiting >= CLEAR_AT ? ' over' : ''}`}>{stepsWaiting}</span>}</button>
-            {msg && msg.startsWith('Could not') && <span style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '1px', color: RED, textTransform: 'uppercase' }}>{msg}</span>}
+            {msg && msg.startsWith('Could not') && <span style={{ fontSize: 12.5, color: RED }}>{msg}</span>}
           </div>
         </>
       )}

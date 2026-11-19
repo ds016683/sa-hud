@@ -19,7 +19,7 @@ export default function RunDock({ refreshKey = 0, onChange, onRun, api = LEDGER 
   const [error, setError] = useState(null)
   // The results veil: { pending } while Extract is in flight and then on that run, { run } from the badge.
   const [results, setResults] = useState(null)
-  // A Focused Run with more than one item on the Board and no clock running asks which one.
+  // A Mission Run with more than one item on the Board and no clock running asks which one.
   const [picking, setPicking] = useState(null)
   const load = useCallback(async () => { try { setData(await api.readRun()) } catch (e) { setError(`Could not read the run: ${e.message}`) } }, [api])
   useEffect(() => { Promise.resolve().then(load) }, [load, refreshKey])
@@ -46,7 +46,7 @@ export default function RunDock({ refreshKey = 0, onChange, onRun, api = LEDGER 
     try {
       const L = await fetchLoadout()
       const board = [...(L.board || []), ...(L.adhoc || [])]
-      if (!board.length) { setError('Nothing is on the Board. Load the one thing first, then start a Focused Run.'); return }
+      if (!board.length) { setError('Nothing is on the Board. Load the one thing first, then start a Mission Run.'); return }
       const one = board.find(i => i.equipped) || (board.length === 1 ? board[0] : null)
       if (one) return verb('start', { focus: { objective_id: one.id } })
       setPicking(board)
@@ -68,7 +68,7 @@ export default function RunDock({ refreshKey = 0, onChange, onRun, api = LEDGER 
         <div onClick={() => setPicking(null)} style={{ position: 'fixed', inset: 0, zIndex: 240, background: 'rgba(8,20,32,0.86)', backdropFilter: 'blur(4px)', display: 'grid', placeItems: 'center', padding: 24 }}>
           <div role="dialog" aria-label="Pick the one thing" onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: 520, background: '#10273B', border: `1px solid ${PANEL_BORDER}`, borderRadius: 16, padding: '24px 26px' }}>
             <div style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 22, color: INK }}>Which One Thing?</div>
-            <div style={{ fontSize: 14, lineHeight: 1.55, color: INK2, marginTop: 6 }}>A Focused Run keeps one item on the Board with its clock running. The rest is holstered and comes back when the run ends.</div>
+            <div style={{ fontSize: 14, lineHeight: 1.55, color: INK2, marginTop: 6 }}>A Mission Run keeps one item on the Board with its clock running. The rest is holstered and comes back when the run ends.</div>
             <div style={{ display: 'grid', gap: 8, marginTop: 16 }}>
               {picking.map(i => (
                 <button key={i.id} onClick={() => { setPicking(null); verb('start', { focus: { objective_id: i.id } }) }} style={{ textAlign: 'left', fontFamily: 'inherit', cursor: 'pointer', padding: '12px 14px', borderRadius: 11, border: `1px solid ${PANEL_BORDER}`, background: 'rgba(255,255,255,0.04)', color: INK }}>

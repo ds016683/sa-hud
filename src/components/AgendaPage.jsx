@@ -398,7 +398,7 @@ export default function AgendaPage({ onNavigate } = {}) {
   const [sessions, setSessions] = useState([])
   // Bumped after any write so the day's data re-pulls without clearing the panels.
   const [refreshKey, setRefreshKey] = useState(0)
-  const [focusRun, setFocusRun] = useState(null)   // the Focused Run that is running, from the Run dock
+  const [focusRun, setFocusRun] = useState(null)   // the Mission Run that is running, from the Run dock
   const [openEvent, setOpenEvent] = useState(null)
   const refresh = useCallback(() => setRefreshKey(k => k + 1), [])
   const [now, setNow] = useState(() => new Date())
@@ -494,8 +494,8 @@ export default function AgendaPage({ onNavigate } = {}) {
             <SectionTag name="Run" />
             <div style={{ marginBottom: 38 }}><RunDock refreshKey={refreshKey} onChange={refresh} onRun={setFocusRun} /></div>
             <SectionTag name="Console" />
-            {/* Under a Focused Run (David 11/18) the Console and the Stash sit back, locked, until the run ends. */}
-            <FocusLock on={!!focusRun} label="Console And Stash Are Locked For The Focused Run">
+            {/* Under a Mission Run (David 11/18) the Console and the Stash sit back, locked, until the run ends. */}
+            <FocusLock on={!!focusRun} label="Console And Stash Are Locked For The Mission Run">
             <div className="console-grid">
               <div className="console-row" style={{ display: 'flex', gap: 0, flexWrap: 'wrap', alignItems: 'flex-start', justifyContent: 'space-between', rowGap: 28, alignContent: 'flex-start', padding: '6px 0 38px' }}>
                 <ProtocolsPanel onChange={refresh} onNavigate={onNavigate} />

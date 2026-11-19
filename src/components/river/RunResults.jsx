@@ -97,7 +97,7 @@ export default function RunResults({ run, pending = false, busy = false, error =
   }, [ready, debrief, onClose])
 
   const hits = run?.hits || [], rogue = run?.rogue || []
-  // Time the protocol itself calls for (reading notes to Lumen in a Focused Run): its own rows, never red.
+  // Time the protocol itself calls for (reading notes to Lumen in a Mission Run): its own rows, never red.
   const inProtocol = run?.protocol || []
   const earned = run ? (run.earned && run.earned.length ? run.earned : run.miles > 0 ? [{ badge: 'run', text: `Run ${run.n}, the full ${RUN_MINUTES} minutes`, miles: run.miles }] : []) : []
   const total = Math.round(earned.reduce((s, e) => s + Number(e.miles || 0), 0) * 100) / 100

@@ -78,7 +78,7 @@ export async function runState() {
   return { run: last ? { ...last, log, logged, wa_open } : null, today: { runs: mine.filter(r => r.state === 'filed').length, miles: mine.reduce((s, r) => s + (r.state === 'filed' ? (r.miles || 0) : 0), 0), list } }
 }
 
-// ---- the Focused Run ----------------------------------------------------------------------------
+// ---- the Mission Run ----------------------------------------------------------------------------
 // David 11/18: "Two options for a run. A run and a focused run." His rules for focus: "only one thing is
 // allowed on the board. only one session can be running. If i'm doing something else that lumen sees (i'm
 // responding to an unrelated email or slack message that deviates from the only thing on the board) then i
@@ -104,7 +104,7 @@ export async function focusHold() {
   const run = activeOf(await readIndex())
   return run && run.state === 'running' && run.focus ? { run: run.n, objective_id: run.focus.objective_id, title: run.focus.title } : null
 }
-// The run that is on, in a few facts, for Lumen (David 11/18, from inside a Focused Run: "i need lumen to know
+// The run that is on, in a few facts, for Lumen (David 11/18, from inside a Mission Run: "i need lumen to know
 // what that is"). Null when no run is running.
 export async function runBrief(now = Date.now()) {
   const run = (await readIndex()).find(r => r.state === 'running')
@@ -112,7 +112,7 @@ export async function runBrief(now = Date.now()) {
   const left = Math.max(0, Math.ceil((new Date(run.ends_at).getTime() - now) / 60000))
   return { run: run.n, focused: !!run.focus, one_thing: run.focus ? run.focus.title : null, mission: run.focus ? run.focus.mission || null : null, started_at: run.started_at, ends_at: run.ends_at, minutes_left: left }
 }
-export const focusRefusal = (hold) => JSON.stringify({ ok: false, refused: 'focused run', note: `Focused Run ${hold.run} is on: only "${hold.title}" is on the Board until it ends. Tell David that, and do not load or start anything else.` })
+export const focusRefusal = (hold) => JSON.stringify({ ok: false, refused: 'focused run', note: `Mission Run ${hold.run} is on: only "${hold.title}" is on the Board until it ends. Tell David that, and do not load or start anything else.` })
 
 async function focusStart(objectiveId, now) {
   const L = await loadout()
@@ -126,7 +126,7 @@ async function focusStart(objectiveId, now) {
   const rows = others.length ? await sb(`objectives?select=id,title,activated_at&id=in.(${others.map(o => o.id).join(',')})`) : []
   for (const o of rows) { await stopClockOn(o.id); await sbWrite('PATCH', `objectives?id=eq.${o.id}`, { state: 'parked', activated_at: null }, 'return=minimal') }
   await startClock(one.id, 'focused run')
-  if (rows.length) boardLog(`Focused Run: holstered ${rows.map(o => o.title).join(' | ')} until it ends`)
+  if (rows.length) boardLog(`Mission Run: holstered ${rows.map(o => o.title).join(' | ')} until it ends`)
   const { cursor } = await eventsAfter(chiDay(now), 0).catch(() => ({ cursor: { day: chiDay(now), seq: 0 } }))
   return { objective_id: one.id, title: one.title, mission: one.main_mission || null, words: wordsOf(one.title, one.main_mission || ''), parked: rows.map(o => ({ id: o.id, title: o.title, activated_at: o.activated_at })), cursor, alerted_at: null, alerts: [] }
 }
@@ -141,7 +141,7 @@ async function focusEnd(run) {
     await sbWrite('PATCH', `objectives?id=eq.${p.id}`, { state: 'active', activated_at: p.activated_at || new Date().toISOString() }, 'return=minimal')
     back.push(p.title)
   }
-  if (back.length) boardLog(`Focused Run ended: back on the Board, ${back.join(' | ')}`)
+  if (back.length) boardLog(`Mission Run ended: back on the Board, ${back.join(' | ')}`)
   return back
 }
 
@@ -154,7 +154,7 @@ async function drift(run) {
   let alert = null
   if (off.length && !quiet) {
     const e = off[off.length - 1], now = new Date().toISOString()
-    const text = `Focused Run ${run.n}: ${e.source === 'mail' ? 'you just sent mail' : 'you just wrote in Slack'} that is not the one thing (${flat(e.text.replace(/^Sent:\s*/, ''), 90)}). The one thing is ${f.title}.`
+    const text = `Mission Run ${run.n}: ${e.source === 'mail' ? 'you just sent mail' : 'you just wrote in Slack'} that is not the one thing (${flat(e.text.replace(/^Sent:\s*/, ''), 90)}). The one thing is ${f.title}.`
     let id = null, via = null, skipped = null
     try {
       if (await waOpen().catch(() => false)) { via = 'text'; id = await waSendText(davidNumber(), text) }
@@ -172,7 +172,7 @@ async function drift(run) {
 
 // ---- the verbs ----------------------------------------------------------------------------------
 // minutes: a shorter clock for a test (5 to 45). A run pays only at the full 45, so a test pays nothing.
-// focus: true, or { objective_id } naming the one thing, makes it a Focused Run (see above).
+// focus: true, or { objective_id } naming the one thing, makes it a Mission Run (see above).
 export async function startRun({ minutes = RUN_MINUTES, focus = null } = {}) {
   const span = Math.max(5, Math.min(RUN_MINUTES, Math.round(Number(minutes) || RUN_MINUTES)))
   const runs = await readIndex()
@@ -184,7 +184,7 @@ export async function startRun({ minutes = RUN_MINUTES, focus = null } = {}) {
   // What the ledger already holds, so Extract can tell what this run earned (see earnedIn).
   const ledger = await ledgerOf(day).then(rows => ({ day, keys: rows.map(ledgerKey) })).catch(() => null)
   if (held) run.focus = held
-  await writeJson(logPath(run.id), { id: run.id, ledger, log: [{ at: now, source: 'hud', text: held ? `Focused Run ${n} started on ${held.title}` : `Run ${n} started`, mission: held ? (held.mission || held.title) : null }], mac: [] })
+  await writeJson(logPath(run.id), { id: run.id, ledger, log: [{ at: now, source: 'hud', text: held ? `Mission Run ${n} started on ${held.title}` : `Looting Run ${n} started`, mission: held ? (held.mission || held.title) : null }], mac: [] })
   await saveIndex([...runs, { ...run, logged: 1 }])
   return run
 }
@@ -282,12 +282,12 @@ async function report(run, doc, model) {
   if (!model || !process.env.ANTHROPIC_API_KEY) return fallback
   const prompt = `You are Lumen. David just finished a run: a ${minutes} minute stretch of work he asked you to watch. Write the run report from the log below. He wants to see where the time really went: the missions he hit, what was part of the protocol he was in, and the rogue stretches that belonged to neither (the inbox, a news site, a stray thread).
 
-Rules: times in the log are Chicago time; if you name a time, write it that way (9:05 AM). Plain and specific, no praise, no advice unless the log makes one pattern obvious, no em dashes. Minutes must add up to about ${minutes}. Use the clock minutes as the base for missions; use the Mac samples (one sample is about one minute) and the mail to find the rogue time and to place work the clocks missed. A mission must be one of the listed missions, named exactly. Time the protocol itself calls for goes under protocol, never rogue: talking to Lumen about the run or the work in it, and in a Focused Run the reading he does between turns and the notes about it he sends Lumen, typed or spoken. Anything else is rogue.
+Rules: times in the log are Chicago time; if you name a time, write it that way (9:05 AM). Plain and specific, no praise, no advice unless the log makes one pattern obvious, no em dashes. Minutes must add up to about ${minutes}. Use the clock minutes as the base for missions; use the Mac samples (one sample is about one minute) and the mail to find the rogue time and to place work the clocks missed. A mission must be one of the listed missions, named exactly. Time the protocol itself calls for goes under protocol, never rogue: talking to Lumen about the run or the work in it, and in a Mission Run the reading he does between turns and the notes about it he sends Lumen, typed or spoken. Anything else is rogue.
 
 ## Missions
 ${list.map(m => `- ${m.title} (${m.kind})`).join('\n') || '(none listed)'}
 
-${run.focus ? `## This was a Focused Run (the Focused Run Protocol)\nThe one thing on the Board was: ${run.focus.title}${run.focus.mission ? ` (${run.focus.mission})` : ''}. Everything else was locked. Reading a book between turns of a session and sending Lumen notes on it is part of this protocol (David 11/18: "why is that rogue? i thought it was protocol!!"); it is protocol time, not rogue and not drift. Say plainly how much of the run stayed on the one thing. Drift texts Lumen sent: ${(run.focus.alerts || []).length ? run.focus.alerts.map(a => `${chiTime(a.at)} ${a.text}`).join(' | ') : 'none'}.\n\n` : ''}## Minutes on each mission's own clock during the run
+${run.focus ? `## This was a Mission Run (the Mission Run Protocol)\nThe one thing on the Board was: ${run.focus.title}${run.focus.mission ? ` (${run.focus.mission})` : ''}. Everything else was locked. Reading a book between turns of a session and sending Lumen notes on it is part of this protocol (David 11/18: "why is that rogue? i thought it was protocol!!"); it is protocol time, not rogue and not drift. Say plainly how much of the run stayed on the one thing. Drift texts Lumen sent: ${(run.focus.alerts || []).length ? run.focus.alerts.map(a => `${chiTime(a.at)} ${a.text}`).join(' | ') : 'none'}.\n\n` : ''}## Minutes on each mission's own clock during the run
 ${clocked.map(c => `- ${c.mission}: ${c.minutes}`).join('\n') || '(no mission clock ran)'}
 
 ## What was in front on the Mac (samples)

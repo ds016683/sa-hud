@@ -50,7 +50,7 @@ export async function fetchProtocolState() {
   if (run && run.state === 'running') {
     const left = Math.round((new Date(run.ends_at).getTime() - nowMs) / 60000)
     const span = new Date(run.ends_at).getTime() - new Date(run.started_at).getTime()
-    return out('run', run.focus ? 'Focused Run' : 'In Run', GREEN, run.focus ? run.focus.title : `Run ${run.n}`, left > 0 ? `${left}m left` : `${-left}m over`, Math.max(0, Math.min(100, Math.round((nowMs - new Date(run.started_at).getTime()) / span * 100))), run.started_at, false, { ends: run.ends_at })
+    return out('run', run.focus ? 'Mission Run' : 'Looting Run', GREEN, run.focus ? run.focus.title : `Run ${run.n}`, left > 0 ? `${left}m left` : `${-left}m over`, Math.max(0, Math.min(100, Math.round((nowMs - new Date(run.started_at).getTime()) / span * 100))), run.started_at, false, { ends: run.ends_at })
   }
 
   const meeting = running.find(r => !ofConsole(r))

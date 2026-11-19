@@ -791,7 +791,7 @@ export const TOOLS = [
   },
   {
     name: 'get_loadout',
-    description: "The Loadout: what David carries right now. Slots used of 3 (a Bounty takes 1, a Contract 2, a Mythic 3), the equipped item (the one clock running) with minutes so far, every item on the board with its size and clocked minutes, and the day's hours (free before 6 PM Chicago after remaining meetings, and hours loaded; shown, not enforced), and run: the Run or Focused Run that is on right now (its one thing and the minutes left), or null. Read it before activating anything and whenever he asks what he is on or how much room he has.",
+    description: "The Loadout: what David carries right now. Slots used of 3 (a Bounty takes 1, a Contract 2, a Mythic 3), the equipped item (the one clock running) with minutes so far, every item on the board with its size and clocked minutes, and the day's hours (free before 6 PM Chicago after remaining meetings, and hours loaded; shown, not enforced), and run: the Run or Mission Run that is on right now (its one thing and the minutes left), or null. Read it before activating anything and whenever he asks what he is on or how much room he has.",
     inputSchema: { type: 'object', properties: {} },
   },
   {
