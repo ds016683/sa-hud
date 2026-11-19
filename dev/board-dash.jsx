@@ -281,8 +281,8 @@ function Board() {
               <ClockFace />
               <Runs />
               <div className="bd-starts">
-                <div className="bd-start" style={{ '--c': 'var(--purple)' }}><button title="Start Focused Run"><Runner focus /></button>Focused Run</div>
-                <div className="bd-start" style={{ '--c': 'var(--accent)' }}><button title="Start A Standard Run"><Runner /></button>Standard Run</div>
+                <div className="bd-start" style={{ '--c': 'var(--purple)' }}><button title="Start A Mission Run"><Runner focus /></button>Mission Run</div>
+                <div className="bd-start" style={{ '--c': 'var(--accent)' }}><button title="Start A Looting Run"><Runner /></button>Looting Run</div>
               </div>
             </div>
           </div>
