@@ -7,7 +7,7 @@
 // or written. The words are sample data; ?d=<json> overrides any of them for a screenshot.
 import { StrictMode, useState } from 'react'
 import { createRoot } from 'react-dom/client'
-import { Waves, Footprints, CalendarDays, LayoutDashboard, BookOpen, Activity, Award, FileText, PenLine, Mic, Pencil, BookMarked, Mountain, Briefcase, Target, Wrench, Archive, FolderOpen, Landmark, Wallet, Check, X, FileText as PageIcon, CalendarRange, ScrollText, Medal } from 'lucide-react'
+import { Waves, Footprints, CalendarDays, LayoutDashboard, BookOpen, Activity, Award, FileText, PenLine, Mic, Pencil, BookMarked, Mountain, Briefcase, Target, Wrench, Archive, FolderOpen, Landmark, Wallet, Check, X, FileText as PageIcon, CalendarRange, ScrollText, Medal, Play, Video } from 'lucide-react'
 import '../src/sa-hud.css'
 import ProtocolHud from '../src/components/river/ProtocolHud'
 import { SectionTag } from '../src/components/river/canon'
@@ -27,6 +27,13 @@ const D = {
     { from: '12:00 PM', to: '1:00 PM', title: 'Sample Team Meeting', state: 'next' },
   ],
   calendarMeta: '5 Meetings · 4h 15m',
+  // What the preview holds for a meeting: who is there, what Lumen found or inferred, the missions it touches.
+  preview: {
+    who: ['Sample Organizer · Set It Up', 'Sample Colleague', 'Sample Colleague', 'Sample Client Lead · Client'],
+    found: ['Third meeting in this series; the last one ended with two open asks.', 'A draft schedule was mailed to the group yesterday.', 'Inferred: this decides next year\'s delivery dates.'],
+    missions: ['Sample Main Mission', 'Sample Side Mission'],
+    link: 'Zoom · From The Outlook Invite',
+  },
   steps: [
     { at: '2:10 PM', text: 'Packaged a panel as a drop-in skill.', mission: 'Sample Main Mission' },
     { text: 'Added a Scope Of Work section to the proposal.', mission: 'Sample Client Mission' },
@@ -151,10 +158,23 @@ h1 { font:500 40px/1.1 var(--serif); letter-spacing:-.008em; margin:0; }
 .bd-stashT { font:500 18px/1.3 var(--serif); }
 
 .bd-cols { display:grid; grid-template-columns:minmax(0,7fr) minmax(0,5fr); column-gap:48px; align-items:start; }
-.bd-cal { display:grid; grid-template-columns:150px minmax(0,1fr) auto; column-gap:18px; align-items:baseline; padding:13px 0; border-top:1px solid rgba(255,255,255,.07); }
+.bd-cal { display:grid; grid-template-columns:36px 150px minmax(0,1fr) auto; column-gap:18px; align-items:baseline; padding:13px 0; border-top:1px solid rgba(255,255,255,.07); }
 .bd-cal:first-of-type { border-top:0; padding-top:2px; }
 .bd-cal .bd-when { font-size:14px; color:var(--ink2); font-variant-numeric:tabular-nums; }
-.bd-cal .bd-what { font:500 18px/1.3 var(--serif); }
+.bd-cal .bd-what { font:500 18px/1.3 var(--serif); cursor:pointer; }
+.bd-cal .bd-what:hover { color:var(--accent); }
+.bd-cal { align-items:center; }
+.bd-go2 { width:32px; height:32px; border-radius:99px; display:grid; place-items:center; cursor:pointer; background:rgba(138,202,255,.06); border:1.5px solid var(--accent); color:var(--accent); }
+.bd-go2:hover { box-shadow:0 0 16px rgba(138,202,255,.35); }
+.bd-go2.bd-past { border-color:rgba(243,241,234,.22); color:var(--ink3); background:transparent; }
+.bd-go2.bd-live2 { border-color:var(--green); color:var(--green); background:rgba(87,190,151,.1); animation:beat2 1.8s ease-in-out infinite; }
+@keyframes beat2 { 0%,100% { box-shadow:0 0 0 0 rgba(87,190,151,.5) } 50% { box-shadow:0 0 0 7px transparent } }
+.bd-pv { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); column-gap:34px; row-gap:22px; padding-top:18px; border-top:1px solid rgba(255,255,255,.08); }
+.bd-pv h3 { font:500 17px/1.2 var(--serif); margin:0 0 9px; }
+.bd-pv li, .bd-pv p { font-size:14.5px; line-height:1.55; color:var(--ink); margin:0 0 4px; list-style:none; }
+.bd-pv ul { margin:0; padding:0; } .bd-pv .bd-dim { color:var(--ink2); }
+.bd-chip { display:inline-block; font-size:13.5px; color:var(--accent); border:1px solid rgba(138,202,255,.4); border-radius:99px; padding:4px 12px; margin:0 8px 8px 0; }
+.bd-startbig { display:inline-flex; align-items:center; gap:10px; font:600 14.5px var(--sans); color:var(--accent); background:rgba(138,202,255,.07); border:1.5px solid var(--accent); border-radius:99px; padding:10px 20px; cursor:pointer; }
 .bd-cal .bd-st { font-size:13px; color:var(--ink2); white-space:nowrap; }
 .bd-cal.bd-done .bd-what, .bd-cal.bd-done .bd-when { color:var(--ink3); }
 .bd-cal.bd-now .bd-what { color:var(--ink); } .bd-cal.bd-now .bd-st { color:var(--green); }
@@ -191,6 +211,25 @@ function Dashboard() {
   return (
     <div className="bd-shell sa-dark sa-app">
       <style>{CSS}</style>
+      {open && open.startsWith('meeting:') && D.calendar[Number(open.slice(8))] && (() => {
+        const e = D.calendar[Number(open.slice(8))], pv = { ...D.preview, ...(e.preview || {}) }
+        return (
+          <div className="bd-veil" onClick={() => setOpen(null)}>
+            <div className="bd-pop" role="dialog" aria-label={e.title} onClick={ev => ev.stopPropagation()}>
+              <div className="bd-pophead">
+                <div><h2>{e.title}</h2><div>{`${e.from} to ${e.to} · ${pv.link}`}</div></div>
+                <button className="bd-quiet" onClick={() => setOpen(null)}>Close</button>
+              </div>
+              <div className="bd-pv">
+                <div><h3>{`Who Is There · ${pv.who.length}`}</h3><ul>{pv.who.map((w, k) => <li key={k}>{w}</li>)}</ul></div>
+                <div><h3>What Lumen Found</h3>{pv.found.map((f, k) => <p key={k} className={f.startsWith('Inferred') ? 'bd-dim' : undefined}>{f}</p>)}</div>
+                <div style={{ gridColumn: '1 / -1' }}><h3>Connected Missions</h3>{pv.missions.map((m, k) => <span key={k} className="bd-chip">{m}</span>)}</div>
+              </div>
+              <div className="bd-popfoot"><span>It ends on its own when you start something else, or when its time is up.</span><button className="bd-startbig"><Play size={14} fill="currentColor" />Start · Opens Zoom</button></div>
+            </div>
+          </div>
+        )
+      })()}
       {open && POPS[open] && (
         <div className="bd-veil" onClick={() => setOpen(null)}>
           <div className="bd-pop" role="dialog" aria-label={POPS[open]} onClick={e => e.stopPropagation()}>
@@ -212,7 +251,7 @@ function Dashboard() {
             )}
             {open === 'log' && D.log.map((r, i) => <TimelineRow key={i} r={r} last={i === D.log.length - 1} />)}
             {open === 'calendar' && D.calendar.map((e, i) => (
-              <div key={i} className={`bd-cal bd-${e.state}`}><span className="bd-when">{`${e.from} to ${e.to}`}</span><span className="bd-what">{e.title}</span><span className="bd-st">{e.state === 'done' ? 'Done' : e.state === 'now' ? 'Now' : ''}</span></div>
+              <div key={i} className={`bd-cal bd-${e.state}`} style={{ gridTemplateColumns: '150px minmax(0,1fr) auto' }}><span className="bd-when">{`${e.from} to ${e.to}`}</span><span className="bd-what">{e.title}</span><span className="bd-st">{e.state === 'done' ? 'Done' : e.state === 'now' ? 'Now' : ''}</span></div>
             ))}
             {open === 'badges' && BADGE_IDS.filter(id => D.earned[id]).map(id => (
               <div key={id} className="bd-det" style={{ gridTemplateColumns: '58px minmax(0,1fr) auto' }}>
@@ -250,8 +289,9 @@ function Dashboard() {
                 <SectionTag name="Calendar"><span>{D.calendarMeta}</span><Open what="calendar" label="The Day's Calendar" Icon={CalendarRange} set={setOpen} /></SectionTag>
                 {D.calendar.map((e, i) => (
                   <div key={i} className={`bd-cal bd-${e.state}`}>
+                    <button className={`bd-go2${e.state === 'done' ? ' bd-past' : e.state === 'now' ? ' bd-live2' : ''}`} title={e.state === 'now' ? 'On now' : 'Start · opens the Zoom link and starts the clock'}>{e.state === 'now' ? <Video size={14} /> : <Play size={13} fill="currentColor" style={{ marginLeft: 2 }} />}</button>
                     <span className="bd-when">{`${e.from} to ${e.to}`}</span>
-                    <span className="bd-what">{e.title}</span>
+                    <span className="bd-what" title="Open the preview" onClick={() => setOpen(`meeting:${i}`)}>{e.title}</span>
                     <span className="bd-st">{e.state === 'done' ? 'Done' : e.state === 'now' ? 'Now' : ''}</span>
                   </div>
                 ))}
