@@ -54,7 +54,6 @@ const D = {
   lights: {
     calendar: { level: 'green', why: 'On cadence: every meeting so far was started on time' },
     log: { level: 'red', why: 'Nothing logged for 42 minutes, and no Release or Off is on' },
-    steps: { level: 'blue', why: '5 proposed steps are waiting' },
   },
   earned: { run: 4, impromptu: 2, 'full-day': 1 },
   miles: 46,
@@ -216,8 +215,10 @@ h1 { font:500 40px/1.1 var(--serif); letter-spacing:-.008em; margin:0; }
 // One small icon at the end of a section's tag opens that section's detail for the day.
 // A section's light (David 11/18: "some kind of a light indicator for calendar, activity log, and proposed steps";
 // 11/19, on the counts that sat here: "i don't like this AI text up here"). The light says the state; the reason
-// is on hover. Green is fine, blue is worth a look, red is off.
-const LIGHT = { green: 'var(--green)', blue: 'var(--accent)', red: 'var(--red)' }
+// is on hover. Green is fine, yellow is building, red is off.
+// Proposed Steps (David 11/19): "15 was red. so maybe 10 is yellow. less than 10 is green."
+const LIGHT = { green: 'var(--green)', yellow: '#F8C761', blue: 'var(--accent)', red: 'var(--red)' }
+const stepsLight = (n) => ({ level: n >= 15 ? 'red' : n >= 10 ? 'yellow' : 'green', why: `${n} proposed step${n === 1 ? '' : 's'} waiting` })
 const Light = ({ level, why }) => <span className={`bd-light${level === 'red' ? ' bd-fast' : ''}`} style={{ '--c': LIGHT[level] }} title={why} aria-label={why} />
 const Open = ({ what, label, Icon, set }) => <button className="bd-open" title={label} aria-label={label} onClick={() => set(what)}><Icon size={15} strokeWidth={1.7} /></button>
 const POPS = { calendar: 'Calendar', steps: 'Proposed Steps', log: 'Activity Log', badges: 'Badges' }
@@ -331,7 +332,7 @@ function Dashboard() {
                 ))}
               </div>
               <div className="bd-row">
-                <SectionTag name="Proposed Steps"><Light {...D.lights.steps} /><Open what="steps" label="The Day's Proposed Steps" Icon={PageIcon} set={setOpen} /></SectionTag>
+                <SectionTag name="Proposed Steps"><Light {...stepsLight(D.stepsWaiting ?? D.steps.length)} /><Open what="steps" label="The Day's Proposed Steps" Icon={PageIcon} set={setOpen} /></SectionTag>
                 {D.steps.map((p, i) => (
                   <div key={i} className="bd-step">
                     <div><div className="bd-tx">{p.text}</div><div className="bd-ms">{p.mission}</div></div>

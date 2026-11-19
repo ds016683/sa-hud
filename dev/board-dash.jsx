@@ -7,7 +7,7 @@
 // The words are sample data; ?d=<json> overrides any of them for a screenshot.
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
-import { Waves, Footprints, CalendarDays, BookOpen, Activity, Award, FileText, PenLine, Mic, Pencil, BookMarked, Mountain, Briefcase, Target, Wrench, Archive, FolderOpen, Landmark, Wallet, Sunrise, Moon, MessageSquare, Monitor, CalendarCheck, Brain, Plane, Gamepad2, Car, Zap, Play, Square } from 'lucide-react'
+import { Waves, Footprints, CalendarDays, BookOpen, Activity, Award, FileText, PenLine, Mic, Pencil, BookMarked, Mountain, Briefcase, Target, Wrench, Archive, FolderOpen, Landmark, Wallet, Sunrise, Moon, MessageSquare, Monitor, CalendarCheck, Brain, Plane, Gamepad2, Car, Zap, Play, Square, BedDouble } from 'lucide-react'
 import '../src/sa-hud.css'
 import { Instrument, InstrumentGroup } from '../src/components/river/Instrument'
 import ProtocolHud from '../src/components/river/ProtocolHud'
@@ -294,6 +294,7 @@ function Board() {
               <InstrumentGroup label="Protocols">
                 <Instrument label="Morning" title="Morning Protocol · done" icon={<Sunrise size={24} />} tone="var(--hud-success)" />
                 <Instrument label="Evening" title="Evening Protocol · from 6:00 PM" icon={<Moon size={24} />} disabled />
+                <Instrument label="Sleep" title="Sleep · press it when you go to bed; Morning ends it" icon={<BedDouble size={24} />} />
               </InstrumentGroup>
               <InstrumentGroup label="Timers">
                 <Instrument label="Calendar Sweep" icon={<CalendarCheck size={24} />} />
