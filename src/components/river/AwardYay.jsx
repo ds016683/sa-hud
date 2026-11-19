@@ -12,22 +12,22 @@ import { supabase } from '../../lib/supabase'
 import BadgeMedallion from '../BadgeArt'
 import { BADGES, whereOnRiver, crossed } from '../../constants/collection'
 import { chiToday } from './canon'
+import { readSeen, writeSeen, yayHeld, played } from '../../lib/yay'
 
 const PURPLE = '#B4A3E8', BLUE = '#8ACAFF', GREEN = '#57BE97'
-const KEY = 'river-seen'
-const readSeen = () => { try { return JSON.parse(localStorage.getItem(KEY) || 'null') } catch { return null } }
-const writeSeen = (v) => { try { localStorage.setItem(KEY, JSON.stringify(v)) } catch { /* the yay may play once more */ } }
 // A badge at its day's maximum, or earned three times, lands purple; otherwise blue.
 const tone = (badge, n) => (n >= 3 || n >= (BADGES[badge]?.repeatable ? (badge === 'run' ? 4 : Infinity) : 1)) ? PURPLE : BLUE
 // What was done, in the Board's words.
 const TAG = { run: ['Run', PURPLE], gate: ['Gate', PURPLE], 'mission-task': ['Gate', PURPLE], 'main-mission': ['Mission', PURPLE], bounty: ['Mission', PURPLE], contract: ['Mission', PURPLE], mythic: ['Mission', PURPLE], impromptu: ['Utility', GREEN], 'bill-pay': ['Comms', BLUE], 'clean-slack': ['Comms', BLUE] }
 
-const CSS = `
+export const YAY_CSS = `
 .yay { position: fixed; inset: 0; z-index: 500; display: grid; place-items: center; background: radial-gradient(ellipse at 50% 34%, #1a2f4a 0%, #0c1b2a 62%); color: #F3F1EA; font-family: var(--font-sans, 'Instrument Sans', system-ui, sans-serif); overflow-y: auto; animation: yayveil .3s ease both; }
 .yay-in { width: min(980px, 92vw); text-align: center; padding: 40px 0; }
 .yay-miles { display: inline-flex; align-items: baseline; gap: 14px; animation: yayup .6s cubic-bezier(.2,.8,.2,1) both; }
 .yay-miles b { font: 500 104px/1 'Lora', Georgia, serif; color: ${PURPLE}; letter-spacing: -.02em; text-shadow: 0 0 44px rgba(180,163,232,.35); font-variant-numeric: tabular-nums; }
 .yay-miles span { font: 500 26px 'Lora', Georgia, serif; color: rgba(243,241,234,.8); }
+.yay-title { font: 500 30px/1.2 'Lora', Georgia, serif; letter-spacing: -.01em; margin-bottom: 18px; animation: yayup .6s ease both; }
+.yay-sub { font: italic 400 19px/1.4 'Lora', Georgia, serif; color: rgba(243,241,234,.78); margin-top: 12px; animation: yayup .6s ease .3s both; }
 .yay-badges { display: flex; justify-content: center; gap: 40px; margin: 42px 0 38px; flex-wrap: wrap; }
 .yay-badge { width: 132px; display: flex; flex-direction: column; align-items: center; gap: 10px; animation: yaypop .7s cubic-bezier(.2,.9,.3,1.25) both; }
 .yay-badge .yay-ring { position: relative; display: inline-block; }
@@ -38,6 +38,9 @@ const CSS = `
 .yay-done { display: inline-grid; row-gap: 10px; text-align: left; margin-bottom: 38px; max-width: 760px; animation: yayup .6s ease 1.1s both; }
 .yay-done div { display: flex; align-items: center; gap: 12px; font-size: 15.5px; line-height: 1.35; }
 .yay-done i { font-style: normal; font-size: 12.5px; font-weight: 500; color: var(--c); border: 1px solid color-mix(in srgb, var(--c) 45%, transparent); border-radius: 99px; padding: 2px 10px; white-space: nowrap; }
+.yay-more { text-align: left; max-width: 720px; margin: 0 auto 34px; animation: yayup .6s ease 1.3s both; }
+.yay-more h3 { font: 500 19px 'Lora', Georgia, serif; margin: 26px 0 10px; }
+.yay-more p { font: 400 16px/1.6 'Lora', Georgia, serif; color: rgba(243,241,234,.86); margin: 0; }
 .yay-city { font: 500 22px 'Lora', Georgia, serif; color: ${PURPLE}; margin-bottom: 18px; animation: yayup .6s ease 1.2s both; }
 .yay-river { width: min(620px, 86vw); margin: 0 auto 34px; animation: yayup .6s ease 1.3s both; }
 .yay-river .bar { height: 6px; border-radius: 99px; background: rgba(255,255,255,.1); overflow: hidden; }
@@ -55,19 +58,21 @@ const CSS = `
 
 // awards: [{ badge, n, miles }]  done: [{ tag, color, text }]  banked: total after  today: the day's miles after
 // before: total before (for the river's fill and any city crossed)
-export function AwardYay({ awards, done = [], banked, today, before, onContinue }) {
+export function AwardYay({ awards, done = [], banked, today, before, onContinue, title = null, sub = null, go = 'Continue', children = null, keys = true, busy = false }) {
   const total = awards.reduce((a, x) => a + x.miles, 0)
   const [n, setN] = useState(0)
   useEffect(() => { let k = 0; const step = Math.max(0.25, total / 24); const t = setInterval(() => { k = Math.min(total, k + step); setN(k); if (k >= total) clearInterval(t) }, 45); return () => clearInterval(t) }, [total])
-  useEffect(() => { const k = (e) => { if (e.key === 'Enter' || e.key === 'Escape') onContinue() }; window.addEventListener('keydown', k); return () => window.removeEventListener('keydown', k) }, [onContinue])
-  const was = whereOnRiver(before), now = whereOnRiver(banked), cities = crossed(before, banked)
+  useEffect(() => { if (!keys) return undefined; const k = (e) => { if (e.key === 'Enter' || e.key === 'Escape') onContinue() }; window.addEventListener('keydown', k); return () => window.removeEventListener('keydown', k) }, [onContinue, keys])
+  const was = whereOnRiver(before), now = whereOnRiver(banked), cities = banked != null ? crossed(before, banked) : []
   const pct = (w) => Math.round(1000 * w.legDone) / 10
   const show = (v) => Number.isInteger(total) ? Math.round(v) : (Math.round(v * 100) / 100)
   return (
     <div className="yay" role="dialog" aria-label="Miles awarded">
-      <style>{CSS}</style>
+      <style>{YAY_CSS}</style>
       <div className="yay-in">
+        {title && <div className="yay-title">{title}</div>}
         <div className="yay-miles"><b>+{show(n)}</b><span>{total === 1 ? 'Mile' : 'Miles'}</span></div>
+        {sub && <div className="yay-sub">{sub}</div>}
         <div className="yay-badges">
           {awards.map((a, i) => (
             <div key={a.badge} className="yay-badge" style={{ '--c': tone(a.badge, a.n), animationDelay: `${0.35 + i * 0.22}s` }}>
@@ -79,11 +84,12 @@ export function AwardYay({ awards, done = [], banked, today, before, onContinue 
         </div>
         {done.length > 0 && <div className="yay-done">{done.map((x, i) => <div key={i} style={{ '--c': x.color }}>{x.tag && <i>{x.tag}</i>}<span>{x.text}</span></div>)}</div>}
         {cities.length > 0 && <div className="yay-city">You Reached {cities.map(c => c.short).join(', ')}</div>}
-        <div className="yay-river">
+        {banked != null && <div className="yay-river">
           <div className="bar"><i style={{ '--from': `${cities.length ? 0 : pct(was)}%`, '--to': `${pct(now)}%` }} /></div>
           <div className="nums"><span><b>{Math.round(banked).toLocaleString()}</b> Banked</span><span><b>{Math.round(today * 100) / 100}</b> Today</span><span><b>{Math.round(now.toNext).toLocaleString()}</b> To {now.next.short}</span></div>
-        </div>
-        <button className="yay-go" autoFocus onClick={onContinue}>Continue</button>
+        </div>}
+        {children && <div className="yay-more">{children}</div>}
+        <button className="yay-go" autoFocus={keys} disabled={busy} onClick={onContinue}>{go}</button>
       </div>
     </div>
   )
@@ -93,7 +99,7 @@ export default function AwardWatch({ route }) {
   const [yay, setYay] = useState(null)
   const last = useRef(0), busy = useRef(false), showing = useRef(false)
   const look = useCallback(async (force = false) => {
-    if (busy.current || showing.current) return
+    if (busy.current || showing.current || yayHeld()) return
     if (!force && Date.now() - last.current < 20000) return
     busy.current = true; last.current = Date.now()
     try {
@@ -105,16 +111,19 @@ export default function AwardWatch({ route }) {
       if (!seen || seen.ledgerMaxId == null) { writeSeen({ ...(seen || {}), ledgerMaxId: maxId }); return }
       if (maxId <= seen.ledgerMaxId) return
       const [{ data: fresh }, { data: all }] = await Promise.all([
-        supabase.from('miles_ledger').select('id,day,badge,miles,evidence').gt('id', seen.ledgerMaxId).order('id', { ascending: true }).limit(200),
+        supabase.from('miles_ledger').select('id,day,badge,key,miles,evidence').gt('id', seen.ledgerMaxId).order('id', { ascending: true }).limit(200),
         supabase.from('miles_ledger').select('day,miles').limit(20000),
       ])
       if (!fresh || !fresh.length) return
+      // Rows a close page has already played are seen; if nothing else is new, only the marker moves.
+      const skip = new Set(played()), rows = fresh.filter(r => !skip.has(String(r.key)))
+      if (!rows.length) { writeSeen({ ...readSeen(), ledgerMaxId: maxId }); return }
       const by = new Map()
-      for (const r of fresh) { const a = by.get(r.badge) || { badge: r.badge, n: 0, miles: 0 }; a.n += 1; a.miles += Number(r.miles) || 0; by.set(r.badge, a) }
+      for (const r of rows) { const a = by.get(r.badge) || { badge: r.badge, n: 0, miles: 0 }; a.n += 1; a.miles += Number(r.miles) || 0; by.set(r.badge, a) }
       const awards = [...by.values()].sort((a, b) => b.miles - a.miles)
       const total = awards.reduce((s, a) => s + a.miles, 0)
       const banked = (all || []).reduce((s, r) => s + (Number(r.miles) || 0), 0), day = chiToday()
-      const done = fresh.filter(r => r.evidence && TAG[r.badge]).slice(-4).map(r => ({ tag: TAG[r.badge][0], color: TAG[r.badge][1], text: String(r.evidence).slice(0, 110) }))
+      const done = rows.filter(r => r.evidence && TAG[r.badge]).slice(-4).map(r => ({ tag: TAG[r.badge][0], color: TAG[r.badge][1], text: String(r.evidence).slice(0, 110) }))
       showing.current = true
       setYay({ awards, done, banked, before: banked - total, today: (all || []).filter(r => r.day === day).reduce((s, r) => s + (Number(r.miles) || 0), 0), maxId })
     } catch { /* the next look tries again */ } finally { busy.current = false }

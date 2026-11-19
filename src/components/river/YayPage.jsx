@@ -11,6 +11,8 @@ import { signedUrl } from '../../lib/archive'
 import { INK, INK2, GRAY, PANEL_BORDER, GOLD, GREEN, SUCCESS, BLUE, MONO, SERIF, S, KindIcon, Label, NORTH_STAR_LABEL, LABEL, MUTED, alpha, RED } from './canon'
 import DocView from './DocView'
 import SessionBoard from './SessionBoard'
+import { AwardYay } from './AwardYay'
+import { holdYay, releaseYay, markPlayed } from '../../lib/yay'
 
 const Fact = ({ label, children }) => <div><Label>{label}</Label><div style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 17, color: INK, lineHeight: 1.25 }}>{children}</div></div>
 
@@ -44,6 +46,17 @@ export default function YayPage({ objectiveId, onClose, fresh = false, onOpenMis
   const field = { width: '100%', background: 'rgba(255,255,255,0.05)', border: `1px solid ${PANEL_BORDER}`, borderRadius: 8, color: INK, padding: '7px 10px', fontSize: 14, fontFamily: 'inherit', boxSizing: 'border-box' }
   useEffect(() => { const k = (e) => { if (e.key === 'Escape') onClose() }; window.addEventListener('keydown', k); return () => window.removeEventListener('keydown', k) }, [onClose])
   const color = m ? m.color : GOLD
+  // The close is the yay (David 11/19: "Fold the two into one page"). A mission just closed plays the one yay
+  // page; opened later from a closed mission it is the Mission Summary card below.
+  const party = !!m && (closed || fresh)
+  useEffect(() => { if (!party) return undefined; const at = new Date().toISOString(); holdYay(); return () => { releaseYay(at) } }, [party])
+  if (party) return (
+    <AwardYay title="Mission Complete" sub={m.title} awards={[{ badge: m.badge, n: 1, miles: Number(m.miles) || 0 }]} banked={null}
+      done={m.gates.filter(g => g.done).slice(-5).map(g => ({ tag: 'Gate', color: '#B4A3E8', text: g.text }))}
+      onContinue={() => { markPlayed(objectiveId); markPlayed(`m:${objectiveId}`); onClose() }}>
+      {m.achieved && <><h3>Achieved</h3><p>{m.achieved}</p></>}
+    </AwardYay>
+  )
   return (
     <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 300, background: 'rgba(5,16,28,0.86)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16, overflowY: 'auto' }}>
       <div onClick={e => e.stopPropagation()} style={{ width: 'min(720px, 100%)', maxHeight: '92vh', overflowY: 'auto', background: '#0F2338', border: `1px solid ${alpha(color, 33)}`, borderRadius: 16, padding: '34px 32px 26px', boxShadow: `0 0 60px -20px ${color}` }}>

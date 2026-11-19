@@ -7,7 +7,8 @@
 // shows whatever checklist is running on the item. Files is the one place its
 // files live. Notes is the meetings and the item's own notes.
 import { useCallback, useEffect, useState } from 'react'
-import { Play, Pause, Archive, ExternalLink, Check, Plus, Trash2, Terminal, Star } from 'lucide-react'
+import { Play, Pause, Archive, ExternalLink, Check, Plus, Trash2, Terminal, Star, Pencil } from 'lucide-react'
+import { hudPrompt } from '../../lib/dialog'
 import { supabase } from '../../lib/supabase'
 import { listArtifacts, readArtifact } from '../../lib/artifacts'
 import { splitNotes, plainNotes } from '../../lib/gateNotes'
@@ -362,7 +363,7 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
                   (its kind, its domain, its date) sits beside it as three chips. Domain, Type and Target Completion
                   "still take up wayyyy too much real estate"; a click on a chip opens their controls. */}
               <div style={{ display: 'flex', alignItems: 'flex-start', gap: 20, flexWrap: 'wrap', marginTop: 16 }}>
-                <h1 style={{ ...S.h1, fontSize: 32, lineHeight: 1.14, letterSpacing: '-0.012em', flex: '1 1 420px', minWidth: 0 }}>{/* the gate's number rides with its name (David 11/17) */}{(rel?.parent || task) && rel?.gateN ? <span style={{ color: 'var(--hud-accent)' }}>Gate {rel.gateN} · </span> : null}{name}</h1>
+                <h1 style={{ ...S.h1, fontSize: 32, lineHeight: 1.14, letterSpacing: '-0.012em', flex: '1 1 420px', minWidth: 0 }}>{/* the gate's number rides with its name (David 11/17) */}{(rel?.parent || task) && rel?.gateN ? <span style={{ color: 'var(--hud-accent)' }}>Gate {rel.gateN} · </span> : null}{name}{obj && <button title="Rename" aria-label="Rename" onClick={async () => { const t = String(await hudPrompt({ title: 'Title', value: obj.title || name }) || '').replace(/\s+/g, ' ').trim(); if (t && t !== obj.title) patchObj({ title: t }) }} style={{ background: 'transparent', border: 'none', padding: '0 0 0 12px', cursor: 'pointer', color: 'var(--hud-ink-3)', verticalAlign: 'middle' }}><Pencil size={17} /></button>}</h1>
                 {/* A gate's card carries none of the three chips (David 11/17: "none of that stuff needs to be on a gate
                     card. leave it with. the mission card for now"): its number is in its name, its date is on the trail. */}
                 <div data-card-meta style={{ display: (rel?.parent || task) ? 'none' : 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', position: 'relative', paddingTop: 6 }}>

@@ -25,7 +25,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { DndContext, DragOverlay, PointerSensor, useSensor, useSensors, useDraggable, useDroppable } from '@dnd-kit/core'
 import { ChevronDown, ChevronRight } from 'lucide-react'
 import { Label } from './canon'
-import { addStep, toggleStep, removeStep, setStepOrder } from '../../lib/objectives'
+import { addStep, toggleStep, removeStep, renameStep, setStepOrder } from '../../lib/objectives'
 import { listPages, readPage, blankPage, writePage, slugify } from '../../lib/workspace'
 import { listBuilds } from '../../lib/lumenPanel'
 import { listLiveFiles, isLink, isRequest } from '../../lib/livefiles'
@@ -180,6 +180,12 @@ export default function CardBriefing({ obj, root, kindLabel, steps = [], kids = 
     setBusy(true)
     try { await api.toggleStep(st.id, false); setJustClosed(j => j.filter(id => id !== st.id)); await onReload() } catch (err) { say(`Could not reopen it: ${err.message}`) } finally { setBusy(false) }
   }
+  // A gate's words can be changed where they are read (David 11/19).
+  const rename = async (st) => {
+    const text = String(await hudPrompt({ title: 'Gate', value: st.text }) || '').replace(/\s+/g, ' ').trim().slice(0, 300)
+    if (!text || text === st.text) return
+    try { await (api.renameStep || renameStep)(st.id, text); await onReload() } catch (err) { say(`Could not rename it: ${err.message}`) }
+  }
   const drop = async (st) => {
     if (!await hudConfirm({ title: 'Take this gate off the path?', message: st.text, confirm: 'Take It Off', danger: true })) return
     try { await api.removeStep(st.id); await onReload() } catch (err) { say(`Could not take it off: ${err.message}`) }
@@ -311,7 +317,7 @@ export default function CardBriefing({ obj, root, kindLabel, steps = [], kids = 
                     {isNext && <div className="when">{s.type === 'mission' ? `Gate ${s.gate.n} · This Gate` : 'Next Move'}</div>}
                     <div className={`what${s.type === 'gate' || (s.type === 'step' && !s.done) ? ' link' : ''}`} title={s.type === 'step' && !s.done ? 'Open this gate on the Workbench' : undefined} onClick={s.type === 'gate' ? () => onOpenCard && onOpenCard(s.kid.id) : s.type === 'step' && !s.done ? () => openGate(s.step) : undefined}>{s.type === 'step' && s.step.n != null && <span className="gn">Gate {s.step.n}</span>}{s.text}</div>
                     {s.done && <><span className="when">Closed just now</span><button className="tool" onClick={() => reopen(s.step)}>Reopen</button></>}
-                    {!s.done && s.type === 'step' && (stopExtra ? stopExtra(s.step, { takeOff: () => drop(s.step) }) : <div className="src">{src.lead}{src.quote && <> <q>{src.quote}</q></>}<button className="tool gone" onClick={() => drop(s.step)}>Take It Off</button></div>)}
+                    {!s.done && s.type === 'step' && (stopExtra ? stopExtra(s.step, { takeOff: () => drop(s.step) }) : <div className="src">{src.lead}{src.quote && <> <q>{src.quote}</q></>}<button className="tool gone" style={{ color: 'var(--hud-accent)' }} onClick={() => rename(s.step)}>Rename</button><button className="tool gone" onClick={() => drop(s.step)}>Take It Off</button></div>)}
                     {s.type === 'gate' && <div className="src">Gate {s.n} of {kids.length}{s.kid.due_date ? ` · ${dueWords(s.kid.due_date).short}` : ''}. It closes on its own card.</div>}
                     {/* The title is a few words; the rest of what came in with the gate reads here (David 11/18: "Other data goes into the briefing"). */}
                     {s.type === 'mission' && s.gate.details && <div className="more">{s.gate.details}</div>}

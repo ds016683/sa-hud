@@ -93,6 +93,7 @@ export async function addStep(objectiveId, text, position = 0) {
   return soft(supabase.from('objective_steps').insert({ objective_id: objectiveId, text: String(text).trim().slice(0, 300), position }).select().single())
 }
 export const toggleStep = (id, done) => soft(supabase.from('objective_steps').update({ done, done_at: done ? new Date().toISOString() : null }).eq('id', id).select().single())
+export const renameStep = (id, text) => soft(supabase.from('objective_steps').update({ text }).eq('id', id).select().single())
 export const removeStep = (id) => soft(supabase.from('objective_steps').delete().eq('id', id))
 // The gates of a card in a new order (a gate dropped between two others): each takes its place in the list.
 export const setStepOrder = (ids) => Promise.all(ids.map((id, i) => soft(supabase.from('objective_steps').update({ position: i }).eq('id', id))))

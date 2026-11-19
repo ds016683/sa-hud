@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import {
   Plus, ArrowLeft, Check, Trash2, ArrowUpRight, Folder, FolderPlus, FileText,
-  Upload, Download, Archive, ChevronRight, Hand, RefreshCw,
+  Upload, Download, Pencil, Archive, ChevronRight, Hand, RefreshCw,
 } from 'lucide-react'
 import useProjects, { freshnessOf } from '../hooks/useProjects'
 import ArtifactsTab from './river/ArtifactsTab'
@@ -487,7 +487,7 @@ function ProjectDetail({ project, board: boardProp, api, onBack, initialTab, ini
       {/* The header reads as every card's does (David 11/17): the name is the title, what it is sits to
           the right as chips. Polaris ends the line below; the count is in the side of the Briefing. */}
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap' }}>
-        <h1 style={{ ...S.h1, lineHeight: 1.2, flex: 1, minWidth: 260 }}>{project.name}</h1>
+        <h1 style={{ ...S.h1, lineHeight: 1.2, flex: 1, minWidth: 260 }}>{project.name}<button title="Rename" aria-label="Rename" onClick={async () => { const t = String(await hudPrompt({ title: 'Title', value: project.name }) || '').replace(/\s+/g, ' ').trim(); if (t && t !== project.name) api.updateProject(project.id, { name: t }) }} style={{ background: 'transparent', border: 'none', padding: '0 0 0 12px', cursor: 'pointer', color: 'var(--hud-ink-3)', verticalAlign: 'middle' }}><Pencil size={17} /></button></h1>
         <span style={{ display: 'flex', gap: 8, flexWrap: 'wrap', paddingTop: 4 }}>
           <span className="brf-chip" style={{ cursor: 'default', gap: 6 }}><KindIcon kind="Main Mission" size={13} color={KIND_COLOR['Main Mission']} />Main Mission</span>
           {(CATEGORY_LABELS[project.category] || project.category) && <span className="brf-chip" style={{ cursor: 'default' }}>{CATEGORY_LABELS[project.category] || project.category}</span>}
