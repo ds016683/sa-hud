@@ -271,7 +271,7 @@ function Board() {
           </div>
 
           <div className="bd-row">
-            <SectionTag name="Loadout"><span>1 Of 2 Mission Slots</span><a>Activity Log</a><a>{`Proposed Steps · ${D.steps}`}</a></SectionTag>
+            <SectionTag name="Loadout" />
             <div className="bd-slots">{SLOTS.map((slot, i) => <Slot key={slot.name} i={i} slot={slot} />)}</div>
           </div>
 
