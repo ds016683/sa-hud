@@ -189,7 +189,8 @@ h1 { font:500 40px/1.1 var(--serif); letter-spacing:-.008em; margin:0; }
 .bd-cal.bd-now { box-shadow:inset 2px 0 0 var(--green); padding-left:14px; margin-left:-14px; }
 .bd-step { display:grid; grid-template-columns:minmax(0,1fr) auto; column-gap:14px; align-items:center; padding:11px 0; border-top:1px solid rgba(255,255,255,.07); }
 .bd-step:first-of-type { border-top:0; padding-top:2px; }
-.bd-step .bd-tx { font-size:14.5px; line-height:1.45; } .bd-step .bd-ms { font-size:13px; color:var(--ink2); margin-top:2px; }
+.bd-step .bd-ms, .bd-det .bd-ms2 { font:500 16.5px/1.3 var(--serif); color:var(--ink); }
+.bd-step .bd-tx, .bd-det .bd-tx2 { font-size:14.5px; line-height:1.45; color:var(--ink2); margin-top:3px; }
 .bd-light { width:11px; height:11px; border-radius:99px; background:var(--c); display:inline-block; animation:lite 2.6s ease-in-out infinite; }
 .bd-light.bd-fast { animation-duration:1.1s; }
 @keyframes lite { 0%,100% { box-shadow:0 0 0 0 transparent } 50% { box-shadow:0 0 12px 3px color-mix(in srgb, var(--c) 60%, transparent) } }
@@ -277,7 +278,7 @@ function Dashboard() {
                 {D.steps.map((p, i) => (
                   <div key={i} className="bd-det">
                     <span className="bd-dt">{p.at || ''}</span>
-                    <div><div className="bd-tx">{p.text}</div><div className="bd-ms">{`${p.mission} · From ${p.from || 'A Claude Session'}`}</div></div>
+                    <div><div className="bd-ms2">{p.mission}</div><div className="bd-tx2">{p.text}</div><div className="bd-ms" style={{ font: '13px var(--sans)', color: 'var(--ink3)', marginTop: 3 }}>{`From ${p.from || 'A Claude Session'}`}</div></div>
                     <div className="bd-yn"><button title="Accept" style={{ '--c': 'var(--purple)' }}><Check size={16} /></button><button title="Reject" style={{ '--c': 'rgba(243,241,234,.44)' }}><X size={16} /></button></div>
                   </div>
                 ))}
@@ -335,7 +336,7 @@ function Dashboard() {
                 <SectionTag name="Proposed Steps"><Light {...stepsLight(D.stepsWaiting ?? D.steps.length)} /><Open what="steps" label="The Day's Proposed Steps" Icon={PageIcon} set={setOpen} /></SectionTag>
                 {D.steps.map((p, i) => (
                   <div key={i} className="bd-step">
-                    <div><div className="bd-tx">{p.text}</div><div className="bd-ms">{p.mission}</div></div>
+                    <div><div className="bd-ms">{p.mission}</div><div className="bd-tx">{p.text}</div></div>
                     <div className="bd-yn"><button title="Accept" style={{ '--c': 'var(--purple)' }}><Check size={16} /></button><button title="Reject" style={{ '--c': 'rgba(243,241,234,.44)' }}><X size={16} /></button></div>
                   </div>
                 ))}
