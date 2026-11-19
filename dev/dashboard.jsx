@@ -51,6 +51,11 @@ const D = {
     { at: at(8, 0), kind: 'Meeting', text: 'Sample Weekly Sync', meta: '9 attendees', documented: true },
   ],
   logMeta: '29 Lines',
+  lights: {
+    calendar: { level: 'green', why: 'On cadence: every meeting so far was started on time' },
+    log: { level: 'red', why: 'Nothing logged for 42 minutes, and no Release or Off is on' },
+    steps: { level: 'blue', why: '5 proposed steps are waiting' },
+  },
   earned: { run: 4, impromptu: 2, 'full-day': 1 },
   miles: 46,
   ...JSON.parse(new URLSearchParams(location.search).get('d') || '{}'),
@@ -186,6 +191,9 @@ h1 { font:500 40px/1.1 var(--serif); letter-spacing:-.008em; margin:0; }
 .bd-step { display:grid; grid-template-columns:minmax(0,1fr) auto; column-gap:14px; align-items:center; padding:11px 0; border-top:1px solid rgba(255,255,255,.07); }
 .bd-step:first-of-type { border-top:0; padding-top:2px; }
 .bd-step .bd-tx { font-size:14.5px; line-height:1.45; } .bd-step .bd-ms { font-size:13px; color:var(--ink2); margin-top:2px; }
+.bd-light { width:11px; height:11px; border-radius:99px; background:var(--c); display:inline-block; animation:lite 2.6s ease-in-out infinite; }
+.bd-light.bd-fast { animation-duration:1.1s; }
+@keyframes lite { 0%,100% { box-shadow:0 0 0 0 transparent } 50% { box-shadow:0 0 12px 3px color-mix(in srgb, var(--c) 60%, transparent) } }
 .bd-open { width:30px; height:30px; border-radius:99px; display:inline-grid; place-items:center; background:transparent; border:1px solid rgba(255,255,255,.2); color:var(--accent); cursor:pointer; }
 .bd-open:hover { border-color:var(--accent); background:rgba(138,202,255,.08); }
 .bd-veil { position:fixed; inset:0; z-index:80; background:rgba(6,16,26,.78); backdrop-filter:blur(3px); display:grid; place-items:center; padding:32px; }
@@ -206,11 +214,15 @@ h1 { font:500 40px/1.1 var(--serif); letter-spacing:-.008em; margin:0; }
 `
 
 // One small icon at the end of a section's tag opens that section's detail for the day.
+// A section's light (David 11/18: "some kind of a light indicator for calendar, activity log, and proposed steps";
+// 11/19, on the counts that sat here: "i don't like this AI text up here"). The light says the state; the reason
+// is on hover. Green is fine, blue is worth a look, red is off.
+const LIGHT = { green: 'var(--green)', blue: 'var(--accent)', red: 'var(--red)' }
+const Light = ({ level, why }) => <span className={`bd-light${level === 'red' ? ' bd-fast' : ''}`} style={{ '--c': LIGHT[level] }} title={why} aria-label={why} />
 const Open = ({ what, label, Icon, set }) => <button className="bd-open" title={label} aria-label={label} onClick={() => set(what)}><Icon size={15} strokeWidth={1.7} /></button>
 const POPS = { calendar: 'Calendar', steps: 'Proposed Steps', log: 'Activity Log', badges: 'Badges' }
 
 function Dashboard() {
-  const got = BADGE_IDS.filter(id => D.earned[id]).length
   const [open, setOpen] = useState(new URLSearchParams(location.search).get('open'))
   return (
     <div className="bd-shell sa-dark sa-app">
@@ -308,7 +320,7 @@ function Dashboard() {
           <div className="bd-cols">
             <div>
               <div className="bd-row">
-                <SectionTag name="Calendar"><span>{D.calendarMeta}</span><Open what="calendar" label="The Day's Calendar" Icon={CalendarRange} set={setOpen} /></SectionTag>
+                <SectionTag name="Calendar"><Light {...D.lights.calendar} /><Open what="calendar" label="The Day's Calendar" Icon={CalendarRange} set={setOpen} /></SectionTag>
                 {D.calendar.map((e, i) => (
                   <div key={i} className={`bd-cal bd-${e.state}`}>
                     <button className={`bd-go2${e.state === 'done' ? ' bd-past' : e.state === 'now' ? ' bd-live2' : ''}`} title={e.state === 'now' ? 'On now' : 'Start · opens the Zoom link and starts the clock'}>{e.state === 'now' ? <Video size={14} /> : <Play size={13} fill="currentColor" style={{ marginLeft: 2 }} />}</button>
@@ -319,7 +331,7 @@ function Dashboard() {
                 ))}
               </div>
               <div className="bd-row">
-                <SectionTag name="Proposed Steps"><span>{`${D.steps.length} Waiting`}</span><Open what="steps" label="The Day's Proposed Steps" Icon={PageIcon} set={setOpen} /></SectionTag>
+                <SectionTag name="Proposed Steps"><Light {...D.lights.steps} /><Open what="steps" label="The Day's Proposed Steps" Icon={PageIcon} set={setOpen} /></SectionTag>
                 {D.steps.map((p, i) => (
                   <div key={i} className="bd-step">
                     <div><div className="bd-tx">{p.text}</div><div className="bd-ms">{p.mission}</div></div>
@@ -329,17 +341,13 @@ function Dashboard() {
               </div>
             </div>
             <div className="bd-row">
-              <SectionTag name="Activity Log"><span>{D.logMeta}</span><Open what="log" label="The Day's Full Log" Icon={ScrollText} set={setOpen} /></SectionTag>
+              <SectionTag name="Activity Log"><Light {...D.lights.log} /><Open what="log" label="The Day's Full Log" Icon={ScrollText} set={setOpen} /></SectionTag>
               {D.log.map((r, i) => <TimelineRow key={i} r={r} last={i === D.log.length - 1} />)}
             </div>
           </div>
 
           <div className="bd-row">
-            <SectionTag name="Badges">
-              <span className="bd-key2"><i style={{ background: PURPLE }} />At Its Maximum, Or Three Times</span>
-              <span className="bd-key2"><i style={{ background: BLUE }} />Earned</span>
-              <span className="bd-key2"><i style={{ background: 'rgba(243,241,234,.3)' }} />Not Yet</span>
-              <span>{`${got} Of ${BADGE_IDS.length} Earned · ${D.miles} Miles Today`}</span><Open what="badges" label="The Day's Badges" Icon={Medal} set={setOpen} />
+            <SectionTag name="Badges"><Open what="badges" label="The Day's Badges" Icon={Medal} set={setOpen} />
             </SectionTag>
             <div className="bd-badges">
               {BADGE_IDS.map(id => {
