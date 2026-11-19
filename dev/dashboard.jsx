@@ -5,9 +5,9 @@
 // or more times, i want the color of the badge to be purple."). Same shell and section tags as the Board mock-up;
 // the Activity Log rows and the badge medallions are the real components. A picture to rule on: nothing is read
 // or written. The words are sample data; ?d=<json> overrides any of them for a screenshot.
-import { StrictMode } from 'react'
+import { StrictMode, useState } from 'react'
 import { createRoot } from 'react-dom/client'
-import { Waves, Footprints, CalendarDays, LayoutDashboard, BookOpen, Activity, Award, FileText, PenLine, Mic, Pencil, BookMarked, Mountain, Briefcase, Target, Wrench, Archive, FolderOpen, Landmark, Wallet, Check, X } from 'lucide-react'
+import { Waves, Footprints, CalendarDays, LayoutDashboard, BookOpen, Activity, Award, FileText, PenLine, Mic, Pencil, BookMarked, Mountain, Briefcase, Target, Wrench, Archive, FolderOpen, Landmark, Wallet, Check, X, FileText as PageIcon, CalendarRange, ScrollText, Medal } from 'lucide-react'
 import '../src/sa-hud.css'
 import ProtocolHud from '../src/components/river/ProtocolHud'
 import { SectionTag } from '../src/components/river/canon'
@@ -28,7 +28,7 @@ const D = {
   ],
   calendarMeta: '5 Meetings · 4h 15m',
   steps: [
-    { text: 'Packaged a panel as a drop-in skill.', mission: 'Sample Main Mission' },
+    { at: '2:10 PM', text: 'Packaged a panel as a drop-in skill.', mission: 'Sample Main Mission' },
     { text: 'Added a Scope Of Work section to the proposal.', mission: 'Sample Client Mission' },
     { text: 'Drafted a starter pricing skill file.', mission: 'Sample Skill Mission' },
     { text: 'Added a Protocol bucket to the run report.', mission: 'Sample Platform Mission' },
@@ -162,6 +162,16 @@ h1 { font:500 40px/1.1 var(--serif); letter-spacing:-.008em; margin:0; }
 .bd-step { display:grid; grid-template-columns:minmax(0,1fr) auto; column-gap:14px; align-items:center; padding:11px 0; border-top:1px solid rgba(255,255,255,.07); }
 .bd-step:first-of-type { border-top:0; padding-top:2px; }
 .bd-step .bd-tx { font-size:14.5px; line-height:1.45; } .bd-step .bd-ms { font-size:13px; color:var(--ink2); margin-top:2px; }
+.bd-open { width:30px; height:30px; border-radius:99px; display:inline-grid; place-items:center; background:transparent; border:1px solid rgba(255,255,255,.2); color:var(--accent); cursor:pointer; }
+.bd-open:hover { border-color:var(--accent); background:rgba(138,202,255,.08); }
+.bd-veil { position:fixed; inset:0; z-index:80; background:rgba(6,16,26,.78); backdrop-filter:blur(3px); display:grid; place-items:center; padding:32px; }
+.bd-pop { width:min(760px, 100%); max-height:86vh; overflow-y:auto; background:#0F2334; border:1px solid rgba(255,255,255,.14); border-radius:16px; padding:26px 30px 24px; box-shadow:0 30px 80px -20px rgba(0,0,0,.7); }
+.bd-pophead { display:flex; align-items:flex-start; justify-content:space-between; gap:16px; margin-bottom:18px; }
+.bd-pophead h2 { font:500 28px/1.15 var(--serif); margin:0; } .bd-pophead div div { font-size:14px; color:var(--ink2); margin-top:6px; }
+.bd-det { display:grid; grid-template-columns:74px minmax(0,1fr) auto; column-gap:16px; align-items:center; padding:14px 0; border-top:1px solid rgba(255,255,255,.08); }
+.bd-det .bd-dt { font-size:13.5px; color:var(--ink2); font-variant-numeric:tabular-nums; }
+.bd-det .bd-tx { font-size:15.5px; line-height:1.45; } .bd-det .bd-ms { font-size:13.5px; color:var(--ink2); margin-top:3px; }
+.bd-popfoot { display:flex; justify-content:space-between; align-items:center; margin-top:18px; padding-top:16px; border-top:1px solid rgba(255,255,255,.08); font-size:13.5px; color:var(--ink2); }
 .bd-yn { display:flex; gap:8px; }
 .bd-yn button { width:34px; height:34px; border-radius:99px; display:grid; place-items:center; background:transparent; border:1.5px solid var(--c); color:var(--c); cursor:pointer; }
 .bd-badges { display:grid; grid-template-columns:repeat(7, minmax(0,1fr)); gap:26px 14px; }
@@ -171,11 +181,49 @@ h1 { font:500 40px/1.1 var(--serif); letter-spacing:-.008em; margin:0; }
 .bd-key2 { display:inline-flex; align-items:center; gap:6px; } .bd-key2 i { width:9px; height:9px; border-radius:99px; display:inline-block; }
 `
 
+// One small icon at the end of a section's tag opens that section's detail for the day.
+const Open = ({ what, label, Icon, set }) => <button className="bd-open" title={label} aria-label={label} onClick={() => set(what)}><Icon size={15} strokeWidth={1.7} /></button>
+const POPS = { calendar: 'Calendar', steps: 'Proposed Steps', log: 'Activity Log', badges: 'Badges' }
+
 function Dashboard() {
   const got = BADGE_IDS.filter(id => D.earned[id]).length
+  const [open, setOpen] = useState(new URLSearchParams(location.search).get('open'))
   return (
     <div className="bd-shell sa-dark sa-app">
       <style>{CSS}</style>
+      {open && POPS[open] && (
+        <div className="bd-veil" onClick={() => setOpen(null)}>
+          <div className="bd-pop" role="dialog" aria-label={POPS[open]} onClick={e => e.stopPropagation()}>
+            <div className="bd-pophead">
+              <div><h2>{POPS[open]}</h2><div>{D.date}</div></div>
+              <button className="bd-quiet" onClick={() => setOpen(null)}>Close</button>
+            </div>
+            {open === 'steps' && (
+              <>
+                {D.steps.map((p, i) => (
+                  <div key={i} className="bd-det">
+                    <span className="bd-dt">{p.at || ''}</span>
+                    <div><div className="bd-tx">{p.text}</div><div className="bd-ms">{`${p.mission} · From ${p.from || 'A Claude Session'}`}</div></div>
+                    <div className="bd-yn"><button title="Accept" style={{ '--c': 'var(--purple)' }}><Check size={16} /></button><button title="Reject" style={{ '--c': 'rgba(243,241,234,.44)' }}><X size={16} /></button></div>
+                  </div>
+                ))}
+                <div className="bd-popfoot"><span>{`${D.steps.length} Waiting · 0 Accepted · 0 Rejected Today`}</span><button className="bd-quiet">Accept All</button></div>
+              </>
+            )}
+            {open === 'log' && D.log.map((r, i) => <TimelineRow key={i} r={r} last={i === D.log.length - 1} />)}
+            {open === 'calendar' && D.calendar.map((e, i) => (
+              <div key={i} className={`bd-cal bd-${e.state}`}><span className="bd-when">{`${e.from} to ${e.to}`}</span><span className="bd-what">{e.title}</span><span className="bd-st">{e.state === 'done' ? 'Done' : e.state === 'now' ? 'Now' : ''}</span></div>
+            ))}
+            {open === 'badges' && BADGE_IDS.filter(id => D.earned[id]).map(id => (
+              <div key={id} className="bd-det" style={{ gridTemplateColumns: '58px minmax(0,1fr) auto' }}>
+                <BadgeMedallion id={id} size={46} color={badgeState(id).color} />
+                <div><div className="bd-tx">{BADGES[id].label}</div><div className="bd-ms">{BADGES[id].desc}</div></div>
+                <span className="bd-dt" style={{ textAlign: 'right' }}>{`${D.earned[id] > 1 ? `${D.earned[id]} Times · ` : ''}${BADGES[id].miles * D.earned[id]} mi`}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
       <aside className="bd-side">
         <div className="bd-brand">Sovereign Architect<span>Command Center</span></div>
         {NAV.map(([g, items]) => (
@@ -199,7 +247,7 @@ function Dashboard() {
           <div className="bd-cols">
             <div>
               <div className="bd-row">
-                <SectionTag name="Calendar"><span>{D.calendarMeta}</span></SectionTag>
+                <SectionTag name="Calendar"><span>{D.calendarMeta}</span><Open what="calendar" label="The Day's Calendar" Icon={CalendarRange} set={setOpen} /></SectionTag>
                 {D.calendar.map((e, i) => (
                   <div key={i} className={`bd-cal bd-${e.state}`}>
                     <span className="bd-when">{`${e.from} to ${e.to}`}</span>
@@ -209,7 +257,7 @@ function Dashboard() {
                 ))}
               </div>
               <div className="bd-row">
-                <SectionTag name="Proposed Steps"><span>{`${D.steps.length} Waiting`}</span><a>Open The Page</a></SectionTag>
+                <SectionTag name="Proposed Steps"><span>{`${D.steps.length} Waiting`}</span><Open what="steps" label="The Day's Proposed Steps" Icon={PageIcon} set={setOpen} /></SectionTag>
                 {D.steps.map((p, i) => (
                   <div key={i} className="bd-step">
                     <div><div className="bd-tx">{p.text}</div><div className="bd-ms">{p.mission}</div></div>
@@ -219,7 +267,7 @@ function Dashboard() {
               </div>
             </div>
             <div className="bd-row">
-              <SectionTag name="Activity Log"><span>{D.logMeta}</span><a>Open The Log</a></SectionTag>
+              <SectionTag name="Activity Log"><span>{D.logMeta}</span><Open what="log" label="The Day's Full Log" Icon={ScrollText} set={setOpen} /></SectionTag>
               {D.log.map((r, i) => <TimelineRow key={i} r={r} last={i === D.log.length - 1} />)}
             </div>
           </div>
@@ -229,7 +277,7 @@ function Dashboard() {
               <span className="bd-key2"><i style={{ background: PURPLE }} />At Its Maximum, Or Three Times</span>
               <span className="bd-key2"><i style={{ background: BLUE }} />Earned</span>
               <span className="bd-key2"><i style={{ background: 'rgba(243,241,234,.3)' }} />Not Yet</span>
-              <span>{`${got} Of ${BADGE_IDS.length} Earned · ${D.miles} Miles Today`}</span>
+              <span>{`${got} Of ${BADGE_IDS.length} Earned · ${D.miles} Miles Today`}</span><Open what="badges" label="The Day's Badges" Icon={Medal} set={setOpen} />
             </SectionTag>
             <div className="bd-badges">
               {BADGE_IDS.map(id => {
