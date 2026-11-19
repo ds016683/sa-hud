@@ -14,6 +14,7 @@
 // Lights: green no maintenance needed, gold maintenance required, red
 // necessary or critical, blinking red something serious may be overlooked.
 // The thresholds are David's (10/1).
+import { sayLogged } from './LoggedPop'
 import { useEffect, useState, useCallback } from 'react'
 import { Play, Square, Plane, CalendarCheck, Brain, Mail, Hash, Receipt, MessageSquare, Monitor } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
@@ -147,6 +148,7 @@ export default function RecurringPanel({ onChange }) {
       const s = byId.get(eid(day, r.slug))
       if (!isRunning(s)) return
       await closeSpan(r, s, s.started_at, new Date().toISOString(), { personal: s.special_notes === 'personal' })
+      sayLogged({ title: r.label, minutes: (new Date() - new Date(s.started_at)) / 60000, where: s.special_notes === 'personal' ? 'Your Day' : 'Harvest' })
       if (r.slug === 'bill-pay') {
         // The week closes on David's word (10/14): yes pays 25 and turns the light green until Sunday; no leaves it red.
         const yes = await hudConfirm("Ready to Close Out This Week's Bill Pay?")

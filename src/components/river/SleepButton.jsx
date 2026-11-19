@@ -2,6 +2,7 @@
 // wake up", and on documenting every day: "I think that it's gonna end up mattering. Even if it's a little painful.").
 // A personal timer like the Release ones (never Harvest), but it crosses midnight: the open row is found whatever day
 // it started on, and it ends when he presses it again or starts the Morning Protocol (stopSleep, called from there).
+import { sayLogged } from './LoggedPop'
 import { useCallback, useEffect, useState } from 'react'
 import { BedDouble, Square } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
@@ -35,7 +36,7 @@ export default function SleepButton({ onChange, say }) {
   const running = !!row
   const tap = async () => {
     try {
-      if (running) await stopSleep()
+      if (running) { const m = await stopSleep(); if (m) sayLogged({ title: 'Sleep', minutes: m, where: 'Your Day' }) }
       else {
         const at = new Date(), day = chiToday()
         const { error } = await supabase.from('meeting_sessions').insert({ event_id: `personal:${day}:sleep:${at.toISOString().slice(11, 19).replace(/:/g, '')}`, day, subject: 'Sleep', started_at: at.toISOString(), attended_at: at.toISOString(), harvest_logged: false })

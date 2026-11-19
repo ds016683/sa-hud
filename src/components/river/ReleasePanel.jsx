@@ -1,6 +1,7 @@
 // Release: the manual's phase for letting go, surrendering outcomes. Personal
 // timers, tracked only in the HUD (never Harvest), with start and stop stamps
 // so David's time can be studied later. Gaming asks which game.
+import { sayLogged } from './LoggedPop'
 import { useEffect, useState, useCallback } from 'react'
 import { Play, Square, Gamepad2, Moon, Car } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
@@ -67,6 +68,7 @@ export default function ReleasePanel({ onChange }) {
         note: `personal · ${t.label.toLowerCase()} timer · ${chiClock(r.started_at)} to ${chiClock(stopped.toISOString())} CT`,
         source: `timer:${t.slug}`, at: stopped.toISOString(),
       })
+      sayLogged({ title: r.subject, minutes, where: 'Your Day' })
       setMsg(null); await refresh(); onChange && onChange()
     } catch (e) { setMsg(`Could not stop: ${e.message}`) }
   }

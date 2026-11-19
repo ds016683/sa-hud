@@ -4,6 +4,7 @@
 // is the Ad Hoc Slot, Load the Unplanned: the Ambush lives in it (a task or a
 // call, typed into the slot itself, one at a time, dispatched when done).
 // Empty slots stay visible on purpose (David, 10/7: the structure is the point).
+import { sayLogged } from './LoggedPop'
 import { useEffect, useState, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { GlyphLoadout, GlyphHolster, GlyphStash, ExtractMarker } from './glyphs'
@@ -401,7 +402,7 @@ function RoutineSlot({ tick, onChanged, onState }) {
       let logged = false
       if (!personal) { try { await logToHarvest(running.subject, Math.round(span * 100) / 100); logged = true } catch (e) { setMsg(`Stopped; Harvest did not take it: ${e.message}`) } }
       await upsertSession({ event_id: running.event_id, day, subject: running.subject, started_at: running.started_at, stopped_at: stoppedIso, hours, harvest_logged: logged })
-      if (logged) setMsg(`${running.subject}: ${fmtClock(span * 60)} logged to Harvest`)
+      if (logged) { setMsg(null); sayLogged({ title: running.subject, minutes: span * 60 }) } else if (personal) sayLogged({ title: running.subject, minutes: span * 60, where: 'Your Day' })
       await pull(); onChanged && onChanged()
     } catch (e) { setMsg(`Could not stop: ${e.message}`) }
   }

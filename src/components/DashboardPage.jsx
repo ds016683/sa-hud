@@ -4,6 +4,7 @@
 // purple."). The page under the Board: the day's calendar across the top, Proposed Steps beside Commitments, the
 // Activity Log with its miles down the right, and the day's badges behind a selector. Each section opens with its
 // tag; the tag's far end carries a light for the section's state and nothing written.
+import { sayLogged } from './river/LoggedPop'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Play, Square, Video, Check, X as XIcon, Plus, Tag, ScrollText } from 'lucide-react'
 import { supabase } from '../lib/supabase'
@@ -133,7 +134,7 @@ export default function DashboardPage({ onNavigate }) {
               return (
                 <Row key={e.id} first={i === 0} cols="36px 170px minmax(0, 1fr) auto" style={live || running ? { boxShadow: `inset 2px 0 0 ${GREEN}`, paddingLeft: 14, marginLeft: -14 } : undefined}>
                   {running
-                    ? <Round title="On now · stop the meeting's clock" color={GREEN} className="dash-pulse" onClick={() => act(() => stopMeetingTimer(e, e.session, day))}><Video size={14} /></Round>
+                    ? <Round title="On now · stop the meeting's clock" color={GREEN} className="dash-pulse" onClick={() => act(async () => { const r = await stopMeetingTimer(e, e.session, day); sayLogged({ title: e.subject, minutes: (r.hours || 0) * 60, where: r.logged ? 'Harvest' : 'Your Day' }) })}><Video size={14} /></Round>
                     : <Round title="Start the meeting's clock" color={past ? 'rgba(243,241,234,0.22)' : BLUE} onClick={() => act(() => startMeetingTimer(e, day))}><Play size={13} fill="currentColor" style={{ marginLeft: 2, color: past ? GRAY : BLUE }} /></Round>}
                   <span style={{ fontSize: 14, color: past ? GRAY : INK2, fontVariantNumeric: 'tabular-nums' }}>{fmtTime(e.start_at)} to {fmtTime(e.end_at)}</span>
                   <div style={{ minWidth: 0 }}>

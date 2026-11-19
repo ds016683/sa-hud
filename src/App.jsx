@@ -25,6 +25,7 @@ import MHPIPage from './components/MHPIPage'
 import LandingPage from './components/LandingPage'
 import AgendaPage from './components/AgendaPage'
 import DashboardPage from './components/DashboardPage'
+import LoggedPop from './components/river/LoggedPop'
 import NarrativePage from './components/NarrativePage'
 import ActivityPage from './components/ActivityPage'
 import AccomplishmentsPage from './components/AccomplishmentsPage'
@@ -257,6 +258,7 @@ export default function App() {
 
   return (
     <div className="sa-app">
+      <LoggedPop />
       <Sidebar active={active} onChange={setActive} onSignOut={handleSignOut} />
       <div className={`sa-main sa-surface-dark${active === 'ecosystem' ? '' : ' sa-dark-scroll'}`}>
         <Topbar active={active} onBack={goBack} />
