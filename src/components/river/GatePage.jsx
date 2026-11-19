@@ -41,13 +41,13 @@ button.gp-ic:hover { background: color-mix(in srgb, var(--c, ${BLUE}) 16%, trans
 .gp-ln { display: grid; grid-template-columns: 160px 1fr; align-items: start; padding: 18px 0 14px; }
 .gp-ln + .gp-ln { border-top: 1px solid rgba(255,255,255,.07); }
 .gp-k { font: 500 16px 'Lora', Georgia, serif; } .gp-k small { display: block; font: 400 12.5px var(--font-sans, 'Instrument Sans', sans-serif); color: rgba(243,241,234,.7); margin-top: 3px; }
-.gp-tr { display: flex; position: relative; }
+.gp-tr { display: flex; position: relative; align-items: flex-start; }
 .gp-tr::before { content: ""; position: absolute; left: 8px; right: 8px; top: 9px; height: 1.5px; background: rgba(255,255,255,.12); }
-.gp-nd { flex: 1; position: relative; min-width: 0; background: transparent; border: 0; padding: 0; text-align: left; font: inherit; color: inherit; }
+.gp-nd { display: block; flex: 1; position: relative; min-width: 0; background: transparent; border: 0; padding: 0; text-align: left; font: inherit; color: inherit; }
 button.gp-nd { cursor: pointer; }
 .gp-nd b { display: block; width: 13px; height: 13px; border-radius: 99px; border: 1.5px solid rgba(243,241,234,.44); background: #0D1D2C; margin: 3px 0 9px 2px; position: relative; }
 .gp-nd.d b { background: var(--c); border-color: var(--c); }
-.gp-nd.d::after { content: ""; position: absolute; left: 12px; right: -4px; top: 9px; height: 1.5px; background: var(--c); }
+.gp-nd.thru::after { content: ""; position: absolute; left: 12px; right: -4px; top: 9px; height: 1.5px; background: var(--c); }
 .gp-nd:last-child::after { display: none; }
 .gp-nd.on b { width: 19px; height: 19px; margin: 0 0 6px -1px; background: ${BLUE}; border-color: ${BLUE}; box-shadow: 0 0 0 6px rgba(138,202,255,.2); }
 .gp-nd span { display: block; font-size: 13px; line-height: 1.3; color: rgba(243,241,234,.7); padding-right: 14px; overflow: hidden; text-overflow: ellipsis; }
@@ -127,14 +127,14 @@ export default function GatePage({ gate, gates, root, missionTitle, up = [], sou
             <div className="gp-ln">
               <div className="gp-k">Mission Trail<small>{closedN} Of {gates.length} Closed</small></div>
               <div className="gp-tr" style={{ '--c': PURPLE }}>
-                {gates.map((g, i) => <button key={g.id} className={`gp-nd${g.id === gate.id ? ' on' : g.done ? ' d' : ''}`} onClick={() => g.id !== gate.id && onPick && onPick(g)} title={g.text}><b /><span>Gate {g.n != null ? g.n : i + 1}<small>{String(g.text).slice(0, 60)}</small></span></button>)}
+                {gates.map((g, i) => <button key={g.id} className={`gp-nd${g.id === gate.id ? ' on' : g.done ? ' d' : ''}${g.done ? ' thru' : ''}`} onClick={() => g.id !== gate.id && onPick && onPick(g)} title={g.text}><b /><span>Gate {g.n != null ? g.n : i + 1}<small>{String(g.text).slice(0, 60)}</small></span></button>)}
                 <div className="gp-nd" style={{ flex: '0 0 90px' }}><b /><span>Polaris</span></div>
               </div>
             </div>
             <div className="gp-ln">
               <div className="gp-k">Gate {n} Timeline<small>{gate.done ? `Closed ${stamp(gate.done_at)}` : (gate.created_at || source?.at) ? days(gate.created_at || source.at) : 'Open'}</small></div>
               <div className="gp-tr" style={{ '--c': GREEN }}>
-                {line.map((e, i) => <div key={i} className={`gp-nd${e.done ? ' d' : ''}`} style={i === line.length - 1 ? { flex: '0 0 90px' } : undefined}><b /><span>{e.text}<small>{stamp(e.at)}</small></span></div>)}
+                {line.map((e, i) => <div key={i} className={`gp-nd${e.done ? ' d' : ''}${e.done && line[i + 1]?.done ? ' thru' : ''}`} style={i === line.length - 1 ? { flex: '0 0 90px' } : undefined}><b /><span>{e.text}<small>{stamp(e.at)}</small></span></div>)}
               </div>
             </div>
           </div>
