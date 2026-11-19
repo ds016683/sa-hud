@@ -7,11 +7,13 @@
 // The words are sample data; ?d=<json> overrides any of them for a screenshot.
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
-import { Waves, Footprints, CalendarDays, BookOpen, Activity, Award, FileText, PenLine, Mic, Pencil, BookMarked, Mountain, Briefcase, Target, Wrench, Archive, FolderOpen, Landmark, Wallet, Sunrise, Moon, MessageSquare, Monitor, CalendarCheck, Brain, Plane, Gamepad2, Car, Flag, Zap } from 'lucide-react'
+import { Waves, Footprints, CalendarDays, BookOpen, Activity, Award, FileText, PenLine, Mic, Pencil, BookMarked, Mountain, Briefcase, Target, Wrench, Archive, FolderOpen, Landmark, Wallet, Sunrise, Moon, MessageSquare, Monitor, CalendarCheck, Brain, Plane, Gamepad2, Car, Zap, Play, Square } from 'lucide-react'
 import '../src/sa-hud.css'
 import { Instrument, InstrumentGroup } from '../src/components/river/Instrument'
 import ProtocolHud from '../src/components/river/ProtocolHud'
 import { SectionTag } from '../src/components/river/canon'
+import { GlyphHolster, GlyphStash } from '../src/components/river/glyphs'
+import BadgeMedallion from '../src/components/BadgeArt'
 
 const D = {
   title: "Wednesday's Board", date: 'Wednesday, November 18, 2026 · Chicago',
@@ -28,6 +30,14 @@ const D = {
   stash: { title: 'Sample Relaunch Plan', under: 'Main Mission · Sample Program', count: '1 Of 5' },
   ...JSON.parse(new URLSearchParams(location.search).get('d') || '{}'),
 }
+const FULL = new URLSearchParams(location.search).get('full') === '1'
+// Each slot has one color, and everything on its card wears it (David 11/18): the border, the timer, the gate bar,
+// the medallion and the icons. Primary purple, Secondary baby blue, Utility green.
+const SLOTS = [
+  { name: 'Primary', hex: '#B4A3E8', item: { badge: 'mission-task', title: D.slot.title, under: D.slot.under, clock: D.slot.clock, running: true, gates: D.slot.gates, pct: 66, miles: D.slot.miles, due: D.slot.due } },
+  { name: 'Secondary', hex: '#8ACAFF', item: FULL ? { badge: 'contract', title: 'Sample Contract Review', under: 'Side Mission · Contract', clock: '40m', running: false, gates: '1 of 4 closed', pct: 25, miles: '15 on close', due: 'Friday' } : null },
+  { name: 'Utility', hex: '#57BE97', item: FULL ? { badge: 'impromptu', title: 'Phone Call', under: 'Sample Caller · Unplanned', clock: '6m', running: false, miles: '1 on close', utility: true } : null },
+]
 const LEFT = Number(new URLSearchParams(location.search).get('run'))   // minutes left on a running clock, for the picture
 const RUNNING = LEFT > 0
 const PROTO = { id: 'mission', label: D.pill[0], color: 'var(--hud-pos)', title: D.pill[1], since: new Date(Date.now() - 24.9 * 60000).toISOString(), live: true, slots: [{ live: true }, { live: false }] }
@@ -72,11 +82,13 @@ h1 { font:500 40px/1.1 var(--serif); letter-spacing:-.008em; margin:0; }
 .bd-slotname.bd-on { color:var(--ink); }
 .bd-pips { display:inline-flex; gap:4px; }
 .bd-pip { width:9px; height:9px; transform:rotate(45deg); border:1.5px solid var(--ink3); border-radius:1.5px; }
-.bd-pip.bd-me { border-color:var(--accent); }
-.bd-pip.bd-run { border-color:var(--green); background:var(--green); box-shadow:0 0 10px rgba(87,190,151,.7); }
-.bd-slotname svg { color:var(--purple); }
+.bd-pip.bd-me { border-color:var(--c); }
+.bd-pip.bd-me.bd-full { background:var(--c); }
+.bd-pip.bd-me.bd-run { box-shadow:0 0 10px color-mix(in srgb, var(--c) 75%, transparent); }
+.bd-slotname svg { color:var(--c); }
 .bd-col { flex:1; border:1px solid var(--line); border-top:2px solid var(--line); border-radius:12px; padding:18px 20px 16px; min-height:236px; display:flex; flex-direction:column; }
-.bd-col.bd-live { border-top-color:var(--green); }
+.bd-col { border-top-color:color-mix(in srgb, var(--c) 38%, transparent); }
+.bd-col.bd-has { border-top-color:var(--c); }
 .bd-colhead { display:flex; align-items:baseline; justify-content:space-between; gap:12px; }
 .bd-colhead .bd-t { font:500 22px/1.2 var(--serif); }
 .bd-colhead .bd-s { font-size:13px; color:var(--ink2); white-space:nowrap; }
@@ -88,9 +100,21 @@ h1 { font:500 40px/1.1 var(--serif); letter-spacing:-.008em; margin:0; }
 .bd-beat { display:inline-block; width:9px; height:9px; border-radius:99px; background:var(--green); margin-right:10px; animation:beat 1.6s ease-in-out infinite; }
 @keyframes beat { 0%,100% { box-shadow:0 0 0 0 rgba(87,190,151,.55) } 50% { box-shadow:0 0 0 7px rgba(87,190,151,0) } }
 .bd-bar2 { height:4px; border-radius:99px; background:rgba(255,255,255,.10); margin:2px 0 6px; overflow:hidden; }
-.bd-bar2 i { display:block; height:100%; width:66%; border-radius:99px; background:var(--purple); }
+.bd-bar2 i { display:block; height:100%; border-radius:99px; background:var(--c); }
 .bd-medal { width:44px; height:44px; flex:0 0 44px; border-radius:99px; display:grid; place-items:center; color:var(--accent); border:1.5px solid rgba(138,202,255,.55); background:rgba(138,202,255,.08); }
-.bd-col.bd-live { box-shadow:0 0 0 1px rgba(87,190,151,.18), 0 0 34px rgba(87,190,151,.10); }
+.bd-col.bd-live { box-shadow:0 0 0 1px color-mix(in srgb, var(--c) 22%, transparent), 0 0 34px color-mix(in srgb, var(--c) 12%, transparent); }
+.bd-timer { display:flex; align-items:center; gap:12px; margin-top:14px; padding:7px 14px 7px 7px; border-radius:99px; border:1.5px solid color-mix(in srgb, var(--c) 50%, transparent); background:color-mix(in srgb, var(--c) 7%, transparent); }
+.bd-timer button { width:36px; height:36px; flex:0 0 36px; border-radius:99px; display:grid; place-items:center; cursor:pointer; background:color-mix(in srgb, var(--c) 16%, transparent); border:1.5px solid var(--c); color:var(--c); }
+.bd-timer.bd-tick button { animation:tbeat 1.8s ease-in-out infinite; }
+@keyframes tbeat { 0%,100% { box-shadow:0 0 0 0 color-mix(in srgb, var(--c) 55%, transparent) } 50% { box-shadow:0 0 0 7px transparent } }
+.bd-timer b { font:500 23px/1 var(--serif); color:var(--c); }
+.bd-timer span { font-size:13px; color:var(--ink2); }
+.bd-timer em { margin-left:auto; font-style:normal; font-size:13.5px; color:var(--c); }
+.bd-timer.bd-idle em { color:var(--ink2); }
+.bd-icons { display:flex; align-items:center; gap:9px; margin-top:auto; padding-top:16px; }
+.bd-ib { width:36px; height:36px; border-radius:99px; display:grid; place-items:center; cursor:pointer; background:transparent; border:1.5px solid color-mix(in srgb, var(--c) 55%, transparent); color:var(--c); }
+.bd-ib:hover { background:color-mix(in srgb, var(--c) 14%, transparent); }
+.bd-ex { width:38px; height:38px; padding:0; border:0; background:transparent; cursor:pointer; display:grid; place-items:center; }
 .bd-run { display:grid; grid-template-columns:auto minmax(0,1fr) auto; column-gap:44px; align-items:center; }
 .bd-clockface { position:relative; width:252px; height:104px; display:grid; place-items:center; }
 .bd-clockface svg { position:absolute; inset:0; overflow:visible; }
@@ -169,6 +193,58 @@ const Runs = () => {
   )
 }
 
+// Extract: the peaked exfil marker, the real one's shape, in the slot's color.
+const Extract = ({ hex }) => (
+  <button className="bd-ex" title="Extract · close it, bank the miles">
+    <svg width="38" height="38" viewBox="0 0 24 24"><path d="M12 1.6 22 9.3v11.1a1.6 1.6 0 0 1-1.6 1.6H3.6A1.6 1.6 0 0 1 2 20.4V9.3Z" fill={`${hex}14`} stroke={hex} strokeWidth="1.5" strokeLinejoin="round" /><path d="M12 18.2V8.4M7.9 12.2 12 8.1l4.1 4.1" fill="none" stroke={hex} strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round" /></svg>
+  </button>
+)
+const Slot = ({ i, slot }) => {
+  const it = slot.item, mission = i < 2
+  return (
+    <div className="bd-slot" style={{ '--c': slot.hex }}>
+      <div className={`bd-slotname${it ? ' bd-on' : ''}`}>
+        {mission ? <span className="bd-pips">{[0, 1].map(k => <i key={k} className={`bd-pip${k === i ? ` bd-me${it ? ' bd-full' : ''}${it && it.running ? ' bd-run' : ''}` : ''}`} />)}</span> : <Zap size={15} strokeWidth={1.8} />}
+        {slot.name}
+      </div>
+      <div className={`bd-col${it ? ' bd-has' : ''}${it && it.running ? ' bd-live' : ''}`}>
+        {!it ? (
+          <>
+            <div className="bd-colhead"><span className="bd-t bd-empty">Empty</span></div>
+            {!mission && <div className="bd-acts"><button className="bd-quiet">Phone Call</button><button className="bd-quiet">Non-Mission Task</button></div>}
+          </>
+        ) : (
+          <>
+            <div style={{ display: 'flex', gap: 14, alignItems: 'center' }}>
+              <BadgeMedallion id={it.badge} size={50} color={slot.hex} />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div className="bd-colhead"><span className="bd-t">{it.title}</span></div>
+                <div className="bd-under">{it.under}</div>
+              </div>
+            </div>
+            <div className={`bd-timer ${it.running ? 'bd-tick' : 'bd-idle'}`}>
+              <button title={it.running ? 'Stop the clock' : 'Start the clock'}>{it.running ? <Square size={13} fill="currentColor" /> : <Play size={15} fill="currentColor" style={{ marginLeft: 2 }} />}</button>
+              <b>{it.clock}</b><span>Today</span>
+              <em>{it.running ? 'Running' : 'Stopped'}</em>
+            </div>
+            <div className="bd-facts">
+              {it.gates && <><Fact k="Gates">{it.gates}</Fact><div className="bd-bar2"><i style={{ width: `${it.pct}%` }} /></div></>}
+              <Fact k="Miles">{it.miles}</Fact>
+              {it.due && <Fact k="Due">{it.due}</Fact>}
+            </div>
+            <div className="bd-icons">
+              {!it.utility && <button className="bd-ib" title="Holster · back to the Mission Board"><GlyphHolster size={17} /></button>}
+              {!it.utility && <button className="bd-ib" title="Stash · hold it on the Board"><GlyphStash size={17} /></button>}
+              <Extract hex={slot.hex} />
+              <button className="bd-ib" title="Recall" style={{ marginLeft: 'auto' }}><Brain size={16} strokeWidth={1.7} /></button>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  )
+}
+
 const Fact = ({ k, children }) => <div className="bd-fact"><span>{k}</span><span>{children}</span></div>
 function Board() {
   return (
@@ -196,41 +272,7 @@ function Board() {
 
           <div className="bd-row">
             <SectionTag name="Loadout"><span>1 Of 2 Mission Slots</span><a>Activity Log</a><a>{`Proposed Steps · ${D.steps}`}</a></SectionTag>
-            <div className="bd-slots">
-              <div className="bd-slot">
-              <div className="bd-slotname bd-on"><span className="bd-pips"><i className="bd-pip bd-run" /><i className="bd-pip" /></span>Primary</div>
-              <div className="bd-col bd-live">
-                <div style={{ display: 'flex', gap: 14, alignItems: 'center' }}>
-                  <span className="bd-medal"><Flag size={20} strokeWidth={1.7} /></span>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div className="bd-colhead"><span className="bd-t">{D.slot.title}</span></div>
-                    <div className="bd-under">{D.slot.under}</div>
-                  </div>
-                </div>
-                <div className="bd-facts">
-                  <Fact k="Clock"><span className="bd-beat" /><span className="bd-clock">{D.slot.clock}</span><span style={{ color: 'var(--green)', marginLeft: 10, fontSize: 13.5 }}>Running</span></Fact>
-                  <Fact k="Gates">{D.slot.gates}</Fact>
-                  <div className="bd-bar2"><i /></div>
-                  <Fact k="Miles">{D.slot.miles}</Fact>
-                  <Fact k="Due">{D.slot.due}</Fact>
-                </div>
-                <div className="bd-acts"><button className="bd-quiet">Holster</button><button className="bd-quiet">Stash</button><button className="bd-quiet">Extract</button></div>
-              </div>
-              </div>
-              <div className="bd-slot">
-              <div className="bd-slotname"><span className="bd-pips"><i className="bd-pip" /><i className="bd-pip bd-me" /></span>Secondary</div>
-              <div className="bd-col">
-                <div className="bd-colhead"><span className="bd-t bd-empty">Empty</span></div>
-              </div>
-              </div>
-              <div className="bd-slot">
-              <div className="bd-slotname"><Zap size={15} strokeWidth={1.8} />Utility</div>
-              <div className="bd-col">
-                <div className="bd-colhead"><span className="bd-t bd-empty">Empty</span></div>
-                <div className="bd-acts"><button className="bd-quiet">Phone Call</button><button className="bd-quiet">Non-Mission Task</button></div>
-              </div>
-              </div>
-            </div>
+            <div className="bd-slots">{SLOTS.map((slot, i) => <Slot key={slot.name} i={i} slot={slot} />)}</div>
           </div>
 
           <div className="bd-row">
