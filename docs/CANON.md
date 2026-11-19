@@ -53,6 +53,10 @@ Placement before content (David, 10/18). The first thing a card, peek or briefin
 
 Any title for something, a header or a label, reads in Title Case: the first letter of each word capitalized (David, 10/16; set first for the North Star label on 10/13 and extended to the entire system). Mono eyebrows stay uppercase. Sentences, quotes, and David's own words are not labels and keep their case.
 
+## Section Tags (David, 11/18)
+
+A section on a HUD page opens with its tag on its own rule: a short accent tick, the section's name in the serif sitting on the line, the hairline running on to the edge, and the section's count or links at the far end of that same line in the body face. Nothing sits above the name, and no panel wraps the section; its content starts under the rule and runs the full width. A group inside a section (Protocols, Timers, Comms) keeps the blue label. The page title is the only thing larger than a tag. The component is `SectionTag` in `src/components/river/canon.jsx`. It came from the Board, where the section names had sat in a column down the left ("they don't seem placed very well. Let's find a different way to tag the different sections up on the board and then figure out how to factor that into Canon for anything else in the system"). A page takes the tag when it is rebuilt; existing pages are not swept.
+
 ## Buttons
 
 The button that carries the player forward after a badge, a close, or a filed answer says **Continue**. Never "Carry on" (David, 10/16).

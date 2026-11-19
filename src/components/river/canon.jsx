@@ -60,7 +60,8 @@ export const SubLabel = ({ children, color = LABEL, style }) => <div style={{ fo
 // the board and then figure out how to factor that into Canon for anything else in the system"). A section opens
 // with its own rule: a short accent tick, the name in the serif sitting on the line, the hairline running on, and
 // the section's count or links at the far end in the body face. Nothing sits above the name and no panel wraps it.
-// Proposed: in use on dev/board-dash only until David rules.
+// Canon since 11/18 (his ruling on the look: "cannon is great"); written up in docs/CANON.md under Section Tags.
+// First in use on dev/board-dash; a page takes it when it is rebuilt.
 export const SectionTag = ({ name, children, style }) => (
   <div style={{ display: 'flex', alignItems: 'center', gap: 14, margin: '0 0 22px', ...style }}>
     <span style={{ width: 26, height: 2, borderRadius: 2, background: BLUE, flex: '0 0 auto' }} />
