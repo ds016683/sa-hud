@@ -359,8 +359,8 @@ export default function CardBriefing({ obj, root, kindLabel, steps = [], kids = 
         {takesGates
           ? <Tile label="Gates" big={total > 0 ? `${closed}` : '0'} unit={total > 0 ? `of ${total} closed` : 'gates'} none={total === 0} bar={total > 0 ? closed / total : null} />
           : <Tile label="Steps" big={mySteps > 0 ? `${myStepsDone}` : '0'} unit={mySteps > 0 ? `of ${mySteps} done` : 'steps'} none={mySteps === 0} detail={myStepsVetted ? `${myStepsVetted} archived as vetted.` : null} bar={mySteps > 0 ? myStepsDone / mySteps : null} />}
-        <Tile label="On The Workbench" big={side.tabs.length} unit={side.tabs.length === 1 ? 'tab' : 'tabs'} none={!side.latest && side.tabs.length === 0} go="Open The Workbench" onGo={() => onTab('workbench')}
-          detail={side.latest ? <>"{excerpt(side.latest.text, 110)}"{blanks > 0 && <> · <b>{blanks} {blanks === 1 ? 'blank' : 'blanks'} open</b></>}</> : side.tabs.length ? 'Nothing written yet.' : null} />
+        <Tile label="On The Workbench" big={side.tabs.length + side.builds.length} unit={side.tabs.length + side.builds.length === 1 ? 'tab' : 'tabs'} none={!side.latest && side.tabs.length + side.builds.length === 0} go="Open The Workbench" onGo={() => onTab('workbench')}
+          detail={side.latest ? <>"{excerpt(side.latest.text, 110)}"{blanks > 0 && <> · <b>{blanks} {blanks === 1 ? 'blank' : 'blanks'} open</b></>}</> : side.builds.length ? side.builds.slice(0, 3).map(b => b.title || b.slug).join(' · ') : side.tabs.length ? 'Nothing written yet.' : null} />
         <Tile label="Files" big={realFiles.length} unit={realFiles.length === 1 ? 'file' : 'files'} none={realFiles.length === 0} go="Open Files" onGo={() => onTab('files')}
           detail={realFiles[0] ? <>{realFiles[0].name}{realFiles.length > 1 && <> and {realFiles.length - 1} more</>}</> : null} />
         <Tile label="Notes" big={notesCount || 0} unit={notesCount === 1 ? 'note' : 'notes'} none={!notesCount} go="Open Notes" onGo={() => onTab('notes')} />
@@ -371,7 +371,7 @@ export default function CardBriefing({ obj, root, kindLabel, steps = [], kids = 
     {/* What is in the air: the same icon, following the pointer. */}
     <DragOverlay dropAnimation={null}>{drag ? <div className="brf-tray"><span className={`pick ${drag} held`}><i className="m" />{drag === 'gate' ? 'Gate' : 'Step'}</span></div> : null}</DragOverlay>
     {(() => { const g = gateId != null ? steps.find(x => x.id === gateId) : null; return g ? (
-      <GatePage gate={g} gates={steps} root={root} missionTitle={obj.title || mission?.name || kindLabel} source={side.sources[String(g.id)] || null}
+      <GatePage benchRoot={g.objective_id ? `objectives/${g.objective_id}` : null} gate={g} gates={steps} root={root} missionTitle={obj.title || mission?.name || kindLabel} source={side.sources[String(g.id)] || null}
         onClose={() => setGateId(null)} onPick={(x) => setGateId(x.id)} onRename={rename} onExtract={finishGate}
         onLoad={kindLabel !== 'Main Mission' ? loadMission : null} />
     ) : null })()}
