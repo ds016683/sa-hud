@@ -199,7 +199,11 @@ export function FilledSlot({ it, n, act, onOpen, onExtract, onRecall, dropFromSt
         </div>
       </div>
       {task
-        ? <div onClick={() => onOpen(it)} title={task} style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 18, color: '#fff', lineHeight: 1.28, cursor: 'pointer', flex: 1, display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{gateN ? <span style={{ color }}>Gate {gateN} · </span> : null}{task}</div>
+        ? <div onClick={() => onOpen(it)} title={task} style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 18, color: '#fff', lineHeight: 1.28, cursor: 'pointer', flex: 1, display: 'flex', alignItems: 'flex-start', gap: 7, minWidth: 0 }}>
+            {/* The gate's number stands alone; the words wrap under their own first line (David 11/21). */}
+            {gateN ? <span style={{ color, whiteSpace: 'nowrap', flexShrink: 0 }}>Gate {gateN} ·</span> : null}
+            <span style={{ minWidth: 0, display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{task}</span>
+          </div>
         : <div style={{ flex: 1 }} />}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', borderTop: `1px solid ${PANEL_BORDER}`, borderBottom: `1px solid ${PANEL_BORDER}` }}>
         <Fact label="Miles"><span style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 16, color: INK }}>{miles.n}</span><span style={{ fontSize: 12.5, color: MUTED, marginLeft: 6 }}>{miles.sub}</span></Fact>
