@@ -409,7 +409,7 @@ function ProjectDetail({ project, board: boardProp, api, onBack, initialTab, ini
   useEffect(() => { let on = true; sbClient2.from('project_notes').select('id', { count: 'exact', head: true }).eq('project_id', project.id).then(({ count }) => { if (on) setNoteCount(count ?? null) }); return () => { on = false } }, [project.id, tab])
   const live = useRef({ api, project, plan })
   useEffect(() => { live.current = { api, project, plan } })
-  const gateSteps = useMemo(() => planOf(project).plan.map(({ t, n }) => ({ id: t.id, n, text: stripNum(t.text), done: !isOpen(t), done_at: t.released_at })), [project])
+  const gateSteps = useMemo(() => planOf(project).plan.map(({ t, n }) => ({ id: t.id, n, text: stripNum(t.text), done: !isOpen(t), done_at: t.released_at, objective_id: t.objective_id || null })), [project])
   const cardGates = useMemo(() => planOf(project).plan.filter(({ t }) => t.objective_id).map(({ t, n }) => ({ n, text: stripNum(t.text), objective_id: t.objective_id })), [project])
   const stories = useGateStories(cardGates)
   const extraTrail = useMemo(() => [...stories, ...planOf(project).history.filter(t => t.released_at).map(t => ({ at: t.released_at, kind: 'Gate Closed', text: t.text, gate: true }))], [stories, project])

@@ -71,14 +71,15 @@ button.gp-nd { cursor: pointer; }
 `
 
 // gate: the step ({ id, text, n, done, done_at, created_at }); gates: every gate on the card, in order.
-export default function GatePage({ gate, gates, root, missionTitle, up = [], source = null, tone = null, filesFor = null, onClose, onPick, onRename, onExtract, onLoad }) {
+export default function GatePage({ benchRoot = null, gate, gates, root, missionTitle, up = [], source = null, tone = null, filesFor = null, onClose, onPick, onRename, onExtract, onLoad }) {
   const [full, setFull] = useState(false)
   const [view, setView] = useState('bench')          // 'bench' | 'files' (the mission's files, read from inside the gate)
   // The page sits in the same layer as the card's Lumen panel, so the pill and the panel stay above it.
   const [host] = useState(() => document.querySelector('aside[aria-label="Lumen"]')?.parentElement || document.querySelector('.sa-app') || document.body)
   const [tabs, setTabs] = useState([])
   const [ready, setReady] = useState(false)
-  const groot = gateRoot(root, gate.id)
+  // A gate that has its own card works on that card's Workbench: one Workbench per gate, never two (David 11/20).
+  const groot = benchRoot || gateRoot(root, gate.id)
   const n = gate.n != null ? gate.n : gates.findIndex(g => g.id === gate.id) + 1
   useEffect(() => { setGateView({ id: gate.id, n, text: gate.text }); return () => setGateView(null) }, [gate.id, n, gate.text])
   useEffect(() => { const k = (e) => { if (e.key === 'Escape' && !e.defaultPrevented && !document.querySelector('.sa-app.lumen-open')) { if (full) setFull(false); else onClose() } }; window.addEventListener('keydown', k); return () => window.removeEventListener('keydown', k) }, [full, onClose])
@@ -87,7 +88,7 @@ export default function GatePage({ gate, gates, root, missionTitle, up = [], sou
     let on = true
     const run = async () => {
       let pages = await listPages(groot).catch(() => [])
-      if (!pages.length) {
+      if (!pages.length && !benchRoot) {
         const old = slugify(`gate-${gate.n != null ? gate.n : ''}-${String(gate.text || 'Gate').slice(0, 80)}`)
         const doc = await readPage(root, old).catch(() => null)
         if (doc) { await writePage(groot, old, doc).catch(() => {}); pages = await listPages(groot).catch(() => []) }
