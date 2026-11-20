@@ -44,6 +44,24 @@ export async function readPage(root, slug) {
   return { ...blankPage(d.title), ...d, strokes: Array.isArray(d.strokes) ? d.strokes : [], text: String(d.text || '') }
 }
 
+// The order of a Workbench's tabs (David 11/20: "i can drag and reposition a tab"). One small file beside the tabs'
+// folders; a tab not named in it falls in after the ones that are.
+const orderPath = (root) => `${root}/workbench-order.json`
+export async function readOrder(root) {
+  try {
+    const { data: signed, error } = await supabase.storage.from(BUCKET).createSignedUrl(orderPath(root), 60)
+    if (error) return []
+    const res = await fetch(`${signed.signedUrl}&cb=${Date.now()}`, { cache: 'no-store' })
+    if (!res.ok) return []
+    const doc = await res.json()
+    return Array.isArray(doc.order) ? doc.order : []
+  } catch { return [] }
+}
+export async function writeOrder(root, order) {
+  const { error } = await supabase.storage.from(BUCKET).upload(orderPath(root), new Blob([JSON.stringify({ v: 1, order, updated_at: new Date().toISOString() })], { type: 'application/json' }), { upsert: true, contentType: 'application/json' })
+  if (error) throw new Error(error.message)
+}
+
 export async function writePage(root, slug, doc) {
   const out = { ...doc, updated_at: new Date().toISOString(), updated_by: 'david (hud)' }
   const { error } = await supabase.storage.from(BUCKET).upload(`${wsDir(root)}/${slug}.json`, new Blob([JSON.stringify(out)], { type: 'application/json' }), { upsert: true, contentType: 'application/json' })

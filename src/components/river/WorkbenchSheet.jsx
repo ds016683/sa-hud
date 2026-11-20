@@ -17,7 +17,7 @@
 import { useEffect, useState } from 'react'
 import { Plus, RefreshCw, ExternalLink, Maximize2, Minimize2 } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
-import { listPages, readPage, writePage, blankPage, slugify } from '../../lib/workspace'
+import { listPages, readPage, writePage, blankPage, slugify, readOrder, writeOrder } from '../../lib/workspace'
 import { PROTOCOLS, protocolOf, isOpenRow } from '../../lib/protocols'
 import { LEDGER_EVENT, listBuilds, readBuildHtml, buildUrl } from '../../lib/lumenPanel'
 import { Page } from './Workspace'
@@ -53,9 +53,17 @@ async function loadProtocols(scopes) {
   return out.sort((a, b) => (b.open > 0) - (a.open > 0) || String(b.updated_at).localeCompare(String(a.updated_at)))
 }
 
-function Tab({ active, live = false, onClick, onDoubleClick, children, title }) {
+// A tab carries its number and can be dragged to a new place (David 11/20: "make it cannon that the tabs are numbered
+// as well. and that i can drag and reposition a tab"). The number is its place on the strip.
+function Tab({ active, live = false, onClick, onDoubleClick, children, title, n = null, id, onMove, over = false, onOver }) {
   return (
-    <button onClick={onClick} onDoubleClick={onDoubleClick} title={title} style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '8px 16px', marginBottom: -1, fontSize: 12.5, fontWeight: active ? 600 : 500, letterSpacing: '0.1px', color: active ? INK : INK2, background: active ? PANEL_BG : 'transparent', border: `1px solid ${active ? PANEL_BORDER : 'transparent'}`, borderBottomColor: active ? PANEL_BG : 'transparent', borderRadius: '9px 9px 0 0', cursor: 'pointer', whiteSpace: 'nowrap', maxWidth: 260, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+    <button onClick={onClick} onDoubleClick={onDoubleClick} title={title} draggable={!!onMove}
+      onDragStart={e => { e.dataTransfer.setData('text/x-hud-tab', id); e.dataTransfer.effectAllowed = 'move' }}
+      onDragOver={e => { if (onMove && [...e.dataTransfer.types].includes('text/x-hud-tab')) { e.preventDefault(); onOver && onOver(id) } }}
+      onDragLeave={() => onOver && onOver(null)}
+      onDrop={e => { const from = e.dataTransfer.getData('text/x-hud-tab'); onOver && onOver(null); if (from && from !== id && onMove) { e.preventDefault(); onMove(from, id) } }}
+      style={{ boxShadow: over ? 'inset 2px 0 0 var(--hud-accent)' : 'none', display: 'inline-flex', alignItems: 'center', gap: 7, padding: '8px 16px', marginBottom: -1, fontSize: 12.5, fontWeight: active ? 600 : 500, letterSpacing: '0.1px', color: active ? INK : INK2, background: active ? PANEL_BG : 'transparent', border: `1px solid ${active ? PANEL_BORDER : 'transparent'}`, borderBottomColor: active ? PANEL_BG : 'transparent', borderRadius: '9px 9px 0 0', cursor: 'pointer', whiteSpace: 'nowrap', maxWidth: 260, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+      {n != null && <span aria-hidden="true" style={{ width: 19, height: 19, borderRadius: 99, flexShrink: 0, display: 'inline-grid', placeItems: 'center', fontSize: 11.5, fontWeight: 600, fontVariantNumeric: 'tabular-nums', lineHeight: 1, color: active ? 'var(--hud-accent)' : INK2, border: `1.2px solid ${active ? 'var(--hud-accent)' : 'rgba(243,241,234,0.3)'}` }}>{n}</span>}
       {live && <span style={{ width: 6, height: 6, borderRadius: 99, background: GREEN, flexShrink: 0 }} />}
       <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{children}</span>
     </button>
@@ -73,6 +81,9 @@ export default function WorkbenchSheet({ root, scopes = [], project = null }) {
   const [open, setOpen] = useState(null) // { slug, doc }
   const [msg, setMsg] = useState(null)
   const [tick, setTick] = useState(0)
+  const [order, setOrder] = useState([])
+  const [overTab, setOverTab] = useState(null)
+  useEffect(() => { let on = true; readOrder(root).then(o => { if (on) setOrder(o) }); return () => { on = false } }, [root])
   const [full, setFull] = useState(false)
   useEffect(() => { if (!full) return undefined; const k = (e) => { if (e.key === 'Escape' && !e.defaultPrevented && !document.querySelector('.sa-app.lumen-open')) setFull(false) }; window.addEventListener('keydown', k); return () => window.removeEventListener('keydown', k) }, [full])
   const scopeKey = scopes.map(s => s.objectiveId).join(',')
@@ -91,12 +102,22 @@ export default function WorkbenchSheet({ root, scopes = [], project = null }) {
   }, [root, scopeKey, tick]) // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { const on = () => setTick(t => t + 1); window.addEventListener(LEDGER_EVENT, on); return () => window.removeEventListener(LEDGER_EVENT, on) }, [])
 
-  const tabs = [
+  const tabs0 = [
     ...protocols.map(g => ({ id: `protocol:${g.key}`, kind: 'protocol', label: `${(PROTOCOLS[g.protocol] || { label: `${g.protocol} protocol` }).label}${g.scope ? ` · ${g.scope}` : ''}`, live: g.open > 0, g })),
     ...builds.map(b => ({ id: `build:${b.slug}`, kind: 'build', label: b.title || b.slug, build: b })),
     ...(pages || []).map(p => ({ id: `page:${p.slug}`, kind: 'page', label: p.title, page: p })),
     ...(planning ? [{ id: 'planning', kind: 'planning', label: 'Planning' }] : []),
   ]
+  // His order first; a tab he has not placed falls in after, in the order it was made.
+  const rank = (id) => { const i = order.indexOf(id); return i < 0 ? 1e6 : i }
+  const tabs = tabs0.map((t, i) => ({ t, i })).sort((a, b) => (rank(a.t.id) - rank(b.t.id)) || (a.i - b.i)).map(x => x.t)
+  const move = (from, to) => {
+    const ids = tabs.map(t => t.id), a = ids.indexOf(from), b = ids.indexOf(to)
+    if (a < 0 || b < 0) return
+    ids.splice(b, 0, ids.splice(a, 1)[0])
+    setOrder(ids)
+    writeOrder(root, ids).catch(e => setMsg(`Could not keep the order: ${e.message}`))
+  }
   const current = tabs.find(t => t.id === sel) || tabs[0] || null
   const currentId = current?.id || null
   const currentSlug = current?.kind === 'page' ? current.page.slug : null
@@ -145,7 +166,7 @@ export default function WorkbenchSheet({ root, scopes = [], project = null }) {
   return (
     <div style={full ? { position: 'fixed', top: 0, left: 0, bottom: 0, right: 'var(--lumen-aside, 0px)', zIndex: 190, background: '#0F2334', overflowY: 'auto', padding: '14px 22px 30px', minWidth: 0 } : { minWidth: 0 }}>
       <div style={{ display: 'flex', alignItems: 'flex-end', gap: 2, borderBottom: `1px solid ${PANEL_BORDER}`, overflowX: 'auto', paddingLeft: 2 }}>
-        {tabs.map(t => <Tab key={t.id} active={current?.id === t.id} live={t.live} onClick={() => setSel(t.id)} onDoubleClick={t.kind === 'page' ? () => rename(t) : undefined} title={t.kind === 'page' ? 'Double-click to rename' : t.label}>{t.label}</Tab>)}
+        {tabs.map((t, i) => <Tab key={t.id} n={i + 1} id={t.id} onMove={move} over={overTab === t.id} onOver={setOverTab} active={current?.id === t.id} live={t.live} onClick={() => setSel(t.id)} onDoubleClick={t.kind === 'page' ? () => rename(t) : undefined} title={t.kind === 'page' ? 'Double-click to rename' : t.label}>{t.label}</Tab>)}
         <button onClick={add} title="New tab" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 34, height: 32, marginBottom: -1, color: INK2, background: 'transparent', border: '1px solid transparent', borderRadius: '9px 9px 0 0', cursor: 'pointer' }}><Plus size={13} /></button>
         {/* The Workbench at full screen (David 11/20: "we talked about having an option to bring the workbench to a full screen"): it covers the page and the left nav, Lumen stays, Escape or the same button puts it back. */}
         <button onClick={() => setFull(f => !f)} title={full ? 'Exit Full Screen' : 'Full Screen'} aria-label={full ? 'Exit full screen' : 'Workbench at full screen'} style={{ marginLeft: 'auto', flexShrink: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 32, height: 30, marginBottom: 2, color: full ? 'var(--hud-accent)' : INK2, background: 'transparent', border: `1px solid ${full ? 'var(--hud-accent)' : PANEL_BORDER}`, borderRadius: 8, cursor: 'pointer' }}>{full ? <Minimize2 size={14} /> : <Maximize2 size={14} />}</button>
