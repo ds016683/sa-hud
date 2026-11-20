@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import {
   Plus, ArrowLeft, Check, Trash2, ArrowUpRight, Folder, FolderPlus, FileText,
-  Upload, Download, Pencil, Archive, ChevronRight, Hand, RefreshCw,
+  Upload, Download, Pencil, Archive, ChevronRight, Hand, RefreshCw, Star, X as XMark,
 } from 'lucide-react'
+import { GateGlyph } from './river/GatePage'
 import useProjects, { freshnessOf } from '../hooks/useProjects'
 import ArtifactsTab from './river/ArtifactsTab'
 import WorkbenchTab, { WorkbenchIntake } from './river/Workbench'
@@ -184,7 +185,7 @@ function GateTools({ n, project, task, api, objState, takeOff, say }) {
   const rename = async () => { const t = await hudPrompt('Gate', stripNum(task.text)); if (!t?.trim()) return; await api.updateTask(project.id, task.id, { text: `${n} · ${t.trim()}` }) }
   const toHolster = async () => { if (!task.objective_id) return; setBusy(true); try { await unload(task.objective_id); setMoved('holster'); say(`Gate ${n} is back on the Mission Board.`); api.refresh() } catch (e) { say(`Could not holster: ${e.message}`) } finally { setBusy(false) } }
   const moveTo = (to) => { if (busy || to === place) return; return to === 'loadout' ? load() : to === 'stash' ? toStash() : toHolster() }
-  const doneWhen = async () => { const t = await hudPrompt({ title: 'Done When', value: when || '', multiline: true }); if (t === null) return; await api.updateTask(project.id, task.id, { notes: joinNotes(t, details) }) }
+  const doneWhen = async () => { const t = await hudPrompt({ title: 'Polaris · Done When', value: when || '', multiline: true }); if (t === null) return; await api.updateTask(project.id, task.id, { notes: joinNotes(t, details) }) }
   return (
     <>
       <div className="src gate-row">
@@ -194,10 +195,13 @@ function GateTools({ n, project, task, api, objState, takeOff, say }) {
           ))}
         </span>
         {isBlocked(task) ? <span>Blocked, Needs David</span> : null}
-        {task.objective_id && <button className="tool" onClick={() => openCard(task.objective_id)}>Open Its Card</button>}
-        <button className="tool" onClick={doneWhen}>Done When</button>
-        <button className="tool" onClick={rename}>Rename</button>
-        <button className="tool gone" onClick={takeOff}>Take It Off</button>
+        {/* Icons, not words (David 11/21: "edit icon for the name. red x for delete. Polaris, pulsing red if it needs a Polaris objective"). */}
+        <span className="gt-set">
+          {task.objective_id && <button className="gt-ic" title="Open Its Card" aria-label={`Open gate ${n}'s card`} onClick={() => openCard(task.objective_id)}><GateGlyph size={13} /></button>}
+          <button className={`gt-ic${when ? '' : ' need'}`} title={when ? 'Polaris · Done When' : 'Needs A Polaris Objective'} aria-label={when ? `Gate ${n}'s Polaris objective` : `Gate ${n} needs a Polaris objective`} onClick={doneWhen}><Star size={13} /></button>
+          <button className="gt-ic" title="Rename" aria-label={`Rename gate ${n}`} onClick={rename}><Pencil size={13} /></button>
+          <button className="gt-ic del" title="Take It Off" aria-label={`Take gate ${n} off`} onClick={takeOff}><XMark size={14} /></button>
+        </span>
       </div>
       {details && <div className="done-when" title={details}>{details}</div>}
       {when && <div className="done-when" title={when}>Done when: {when}</div>}

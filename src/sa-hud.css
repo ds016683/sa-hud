@@ -1579,3 +1579,13 @@ button.gp-ic:hover { background: color-mix(in srgb, var(--c, #8ACAFF) 16%, trans
 /* The plus on an empty slot (river/LoadoutPanel.jsx): the slot's color, opens the Mission Menu or the Utility choice. */
 .ld-plus { width: 52px; height: 52px; border-radius: 99px; border: 1.5px solid var(--c, #8ACAFF); color: var(--c, #8ACAFF); background: transparent; display: inline-grid; place-items: center; cursor: pointer; padding: 0; transition: background .15s, box-shadow .15s; }
 .ld-plus:hover, .ld-plus.on { background: color-mix(in srgb, var(--c, #8ACAFF) 16%, transparent); box-shadow: 0 0 0 4px color-mix(in srgb, var(--c, #8ACAFF) 12%, transparent); }
+
+/* The small tools on a gate's row: icons, not words (David 11/21). */
+.gt-set { display: inline-flex; align-items: center; gap: 7px; margin-left: 12px; }
+.gt-ic { width: 26px; height: 26px; border-radius: 99px; border: 1.3px solid color-mix(in srgb, var(--hud-ink) 28%, transparent); color: var(--hud-ink-2); background: transparent; display: inline-grid; place-items: center; cursor: pointer; padding: 0; transition: color .15s, border-color .15s, background .15s; }
+.gt-ic:hover { color: var(--hud-accent); border-color: var(--hud-accent); }
+.gt-ic.del { color: var(--hud-neg); border-color: color-mix(in srgb, var(--hud-neg) 55%, transparent); }
+.gt-ic.del:hover { background: color-mix(in srgb, var(--hud-neg) 16%, transparent); color: var(--hud-neg); border-color: var(--hud-neg); }
+.gt-ic.need { color: var(--hud-neg); border-color: var(--hud-neg); animation: gtneed 1.6s ease-in-out infinite; }
+@keyframes gtneed { 0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--hud-neg) 60%, transparent); } 50% { box-shadow: 0 0 0 6px transparent; } }
+@media (prefers-reduced-motion: reduce) { .gt-ic.need { animation: none; } }

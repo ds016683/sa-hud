@@ -23,7 +23,7 @@
 // where it came from. Lumen's guessed next steps (the recall door) are gone from this page.
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { DndContext, DragOverlay, PointerSensor, useSensor, useSensors, useDraggable, useDroppable } from '@dnd-kit/core'
-import { ChevronDown, ChevronRight } from 'lucide-react'
+import { ChevronDown, ChevronRight, Pencil, X as XMark } from 'lucide-react'
 import { Label } from './canon'
 import { addStep, toggleStep, removeStep, renameStep, setStepOrder } from '../../lib/objectives'
 import { listPages, readPage } from '../../lib/workspace'
@@ -324,7 +324,7 @@ export default function CardBriefing({ tone = null, obj, root, kindLabel, steps 
                     {isNext && <div className="when">{s.type === 'mission' ? `Gate ${s.gate.n} · This Gate` : 'Next Move'}</div>}
                     <div className={`what${s.type === 'gate' || (s.type === 'step' && !s.done) ? ' link' : ''}`} title={s.type === 'step' && !s.done ? 'Open this gate' : undefined} onClick={s.type === 'gate' ? () => onOpenCard && onOpenCard(s.kid.id) : s.type === 'step' && !s.done ? () => setGateId(s.step.id) : undefined}>{s.type === 'step' && s.step.n != null && <span className="gn">Gate {s.step.n}</span>}{s.text}{!s.done && (s.type === 'step' || s.type === 'gate') && <span style={{ display: 'inline-flex', gap: 7, marginLeft: 12, verticalAlign: 'middle' }} onClick={e => e.stopPropagation()}><button className="gp-ic sm" style={tone ? { '--c': tone } : undefined} title="Open The Gate" aria-label={`Open the gate: ${s.text}`} onClick={() => s.type === 'gate' ? (onOpenCard && onOpenCard(s.kid.id)) : setGateId(s.step.id)}><GateGlyph size={13} /></button>{s.type === 'step' && <button className="gp-ic sm" style={tone ? { '--c': tone } : undefined} title="Extract: Close This Gate" aria-label={`Close the gate: ${s.text}`} onClick={(e) => close(s.step, e)}><ExtractGlyph size={13} /></button>}</span>}</div>
                     {s.done && <><span className="when">Closed just now</span><button className="tool" onClick={() => reopen(s.step)}>Reopen</button></>}
-                    {!s.done && s.type === 'step' && (stopExtra ? stopExtra(s.step, { takeOff: () => drop(s.step) }) : <div className="src">{src.lead}{src.quote && <> <q>{src.quote}</q></>}<button className="tool gone" style={{ color: 'var(--hud-accent)' }} onClick={() => rename(s.step)}>Rename</button><button className="tool gone" onClick={() => drop(s.step)}>Take It Off</button></div>)}
+                    {!s.done && s.type === 'step' && (stopExtra ? stopExtra(s.step, { takeOff: () => drop(s.step) }) : <div className="src">{src.lead}{src.quote && <> <q>{src.quote}</q></>}<span className="gt-set" style={{ marginLeft: 10, verticalAlign: 'middle' }}><button className="gt-ic" title="Rename" aria-label={`Rename: ${s.text}`} onClick={() => rename(s.step)}><Pencil size={13} /></button><button className="gt-ic del" title="Take It Off" aria-label={`Take off: ${s.text}`} onClick={() => drop(s.step)}><XMark size={14} /></button></span></div>)}
                     {s.type === 'gate' && <div className="src">Gate {s.n} of {kids.length}{s.kid.due_date ? ` · ${dueWords(s.kid.due_date).short}` : ''}. It closes on its own card.</div>}
                     {/* The title is a few words; the rest of what came in with the gate reads here (David 11/18: "Other data goes into the briefing"). */}
                     {s.type === 'mission' && s.gate.details && <div className="more">{s.gate.details}</div>}
