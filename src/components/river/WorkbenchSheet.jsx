@@ -140,21 +140,18 @@ export default function WorkbenchSheet({ root, scopes = [], project = null }) {
   }
   const removed = () => { setOpen(null); setSel(null); setTick(t => t + 1) }
 
-  const live = protocols.filter(g => g.open > 0)
   return (
     <div style={{ minWidth: 0 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 14 }}>
-        <Label style={{ marginBottom: 0 }}>Live Protocols</Label>
-        <span style={{ ...mono, color: live.length ? GREEN : GRAY, fontWeight: live.length ? 700 : 500 }}>{live.length ? 'On' : 'Off'}</span>
-        {live.map(g => <span key={g.key} style={{ ...mono, color: INK2 }}>{(PROTOCOLS[g.protocol] || { label: g.protocol }).label}{g.scope ? ` · ${g.scope}` : ''} · {g.open} open</span>)}
-      </div>
       <div style={{ display: 'flex', alignItems: 'flex-end', gap: 2, borderBottom: `1px solid ${PANEL_BORDER}`, overflowX: 'auto', paddingLeft: 2 }}>
         {tabs.map(t => <Tab key={t.id} active={current?.id === t.id} live={t.live} onClick={() => setSel(t.id)} onDoubleClick={t.kind === 'page' ? () => rename(t) : undefined} title={t.kind === 'page' ? 'Double-click to rename' : t.label}>{t.label}</Tab>)}
         <button onClick={add} title="New tab" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 34, height: 32, marginBottom: -1, color: INK2, background: 'transparent', border: '1px solid transparent', borderRadius: '9px 9px 0 0', cursor: 'pointer' }}><Plus size={13} /></button>
       </div>
       {pages === null && <div style={{ ...mono, padding: '14px 2px' }}>Reading the Ledger</div>}
       {pages !== null && !current && (
-        <div style={{ border: `1px solid ${PANEL_BORDER}`, borderTop: 'none', borderRadius: '0 10px 10px 10px', background: PANEL_BG, padding: '28px 18px', fontSize: 13, color: GRAY }}>A blank sheet. The plus above opens the first tab; type on it, draw over it, name it what you are doing there.</div>
+        <div style={{ border: `1px solid ${PANEL_BORDER}`, borderTop: 'none', borderRadius: '0 10px 10px 10px', background: PANEL_BG, padding: '44px 18px', display: 'grid', placeItems: 'center' }}>
+          {/* Empty is drawn, not written (David 11/18: no floating explainer text). */}
+          <button type="button" className="ld-plus" onClick={add} title="New Tab" aria-label="New tab"><Plus size={24} /></button>
+        </div>
       )}
       {current?.kind === 'protocol' && (
         <div style={{ border: `1px solid ${PANEL_BORDER}`, borderTop: 'none', borderRadius: '0 10px 10px 10px', background: PANEL_BG, padding: '12px 14px 14px' }}>

@@ -6,7 +6,8 @@
 // The Workbench pulls up full: the header and the two lines fold to one strip.
 import { useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Pencil, Maximize2, Minimize2, ArrowUp } from 'lucide-react'
+import { Pencil, Maximize2, Minimize2, ArrowUp, PenLine, FolderOpen } from 'lucide-react'
+import CardFiles from './CardFiles'
 import WorkbenchSheet from './WorkbenchSheet'
 import { listPages, readPage, writePage, slugify } from '../../lib/workspace'
 import { setGateView } from '../../lib/gateView'
@@ -66,12 +67,13 @@ button.gp-nd { cursor: pointer; }
 .gp-benchhead { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; font: 500 20px 'Lora', Georgia, serif; }
 .gp-benchhead::after { content: ""; flex: 1; height: 1px; background: rgba(255,255,255,.12); order: 1; } .gp-benchhead button { order: 2; }
 .gp-sq { width: 32px; height: 32px; border-radius: 8px; border: 1px solid rgba(255,255,255,.12); display: inline-grid; place-items: center; color: rgba(243,241,234,.7); background: transparent; cursor: pointer; }
-.gp-sq:hover { color: var(--t); border-color: var(--t); }
+.gp-sq:hover, .gp-sq.on { color: var(--t); border-color: var(--t); }
 `
 
 // gate: the step ({ id, text, n, done, done_at, created_at }); gates: every gate on the card, in order.
-export default function GatePage({ gate, gates, root, missionTitle, up = [], source = null, tone = null, onClose, onPick, onRename, onExtract, onLoad }) {
+export default function GatePage({ gate, gates, root, missionTitle, up = [], source = null, tone = null, filesFor = null, onClose, onPick, onRename, onExtract, onLoad }) {
   const [full, setFull] = useState(false)
+  const [view, setView] = useState('bench')          // 'bench' | 'files' (the mission's files, read from inside the gate)
   // The page sits in the same layer as the card's Lumen panel, so the pill and the panel stay above it.
   const [host] = useState(() => document.querySelector('aside[aria-label="Lumen"]')?.parentElement || document.querySelector('.sa-app') || document.body)
   const [tabs, setTabs] = useState([])
@@ -143,8 +145,14 @@ export default function GatePage({ gate, gates, root, missionTitle, up = [], sou
           </div>
         )}
         <div className="gp-bench">
-          <div className="gp-benchhead">Workbench<button className="gp-sq" title={full ? 'Back To The Gate' : 'Pull The Workbench Up Full'} aria-label={full ? 'Back to the gate' : 'Pull the Workbench up full'} onClick={() => setFull(f => !f)}>{full ? <Minimize2 size={15} /> : <Maximize2 size={15} />}</button></div>
-          {ready && <WorkbenchSheet key={groot} root={groot} scopes={[]} />}
+          <div className="gp-benchhead">{view === 'files' ? 'Files' : 'Workbench'}
+            {filesFor != null && <span style={{ order: 2, display: 'inline-flex', gap: 6 }}>
+              <button className={`gp-sq${view === 'bench' ? ' on' : ''}`} title="Workbench" aria-label="Workbench" aria-pressed={view === 'bench'} onClick={() => setView('bench')}><PenLine size={15} /></button>
+              <button className={`gp-sq${view === 'files' ? ' on' : ''}`} title="Files" aria-label="Files" aria-pressed={view === 'files'} onClick={() => setView('files')}><FolderOpen size={15} /></button>
+            </span>}
+            <button className="gp-sq" title={full ? 'Back To The Gate' : 'Pull The Workbench Up Full'} aria-label={full ? 'Back to the gate' : 'Pull the Workbench up full'} onClick={() => setFull(f => !f)}>{full ? <Minimize2 size={15} /> : <Maximize2 size={15} />}</button></div>
+          {view === 'bench' && ready && <WorkbenchSheet key={groot} root={groot} scopes={[]} />}
+          {view === 'files' && filesFor != null && <CardFiles key={`gate-files:${filesFor}`} objectiveId={filesFor} />}
         </div>
       </div>
     </div>

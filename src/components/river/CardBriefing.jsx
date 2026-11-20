@@ -371,7 +371,7 @@ export default function CardBriefing({ tone = null, obj, root, kindLabel, steps 
     {/* What is in the air: the same icon, following the pointer. */}
     <DragOverlay dropAnimation={null}>{drag ? <div className="brf-tray"><span className={`pick ${drag} held`}><i className="m" />{drag === 'gate' ? 'Gate' : 'Step'}</span></div> : null}</DragOverlay>
     {(() => { const g = gateId != null ? steps.find(x => x.id === gateId) : null; return g ? (
-      <GatePage tone={tone} gate={g} gates={steps} root={root} missionTitle={obj.title || mission?.name || kindLabel} source={side.sources[String(g.id)] || null}
+      <GatePage tone={tone} filesFor={kindLabel !== 'Main Mission' ? obj.id : null} gate={g} gates={steps} root={root} missionTitle={obj.title || mission?.name || kindLabel} source={side.sources[String(g.id)] || null}
         onClose={() => setGateId(null)} onPick={(x) => setGateId(x.id)} onRename={rename} onExtract={finishGate}
         onLoad={kindLabel !== 'Main Mission' ? loadMission : null} />
     ) : null })()}
