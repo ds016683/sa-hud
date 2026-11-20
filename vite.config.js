@@ -12,6 +12,8 @@ const buildStamp = () => ({ name: 'hud-build-stamp', apply: 'build', generateBun
 export default defineConfig({
   plugins: [react(), buildStamp()],
   base: '/',
+  // Run locally (a branch on David's machine), the page still talks to the live HUD's functions with his own session.
+  server: { proxy: { '/api': { target: 'https://sa-hud.vercel.app', changeOrigin: true } } },
   define: { __HUD_BUILD__: JSON.stringify(String(ts)) },
   build: {
     rollupOptions: {
