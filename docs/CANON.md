@@ -72,3 +72,12 @@ Nothing is created on David's board without him. No objective (Side Mission), pr
 ## Workbench And Tabs (David, 11/10)
 
 The working surface on a card is the Workbench, and the Workbench is made of tabs. A protocol tab, a built tab, a blank tab: each is "a tab on the Workbench". The word Workspace is retired from the screen, from session replies and from Lumen's voice; "create a workspace" means open a new tab. The full entry is in docs/CARD-CANON.md, "The Workbench And Its Tabs".
+
+
+## Workbench Tabs Are Numbered And Movable (David, 11/20)
+
+"make it cannon that the tabs are numbered as well. and that i can drag and reposition a tab."
+
+- Every tab on a Workbench carries its number: a small circled figure before its name. The number is the tab's place on the strip, counted from the left.
+- A tab can be dragged to a new place. The order is kept per Workbench (`<root>/workbench-order.json`) and the numbers follow it.
+- A built page that shows a number in its own heading (the circled figure beside its title) uses the same look. The tab's number is the truth; a page should not carry a number that disagrees with its tab.
