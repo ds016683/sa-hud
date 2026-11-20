@@ -15,7 +15,7 @@
 // listed after the protocols and before the Workspace pages, newest first,
 // rendered through srcDoc the way the Lumen panel's Build tab renders it.
 import { useEffect, useState } from 'react'
-import { Plus, RefreshCw, ExternalLink } from 'lucide-react'
+import { Plus, RefreshCw, ExternalLink, Maximize2, Minimize2 } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { listPages, readPage, writePage, blankPage, slugify } from '../../lib/workspace'
 import { PROTOCOLS, protocolOf, isOpenRow } from '../../lib/protocols'
@@ -73,6 +73,8 @@ export default function WorkbenchSheet({ root, scopes = [], project = null }) {
   const [open, setOpen] = useState(null) // { slug, doc }
   const [msg, setMsg] = useState(null)
   const [tick, setTick] = useState(0)
+  const [full, setFull] = useState(false)
+  useEffect(() => { if (!full) return undefined; const k = (e) => { if (e.key === 'Escape' && !e.defaultPrevented && !document.querySelector('.sa-app.lumen-open')) setFull(false) }; window.addEventListener('keydown', k); return () => window.removeEventListener('keydown', k) }, [full])
   const scopeKey = scopes.map(s => s.objectiveId).join(',')
   const byCreated = (a, b) => String(a.created_at || a.updated_at || '').localeCompare(String(b.created_at || b.updated_at || ''))
 
@@ -142,7 +144,7 @@ export default function WorkbenchSheet({ root, scopes = [], project = null }) {
 
   const live = protocols.filter(g => g.open > 0)
   return (
-    <div style={{ minWidth: 0 }}>
+    <div style={full ? { position: 'fixed', top: 0, left: 0, bottom: 0, right: 'var(--lumen-aside, 0px)', zIndex: 190, background: '#0F2334', overflowY: 'auto', padding: '14px 22px 30px', minWidth: 0 } : { minWidth: 0 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 14 }}>
         <Label style={{ marginBottom: 0 }}>Live Protocols</Label>
         <span style={{ ...mono, color: live.length ? GREEN : GRAY, fontWeight: live.length ? 700 : 500 }}>{live.length ? 'On' : 'Off'}</span>
@@ -151,6 +153,8 @@ export default function WorkbenchSheet({ root, scopes = [], project = null }) {
       <div style={{ display: 'flex', alignItems: 'flex-end', gap: 2, borderBottom: `1px solid ${PANEL_BORDER}`, overflowX: 'auto', paddingLeft: 2 }}>
         {tabs.map(t => <Tab key={t.id} active={current?.id === t.id} live={t.live} onClick={() => setSel(t.id)} onDoubleClick={t.kind === 'page' ? () => rename(t) : undefined} title={t.kind === 'page' ? 'Double-click to rename' : t.label}>{t.label}</Tab>)}
         <button onClick={add} title="New tab" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 34, height: 32, marginBottom: -1, color: INK2, background: 'transparent', border: '1px solid transparent', borderRadius: '9px 9px 0 0', cursor: 'pointer' }}><Plus size={13} /></button>
+        {/* The Workbench at full screen (David 11/20: "we talked about having an option to bring the workbench to a full screen"): it covers the page and the left nav, Lumen stays, Escape or the same button puts it back. */}
+        <button onClick={() => setFull(f => !f)} title={full ? 'Exit Full Screen' : 'Full Screen'} aria-label={full ? 'Exit full screen' : 'Workbench at full screen'} style={{ marginLeft: 'auto', flexShrink: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 32, height: 30, marginBottom: 2, color: full ? 'var(--hud-accent)' : INK2, background: 'transparent', border: `1px solid ${full ? 'var(--hud-accent)' : PANEL_BORDER}`, borderRadius: 8, cursor: 'pointer' }}>{full ? <Minimize2 size={14} /> : <Maximize2 size={14} />}</button>
       </div>
       {pages === null && <div style={{ ...mono, padding: '14px 2px' }}>Reading the Ledger</div>}
       {pages !== null && !current && (
