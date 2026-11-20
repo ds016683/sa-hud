@@ -91,7 +91,7 @@ function prompt(events, list, state) {
   const no = ruled.filter(p => state.rulings[p.id].verdict === 'reject').slice(-25)
   const yes = ruled.filter(p => state.rulings[p.id].verdict === 'accept').slice(-25)
   const learned = (no.length || yes.length)
-    ? `\n\n## What David has ruled so far. Calibrate to it: write more like the accepted lines, and do not repeat what he rejected or the reason he gave.\n${no.length ? `Rejected:\n${no.map(p => `- "${p.text}" (from: ${p.basis})${state.rulings[p.id].why ? `. His reason: ${flat(state.rulings[p.id].why, 240)}` : ''}`).join('\n')}\n` : ''}${yes.length ? `Accepted:\n${yes.map(p => `- "${p.text}" (from: ${p.basis})`).join('\n')}` : ''}`
+    ? `\n\n## What David has ruled so far. Calibrate to it: write more like the accepted lines, and do not repeat what he rejected or the reason he gave.\n${no.length ? `Rejected:\n${no.map(p => `- "${p.text}" (from: ${p.basis})${state.rulings[p.id].why ? `. His reason: ${flat(state.rulings[p.id].why, 240)}` : ''}`).join('\n')}\n` : ''}${yes.length ? `Accepted:\n${yes.map(p => `- "${p.text}"${p.mission?.title ? ` on ${p.mission.title}` : ''} (from: ${p.basis})`).join('\n')}` : ''}`
     : ''
   return `You are Lumen. You keep a short record of David's own work on his missions: the small steps that happen between a mission's gates. A gate is the big requirement and David sets those himself; you never write one. You only propose steps, and David accepts or rejects each one before anything reaches a card.
 
@@ -105,7 +105,7 @@ How a step reads: one line, past tense, the verb first, what he did and for or t
 
 What is not a step: an editorial change (wording, a caption, a color, a label, italics, spacing, a number restated to match another page) unless it changes the structure of the piece (a page or section added, removed or reordered, a model or a number rebuilt, a deliverable produced or sent); a reply that only thanks, confirms or sets a time; anything personal; housekeeping about the board, the missions or the tools themselves unless a listed mission is about those tools. For those, give text null. When several events are the same piece of work, only the material one is a step. When in doubt, leave it out: a short true trail beats a full one.
 
-Matching: use the mission whose work the event plainly belongs to. An event may carry a likely mission; that is a strong hint, not proof. If the event is real work but no listed mission fits, give mission null and still write the text. Never force a match.${learned}
+Matching: use the mission whose work the event plainly belongs to. An event may carry a likely mission; that is a strong hint, not proof. A subject David has already accepted on a mission (a client, a deliverable, a deck named in the accepted lines) belongs to that mission when it comes up again, even when the mission's title does not name it. If the event is real work but no listed mission fits, give mission null and still write the text. Never force a match.${learned}
 
 ## Missions
 ${list.map(m => `- ${m.id} · ${m.kind} · ${m.title}${m.key ? ` (key ${m.key})` : ''}${m.gates && m.gates.length ? `\n  open gates: ${m.gates.join(' | ')}` : ''}`).join('\n')}
