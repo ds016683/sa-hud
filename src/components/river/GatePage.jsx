@@ -15,7 +15,9 @@ export const GateGlyph = ({ size = 16 }) => <svg width={size} height={size} view
 export const LoadGlyph = ({ size = 16 }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14" /></svg>
 export const ExtractGlyph = ({ size = 16 }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 20V9M7 14l5-5 5 5M5 4h14" /></svg>
 
-const PURPLE = '#B4A3E8', BLUE = '#8ACAFF', GREEN = '#57BE97'
+// One color per page (David 11/20, on my cleaner rule): the slot's color owns a loaded card, where you are is size
+// and glow, the gate's own line is the same color at a lighter weight, and a card that is not loaded reads in ink.
+const INK_TONE = 'rgba(243,241,234,.78)'
 const gateRoot = (root, id) => `${root}/gates/${id}`
 const stamp = (iso) => iso ? new Date(iso).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZone: 'America/Chicago' }) : ''
 const days = (iso) => { const d = Math.floor((Date.now() - new Date(iso).getTime()) / 864e5); return d < 1 ? 'Opened Today' : `Open ${d} ${d === 1 ? 'Day' : 'Days'}` }
@@ -67,7 +69,7 @@ button.gp-nd { cursor: pointer; }
 `
 
 // gate: the step ({ id, text, n, done, done_at, created_at }); gates: every gate on the card, in order.
-export default function GatePage({ gate, gates, root, missionTitle, up = [], source = null, onClose, onPick, onRename, onExtract, onLoad }) {
+export default function GatePage({ gate, gates, root, missionTitle, up = [], source = null, tone = null, onClose, onPick, onRename, onExtract, onLoad }) {
   const [full, setFull] = useState(false)
   // The page sits in the same layer as the card's Lumen panel, so the pill and the panel stay above it.
   const [host] = useState(() => document.querySelector('aside[aria-label="Lumen"]')?.parentElement || document.querySelector('.sa-app') || document.body)
@@ -103,7 +105,7 @@ export default function GatePage({ gate, gates, root, missionTitle, up = [], sou
   }, [gate, source, tabs])
   const closedN = gates.filter(g => g.done).length
   const page = (
-    <div className={`gp${full ? ' full' : ''}`} role="dialog" aria-label={`Gate ${n}: ${gate.text}`}>
+    <div className={`gp${full ? ' full' : ''}`} style={{ '--t': tone || INK_TONE, '--c': tone || INK_TONE }} role="dialog" aria-label={`Gate ${n}: ${gate.text}`}>
       <style>{CSS}</style>
       <div className="gp-in">
         {!full && <div className="gp-crumb"><button className="up" onClick={onClose}><ArrowUp size={12} /> Up</button>{up.map((u, i) => <span key={i} style={{ display: 'inline-flex', gap: 10 }}>{i > 0 && <span style={{ color: 'rgba(243,241,234,.44)' }}>›</span>}<button onClick={u.onClick || onClose}>{u.label}</button></span>)}{up.length > 0 && <span style={{ color: 'rgba(243,241,234,.44)' }}>›</span>}<button onClick={onClose}>{missionTitle}</button></div>}
@@ -111,29 +113,29 @@ export default function GatePage({ gate, gates, root, missionTitle, up = [], sou
           <span className={`gp-ic${full ? '' : ' big'}`}><GateGlyph size={full ? 17 : 26} /></span>
           <h1><span>Gate {n} ·</span> {gate.text}{onRename && <button className="gp-pen" title="Rename" aria-label="Rename" onClick={() => onRename(gate)}><Pencil size={full ? 14 : 17} /></button>}</h1>
           <div className="gp-acts">
-            {onLoad && <button className="gp-ic" style={{ '--c': PURPLE }} title="Load The Mission" aria-label="Load the mission" onClick={onLoad}><LoadGlyph size={18} /></button>}
-            {!gate.done && onExtract && <button className="gp-ic" style={{ '--c': GREEN }} title="Extract: Close This Gate" aria-label="Close this gate" onClick={() => onExtract(gate)}><ExtractGlyph size={18} /></button>}
+            {onLoad && <button className="gp-ic" title="Load The Mission" aria-label="Load the mission" onClick={onLoad}><LoadGlyph size={18} /></button>}
+            {!gate.done && onExtract && <button className="gp-ic" title="Extract: Close This Gate" aria-label="Close this gate" onClick={() => onExtract(gate)}><ExtractGlyph size={18} /></button>}
           </div>
         </div>
         {full ? (
           <div className="gp-mini">
             <span className="k">Mission Trail</span>
-            <div className="st" style={{ '--c': PURPLE }}>{gates.map((g, i) => [i > 0 && <i key={`i${g.id}`} className={gates[i - 1].done ? 'd' : ''} />, <b key={g.id} className={g.id === gate.id ? 'on' : g.done ? 'd' : ''} />])}<i /><b /></div>
+            <div className="st">{gates.map((g, i) => [i > 0 && <i key={`i${g.id}`} className={gates[i - 1].done ? 'd' : ''} />, <b key={g.id} className={g.id === gate.id ? 'on' : g.done ? 'd' : ''} />])}<i /><b /></div>
             <span className="k">Gate {n} Timeline</span>
-            <div className="st" style={{ '--c': GREEN }}>{line.map((e, i) => [i > 0 && <i key={`i${i}`} className={line[i - 1].done && e.done ? 'd' : ''} />, <b key={i} className={e.done ? 'd' : ''} />])}</div>
+            <div className="st own">{line.map((e, i) => [i > 0 && <i key={`i${i}`} className={line[i - 1].done && e.done ? 'd' : ''} />, <b key={i} className={e.done ? 'd' : ''} />])}</div>
           </div>
         ) : (
           <div className="gp-lines">
             <div className="gp-ln">
               <div className="gp-k">Mission Trail<small>{closedN} Of {gates.length} Closed</small></div>
-              <div className="gp-tr" style={{ '--c': PURPLE }}>
+              <div className="gp-tr">
                 {gates.map((g, i) => <button key={g.id} className={`gp-nd${g.id === gate.id ? ' on' : g.done ? ' d' : ''}${g.done ? ' thru' : ''}`} onClick={() => g.id !== gate.id && onPick && onPick(g)} title={g.text}><b /><span>Gate {g.n != null ? g.n : i + 1}<small>{String(g.text).slice(0, 60)}</small></span></button>)}
                 <div className="gp-nd" style={{ flex: '0 0 90px' }}><b /><span>Polaris</span></div>
               </div>
             </div>
             <div className="gp-ln">
               <div className="gp-k">Gate {n} Timeline<small>{gate.done ? `Closed ${stamp(gate.done_at)}` : (gate.created_at || source?.at) ? days(gate.created_at || source.at) : 'Open'}</small></div>
-              <div className="gp-tr" style={{ '--c': GREEN }}>
+              <div className="gp-tr">
                 {line.map((e, i) => <div key={i} className={`gp-nd${e.done ? ' d' : ''}${e.done && line[i + 1]?.done ? ' thru' : ''}`} style={i === line.length - 1 ? { flex: '0 0 90px' } : undefined}><b /><span>{e.text}<small>{stamp(e.at)}</small></span></div>)}
               </div>
             </div>

@@ -31,6 +31,9 @@ import ItemDetail from './ItemDetail'
 import { INK, INK2, GRAY, PANEL_BORDER, GOLD, GOLD_BRIGHT, BLUE, GREEN, RED, MONO, SERIF, S, Eyebrow, Label, Panel, KIND_COLOR, KindChip, NORTH_STAR_LABEL, LABEL, MUTED, SUCCESS, alpha } from './canon'
 import { openCard } from '../../lib/card'
 import FocusLock from './FocusLock'
+import KindMark from './KindMark'
+import MissionMenu from './MissionMenu'
+import { Plus, ListChecks } from 'lucide-react'
 
 const btn = (color = INK2, filled = false) => ({
   display: 'inline-flex', alignItems: 'center', gap: 5, fontFamily: 'inherit', fontSize: 12.5,
@@ -181,7 +184,7 @@ export function FilledSlot({ it, n, act, onOpen, onExtract, onRecall, dropFromSt
   return (
     <div draggable onDragStart={e => { e.dataTransfer.setData('text/plain', dragPayload('loadout', it.id)); e.dataTransfer.effectAllowed = 'move' }} onDragOver={e => { if (dropFromStash) e.preventDefault() }} onDrop={e => { const d = readDrag(e); if (d.kind === 'stash' && dropFromStash) { e.preventDefault(); dropFromStash(d.id) } }} title="Drag to the Stash" className={it.equipped ? 'ld-running' : undefined} style={{ ...slotBox(it.equipped ? color : alpha(color, 40), alpha(color, it.equipped ? 7 : 3)), '--slot': color, flex: 1, cursor: 'grab' }}>
       <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
-        <BadgeMedallion id={badgeFor(it)} size={50} color={color} />
+        <KindMark kind={main ? 'Main Mission' : sizeLabel} size={46} color={color} />
         <div style={{ flex: 1, minWidth: 0, display: 'grid', gap: 2 }}>
           <div onClick={() => onOpen(it)} title={main ? (it.project || 'Main Mission') : it.title} style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 14.5, color: INK, lineHeight: 1.25, cursor: 'pointer', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{main ? (it.project || 'Main Mission') : it.title}</div>
           <div style={{ fontSize: 12.5, fontWeight: 600, color, lineHeight: 1.35, whiteSpace: 'nowrap' }}>{typeLine}{it.personal ? ' · Personal' : ''}</div>
@@ -213,12 +216,14 @@ export function FilledSlot({ it, n, act, onOpen, onExtract, onRecall, dropFromSt
   )
 }
 
-export function EmptySlot({ n, dropFromStash }) {
+export function EmptySlot({ n, dropFromStash, onAdd }) {
   const [over, setOver] = useState(false)
   return (
     <div onDragOver={e => { e.preventDefault(); setOver(true) }} onDragLeave={() => setOver(false)} onDrop={e => { setOver(false); const d = readDrag(e); if (d.kind === 'stash' && dropFromStash) { e.preventDefault(); dropFromStash(d.id) } }}
       style={{ ...slotBox(over ? (SLOT_TONE[n - 1] || BLUE) : alpha(SLOT_TONE[n - 1] || BLUE, 30), over ? alpha(SLOT_TONE[n - 1] || BLUE, 8) : 'transparent'), flex: 1 }}>
-      <div title="Load a mission from the Stash or the Mission Board, or tell Lumen" style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 20, color: GRAY }}>Empty</div>
+      <div style={{ flex: 1, display: 'grid', placeItems: 'center' }}>
+        <button type="button" className="ld-plus" onClick={onAdd} title="Add A Mission" aria-label="Add a mission" style={{ '--c': SLOT_TONE[n - 1] || BLUE }}><Plus size={24} /></button>
+      </div>
     </div>
   )
 }
@@ -227,6 +232,7 @@ export function EmptySlot({ n, dropFromStash }) {
 // it carries the impromptu item with its clock until Dispatch.
 export function AdHocSlot({ item, act, onDispatch, onOpen, onChanged, onRecall }) {
   const [mode, setMode] = useState('task')
+  const [picking, setPicking] = useState(false)
   const [open, setOpen] = useState(false)
   const [text, setText] = useState('')
   const [busy, setBusy] = useState(false)
@@ -269,14 +275,17 @@ export function AdHocSlot({ item, act, onDispatch, onOpen, onChanged, onRecall }
   // a phone call. another is for a non-mission task. they award the same miles").
   return (
     <div style={{ ...slotBox(EMPTY_EDGE, 'transparent', true), position: 'relative', flex: '1 1 auto' }}>
-      <div title="Runs a Console button (E-mail, Slack Review, Bill Pay and the rest) or the unplanned: a phone call or a non-mission task, 1 mile each" style={{ flex: 1, display: 'grid', placeItems: 'center', fontSize: 14, fontWeight: 600, color: GRAY }}>Empty</div>
+      <div style={{ flex: 1, display: 'grid', placeItems: 'center' }}>
+        {!picking
+          ? <button type="button" className="ld-plus" onClick={() => setPicking(true)} title="Add A Call Or A Task" aria-label="Add a call or a task" style={{ '--c': UTILITY_TONE }}><Plus size={24} /></button>
+          : <div style={{ display: 'flex', gap: 14 }}>
+              {[['call', 'Phone Call'], ['task', 'Non-Mission Task']].map(([k, l]) => (
+                <button key={k} type="button" className={`ld-plus${open && mode === k ? ' on' : ''}`} onClick={() => { setMode(k); setOpen(true); setErr(null) }} title={l} aria-label={l} style={{ '--c': UTILITY_TONE }}>{k === 'call' ? <Phone size={22} /> : <ListChecks size={22} />}</button>
+              ))}
+            </div>}
+      </div>
       <div style={{ display: 'grid', gap: 8 }}>
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          {[['call', 'Phone Call'], ['task', 'Non-Mission Task']].map(([k, l]) => (
-            <button key={k} className="ld-btn" onClick={() => { setMode(k); setOpen(true); setErr(null) }} style={open && mode === k ? { borderColor: BLUE, background: 'rgba(169,201,232,0.10)' } : undefined}>{k === 'call' ? <Phone size={15} /> : <Zap size={15} />} {l}</button>
-          ))}
-        </div>
-        {open && <input autoFocus value={text} onChange={e => setText(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') start(); if (e.key === 'Escape') setOpen(false) }} disabled={busy}
+        {open && <input autoFocus value={text} onChange={e => setText(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') start(); if (e.key === 'Escape') { setOpen(false); setPicking(false) } }} disabled={busy}
           placeholder={mode === 'call' ? 'Who is it? Enter starts the clock.' : 'What landed on you? Enter starts the clock.'} aria-label={mode === 'call' ? 'Who the call is with' : 'The non-mission task'} style={field} />}
         {err && <div style={{ fontSize: 12.5, color: RED }}>{err}</div>}
       </div>
@@ -452,6 +461,7 @@ export default function LoadoutPanel({ onChange, refreshKey = 0, bare = false, f
   const [projects, setProjects] = useState([])
   const [msg, setMsg] = useState(null)
   const [recallOf, setRecallOf] = useState(null)
+  const [menu, setMenu] = useState(null)             // the slot whose plus opened the Mission Menu
   const [yay, setYay] = useState(null)
   const [held, setHeld] = useState([])
   const [logOpen, setLogOpen] = useState(false)
@@ -507,6 +517,7 @@ export default function LoadoutPanel({ onChange, refreshKey = 0, bare = false, f
       {logOpen && <ActivityLogModal onClose={() => setLogOpen(false)} />}
       {filesOpen && <LiveFilesModal onClose={() => setFilesOpen(null)} filter={filesOpen.objectiveId ? filesOpen : null} items={[...(L?.items || []).filter(x => !x.meeting).map(x => ({ ...x, stashed: false })), ...held.map(x => ({ ...x, stashed: true }))]} onChanged={refresh} />}
       {peek && <StashPeek it={peek} act={act} clips={clips[peek.id] || 0} onFiles={(x) => { setPeek(null); setFilesOpen({ objectiveId: x.id, title: x.kind === 'Main Mission' ? (x.task_text || x.title).replace(/^\s*(?:gate\s+)?\d+\s*[·.:)-]\s*/i, '') : x.title }) }} onClose={() => setPeek(null)} onOpenFull={(it) => openCard(it.id)} />}
+      {menu && <MissionMenu tone={SLOT_TONE[menu - 1]} onClose={() => setMenu(null)} onLoaded={(m) => { setMenu(null); setMsg(m); logBoard(m); bump() }} />}
       {yay && <YayPage objectiveId={yay} fresh onClose={() => setYay(null)} onOpenMission={(o) => { setYay(null); openCard(o.id) }} />}
       {dispatch && <DispatchModal item={dispatch} projects={projects} onClose={() => setDispatch(null)} onDone={(r) => { setDispatch(null); setMsg(`Dispatched: ${dispatch.title} · ${fmtClock(r.minutes)}${r.ported.length ? ` · ported ${r.ported.length}` : ' · nothing left'} · 1 mile on the next update`); logBoard(`Dispatched: ${dispatch.title} · ${fmtClock(r.minutes)}`); bump() }} />}
       {!L ? (
@@ -515,7 +526,7 @@ export default function LoadoutPanel({ onChange, refreshKey = 0, bare = false, f
         <>
           <div className={`board-slots${focusWide ? ' focused' : ''}`}>
             {layout.placed.map(({ it, n }) => focusWide && it.id === focusId ? <div key={it.id} className="focus-wide ld-col"><SlotName n={n} name={SLOT_NAMES[n - 1]} tone={SLOT_TONE[n - 1]} filled running={!!it.equipped} /><FilledSlot it={it} n={n} act={act} onOpen={(it) => openCard(it.id)} onExtract={extractGate} onRecall={setRecallOf} /></div> : lockSlot(it.id, it.id !== focusId, <div key={it.id} className="ld-col"><SlotName n={n} name={SLOT_NAMES[n - 1]} tone={SLOT_TONE[n - 1]} filled running={!!it.equipped} /><FilledSlot it={it} n={n} act={act} onOpen={(it) => openCard(it.id)} onExtract={extractGate} onRecall={setRecallOf} dropFromStash={(id) => act(async () => { const r = await equipObjective(id, { clock: true, ignoreStamina: true }); if (!r.ok) throw new Error(r.reasons.join(' · ')) }, 'Loaded from the Stash · timer on')} /></div>))}
-            {!focusWide && layout.empties.map(n => lockSlot(`empty-${n}`, true, <div key={`empty-${n}`} className="ld-col"><SlotName n={n} name={SLOT_NAMES[n - 1]} tone={SLOT_TONE[n - 1]} /><EmptySlot n={n} dropFromStash={(id) => act(async () => { const r = await equipObjective(id, { clock: true, ignoreStamina: true }); if (!r.ok) throw new Error(r.reasons.join(' · ')) }, 'Loaded from the Stash · timer on')} /></div>))}
+            {!focusWide && layout.empties.map(n => lockSlot(`empty-${n}`, true, <div key={`empty-${n}`} className="ld-col"><SlotName n={n} name={SLOT_NAMES[n - 1]} tone={SLOT_TONE[n - 1]} /><EmptySlot n={n} onAdd={() => setMenu(n)} dropFromStash={(id) => act(async () => { const r = await equipObjective(id, { clock: true, ignoreStamina: true }); if (!r.ok) throw new Error(r.reasons.join(' · ')) }, 'Loaded from the Stash · timer on')} /></div>))}
             {/* The Utility slot (David 11/17): a Console button, a meeting, or the unplanned. Never a mission. */}
             {(!focusWide || L.adhoc[0]?.id === focusId || (L.meetings || []).length > 0) && lockSlot('utility', !(L.adhoc[0] && L.adhoc[0].id === focusId), <div key="utility" className={focusWide && L.adhoc[0]?.id === focusId ? 'focus-wide' : undefined} style={{ display: 'flex', flexDirection: 'column', gap: 10, minWidth: 0, alignSelf: 'stretch' }}>
               <SlotName name="Utility" tone={UTILITY_TONE} filled={!!(L.adhoc[0] || routineOn || (L.meetings || []).length)} running={!!(L.adhoc[0] && L.adhoc[0].equipped)} />

@@ -1575,3 +1575,7 @@ button.brf-chip:hover { border-color: var(--hud-accent); }
 .gp-ic { width: 36px; height: 36px; border-radius: 99px; border: 1.5px solid var(--c, #8ACAFF); display: inline-grid; place-items: center; color: var(--c, #8ACAFF); background: transparent; flex-shrink: 0; cursor: pointer; padding: 0; transition: background .15s; }
 button.gp-ic:hover { background: color-mix(in srgb, var(--c, #8ACAFF) 16%, transparent); }
 .gp-ic.sm { width: 26px; height: 26px; border-width: 1.3px; }
+
+/* The plus on an empty slot (river/LoadoutPanel.jsx): the slot's color, opens the Mission Menu or the Utility choice. */
+.ld-plus { width: 52px; height: 52px; border-radius: 99px; border: 1.5px solid var(--c, #8ACAFF); color: var(--c, #8ACAFF); background: transparent; display: inline-grid; place-items: center; cursor: pointer; padding: 0; transition: background .15s, box-shadow .15s; }
+.ld-plus:hover, .ld-plus.on { background: color-mix(in srgb, var(--c, #8ACAFF) 16%, transparent); box-shadow: 0 0 0 4px color-mix(in srgb, var(--c, #8ACAFF) 12%, transparent); }
