@@ -55,6 +55,15 @@ async function loadProtocols(scopes) {
 
 // A tab carries its number and can be dragged to a new place (David 11/20: "make it cannon that the tabs are numbered
 // as well. and that i can drag and reposition a tab"). The number is its place on the strip.
+// A built page that shows its own number (a circled figure beside its title, and "Exhibit N.x" under it) is shown with
+// its tab's number, so the two can never disagree (David 11/20: "numbers don't match here"). Only the page's own
+// number moves; a letter (an appendix marked A) is left as it is.
+const renumber = (html, n) => {
+  if (!html || !n) return html
+  const m = /<span class="tabno">\s*(\d+)\s*<\/span>/.exec(html)
+  if (!m || Number(m[1]) === n) return html
+  return html.replace(/(<span class="tabno">)\s*\d+\s*(<\/span>)/g, `$1${n}$2`).replace(new RegExp(`Exhibit(\\s+)${m[1]}\\.`, 'g'), `Exhibit$1${n}.`)
+}
 function Tab({ active, live = false, onClick, onDoubleClick, children, title, n = null, id, onMove, over = false, onOver }) {
   return (
     <button onClick={onClick} onDoubleClick={onDoubleClick} title={title} draggable={!!onMove}
@@ -199,7 +208,7 @@ export default function WorkbenchSheet({ root, scopes = [], project = null }) {
             ? <div style={mono}>Opening the page</div>
             : html === ''
               ? <div style={{ fontSize: 13, color: GRAY }}>Could not read this page. Open it in a new tab.</div>
-              : <iframe key={`${current.build.slug}:${nonce}`} title={current.label} srcDoc={html} sandbox="allow-scripts allow-popups allow-forms allow-modals" style={{ display: 'block', width: '100%', height: 'min(1100px, 78vh)', minHeight: 520, border: `1px solid ${PANEL_BORDER}`, borderRadius: 10, background: '#0F2334' }} />}
+              : <iframe key={`${current.build.slug}:${nonce}`} title={current.label} srcDoc={renumber(html, tabs.findIndex(t => t.id === current.id) + 1)} sandbox="allow-scripts allow-popups allow-forms allow-modals" style={{ display: 'block', width: '100%', height: 'min(1100px, 78vh)', minHeight: 520, border: `1px solid ${PANEL_BORDER}`, borderRadius: 10, background: '#0F2334' }} />}
         </div>
       )}
       {current?.kind === 'page' && (open && open.slug === current.page.slug
