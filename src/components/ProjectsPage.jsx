@@ -3,7 +3,6 @@ import {
   Plus, ArrowLeft, Check, Trash2, ArrowUpRight, Folder, FolderPlus, FileText,
   Upload, Download, Pencil, Archive, ChevronRight, Hand, RefreshCw, Star, X as XMark,
 } from 'lucide-react'
-import { GateGlyph } from './river/GatePage'
 import useProjects, { freshnessOf } from '../hooks/useProjects'
 import ArtifactsTab from './river/ArtifactsTab'
 import WorkbenchTab, { WorkbenchIntake } from './river/Workbench'
@@ -197,7 +196,6 @@ function GateTools({ n, project, task, api, objState, takeOff, say }) {
         {isBlocked(task) ? <span>Blocked, Needs David</span> : null}
         {/* Icons, not words (David 11/21: "edit icon for the name. red x for delete. Polaris, pulsing red if it needs a Polaris objective"). */}
         <span className="gt-set">
-          {task.objective_id && <button className="gt-ic" title="Open Its Card" aria-label={`Open gate ${n}'s card`} onClick={() => openCard(task.objective_id)}><GateGlyph size={13} /></button>}
           <button className={`gt-ic${when ? '' : ' need'}`} title={when ? 'Polaris · Done When' : 'Needs A Polaris Objective'} aria-label={when ? `Gate ${n}'s Polaris objective` : `Gate ${n} needs a Polaris objective`} onClick={doneWhen}><Star size={13} /></button>
           <button className="gt-ic" title="Rename" aria-label={`Rename gate ${n}`} onClick={rename}><Pencil size={13} /></button>
           <button className="gt-ic del" title="Take It Off" aria-label={`Take gate ${n} off`} onClick={takeOff}><XMark size={14} /></button>

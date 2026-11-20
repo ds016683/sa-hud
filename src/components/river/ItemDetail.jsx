@@ -110,8 +110,11 @@ async function loadRelated(item) {
           // The mission's gates, for this gate's place among them ("gate 31 of 32"). The card itself tells only
           // this gate's story (David 11/17, later the same day); the mission's trail carries the others.
           const strip = (t) => String(t || '').replace(/^\s*(?:gate\s+)?\d+\s*[·.:)-]\s*/i, '')
-          const nOf = (t, i) => { const k = numOf(t); return k !== null ? k : i + 1 }
-          out.missionGates = all.map((t, i) => ({ id: t.id, n: nOf(t, i), text: strip(t.text), details: splitNotes(t.notes).details, done: t.status === 'done' || !!t.done, done_at: t.released_at, objective_id: t.objective_id, current: t.id === task.id })).sort((x, y) => x.n - y.n)
+          // A mission's gates are its numbered ones plus any open one without a number; a finished one-off with no number
+          // is history, not a gate (David 11/20: two old tasks were showing as gates 7 and 8 on a gate's trail).
+          const top = Math.max(0, ...numbered.map(numOf))
+          const gateRows = [...numbered, ...unnumberedOpen]
+          out.missionGates = gateRows.map((t, i) => ({ id: t.id, n: numOf(t) !== null ? numOf(t) : top + (i - numbered.length) + 1, text: strip(t.text), details: splitNotes(t.notes).details, done: t.status === 'done' || !!t.done, done_at: t.released_at, objective_id: t.objective_id, current: t.id === task.id })).sort((x, y) => x.n - y.n)
           out.mission = { id: pid, name: p.name, polaris: p.description || null }
         } catch { /* the fence falls back to ? of ? */ }
       }

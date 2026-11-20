@@ -31,7 +31,8 @@ import { listBuilds } from '../../lib/lumenPanel'
 import { listLiveFiles, isLink, isRequest } from '../../lib/livefiles'
 import { readPath, noteSource, savePathSteps, sourceLine, blanksIn, excerpt, buildTrail, stamp, dueWords, fireCardEvent } from '../../lib/path'
 import { fmtClock, equipObjective } from '../../lib/loadout'
-import GatePage, { GateGlyph, ExtractGlyph } from './GatePage'
+import GatePage, { GateGlyph } from './GatePage'
+import { ExtractMarker } from './glyphs'
 import { openCard } from '../../lib/card'
 import { hudConfirm, hudPrompt } from '../../lib/dialog'
 
@@ -183,6 +184,7 @@ export default function CardBriefing({ tone = null, obj, root, kindLabel, steps 
   // Close a gate from its own page: the same mark the circle makes, without the trail's flourish.
   const finishGate = async (st) => {
     if (busy) return
+    if (!await hudConfirm({ title: 'Extract This Gate?', message: st.text, confirm: 'Extract' })) return
     if (confirmClose && !(await confirmClose(st))) return
     setBusy(true)
     try {
@@ -323,7 +325,7 @@ export default function CardBriefing({ tone = null, obj, root, kindLabel, steps 
                       : <span className="hit still" title={s.type === 'gate' ? 'This gate closes on its own card' : s.type === 'mission' ? 'This gate closes on the mission\'s page, or on its own card once it is on the Board' : 'This one lives on a session board'}><span className="o" style={s.blocked ? { borderColor: 'var(--hud-warn)' } : undefined} /></span>}
                     {isClosing && <span className="brf-spark" style={{ '--dy': `${closing.dy}px` }} />}
                     {isNext && <div className="when">{s.type === 'mission' ? `Gate ${s.gate.n} · This Gate` : 'Next Move'}</div>}
-                    <div className={`what${s.type === 'gate' || (s.type === 'step' && !s.done) ? ' link' : ''}`} title={s.type === 'step' && !s.done ? 'Open this gate' : undefined} onClick={s.type === 'gate' ? () => onOpenCard && onOpenCard(s.kid.id) : s.type === 'step' && !s.done ? () => (s.step.objective_id ? openCard(s.step.objective_id) : setGateId(s.step.id)) : undefined}>{s.type === 'step' && s.step.n != null && <span className="gn">Gate {s.step.n}</span>}{s.text}{!s.done && (s.type === 'step' || s.type === 'gate') && <span style={{ display: 'inline-flex', gap: 7, marginLeft: 12, verticalAlign: 'middle' }} onClick={e => e.stopPropagation()}><button className="gp-ic sm" style={tone ? { '--c': tone } : undefined} title="Open The Gate" aria-label={`Open the gate: ${s.text}`} onClick={() => s.type === 'gate' ? (onOpenCard && onOpenCard(s.kid.id)) : (s.step.objective_id ? openCard(s.step.objective_id) : setGateId(s.step.id))}><GateGlyph size={13} /></button>{s.type === 'step' && <button className="gp-ic sm" style={tone ? { '--c': tone } : undefined} title="Extract: Close This Gate" aria-label={`Close the gate: ${s.text}`} onClick={(e) => close(s.step, e)}><ExtractGlyph size={13} /></button>}</span>}</div>
+                    <div className={`what${s.type === 'gate' || (s.type === 'step' && !s.done) ? ' link' : ''}`} title={s.type === 'step' && !s.done ? 'Open this gate' : undefined} onClick={s.type === 'gate' ? () => onOpenCard && onOpenCard(s.kid.id) : s.type === 'step' && !s.done ? () => (s.step.objective_id ? openCard(s.step.objective_id) : setGateId(s.step.id)) : undefined}>{s.type === 'step' && s.step.n != null && <span className="gn">Gate {s.step.n}</span>}{s.text}{!s.done && (s.type === 'step' || s.type === 'gate') && <span style={{ display: 'inline-flex', gap: 7, marginLeft: 12, verticalAlign: 'middle' }} onClick={e => e.stopPropagation()}><button className="gp-ic sm" style={tone ? { '--c': tone } : undefined} title="Open The Gate" aria-label={`Open the gate: ${s.text}`} onClick={() => s.type === 'gate' ? (onOpenCard && onOpenCard(s.kid.id)) : (s.step.objective_id ? openCard(s.step.objective_id) : setGateId(s.step.id))}><GateGlyph size={13} /></button>{s.type === 'step' && <ExtractMarker size={28} color={tone || '#8ACAFF'} title="Extract · Close This Gate, Bank The Miles" onClick={(e) => { const ev = { currentTarget: e.currentTarget }; hudConfirm({ title: 'Extract This Gate?', message: s.text, confirm: 'Extract' }).then(ok => { if (ok) close(s.step, ev) }) }} />}</span>}</div>
                     {s.done && <><span className="when">Closed just now</span><button className="tool" onClick={() => reopen(s.step)}>Reopen</button></>}
                     {!s.done && s.type === 'step' && (stopExtra ? stopExtra(s.step, { takeOff: () => drop(s.step) }) : <div className="src">{src.lead}{src.quote && <> <q>{src.quote}</q></>}<span className="gt-set" style={{ marginLeft: 10, verticalAlign: 'middle' }}><button className="gt-ic" title="Rename" aria-label={`Rename: ${s.text}`} onClick={() => rename(s.step)}><Pencil size={13} /></button><button className="gt-ic del" title="Take It Off" aria-label={`Take off: ${s.text}`} onClick={() => drop(s.step)}><XMark size={14} /></button></span></div>)}
                     {s.type === 'gate' && <div className="src">Gate {s.n} of {kids.length}{s.kid.due_date ? ` · ${dueWords(s.kid.due_date).short}` : ''}. It closes on its own card.</div>}
