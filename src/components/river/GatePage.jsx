@@ -27,21 +27,22 @@ const CSS = `
 @keyframes gpin { from { opacity: 0; transform: translateY(8px) } to { opacity: 1; transform: none } }
 .gp-in { max-width: 1320px; margin: 0 auto; padding: 28px 44px 60px; }
 .gp-crumb { display: flex; align-items: center; gap: 10px; font-size: 14px; }
-.gp-crumb button { font: inherit; color: ${BLUE}; background: transparent; border: 0; padding: 0; cursor: pointer; }
+.gp-crumb button { font: inherit; color: var(--t); background: transparent; border: 0; padding: 0; cursor: pointer; }
 .gp-crumb .up { display: inline-flex; align-items: center; gap: 5px; border: 1px solid rgba(255,255,255,.12); border-radius: 8px; padding: 4px 10px; font-size: 12.5px; }
 .gp-head { display: flex; align-items: center; gap: 16px; margin: 20px 0 24px; }
 .gp-head h1 { font: 500 34px/1.15 'Lora', Georgia, serif; letter-spacing: -.012em; margin: 0; min-width: 0; }
-.gp-head h1 span { color: ${BLUE}; }
+.gp-head h1 span { color: var(--t); }
 .gp.full .gp-head { margin: 0 0 14px; } .gp.full .gp-head h1 { font-size: 23px; } .gp.full .gp-in { padding-top: 18px; max-width: none; }
-.gp-ic { width: 36px; height: 36px; border-radius: 99px; border: 1.5px solid var(--c, ${BLUE}); display: inline-grid; place-items: center; color: var(--c, ${BLUE}); background: transparent; flex-shrink: 0; cursor: pointer; padding: 0; transition: background .15s; }
-button.gp-ic:hover { background: color-mix(in srgb, var(--c, ${BLUE}) 16%, transparent); }
-.gp-ic.big { width: 52px; height: 52px; background: rgba(138,202,255,.1); cursor: default; }
+.gp-ic { width: 36px; height: 36px; border-radius: 99px; border: 1.5px solid var(--c, var(--t)); display: inline-grid; place-items: center; color: var(--c, var(--t)); background: transparent; flex-shrink: 0; cursor: pointer; padding: 0; transition: background .15s; }
+button.gp-ic:hover { background: color-mix(in srgb, var(--c, var(--t)) 16%, transparent); }
+.gp-ic.big { width: 52px; height: 52px; background: color-mix(in srgb, var(--t) 10%, transparent); cursor: default; }
 .gp-ic.sm { width: 26px; height: 26px; border-width: 1.3px; }
 .gp-pen { background: transparent; border: 0; color: rgba(243,241,234,.44); cursor: pointer; padding: 0 0 0 10px; vertical-align: middle; }
 .gp-acts { display: flex; gap: 10px; margin-left: auto; align-items: center; }
 .gp-lines { border: 1px solid rgba(255,255,255,.12); border-radius: 14px; background: #0D1D2C; padding: 6px 26px 2px; }
 .gp-ln { display: grid; grid-template-columns: 160px 1fr; align-items: start; padding: 18px 0 14px; }
 .gp-ln + .gp-ln { border-top: 1px solid rgba(255,255,255,.07); }
+.gp-ln + .gp-ln .gp-tr, .gp-mini .st.own { opacity: .62; }
 .gp-k { font: 500 16px 'Lora', Georgia, serif; } .gp-k small { display: block; font: 400 12.5px var(--font-sans, 'Instrument Sans', sans-serif); color: rgba(243,241,234,.7); margin-top: 3px; }
 .gp-tr { display: flex; position: relative; align-items: flex-start; }
 .gp-tr::before { content: ""; position: absolute; left: 8px; right: 8px; top: 9px; height: 1.5px; background: rgba(255,255,255,.12); }
@@ -51,7 +52,7 @@ button.gp-nd { cursor: pointer; }
 .gp-nd.d b { background: var(--c); border-color: var(--c); }
 .gp-nd.thru::after { content: ""; position: absolute; left: 12px; right: -4px; top: 9px; height: 1.5px; background: var(--c); }
 .gp-nd:last-child::after { display: none; }
-.gp-nd.on b { width: 19px; height: 19px; margin: 0 0 6px -1px; background: ${BLUE}; border-color: ${BLUE}; box-shadow: 0 0 0 6px rgba(138,202,255,.2); }
+.gp-nd.on b { width: 19px; height: 19px; margin: 0 0 6px -1px; background: var(--t); border-color: var(--t); box-shadow: 0 0 0 6px color-mix(in srgb, var(--t) 22%, transparent); }
 .gp-nd span { display: block; font-size: 13px; line-height: 1.3; color: rgba(243,241,234,.7); padding-right: 14px; overflow: hidden; text-overflow: ellipsis; }
 .gp-nd.on span { color: #F3F1EA; font-weight: 600; }
 .gp-nd small { display: block; font-size: 12px; color: rgba(243,241,234,.44); margin-top: 2px; font-weight: 400; }
@@ -60,12 +61,12 @@ button.gp-nd { cursor: pointer; }
 .gp-mini .st { flex: 1; display: flex; align-items: center; }
 .gp-mini .st i { flex: 1; height: 1.5px; background: rgba(255,255,255,.12); } .gp-mini .st i.d { background: var(--c); }
 .gp-mini .st b { width: 10px; height: 10px; border-radius: 99px; border: 1.5px solid rgba(243,241,234,.44); flex-shrink: 0; } .gp-mini .st b.d { background: var(--c); border-color: var(--c); }
-.gp-mini .st b.on { width: 14px; height: 14px; background: ${BLUE}; border-color: ${BLUE}; box-shadow: 0 0 0 4px rgba(138,202,255,.2); }
+.gp-mini .st b.on { width: 14px; height: 14px; background: var(--t); border-color: var(--t); box-shadow: 0 0 0 4px color-mix(in srgb, var(--t) 22%, transparent); }
 .gp-bench { margin-top: 26px; } .gp.full .gp-bench { margin-top: 0; }
 .gp-benchhead { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; font: 500 20px 'Lora', Georgia, serif; }
 .gp-benchhead::after { content: ""; flex: 1; height: 1px; background: rgba(255,255,255,.12); order: 1; } .gp-benchhead button { order: 2; }
 .gp-sq { width: 32px; height: 32px; border-radius: 8px; border: 1px solid rgba(255,255,255,.12); display: inline-grid; place-items: center; color: rgba(243,241,234,.7); background: transparent; cursor: pointer; }
-.gp-sq:hover { color: ${BLUE}; border-color: ${BLUE}; }
+.gp-sq:hover { color: var(--t); border-color: var(--t); }
 `
 
 // gate: the step ({ id, text, n, done, done_at, created_at }); gates: every gate on the card, in order.
