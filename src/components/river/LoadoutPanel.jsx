@@ -175,9 +175,11 @@ export function FilledSlot({ it, n, act, onOpen, onExtract, onRecall, dropFromSt
   const sizeLabel = it.size === 'heavy' ? 'Mythic' : it.size === 'medium' ? 'Contract' : 'Bounty'
   // The face says which gate this is, then the mission's count in two plain numbers and a bar (David 11/17:
   // "a clean, crisp way to put gates accomplished, gates remaining").
-  const typeLine = main ? `Main Mission${it.task_n ? ` · Gate ${it.task_n}` : ''}` : `${it.kind} · ${sizeLabel}`
+  const typeLine = main ? 'Main Mission' : `${it.kind} · ${sizeLabel}`
   const meter = main ? (it.task_total ? { closed: it.task_closed || 0, total: it.task_total } : null) : gates.length ? { closed: gatesDone, total: gates.length } : null
   const task = main ? (it.task_text || it.title) : gates.length ? (gate ? gate.text : 'Every gate closed. Extract.') : null
+  // The line under the header names the gate by its number (David 11/21: "does anything here specify a gate?").
+  const gateN = main ? (it.task_n || null) : gate ? (gate.n != null ? gate.n : gates.indexOf(gate) + 1) : null
   const miles = main ? { n: MILES.gate, sub: 'on close' } : { n: baseMiles(it.size), sub: gatesDone ? `on close · ${MILES.gate * gatesDone} banked on gates` : 'on close' }
   const due = fmtDue(it.due_date)
   const late = it.due_date && it.due_date < new Date().toISOString().slice(0, 10)
@@ -197,7 +199,7 @@ export function FilledSlot({ it, n, act, onOpen, onExtract, onRecall, dropFromSt
         </div>
       </div>
       {task
-        ? <div onClick={() => onOpen(it)} title={task} style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 18, color: '#fff', lineHeight: 1.28, cursor: 'pointer', flex: 1, display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{task}</div>
+        ? <div onClick={() => onOpen(it)} title={task} style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 18, color: '#fff', lineHeight: 1.28, cursor: 'pointer', flex: 1, display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{gateN ? <span style={{ color }}>Gate {gateN} · </span> : null}{task}</div>
         : <div style={{ flex: 1 }} />}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', borderTop: `1px solid ${PANEL_BORDER}`, borderBottom: `1px solid ${PANEL_BORDER}` }}>
         <Fact label="Miles"><span style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 16, color: INK }}>{miles.n}</span><span style={{ fontSize: 12.5, color: MUTED, marginLeft: 6 }}>{miles.sub}</span></Fact>
