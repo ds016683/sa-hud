@@ -213,6 +213,14 @@ async function listStorage(prefix, limit = 200) {
   if (!res.ok) return []
   return (await res.json()) || []
 }
+async function getStorageText(path) {
+  const res = await fetch(`${URL_BASE}/storage/v1/object/project-files/${path.split('/').map(encodeURIComponent).join('/')}?cb=${Date.now()}`, { headers: { ...sbHeaders(), 'Cache-Control': 'no-cache' }, cache: 'no-store' })
+  return res.ok ? res.text() : null
+}
+async function delStorage(path) {
+  const res = await fetch(`${URL_BASE}/storage/v1/object/project-files/${path.split('/').map(encodeURIComponent).join('/')}`, { method: 'DELETE', headers: sbHeaders() })
+  return res.ok
+}
 const slugOf = (t) => String(t || 'page').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 48) || 'page'
 const rootOf = (item) => item.kind === 'project' ? item.id : `objectives/${item.id}`
 
@@ -909,6 +917,21 @@ export const TOOLS = [
     description: "Build something David can use right away on a card: a prototype, a mock-up, a small tool, a calculator, a one-page view, a form, a chart. html is ONE complete self-contained HTML document (inline CSS and JS, no external files except Google Fonts; fetch nothing). Wear the HUD's canon: navy ground #0F2334, ink #F3F1EA, Lora for headings, Instrument Sans for labels and chrome, the accent oklch(0.82 0.109 248), gold #F8C761 only for small wayfinding. It shows as a tab on the card's Workbench and on the Lumen panel's Build tab, and a Claude session can port it into a real app later, so keep it clean and commented. slug names it (reuse a slug to revise). title is what David sees; note is one line on what it does. Say it is on the Build tab when it lands.",
     inputSchema: { type: 'object', properties: { project: { type: 'string' }, side_mission: { type: 'string' }, slug: { type: 'string' }, title: { type: 'string' }, html: { type: 'string' }, note: { type: 'string' } }, required: ['slug', 'title', 'html'] },
   },
+  {
+    name: 'read_built_page',
+    description: "Read the HTML of a built tab on a card's Workbench (a page made with build_page by you or by a Claude session), by project or side_mission and its slug or title. Use it before changing a built tab, and to answer what a built tab holds. Returns the page's title, note, version and its html.",
+    inputSchema: { type: 'object', properties: { project: { type: 'string' }, side_mission: { type: 'string' }, slug: { type: 'string' } }, required: ['slug'] },
+  },
+  {
+    name: 'patch_built_page',
+    description: "Change a built tab on a card's Workbench in place, without rewriting it: a list of exact find and replace edits applied to its HTML. This is how you change a page a Claude session built (add a column, change a size, fix a figure) and keep its charts and scripts. read_built_page first; each find must be copied exactly from that HTML and must match once (pass all true on an edit to replace every match). If any find does not match, nothing is saved and the answer says which. The version before the change is kept, so say the change can be put back.",
+    inputSchema: { type: 'object', properties: { project: { type: 'string' }, side_mission: { type: 'string' }, slug: { type: 'string' }, edits: { type: 'array', items: { type: 'object', properties: { find: { type: 'string' }, replace: { type: 'string' }, all: { type: 'boolean' } }, required: ['find', 'replace'] } } }, required: ['slug', 'edits'] },
+  },
+  {
+    name: 'remove_workbench_tab',
+    description: "Take a tab off a card's Workbench when David asks for it to be removed, deleted or killed: a typed tab or a built tab, by project or side_mission and its slug or title. The tab is moved to the card's removed folder, not destroyed, so it can be put back; say that in one line. Only on his word, and only the tabs he named. If he says to remove all but one, list what you removed.",
+    inputSchema: { type: 'object', properties: { project: { type: 'string' }, side_mission: { type: 'string' }, slug: { type: 'string' } }, required: ['slug'] },
+  },
 ]
 
 // Web hands (10/20): a page reader and a keyless search, so "find it on their
@@ -1375,6 +1398,64 @@ export async function callTool(name, args = {}) {
       const meta = { v: 1, kind: 'build', slug, title: String(args.title || slug), note: String(args.note || prior?.note || ''), bytes: html.length, version: (prior?.version || 0) + 1, created_at: prior?.created_at || now, updated_at: now, updated_by: 'lumen' }
       await putStorage(`${pr.id}/build/${slug}.json`, JSON.stringify(meta), 'application/json')
       return JSON.stringify({ ok: true, on: pr.name, slug, title: meta.title, version: meta.version, note: `On the card's Workbench, as the tab named "${meta.title}", and on the Lumen panel's Build tab.` })
+    }
+    // A built tab's own code: read it, and change it in place (David 11/20, after Lumen could not add a column to a page
+    // a Claude session built: "Some arms/legs issues"). The version before a change is kept beside it.
+    case 'read_built_page': {
+      const pr = await resolveRoot(args)
+      const slug = slugOf(args.slug)
+      const [meta, html] = await Promise.all([getStorageJson(`${pr.id}/build/${slug}.json`), getStorageText(`${pr.id}/build/${slug}.html`)])
+      if (html == null) { const have = (await listStorage(`${pr.id}/build`)).map(f => f.name).filter(n => n.endsWith('.json')).map(n => n.replace(/\.json$/, '')); return JSON.stringify({ ok: false, error: `no built tab ${slug} on ${pr.name}`, built_tabs: have }) }
+      return JSON.stringify({ ok: true, on: pr.name, slug, title: meta?.title || slug, note: meta?.note || '', version: meta?.version || 1, updated_by: meta?.updated_by || null, bytes: html.length, html: html.slice(0, 120000), truncated: html.length > 120000 })
+    }
+    case 'patch_built_page': {
+      const pr = await resolveRoot(args)
+      const slug = slugOf(args.slug)
+      const html = await getStorageText(`${pr.id}/build/${slug}.html`)
+      if (html == null) return JSON.stringify({ ok: false, error: `no built tab ${slug} on ${pr.name}` })
+      const edits = Array.isArray(args.edits) ? args.edits : []
+      if (!edits.length) throw new Error('edits (a list of find and replace) required')
+      let next = html; const missed = []
+      edits.forEach((e, i) => {
+        const find = String(e.find ?? ''), n = find ? next.split(find).length - 1 : 0
+        if (!find || n === 0) missed.push({ edit: i + 1, why: 'find not in the page', find: find.slice(0, 80) })
+        else if (n > 1 && !e.all) missed.push({ edit: i + 1, why: `find matches ${n} times; make it longer or pass all`, find: find.slice(0, 80) })
+        else next = e.all ? next.split(find).join(String(e.replace ?? '')) : next.replace(find, () => String(e.replace ?? ''))
+      })
+      if (missed.length) return JSON.stringify({ ok: false, saved: false, missed, note: 'Nothing was saved. Read the page again and copy each find exactly.' })
+      const prior = await getStorageJson(`${pr.id}/build/${slug}.json`)
+      const now = new Date().toISOString()
+      await putStorage(`${pr.id}/build-removed/${slug}.v${prior?.version || 1}.html`, html, 'text/html; charset=utf-8')
+      await putStorage(`${pr.id}/build/${slug}.html`, next, 'text/html; charset=utf-8')
+      const meta = { ...(prior || { v: 1, kind: 'build', slug, title: slug, created_at: now }), bytes: next.length, version: (prior?.version || 1) + 1, updated_at: now, updated_by: 'lumen' }
+      await putStorage(`${pr.id}/build/${slug}.json`, JSON.stringify(meta), 'application/json')
+      return JSON.stringify({ ok: true, on: pr.name, slug, title: meta.title, version: meta.version, edits: edits.length, note: `Changed in place; version ${meta.version - 1} is kept and can be put back. He sees it when the tab refreshes.` })
+    }
+    // Take a tab off the Workbench (David 11/20: "You can kill the other tabs", and Lumen had no hand for it). Moved, never destroyed.
+    case 'remove_workbench_tab': {
+      const pr = await resolveRoot(args)
+      const slug = slugOf(args.slug)
+      const stamp = new Date().toISOString().replace(/[:.]/g, '-')
+      const page = await getStorageText(`${pr.id}/workspace/${slug}.json`)
+      if (page != null) {
+        await putStorage(`${pr.id}/workspace-removed/${slug}.${stamp}.json`, page, 'application/json')
+        if (!(await delStorage(`${pr.id}/workspace/${slug}.json`))) throw new Error('the tab was copied to the removed folder but could not be taken off the Workbench')
+        let title = slug; try { title = JSON.parse(page).title || slug } catch { /* the slug names it */ }
+        return JSON.stringify({ ok: true, on: pr.name, removed: title, kind: 'tab', note: 'Off the Workbench. A copy is kept in the card\'s removed folder, so it can be put back.' })
+      }
+      const html = await getStorageText(`${pr.id}/build/${slug}.html`)
+      if (html != null) {
+        const meta = await getStorageText(`${pr.id}/build/${slug}.json`)
+        await putStorage(`${pr.id}/build-removed/${slug}.${stamp}.html`, html, 'text/html; charset=utf-8')
+        if (meta != null) await putStorage(`${pr.id}/build-removed/${slug}.${stamp}.json`, meta, 'application/json')
+        const gone = await delStorage(`${pr.id}/build/${slug}.html`); await delStorage(`${pr.id}/build/${slug}.json`)
+        if (!gone) throw new Error('the built tab was copied to the removed folder but could not be taken off the Workbench')
+        let title = slug; try { title = JSON.parse(meta).title || slug } catch { /* the slug names it */ }
+        return JSON.stringify({ ok: true, on: pr.name, removed: title, kind: 'built tab', note: 'Off the Workbench. A copy is kept in the card\'s removed folder, so it can be put back.' })
+      }
+      const tabs = (await listStorage(`${pr.id}/workspace`)).map(f => f.name).filter(n => n.endsWith('.json')).map(n => n.replace(/\.json$/, ''))
+      const built = (await listStorage(`${pr.id}/build`)).map(f => f.name).filter(n => n.endsWith('.json')).map(n => n.replace(/\.json$/, ''))
+      return JSON.stringify({ ok: false, error: `no tab ${slug} on ${pr.name}`, tabs, built_tabs: built })
     }
     case 'write_artifact': {
       const pr = await resolveRoot(args)
