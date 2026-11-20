@@ -25,6 +25,7 @@ import CardFiles, { WrittenOnCard } from './CardFiles'
 import WorkbenchSheet from './WorkbenchSheet'
 import LumenPanel from './LumenPanel'
 import CardBriefing from './CardBriefing'
+import GatePage, { GateGlyph } from './GatePage'
 import { dueWords } from '../../lib/path'
 import { openCard } from '../../lib/card'
 import { LEDGER_EVENT, fireLedgerChanged } from '../../lib/lumenPanel'
@@ -295,6 +296,16 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
     </div>
   ) : null
   const [editStar, setEditStar] = useState(false)
+  // A gate's face is the gate page, always (David 11/20, on that page: "this should be the card face for a gate. always.
+  // we'll render from here"). The card under it (trail, steps, notes) is one icon away, and the gate icon by the title comes back.
+  const [gateFace, setGateFace] = useState(true)
+  const renameGate = async () => {
+    const cur = String(obj.title || '').replace(/^\s*(?:gate\s+)?\d+\s*[·.:)-]\s*/i, '')
+    const t = String(await hudPrompt({ title: 'Gate', value: cur }) || '').replace(/\s+/g, ' ').trim()
+    if (!t || t === cur) return
+    const text = rel?.gateN ? `${rel.gateN} · ${t}` : t
+    try { if (task?.id) await supabase.from('project_tasks').update({ text }).eq('id', task.id); await patchObj({ title: text }) } catch (e) { setMsg(`Could not rename: ${e.message}`) }
+  }
   // Domain, Type and Target Completion (David 11/11): three chips beside the title; a click opens their controls.
   const [metaOpen, setMetaOpen] = useState(false)
   useEffect(() => {
@@ -365,7 +376,7 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
                   (its kind, its domain, its date) sits beside it as three chips. Domain, Type and Target Completion
                   "still take up wayyyy too much real estate"; a click on a chip opens their controls. */}
               <div style={{ display: 'flex', alignItems: 'flex-start', gap: 20, flexWrap: 'wrap', marginTop: 16 }}>
-                <h1 style={{ ...S.h1, fontSize: 32, lineHeight: 1.14, letterSpacing: '-0.012em', flex: '1 1 420px', minWidth: 0 }}>{/* the gate's number rides with its name (David 11/17) */}{(rel?.parent || task) && rel?.gateN ? <span style={{ color: 'var(--hud-accent)' }}>Gate {rel.gateN} · </span> : null}{name}{obj && <button title="Rename" aria-label="Rename" onClick={async () => { const t = String(await hudPrompt({ title: 'Title', value: obj.title || name }) || '').replace(/\s+/g, ' ').trim(); if (t && t !== obj.title) patchObj({ title: t }) }} style={{ background: 'transparent', border: 'none', padding: '0 0 0 12px', cursor: 'pointer', color: 'var(--hud-ink-3)', verticalAlign: 'middle' }}><Pencil size={17} /></button>}</h1>
+                <h1 style={{ ...S.h1, fontSize: 32, lineHeight: 1.14, letterSpacing: '-0.012em', flex: '1 1 420px', minWidth: 0 }}>{/* the gate's number rides with its name (David 11/17) */}{(rel?.parent || task) && rel?.gateN ? <span style={{ color: 'var(--hud-accent)' }}>Gate {rel.gateN} · </span> : null}{name}{obj && task && <button title="The Gate's Page" aria-label="The gate's page" onClick={() => setGateFace(true)} style={{ background: 'transparent', border: 'none', padding: '0 0 0 12px', cursor: 'pointer', color: 'var(--hud-accent)', verticalAlign: 'middle' }}><GateGlyph size={19} /></button>}{obj && <button title="Rename" aria-label="Rename" onClick={async () => { const t = String(await hudPrompt({ title: 'Title', value: obj.title || name }) || '').replace(/\s+/g, ' ').trim(); if (t && t !== obj.title) patchObj({ title: t }) }} style={{ background: 'transparent', border: 'none', padding: '0 0 0 12px', cursor: 'pointer', color: 'var(--hud-ink-3)', verticalAlign: 'middle' }}><Pencil size={17} /></button>}</h1>
                 {/* A gate's card carries none of the three chips (David 11/17: "none of that stuff needs to be on a gate
                     card. leave it with. the mission card for now"): its number is in its name, its date is on the trail. */}
                 <div data-card-meta style={{ display: (rel?.parent || task) ? 'none' : 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', position: 'relative', paddingTop: 6 }}>
@@ -465,6 +476,15 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
           {exit.node}
         </div>
       </div>
+      {rel && obj && task && gateFace && (
+        <GatePage benchRoot={objRoot(obj.id)} root={objRoot(obj.id)} filesFor={obj.id} tools={obj.state !== 'released' ? where : null} onTrail={() => setGateFace(false)}
+          gate={{ id: task.id, n: rel.gateN, text: String(obj.title || '').replace(/^\s*(?:gate\s+)?\d+\s*[·.:)-]\s*/i, ''), done: task.status === 'done' || !!task.done, done_at: task.released_at, created_at: obj.captured_at }}
+          gates={(rel.missionGates || []).length ? rel.missionGates : [{ id: task.id, n: rel.gateN, text: obj.title, done: false }]}
+          missionTitle={rel.mission?.name || rel.project?.name || 'The Mission'}
+          onClose={() => (rel.project ? go([rel.project.id]) : onClose())}
+          onPick={(g) => (g.objective_id ? openCard(g.objective_id) : rel.project ? go([rel.project.id]) : null)}
+          onRename={renameGate} />
+      )}
       {item.objective_id && <LumenPanel item={onGate({ kind: 'objective', id: item.objective_id, title: item.title, root: objRoot(item.objective_id), summary: [obj?.north_star, item.description || obj?.description].filter(Boolean).join('\n\n') }, gateView)} />}
     </div>
   )

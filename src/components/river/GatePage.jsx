@@ -6,7 +6,8 @@
 // The Workbench pulls up full: the header and the two lines fold to one strip.
 import { useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Pencil, Maximize2, Minimize2, ArrowUp } from 'lucide-react'
+import { Pencil, ArrowUp, ListTree, PenLine, FolderOpen } from 'lucide-react'
+import CardFiles from './CardFiles'
 import WorkbenchSheet from './WorkbenchSheet'
 import { listPages, readPage, writePage, slugify } from '../../lib/workspace'
 import { setGateView } from '../../lib/gateView'
@@ -63,12 +64,13 @@ button.gp-nd { cursor: pointer; }
 .gp-benchhead { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; font: 500 20px 'Lora', Georgia, serif; }
 .gp-benchhead::after { content: ""; flex: 1; height: 1px; background: rgba(255,255,255,.12); order: 1; } .gp-benchhead button { order: 2; }
 .gp-sq { width: 32px; height: 32px; border-radius: 8px; border: 1px solid rgba(255,255,255,.12); display: inline-grid; place-items: center; color: rgba(243,241,234,.7); background: transparent; cursor: pointer; }
-.gp-sq:hover { color: ${BLUE}; border-color: ${BLUE}; }
+.gp-sq:hover, .gp-sq.on { color: ${BLUE}; border-color: ${BLUE}; }
 `
 
 // gate: the step ({ id, text, n, done, done_at, created_at }); gates: every gate on the card, in order.
-export default function GatePage({ benchRoot = null, gate, gates, root, missionTitle, up = [], source = null, onClose, onPick, onRename, onExtract, onLoad }) {
-  const [full, setFull] = useState(false)
+export default function GatePage({ benchRoot = null, tools = null, filesFor = null, onTrail = null, gate, gates, root, missionTitle, up = [], source = null, onClose, onPick, onRename, onExtract, onLoad }) {
+  const full = false   // the Workbench's own button takes it to full screen now
+  const [view, setView] = useState('bench')   // 'bench' | 'files'
   // The page sits in the same layer as the card's Lumen panel, so the pill and the panel stay above it.
   const [host] = useState(() => document.querySelector('aside[aria-label="Lumen"]')?.parentElement || document.querySelector('.sa-app') || document.body)
   const [tabs, setTabs] = useState([])
@@ -77,7 +79,7 @@ export default function GatePage({ benchRoot = null, gate, gates, root, missionT
   const groot = benchRoot || gateRoot(root, gate.id)
   const n = gate.n != null ? gate.n : gates.findIndex(g => g.id === gate.id) + 1
   useEffect(() => { setGateView({ id: gate.id, n, text: gate.text }); return () => setGateView(null) }, [gate.id, n, gate.text])
-  useEffect(() => { const k = (e) => { if (e.key === 'Escape' && !e.defaultPrevented && !document.querySelector('.sa-app.lumen-open')) { if (full) setFull(false); else onClose() } }; window.addEventListener('keydown', k); return () => window.removeEventListener('keydown', k) }, [full, onClose])
+  useEffect(() => { const k = (e) => { if (e.key === 'Escape' && !e.defaultPrevented && !document.querySelector('.sa-app.lumen-open')) onClose() }; window.addEventListener('keydown', k); return () => window.removeEventListener('keydown', k) }, [full, onClose])
   // The gate's tabs. A tab made for this gate on the card's Workbench before the gate had a page comes along, once.
   useEffect(() => {
     let on = true
@@ -112,8 +114,9 @@ export default function GatePage({ benchRoot = null, gate, gates, root, missionT
           <span className={`gp-ic${full ? '' : ' big'}`}><GateGlyph size={full ? 17 : 26} /></span>
           <h1><span>Gate {n} ·</span> {gate.text}{onRename && <button className="gp-pen" title="Rename" aria-label="Rename" onClick={() => onRename(gate)}><Pencil size={full ? 14 : 17} /></button>}</h1>
           <div className="gp-acts">
-            {onLoad && <button className="gp-ic" style={{ '--c': PURPLE }} title="Load The Mission" aria-label="Load the mission" onClick={onLoad}><LoadGlyph size={18} /></button>}
-            {!gate.done && onExtract && <button className="gp-ic" style={{ '--c': GREEN }} title="Extract: Close This Gate" aria-label="Close this gate" onClick={() => onExtract(gate)}><ExtractGlyph size={18} /></button>}
+            {tools}
+            {!tools && onLoad && <button className="gp-ic" style={{ '--c': PURPLE }} title="Load The Mission" aria-label="Load the mission" onClick={onLoad}><LoadGlyph size={18} /></button>}
+            {!tools && !gate.done && onExtract && <button className="gp-ic" style={{ '--c': GREEN }} title="Extract: Close This Gate" aria-label="Close this gate" onClick={() => onExtract(gate)}><ExtractGlyph size={18} /></button>}
           </div>
         </div>
         {full ? (
@@ -141,8 +144,15 @@ export default function GatePage({ benchRoot = null, gate, gates, root, missionT
           </div>
         )}
         <div className="gp-bench">
-          <div className="gp-benchhead">Workbench<button className="gp-sq" title={full ? 'Back To The Gate' : 'Pull The Workbench Up Full'} aria-label={full ? 'Back to the gate' : 'Pull the Workbench up full'} onClick={() => setFull(f => !f)}>{full ? <Minimize2 size={15} /> : <Maximize2 size={15} />}</button></div>
-          {ready && <WorkbenchSheet key={groot} root={groot} scopes={[]} />}
+          <div className="gp-benchhead">{view === 'files' ? 'Files' : 'Workbench'}
+            <span style={{ order: 2, display: 'inline-flex', gap: 6 }}>
+              {filesFor != null && <button className={`gp-sq${view === 'bench' ? ' on' : ''}`} title="Workbench" aria-label="Workbench" aria-pressed={view === 'bench'} onClick={() => setView('bench')}><PenLine size={15} /></button>}
+              {filesFor != null && <button className={`gp-sq${view === 'files' ? ' on' : ''}`} title="Files" aria-label="Files" aria-pressed={view === 'files'} onClick={() => setView('files')}><FolderOpen size={15} /></button>}
+              {onTrail && <button className="gp-sq" title="Trail, Steps And Notes" aria-label="The gate's trail, steps and notes" onClick={onTrail}><ListTree size={15} /></button>}
+            </span>
+          </div>
+          {view === 'bench' && ready && <WorkbenchSheet key={groot} root={groot} scopes={filesFor != null ? [{ objectiveId: filesFor, label: null }] : []} />}
+          {view === 'files' && filesFor != null && <CardFiles key={`gate-files:${filesFor}`} objectiveId={filesFor} />}
         </div>
       </div>
     </div>
