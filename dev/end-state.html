@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8" /><title>End state (dev)</title>
+<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;1,400&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="./gate-mock.css" />
+<style>
+body{display:grid;grid-template-columns:220px 1fr;min-height:100vh}
+.side{background:var(--deep);border-right:1px solid var(--line);padding:24px 16px}
+.brand{font:600 12.5px var(--sans);letter-spacing:.2em;text-transform:uppercase;line-height:1.5}.brand span{display:block;font-weight:500;font-size:11px;color:var(--blue);margin-top:5px}
+.grp{font-size:12.5px;color:var(--ink3);margin:22px 0 6px 10px}.nav{padding:8px 10px;border-radius:8px;font-size:14.5px;color:var(--ink2);cursor:pointer}.nav.on{color:var(--ink);background:rgba(255,255,255,.06);box-shadow:inset 2px 0 0 var(--blue)}
+.wrap{grid-template-columns:1fr 340px}
+button,.ic,.tab,.rt,.gr,.nd,.slot,.tool,.sq,.crumb span{cursor:pointer}button{font:inherit;color:inherit;background:none;border:0;padding:0}
+.ic:hover{background:color-mix(in srgb,var(--c,var(--blue)) 16%,transparent)}
+h1.pg{font:500 38px/1.1 var(--serif);margin:0 0 6px}.date{color:var(--ink2);font-size:15px;margin-bottom:6px}
+.slots{display:grid;grid-template-columns:5fr 4fr 3fr;gap:16px;margin-top:14px}
+.slot{border:1px solid var(--line);border-top:2px solid var(--c,var(--line));border-radius:14px;background:#11283c;padding:18px 20px;min-height:230px;display:flex;flex-direction:column}
+.slot .nm{font-size:13px;color:var(--c,var(--ink3))}.slot .ti{font:500 22px/1.25 var(--serif);margin:6px 0 4px}.slot .ck{font:500 30px var(--serif);color:var(--c);margin-top:auto;font-variant-numeric:tabular-nums}
+.slot .mt{display:flex;align-items:center;margin:14px 0 4px}.slot .mt i{flex:1;height:1.5px;background:var(--line)}.slot .mt i.d{background:var(--purple)}.slot .mt b{width:10px;height:10px;border-radius:99px;border:1.5px solid var(--ink3)}.slot .mt b.d{background:var(--purple);border-color:var(--purple)}.slot .mt b.on{width:14px;height:14px;background:var(--blue);border-color:var(--blue);box-shadow:0 0 0 4px rgba(138,202,255,.2)}
+.empty{color:var(--ink3);border-style:dashed;align-items:center;justify-content:center}
+.nd{cursor:pointer}
+.yay{position:fixed;inset:0;z-index:50;display:grid;place-items:center;background:radial-gradient(ellipse at 50% 34%,#1a2f4a 0%,#0c1b2a 62%);text-align:center}
+.yay .ttl{font:500 30px var(--serif);margin-bottom:16px}.yay .mi b{font:500 104px/1 var(--serif);color:var(--purple);text-shadow:0 0 44px rgba(180,163,232,.35)}.yay .mi span{font:500 26px var(--serif);margin-left:14px;color:var(--ink2)}
+.yay .sub{font:italic 400 19px var(--serif);color:var(--ink2);margin:12px 0 34px}
+.medal{width:96px;height:96px;border-radius:99px;border:2.5px solid var(--purple);display:grid;place-items:center;color:var(--purple);margin:0 auto 10px;box-shadow:0 0 30px rgba(180,163,232,.35);animation:pop .7s cubic-bezier(.2,.9,.3,1.25) both}.medal svg{width:44px;height:44px;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+@keyframes pop{0%{opacity:0;transform:scale(.4)}60%{transform:scale(1.1)}100%{opacity:1;transform:scale(1)}}
+.yay .dn{display:inline-grid;gap:9px;text-align:left;margin:26px 0 30px;font-size:15.5px}.yay .dn i{font-style:normal;font-size:12.5px;color:var(--purple);border:1px solid rgba(180,163,232,.45);border-radius:99px;padding:2px 10px;margin-right:10px}
+.go{font:600 15px var(--sans);color:#0D1D2C;background:var(--blue);border-radius:999px;padding:12px 34px;box-shadow:0 0 26px rgba(138,202,255,.3)}
+.bench[contenteditable]{outline:none}.sheet[contenteditable]{outline:none}
+.lum .in{display:flex;align-items:center;padding:0 14px;color:var(--ink3);font-size:14px}
+.fullbench{grid-template-columns:1fr}.fullbench .side{display:none}
+.fb .main{padding:0;display:flex;flex-direction:column;height:100vh}
+.fbbar{display:flex;align-items:center;gap:16px;padding:10px 20px;border-bottom:1px solid var(--line);background:var(--deep)}
+.fbbar .exit{display:inline-flex;align-items:center;gap:7px;font-size:13.5px;color:var(--blue);border:1px solid rgba(138,202,255,.45);border-radius:8px;padding:6px 12px;cursor:pointer;white-space:nowrap}.fbbar .exit svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.fbt{font:500 18px var(--serif);white-space:nowrap}.fbt span{color:var(--blue)}
+.fbbar .mini{flex:1;margin:0;border:0;background:transparent;padding:0 8px;min-width:0}
+.fb .app{flex:1;min-height:0;border:0;border-radius:0;grid-template-columns:200px 1fr}.fb .sheet{max-width:none;padding:38px 8%}
+.fb.nolum{grid-template-columns:1fr}
+.lum{position:relative}.lfold{position:absolute;right:18px;top:24px;width:28px;height:28px;border-radius:8px;border:1px solid var(--line);display:grid;place-items:center;color:var(--ink2);cursor:pointer;font-size:17px}.lfold:hover{color:var(--blue);border-color:var(--blue)}
+.lpill{position:fixed;right:22px;bottom:22px;z-index:55;display:inline-flex;align-items:center;gap:9px;font:500 15px var(--serif);padding:10px 18px;border-radius:999px;border:1px solid var(--blue);background:var(--deep);cursor:pointer;box-shadow:0 8px 30px rgba(0,0,0,.45)}
+.rail .h{display:flex;align-items:center;justify-content:space-between}.fold{width:24px;height:24px;border-radius:7px;border:1px solid var(--line);display:grid;place-items:center;color:var(--ink2);cursor:pointer;font-size:15px;font-family:var(--sans)}.fold:hover{color:var(--blue);border-color:var(--blue)}
+.fb .app.thin{grid-template-columns:56px 1fr}.thin .rail{padding:16px 8px}.thin .rail .h{justify-content:center;padding:2px 0 12px}.thin .rt{text-align:center;padding:9px 0}.thin .rt b{font-size:12.5px;font-weight:600;letter-spacing:.02em}.thin .rt.new{padding:7px 0}
+.rt{display:flex;align-items:center;gap:10px}.ki{display:inline-grid;place-items:center;flex-shrink:0}.ki svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}.thin .rt{justify-content:center}.rt.new{justify-content:center}
+.ic.lit{background:color-mix(in srgb,var(--c) 22%,transparent);box-shadow:0 0 0 3px color-mix(in srgb,var(--c) 18%,transparent)}
+.exm{display:inline-grid;place-items:center;cursor:pointer;color:var(--purple);flex-shrink:0}.exm .sh{fill:rgba(180,163,232,.08);stroke:currentColor;stroke-width:1.5;stroke-linejoin:round;transition:fill .15s}.exm .ar{fill:none;stroke:currentColor;stroke-width:2.3;stroke-linecap:round;stroke-linejoin:round}.exm:hover .sh{fill:currentColor}.exm:hover .ar{stroke:#0D1D2C}
+.slot.empty{flex-direction:column}.ic.add{width:52px;height:52px}.ic.add svg{width:24px;height:24px}
+.veil{position:fixed;inset:0;z-index:40;background:rgba(5,16,28,.78);backdrop-filter:blur(4px);display:grid;place-items:center}
+.mm{width:min(980px,92vw);max-height:84vh;overflow:auto;background:#11283c;border:1px solid var(--line);border-radius:16px;padding:22px 26px 26px;box-shadow:0 30px 80px rgba(0,0,0,.5)}
+.mmh{display:flex;align-items:center;gap:12px;padding-bottom:16px;border-bottom:1px solid var(--line)}.mmh .t{font:500 24px var(--serif)}
+.mmg{display:grid;grid-template-columns:1fr 1fr;gap:30px;margin-top:18px}
+.mmt{display:flex;align-items:center;gap:9px;font:500 18px var(--serif);margin-bottom:8px;color:var(--ink)}
+.mmr{display:flex;align-items:center;gap:14px;padding:12px 12px;border-radius:10px;border-top:1px solid rgba(255,255,255,.07);cursor:pointer}.mmr:hover{background:rgba(138,202,255,.07)}.mmr>div{flex:1;min-width:0}
+.mn{font-size:15.5px}.ms{font-size:13px;color:var(--ink2);margin-top:2px}
+.mm.small{width:min(560px,92vw)}
+.tiles{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:20px}.tile{display:flex;flex-direction:column;align-items:center;gap:12px;padding:26px 10px;border:1px solid var(--line);border-radius:14px;cursor:pointer;font:500 17px var(--serif)}.tile:hover{border-color:var(--green);background:rgba(87,190,151,.07)}.tile .ic.big{background:rgba(87,190,151,.1);cursor:pointer}
+.ask{display:flex;gap:12px;align-items:center;margin-top:20px}.ask input{flex:1;font:400 17px var(--serif);color:var(--ink);background:rgba(255,255,255,.05);border:1px solid var(--line);border-radius:10px;padding:12px 14px;outline:none}.ask input:focus{border-color:var(--green)}
+:root{--gold:#F8C761}.ic.still{cursor:default}.ic.still:hover{background:transparent}.ic.big.still{background:color-mix(in srgb,var(--c) 10%,transparent)}
+.tk{display:flex;align-items:center;gap:12px;margin:8px 0 4px}.tk .ti{margin:0 0 3px}.tk{align-items:flex-start}.tk .ic{margin-top:2px}
+.slotc{--blue:var(--purple);--green:var(--purple)}.slotc .ln+.ln .tr{opacity:.62}.slotc .pg{opacity:.62}.slotc .mini .st+.k+.st{opacity:.62}
+.walk{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);z-index:60;display:flex;gap:6px;padding:7px;border-radius:999px;background:rgba(13,29,44,.94);border:1px solid var(--blue);box-shadow:0 10px 40px rgba(0,0,0,.5)}
+.walk span{font-size:13.5px;padding:8px 16px;border-radius:999px;color:var(--ink2);cursor:pointer;white-space:nowrap}.walk span.on{background:var(--blue);color:#0D1D2C;font-weight:600}.walk span:hover:not(.on){color:var(--ink)}
+.slot[data-act]:hover{border-color:var(--purple);box-shadow:0 0 0 1px var(--purple)}.gr:hover{background:rgba(138,202,255,.05)}
+.open{font-size:13.5px;color:var(--purple);margin-top:10px}
+</style></head><body>
+<div class="walk"><span data-walk="board">1 · Board</span><span data-walk="mission">2 · Mission</span><span data-walk="gate">3 · Gate</span><span data-walk="bench">4 · Full Workbench</span><span data-walk="gy">5 · Gate Closed</span><span data-walk="my">6 · Mission Complete</span></div>
+<svg width="0" height="0" style="position:absolute"><defs>
+<symbol id="gate" viewBox="0 0 24 24"><path d="M5 20V10a7 7 0 0 1 14 0v10M3 20h18M9.5 20v-8M12 20V9M14.5 20v-8"/></symbol>
+<symbol id="load" viewBox="0 0 24 24"><path d="M4.5 9.5v-5h15v5M12 20V9M8.200 12.800 12 9l3.800 3.800M7.500 19.500h-2M18.500 19.500h-2"/></symbol>
+<symbol id="hol" viewBox="0 0 24 24"><path d="M9.500 4.500H4.500v15h5M20 12H9M12.800 8.200 9 12l3.800 3.800M19.500 7.500v-2M19.500 18.500v-2"/></symbol>
+<symbol id="sta" viewBox="0 0 24 24"><path d="M4 14.500l8 4 8-4M4 18l8 4 8-4M12 2.500V13M8.300 9.300 12 13l3.700-3.700"/></symbol>
+<symbol id="ext" viewBox="0 0 24 24"><path d="M12 20V9M7 14l5-5 5 5M5 4h14"/></symbol>
+<symbol id="pen" viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16v4zM13.5 6.5l4 4"/></symbol>
+<symbol id="go" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></symbol>
+<symbol id="k-page" viewBox="0 0 24 24"><path d="M7 3h7l4 4v14H7zM14 3v4h4M10 12h5M10 16h5"/></symbol>
+<symbol id="k-table" viewBox="0 0 24 24"><path d="M4 5h16v14H4zM4 10h16M4 15h16M10 5v14"/></symbol>
+<symbol id="k-notes" viewBox="0 0 24 24"><path d="M5 4h14v12l-4 4H5zM15 20v-4h4M8 9h8M8 13h5"/></symbol>
+<symbol id="k-check" viewBox="0 0 24 24"><path d="M4 7l2 2 3-3M4 15l2 2 3-3M12 8h8M12 16h8"/></symbol>
+<symbol id="back" viewBox="0 0 24 24"><path d="M19 12H5M11 6l-6 6 6 6"/></symbol>
+<symbol id="phone" viewBox="0 0 24 24"><path d="M6 3h4l1.500 5-2.500 1.500a12 12 0 0 0 5.500 5.500L16 12.500l5 1.500v4a2 2 0 0 1-2 2A16 16 0 0 1 4 5a2 2 0 0 1 2-2z"/></symbol>
+<symbol id="x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+<symbol id="k-main" viewBox="9 7 32 32"><path d="M12 36 L21 22 L26 28 L31 19 L36 36 Z" fill="currentColor" fill-opacity=".14"/><path d="M31 19 V10.500"/><path d="M31 10.500 h7 l-2 2.500 l2 2.500 h-7 Z" fill="currentColor" fill-opacity=".4"/></symbol>
+<symbol id="k-side" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.500"/><circle cx="12" cy="12" r="4.500"/><circle cx="12" cy="12" r="1" fill="currentColor"/></symbol>
+<symbol id="k-bounty" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.500"/><circle cx="12" cy="12" r="4.500"/><circle cx="12" cy="12" r="1" fill="currentColor"/></symbol>
+<symbol id="k-contract" viewBox="0 0 24 24"><path d="M6 3h9l4 4v14H6zM15 3v4h4M9 11h7M9 14.500h4"/><circle cx="15.500" cy="17.500" r="1.800" fill="currentColor" fill-opacity=".4"/></symbol>
+<symbol id="k-mythic" viewBox="0 0 24 24"><path d="M12 2.500 4.500 5.500v6c0 4.800 3.200 8.200 7.500 10 4.300-1.800 7.500-5.200 7.500-10v-6z" fill="currentColor" fill-opacity=".12"/><path d="M12 6.500v9.500M9.300 14h5.400M12 16v2"/><path d="M10.900 8.300 12 6.500l1.100 1.800"/></symbol>
+<symbol id="plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+<symbol id="min" viewBox="0 0 24 24"><path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5"/></symbol>
+<symbol id="max" viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></symbol>
+<symbol id="star" viewBox="0 0 24 24"><path d="M12 3l2.7 5.6 6.1.8-4.5 4.3 1.1 6.1L12 16.9 6.6 19.800l1.100-6.100L3.200 9.400l6.100-.8z"/></symbol>
+</defs></svg>
+<aside class="side"><div class="brand">Sovereign Architect<span>Command Center</span></div>
+ <div class="grp">Monitor</div><div class="nav" data-go="board">Board</div><div class="nav">Dashboard</div>
+ <div class="grp">Mission Board</div><div class="nav">Main Missions</div><div class="nav" data-go="mission">Side Missions</div></aside>
+<div id="app"></div>
+<script>
+const M = { title: 'Sample Payment Emails', star: 'Every payment confirmed in writing before the wire goes out.', clock: '3h 50m',
+  gates: [
+    { n: 1, text: 'Pull The Three Invoices', done: true, sub: 'Closed Nov 18', line: [['Opened', 'Nov 17, 9:34 AM', 1], ['Invoices Found', 'Nov 17, 3:10 PM', 1], ['Table Built', 'Nov 18, 9:02 AM', 1], ['Closed', 'Nov 18, 9:20 AM', 1]], tabs: [['Invoice Table', 'Built Tab', '<p>Three sample invoices, one table.</p>', 'table']] },
+    { n: 2, text: 'Email To Outside Counsel', done: false, sub: 'Open 2 Days · Draft Written', line: [['Opened', 'Nov 17, 9:34 AM', 1], ['Call With Counsel', 'Nov 18, 2:00 PM', 1], ['Draft Written', 'Nov 19, 10:12 AM', 1], ['Sent', '', 0]], tabs: [['Draft Email', 'Edited 10:12 AM', '<p>Sample draft. Thank you for the call yesterday. Attached are the three invoices we discussed, with the amounts and dates in one table.</p><table><tr><th>Invoice</th><th>Date</th><th>Amount</th></tr><tr><td>Sample Rent</td><td>Nov 1</td><td>$0,000</td></tr><tr><td>Sample Vendor A</td><td>Nov 6</td><td>$0,000</td></tr><tr><td>Sample Vendor B</td><td>Nov 12</td><td>$0,000</td></tr></table><p>The ask: confirm by Friday that the wire instructions on file are current.</p>', 'page'], ['Call Notes', 'Nov 18', '<p>Sample notes from the call. Two points to confirm in writing.</p>', 'notes'], ['Wire Checklist', 'Protocol', '<p>1. Instructions on file. 2. Second approver. 3. Confirmation number.</p>', 'check']] },
+    { n: 3, text: 'Confirm The Wire', done: false, sub: 'Not Started', line: [['Opened', '', 0], ['Wire Sent', '', 0], ['Confirmed', '', 0], ['Closed', '', 0]], tabs: [] },
+  ] }
+let S = { view: 'board', g: 2, tab: 0, yay: null, lum: true, rail: true, menu: null, drill: null, util: null, slots: { secondary: null, utility: null } }
+const MENU = [
+  ['Main Missions', 'k-main', [['Sample Platform Launch', '3 Gates Open', 'Main Mission', ['Pricing Page', 'Launch Email', 'Partner Brief']], ['Sample Client Renewal', '2 Gates Open', 'Main Mission', ['Revised Terms', 'Signature']], ['Sample Board Deck', '4 Gates Open', 'Main Mission', ['Outline', 'Financial Pages', 'Design Pass', 'Dry Run']]]],
+  ['Side Missions', 'k-side', [['Sample Hiring Loop', '3 Gates Open', 'Mythic'], ['Sample Travel Plan', '1 Gate Open', 'Contract'], ['Sample Vendor Review', '2 Gates Open', 'Bounty'], ['Sample Reading List', 'No Gates', 'Bounty']]],
+]
+const u = (id) => `<svg><use href="#${id}"/></svg>`
+const ic = (id, c, act, cls = '') => `<span class="ic ${cls}" ${c ? `style="--c:var(--${c})"` : ''} ${act ? `data-act="${act}"` : ''}>${u(id)}</span>`
+// The HUD's own set: Loadout, Holster, Stash as a switch (the lit one is where the card is), and the Extract marker.
+const sw = (on = 'load') => ['load', 'hol', 'sta'].map(k => `<span class="ic${k === on ? ' lit' : ''}" style="--c:var(--purple)" title="${{ load: 'Loadout', hol: 'Holster', sta: 'Stash' }[k]}">${u(k)}</span>`).join('')
+const ex = (act, size = 38) => `<span class="exm" data-act="${act}" title="Extract"><svg width="${size}" height="${size}" viewBox="0 0 24 24"><path class="sh" d="M12 1.6 22 9.3v11.1a1.6 1.6 0 0 1-1.6 1.6H3.6A1.6 1.6 0 0 1 2 20.4V9.3Z"/><path class="ar" d="M12 18.2V8.4M7.9 12.2 12 8.1l4.1 4.1"/></svg></span>`
+// The mark for each kind of mission, always to the left of its title (David 11/20). Main Mission is the HUD's own flag on the peak.
+const KIND = { 'Main Mission': ['k-main', 'purple'], Mythic: ['k-mythic', 'purple'], Contract: ['k-contract', 'purple'], Bounty: ['k-bounty', 'gold'], Gate: ['gate', 'blue'], Call: ['phone', 'green'], Task: ['k-check', 'green'] }
+const kmark = (kind, cls = '', c = null) => { const [i, col] = KIND[kind] || KIND.Bounty; return `<span class="ic still ${cls}" style="--c:var(--${c || col})" title="${kind}">${u(i)}</span>` }
+const cur = () => M.gates.find(g => !g.done)
+const trailBig = (on) => `<div class="tr" style="--c:var(--purple)">${M.gates.map(g => `<div class="nd ${g.n === on ? 'on' : g.done ? 'd' : ''}" data-act="gate:${g.n}"><b></b><span>Gate ${g.n}<small>${g.text}</small></span></div>`).join('')}<div class="nd"><b></b><span>Polaris</span></div></div>`
+const dots = (arr, c) => `<div class="st" style="--c:var(--${c})">${arr.map((x, i) => (i ? `<i class="${arr[i - 1][0] && x[0] ? 'd' : ''}"></i>` : '') + `<b class="${x[1] ? 'on' : x[0] ? 'd' : ''}"></b>`).join('')}</div>`
+const lum = (chip, msgs) => `<div class="lum"><div class="t"><span class="dot"></span>Lumen</div><span class="chip">${chip}</span>${msgs.map(([k, t]) => `<div class="b ${k}">${t}</div>`).join('')}<div class="in">Message Lumen</div></div>`
+const V = {
+  board: () => `<div class="wrap"><div class="main"><h1 class="pg">Thursday's Board</h1><div class="date">Thursday, November 19, 2026 · Chicago</div><div class="sec">Loadout</div>
+    <div class="slots"><div class="slot" style="--c:var(--purple)" data-act="mission"><span class="nm">Primary</span><div class="tk">${kmark('Contract', '', 'purple')}<div><div class="ti">${M.title}</div><div class="s">${cur() ? `Gate ${cur().n} · ${cur().text}` : 'All Gates Closed'}</div></div></div>
+      <div class="mt">${M.gates.map((g, i) => (i ? `<i class="${M.gates[i - 1].done ? 'd' : ''}"></i>` : '') + `<b class="${cur() && g.n === cur().n ? 'on' : g.done ? 'd' : ''}"></b>`).join('')}<i></i><b></b></div>
+      <div style="display:flex;align-items:center;margin-top:auto"><div class="ck" style="margin-top:0">24:52</div><span style="display:flex;gap:9px;margin-left:auto;align-items:center" >${ic('hol', 'purple').replace('class="ic', 'title="Holster" class="ic')}${ic('sta', 'purple').replace('class="ic', 'title="Stash" class="ic')}${ex('closeMission', 36)}<span class="ic" style="--c:var(--purple)" title="Open The Mission">${u('go')}</span></span></div></div>
+     ${['secondary', 'utility'].map(k => { const c = k === 'secondary' ? 'blue' : 'green', x = S.slots[k]; return x
+       ? `<div class="slot" style="--c:var(--${c})"><span class="nm">${k === 'secondary' ? 'Secondary' : 'Utility'}</span><div class="tk">${kmark(x.kind, '', c)}<div><div class="ti" style="font-size:19px">${x.title}</div><div class="s">${x.sub}</div></div></div><div style="display:flex;align-items:center;margin-top:auto"><div class="ck" style="margin-top:0;font-size:24px">00:00</div><span style="display:flex;gap:8px;margin-left:auto">${ic('hol', c, 'unslot:' + k)}${ic('sta', c, 'unslot:' + k)}</span></div></div>`
+       : `<div class="slot empty" style="--c:var(--${c})"><span class="ic add" style="--c:var(--${c})" data-act="menu:${k}" title="Add A Mission">${u('plus')}</span><span class="nm" style="margin-top:12px">${k === 'secondary' ? 'Secondary' : 'Utility'}</span></div>` }).join('')}</div></div>
+   </div>${lum('On The Board', [['lu', 'Gate 2 has a draft and no send.']])}</div>`,
+  mission: () => `<div class="wrap"><div class="main slotc"><div class="crumb"><span class="up" data-act="board">↑ Up</span><span data-act="board">Side Missions</span></div>
+    <div class="head">${kmark('Contract', 'big')}<h1>${M.title}<span class="pen">${u('pen')}</span></h1><div class="acts"><span class="clock">${M.clock}</span>${sw()}${ex('closeMission')}</div></div>
+    <div class="star">${M.star}</div>
+    <div class="lines"><div class="ln"><div class="k">Mission Trail<small>${M.gates.filter(g => g.done).length} Of ${M.gates.length} Closed</small></div>${trailBig(cur() ? cur().n : 0)}</div></div>
+    <div class="sec">Gates</div><div class="gates">${M.gates.map(g => `<div class="gr" data-act="gate:${g.n}"><span class="o ${g.done ? 'd' : cur() && g.n === cur().n ? 'n' : ''}"></span><div class="gw ${g.done ? 'd' : ''}"><span>Gate ${g.n}</span>${g.text}<small>${g.sub}</small></div><div class="pg">${g.line.map((x, i) => `<b class="${x[2] ? 'd' : ''}"></b>` + (i < g.line.length - 1 ? `<i class="${x[2] && g.line[i + 1][2] ? 'd' : ''}"></i>` : '')).join('')}</div>${g.done ? '<span></span>' : `<div class="acts">${ic('gate', '', 'gate:' + g.n)}${ic('load', 'purple')}${ex('close:' + g.n, 34)}</div>`}</div>`).join('')}</div>
+    <div class="tabs"><span class="tab on">Workbench</span><span class="tab">Files · 5</span><span class="tab">Notes</span><span class="tab">Briefing</span></div>
+    <div class="bench" style="min-height:130px" contenteditable>The mission's own tabs. Each gate keeps its own.</div>
+   </div>${lum('On The Mission', [['me', 'Where does this stand?'], ['lu', `${M.gates.filter(g => g.done).length} of ${M.gates.length} gates closed.${cur() ? ` Gate ${cur().n} is next.` : ''}`]])}</div>`,
+  gate: () => { const g = M.gates[S.g - 1]; return `<div class="wrap"><div class="main slotc"><div class="crumb"><span class="up" data-act="mission">↑ Up</span><span data-act="board">Side Missions</span><i>›</i><span data-act="mission">${M.title}</span></div>
+    <div class="head"><span class="ic big">${u('gate')}</span><h1><span>Gate ${g.n} ·</span> ${g.text}<span class="pen">${u('pen')}</span></h1><div class="acts">${g.done ? '' : `<span class="clock">24:52</span>${sw()}${ex('close:' + g.n)}`}</div></div>
+    <div class="lines"><div class="ln"><div class="k">Mission Trail<small>${M.gates.filter(x => x.done).length} Of ${M.gates.length} Closed</small></div>${trailBig(g.n)}</div>
+     <div class="ln"><div class="k">Gate ${g.n} Timeline<small>${g.sub}</small></div><div class="tr" style="--c:var(--green)">${g.line.map(x => `<div class="nd ${x[2] ? 'd' : ''}"><b></b><span>${x[0]}<small>${x[1]}</small></span></div>`).join('')}</div></div></div>
+    <div class="sec" style="margin-bottom:12px">Workbench <span class="sq" data-act="bench" style="order:2">${u('max')}</span></div>
+    <div class="tabs" style="margin-top:0">${g.tabs.map((t, i) => `<span class="tab ${i === S.tab ? 'on' : ''}" data-act="tab:${i}">${t[0]}</span>`).join('')}<span class="tab" style="border-style:dashed;color:var(--blue)">+ Blank Tab</span></div>
+    <div class="bench" contenteditable>${g.tabs[S.tab] ? g.tabs[S.tab][2] : ''}</div>
+   </div>${lum(`On Gate ${g.n}`, g.done ? [['lu', 'This gate is closed.']] : [['me', 'What is left on this gate?'], ['lu', 'The attachment and a send.']])}</div>` },
+  bench: () => { const g = M.gates[S.g - 1], t = g.tabs[S.tab]; return `<div class="wrap fb${S.lum ? '' : ' nolum'}"><div class="main slotc">
+    <div class="fbbar"><span class="exit" data-act="gateview" title="Exit">${u('min')}</span><span class="fbt"><span>Gate ${g.n} ·</span> ${g.text}</span>
+      <div class="mini"><span class="k">Mission</span>${dots([...M.gates.map(x => [x.done, x.n === g.n]), [0, 0]], 'purple')}<span class="k">Gate ${g.n}</span>${dots(g.line.map(x => [x[2], 0]), 'green')}</div>
+      <span class="clock" style="font-size:17px">24:52</span>${sw()}${ex('close:' + g.n, 34)}</div>
+    <div class="app${S.rail ? '' : ' thin'}"><div class="rail"><div class="h"><span>${S.rail ? 'Workbench' : ''}</span><span class="fold" data-act="rail" title="${S.rail ? 'Fold The Tabs' : 'Show The Tabs'}">${S.rail ? '‹' : '›'}</span></div>${g.tabs.map((x, i) => `<div class="rt ${i === S.tab ? 'on' : ''}" data-act="tab:${i}" title="${x[0]}"><span class="ki">${u('k-' + x[3])}</span>${S.rail ? `<span>${x[0]}<small>${x[1]}</small></span>` : ''}</div>`).join('')}<div class="rt new" title="Blank Tab"><span class="ki">${u('plus')}</span></div></div>
+     <div><div class="bar"><span class="t">${t ? t[0] : 'Blank Tab'}</span><span class="tool on">Type</span><span class="tool">Draw</span><span class="tool">Capture</span><span class="tool">PDF</span><span class="tool">Send To Lumen</span></div>
+      <div class="sheet" contenteditable>${t ? t[2] : ''}</div></div></div>
+   </div>${S.lum ? lum(`On Gate ${g.n} · ${t ? t[0] : 'Blank Tab'}`, [['me', 'Tighten the second paragraph.'], ['lu', 'Done. One sentence, the ask first.']]).replace('<div class="t">', '<span class="lfold" data-act="lum" title="Fold Lumen">›</span><div class="t">') : `<span class="lpill" data-act="lum"><span class="dot"></span>Lumen</span>`}</div>` },
+}
+const mc = () => S.menu === 'secondary' ? 'blue' : S.menu === 'utility' ? 'green' : 'purple'
+const mhead = (title, back) => `<div class="mmh">${back ? `<span class="ic" style="--c:var(--${mc()})" data-act="${back}" title="Back">${u('back')}</span>` : `<span class="ic" style="--c:var(--${mc()})">${u('plus')}</span>`}<span class="t">${title}</span><span class="chip" style="margin:0 0 0 6px">${S.menu === 'secondary' ? 'Secondary' : 'Utility'}</span><span class="sq" data-act="menuoff" style="margin-left:auto">${u('x')}</span></div>`
+const menu = () => {
+  if (!S.menu) return ''
+  let body
+  if (S.menu === 'utility') {
+    // Utility takes a call or a task, the way it does today.
+    body = !S.util ? mhead('Utility') + `<div class="tiles"><div class="tile" data-act="util:call"><span class="ic big" style="--c:var(--green)">${u('phone')}</span><span>Phone Call</span></div><div class="tile" data-act="util:task"><span class="ic big" style="--c:var(--green)">${u('k-check')}</span><span>Non-Mission Task</span></div></div>`
+      : mhead(S.util === 'call' ? 'Phone Call' : 'Non-Mission Task', 'util:') + `<div class="ask"><input id="uin" placeholder="${S.util === 'call' ? 'Who Is Calling' : 'The Task'}" /><span class="ic" style="--c:var(--green)" data-act="utilgo" title="Start">${u('load')}</span></div>`
+  } else if (S.drill != null) {
+    const r = MENU[0][2][S.drill]
+    body = mhead(r[0], 'drill:').replace('<span class="t">', kmark('Main Mission') + '<span class="t">') + `<div class="mmt" style="margin-top:18px"><span class="ki">${u('gate')}</span>Gates</div>${r[3].map((g, i) => `<div class="mmr" data-act="pickgate:${i}"><span class="o"></span><div><div class="mn"><span style="color:var(--blue);margin-right:8px">Gate ${i + 1}</span>${g}</div></div><span class="ic" style="--c:var(--${mc()})" title="Load">${u('load')}</span></div>`).join('')}`
+  } else {
+    body = mhead('Mission Menu') + `<div class="mmg">${MENU.map(([name, icon, rows], gi) => `<div><div class="mmt"><span class="ki">${u(icon)}</span>${name}</div>${rows.map((r, i) => `<div class="mmr" data-act="${gi === 0 ? 'drill:' + i : 'pick:' + gi + '.' + i}">${kmark(r[2])}<div><div class="mn">${r[0]}</div><div class="ms">${r[1]}</div></div><span class="ic" style="--c:var(--${mc()})" title="${gi === 0 ? 'Its Gates' : 'Load'}">${u(gi === 0 ? 'go' : 'load')}</span></div>`).join('')}</div>`).join('')}</div>`
+  }
+  return `<div class="veil" data-act="menuoff"><div class="mm${S.menu === 'utility' ? ' small' : ''}" data-act="noop">${body}</div></div>`
+}
+const yay = () => !S.yay ? '' : `<div class="yay"><div><div class="ttl">${S.yay.ttl}</div><div class="mi"><b>+${S.yay.miles}</b><span>Miles</span></div><div class="sub">${S.yay.sub}</div><div class="medal">${u(S.yay.icon)}</div><div style="font:500 16px var(--serif)">${S.yay.badge}</div><div class="dn">${S.yay.done.map(d => `<div><i>${d[0]}</i>${d[1]}</div>`).join('')}</div><div><button class="go" data-act="continue">Continue</button></div></div></div>`
+function draw() { document.body.classList.toggle('fullbench', S.view === 'bench' && !S.yay); document.getElementById('app').innerHTML = V[S.view]() + menu() + yay(); document.querySelectorAll('.walk span').forEach(n => n.classList.toggle('on', S.yay ? n.dataset.walk === (S.yay.to === 'board' ? 'my' : 'gy') : n.dataset.walk === S.view)); document.querySelectorAll('.nav').forEach(n => n.classList.toggle('on', n.dataset.go === (S.view === 'board' ? 'board' : 'mission'))) }
+document.addEventListener('click', (e) => {
+  const w = e.target.closest('[data-walk]')
+  if (w) { const k = w.dataset.walk; S.yay = null
+    if (k === 'gy') { const g = M.gates[1]; S.view = 'gate'; S.g = 2; S.yay = { ttl: 'Gate Closed', miles: 7, sub: `Gate ${g.n} · ${g.text}`, icon: 'gate', badge: 'Gate Closed', done: [['Gate', g.text]], to: 'mission' } }
+    else if (k === 'my') { S.view = 'mission'; S.yay = { ttl: 'Mission Complete', miles: 25, sub: M.title, icon: 'star', badge: 'Contract', done: M.gates.map(g => ['Gate', g.text]), to: 'board' } }
+    else { S.view = k; if (k === 'gate' || k === 'bench') { S.g = S.g || 2; S.tab = 0 } }
+    draw(); return }
+  const nav = e.target.closest('[data-go]'); if (nav) { S.view = nav.dataset.go; draw(); return }
+  if (e.target.closest('.slot .ic[title="Holster"], .slot .ic[title="Stash"]')) return
+  const el = e.target.closest('[data-act]'); if (!el) return
+  e.stopPropagation()
+  const [a, v] = el.dataset.act.split(':')
+  if (a === 'board' || a === 'mission') S.view = a
+  else if (a === 'gate') { S.g = +v; S.tab = 0; S.view = 'gate' }
+  else if (a === 'tab') S.tab = +v
+  else if (a === 'menu') { S.menu = v; S.drill = null; S.util = null }
+  else if (a === 'menuoff') S.menu = null
+  else if (a === 'drill') S.drill = v === '' ? null : +v
+  else if (a === 'pickgate') { const r = MENU[0][2][S.drill]; S.slots[S.menu] = { title: r[3][+v], sub: `${r[0]} · Gate ${+v + 1}`, kind: 'Gate' }; S.menu = null }
+  else if (a === 'util') S.util = v || null
+  else if (a === 'utilgo') { const t = (document.getElementById('uin').value || '').trim() || (S.util === 'call' ? 'Sample Caller' : 'Sample Task'); S.slots.utility = { title: S.util === 'call' ? `Call: ${t}` : t, sub: S.util === 'call' ? 'Phone Call' : 'Non-Mission Task', kind: S.util === 'call' ? 'Call' : 'Task' }; S.menu = null }
+  else if (a === 'noop') return
+  else if (a === 'pick') { const [gi, i] = v.split('.').map(Number), r = MENU[gi][2][i]; S.slots[S.menu] = { title: r[0], sub: r[1], kind: r[2] }; S.menu = null }
+  else if (a === 'unslot') S.slots[v] = null
+  else if (a === 'bench') S.view = 'bench'
+  else if (a === 'lum') S.lum = !S.lum
+  else if (a === 'rail') S.rail = !S.rail
+  else if (a === 'gateview') S.view = 'gate'
+  else if (a === 'close') { const g = M.gates[+v - 1]; g.done = true; g.sub = 'Closed Just Now'; g.line.forEach(x => { x[2] = 1 }); S.yay = { ttl: 'Gate Closed', miles: 7, sub: `Gate ${g.n} · ${g.text}`, icon: 'gate', badge: 'Gate Closed', done: [['Gate', g.text]], to: 'mission' } }
+  else if (a === 'closeMission') { M.gates.forEach(g => { g.done = true }); S.yay = { ttl: 'Mission Complete', miles: 25, sub: M.title, icon: 'star', badge: 'Contract', done: M.gates.map(g => ['Gate', g.text]), to: 'board' } }
+  else if (a === 'continue') { S.view = S.yay.to; S.yay = null }
+  draw()
+})
+const q = new URLSearchParams(location.search); if (q.get('lum') === '0') S.lum = false; if (q.get('rail') === '0') S.rail = false; if (q.get('v')) S.view = q.get('v'); if (q.get('g')) S.g = +q.get('g')
+document.addEventListener('keydown', (e) => { if (e.key === 'Enter' && e.target.id === 'uin') document.querySelector('[data-act="utilgo"]').click(); if (e.key === 'Escape' && S.menu) { S.menu = null; draw() } })
+draw()
+</script></body></html>
