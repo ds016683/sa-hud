@@ -6,7 +6,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { S, Eyebrow, Serif, Label, INK, INK2, GRAY, GOLD, GREEN, RED, MONO, PANEL_BORDER, PANEL_BG, LABEL, MUTED, TYPE, alpha } from './river/canon'
 
-const PILLS = [{ id: 'identity', label: 'Identity' }, { id: 'rules', label: 'Rules' }, { id: 'mail', label: 'Mail Protocol' }, { id: 'editing', label: 'Editing Protocol' }, { id: 'briefing', label: 'Briefing Protocol' }, { id: 'remind', label: 'Remind Me Protocol' }]
+const PILLS = [{ id: 'identity', label: 'Identity' }, { id: 'rules', label: 'Rules' }, { id: 'mail', label: 'Mail Protocol' }, { id: 'editing', label: 'Editing Protocol' }, { id: 'briefing', label: 'Briefing Protocol' }, { id: 'work-briefing', label: 'Work Briefing Protocol' }, { id: 'remind', label: 'Remind Me Protocol' }]
 
 const Block = ({ title, children }) => (
   <div style={{ border: `1px solid ${PANEL_BORDER}`, background: PANEL_BG, borderRadius: 12, padding: '16px 18px', marginBottom: 12 }}>
@@ -226,6 +226,38 @@ function Editing() {
   )
 }
 
+// The Work Briefing Protocol (David 11/20, watching a session gather a gate's contract materials onto its Workbench:
+// "let's set a briefing protocol for when i need to have a full analysis done to get me ready for work").
+function WorkBriefing() {
+  return (
+    <>
+      <Block title="What It Is">
+        The Work Briefing Protocol gets David ready to work a gate. He names the gate (or the mission) and lists what he needs in front of him: an email, contracts in the file store, a client tool, this year{'\u2019'}s agreement, anything else relevant. The session finds every piece, files the source documents on the gate{'\u2019'}s card, and builds the gate{'\u2019'}s Workbench so he can sit down and start. It is not the Briefing Protocol: that one pulls information out of David, this one gathers for him. Born on a client gate, November 20, 2026.
+      </Block>
+      <Block title="The Run">
+        <ol style={{ margin: 0, paddingLeft: 18 }}>
+          <Li><b style={{ color: INK }}>Scope to the gate.</b> The session{'\u2019'}s focus goes on the gate itself. Its own board items never carry the gate{'\u2019'}s id, so a finished sub-item cannot close the gate.</Li>
+          <Li><b style={{ color: INK }}>Find every piece, from the source he named.</b> Mail, the file store, the client{'\u2019'}s tool, the Ledger. The documents themselves are read; the figures come from their text.</Li>
+          <Li><b style={{ color: INK }}>Say at once what needs his hand.</b> A tool behind his sign-in is named in one line; the session keeps going on the best source it can reach and marks which figures came from where.</Li>
+          <Li><b style={{ color: INK }}>File the sources on the card.</b> Every document a tab leans on can be opened from the gate{'\u2019'}s Files.</Li>
+          <Li><b style={{ color: INK }}>Build the Workbench.</b> One built tab that is the analysis surface (tables he can edit, charts, ledgers, the workplan, the roster; no prose blocks), one short tab per source, and an Other tab he marks with a check or an x.</Li>
+          <Li><b style={{ color: INK }}>Check it, then report.</b> The built tab is opened and read before it is handed over. The report says what is on the Workbench, what the materials disagree on, what could not be reached, and what is his to rule.</Li>
+        </ol>
+      </Block>
+      <Block title="What It Never Does">
+        <ul style={{ margin: 0, paddingLeft: 18 }}>
+          <Li>Write into a client{'\u2019'}s system. Edits it turns up are staged and listed, and written only on his word.</Li>
+          <Li>Guess a figure. What was not found reads as not found, with where the session looked.</Li>
+          <Li>Close, rename or re-scope the gate, or create a gate, a step or a mission.</Li>
+        </ul>
+      </Block>
+      <Block title="How To Start One">
+        Say {'\u201c'}work briefing{'\u201d'} with the gate, or send a prompt that names a gate or mission and lists the materials to find and organize under it. It runs until the Workbench is ready and the report is in, then it goes back on the shelf. The run in words lives in the work-briefing skill, so any Code session runs it the same way.
+      </Block>
+    </>
+  )
+}
+
 function Briefing() {
   const chip = (c) => ({ fontFamily: MONO, fontSize: 11, letterSpacing: '0.08em', padding: '2px 8px', borderRadius: 6, border: `1px solid ${alpha(c, 40)}`, color: c, background: `${alpha(c, 8)}` })
   return (
@@ -325,6 +357,7 @@ export default function LumenProtocolsPage() {
       {pill === 'mail' && <Mail />}
       {pill === 'editing' && <Editing />}
       {pill === 'briefing' && <Briefing />}
+      {pill === 'work-briefing' && <WorkBriefing />}
       {pill === 'remind' && <RemindMe />}
     </div>
   )
