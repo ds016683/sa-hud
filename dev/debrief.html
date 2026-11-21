@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8" /><title>Mission debrief (dev)</title>
+<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;1,400&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="./gate-mock.css" />
+<style>
+body{padding:0}.dp{max-width:1180px;margin:0 auto;padding:34px 44px 60px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:22px;margin-top:22px}
+.card{border:1px solid var(--line);border-radius:14px;background:#11283c;padding:20px 22px}
+.card h3{font:500 19px var(--serif);margin:0 0 12px;display:flex;align-items:center;gap:10px}
+.card h3 .n{width:22px;height:22px;border-radius:99px;border:1.3px solid var(--purple);color:var(--purple);font:600 12.5px var(--sans);display:inline-grid;place-items:center}
+textarea{width:100%;min-height:96px;font:400 16.5px/1.6 var(--serif);color:var(--ink);background:rgba(255,255,255,.05);border:1px solid var(--line);border-radius:12px;padding:14px 16px;resize:vertical;outline:none}
+.q{font:500 20px var(--serif);margin:26px 0 10px}
+.r{display:flex;align-items:center;gap:12px;padding:10px 0;border-top:1px solid rgba(255,255,255,.07);font-size:14.5px}.r:first-of-type{border-top:0}.r>div{flex:1;min-width:0}.r small{display:block;color:var(--ink2);font-size:12.5px;margin-top:2px}
+.sw{display:inline-flex;border:1px solid var(--line);border-radius:99px;overflow:hidden;flex-shrink:0}.sw span{font-size:12.5px;padding:4px 11px;color:var(--ink2)}.sw span.on{background:color-mix(in srgb,var(--purple) 22%,transparent);color:var(--ink)}
+.yn{display:inline-flex;gap:7px;flex-shrink:0}.yn .ic{width:28px;height:28px}.yn .ic svg{width:14px;height:14px}
+.draft{font:400 16px/1.65 var(--serif);color:rgba(243,241,234,.9)}
+.lum{border:0;background:transparent;padding:0;display:flex;align-items:center;gap:10px;font:500 15px var(--serif);color:var(--ink2);margin:16px 0 0}
+.foot{display:flex;align-items:center;gap:16px;margin-top:26px;border-top:1px solid var(--line);padding-top:20px}.foot .m{font:500 26px var(--serif);color:var(--purple);margin-left:auto}
+</style></head><body>
+<svg width="0" height="0" style="position:absolute"><defs>
+<symbol id="k-main" viewBox="9 7 32 32"><path d="M12 36 L21 22 L26 28 L31 19 L36 36 Z" fill="currentColor" fill-opacity=".14"/><path d="M31 19 V10.5"/><path d="M31 10.5 h7 l-2 2.5 l2 2.5 h-7 Z" fill="currentColor" fill-opacity=".4"/></symbol>
+<symbol id="ok" viewBox="0 0 24 24"><path d="M5 12.5l4.500 4.500L19 7.500"/></symbol><symbol id="no" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+<symbol id="mail" viewBox="0 0 24 24"><path d="M3 6h18v12H3zM3 7l9 6 9-6"/></symbol>
+<symbol id="spark" viewBox="0 0 24 24"><path d="M12 3l1.800 5.200L19 10l-5.200 1.800L12 17l-1.800-5.200L5 10l5.200-1.800z"/></symbol>
+</defs></svg>
+<div class="dp">
+ <div class="head" style="margin-top:0"><span class="ic big" style="--c:var(--purple)"><svg><use href="#k-main"/></svg></span><h1>Sample Demo App<span class="pen"></span></h1><div class="acts"><span class="clock">3 Of 3 Gates</span></div></div>
+ <div class="star">A live demo the client can put in front of their board.</div>
+
+ <div class="q">Is It True? What Is Different Now?</div>
+ <textarea>Sample words, typed by David. It worked at the dinner. They want a pilot, and the proposal is out.</textarea>
+ <div class="lum"><span class="ic" style="--c:var(--blue);width:30px;height:30px"><svg style="width:15px;height:15px"><use href="#spark"/></svg></span>Lumen's Debrief, From Your Words And The Mission's Record</div>
+
+ <div class="two">
+  <div class="card"><h3><span class="n">1</span>Closing Notes</h3><div class="draft">Sample draft. The demo was built, shown and landed. The client asked for a pilot, and a proposal went out on November 19. The mission's question is answered: yes.</div></div>
+  <div class="card"><h3><span class="n">2</span>Keep And File</h3>
+   <div class="r"><div>Sample-Report.pdf<small>The one they saw</small></div><span class="sw"><span class="on">File</span><span>Keep In Play</span><span>Drop</span></span></div>
+   <div class="r"><div>Sample Proposal Deck<small>Still live with the client</small></div><span class="sw"><span>File</span><span class="on">Keep In Play</span><span>Drop</span></span></div>
+   <div class="r"><div>Palette-Options.png and 3 like it<small>Working files</small></div><span class="sw"><span>File</span><span>Keep In Play</span><span class="on">Drop</span></span></div></div>
+  <div class="card"><h3><span class="n">3</span>Still To Happen</h3>
+   <div class="r"><div>Follow up on the proposal in one week<small>Nobody owns it yet</small></div><span class="yn"><span class="ic" style="--c:var(--purple)"><svg><use href="#ok"/></svg></span><span class="ic" style="--c:#DE7E6E"><svg><use href="#no"/></svg></span></span></div>
+   <div class="r"><div>Move the demo off the test database<small>From the session's last board</small></div><span class="yn"><span class="ic" style="--c:var(--purple)"><svg><use href="#ok"/></svg></span><span class="ic" style="--c:#DE7E6E"><svg><use href="#no"/></svg></span></span></div></div>
+  <div class="card"><h3><span class="n">4</span>Who Should Hear</h3>
+   <div class="r"><div>Sample Colleague A<small>Built the scoring; has not been told it landed</small></div><span class="ic" style="--c:var(--blue);width:30px;height:30px" title="Draft The Note"><svg style="width:15px;height:15px"><use href="#mail"/></svg></span></div>
+   <div class="r"><div>Sample Client Contact<small>A thank-you has not gone out</small></div><span class="ic" style="--c:var(--blue);width:30px;height:30px" title="Draft The Note"><svg style="width:15px;height:15px"><use href="#mail"/></svg></span></div></div>
+ </div>
+ <div class="card" style="margin-top:22px"><h3><span class="n">5</span>Missions That Came Out Of This One</h3>
+  <div class="r"><span class="ic" style="--c:var(--purple);width:30px;height:30px"><svg style="width:16px;height:16px;stroke-width:2.2"><use href="#k-main"/></svg></span><div>Sample Client Pilot<small>Main Mission · the proposal that went out, if they sign</small></div><span class="yn"><span class="ic" style="--c:var(--purple)"><svg><use href="#ok"/></svg></span><span class="ic" style="--c:#DE7E6E"><svg><use href="#no"/></svg></span></span></div>
+  <div class="r"><span class="ic" style="--c:var(--purple);width:30px;height:30px"><svg style="width:15px;height:15px"><use href="#spark"/></svg></span><div>Turn The Proposal Deck Into A Skill<small>Bounty · it was built twice by hand</small></div><span class="yn"><span class="ic" style="--c:var(--purple)"><svg><use href="#ok"/></svg></span><span class="ic" style="--c:#DE7E6E"><svg><use href="#no"/></svg></span></span></div></div>
+
+ <div class="foot"><span class="s">Nothing here is made until you check it.</span><span class="m">+100 Miles</span>
+  <span class="exm" title="Extract"><svg width="44" height="44" viewBox="0 0 24 24"><path d="M12 1.6 22 9.3v11.1a1.6 1.6 0 0 1-1.6 1.6H3.6A1.6 1.6 0 0 1 2 20.4V9.3Z" fill="rgba(180,163,232,.08)" stroke="#B4A3E8" stroke-width="1.5" stroke-linejoin="round"/><path d="M12 18.2V8.4M7.9 12.2 12 8.1l4.1 4.1" fill="none" stroke="#B4A3E8" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"/></svg></span></div>
+</div>
+</body></html>

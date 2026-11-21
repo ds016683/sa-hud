@@ -19,7 +19,8 @@
 // Only David's press makes one: nothing here is created by Lumen or by a session.
 export const config = { maxDuration: 300, api: { bodyParser: false } }
 
-import { think, remember } from './_lumen-brain.mjs'
+import { think, remember, MODEL } from './_lumen-brain.mjs'
+import { debrief } from './_debrief.mjs'
 import { cardFrame, callTool, workbookOp } from './_ledger.mjs'
 import { transcribe, speak, voiceOf, waSendAudio, davidNumber } from './_wa.mjs'
 
@@ -99,6 +100,12 @@ export default async function handler(req, res) {
     }
     if (['voice_candidates', 'keep_voice', 'clone_voice', 'voice_sample', 'remove_voice'].includes(body.action)) {
       try { return res.status(200).json(JSON.parse(await callTool(body.action, body.args && typeof body.args === 'object' ? body.args : {}))) } catch (e) { return res.status(500).json({ error: String(e.message || e).slice(0, 200) }) }
+    }
+    // The mission debrief: Lumen's draft of the five parts from David's words and the mission's record. It writes nothing.
+    if (body.action === 'debrief') {
+      if (!item || item.kind !== 'project') return res.status(400).json({ error: 'a Main Mission is required' })
+      if (!String(body.words || '').trim()) return res.status(400).json({ error: 'his words first' })
+      try { return res.status(200).json({ ok: true, debrief: await debrief({ projectId: item.id, words: String(body.words), files: body.files, model: MODEL() }) }) } catch (e) { return res.status(500).json({ error: String(e.message || e).slice(0, 240) }) }
     }
     // The card's Workbook for a Lumen panel outside the HUD: read, capture, drop, notes.
     if (body.action === 'workbook') {
