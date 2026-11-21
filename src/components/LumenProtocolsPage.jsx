@@ -127,12 +127,12 @@ function Rules() {
   return (
     <>
       <Block title="Rules David Has Given Lumen">
-        <div style={{ fontSize: TYPE.meta + 1.5, color: MUTED, marginBottom: 10 }}>Live from the Ledger. Lumen adds one when David says remember this; forget this retires it.</div>
+        <div style={{ fontSize: 12.5, color: MUTED, marginBottom: 10 }}>Live from the Ledger. Lumen adds one when David says remember this; forget this retires it.</div>
         {err && <div style={{ color: RED }}>Could not read the rules: {err}</div>}
         {rows && !rows.length && <div style={{ color: GRAY }}>No rules on record yet.</div>}
         {rows && rows.length > 0 && (
           <ul style={{ margin: 0, paddingLeft: 18 }}>
-            {rows.map(r => <Li key={r.id}><span style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '0.1em', textTransform: 'uppercase', color: LABEL, marginRight: 8 }}>{r.kind || 'rule'}</span>{r.text}</Li>)}
+            {rows.map(r => <Li key={r.id}><span style={{ fontSize: 12.5, fontWeight: 600, color: LABEL, marginRight: 8 }}>{String(r.kind || 'rule').replace(/\b\w/g, c => c.toUpperCase())}</span>{r.text}</Li>)}
           </ul>
         )}
       </Block>
@@ -144,7 +144,7 @@ function Rules() {
 }
 
 function Mail() {
-  const chip = (c) => ({ fontFamily: MONO, fontSize: 11, letterSpacing: '0.08em', padding: '2px 8px', borderRadius: 6, border: `1px solid ${alpha(c, 40)}`, color: c, background: `${alpha(c, 8)}` })
+  const chip = (c) => ({ fontSize: 12.5, fontWeight: 500, padding: '2px 9px', borderRadius: 6, border: `1px solid ${alpha(c, 40)}`, color: c, background: `${alpha(c, 8)}` })
   return (
     <>
       <Block title="Who May Write To Lumen">
@@ -153,7 +153,7 @@ function Mail() {
       <Block title="Two Triggers, In David's Words">
         <div style={{ display: 'grid', gap: 14 }}>
           <div>
-            <span style={chip(GOLD)}>@Lumen</span>
+            <span style={chip(LABEL)}>@Lumen</span>
             <div style={{ marginTop: 8 }}>Directs Lumen without joining the thread. He does <b style={{ color: INK }}>not</b> respond to the message. He sends a new note to David alone, with the confirmation, the result, or the one question he needs, and what was received quoted under it. No one else is ever on that note.</div>
           </div>
           <div>
@@ -187,15 +187,15 @@ function Mail() {
 
 
 function Editing() {
-  const chip = (c) => ({ fontFamily: MONO, fontSize: 11, letterSpacing: '0.08em', padding: '2px 8px', borderRadius: 6, border: `1px solid ${alpha(c, 40)}`, color: c, background: `${alpha(c, 8)}` })
+  const chip = (c) => ({ fontSize: 12.5, fontWeight: 500, padding: '2px 9px', borderRadius: 6, border: `1px solid ${alpha(c, 40)}`, color: c, background: `${alpha(c, 8)}` })
   return (
     <>
       <Block title="What It Is">
-        The Editing Protocol is the house loop for rapid review of a living deliverable: a proposal deck, a platform page, a document. David drives; the session captures, builds, and proves. Every input he fires, a screenshot with commentary, a one-liner, a mid-turn interjection, becomes a numbered row on the Ledger punchlist. The session makes the change, verifies it, and closes the row with an Inspect record David can approve from the Punchlist pill on the item\u2019s Live Protocols pill. Approval is always his. Born on the AMA proposal, October 22, 2026, where it ran ninety-two rows to ship.
+        The Editing Protocol is the house loop for rapid review of a living deliverable: a proposal deck, a platform page, a document. David drives; the session captures, builds, and proves. Every input he fires, a screenshot with commentary, a one-liner, a mid-turn interjection, becomes a numbered row on the Ledger punchlist. The session makes the change, verifies it, and closes the row with an Inspect record David can approve from the Punchlist pill on the item’s Live Protocols pill. Approval is always his. Born on the AMA proposal, October 22, 2026, where it ran ninety-two rows to ship.
       </Block>
       <Block title="The Loop, Per Input">
         <ol style={{ margin: 0, paddingLeft: 18 }}>
-          <Li><b style={{ color: INK }}>Capture first.</b> Each entry is one checkable change, David\u2019s meaning condensed to a line, before anything is built. Compound messages split into discrete rows.</Li>
+          <Li><b style={{ color: INK }}>Capture first.</b> Each entry is one checkable change, David’s meaning condensed to a line, before anything is built. Compound messages split into discrete rows.</Li>
           <Li><b style={{ color: INK }}>Build it.</b> House rules apply: sketch language machine-processed into crisp copy, qualified declaratives, Title Case labels, never an em dash, voice aimed at the reader.</Li>
           <Li><b style={{ color: INK }}>Verify it.</b> Typecheck or build, render the changed surface, check that the math or layout actually moved.</Li>
           <Li><b style={{ color: INK }}>Close it</b> with the three Inspect fields, written for a phone: what happened, where to look, what good looks like, plus a link.</Li>
@@ -205,22 +205,22 @@ function Editing() {
       <Block title="Standing Rules Inside It">
         <ul style={{ margin: 0, paddingLeft: 18 }}>
           <Li>Mid-turn messages are normal; they fold into the running batch like any other input.</Li>
-          <Li>Batches commit separately, so the git log reads as the punchlist\u2019s receipt.</Li>
-          <Li>Each batch deploys to a standing draft alias for review; production ships only on David\u2019s word.</Li>
-          <Li>Inline prose passes run through the surface\u2019s Edit Text mode: each slide autosaves as David types, and the session folds the autosaves into source verbatim.</Li>
+          <Li>Batches commit separately, so the git log reads as the punchlist’s receipt.</Li>
+          <Li>Each batch deploys to a standing draft alias for review; production ships only on David’s word.</Li>
+          <Li>Inline prose passes run through the surface’s Edit Text mode: each slide autosaves as David types, and the session folds the autosaves into source verbatim.</Li>
           <Li>Knock-on consistency edits ride with the row that triggered them and are named in its Inspect fields.</Li>
         </ul>
       </Block>
       <Block title="The Pieces">
         <ul style={{ margin: 0, paddingLeft: 18 }}>
-          <Li><span style={chip(GOLD)}>edit_punchlist</span> <span style={{ marginLeft: 8 }}>the Ledger table every row lives on, scoped to the item\u2019s objective.</span></Li>
+          <Li><span style={chip(LABEL)}>edit_punchlist</span> <span style={{ marginLeft: 8 }}>the Ledger table every row lives on, scoped to the item’s objective.</span></Li>
           <Li><span style={chip(GREEN)}>punchlist.py</span> <span style={{ marginLeft: 8 }}>the capture helper: add, done, flag, list.</span></Li>
           <Li><span style={chip(LABEL)}>Punchlist pill</span> <span style={{ marginLeft: 8 }}>on the Mission Briefing: rows, Inspect popups, Approve, flagged rows in red.</span></Li>
-          <Li><span style={chip(GOLD)}>editing-protocol skill</span> <span style={{ marginLeft: 8 }}>the loop in words, so any Code session runs it the same way.</span></Li>
+          <Li><span style={chip(LABEL)}>editing-protocol skill</span> <span style={{ marginLeft: 8 }}>the loop in words, so any Code session runs it the same way.</span></Li>
         </ul>
       </Block>
       <Block title="How To Start One">
-        Say \u201cediting protocol\u201d in a Code session, or just start firing edits at a deliverable and ask for the protocol. The session puts a focus on the Board, opens the round, and the Punchlist pill lights on the item\u2019s Mission Briefing. When the pass ends, the session reports what is done, flagged, and waiting on approval, and the deliverable ships on David\u2019s word.
+        Say “editing protocol” in a Code session, or just start firing edits at a deliverable and ask for the protocol. The session puts a focus on the Board, opens the round, and the Punchlist pill lights on the item’s Mission Briefing. When the pass ends, the session reports what is done, flagged, and waiting on approval, and the deliverable ships on David’s word.
       </Block>
     </>
   )
@@ -232,58 +232,58 @@ function WorkBriefing() {
   return (
     <>
       <Block title="What It Is">
-        The Work Briefing Protocol gets David ready to work a gate. He names the gate (or the mission) and lists what he needs in front of him: an email, contracts in the file store, a client tool, this year{'\u2019'}s agreement, anything else relevant. The session finds every piece, files the source documents on the gate{'\u2019'}s card, and builds the gate{'\u2019'}s Workbench so he can sit down and start. It is not the Briefing Protocol: that one pulls information out of David, this one gathers for him. Born on a client gate, November 20, 2026.
+        The Work Briefing Protocol gets David ready to work a gate. He names the gate (or the mission) and lists what he needs in front of him: an email, contracts in the file store, a client tool, this year’s agreement, anything else relevant. The session finds every piece, files the source documents on the gate’s card, and builds the gate’s Workbench so he can sit down and start. It is not the Briefing Protocol: that one pulls information out of David, this one gathers for him. Born on a client gate, November 20, 2026.
       </Block>
       <Block title="The Run">
         <ol style={{ margin: 0, paddingLeft: 18 }}>
-          <Li><b style={{ color: INK }}>Scope to the gate.</b> The session{'\u2019'}s focus goes on the gate itself. Its own board items never carry the gate{'\u2019'}s id, so a finished sub-item cannot close the gate.</Li>
-          <Li><b style={{ color: INK }}>Find every piece, from the source he named.</b> Mail, the file store, the client{'\u2019'}s tool, the Ledger. The documents themselves are read; the figures come from their text.</Li>
+          <Li><b style={{ color: INK }}>Scope to the gate.</b> The session’s focus goes on the gate itself. Its own board items never carry the gate’s id, so a finished sub-item cannot close the gate.</Li>
+          <Li><b style={{ color: INK }}>Find every piece, from the source he named.</b> Mail, the file store, the client’s tool, the Ledger. The documents themselves are read; the figures come from their text.</Li>
           <Li><b style={{ color: INK }}>Say at once what needs his hand.</b> A tool behind his sign-in is named in one line; the session keeps going on the best source it can reach and marks which figures came from where.</Li>
-          <Li><b style={{ color: INK }}>File the sources on the card.</b> Every document a tab leans on can be opened from the gate{'\u2019'}s Files.</Li>
+          <Li><b style={{ color: INK }}>File the sources on the card.</b> Every document a tab leans on can be opened from the gate’s Files.</Li>
           <Li><b style={{ color: INK }}>Build the Workbench.</b> One built tab that is the analysis surface (tables he can edit, charts, ledgers, the workplan, the roster; no prose blocks), one short tab per source, and an Other tab he marks with a check or an x.</Li>
           <Li><b style={{ color: INK }}>Check it, then report.</b> The built tab is opened and read before it is handed over. The report says what is on the Workbench, what the materials disagree on, what could not be reached, and what is his to rule.</Li>
         </ol>
       </Block>
       <Block title="What It Never Does">
         <ul style={{ margin: 0, paddingLeft: 18 }}>
-          <Li>Write into a client{'\u2019'}s system. Edits it turns up are staged and listed, and written only on his word.</Li>
+          <Li>Write into a client’s system. Edits it turns up are staged and listed, and written only on his word.</Li>
           <Li>Guess a figure. What was not found reads as not found, with where the session looked.</Li>
           <Li>Close, rename or re-scope the gate, or create a gate, a step or a mission.</Li>
         </ul>
       </Block>
       <Block title="How To Start One">
-        Say {'\u201c'}work briefing{'\u201d'} with the gate, or send a prompt that names a gate or mission and lists the materials to find and organize under it. It runs until the Workbench is ready and the report is in, then it goes back on the shelf. The run in words lives in the work-briefing skill, so any Code session runs it the same way.
+        Say “work briefing” with the gate, or send a prompt that names a gate or mission and lists the materials to find and organize under it. It runs until the Workbench is ready and the report is in, then it goes back on the shelf. The run in words lives in the work-briefing skill, so any Code session runs it the same way.
       </Block>
     </>
   )
 }
 
 function Briefing() {
-  const chip = (c) => ({ fontFamily: MONO, fontSize: 11, letterSpacing: '0.08em', padding: '2px 8px', borderRadius: 6, border: `1px solid ${alpha(c, 40)}`, color: c, background: `${alpha(c, 8)}` })
+  const chip = (c) => ({ fontSize: 12.5, fontWeight: 500, padding: '2px 9px', borderRadius: 6, border: `1px solid ${alpha(c, 40)}`, color: c, background: `${alpha(c, 8)}` })
   return (
     <>
       <Block title="What It Is">
-        The Briefing Protocol inverts the usual direction. David states one objective, a picture to complete (a meeting\u2019s notes and artifacts, a plan, a decision record), and the session takes charge until he ends it. It inventories what it can and cannot see, keeps the gap map itself, and pulls what it needs out of him one item at a time, never a list, so he is not the one mapping the work. Born on the MMA October 19 quarterly, October 23, 2026.
+        The Briefing Protocol inverts the usual direction. David states one objective, a picture to complete (a meeting’s notes and artifacts, a plan, a decision record), and the session takes charge until he ends it. It inventories what it can and cannot see, keeps the gap map itself, and pulls what it needs out of him one item at a time, never a list, so he is not the one mapping the work. Born on the MMA October 19 quarterly, October 23, 2026.
       </Block>
       <Block title="The Loop">
         <ol style={{ margin: 0, paddingLeft: 18 }}>
           <Li><b style={{ color: INK }}>Inventory first, silently.</b> The Ledger, the file store, the mailbox, Granola and the client tool. The gap map lands as Briefing rows on the item: the need, why it is needed, and who supplies it (David, a file, a tool).</Li>
           <Li><b style={{ color: INK }}>Open with the picture.</b> What I can see. What I cannot see. The first ask. Nothing else.</Li>
           <Li><b style={{ color: INK }}>One ask at a time.</b> The row marked as the current ask is the one that only David can supply and that unblocks the most. He answers in chat or straight from the pill; the session records it and asks the next.</Li>
-          <Li><b style={{ color: INK }}>Rulings count.</b> \u201cLeave it\u201d, \u201cdefer to November 10\u201d, \u201cnot needed\u201d closes a row as ruled, with the ruling written where the gap was.</Li>
+          <Li><b style={{ color: INK }}>Rulings count.</b> “Leave it”, “defer to November 10”, “not needed” closes a row as ruled, with the ruling written where the gap was.</Li>
           <Li><b style={{ color: INK }}>Hand-offs are rows too.</b> An upload in a tool the session cannot write to, a photo on his phone: the ask names the place and the session hands him the file.</Li>
           <Li><b style={{ color: INK }}>Protocol off.</b> A four-line close: filled, ruled, left open with an owner, where the record lives. Then the session moves to what he named next.</Li>
         </ol>
       </Block>
       <Block title="Where It Shows">
         <ul style={{ margin: 0, paddingLeft: 18 }}>
-          <Li><span style={chip(GOLD)}>Live Protocols pill</span> <span style={{ marginLeft: 8 }}>on the item\u2019s Mission Briefing: the rows, the current ask, Answer and Rule in place.</span></Li>
-          <Li><span style={chip(GOLD)}>Live Protocols window</span> <span style={{ marginLeft: 8 }}>on the Board beside Live Files: every item with a protocol on, its open count and the current ask.</span></Li>
-          <Li><span style={chip(GOLD)}>briefing-protocol skill</span> <span style={{ marginLeft: 8 }}>the loop in words, so any Code session runs it the same way.</span></Li>
+          <Li><span style={chip(LABEL)}>Live Protocols pill</span> <span style={{ marginLeft: 8 }}>on the item’s Mission Briefing: the rows, the current ask, Answer and Rule in place.</span></Li>
+          <Li><span style={chip(LABEL)}>Live Protocols window</span> <span style={{ marginLeft: 8 }}>on the Board beside Live Files: every item with a protocol on, its open count and the current ask.</span></Li>
+          <Li><span style={chip(LABEL)}>briefing-protocol skill</span> <span style={{ marginLeft: 8 }}>the loop in words, so any Code session runs it the same way.</span></Li>
         </ul>
       </Block>
       <Block title="How To Start One">
-        Say \u201cactivate the Briefing Protocol until \u2026\u201d with the objective in one sentence. The session puts a focus on the Board, writes the gap map, opens with the picture and the first ask, and ends every volley with the same progress line, a ten-block bar with the count and the percent (done and ruled both count; an answer that adds rows can move it down), so David can see where he is for his own energy. Say \u201cprotocol off\u201d to end it early.
+        Say “activate the Briefing Protocol until …” with the objective in one sentence. The session puts a focus on the Board, writes the gap map, opens with the picture and the first ask, and ends every volley with the same progress line, a ten-block bar with the count and the percent (done and ruled both count; an answer that adds rows can move it down), so David can see where he is for his own energy. Say “protocol off” to end it early.
       </Block>
     </>
   )
@@ -292,7 +292,7 @@ function Briefing() {
 // The Remind Me Protocol (David 11/11, on a reply that closed with the open choices as a
 // short numbered list: "hahahaha this is so awesome. we should call it the remind me protocol").
 function RemindMe() {
-  const chip = (c) => ({ fontFamily: MONO, fontSize: 11, letterSpacing: '0.08em', padding: '2px 8px', borderRadius: 6, border: `1px solid ${alpha(c, 40)}`, color: c, background: `${alpha(c, 8)}` })
+  const chip = (c) => ({ fontSize: 12.5, fontWeight: 500, padding: '2px 9px', borderRadius: 6, border: `1px solid ${alpha(c, 40)}`, color: c, background: `${alpha(c, 8)}` })
   return (
     <>
       <Block title="What It Is">
@@ -328,8 +328,8 @@ function RemindMe() {
       <Block title="The Pieces">
         <ul style={{ margin: 0, paddingLeft: 18 }}>
           <Li><span style={chip(GREEN)}>remind.py</span> <span style={{ marginLeft: 8 }}>the helper: add, rule, done, list, show.</span></Li>
-          <Li><span style={chip(GOLD)}>edit_punchlist</span> <span style={{ marginLeft: 8 }}>the Ledger table the rows live on, named remind and keyed by the session, so the list survives a long session and a change of focus.</span></Li>
-          <Li><span style={chip(GOLD)}>remind-me-protocol skill</span> <span style={{ marginLeft: 8 }}>the loop in words, so any Code session runs it the same way.</span></Li>
+          <Li><span style={chip(LABEL)}>edit_punchlist</span> <span style={{ marginLeft: 8 }}>the Ledger table the rows live on, named remind and keyed by the session, so the list survives a long session and a change of focus.</span></Li>
+          <Li><span style={chip(LABEL)}>remind-me-protocol skill</span> <span style={{ marginLeft: 8 }}>the loop in words, so any Code session runs it the same way.</span></Li>
           <Li><span style={chip(LABEL)}>Lumen</span> <span style={{ marginLeft: 8 }}>follows the same protocol in his own threads by rule, and keeps his list in the conversation.</span></Li>
         </ul>
       </Block>
@@ -340,16 +340,29 @@ function RemindMe() {
   )
 }
 
+// The rule for every protocol (David 11/15, on ending the Remind Me list and keeping the protocol for when he asks):
+// it sits above the pills because it governs all of them.
+function TheRule() {
+  return (
+    <div style={{ borderLeft: '2px solid var(--hud-accent)', padding: '2px 0 2px 16px', margin: '18px 0 4px', maxWidth: '78ch' }}>
+      <div style={{ fontFamily: "'Lora', Georgia, serif", fontWeight: 500, fontSize: 18, color: INK, marginBottom: 6 }}>The Rule For Every Protocol</div>
+      <div style={{ fontSize: TYPE.body, lineHeight: 1.65, color: INK2 }}>
+        A working protocol runs only when David starts it, by name or by the words in its skill. It runs until he ends it or its objective is met, and then it goes back on the shelf. No session and no Lumen thread turns one on by default, keeps one going after he ends it, or carries it into the next session on its own.
+      </div>
+      <div style={{ fontFamily: "'Lora', Georgia, serif", fontStyle: 'italic', fontSize: 14.5, color: INK2, marginTop: 8 }}>“that’s exactly the protocol, for, protocols. So, add that as a general rule for the system” <span style={{ fontStyle: 'normal', color: MUTED, fontSize: 12.5 }}>David, November 15</span></div>
+    </div>
+  )
+}
+
 export default function LumenProtocolsPage() {
   const [pill, setPill] = useState('identity')
   return (
     <div style={S.page}>
-      <Eyebrow>SYSTEM · PROTOCOLS</Eyebrow>
       <h1 style={S.h1}>Protocols</h1>
-      <p style={S.sub}>the formal loops the house runs on: Lumen, the mail door, the editing floor, the briefing, and the remind me list</p>
+      <TheRule />
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', margin: '18px 0 22px' }}>
         {PILLS.map(p => (
-          <button key={p.id} onClick={() => setPill(p.id)} style={{ fontSize: 11, letterSpacing: '0.06em', textTransform: 'uppercase', fontFamily: MONO, padding: '7px 14px', borderRadius: 999, cursor: 'pointer', border: `1px solid ${pill === p.id ? 'rgba(230,181,79,0.6)' : PANEL_BORDER}`, background: pill === p.id ? 'rgba(230,181,79,0.12)' : 'rgba(255,255,255,0.03)', color: pill === p.id ? GOLD : INK }}>{p.label}</button>
+          <button key={p.id} onClick={() => setPill(p.id)} style={{ fontSize: 13.5, fontWeight: pill === p.id ? 600 : 500, fontFamily: 'inherit', padding: '7px 15px', borderRadius: 999, cursor: 'pointer', border: `1px solid ${pill === p.id ? 'var(--hud-accent)' : PANEL_BORDER}`, background: pill === p.id ? 'color-mix(in srgb, var(--hud-accent) 10%, transparent)' : 'transparent', color: pill === p.id ? 'var(--hud-accent)' : INK2 }}>{p.label}</button>
         ))}
       </div>
       {pill === 'identity' && <Identity />}
