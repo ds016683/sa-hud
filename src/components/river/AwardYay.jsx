@@ -47,6 +47,10 @@ export const YAY_CSS = `
 .yay-river .bar i { display: block; height: 100%; border-radius: 99px; background: linear-gradient(90deg, ${BLUE}, ${PURPLE}); animation: yayfill 1.4s cubic-bezier(.2,.8,.2,1) 1.5s both; }
 .yay-river .nums { display: flex; justify-content: space-between; margin-top: 10px; font-size: 14px; color: rgba(243,241,234,.7); font-variant-numeric: tabular-nums; }
 .yay-river .nums b { color: #F3F1EA; font-weight: 600; }
+.yay-acts { display: inline-flex; align-items: center; gap: 12px; animation: yayup .6s ease 1.6s both; }
+.yay-acts .yay-go { animation: none; display: inline-flex; align-items: center; gap: 9px; max-width: min(520px, 70vw); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.yay-side { width: 44px; height: 44px; border-radius: 99px; border: 1.5px solid #B4A3E8; color: #B4A3E8; background: transparent; display: inline-grid; place-items: center; cursor: pointer; padding: 0; }
+.yay-side:hover { background: rgba(180,163,232,.18); }
 .yay-go { font: 600 15px var(--font-sans, 'Instrument Sans', sans-serif); color: #0D1D2C; background: ${BLUE}; border: 0; border-radius: 999px; padding: 12px 34px; cursor: pointer; box-shadow: 0 0 26px rgba(138,202,255,.3); animation: yayup .6s ease 1.6s both; }
 @keyframes yayveil { from { opacity: 0 } to { opacity: 1 } }
 @keyframes yayup { from { opacity: 0; transform: translateY(14px) } to { opacity: 1; transform: none } }
@@ -58,7 +62,7 @@ export const YAY_CSS = `
 
 // awards: [{ badge, n, miles }]  done: [{ tag, color, text }]  banked: total after  today: the day's miles after
 // before: total before (for the river's fill and any city crossed)
-export function AwardYay({ awards, done = [], banked, today, before, onContinue, title = null, sub = null, go = 'Continue', children = null, keys = true, busy = false }) {
+export function AwardYay({ awards, done = [], banked, today, before, onContinue, title = null, sub = null, go = 'Continue', children = null, keys = true, busy = false, extra = null, lead = null }) {
   const total = awards.reduce((a, x) => a + x.miles, 0)
   const [n, setN] = useState(0)
   useEffect(() => { let k = 0; const step = Math.max(0.25, total / 24); const t = setInterval(() => { k = Math.min(total, k + step); setN(k); if (k >= total) clearInterval(t) }, 45); return () => clearInterval(t) }, [total])
@@ -89,7 +93,7 @@ export function AwardYay({ awards, done = [], banked, today, before, onContinue,
           <div className="nums"><span><b>{Math.round(banked).toLocaleString()}</b> Banked</span><span><b>{Math.round(today * 100) / 100}</b> Today</span><span><b>{Math.round(now.toNext).toLocaleString()}</b> To {now.next.short}</span></div>
         </div>}
         {children && <div className="yay-more">{children}</div>}
-        <button className="yay-go" autoFocus={keys} disabled={busy} onClick={onContinue}>{go}</button>
+        <div className="yay-acts"><button className="yay-go" autoFocus={keys} disabled={busy} onClick={onContinue}>{lead}{go}</button>{extra}</div>
       </div>
     </div>
   )

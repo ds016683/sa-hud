@@ -13,6 +13,11 @@ import DocView from './DocView'
 import SessionBoard from './SessionBoard'
 import { AwardYay } from './AwardYay'
 import { holdYay, releaseYay, markPlayed } from '../../lib/yay'
+import GateDebrief from './GateDebrief'
+import { GateGlyph } from './GatePage'
+import { GlyphLoadout } from './glyphs'
+import { equipTask } from '../../lib/loadout'
+import { openCard } from '../../lib/card'
 
 const Fact = ({ label, children }) => <div><Label>{label}</Label><div style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 17, color: INK, lineHeight: 1.25 }}>{children}</div></div>
 
@@ -30,6 +35,7 @@ export default function YayPage({ objectiveId, onClose, fresh = false, onOpenMis
   const [busy, setBusy] = useState(false)
   const [saveErr, setSaveErr] = useState(null)
   const [tick, setTick] = useState(0)
+  const [gateInfo, setGateInfo] = useState(null)   // what the gate's debrief did, and the next gate, for the yay
   useEffect(() => { let on = true; missionSummary(objectiveId).then(x => { if (on) setM(x) }).catch(e => { if (on) setErr(e.message) }); return () => { on = false } }, [objectiveId, tick])
   const extracting = !!extract && !closed
   const go = async () => {
@@ -50,6 +56,31 @@ export default function YayPage({ objectiveId, onClose, fresh = false, onOpenMis
   // page; opened later from a closed mission it is the Mission Summary card below.
   const party = !!m && (closed || fresh)
   useEffect(() => { if (!party) return undefined; const at = new Date().toISOString(); holdYay(); return () => { releaseYay(at) } }, [party])
+  // A Main Mission's gate closes through its debrief (David 11/21): what goes up to the mission, whether the gate
+  // changed it, a verdict. Then the yay, and a way straight back to work on the next gate.
+  if (extracting && m && m.kind === 'Main Mission') return (
+    <GateDebrief item={extract.item} tone={m.color} onClose={onClose}
+      onDone={(r, info) => { setGateInfo(info); setClosed(true); setTick(t => t + 1); extract.onDone && extract.onDone(r) }} />
+  )
+  if (party && gateInfo) {
+    const next = gateInfo.next
+    const toNext = async (load) => {
+      markPlayed(objectiveId); markPlayed(`m:${objectiveId}`); if (gateInfo.gate?.id) markPlayed(gateInfo.gate.id)
+      try {
+        if (next && load) { const r = await equipTask({ id: next.task_id, text: `${next.n} · ${next.text}`, objective_id: next.objective_id }, gateInfo.mission?.name); if (r && r.ok === false) console.warn('load next gate', r.reasons) }
+        if (next && next.objective_id) openCard(next.objective_id)
+        else if (gateInfo.mission?.id) { window.history.pushState({ page: 'main-missions' }, '', `#/main-missions/${gateInfo.mission.id}/briefing`); window.dispatchEvent(new PopStateEvent('popstate')) }
+      } catch (e) { console.warn('next gate', e.message) }
+      onClose()
+    }
+    return (
+      <AwardYay title="Gate Extracted" sub={gateInfo.gate ? `Gate ${gateInfo.gate.n} · ${gateInfo.gate.text}` : m.title} awards={[{ badge: 'gate', n: 1, miles: 7 }]} banked={null}
+        done={(gateInfo.did || []).slice(0, 6).map(x => ({ tag: x.tag, color: '#B4A3E8', text: x.text }))}
+        go={next ? `Gate ${next.n} · ${next.text}` : 'Back To The Mission'} onContinue={() => toNext(false)}
+        extra={next ? <button type="button" className="yay-side" title={`Load Gate ${next.n} And Start The Clock`} aria-label={`Load gate ${next.n} and start the clock`} onClick={() => toNext(true)}><GlyphLoadout size={20} /></button> : null}
+        lead={next ? <GateGlyph size={17} /> : null} />
+    )
+  }
   if (party) return (
     <AwardYay title="Mission Complete" sub={m.title} awards={[{ badge: m.badge, n: 1, miles: Number(m.miles) || 0 }]} banked={null}
       done={m.gates.filter(g => g.done).slice(-5).map(g => ({ tag: 'Gate', color: '#B4A3E8', text: g.text }))}

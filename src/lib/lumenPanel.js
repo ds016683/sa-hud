@@ -83,6 +83,8 @@ async function hudDoor(payload) {
 // The extraction debrief (api/_extract.mjs): the final pass, the facts, Lumen's narrative and verdicts. It writes
 // nothing; the HUD makes only what David checks.
 export const askExtraction = ({ projectId, words }) => hudDoor({ action: 'extract-debrief', item: { kind: 'project', id: projectId }, words }).then(j => j.debrief)
+// The gate debrief (api/_gate-debrief.mjs): what goes up to the mission, whether the gate changed it, and a verdict. It writes nothing.
+export const askGateDebrief = ({ objectiveId, words }) => hudDoor({ action: 'gate-debrief', item: { kind: 'objective', id: objectiveId }, words }).then(j => j.debrief)
 export const handToClaudeCode = ({ item, message_id, ask, gap }) => hudDoor({ action: 'handoff', item: { kind: item.kind, id: item.id }, title: item.title, message_id, ask, gap })
 export const listHandoffs = async (item) => (await hudDoor({ action: 'handoffs', item: { kind: item.kind, id: item.id } })).handoffs || []
 

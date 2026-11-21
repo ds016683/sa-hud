@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8" /><title>Gate debrief (dev)</title>
+<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;1,400&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>body{margin:0;background:#0F2334;min-height:100vh}</style></head>
+<body><div id="root"></div><script type="module">
+// Dev harness: the real gate debrief on sample data. Nothing is read from or written to the Ledger.
+import { createElement as h } from 'react'
+import { createRoot } from 'react-dom/client'
+import '/src/sa-hud.css'
+import GateDebrief from '/src/components/river/GateDebrief.jsx'
+const drafter = async ({ words }) => { await new Promise(r => setTimeout(r, 500)); return { mission: { id: 'p1', name: 'Sample Client Renewal', polaris: 'A signed agreement for next year.' }, gate: { id: 't3', n: 3, text: 'Proposed Budget And SOW' }, next: { task_id: 't4', n: 4, text: 'Prep For The Chicago Meeting', objective_id: null }, top: 7,
+  verification: { verdict: 'cannot_see', saw: 'The record shows a budget table and a draft scope on the Workbench.', need: 'A copy of the scope as it was sent, or his word that it went out.' },
+  closing_note: words ? 'Sample note, with his context leading.' : 'Sample note. A budget and a draft scope were built.',
+  items: [{ key: 'build:budget', kind: 'Built Tab', name: 'Sample Budget And SOW', pull: true, why: 'The analysis others will use' }, { key: 'tab:notes', kind: 'Tab', name: 'Call Notes', pull: false, why: 'Working notes' }, { key: 'file:f1', kind: 'File', name: 'Sample-Agreement.pdf', pull: true, why: 'The agreement itself' }],
+  changes: [{ kind: 'reword_gate', task_id: 't6', n: 6, from: 'Signed Contract', text: 'Signed Statement Of Work At The Agreed Figure', why: 'The call settled a statement of work, not a new contract' }, { kind: 'new_gate', text: 'Rebill The Retracted Invoice Against The New PO', why: 'Named on the call; no gate holds it' }] } }
+createRoot(document.getElementById('root')).render(h('div', { className: 'sa-surface-dark' }, h(GateDebrief, { item: { id: 'o3', title: '3 · Proposed Budget And SOW' }, drafter, closer: async (x) => { window.__done = x; document.title = 'DONE' }, onClose: () => console.log('closed'), onDone: () => {} })))
+</script></body></html>

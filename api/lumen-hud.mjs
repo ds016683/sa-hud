@@ -21,6 +21,7 @@ export const config = { maxDuration: 300, api: { bodyParser: false } }
 
 import { think, remember, MODEL } from './_lumen-brain.mjs'
 import { extractionDebrief } from './_extract.mjs'
+import { gateDebrief } from './_gate-debrief.mjs'
 import { cardFrame, callTool, workbookOp } from './_ledger.mjs'
 import { transcribe, speak, voiceOf, waSendAudio, davidNumber } from './_wa.mjs'
 
@@ -103,6 +104,11 @@ export default async function handler(req, res) {
     }
     // The extraction debrief (api/_extract.mjs): the final pass over everything on the mission, the facts the system
     // checked itself, Lumen's narrative and verdicts. It writes nothing; the HUD makes only what David blesses.
+    // The gate debrief (api/_gate-debrief.mjs): one gate read in full. It writes nothing.
+    if (body.action === 'gate-debrief') {
+      if (!item || item.kind !== 'objective') return res.status(400).json({ error: 'a gate card is required' })
+      try { return res.status(200).json({ ok: true, debrief: await gateDebrief({ objectiveId: item.id, words: String(body.words || ''), model: MODEL() }) }) } catch (e) { return res.status(500).json({ error: String(e.message || e).slice(0, 240) }) }
+    }
     if (body.action === 'debrief' || body.action === 'extract-debrief') {
       if (!item || item.kind !== 'project') return res.status(400).json({ error: 'a Main Mission is required' })
       try { return res.status(200).json({ ok: true, debrief: await extractionDebrief({ projectId: item.id, words: String(body.words || ''), model: MODEL() }) }) } catch (e) { return res.status(500).json({ error: String(e.message || e).slice(0, 240) }) }
