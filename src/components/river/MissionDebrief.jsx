@@ -4,7 +4,8 @@
 // It takes the place of the old Mark Mission Complete box. David's words first; Lumen drafts five numbered parts
 // from them and the mission's record; nothing is made until David checks it; the Extract marker closes the mission.
 import { useEffect, useState } from 'react'
-import { Check, X, Sparkles, ArrowLeft } from 'lucide-react'
+import { Check, X, Sparkles, ArrowLeft, Plus } from 'lucide-react'
+import { hudPrompt } from '../../lib/dialog'
 import { listLiveFiles } from '../../lib/livefiles'
 import { askDebrief } from '../../lib/lumenPanel'
 import { ExtractMarker } from './glyphs'
@@ -35,6 +36,7 @@ const CSS = `
 .db-three { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 22px; margin-top: 18px; }
 @media (max-width: 1000px) { .db-three { grid-template-columns: 1fr; } }
 .db-band + .db-card { margin-top: 18px; }
+.db-add { margin-left: auto; }
 .db-tally { margin-left: auto; font: 400 13.5px var(--font-sans, 'Instrument Sans', sans-serif); color: rgba(243,241,234,.7); }
 .db-files { display: grid; grid-template-columns: 1fr 1fr; column-gap: 34px; }
 .db-files .db-r:nth-of-type(2) { border-top: 0; }
@@ -76,9 +78,21 @@ export default function MissionDebrief({ project, tasks, onClose, onDone, drafte
   const [files, setFiles] = useState(null)
   const [pick, setPick] = useState({})            // file id -> 'file' | 'keep' | 'drop'
   const [why, setWhy] = useState({})              // file id -> Lumen's few words
-  const [deb, setDeb] = useState(null)            // Lumen's draft
   const [notes, setNotes] = useState('')
   const [yes, setYes] = useState({})              // 'todo:0' | 'hear:1' | 'mission:2' -> true | false
+  // The three lists of What Comes Next: Lumen's lines, and any David adds himself with the plus (those start checked).
+  const [todo, setTodo] = useState([])
+  const [hear, setHear] = useState([])
+  const [missions, setMissions] = useState([])
+  const KINDS = ['Bounty', 'Contract', 'Mythic', 'Main Mission']
+  const addOwn = async (key) => {
+    const t = String(await hudPrompt({ title: key === 'todo' ? 'Still To Happen' : key === 'hear' ? 'Who Should Hear' : 'A Mission That Came Out Of This One' }) || '').replace(/\s+/g, ' ').trim()
+    if (!t) return
+    const list = key === 'todo' ? todo : key === 'hear' ? hear : missions
+    const item = key === 'todo' ? { text: t, own: true } : key === 'hear' ? { who: t, own: true } : { title: t, kind: 'Bounty', own: true }
+    ;(key === 'todo' ? setTodo : key === 'hear' ? setHear : setMissions)([...list, item])
+    setYes(y => ({ ...y, [`${key === 'missions' ? 'mission' : key}:${list.length}`]: true }))
+  }
   const [closeOpen, setCloseOpen] = useState(false)
   const [asking, setAsking] = useState(false)
   const [busy, setBusy] = useState(false)
@@ -98,10 +112,15 @@ export default function MissionDebrief({ project, tasks, onClose, onDone, drafte
     setAsking(true); setErr(null)
     try {
       const d = await drafter({ projectId: project.id, words: words.trim(), files: (files || []).map(f => ({ id: f.id, name: f.name, note: f.note || '' })) })
-      setDeb(d); setNotes(d.closing_notes || '')
+      setNotes(d.closing_notes || '')
       setPick(p => ({ ...p, ...Object.fromEntries((d.files || []).map(f => [f.id, f.keep])) }))
       setWhy(Object.fromEntries((d.files || []).map(f => [f.id, f.why])))
-      setYes({})
+      // Lumen's lines replace his earlier ones; what David added by hand stays, still checked.
+      const keep = (list, fresh) => [...fresh, ...list.filter(x => x.own)]
+      const nt = keep(todo, d.still_to_happen || []), nh = keep(hear, d.who_should_hear || []), nm = keep(missions, d.missions || [])
+      setTodo(nt); setHear(nh); setMissions(nm)
+      const y = {}; nt.forEach((x, i) => { if (x.own) y[`todo:${i}`] = true }); nh.forEach((x, i) => { if (x.own) y[`hear:${i}`] = true }); nm.forEach((x, i) => { if (x.own) y[`mission:${i}`] = true })
+      setYes(y)
     } catch (e) { setErr(`Lumen could not draft it: ${e.message}`) } finally { setAsking(false) }
   }
   const go = async () => {
@@ -113,7 +132,7 @@ export default function MissionDebrief({ project, tasks, onClose, onDone, drafte
       await onDone({
         achieved: words.trim(), notes: notes.trim(), closeOpen,
         fileThem: true, files: (files || []).filter(f => pick[f.id] === 'file'), drop: (files || []).filter(f => pick[f.id] === 'drop'),
-        make: { todo: picked('todo', deb?.still_to_happen), hear: picked('hear', deb?.who_should_hear), missions: picked('mission', deb?.missions) },
+        make: { todo: picked('todo', todo), hear: picked('hear', hear), missions: picked('mission', missions) },
       })
     } catch (e) { setErr(e?.message || String(e)); setBusy(false) }
   }
@@ -151,16 +170,16 @@ export default function MissionDebrief({ project, tasks, onClose, onDone, drafte
         <div className="db-band">What Comes Next</div>
         <div className="db-three">
           <div className="db-card">
-            <h3><span className="db-n">2</span>Still To Happen</h3>
-            {(deb?.still_to_happen || []).map((x, i) => <div key={i} className={`db-r${yes[`todo:${i}`] === false ? ' off' : ''}`}><div>{x.text}{x.why && <small>{x.why}</small>}</div><YN on={yes[`todo:${i}`] ?? null} set={set(`todo:${i}`)} /></div>)}
+            <h3><span className="db-n">2</span>Still To Happen<button type="button" className="db-ic sm db-add" title="Add One" aria-label="Add something still to happen" onClick={() => addOwn('todo')}><Plus size={14} /></button></h3>
+            {todo.map((x, i) => <div key={i} className={`db-r${yes[`todo:${i}`] === false ? ' off' : ''}`}><div>{x.text}{x.why && <small>{x.why}</small>}</div><YN on={yes[`todo:${i}`] ?? null} set={set(`todo:${i}`)} /></div>)}
           </div>
           <div className="db-card">
-            <h3><span className="db-n">3</span>Missions That Came Out Of This One</h3>
-            {(deb?.missions || []).map((x, i) => <div key={i} className={`db-r${yes[`mission:${i}`] === false ? ' off' : ''}`}><KindMark kind={x.kind} size={30} color={PURPLE} /><div>{x.title}<small>{x.kind}{x.why ? ` · ${x.why}` : ''}</small></div><YN on={yes[`mission:${i}`] ?? null} set={set(`mission:${i}`)} /></div>)}
+            <h3><span className="db-n">3</span>Missions That Came Out Of This One<button type="button" className="db-ic sm db-add" title="Add One" aria-label="Add a mission" onClick={() => addOwn('missions')}><Plus size={14} /></button></h3>
+            {missions.map((x, i) => <div key={i} className={`db-r${yes[`mission:${i}`] === false ? ' off' : ''}`}><button type="button" title={`${x.kind} · Click To Change`} aria-label={`Kind: ${x.kind}. Click to change`} onClick={() => setMissions(ms => ms.map((m, k) => k === i ? { ...m, kind: KINDS[(KINDS.indexOf(m.kind) + 1) % KINDS.length] } : m))} style={{ background: 'transparent', border: 0, padding: 0, cursor: 'pointer', display: 'inline-flex' }}><KindMark kind={x.kind} size={30} color={PURPLE} /></button><div>{x.title}<small>{x.kind}{x.why ? ` · ${x.why}` : ''}</small></div><YN on={yes[`mission:${i}`] ?? null} set={set(`mission:${i}`)} /></div>)}
           </div>
           <div className="db-card">
-            <h3><span className="db-n">4</span>Who Should Hear</h3>
-            {(deb?.who_should_hear || []).map((x, i) => <div key={i} className={`db-r${yes[`hear:${i}`] === false ? ' off' : ''}`}><div>{x.who}{x.why && <small>{x.why}</small>}</div><YN on={yes[`hear:${i}`] ?? null} set={set(`hear:${i}`)} /></div>)}
+            <h3><span className="db-n">4</span>Who Should Hear<button type="button" className="db-ic sm db-add" title="Add One" aria-label="Add someone who should hear" onClick={() => addOwn('hear')}><Plus size={14} /></button></h3>
+            {hear.map((x, i) => <div key={i} className={`db-r${yes[`hear:${i}`] === false ? ' off' : ''}`}><div>{x.who}{x.why && <small>{x.why}</small>}</div><YN on={yes[`hear:${i}`] ?? null} set={set(`hear:${i}`)} /></div>)}
           </div>
         </div>
 

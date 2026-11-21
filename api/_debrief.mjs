@@ -4,7 +4,7 @@
 // missions that got blasted out of it"). This reads the mission's record and David's own words and drafts the five
 // parts. It writes nothing: every line comes back for David to check, and only what he checks is made, by the HUD.
 import { sb } from './_ledger.mjs'
-import { missions, parseJson } from './_trail.mjs'
+import { missions, parseJson, readSteps } from './_trail.mjs'
 
 const flat = (t, max) => String(t || '').replace(/\s+/g, ' ').trim().slice(0, max)
 const clean = (t, max = 400) => flat(t, max).replace(/\s*[—–]\s*/g, ', ')
@@ -13,10 +13,14 @@ export async function debrief({ projectId, words, files = [], model }) {
   if (!model) throw new Error('no model named for the debrief')
   const [p] = await sb(`projects?select=id,name,key,description,created_at&id=eq.${projectId}`)
   if (!p) throw new Error('no such mission')
-  const tasks = await sb(`project_tasks?select=text,status,done,notes,released_at&project_id=eq.${projectId}&order=created_at`)
+  const tasks = await sb(`project_tasks?select=text,status,done,notes,released_at,objective_id&project_id=eq.${projectId}&order=created_at`)
+  // What David wrote when he closed each gate, and the steps he accepted on this mission: the record's own words.
+  const cards = tasks.map(t => t.objective_id).filter(Boolean)
+  const closes = cards.length ? await sb(`archive_entries?select=source_title,summary,filed_at&source_id=in.(${cards.join(',')})&kind=eq.summary&order=filed_at.asc&limit=30`).catch(() => []) : []
+  const steps = await readSteps().then(st => st.proposals.filter(x => x.mission && x.mission.id === projectId && (st.rulings[x.id] || {}).verdict === 'accept').slice(-30).map(x => x.text)).catch(() => [])
   const others = (await missions()).filter(m => m.id !== projectId).map(m => `${m.kind}: ${m.title}`).slice(0, 80)
   const fl = (Array.isArray(files) ? files : []).slice(0, 60).map(f => ({ id: String(f.id), name: flat(f.name, 140), note: flat(f.note, 160) }))
-  const prompt = `You are Lumen. David is closing a Main Mission and has written, in his own words, what is true now. Draft his debrief package from his words and the mission's record. Nothing you write is acted on until he checks it, so propose plainly and only what the record or his words support. If a part has nothing real in it, return an empty list for it. Never invent a person, a file, a date or a commitment. The files are there to be sorted, not read as news: do not build a closing note, a loose end, a person to tell or a new mission out of a file's name or its note alone. Those come from the gates and from his words.
+  const prompt = `You are Lumen. David is closing a Main Mission and has written, in his own words, what is true now. Draft his debrief package from his words and the mission's record. Nothing you write is acted on until he checks it, so think like a chief of staff reading the file before it is put away: flag what a careful one would flag, and let him cross out what he does not want. A mission that ends in something sent has a follow-up; a mission that built something has an owner to name and a thing to keep running or take down; people named in the record usually have not been told it closed. Return an empty list for a part only when the record and his words truly show nothing for it. Never invent a person, a file, a date or a commitment: every line must trace to the gates, to what he wrote at a gate's close, to a step he accepted, or to his words now. The files are there to be sorted, not read as news: do not build a closing note, a loose end, a person to tell or a new mission out of a file's name or its note alone. Those come from the gates and from his words.
 
 Write the way he reads: plain, short, past tense for what happened. No em dashes. No praise. Title Case for any title you propose.
 
@@ -26,6 +30,12 @@ Its Polaris, what was to be true: ${flat(p.description, 900) || 'none written'}
 
 ## Its gates
 ${tasks.map(t => `- ${t.done || t.status === 'done' ? 'closed' : 'OPEN'}: ${flat(t.text, 140)}${t.notes ? ` | ${flat(t.notes, 420)}` : ''}`).join('\n') || 'none'}
+
+## What David wrote when he closed a gate
+${closes.map(c => `- ${flat(c.source_title, 80)}: ${flat(c.summary, 600)}`).join('\n') || 'nothing on record'}
+
+## Steps he accepted on this mission, in order
+${steps.map(x => `- ${flat(x, 160)}`).join('\n') || 'none'}
 
 ## Files in play on it
 ${fl.map(f => `- id ${f.id}: ${f.name}${f.note ? ` | ${f.note}` : ''}`).join('\n') || 'none'}
