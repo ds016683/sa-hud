@@ -4,7 +4,7 @@
 // missions that got blasted out of it"). This reads the mission's record and David's own words and drafts the five
 // parts. It writes nothing: every line comes back for David to check, and only what he checks is made, by the HUD.
 import { sb } from './_ledger.mjs'
-import { missions, parseJson, readSteps } from './_trail.mjs'
+import { missions, readSteps } from './_trail.mjs'
 
 const flat = (t, max) => String(t || '').replace(/\s+/g, ' ').trim().slice(0, max)
 const clean = (t, max = 400) => flat(t, max).replace(/\s*[—–]\s*/g, ', ')
@@ -20,7 +20,12 @@ export async function debrief({ projectId, words, files = [], model }) {
   const steps = await readSteps().then(st => st.proposals.filter(x => x.mission && x.mission.id === projectId && (st.rulings[x.id] || {}).verdict === 'accept').slice(-30).map(x => x.text)).catch(() => [])
   const others = (await missions()).filter(m => m.id !== projectId).map(m => `${m.kind}: ${m.title}`).slice(0, 80)
   const fl = (Array.isArray(files) ? files : []).slice(0, 60).map(f => ({ id: String(f.id), name: flat(f.name, 140), note: flat(f.note, 160) }))
-  const prompt = `You are Lumen. David is closing a Main Mission and has written, in his own words, what is true now. Draft his debrief package from his words and the mission's record. Nothing you write is acted on until he checks it, so think like a chief of staff reading the file before it is put away: flag what a careful one would flag, and let him cross out what he does not want. A mission that ends in something sent has a follow-up; a mission that built something has an owner to name and a thing to keep running or take down; people named in the record usually have not been told it closed. Return an empty list for a part only when the record and his words truly show nothing for it. Never invent a person, a file, a date or a commitment: every line must trace to the gates, to what he wrote at a gate's close, to a step he accepted, or to his words now. The files are there to be sorted, not read as news: do not build a closing note, a loose end, a person to tell or a new mission out of a file's name or its note alone. Those come from the gates and from his words.
+  const said = flat(words, 4000)
+  const prompt = `You are Lumen. David is closing a Main Mission. Brief him before it is put away, from the mission's record${said ? ' and the context he has added' : ''}.
+
+His rule for this brief, in his words: "Lumen briefs, pre-populates. if he doesn't KNOW a thing, he doesn't say a thing." So every line must be something the record below states${said ? ' or his context says' : ''}: a gate, what he wrote when he closed a gate, a step he accepted${said ? ', his context' : ''}. No guesses, no likely next steps, no people who are not named there, no dates or commitments that are not written there. If you do not know, leave that part empty. An empty part is a right answer. Nothing you write is acted on until he blesses it.
+
+The files are there to be sorted, not read as news: never build a note, a loose end, a person to tell or a mission out of a file's name or its note alone.
 
 Write the way he reads: plain, short, past tense for what happened. No em dashes. No praise. Title Case for any title you propose.
 
@@ -43,20 +48,30 @@ ${fl.map(f => `- id ${f.id}: ${f.name}${f.note ? ` | ${f.note}` : ''}`).join('\n
 ## Missions he already has open (do not propose these again)
 ${others.join('\n') || 'none'}
 
-## David's words at the close
-${flat(words, 4000)}
+## Context David added at the close
+${said || 'none yet'}
 
-Draft five parts:
-1. closing_notes: three to five sentences. What the mission set out to make true, what happened, and whether it is true now, leaning on his words. This is filed as the mission's record.
-2. files: for every file listed, one of "file" (belongs with the mission's record and can leave play), "keep" (still live work, stays in play), or "drop" (a working scrap with no lasting value), with a few words of why.
-3. still_to_happen: loose ends the record or his words show are not finished and that nobody owns. One line each, the verb first, twelve words at most, with a few words of why.
-4. who_should_hear: people named in the record or his words who would want to know the mission closed or who are owed a note. The name exactly as it appears, and why in a few words.
-5. missions: new missions this one set in motion, only where the record or his words point at real next work. For each a title, a kind ("Bounty" for one discrete action, "Contract" for a standard piece of work with a deliverable, "Mythic" for a large piece of work with several gates, "Main Mission" for a body of work with gates of its own), and why in a few words.
-
-Reply with one JSON object and nothing else: {"closing_notes":"...","files":[{"id":"<the file id>","keep":"file|keep|drop","why":"..."}],"still_to_happen":[{"text":"...","why":"..."}],"who_should_hear":[{"who":"...","why":"..."}],"missions":[{"title":"...","kind":"Bounty|Contract|Mythic|Main Mission","why":"..."}]}`
-  const res = await fetch('https://api.anthropic.com/v1/messages', { method: 'POST', headers: { 'x-api-key': process.env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' }, body: JSON.stringify({ model, max_tokens: 3000, messages: [{ role: 'user', content: prompt }] }) })
+The five parts:
+1. closing_notes: two to five sentences. What the mission set out to make true and what the record shows happened. His context, where he gave it, leads. This is filed as the mission's record.
+2. files: for every file listed, "file" (belongs with the mission's record and can leave play), "keep" (still live work, stays in play), or "drop" (a working scrap), with a few words of why.
+3. still_to_happen: only loose ends the record or his context states are not finished. One line each, the verb first, twelve words at most, and where it came from in a few words.
+4. who_should_hear: only people named in the record or his context who are owed word. The name exactly as written, and why in a few words.
+5. missions: only next work the record or his context names. A title, a kind ("Bounty" one discrete action, "Contract" a standard piece of work with a deliverable, "Mythic" a large piece of work with several gates, "Main Mission" a body of work with gates of its own), and where it came from in a few words.`
+  // The reply comes back through a tool call, so it is always one well-formed object (a hand-written JSON reply broke on 11/21).
+  const line = (props, req) => ({ type: 'array', items: { type: 'object', properties: props, required: req } })
+  const str = { type: 'string' }
+  const tool = { name: 'debrief', description: 'Hand David the brief.', input_schema: { type: 'object', required: ['closing_notes', 'files', 'still_to_happen', 'who_should_hear', 'missions'], properties: {
+    closing_notes: str,
+    files: line({ id: str, keep: { type: 'string', enum: ['file', 'keep', 'drop'] }, why: str }, ['id', 'keep']),
+    still_to_happen: line({ text: str, why: str }, ['text']),
+    who_should_hear: line({ who: str, why: str }, ['who']),
+    missions: line({ title: str, kind: { type: 'string', enum: ['Bounty', 'Contract', 'Mythic', 'Main Mission'] }, why: str }, ['title', 'kind']),
+  } } }
+  const res = await fetch('https://api.anthropic.com/v1/messages', { method: 'POST', headers: { 'x-api-key': process.env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' }, body: JSON.stringify({ model, max_tokens: 6000, tools: [tool], tool_choice: { type: 'tool', name: 'debrief' }, messages: [{ role: 'user', content: prompt }] }) })
   if (!res.ok) throw new Error(`anthropic -> ${res.status}: ${(await res.text()).slice(0, 160)}`)
-  const out = parseJson(((await res.json()).content || []).filter(c => c.type === 'text').map(c => c.text).join(''))
+  const call = ((await res.json()).content || []).find(c => c.type === 'tool_use')
+  if (!call || !call.input) throw new Error('Lumen sent no brief back')
+  const out = call.input
   const ids = new Set(fl.map(f => f.id))
   const KINDS = ['Bounty', 'Contract', 'Mythic', 'Main Mission']
   return {
