@@ -62,7 +62,7 @@ export async function loadThread(itemId, limit = 80) {
 export async function askLumen({ text, where, item, event = null }) {
   const { data: { session } } = await supabase.auth.getSession()
   if (!session) throw new Error('not signed in')
-  const r = await fetch('/api/lumen-hud', { method: 'POST', headers: { Authorization: `Bearer ${session.access_token}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ text, where, item: { kind: item.kind, id: item.id }, ...(event ? { event } : {}) }) })
+  const r = await fetch('/api/lumen-hud', { method: 'POST', headers: { Authorization: `Bearer ${session.access_token}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ text, where, ...(item ? { item: { kind: item.kind, id: item.id } } : {}), ...(event ? { event } : {}) }) })
   const j = await r.json().catch(() => ({}))
   if (!r.ok) throw new Error(j.error || `lumen ${r.status}`)
   if (j.error) throw new Error(j.error)
@@ -84,6 +84,8 @@ async function hudDoor(payload) {
 // nothing; the HUD makes only what David checks.
 export const askExtraction = ({ projectId, words }) => hudDoor({ action: 'extract-debrief', item: { kind: 'project', id: projectId }, words }).then(j => j.debrief)
 // The gate debrief (api/_gate-debrief.mjs): what goes up to the mission, whether the gate changed it, and a verdict. It writes nothing.
+// Process And Post (api/_catch.mjs): Lumen posts a summary on the card's line and catches what needs a follow-up.
+export const processAndPost = ({ text, where, root, item, title }) => hudDoor({ action: 'process-post', text, where, root, item, title })
 export const askGateDebrief = ({ objectiveId, words }) => hudDoor({ action: 'gate-debrief', item: { kind: 'objective', id: objectiveId }, words }).then(j => j.debrief)
 export const handToClaudeCode = ({ item, message_id, ask, gap }) => hudDoor({ action: 'handoff', item: { kind: item.kind, id: item.id }, title: item.title, message_id, ask, gap })
 export const listHandoffs = async (item) => (await hudDoor({ action: 'handoffs', item: { kind: item.kind, id: item.id } })).handoffs || []

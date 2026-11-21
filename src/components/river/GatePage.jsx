@@ -6,9 +6,9 @@
 // The Workbench pulls up full: the header and the two lines fold to one strip.
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Pencil, ArrowUp, ListTree, PenLine, FolderOpen, Plus, Check, X as XMark } from 'lucide-react'
+import { Pencil, ArrowUp, ListTree, PenLine, FolderOpen, Plus, Check, X as XMark, Sparkles } from 'lucide-react'
 import { readPath, savePathSteps, buildTrail } from '../../lib/path'
-import { listBuilds } from '../../lib/lumenPanel'
+import { listBuilds, processAndPost } from '../../lib/lumenPanel'
 import { toggleStep } from '../../lib/objectives'
 import { hudPrompt, hudConfirm } from '../../lib/dialog'
 import CardFiles from './CardFiles'
@@ -75,6 +75,8 @@ button.gp-ic:hover { background: color-mix(in srgb, var(--c, var(--t)) 16%, tran
 .gp-mt { display: flex; align-items: baseline; gap: 10px; width: 100%; text-align: left; background: transparent; border: 0; border-top: 1px solid rgba(255,255,255,.07); padding: 8px 0; color: #F3F1EA; font: 500 14.5px 'Lora', Georgia, serif; cursor: pointer; }
 .gp-mt small { margin-left: auto; font: 400 12.5px var(--font-sans, 'Instrument Sans', sans-serif); color: rgba(243,241,234,.5); white-space: nowrap; }
 .gp-mt:hover { color: var(--t); }
+.gp-posted { font-size: 13.5px; line-height: 1.5; color: var(--t); margin: 8px 0 2px; }
+.gp-busy { animation: gpghost 1.2s ease-in-out infinite; }
 .gp-msg { font-size: 13px; color: #DE7E6E; margin-top: 8px; }
 .gp-snake { position: relative; width: 100%; min-width: 0; }
 .gp-sn { position: absolute; display: block; text-align: center; font: inherit; font-size: 13px; line-height: 1.3; color: rgba(243,241,234,.7); background: transparent; border: 0; padding: 0; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; }
@@ -178,6 +180,8 @@ export default function GatePage({ card = null, benchRoot = null, tools = null, 
   const [builds, setBuilds] = useState([])
   const [notes, setNotes] = useState(card?.obj?.notes || '')
   const [stepMsg, setStepMsg] = useState(null)
+  const [posting, setPosting] = useState(false)
+  const [posted, setPosted] = useState(null)   // { summary, n } after Process And Post
   // The page sits in the same layer as the card's Lumen panel, so the pill and the panel stay above it.
   const [host] = useState(() => document.querySelector('aside[aria-label="Lumen"]')?.parentElement || document.querySelector('.sa-app') || document.body)
   const [tabs, setTabs] = useState([])
@@ -212,7 +216,7 @@ export default function GatePage({ card = null, benchRoot = null, tools = null, 
     const nodes = ev.map((e, i) => ({ key: `e${i}`, label: label(e).slice(0, 80), sub: stamp(e.at), title: e.note || e.text, state: 'done', at: e.at }))
     // Steps still to do sit ahead on the line, in their order, before the close (David 11/21: "step should match on the timeline").
     const ahead = [...(card.stops || []).filter(x => !x.done).map(x => ({ key: `os${x.id}`, label: String(x.text).slice(0, 80), title: x.text, state: 'open' })),
-      ...psteps.filter(x => !x.done && !x.vetted).map(x => ({ key: `op${x.id}`, label: String(x.text).slice(0, 80), title: x.text, state: 'open' }))]
+      ...psteps.filter(x => !x.done && !x.vetted && !x.note).map(x => ({ key: `op${x.id}`, label: String(x.text).slice(0, 80), title: x.text, state: 'open' }))]
     return [...nodes, ...ahead, gate.done ? null : { key: 'close', label: 'Close', state: 'open' }].filter(Boolean)
   }, [card, tabs, builds, psteps, gate.done])
   // The gate's own line: where it came from, what was written on it, and its close.
@@ -228,7 +232,7 @@ export default function GatePage({ card = null, benchRoot = null, tools = null, 
   // Steps: the card's own (objective_steps) and the ones set by hand on its line, one list, open first.
   const stepRows = card ? [
     ...(card.stops || []).map(x => ({ key: `s${x.id}`, kind: 'stop', id: x.id, text: x.text, done: !!x.done })),
-    ...psteps.filter(x => !x.vetted).map(x => ({ key: `p${x.id}`, kind: 'path', id: x.id, text: x.text, done: !!x.done })),
+    ...psteps.filter(x => !x.vetted && !x.note).map(x => ({ key: `p${x.id}`, kind: 'path', id: x.id, text: x.text, done: !!x.done })),
   ].sort((a, b) => Number(a.done) - Number(b.done)) : []
   const savePs = async (fn) => { const doc = await savePathSteps(groot, fn); setPsteps(doc.steps || []) }
   const addStepHere = async () => {
@@ -255,6 +259,17 @@ export default function GatePage({ card = null, benchRoot = null, tools = null, 
         await savePs(list => { const open = list.filter(x => !x.done && !x.vetted), at = open[k] ? list.indexOf(open[k]) : list.length; const out = [...list]; out.splice(at, 0, { ...row, done: false, at: null }); return out })
       }
     } catch (e) { setStepMsg(`Could not add it: ${e.message}`) }
+  }
+  // Process And Post (David 11/21): Lumen reads the notes, posts a line on this gate's timeline, and catches what needs a follow-up.
+  const process = async () => {
+    const t = notes.trim(); if (!t || posting) return
+    setPosting(true); setStepMsg(null); setPosted(null)
+    try {
+      if (t !== String(card.obj?.notes || '').trim()) card.onSaveNotes && card.onSaveNotes(t)
+      const r = await processAndPost({ text: t, where: `Gate ${n} · ${gate.text}`, root: groot, item: { kind: 'objective', id: card.obj.id }, title: gate.text })
+      setPosted({ summary: r.summary, n: (r.catches || []).length })
+      const pd = await readPath(groot).catch(() => null); if (pd) setPsteps(pd.steps || [])
+    } catch (e) { setStepMsg(`Lumen could not process it: ${e.message}`) } finally { setPosting(false) }
   }
   const flipStep = async (r) => {
     try {
@@ -316,8 +331,9 @@ export default function GatePage({ card = null, benchRoot = null, tools = null, 
               {stepMsg && <div className="gp-msg">{stepMsg}</div>}
             </div>
             <div className="gp-card">
-              <div className="gp-ch">Notes{(card.meetings || []).length > 0 && <button type="button" className="gp-ic sm" title="Meeting Notes" aria-label="Open the meeting notes" onClick={() => card.onOpenNotes && card.onOpenNotes()}><ListTree size={14} /></button>}</div>
+              <div className="gp-ch">Notes<button type="button" className={`gp-ic sm${posting ? ' gp-busy' : ''}`} style={{ marginLeft: 'auto' }} title="Process And Post" aria-label="Process and post: Lumen summarizes this on the timeline and catches what needs a follow-up" onClick={process} disabled={posting || !notes.trim()}><Sparkles size={14} /></button>{(card.meetings || []).length > 0 && <button type="button" className="gp-ic sm" title="Meeting Notes" aria-label="Open the meeting notes" style={{ marginLeft: 0 }} onClick={() => card.onOpenNotes && card.onOpenNotes()}><ListTree size={14} /></button>}</div>
               <textarea className="gp-notes" rows={4} value={notes} onChange={e => setNotes(e.target.value)} onBlur={() => { const v = notes.trim(); if (v !== String(card.obj?.notes || '').trim()) card.onSaveNotes && card.onSaveNotes(v || null) }} aria-label="Notes on this gate" />
+              {posted && <div className="gp-posted">Posted: {posted.summary}{posted.n ? ` · ${posted.n} Caught` : ' · Nothing To Catch'}</div>}
               {(card.meetings || []).slice(0, 4).map(m => <button type="button" key={m.id} className="gp-mt" onClick={() => card.onOpenNotes && card.onOpenNotes()}>{m.title}<small>{m.meeting_date ? new Date(`${String(m.meeting_date).slice(0, 10)}T12:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : ''}</small></button>)}
             </div>
           </div>
