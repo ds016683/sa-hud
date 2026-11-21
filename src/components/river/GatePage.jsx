@@ -48,7 +48,14 @@ button.gp-ic:hover { background: color-mix(in srgb, var(--c, var(--t)) 16%, tran
 .gp-ln { display: grid; grid-template-columns: 160px 1fr; align-items: start; padding: 18px 0 14px; }
 .gp-ln + .gp-ln { border-top: 1px solid rgba(255,255,255,.07); }
 .gp-mini .st.own { opacity: .62; }
-.gp-k { font: 500 16px 'Lora', Georgia, serif; } .gp-k small { display: block; font: 400 12.5px var(--font-sans, 'Instrument Sans', sans-serif); color: rgba(243,241,234,.7); margin-top: 3px; }
+.gp-k { font: 500 16px 'Lora', Georgia, serif; display: flex; flex-direction: column; } .gp-k small { display: block; font: 400 12.5px var(--font-sans, 'Instrument Sans', sans-serif); color: rgba(243,241,234,.7); margin-top: 3px; }
+.gp-pick { display: inline-flex; align-items: center; gap: 6px; margin-top: 8px; padding: 4px 10px; border: 1px dashed rgba(255,255,255,.28); border-radius: 9px; font: 500 12.5px var(--font-sans, 'Instrument Sans', sans-serif); color: #F3F1EA; cursor: grab; user-select: none; width: fit-content; order: 3; }
+.gp-pick i { width: 7px; height: 7px; border-radius: 99px; background: rgba(243,241,234,.6); }
+.gp-pick:hover { border-color: var(--t); color: var(--t); }
+.gp-pick:active { cursor: grabbing; }
+.gp-snake.dropping { outline: 1px dashed color-mix(in srgb, var(--t) 45%, transparent); outline-offset: 6px; border-radius: 10px; }
+.gp-ghost { animation: gpghost 1.2s ease-in-out infinite; }
+@keyframes gpghost { 0%, 100% { opacity: .9 } 50% { opacity: .35 } }
 .gp-two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-top: 18px; }
 @media (max-width: 900px) { .gp-two { grid-template-columns: 1fr; } }
 .gp-card { border: 1px solid rgba(255,255,255,.12); border-radius: 14px; background: #0D1D2C; padding: 16px 20px; min-width: 0; }
@@ -105,9 +112,11 @@ button.gp-nd { cursor: pointer; }
 // sit on one straight row, as before.
 // nodes: [{ key, label, sub, state: 'done' | 'on' | 'open', onClick }]
 const ROW_H = 118, CELL = 150
-function SnakeLine({ nodes, dim = false }) {
+// onDrop(i): a step dragged onto the line lands before node i (1 to n - 1: after the first, before the last).
+function SnakeLine({ nodes, dim = false, onDrop = null }) {
   const ref = useRef(null)
   const [w, setW] = useState(0)
+  const [over, setOver] = useState(null)        // the gap a dragged step would land in
   useLayoutEffect(() => {
     const el = ref.current; if (!el) return undefined
     const on = () => setW(el.clientWidth)
@@ -125,13 +134,27 @@ function SnakeLine({ nodes, dim = false }) {
   const endW = Math.max(60, gap - cellW / 2 + 8)
   const seg = (a, b) => a.r === b.r ? `M${a.x},${a.y} L${b.x},${b.y}` : `M${a.x},${a.y} A${ROW_H / 2},${ROW_H / 2} 0 0 ${a.r % 2 ? 0 : 1} ${b.x},${b.y}`
   const ink = 'rgba(255,255,255,.14)'
+  // The gap nearest the pointer, kept off the first and last stops.
+  const gapAt = (e) => {
+    const r = ref.current.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top
+    let best = 1, bd = Infinity
+    for (let i = 1; i < pos.length; i++) { const mx = (pos[i - 1].x + pos[i].x) / 2, my = (pos[i - 1].y + pos[i].y) / 2, d = (mx - x) ** 2 + (my - y) ** 2; if (d < bd) { bd = d; best = i } }
+    return best
+  }
+  const drag = onDrop ? {
+    onDragOver: (e) => { if (![...e.dataTransfer.types].includes('text/x-hud-step')) return; e.preventDefault(); setOver(gapAt(e)) },
+    onDragLeave: (e) => { if (!ref.current.contains(e.relatedTarget)) setOver(null) },
+    onDrop: (e) => { if (![...e.dataTransfer.types].includes('text/x-hud-step')) return; e.preventDefault(); const i = gapAt(e); setOver(null); onDrop(i) },
+  } : {}
+  const ghost = over != null && pos[over] ? (() => { const a = pos[over - 1], b = pos[over]; return a.r === b.r ? { x: (a.x + b.x) / 2, y: a.y } : { x: a.r % 2 ? a.x - ROW_H / 2 : a.x + ROW_H / 2, y: (a.y + b.y) / 2 } })() : null
   return (
-    <div ref={ref} className="gp-snake" style={{ height: w ? (rows - 1) * ROW_H + 96 : 96, opacity: dim ? 0.62 : 1 }}>
+    <div ref={ref} className={`gp-snake${over != null ? ' dropping' : ''}`} style={{ height: w ? (rows - 1) * ROW_H + 96 : 96, opacity: dim && over == null ? 0.62 : 1 }} {...drag}>
       {w > 0 && <svg width={w} height={(rows - 1) * ROW_H + 30} aria-hidden="true" style={{ position: 'absolute', left: 0, top: 0, overflow: 'visible' }}>
         {pos.slice(1).map((b, i) => { const a = pos[i], lit = nodes[i].state === 'done' && nodes[i + 1].state !== 'open'; return <path key={i} d={seg(a, b)} fill="none" stroke={lit ? 'var(--c)' : ink} strokeWidth="1.5" /> })}
         {pos.map((p, i) => { const st = nodes[i].state; return st === 'on'
           ? <g key={i}><circle cx={p.x} cy={p.y} r="15" fill="color-mix(in srgb, var(--t) 22%, transparent)" /><circle cx={p.x} cy={p.y} r="9.5" fill="var(--t)" /></g>
           : <circle key={i} cx={p.x} cy={p.y} r="6.5" fill={st === 'done' ? 'var(--c)' : '#0D1D2C'} stroke={st === 'done' ? 'var(--c)' : 'rgba(243,241,234,.44)'} strokeWidth="1.5" /> })}
+        {ghost && <g><circle cx={ghost.x} cy={ghost.y} r="12" fill="none" stroke="var(--t)" strokeWidth="1.5" className="gp-ghost" /><circle cx={ghost.x} cy={ghost.y} r="4.5" fill="var(--t)" /></g>}
       </svg>}
       {w > 0 && nodes.map((nd, i) => {
         // At a bend the label leans inward, so the half circle never runs through it.
@@ -186,8 +209,11 @@ export default function GatePage({ card = null, benchRoot = null, tools = null, 
     const done = (card.stops || []).filter(x => x.done && x.done_at).map(x => ({ id: `s${x.id}`, text: x.text, done: true, at: x.done_at }))
     const ev = buildTrail({ obj: card.obj, kindLabel: 'Gate', steps: [], files: card.files || [], tabs, builds, psteps: [...psteps, ...done] })
     const label = (e) => e.kind === 'Step' || e.kind === 'Step Vetted' ? e.text : /^Opened as/.test(e.text) ? 'Opened' : e.text.replace(/^Tab on the Workbench: /, 'Tab: ').replace(/^Page built on the Workbench: /, 'Built: ')
-    const nodes = ev.map((e, i) => ({ key: `e${i}`, label: label(e).slice(0, 80), sub: stamp(e.at), title: e.note || e.text, state: 'done' }))
-    return [...nodes, gate.done ? null : { key: 'close', label: 'Close', state: 'open' }].filter(Boolean)
+    const nodes = ev.map((e, i) => ({ key: `e${i}`, label: label(e).slice(0, 80), sub: stamp(e.at), title: e.note || e.text, state: 'done', at: e.at }))
+    // Steps still to do sit ahead on the line, in their order, before the close (David 11/21: "step should match on the timeline").
+    const ahead = [...(card.stops || []).filter(x => !x.done).map(x => ({ key: `os${x.id}`, label: String(x.text).slice(0, 80), title: x.text, state: 'open' })),
+      ...psteps.filter(x => !x.done && !x.vetted).map(x => ({ key: `op${x.id}`, label: String(x.text).slice(0, 80), title: x.text, state: 'open' }))]
+    return [...nodes, ...ahead, gate.done ? null : { key: 'close', label: 'Close', state: 'open' }].filter(Boolean)
   }, [card, tabs, builds, psteps, gate.done])
   // The gate's own line: where it came from, what was written on it, and its close.
   const line = useMemo(() => {
@@ -209,6 +235,26 @@ export default function GatePage({ card = null, benchRoot = null, tools = null, 
     const t = String(await hudPrompt({ title: 'A Step On This Gate', placeholder: 'What is to be done' }) || '').replace(/\s+/g, ' ').trim().slice(0, 300)
     if (!t) return
     try { await savePs(list => [...list, { id: `p${Date.now().toString(36)}`, text: t, by: 'david', made_at: new Date().toISOString(), done: false, at: null }]) } catch (e) { setStepMsg(`Could not add it: ${e.message}`) }
+  }
+  // A step dragged onto the gate's line (David 11/21: "i should be able to drag a step to the timeline (like the mission
+  // page) where the modal opens"). Dropped among what happened, it is a step done then; dropped ahead, a step to do there.
+  const dropOnLine = async (i) => {
+    if (!cardLine) return
+    const done = cardLine.filter(nd => nd.state === 'done'), past = i < done.length   // gap i sits before node i: inside the history, or after it
+    const t = String(await hudPrompt(past ? { title: 'A Step On The Trail', placeholder: 'What you did' } : { title: 'A Step On This Gate', placeholder: 'What is to be done' }) || '').replace(/\s+/g, ' ').trim().slice(0, 300)
+    if (!t) return
+    const now = new Date().toISOString(), row = { id: `p${Date.now().toString(36)}`, text: t, by: 'david', made_at: now }
+    try {
+      if (past) {
+        const tt = (nd) => new Date(nd.at).getTime(), prev = done[i - 1], next = done[i]
+        const at = new Date(prev && prev.at && next && next.at ? (tt(prev) + tt(next)) / 2 : Date.now()).toISOString()
+        await savePs(list => [...list, { ...row, done: true, at }])
+      } else {
+        // Among the steps ahead: after the card's own open steps, the hand-set ones keep their order in path.json.
+        const openStops = (card.stops || []).filter(x => !x.done).length, k = Math.max(0, i - done.length - openStops)
+        await savePs(list => { const open = list.filter(x => !x.done && !x.vetted), at = open[k] ? list.indexOf(open[k]) : list.length; const out = [...list]; out.splice(at, 0, { ...row, done: false, at: null }); return out })
+      }
+    } catch (e) { setStepMsg(`Could not add it: ${e.message}`) }
   }
   const flipStep = async (r) => {
     try {
@@ -251,8 +297,8 @@ export default function GatePage({ card = null, benchRoot = null, tools = null, 
               ]} />
             </div>
             <div className="gp-ln">
-              <div className="gp-k">Gate {n} Timeline<small>{gate.done ? `Closed ${stamp(gate.done_at)}` : (gate.created_at || source?.at) ? days(gate.created_at || source.at) : 'Open'}</small></div>
-              <SnakeLine dim nodes={cardLine || line.map((e, i) => ({ key: `l${i}`, label: e.text, sub: stamp(e.at), state: e.done ? 'done' : 'open' }))} />
+              <div className="gp-k">Gate {n} Timeline{card && !gate.done && <span className="gp-pick" draggable onDragStart={e => { e.dataTransfer.setData('text/x-hud-step', 'step'); e.dataTransfer.effectAllowed = 'copy' }} onClick={addStepHere} role="button" tabIndex={0} title="Drag A Step Onto The Line, Or Click To Add One" aria-label="Add a step, or drag it onto the line"><Plus size={12} /><i />Step</span>}<small>{gate.done ? `Closed ${stamp(gate.done_at)}` : (gate.created_at || source?.at) ? days(gate.created_at || source.at) : 'Open'}</small></div>
+              <SnakeLine dim onDrop={card && !gate.done ? dropOnLine : null} nodes={cardLine || line.map((e, i) => ({ key: `l${i}`, label: e.text, sub: stamp(e.at), state: e.done ? 'done' : 'open' }))} />
             </div>
           </div>
         )}
