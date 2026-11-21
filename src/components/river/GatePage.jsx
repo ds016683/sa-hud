@@ -6,7 +6,11 @@
 // The Workbench pulls up full: the header and the two lines fold to one strip.
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Pencil, ArrowUp, ListTree, PenLine, FolderOpen } from 'lucide-react'
+import { Pencil, ArrowUp, ListTree, PenLine, FolderOpen, Plus, Check, X as XMark } from 'lucide-react'
+import { readPath, savePathSteps, buildTrail } from '../../lib/path'
+import { listBuilds } from '../../lib/lumenPanel'
+import { toggleStep } from '../../lib/objectives'
+import { hudPrompt, hudConfirm } from '../../lib/dialog'
 import CardFiles from './CardFiles'
 import WorkbenchSheet from './WorkbenchSheet'
 import { listPages, readPage, writePage, slugify } from '../../lib/workspace'
@@ -45,6 +49,26 @@ button.gp-ic:hover { background: color-mix(in srgb, var(--c, var(--t)) 16%, tran
 .gp-ln + .gp-ln { border-top: 1px solid rgba(255,255,255,.07); }
 .gp-mini .st.own { opacity: .62; }
 .gp-k { font: 500 16px 'Lora', Georgia, serif; } .gp-k small { display: block; font: 400 12.5px var(--font-sans, 'Instrument Sans', sans-serif); color: rgba(243,241,234,.7); margin-top: 3px; }
+.gp-two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-top: 18px; }
+@media (max-width: 900px) { .gp-two { grid-template-columns: 1fr; } }
+.gp-card { border: 1px solid rgba(255,255,255,.12); border-radius: 14px; background: #0D1D2C; padding: 16px 20px; min-width: 0; }
+.gp-ch { display: flex; align-items: center; gap: 10px; font: 500 18px 'Lora', Georgia, serif; margin-bottom: 8px; }
+.gp-ch > button { margin-left: auto; }
+.gp-st { display: flex; align-items: flex-start; gap: 11px; padding: 8px 0; border-top: 1px solid rgba(255,255,255,.07); font-size: 14.5px; line-height: 1.4; }
+.gp-st:first-of-type { border-top: 0; }
+.gp-st > span { flex: 1; min-width: 0; }
+.gp-st.done > span { color: rgba(243,241,234,.48); text-decoration: line-through; text-decoration-color: rgba(243,241,234,.3); }
+.gp-o { width: 17px; height: 17px; margin-top: 1px; border-radius: 99px; border: 1.5px solid rgba(243,241,234,.5); background: transparent; color: #0D1D2C; display: grid; place-items: center; cursor: pointer; padding: 0; flex-shrink: 0; }
+.gp-o:hover { border-color: var(--t); }
+.gp-st.done .gp-o { background: var(--t); border-color: var(--t); }
+.gp-x { background: transparent; border: 0; color: rgba(243,241,234,.4); cursor: pointer; padding: 2px; opacity: 0; transition: opacity .15s; }
+.gp-st:hover .gp-x { opacity: 1; } .gp-x:hover { color: #DE7E6E; }
+.gp-notes { width: 100%; box-sizing: border-box; font: 400 15px/1.6 'Lora', Georgia, serif; color: #F3F1EA; background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.12); border-radius: 10px; padding: 10px 12px; resize: vertical; outline: none; }
+.gp-notes:focus { border-color: var(--t); }
+.gp-mt { display: flex; align-items: baseline; gap: 10px; width: 100%; text-align: left; background: transparent; border: 0; border-top: 1px solid rgba(255,255,255,.07); padding: 8px 0; color: #F3F1EA; font: 500 14.5px 'Lora', Georgia, serif; cursor: pointer; }
+.gp-mt small { margin-left: auto; font: 400 12.5px var(--font-sans, 'Instrument Sans', sans-serif); color: rgba(243,241,234,.5); white-space: nowrap; }
+.gp-mt:hover { color: var(--t); }
+.gp-msg { font-size: 13px; color: #DE7E6E; margin-top: 8px; }
 .gp-snake { position: relative; width: 100%; min-width: 0; }
 .gp-sn { position: absolute; display: block; text-align: center; font: inherit; font-size: 13px; line-height: 1.3; color: rgba(243,241,234,.7); background: transparent; border: 0; padding: 0; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; }
 button.gp-sn { cursor: pointer; } button.gp-sn:hover { color: #F3F1EA; }
@@ -90,7 +114,9 @@ function SnakeLine({ nodes, dim = false }) {
     on(); const ro = new ResizeObserver(on); ro.observe(el); return () => ro.disconnect()
   }, [])
   const n = nodes.length
-  const per = w ? Math.max(3, Math.floor((w - 120) / CELL) + 1) : n
+  // One straight row whenever the stops still get a decent width each; fold only when they truly do not fit.
+  const fitsOne = n <= 1 || (w - 20) / (n - 1) >= 112
+  const per = !w || fitsOne ? n : Math.max(3, Math.floor((w - 120) / CELL) + 1)
   const rows = Math.max(1, Math.ceil(n / per)), snake = rows > 1
   const pad = snake ? 64 : 10, span = Math.max(1, (snake ? per : n) - 1)
   const pos = nodes.map((_, i) => { const r = Math.floor(i / per), k = i % per, x = pad + (w - 2 * pad) * (n === 1 ? 0 : k / span); return { x: r % 2 ? w - x : x, y: 10 + r * ROW_H, r } })
@@ -109,7 +135,7 @@ function SnakeLine({ nodes, dim = false }) {
       </svg>}
       {w > 0 && nodes.map((nd, i) => {
         // At a bend the label leans inward, so the half circle never runs through it.
-        const p = pos[i], atRight = snake && p.x >= w - pad - 1, atLeft = snake && p.x <= pad + 1
+        const p = pos[i], atRight = n > 1 && p.x >= w - pad - 1, atLeft = n > 1 && p.x <= pad + 1
         const lw = atRight || atLeft ? endW : cellW
         const left = atRight ? p.x - lw + 14 : atLeft ? p.x - 14 : Math.max(0, Math.min(w - lw, p.x - lw / 2))
         const Tag = nd.onClick ? 'button' : 'div'
@@ -120,9 +146,15 @@ function SnakeLine({ nodes, dim = false }) {
 }
 
 // gate: the step ({ id, text, n, done, done_at, created_at }); gates: every gate on the card, in order.
-export default function GatePage({ benchRoot = null, tools = null, filesFor = null, onTrail = null, tone = null, gate, gates, root, missionTitle, up = [], source = null, onClose, onPick, onRename, onExtract, onLoad }) {
+// card (a gate with its own card): { obj, stops, files, meetings, onSaveNotes, onOpenNotes, onChanged }. With it the
+// page carries the gate's steps, its notes and a timeline of everything that happened on it (David 11/21, Gate 35).
+export default function GatePage({ card = null, benchRoot = null, tools = null, filesFor = null, onTrail = null, tone = null, gate, gates, root, missionTitle, up = [], source = null, onClose, onPick, onRename, onExtract, onLoad }) {
   const full = false   // the Workbench's own button takes it to full screen now
   const [view, setView] = useState('bench')   // 'bench' | 'files'
+  const [psteps, setPsteps] = useState([])     // steps set by hand on the gate's line (path.json)
+  const [builds, setBuilds] = useState([])
+  const [notes, setNotes] = useState(card?.obj?.notes || '')
+  const [stepMsg, setStepMsg] = useState(null)
   // The page sits in the same layer as the card's Lumen panel, so the pill and the panel stay above it.
   const [host] = useState(() => document.querySelector('aside[aria-label="Lumen"]')?.parentElement || document.querySelector('.sa-app') || document.body)
   const [tabs, setTabs] = useState([])
@@ -142,11 +174,21 @@ export default function GatePage({ benchRoot = null, tools = null, filesFor = nu
         const doc = await readPage(root, old).catch(() => null)
         if (doc) { await writePage(groot, old, doc).catch(() => {}); pages = await listPages(groot).catch(() => []) }
       }
-      if (on) { setTabs(pages); setReady(true) }
+      const [pd, bs] = card ? await Promise.all([readPath(groot).catch(() => ({ steps: [] })), listBuilds(groot).catch(() => [])]) : [{ steps: [] }, []]
+      if (on) { setTabs(pages); setReady(true); setPsteps(pd.steps || []); setBuilds(bs) }
     }
     run()
     return () => { on = false }
   }, [groot, root, gate.id, gate.n, gate.text])
+  // With a card, the gate's line is everything that happened on it: opened, steps done, tabs and pages, files, closed.
+  const cardLine = useMemo(() => {
+    if (!card) return null
+    const done = (card.stops || []).filter(x => x.done && x.done_at).map(x => ({ id: `s${x.id}`, text: x.text, done: true, at: x.done_at }))
+    const ev = buildTrail({ obj: card.obj, kindLabel: 'Gate', steps: [], files: card.files || [], tabs, builds, psteps: [...psteps, ...done] })
+    const label = (e) => e.kind === 'Step' || e.kind === 'Step Vetted' ? e.text : /^Opened as/.test(e.text) ? 'Opened' : e.text.replace(/^Tab on the Workbench: /, 'Tab: ').replace(/^Page built on the Workbench: /, 'Built: ')
+    const nodes = ev.map((e, i) => ({ key: `e${i}`, label: label(e).slice(0, 80), sub: stamp(e.at), title: e.note || e.text, state: 'done' }))
+    return [...nodes, gate.done ? null : { key: 'close', label: 'Close', state: 'open' }].filter(Boolean)
+  }, [card, tabs, builds, psteps, gate.done])
   // The gate's own line: where it came from, what was written on it, and its close.
   const line = useMemo(() => {
     const ev = []
@@ -157,6 +199,27 @@ export default function GatePage({ benchRoot = null, tools = null, filesFor = nu
     return ev
   }, [gate, source, tabs])
   const closedN = gates.filter(g => g.done).length
+  // Steps: the card's own (objective_steps) and the ones set by hand on its line, one list, open first.
+  const stepRows = card ? [
+    ...(card.stops || []).map(x => ({ key: `s${x.id}`, kind: 'stop', id: x.id, text: x.text, done: !!x.done })),
+    ...psteps.filter(x => !x.vetted).map(x => ({ key: `p${x.id}`, kind: 'path', id: x.id, text: x.text, done: !!x.done })),
+  ].sort((a, b) => Number(a.done) - Number(b.done)) : []
+  const savePs = async (fn) => { const doc = await savePathSteps(groot, fn); setPsteps(doc.steps || []) }
+  const addStepHere = async () => {
+    const t = String(await hudPrompt({ title: 'A Step On This Gate', placeholder: 'What is to be done' }) || '').replace(/\s+/g, ' ').trim().slice(0, 300)
+    if (!t) return
+    try { await savePs(list => [...list, { id: `p${Date.now().toString(36)}`, text: t, by: 'david', made_at: new Date().toISOString(), done: false, at: null }]) } catch (e) { setStepMsg(`Could not add it: ${e.message}`) }
+  }
+  const flipStep = async (r) => {
+    try {
+      if (r.kind === 'stop') { await toggleStep(r.id, !r.done); card.onChanged && card.onChanged() }
+      else await savePs(list => list.map(x => x.id === r.id ? { ...x, done: !r.done, at: !r.done ? new Date().toISOString() : null } : x))
+    } catch (e) { setStepMsg(`Could not mark it: ${e.message}`) }
+  }
+  const dropStep = async (r) => {
+    if (r.kind !== 'path' || !await hudConfirm({ title: 'Take This Step Off?', message: r.text, confirm: 'Take It Off', danger: true })) return
+    try { await savePs(list => list.filter(x => x.id !== r.id)) } catch (e) { setStepMsg(`Could not take it off: ${e.message}`) }
+  }
   const page = (
     <div className={`gp${full ? ' full' : ''}`} style={{ '--t': tone || INK_TONE, '--c': tone || INK_TONE }} role="dialog" aria-label={`Gate ${n}: ${gate.text}`}>
       <style>{CSS}</style>
@@ -189,7 +252,27 @@ export default function GatePage({ benchRoot = null, tools = null, filesFor = nu
             </div>
             <div className="gp-ln">
               <div className="gp-k">Gate {n} Timeline<small>{gate.done ? `Closed ${stamp(gate.done_at)}` : (gate.created_at || source?.at) ? days(gate.created_at || source.at) : 'Open'}</small></div>
-              <SnakeLine dim nodes={line.map((e, i) => ({ key: `l${i}`, label: e.text, sub: stamp(e.at), state: e.done ? 'done' : 'open' }))} />
+              <SnakeLine dim nodes={cardLine || line.map((e, i) => ({ key: `l${i}`, label: e.text, sub: stamp(e.at), state: e.done ? 'done' : 'open' }))} />
+            </div>
+          </div>
+        )}
+        {card && (
+          <div className="gp-two">
+            <div className="gp-card">
+              <div className="gp-ch">Steps<button type="button" className="gp-ic sm" title="Add A Step" aria-label="Add a step" onClick={addStepHere}><Plus size={14} /></button></div>
+              {stepRows.map(r => (
+                <div key={r.key} className={`gp-st${r.done ? ' done' : ''}`}>
+                  <button type="button" className="gp-o" title={r.done ? 'Done · Click To Reopen' : 'Click When It Is Done'} aria-label={`${r.done ? 'Reopen' : 'Mark done'}: ${r.text}`} onClick={() => flipStep(r)}>{r.done && <Check size={11} />}</button>
+                  <span>{r.text}</span>
+                  {r.kind === 'path' && !r.done && <button type="button" className="gp-x" title="Take It Off" aria-label={`Take off: ${r.text}`} onClick={() => dropStep(r)}><XMark size={13} /></button>}
+                </div>
+              ))}
+              {stepMsg && <div className="gp-msg">{stepMsg}</div>}
+            </div>
+            <div className="gp-card">
+              <div className="gp-ch">Notes{(card.meetings || []).length > 0 && <button type="button" className="gp-ic sm" title="Meeting Notes" aria-label="Open the meeting notes" onClick={() => card.onOpenNotes && card.onOpenNotes()}><ListTree size={14} /></button>}</div>
+              <textarea className="gp-notes" rows={4} value={notes} onChange={e => setNotes(e.target.value)} onBlur={() => { const v = notes.trim(); if (v !== String(card.obj?.notes || '').trim()) card.onSaveNotes && card.onSaveNotes(v || null) }} aria-label="Notes on this gate" />
+              {(card.meetings || []).slice(0, 4).map(m => <button type="button" key={m.id} className="gp-mt" onClick={() => card.onOpenNotes && card.onOpenNotes()}>{m.title}<small>{m.meeting_date ? new Date(`${String(m.meeting_date).slice(0, 10)}T12:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : ''}</small></button>)}
             </div>
           </div>
         )}

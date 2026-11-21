@@ -12,5 +12,10 @@ const N = Number(new URLSearchParams(location.search).get('n') || 34), cur = Num
 const words = ['Sample Gate About A File Cabinet', 'Refine The Card', 'A Music Deploy', 'Voice Experiments', 'Web Cam On The Board', 'A Different Visual For The Protocols', 'Recording From The iPad', 'Smoke Test The Workflows For Side Missions']
 const gates = Array.from({ length: N }, (_, i) => ({ id: `g${i + 1}`, n: i + 1, text: words[i % words.length], done: i + 1 < cur && i !== 20 }))
 const g = gates[cur - 1]
-createRoot(document.getElementById('root')).render(h(GatePage, { gate: { ...g, created_at: '2026-11-21T22:06:00Z' }, gates, root: 'dev', missionTitle: 'Sample Mission', tone: '#B4A3E8', onClose: () => {}, onPick: (x) => console.log('pick', x.n) }))
+const withCard = new URLSearchParams(location.search).get('card') === '1'
+const card = withCard ? { obj: { id: 'o1', title: 'Sample Gate', notes: 'Sample note on the gate.', captured_at: '2026-11-17T15:34:00Z' },
+  stops: [{ id: 1, text: 'Sample: pull the three invoices', done: true, done_at: '2026-11-18T15:10:00Z' }, { id: 2, text: 'Sample: draft the email to counsel', done: false }],
+  files: [{ id: 'f1', name: 'Sample-Invoices.pdf', created_at: '2026-11-18T16:00:00Z', source: 'david' }],
+  meetings: [{ id: 'm1', title: 'Sample Call With Counsel', meeting_date: '2026-11-18' }], onSaveNotes: (v) => console.log('notes', v), onOpenNotes: () => console.log('open notes') } : null
+createRoot(document.getElementById('root')).render(h(GatePage, { card, gate: { ...g, created_at: '2026-11-21T22:06:00Z' }, gates, root: 'dev', missionTitle: 'Sample Mission', tone: '#B4A3E8', onClose: () => {}, onPick: (x) => console.log('pick', x.n) }))
 </script></body></html>

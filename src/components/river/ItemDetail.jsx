@@ -480,7 +480,7 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
         </div>
       </div>
       {rel && obj && task && gateFace && (
-        <GatePage tone={loaded ? (['#B4A3E8', '#8ACAFF'][(rel?.loadout?.board || []).findIndex(i => i.id === loaded.id)] || '#57BE97') : null} benchRoot={objRoot(obj.id)} root={objRoot(obj.id)} filesFor={obj.id} tools={obj.state !== 'released' ? where : null} onTrail={() => setGateFace(false)}
+        <GatePage card={{ obj, stops: rel.steps || [], files: rel.objFiles || [], meetings: rel.meetings || [], onSaveNotes: (v) => patchObj({ notes: v }), onOpenNotes: () => { setGateFace(false); setTab('notes') }, onChanged: () => load() }} tone={loaded ? (['#B4A3E8', '#8ACAFF'][(rel?.loadout?.board || []).findIndex(i => i.id === loaded.id)] || '#57BE97') : null} benchRoot={objRoot(obj.id)} root={objRoot(obj.id)} filesFor={obj.id} tools={obj.state !== 'released' ? where : null} onTrail={() => setGateFace(false)}
           gate={{ id: task.id, n: rel.gateN, text: String(obj.title || '').replace(/^\s*(?:gate\s+)?\d+\s*[·.:)-]\s*/i, ''), done: task.status === 'done' || !!task.done, done_at: task.released_at, created_at: obj.captured_at }}
           gates={(rel.missionGates || []).length ? rel.missionGates : [{ id: task.id, n: rel.gateN, text: obj.title, done: false }]}
           missionTitle={rel.mission?.name || rel.project?.name || 'The Mission'}
