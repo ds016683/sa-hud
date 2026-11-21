@@ -21,7 +21,7 @@ import { GlyphLoadout, GlyphHolster, GlyphStash } from './river/glyphs'
 import { NORTH_STAR_LABEL, LABEL, alpha, INK, INK2, NAVY_DEEP, BLUE, GRAY, PANEL_BORDER, PANEL_BG, GOLD, GREEN, SUCCESS, RED, CAUTION, PURPLE, CARD_PILLS, CardPill, Label as CanonLabel, Trail, KIND_COLOR, KindIcon } from './river/canon'
 import { importProject } from '../lib/cabinet'
 import BadgeMedallion from './BadgeArt'
-import MissionDebrief from './river/MissionDebrief'
+import ExtractionDebrief from './river/ExtractionDebrief'
 import { AwardYay } from './river/AwardYay'
 import { markPlayed } from '../lib/yay'
 import { addObjective } from '../lib/objectives'
@@ -450,7 +450,7 @@ function ProjectDetail({ project, board: boardProp, api, onBack, initialTab, ini
 
   return (
     <div style={S.page}>
-      {closingMission && <MissionDebrief project={project} tasks={tasks} onClose={() => setClosingMission(false)} onDone={closeMission} />}
+      {closingMission && <ExtractionDebrief project={project} tasks={tasks} onClose={() => setClosingMission(false)} onDone={closeMission} />}
       {/* Card header canon (David 10/29): the kind heads the name and is bigger than it; the
           type chip with its icon sits beside the header; the name runs full width beneath. */}
       <div style={{ marginBottom: 18 }}>

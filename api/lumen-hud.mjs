@@ -20,7 +20,7 @@
 export const config = { maxDuration: 300, api: { bodyParser: false } }
 
 import { think, remember, MODEL } from './_lumen-brain.mjs'
-import { debrief } from './_debrief.mjs'
+import { extractionDebrief } from './_extract.mjs'
 import { cardFrame, callTool, workbookOp } from './_ledger.mjs'
 import { transcribe, speak, voiceOf, waSendAudio, davidNumber } from './_wa.mjs'
 
@@ -101,10 +101,11 @@ export default async function handler(req, res) {
     if (['voice_candidates', 'keep_voice', 'clone_voice', 'voice_sample', 'remove_voice'].includes(body.action)) {
       try { return res.status(200).json(JSON.parse(await callTool(body.action, body.args && typeof body.args === 'object' ? body.args : {}))) } catch (e) { return res.status(500).json({ error: String(e.message || e).slice(0, 200) }) }
     }
-    // The mission debrief: Lumen's draft of the five parts from David's words and the mission's record. It writes nothing.
-    if (body.action === 'debrief') {
+    // The extraction debrief (api/_extract.mjs): the final pass over everything on the mission, the facts the system
+    // checked itself, Lumen's narrative and verdicts. It writes nothing; the HUD makes only what David blesses.
+    if (body.action === 'debrief' || body.action === 'extract-debrief') {
       if (!item || item.kind !== 'project') return res.status(400).json({ error: 'a Main Mission is required' })
-      try { return res.status(200).json({ ok: true, debrief: await debrief({ projectId: item.id, words: String(body.words || ''), files: body.files, model: MODEL() }) }) } catch (e) { return res.status(500).json({ error: String(e.message || e).slice(0, 240) }) }
+      try { return res.status(200).json({ ok: true, debrief: await extractionDebrief({ projectId: item.id, words: String(body.words || ''), model: MODEL() }) }) } catch (e) { return res.status(500).json({ error: String(e.message || e).slice(0, 240) }) }
     }
     // The card's Workbook for a Lumen panel outside the HUD: read, capture, drop, notes.
     if (body.action === 'workbook') {

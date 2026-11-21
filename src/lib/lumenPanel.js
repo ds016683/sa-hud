@@ -80,8 +80,9 @@ async function hudDoor(payload) {
   if (!r.ok || j.error) throw new Error(j.error || `lumen ${r.status}`)
   return j
 }
-// Lumen's draft of a mission's debrief (api/_debrief.mjs). It writes nothing; the HUD makes only what David checks.
-export const askDebrief = ({ projectId, words, files }) => hudDoor({ action: 'debrief', item: { kind: 'project', id: projectId }, words, files }).then(j => j.debrief)
+// The extraction debrief (api/_extract.mjs): the final pass, the facts, Lumen's narrative and verdicts. It writes
+// nothing; the HUD makes only what David checks.
+export const askExtraction = ({ projectId, words }) => hudDoor({ action: 'extract-debrief', item: { kind: 'project', id: projectId }, words }).then(j => j.debrief)
 export const handToClaudeCode = ({ item, message_id, ask, gap }) => hudDoor({ action: 'handoff', item: { kind: item.kind, id: item.id }, title: item.title, message_id, ask, gap })
 export const listHandoffs = async (item) => (await hudDoor({ action: 'handoffs', item: { kind: item.kind, id: item.id } })).handoffs || []
 
