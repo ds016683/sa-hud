@@ -11,6 +11,8 @@ import { readPath, savePathSteps, buildTrail } from '../../lib/path'
 import { listBuilds, processAndPost } from '../../lib/lumenPanel'
 import { toggleStep } from '../../lib/objectives'
 import { hudPrompt, hudConfirm } from '../../lib/dialog'
+import { loadCommitments, ruleCommitment } from '../../lib/commitments'
+import CatchTalk from './CatchTalk'
 import CardFiles from './CardFiles'
 import WorkbenchSheet from './WorkbenchSheet'
 import { listPages, readPage, writePage, slugify } from '../../lib/workspace'
@@ -75,7 +77,15 @@ button.gp-ic:hover { background: color-mix(in srgb, var(--c, var(--t)) 16%, tran
 .gp-mt { display: flex; align-items: baseline; gap: 10px; width: 100%; text-align: left; background: transparent; border: 0; border-top: 1px solid rgba(255,255,255,.07); padding: 8px 0; color: #F3F1EA; font: 500 14.5px 'Lora', Georgia, serif; cursor: pointer; }
 .gp-mt small { margin-left: auto; font: 400 12.5px var(--font-sans, 'Instrument Sans', sans-serif); color: rgba(243,241,234,.5); white-space: nowrap; }
 .gp-mt:hover { color: var(--t); }
-.gp-posted { font-size: 13.5px; line-height: 1.5; color: var(--t); margin: 8px 0 2px; }
+.gp-posted { font-size: 14px; line-height: 1.45; color: var(--t); margin: 10px 0 2px; padding: 10px 12px; border: 1px solid color-mix(in srgb, var(--t) 40%, transparent); border-radius: 10px; background: color-mix(in srgb, var(--t) 8%, transparent); animation: gpslide .35s ease both; transition: opacity .6s; }
+.gp-posted b { font-weight: 600; } .gp-posted small { display: block; color: rgba(243,241,234,.72); font-size: 13px; margin-top: 3px; }
+.gp-posted.faded { opacity: .6; }
+@keyframes gpslide { from { opacity: 0; transform: translateY(-6px) } to { opacity: 1; transform: none } }
+.gp-ic.on { background: color-mix(in srgb, var(--c, var(--t)) 22%, transparent); }
+.gp-catches { margin-top: 16px; }
+.gp-cn { font: 600 12.5px var(--font-sans, 'Instrument Sans', sans-serif); color: var(--t); border: 1px solid color-mix(in srgb, var(--t) 45%, transparent); border-radius: 99px; padding: 1px 9px; }
+.gp-catch { flex: 1; min-width: 0; cursor: pointer; } .gp-catch:hover { color: var(--t); }
+.gp-catch small { display: block; font-size: 12.5px; color: rgba(243,241,234,.58); margin-top: 2px; }
 .gp-busy { animation: gpghost 1.2s ease-in-out infinite; }
 .gp-msg { font-size: 13px; color: #DE7E6E; margin-top: 8px; }
 .gp-snake { position: relative; width: 100%; min-width: 0; }
@@ -181,7 +191,12 @@ export default function GatePage({ card = null, benchRoot = null, tools = null, 
   const [notes, setNotes] = useState(card?.obj?.notes || '')
   const [stepMsg, setStepMsg] = useState(null)
   const [posting, setPosting] = useState(false)
-  const [posted, setPosted] = useState(null)   // { summary, n } after Process And Post
+  const [posted, setPosted] = useState(null)   // { summary, n, at } after Process And Post
+  const [catches, setCatches] = useState([])    // open catches from this gate
+  const [talk, setTalk] = useState(null)
+  const cardId = card?.obj?.id || null
+  const loadCatches = async () => { if (!cardId) return; try { setCatches((await loadCommitments()).filter(c => c.state === 'open' && c.item && c.item.id === cardId)) } catch { /* the list stays as it was */ } }
+  useEffect(() => { if (!cardId) return; let on = true; loadCommitments().then(xs => { if (on) setCatches(xs.filter(c => c.state === 'open' && c.item && c.item.id === cardId)) }).catch(() => {}); return () => { on = false } }, [cardId])
   // The page sits in the same layer as the card's Lumen panel, so the pill and the panel stay above it.
   const [host] = useState(() => document.querySelector('aside[aria-label="Lumen"]')?.parentElement || document.querySelector('.sa-app') || document.body)
   const [tabs, setTabs] = useState([])
@@ -267,7 +282,9 @@ export default function GatePage({ card = null, benchRoot = null, tools = null, 
     try {
       if (t !== String(card.obj?.notes || '').trim()) card.onSaveNotes && card.onSaveNotes(t)
       const r = await processAndPost({ text: t, where: `Gate ${n} · ${gate.text}`, root: groot, item: { kind: 'objective', id: card.obj.id }, title: gate.text })
-      setPosted({ summary: r.summary, n: (r.catches || []).length })
+      setPosted({ summary: r.summary, n: (r.catches || []).length, at: Date.now() })
+      loadCatches()
+      setTimeout(() => setPosted(p => (p && Date.now() - p.at >= 5500 ? { ...p, faded: true } : p)), 6000)
       const pd = await readPath(groot).catch(() => null); if (pd) setPsteps(pd.steps || [])
     } catch (e) { setStepMsg(`Lumen could not process it: ${e.message}`) } finally { setPosting(false) }
   }
@@ -331,13 +348,26 @@ export default function GatePage({ card = null, benchRoot = null, tools = null, 
               {stepMsg && <div className="gp-msg">{stepMsg}</div>}
             </div>
             <div className="gp-card">
-              <div className="gp-ch">Notes<button type="button" className={`gp-ic sm${posting ? ' gp-busy' : ''}`} style={{ marginLeft: 'auto' }} title="Process And Post" aria-label="Process and post: Lumen summarizes this on the timeline and catches what needs a follow-up" onClick={process} disabled={posting || !notes.trim()}><Sparkles size={14} /></button>{(card.meetings || []).length > 0 && <button type="button" className="gp-ic sm" title="Meeting Notes" aria-label="Open the meeting notes" style={{ marginLeft: 0 }} onClick={() => card.onOpenNotes && card.onOpenNotes()}><ListTree size={14} /></button>}</div>
+              <div className="gp-ch">Notes<button type="button" className={`gp-ic sm${posting ? ' gp-busy' : ''}${posted && !posted.faded ? ' on' : ''}`} style={{ marginLeft: 'auto' }} title="Process And Post" aria-label="Process and post: Lumen summarizes this on the timeline and catches what needs a follow-up" onClick={process} disabled={posting || !notes.trim()}>{posted && !posted.faded ? <Check size={14} /> : <Sparkles size={14} />}</button>{(card.meetings || []).length > 0 && <button type="button" className="gp-ic sm" title="Meeting Notes" aria-label="Open the meeting notes" style={{ marginLeft: 0 }} onClick={() => card.onOpenNotes && card.onOpenNotes()}><ListTree size={14} /></button>}</div>
               <textarea className="gp-notes" rows={4} value={notes} onChange={e => setNotes(e.target.value)} onBlur={() => { const v = notes.trim(); if (v !== String(card.obj?.notes || '').trim()) card.onSaveNotes && card.onSaveNotes(v || null) }} aria-label="Notes on this gate" />
-              {posted && <div className="gp-posted">Posted: {posted.summary}{posted.n ? ` · ${posted.n} Caught` : ' · Nothing To Catch'}</div>}
+              {posted && <div className={`gp-posted${posted.faded ? ' faded' : ''}`}><b>Posted To The Timeline</b> · {posted.n ? `${posted.n} Caught` : 'Nothing To Catch'}<small>{posted.summary}</small></div>}
               {(card.meetings || []).slice(0, 4).map(m => <button type="button" key={m.id} className="gp-mt" onClick={() => card.onOpenNotes && card.onOpenNotes()}>{m.title}<small>{m.meeting_date ? new Date(`${String(m.meeting_date).slice(0, 10)}T12:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : ''}</small></button>)}
             </div>
           </div>
         )}
+        {card && catches.length > 0 && (
+          <div className="gp-card gp-catches">
+            <div className="gp-ch">Catches<span className="gp-cn">{catches.length}</span></div>
+            {catches.map(c => (
+              <div key={c.id} className="gp-st">
+                <span className="gp-catch" role="button" tabIndex={0} title="Talk It Through With Lumen" onClick={() => setTalk(c)} onKeyDown={e => { if (e.key === 'Enter') setTalk(c) }}>{c.what}<small>{[c.heard, c.by ? `Due ${new Date(`${c.by}T12:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}` : null].filter(Boolean).join(' · ')}</small></span>
+                <button type="button" className="gp-ic sm" title="Done" aria-label={`Done: ${c.what}`} onClick={async () => { await ruleCommitment(c.id, 'done'); loadCatches() }}><Check size={13} /></button>
+                <button type="button" className="gp-ic sm" style={{ '--c': '#DE7E6E' }} title="Out Of Context" aria-label={`Out of context: ${c.what}`} onClick={async () => { const why = await hudPrompt({ title: 'Why Is It Out Of Context?', placeholder: 'A few words; Lumen learns from it' }); if (why !== null) { await ruleCommitment(c.id, 'dropped', why || null); loadCatches() } }}><XMark size={13} /></button>
+              </div>
+            ))}
+          </div>
+        )}
+        {talk && <CatchTalk c={talk} onClose={() => setTalk(null)} onRuled={() => { setTalk(null); loadCatches() }} />}
         <div className="gp-bench">
           <div className="gp-benchhead">{view === 'files' ? 'Files' : 'Workbench'}
             <span style={{ order: 2, display: 'inline-flex', gap: 6 }}>

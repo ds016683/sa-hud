@@ -24,6 +24,8 @@ import StillOpen from './StillOpen'
 import { fetchLoadout, equip, holster, unload, stash, addImpromptu, fmtClock, SIZES, SLOTS, SLOT_NAMES, hoursOf, chiToday, fetchStash, returnToInventory, equipObjective, STASH_MAX, logBoard, stillOpen } from '../../lib/loadout'
 import { ArrowUpToLine, ScrollText, Footprints } from 'lucide-react'
 import { loadSteps, CLEAR_AT } from '../../lib/trailsteps'
+import { loadCommitments } from '../../lib/commitments'
+import { Inbox } from 'lucide-react'
 import ActivityLogModal from './ActivityLog'
 import LiveFilesModal, { ClipButton } from './LiveFiles'
 import { liveCounts } from '../../lib/livefiles'
@@ -455,6 +457,10 @@ function RoutineSlot({ tick, onChanged, onState }) {
 export default function LoadoutPanel({ onChange, refreshKey = 0, bare = false, focusId = null }) {
   // Proposed Steps waiting on David (11/17): the count on the Loadout's button, read when the Board opens or refreshes.
   const [stepsWaiting, setStepsWaiting] = useState(null)
+  // Catches waiting (David 11/21): the count on their own door, beside Proposed Steps.
+  const [catchesWaiting, setCatchesWaiting] = useState(null)
+  useEffect(() => { let on = true; loadCommitments().then(xs => { if (on) setCatchesWaiting(xs.filter(c => c.state === 'open').length) }).catch(() => {}); return () => { on = false } }, [refreshKey])
+  const toCatches = () => { try { window.history.pushState({ page: 'dashboard' }, '', '#/dashboard') } catch { /* no-op */ } window.dispatchEvent(new PopStateEvent('popstate')) }
   const [routineOn, setRoutineOn] = useState(false)
   useEffect(() => { let on = true; loadSteps().then(d => { if (on) setStepsWaiting(d.proposals.filter(p => !d.rulings[p.id]).length) }).catch(() => {}); return () => { on = false } }, [refreshKey])
   const toSteps = () => { try { window.history.pushState({ page: 'main-missions' }, '', '#/main-missions/steps') } catch { /* no-op */ } window.dispatchEvent(new PopStateEvent('popstate')) }
@@ -568,6 +574,7 @@ export default function LoadoutPanel({ onChange, refreshKey = 0, bare = false, f
             {/* At 15 or more waiting the button pulses red, and faster for every ten past that (David 11/17: "red pulse might
                 be better? Faster ever extra 10 over i am"): 2.4s at 15, 1.8s at 25, 1.2s at 35, 0.6s from 45. */}
             <button className={`ld-btn${stepsWaiting >= CLEAR_AT ? ' over' : ''}`} style={stepsWaiting >= CLEAR_AT ? { animationDuration: `${Math.max(0.6, 2.4 - 0.6 * Math.floor((stepsWaiting - CLEAR_AT) / 10))}s` } : undefined} onClick={toSteps} title={stepsWaiting >= CLEAR_AT ? `${stepsWaiting} proposed steps are waiting on your Accept or Reject` : "What Lumen proposes to write on each mission's trail, waiting for Accept or Reject"}><Footprints size={15} /> Proposed Steps{stepsWaiting !== null && <span className={`n${stepsWaiting >= CLEAR_AT ? ' over' : ''}`}>{stepsWaiting}</span>}</button>
+            <button className="ld-btn" onClick={toCatches} title="What Lumen caught that needs a follow-up, waiting on your check or X"><Inbox size={15} /> Catches{catchesWaiting !== null && <span className="n">{catchesWaiting}</span>}</button>
             {msg && msg.startsWith('Could not') && <span style={{ fontSize: 12.5, color: RED }}>{msg}</span>}
           </div>
         </>
