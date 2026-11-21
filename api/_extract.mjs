@@ -43,7 +43,7 @@ const tokens = (name) => String(name || '').split(/[^A-Za-z0-9]+/).filter(w => w
 async function cardTabs(root) {
   const [ws, bd] = await Promise.all([storageList(`${root}/workspace`), storageList(`${root}/build`)])
   const pages = await Promise.all(ws.filter(f => f.name.endsWith('.json')).slice(0, 12).map(async f => { const d = await storageJson(`${root}/workspace/${f.name}`); return d ? { kind: 'blank tab', title: flat(d.title, 100) || f.name.replace(/\.json$/, ''), updated: day(d.updated_at || f.updated_at), text: flat(d.text, 700) } : null }))
-  const builds = await Promise.all(bd.filter(f => f.name.endsWith('.json')).slice(0, 16).map(async f => { const d = await storageJson(`${root}/build/${f.name}`); return d ? { kind: 'built tab', title: flat(d.title, 100) || d.slug, updated: day(d.updated_at || f.updated_at), by: d.updated_by || '', note: flat(d.note, 300) } : null }))
+  const builds = await Promise.all(bd.filter(f => f.name.endsWith('.json') && !f.name.endsWith('.state.json')).slice(0, 16).map(async f => { const d = await storageJson(`${root}/build/${f.name}`); return d ? { kind: 'built tab', title: flat(d.title, 100) || d.slug, updated: day(d.updated_at || f.updated_at), by: d.updated_by || '', note: flat(d.note, 300) } : null }))
   return [...pages, ...builds].filter(Boolean)
 }
 async function cardPath(root) {

@@ -3,6 +3,7 @@
 // under the card's root (the mission's id, or objectives/<id>):
 //   <root>/lumen/workbook.json   captures and notes (the Workbook tab)
 //   <root>/build/<slug>.html     a page Lumen built (build_page), with <slug>.json beside it
+//   <root>/build/<slug>.state.json  what David entered in that page, kept through its frame (useBuildState)
 // The thread is Lumen's own (lumen_messages, channel hud) with meta.item = the card.
 import { supabase } from './supabase'
 
@@ -23,6 +24,10 @@ const writeJson = async (path, doc) => {
   if (error) throw new Error(error.message)
 }
 
+const STATE_EXT = '.state.json', STATE_MAX = 1048576
+const statePath = (root, slug) => `${root}/build/${slug}${STATE_EXT}`
+const notThere = (error) => Number(error.status) === 404 || String(error.statusCode) === '404' || /not.?found/i.test(String(error.message || ''))
+
 export const blankWorkbook = () => ({ v: 1, kind: 'lumen-workbook', captures: [], notes: '', updated_at: null })
 export async function readWorkbook(root) {
   try { const d = await readJson(`${root}/lumen/workbook.json`); return { ...blankWorkbook(), ...d, captures: Array.isArray(d.captures) ? d.captures : [] } } catch { return blankWorkbook() }
@@ -36,7 +41,7 @@ export async function writeWorkbook(root, wb) {
 export async function listBuilds(root) {
   const { data, error } = await supabase.storage.from(BUCKET).list(`${root}/build`, { limit: 100 })
   if (error) throw new Error(error.message)
-  const slugs = (data || []).filter(f => f.name.endsWith('.json')).map(f => f.name.replace(/\.json$/, ''))
+  const slugs = (data || []).filter(f => f.name.endsWith('.json') && !f.name.endsWith(STATE_EXT)).map(f => f.name.replace(/\.json$/, ''))
   const metas = await Promise.all(slugs.map(async slug => { try { return { slug, ...(await readJson(`${root}/build/${slug}.json`)) } } catch { return { slug, title: slug } } }))
   return metas.sort((a, b) => String(b.updated_at || '').localeCompare(String(a.updated_at || '')))
 }
@@ -48,7 +53,29 @@ export async function readBuildHtml(root, slug) {
   return res.text()
 }
 export async function removeBuild(root, slug) {
-  const { error } = await supabase.storage.from(BUCKET).remove([`${root}/build/${slug}.html`, `${root}/build/${slug}.json`])
+  const { error } = await supabase.storage.from(BUCKET).remove([`${root}/build/${slug}.html`, `${root}/build/${slug}.json`, statePath(root, slug)])
+  if (error) throw new Error(error.message)
+}
+
+// What David entered in a built tab (11/21: his marks on the Revenue Markup tab were gone when he left it). A built
+// page is framed with no storage of its own, so it asks its frame to keep its state (useBuildState), and the state
+// lives beside the page. It is a .json in the build folder that is not a tab: every reader of that folder skips it.
+// readBuildState answers null when nothing is stored and throws when the read fails, so a failed read is never taken
+// for an empty one (the page would then save over what is there). Storage answers a caller who is not signed in
+// with the same "not found" it gives for a file that is not there, so the session is checked first.
+export async function readBuildState(root, slug) {
+  const { data: { session } } = await supabase.auth.getSession()
+  if (!session) throw new Error('not signed in')
+  const { data, error } = await supabase.storage.from(BUCKET).createSignedUrl(statePath(root, slug), 60)
+  if (error) { if (notThere(error)) return null; throw new Error(error.message) }
+  const res = await fetch(`${data.signedUrl}&cb=${Date.now()}`, { cache: 'no-store' })
+  if (!res.ok) throw new Error(`read ${res.status}`)
+  return res.json()
+}
+export async function writeBuildState(root, slug, state) {
+  const body = new Blob([JSON.stringify(state ?? null)], { type: 'application/json' })
+  if (body.size > STATE_MAX) throw Object.assign(new Error(`the state is ${Math.ceil(body.size / 1024).toLocaleString('en-US')} KB, over the 1 MB a tab may keep`), { final: true })
+  const { error } = await supabase.storage.from(BUCKET).upload(statePath(root, slug), body, { upsert: true, contentType: 'application/json' })
   if (error) throw new Error(error.message)
 }
 

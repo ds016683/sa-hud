@@ -222,6 +222,9 @@ async function delStorage(path) {
   return res.ok
 }
 const slugOf = (t) => String(t || 'page').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 48) || 'page'
+// A built tab's kept state (<slug>.state.json, 11/21) sits beside its page in <root>/build. It is a .json there that is
+// not a tab, so every list of built tabs reads the folder through this.
+const builtSlugs = (rows) => rows.map(f => f.name).filter(n => n.endsWith('.json') && !n.endsWith('.state.json')).map(n => n.replace(/\.json$/, ''))
 const rootOf = (item) => item.kind === 'project' ? item.id : `objectives/${item.id}`
 
 // The card's Workbook, reached from a Lumen panel outside the HUD (a deck or an app on David's machine, through its
@@ -276,8 +279,8 @@ export async function cardFrame(item) {
   if (inPlay.length) lines.push(`Files in play (${inPlay.length}):\n` + inPlay.map(f => `- ${f.name}${f.bucket === 'link' ? ` (link: ${f.path})` : ''}${f.note ? ` · ${String(f.note).slice(0, 100)}` : ''}`).join('\n'))
   const pages = (await listStorage(`${root}/workspace`)).filter(f => f.name.endsWith('.json'))
   if (pages.length) lines.push(`Workbench tabs: ${pages.map(f => f.name.replace(/\.json$/, '')).join(', ')} (read one with read_workbench_tab; write with workbench_tab)`)
-  const builds = (await listStorage(`${root}/build`)).filter(f => f.name.endsWith('.json'))
-  if (builds.length) lines.push(`Builds on the Build tab: ${builds.map(f => f.name.replace(/\.json$/, '')).join(', ')} (rewrite one with build_page using the same slug)`)
+  const builds = builtSlugs(await listStorage(`${root}/build`))
+  if (builds.length) lines.push(`Builds on the Build tab: ${builds.join(', ')} (rewrite one with build_page using the same slug)`)
   return lines.join('\n')
 }
 
@@ -923,6 +926,11 @@ export const TOOLS = [
     inputSchema: { type: 'object', properties: { project: { type: 'string' }, side_mission: { type: 'string' }, slug: { type: 'string' } }, required: ['slug'] },
   },
   {
+    name: 'read_built_state',
+    description: "Read what David entered in a built tab on a card's Workbench: his marks, picks and typed values in a page that keeps its state (the Revenue Markup tab's overrides, for one), by project or side_mission and the tab's slug or title. It is the page's own JSON, whole, as it last saved it, with when. Read only: his entries are his, and nothing here changes them. Use it to answer what he marked, or to fold his marks into the work. stored false means the tab has kept nothing yet.",
+    inputSchema: { type: 'object', properties: { project: { type: 'string' }, side_mission: { type: 'string' }, slug: { type: 'string' } }, required: ['slug'] },
+  },
+  {
     name: 'patch_built_page',
     description: "Change a built tab on a card's Workbench in place, without rewriting it: a list of exact find and replace edits applied to its HTML. This is how you change a page a Claude session built (add a column, change a size, fix a figure) and keep its charts and scripts. read_built_page first; each find must be copied exactly from that HTML and must match once (pass all true on an edit to replace every match). If any find does not match, nothing is saved and the answer says which. The version before the change is kept, so say the change can be put back.",
     inputSchema: { type: 'object', properties: { project: { type: 'string' }, side_mission: { type: 'string' }, slug: { type: 'string' }, edits: { type: 'array', items: { type: 'object', properties: { find: { type: 'string' }, replace: { type: 'string' }, all: { type: 'boolean' } }, required: ['find', 'replace'] } } }, required: ['slug', 'edits'] },
@@ -1405,8 +1413,23 @@ export async function callTool(name, args = {}) {
       const pr = await resolveRoot(args)
       const slug = slugOf(args.slug)
       const [meta, html] = await Promise.all([getStorageJson(`${pr.id}/build/${slug}.json`), getStorageText(`${pr.id}/build/${slug}.html`)])
-      if (html == null) { const have = (await listStorage(`${pr.id}/build`)).map(f => f.name).filter(n => n.endsWith('.json')).map(n => n.replace(/\.json$/, '')); return JSON.stringify({ ok: false, error: `no built tab ${slug} on ${pr.name}`, built_tabs: have }) }
+      if (html == null) { const have = builtSlugs(await listStorage(`${pr.id}/build`)); return JSON.stringify({ ok: false, error: `no built tab ${slug} on ${pr.name}`, built_tabs: have }) }
       return JSON.stringify({ ok: true, on: pr.name, slug, title: meta?.title || slug, note: meta?.note || '', version: meta?.version || 1, updated_by: meta?.updated_by || null, bytes: html.length, html: html.slice(0, 120000), truncated: html.length > 120000 })
+    }
+    // What David entered in a built tab (11/21). The page keeps it through its frame in the HUD (useBuildState), whole,
+    // at <root>/build/<slug>.state.json. Read only: no tool writes a state.
+    case 'read_built_state': {
+      const pr = await resolveRoot(args)
+      const slug = slugOf(args.slug)
+      const rows = await listStorage(`${pr.id}/build`)
+      if (!rows.some(f => f.name === `${slug}.html`)) return JSON.stringify({ ok: false, error: `no built tab ${slug} on ${pr.name}`, built_tabs: builtSlugs(rows) })
+      const text = await getStorageText(`${pr.id}/build/${slug}.state.json`)
+      if (text == null) return JSON.stringify({ ok: true, on: pr.name, slug, stored: false, state: null, note: 'This tab has kept nothing yet: either he has entered nothing in it, or the page does not keep its state.' })
+      const saved_at = rows.find(f => f.name === `${slug}.state.json`)?.updated_at || null
+      // Past this size the JSON goes back as text, cut, so one read cannot flood the thread.
+      if (text.length > 400000) return JSON.stringify({ ok: true, on: pr.name, slug, stored: true, saved_at, bytes: text.length, truncated: true, state_json: text.slice(0, 400000) })
+      let state; try { state = JSON.parse(text) } catch { return JSON.stringify({ ok: false, error: `the state kept for ${slug} is not JSON`, bytes: text.length }) }
+      return JSON.stringify({ ok: true, on: pr.name, slug, stored: true, saved_at, bytes: text.length, state })
     }
     case 'patch_built_page': {
       const pr = await resolveRoot(args)
@@ -1448,13 +1471,17 @@ export async function callTool(name, args = {}) {
         const meta = await getStorageText(`${pr.id}/build/${slug}.json`)
         await putStorage(`${pr.id}/build-removed/${slug}.${stamp}.html`, html, 'text/html; charset=utf-8')
         if (meta != null) await putStorage(`${pr.id}/build-removed/${slug}.${stamp}.json`, meta, 'application/json')
+        // What David entered in it goes with it, so a later page under the same slug does not open on it.
+        const kept = await getStorageText(`${pr.id}/build/${slug}.state.json`)
+        if (kept != null) await putStorage(`${pr.id}/build-removed/${slug}.${stamp}.state.json`, kept, 'application/json')
         const gone = await delStorage(`${pr.id}/build/${slug}.html`); await delStorage(`${pr.id}/build/${slug}.json`)
+        if (kept != null) await delStorage(`${pr.id}/build/${slug}.state.json`)
         if (!gone) throw new Error('the built tab was copied to the removed folder but could not be taken off the Workbench')
         let title = slug; try { title = JSON.parse(meta).title || slug } catch { /* the slug names it */ }
         return JSON.stringify({ ok: true, on: pr.name, removed: title, kind: 'built tab', note: 'Off the Workbench. A copy is kept in the card\'s removed folder, so it can be put back.' })
       }
       const tabs = (await listStorage(`${pr.id}/workspace`)).map(f => f.name).filter(n => n.endsWith('.json')).map(n => n.replace(/\.json$/, ''))
-      const built = (await listStorage(`${pr.id}/build`)).map(f => f.name).filter(n => n.endsWith('.json')).map(n => n.replace(/\.json$/, ''))
+      const built = builtSlugs(await listStorage(`${pr.id}/build`))
       return JSON.stringify({ ok: false, error: `no tab ${slug} on ${pr.name}`, tabs, built_tabs: built })
     }
     case 'write_artifact': {

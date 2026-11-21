@@ -48,7 +48,7 @@ export async function gatherGate(objectiveId) {
     readProofs(task.project_id, task.id).catch(() => []),
   ])
   const pages = (await Promise.all(ws.filter(f => f.name.endsWith('.json')).slice(0, 14).map(async f => { const d = await storageJson(`${root}/workspace/${f.name}`); const slug = f.name.replace(/\.json$/, ''); return d && (String(d.text || '').trim() || (Array.isArray(d.strokes) && d.strokes.length)) ? { key: `tab:${slug}`, kind: 'Tab', name: flat(d.title, 100) || slug, note: flat(d.text, 260) } : null }))).filter(Boolean)
-  const builds = (await Promise.all(bd.filter(f => f.name.endsWith('.json')).slice(0, 16).map(async f => { const d = await storageJson(`${root}/build/${f.name}`); const slug = f.name.replace(/\.json$/, ''); return d ? { key: `build:${slug}`, kind: 'Built Tab', name: flat(d.title, 100) || slug, note: flat(d.note, 220) } : null }))).filter(Boolean)
+  const builds = (await Promise.all(bd.filter(f => f.name.endsWith('.json') && !f.name.endsWith('.state.json')).slice(0, 16).map(async f => { const d = await storageJson(`${root}/build/${f.name}`); const slug = f.name.replace(/\.json$/, ''); return d ? { key: `build:${slug}`, kind: 'Built Tab', name: flat(d.title, 100) || slug, note: flat(d.note, 220) } : null }))).filter(Boolean)
   const fl = files.map(f => ({ key: `file:${f.id}`, kind: f.bucket === 'link' ? 'Link' : 'File', name: flat(f.name, 140), note: flat(f.note, 180), on_mission: !!f.project_id }))
   // The gates are the numbered tasks plus any open one without a number, the way the mission page counts them.
   const numbered = all.filter(t => numOf(t.text) !== null), top = Math.max(0, ...numbered.map(t => numOf(t.text)))
