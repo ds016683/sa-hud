@@ -4,7 +4,7 @@
 // with it live"). The mission's trail and the gate's own timeline across the top, the gate's own Workbench under
 // them (its tabs live under <card root>/gates/<gate id>), and the card's Lumen framed on the gate while it is open.
 // The Workbench pulls up full: the header and the two lines fold to one strip.
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Pencil, ArrowUp, ListTree, PenLine, FolderOpen } from 'lucide-react'
 import CardFiles from './CardFiles'
@@ -43,8 +43,13 @@ button.gp-ic:hover { background: color-mix(in srgb, var(--c, var(--t)) 16%, tran
 .gp-lines { border: 1px solid rgba(255,255,255,.12); border-radius: 14px; background: #0D1D2C; padding: 6px 26px 2px; }
 .gp-ln { display: grid; grid-template-columns: 160px 1fr; align-items: start; padding: 18px 0 14px; }
 .gp-ln + .gp-ln { border-top: 1px solid rgba(255,255,255,.07); }
-.gp-ln + .gp-ln .gp-tr, .gp-mini .st.own { opacity: .62; }
+.gp-mini .st.own { opacity: .62; }
 .gp-k { font: 500 16px 'Lora', Georgia, serif; } .gp-k small { display: block; font: 400 12.5px var(--font-sans, 'Instrument Sans', sans-serif); color: rgba(243,241,234,.7); margin-top: 3px; }
+.gp-snake { position: relative; width: 100%; min-width: 0; }
+.gp-sn { position: absolute; display: block; text-align: center; font: inherit; font-size: 13px; line-height: 1.3; color: rgba(243,241,234,.7); background: transparent; border: 0; padding: 0; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; }
+button.gp-sn { cursor: pointer; } button.gp-sn:hover { color: #F3F1EA; }
+.gp-sn.on { color: #F3F1EA; font-weight: 600; }
+.gp-sn small { display: block; font-size: 12px; color: rgba(243,241,234,.48); margin-top: 2px; font-weight: 400; }
 .gp-tr { display: flex; position: relative; align-items: flex-start; }
 .gp-tr::before { content: ""; position: absolute; left: 8px; right: 8px; top: 9px; height: 1.5px; background: rgba(255,255,255,.12); }
 .gp-nd { display: block; flex: 1; position: relative; min-width: 0; background: transparent; border: 0; padding: 0; text-align: left; font: inherit; color: inherit; }
@@ -69,6 +74,50 @@ button.gp-nd { cursor: pointer; }
 .gp-sq { width: 32px; height: 32px; border-radius: 8px; border: 1px solid rgba(255,255,255,.12); display: inline-grid; place-items: center; color: rgba(243,241,234,.7); background: transparent; cursor: pointer; }
 .gp-sq:hover, .gp-sq.on { color: var(--t); border-color: var(--t); }
 `
+
+// A line of stops that folds back on itself when there are more than fit (David 11/21, on a mission of 34 gates
+// running off the page: "we should find a way to make this fit, curving the line or something. fine if it takes a bit
+// more real estate"). Rows run left to right, then right to left, joined by a half circle at the end. A few stops
+// sit on one straight row, as before.
+// nodes: [{ key, label, sub, state: 'done' | 'on' | 'open', onClick }]
+const ROW_H = 118, CELL = 150
+function SnakeLine({ nodes, dim = false }) {
+  const ref = useRef(null)
+  const [w, setW] = useState(0)
+  useLayoutEffect(() => {
+    const el = ref.current; if (!el) return undefined
+    const on = () => setW(el.clientWidth)
+    on(); const ro = new ResizeObserver(on); ro.observe(el); return () => ro.disconnect()
+  }, [])
+  const n = nodes.length
+  const per = w ? Math.max(3, Math.floor((w - 120) / CELL) + 1) : n
+  const rows = Math.max(1, Math.ceil(n / per)), snake = rows > 1
+  const pad = snake ? 64 : 10, span = Math.max(1, (snake ? per : n) - 1)
+  const pos = nodes.map((_, i) => { const r = Math.floor(i / per), k = i % per, x = pad + (w - 2 * pad) * (n === 1 ? 0 : k / span); return { x: r % 2 ? w - x : x, y: 10 + r * ROW_H, r } })
+  const gap = (w - 2 * pad) / span, cellW = Math.min(150, Math.max(60, gap - 8))
+  // A label at a bend sits between its node and its neighbor's label, so the two never overlap.
+  const endW = Math.max(60, gap - cellW / 2 + 8)
+  const seg = (a, b) => a.r === b.r ? `M${a.x},${a.y} L${b.x},${b.y}` : `M${a.x},${a.y} A${ROW_H / 2},${ROW_H / 2} 0 0 ${a.r % 2 ? 0 : 1} ${b.x},${b.y}`
+  const ink = 'rgba(255,255,255,.14)'
+  return (
+    <div ref={ref} className="gp-snake" style={{ height: w ? (rows - 1) * ROW_H + 96 : 96, opacity: dim ? 0.62 : 1 }}>
+      {w > 0 && <svg width={w} height={(rows - 1) * ROW_H + 30} aria-hidden="true" style={{ position: 'absolute', left: 0, top: 0, overflow: 'visible' }}>
+        {pos.slice(1).map((b, i) => { const a = pos[i], lit = nodes[i].state === 'done' && nodes[i + 1].state !== 'open'; return <path key={i} d={seg(a, b)} fill="none" stroke={lit ? 'var(--c)' : ink} strokeWidth="1.5" /> })}
+        {pos.map((p, i) => { const st = nodes[i].state; return st === 'on'
+          ? <g key={i}><circle cx={p.x} cy={p.y} r="15" fill="color-mix(in srgb, var(--t) 22%, transparent)" /><circle cx={p.x} cy={p.y} r="9.5" fill="var(--t)" /></g>
+          : <circle key={i} cx={p.x} cy={p.y} r="6.5" fill={st === 'done' ? 'var(--c)' : '#0D1D2C'} stroke={st === 'done' ? 'var(--c)' : 'rgba(243,241,234,.44)'} strokeWidth="1.5" /> })}
+      </svg>}
+      {w > 0 && nodes.map((nd, i) => {
+        // At a bend the label leans inward, so the half circle never runs through it.
+        const p = pos[i], atRight = snake && p.x >= w - pad - 1, atLeft = snake && p.x <= pad + 1
+        const lw = atRight || atLeft ? endW : cellW
+        const left = atRight ? p.x - lw + 14 : atLeft ? p.x - 14 : Math.max(0, Math.min(w - lw, p.x - lw / 2))
+        const Tag = nd.onClick ? 'button' : 'div'
+        return <Tag key={nd.key} type={nd.onClick ? 'button' : undefined} className={`gp-sn${nd.state === 'on' ? ' on' : ''}`} title={nd.title || undefined} onClick={nd.onClick || undefined} style={{ left, top: p.y + 18, width: lw, textAlign: atRight ? 'right' : atLeft ? 'left' : 'center' }}>{nd.label}{nd.sub && <small>{nd.sub}</small>}</Tag>
+      })}
+    </div>
+  )
+}
 
 // gate: the step ({ id, text, n, done, done_at, created_at }); gates: every gate on the card, in order.
 export default function GatePage({ benchRoot = null, tools = null, filesFor = null, onTrail = null, tone = null, gate, gates, root, missionTitle, up = [], source = null, onClose, onPick, onRename, onExtract, onLoad }) {
@@ -133,16 +182,14 @@ export default function GatePage({ benchRoot = null, tools = null, filesFor = nu
           <div className="gp-lines">
             <div className="gp-ln">
               <div className="gp-k">Mission Trail<small>{closedN} Of {gates.length} Closed</small></div>
-              <div className="gp-tr">
-                {gates.map((g, i) => <button key={g.id} className={`gp-nd${g.id === gate.id ? ' on' : g.done ? ' d' : ''}${g.done ? ' thru' : ''}`} onClick={() => g.id !== gate.id && onPick && onPick(g)} title={g.text}><b /><span>Gate {g.n != null ? g.n : i + 1}<small>{String(g.text).slice(0, 60)}</small></span></button>)}
-                <div className="gp-nd" style={{ flex: '0 0 90px' }}><b /><span>Polaris</span></div>
-              </div>
+              <SnakeLine nodes={[
+                ...gates.map((g, i) => ({ key: g.id, label: `Gate ${g.n != null ? g.n : i + 1}`, sub: String(g.text).slice(0, 70), title: g.text, state: g.id === gate.id ? 'on' : g.done ? 'done' : 'open', onClick: g.id !== gate.id && onPick ? () => onPick(g) : null })),
+                { key: 'polaris', label: 'Polaris', state: 'open' },
+              ]} />
             </div>
             <div className="gp-ln">
               <div className="gp-k">Gate {n} Timeline<small>{gate.done ? `Closed ${stamp(gate.done_at)}` : (gate.created_at || source?.at) ? days(gate.created_at || source.at) : 'Open'}</small></div>
-              <div className="gp-tr">
-                {line.map((e, i) => <div key={i} className={`gp-nd${e.done ? ' d' : ''}${e.done && line[i + 1]?.done ? ' thru' : ''}`} style={i === line.length - 1 ? { flex: '0 0 90px' } : undefined}><b /><span>{e.text}<small>{stamp(e.at)}</small></span></div>)}
-              </div>
+              <SnakeLine dim nodes={line.map((e, i) => ({ key: `l${i}`, label: e.text, sub: stamp(e.at), state: e.done ? 'done' : 'open' }))} />
             </div>
           </div>
         )}
