@@ -58,19 +58,21 @@ The five parts:
 4. who_should_hear: only people named in the record or his context who are owed word. The name exactly as written, and why in a few words.
 5. missions: only next work the record or his context names. A title, a kind ("Bounty" one discrete action, "Contract" a standard piece of work with a deliverable, "Mythic" a large piece of work with several gates, "Main Mission" a body of work with gates of its own), and where it came from in a few words.`
   // The reply comes back through a tool call, so it is always one well-formed object (a hand-written JSON reply broke on 11/21).
-  const line = (props, req) => ({ type: 'array', items: { type: 'object', properties: props, required: req } })
+  // The model turns back a forced tool (11/21: 400, tool_choice type "tool" is not supported), so the tool is offered with
+  // strict: true, the ask to call it is in the message, and a prose reply is reported rather than parsed.
+  const line = (props, req) => ({ type: 'array', items: { type: 'object', properties: props, required: req, additionalProperties: false } })
   const str = { type: 'string' }
-  const tool = { name: 'debrief', description: 'Hand David the brief.', input_schema: { type: 'object', required: ['closing_notes', 'files', 'still_to_happen', 'who_should_hear', 'missions'], properties: {
+  const tool = { name: 'debrief', description: 'Hand David the brief.', strict: true, input_schema: { type: 'object', additionalProperties: false, required: ['closing_notes', 'files', 'still_to_happen', 'who_should_hear', 'missions'], properties: {
     closing_notes: str,
     files: line({ id: str, keep: { type: 'string', enum: ['file', 'keep', 'drop'] }, why: str }, ['id', 'keep']),
     still_to_happen: line({ text: str, why: str }, ['text']),
     who_should_hear: line({ who: str, why: str }, ['who']),
     missions: line({ title: str, kind: { type: 'string', enum: ['Bounty', 'Contract', 'Mythic', 'Main Mission'] }, why: str }, ['title', 'kind']),
   } } }
-  const res = await fetch('https://api.anthropic.com/v1/messages', { method: 'POST', headers: { 'x-api-key': process.env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' }, body: JSON.stringify({ model, max_tokens: 6000, tools: [tool], tool_choice: { type: 'tool', name: 'debrief' }, messages: [{ role: 'user', content: prompt }] }) })
+  const res = await fetch('https://api.anthropic.com/v1/messages', { method: 'POST', headers: { 'x-api-key': process.env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' }, body: JSON.stringify({ model, max_tokens: 6000, tools: [tool], tool_choice: { type: 'auto' }, messages: [{ role: 'user', content: prompt + '\n\nHand the brief back by calling the debrief tool exactly once, with every field. Do not answer in prose.' }] }) })
   if (!res.ok) throw new Error(`anthropic -> ${res.status}: ${(await res.text()).slice(0, 160)}`)
   const call = ((await res.json()).content || []).find(c => c.type === 'tool_use')
-  if (!call || !call.input) throw new Error('Lumen sent no brief back')
+  if (!call || !call.input) throw new Error('Lumen answered in prose instead of the brief; try again')
   const out = call.input
   const ids = new Set(fl.map(f => f.id))
   const KINDS = ['Bounty', 'Contract', 'Mythic', 'Main Mission']
