@@ -159,10 +159,11 @@ export default function GateDebrief({ item, tone = PURPLE, onClose, onDone, draf
               <h3><span className="gd-n">1</span>Verification{v && <span className="gd-v" style={{ '--c': v[1] }}>{v[0]}</span>}</h3>
               {d && <p className="gd-p">{d.verification.saw}</p>}
               {d && d.verification.need && <p className="gd-p">{d.verification.need}</p>}
+              {d && (d.proofs || []).length > 0 && <p className="gd-p" style={{ fontSize: 13 }}>{(d.proofs || []).length === 1 ? 'Proof filed by a session' : `${d.proofs.length} proofs filed by sessions`}, last {d.proofs[d.proofs.length - 1].at}{d.proofs[d.proofs.length - 1].build ? `, build ${d.proofs[d.proofs.length - 1].build}` : ''}.</p>}
             </div>
             <div className="gd-card">
               <h3><span className="gd-n">2</span>Closing Note</h3>
-              <textarea rows={4} value={note} onChange={e => setNote(e.target.value)} aria-label="Closing note" />
+              <textarea rows={7} value={note} onChange={e => setNote(e.target.value)} aria-label="Closing note" />
             </div>
           </div>
           <div className="gd-card full">

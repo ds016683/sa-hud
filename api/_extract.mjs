@@ -10,6 +10,7 @@
 // would need to see. It writes nothing. The HUD shows every line, David blesses what is made, and he alone extracts.
 import { sb } from './_ledger.mjs'
 import { missions, readSteps } from './_trail.mjs'
+import { readProofs, proofLines } from './_proofs.mjs'
 
 const URL_BASE = 'https://cmuvomnmaoseccxpeuxq.supabase.co'
 const svc = () => ({ apikey: process.env.SUPABASE_SERVICE_KEY, Authorization: `Bearer ${process.env.SUPABASE_SERVICE_KEY}` })
@@ -76,6 +77,7 @@ export async function gather(projectId) {
   const roots = [{ id: projectId, root: projectId, who: 'the mission' }, ...cards.map(c => ({ id: c.id, root: `objectives/${c.id}`, who: `gate card "${c.title}"` }))]
   const tabsBy = Object.fromEntries(await Promise.all(roots.map(async r => [r.id, await quiet(cardTabs(r.root), [])])))
   const pathBy = Object.fromEntries(await Promise.all(roots.map(async r => [r.id, await quiet(cardPath(r.root), [])])))
+  const proofBy = Object.fromEntries(await Promise.all(tasks.map(async t => [t.id, await quiet(readProofs(projectId, t.id), [])])))
   // Files, deduplicated, and every web link checked.
   const seen = new Set()
   const files = [...pfiles, ...cfiles].filter(f => !seen.has(f.id) && seen.add(f.id)).filter(f => !(f.bucket === 'link' && /^claude:\/\//.test(String(f.path || ''))))
@@ -96,6 +98,7 @@ export async function gather(projectId) {
       closing_words: card ? closesOf(card.id).map(c => ({ at: day(c.filed_at), text: flat(c.summary, 700) })) : [],
       tabs: card ? tabsBy[card.id] || [] : [],
       files: files.filter(f => f.objective_id && f.objective_id === t.objective_id).map(f => f.id),
+      proofs: proofBy[t.id] || [],
     }
   })
   const dates = [p.last_activity_at, ...tasks.map(t => t.released_at), ...files.map(f => f.created_at), ...boards.map(b => b.updated_at), ...thread.map(m => m.at), ...Object.values(tabsBy).flat().map(t => t.updated)].filter(Boolean).map(String).sort()
@@ -136,7 +139,9 @@ what David wrote when he closed it: ${x.closing_words.length ? x.closing_words.m
 stops on the card: ${x.stops.length ? x.stops.map(s => `[${s.done ? 'x' : ' '}] ${s.text}`).join('; ') : 'none'}
 steps he set on its path: ${x.path.length ? x.path.map(s => `[${s.done ? 'x' : s.vetted ? 'vetted' : ' '}] ${s.text}`).join('; ') : 'none'}
 tabs on its Workbench: ${x.tabs.length ? x.tabs.map(t => `${t.kind} "${t.title}" (${t.updated}${t.by ? `, ${t.by}` : ''})${t.note ? `: ${t.note}` : ''}${t.text ? `: ${t.text}` : ''}`).join(' | ') : 'none'}
-files on it: ${x.files.length}`)}
+files on it: ${x.files.length}
+proof filed by the Claude sessions that worked it:
+${proofLines(x.proofs)}`)}
 
 ## Tabs on the mission's own Workbench
 ${line(g.tabs, t => `- ${t.kind} "${t.title}" (${t.updated}${t.by ? `, ${t.by}` : ''})${t.note ? `: ${t.note}` : ''}${t.text ? `: ${t.text}` : ''}`)}

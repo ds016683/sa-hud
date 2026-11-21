@@ -9,6 +9,7 @@
 // change the mission (its Polaris, a gate ahead, a gate that is now needed). It writes nothing. A change to a gate or
 // the Polaris is only ever a proposal: David's check makes it, in the HUD.
 import { sb } from './_ledger.mjs'
+import { readProofs, proofLines } from './_proofs.mjs'
 
 const URL_BASE = 'https://cmuvomnmaoseccxpeuxq.supabase.co'
 const svc = () => ({ apikey: process.env.SUPABASE_SERVICE_KEY, Authorization: `Bearer ${process.env.SUPABASE_SERVICE_KEY}` })
@@ -40,12 +41,13 @@ export async function gatherGate(objectiveId) {
     sb(`project_tasks?select=id,text,status,done,notes,objective_id,created_at&project_id=eq.${task.project_id}&order=created_at`),
   ])
   const root = `objectives/${objectiveId}`
-  const [ws, bd, files, path] = await Promise.all([
+  const [ws, bd, files, path, proofs] = await Promise.all([
     storageList(`${root}/workspace`), storageList(`${root}/build`),
     sb(`live_files?select=id,name,note,bucket,project_id&objective_id=eq.${objectiveId}&filed_at=is.null&superseded_by=is.null&order=created_at.desc&limit=60`).catch(() => []),
     storageJson(`${root}/path.json`),
+    readProofs(task.project_id, task.id).catch(() => []),
   ])
-  const pages = (await Promise.all(ws.filter(f => f.name.endsWith('.json')).slice(0, 14).map(async f => { const d = await storageJson(`${root}/workspace/${f.name}`); const slug = f.name.replace(/\.json$/, ''); return d ? { key: `tab:${slug}`, kind: 'Tab', name: flat(d.title, 100) || slug, note: flat(d.text, 260) } : null }))).filter(Boolean)
+  const pages = (await Promise.all(ws.filter(f => f.name.endsWith('.json')).slice(0, 14).map(async f => { const d = await storageJson(`${root}/workspace/${f.name}`); const slug = f.name.replace(/\.json$/, ''); return d && (String(d.text || '').trim() || (Array.isArray(d.strokes) && d.strokes.length)) ? { key: `tab:${slug}`, kind: 'Tab', name: flat(d.title, 100) || slug, note: flat(d.text, 260) } : null }))).filter(Boolean)
   const builds = (await Promise.all(bd.filter(f => f.name.endsWith('.json')).slice(0, 16).map(async f => { const d = await storageJson(`${root}/build/${f.name}`); const slug = f.name.replace(/\.json$/, ''); return d ? { key: `build:${slug}`, kind: 'Built Tab', name: flat(d.title, 100) || slug, note: flat(d.note, 220) } : null }))).filter(Boolean)
   const fl = files.map(f => ({ key: `file:${f.id}`, kind: f.bucket === 'link' ? 'Link' : 'File', name: flat(f.name, 140), note: flat(f.note, 180), on_mission: !!f.project_id }))
   // The gates are the numbered tasks plus any open one without a number, the way the mission page counts them.
@@ -54,7 +56,7 @@ export async function gatherGate(objectiveId) {
   const gates = [...numbered, ...open].map((t, i) => ({ id: t.id, n: numOf(t.text) !== null ? numOf(t.text) : top + (i - numbered.length) + 1, text: strip(t.text), done: t.status === 'done' || !!t.done, notes: flat(t.notes, 360), objective_id: t.objective_id })).sort((a, b) => a.n - b.n)
   const me = gates.find(g => g.id === task.id) || { id: task.id, n: numOf(task.text), text: strip(task.text) }
   const next = gates.find(g => !g.done && g.id !== task.id && g.n > (me.n || 0)) || gates.find(g => !g.done && g.id !== task.id) || null
-  return { o, task, mission: { id: p.id, name: p.name, polaris: p.description || '' }, gate: me, gates, next, items: [...builds, ...pages, ...fl], steps: (Array.isArray(path?.steps) ? path.steps : []).slice(0, 30).map(s => ({ text: flat(s.text, 160), done: !!s.done || !!s.vetted })) }
+  return { o, task, mission: { id: p.id, name: p.name, polaris: p.description || '' }, gate: me, gates, next, items: [...builds, ...pages, ...fl], proofs, steps: (Array.isArray(path?.steps) ? path.steps : []).slice(0, 30).map(s => ({ text: flat(s.text, 160), done: !!s.done || !!s.vetted })) }
 }
 
 const str = { type: 'string' }
@@ -89,6 +91,9 @@ What came in with it, and its done-when: ${flat(g.task.notes, 1400) || 'none wri
 ## Steps on its trail
 ${g.steps.map(s => `- ${s.done ? 'done' : 'OPEN'}: ${s.text}`).join('\n') || 'none'}
 
+## Proof filed by the Claude sessions that worked this gate (what each says it built and tested)
+${proofLines(g.proofs)}
+
 ## What sits on the gate's card
 ${g.items.map(i => `- key ${i.key} · ${i.kind}: ${i.name}${i.note ? ` | ${i.note}` : ''}${i.on_mission ? ' | already on the mission' : ''}`).join('\n') || 'nothing'}
 
@@ -96,7 +101,7 @@ ${g.items.map(i => `- key ${i.key} · ${i.kind}: ${i.name}${i.note ? ` | ${i.not
 ${said || 'none yet'}
 
 Answer four things:
-1. verification: can the record confirm this gate is done? verdict is "confirmed" when the record shows the done-when met, "not_confirmed" when it shows it is not met, "cannot_see" when the record does not hold what would show it. saw: what the record shows, in one or two sentences. need: what the system would need to see to confirm it, or an empty string when confirmed.
+1. verification: can the record confirm this gate is done? verdict is "confirmed" when the record shows the done-when met (a session's proof counts as record: what it says it built and tested is evidence; what it says it did not test is not), "not_confirmed" when it shows it is not met, "cannot_see" when the record does not hold what would show it. saw: what the record shows, in one or two sentences. need: what the system would need to see to confirm it, or an empty string when confirmed.
 2. closing_note: two or three sentences on what this gate produced. His context, where he gave it, leads.
 3. up: for EVERY item on the gate's card, by its key: pull true when it is something the mission as a whole will want at hand (a deliverable, an agreement, an analysis others will use, a decision record), false when it is working material that belongs with the gate. A few words of why.
 4. changes: did this gate change the mission? Only where the record or his context shows it. kind "polaris" when what the mission is to make true has moved (text is the new Polaris, gate is an empty string); "reword_gate" when a gate still open ahead no longer says what it must (gate is that gate's current words exactly, text is the new words); "new_gate" when the record shows work the mission now needs that no gate holds (text is the gate's words, gate is an empty string). A few words of why, naming where in the record it comes from. If the gate changed nothing, return an empty list.
@@ -122,6 +127,7 @@ Hand the debrief back by calling the gate_debrief tool exactly once, with every 
     top: Math.max(0, ...g.gates.map(x => x.n || 0)),
     verification: { verdict: ['confirmed', 'not_confirmed', 'cannot_see'].includes(v.verdict) ? v.verdict : 'cannot_see', saw: clean(v.saw, 500), need: clean(v.need, 400) },
     closing_note: clean(out.closing_note, 900),
+    proofs: g.proofs,
     items: g.items.map(i => ({ ...i, pull: !!byKey.get(i.key)?.pull, why: clean(byKey.get(i.key)?.why, 140) })),
     changes,
   }
