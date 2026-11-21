@@ -29,7 +29,17 @@ const CSS = `
 .db-ic.sm { width: 28px; height: 28px; }
 .db-ic.thinking { animation: dbpulse 1.4s ease-in-out infinite; }
 @keyframes dbpulse { 0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--c, #8ACAFF) 55%, transparent) } 50% { box-shadow: 0 0 0 7px transparent } }
-.db-two { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; margin-top: 22px; }
+.db-band { display: flex; align-items: center; gap: 14px; font: 500 22px 'Lora', Georgia, serif; margin: 34px 0 0; }
+.db-band::before { content: ""; width: 26px; height: 2px; background: var(--hud-accent, #8ACAFF); }
+.db-band::after { content: ""; flex: 1; height: 1px; background: rgba(255,255,255,.12); }
+.db-three { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 22px; margin-top: 18px; }
+@media (max-width: 1000px) { .db-three { grid-template-columns: 1fr; } }
+.db-band + .db-card { margin-top: 18px; }
+.db-tally { margin-left: auto; font: 400 13.5px var(--font-sans, 'Instrument Sans', sans-serif); color: rgba(243,241,234,.7); }
+.db-files { display: grid; grid-template-columns: 1fr 1fr; column-gap: 34px; }
+.db-files .db-r:nth-of-type(2) { border-top: 0; }
+@media (max-width: 900px) { .db-files { grid-template-columns: 1fr; } }
+.db-two { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; margin-top: 18px; }
 @media (max-width: 900px) { .db-two { grid-template-columns: 1fr; } }
 .db-card { border: 1px solid rgba(255,255,255,.12); border-radius: 14px; background: #11283c; padding: 20px 22px; }
 .db-card.wide { margin-top: 22px; }
@@ -120,28 +130,44 @@ export default function MissionDebrief({ project, tasks, onClose, onDone, drafte
         </div>
         {project.description && <div className="db-star">{project.description}</div>}
 
-        <div className="db-q">Is It True? What Is Different Now?</div>
-        <textarea rows={4} value={words} onChange={e => setWords(e.target.value)} autoFocus aria-label="In your words" />
-        <div className="db-ask">
-          <button type="button" className={`db-ic${asking ? ' thinking' : ''}`} title="Lumen's Debrief" aria-label="Ask Lumen for the debrief" onClick={ask} disabled={asking || busy}><Sparkles size={16} /></button>
-          {err && <span className="db-err">{err}</span>}
-        </div>
-
-        {openTasks.length > 0 && (
-          <div className="db-card wide">
-            <h3>{openTasks.length} {openTasks.length === 1 ? 'Gate' : 'Gates'} Still Open</h3>
-            {openTasks.map(t => <div key={t.id} className="db-r"><div>{String(t.text).replace(/^\s*(?:gate\s+)?\d+\s*[·.:)-]\s*/i, '')}</div></div>)}
-            <div className="db-r"><div>Extract Them With The Mission<small>Each pays its gate. Left off, they stay open on the closed mission.</small></div><YN on={closeOpen ? true : false} set={(v) => setCloseOpen(v === true)} /></div>
-          </div>
-        )}
-
+        {/* The order is the order of a debrief (David 11/21: "right functionaliy and domains but maybe not the best sequence"):
+            what happened, what comes next, what gets put away. */}
+        <div className="db-band">What Happened</div>
         <div className="db-two">
           <div className="db-card">
-            <h3><span className="db-n">1</span>Closing Notes</h3>
-            <textarea rows={6} value={notes} onChange={e => setNotes(e.target.value)} aria-label="Closing notes" style={{ fontSize: 15.5 }} />
+            <h3>Is It True? What Is Different Now?</h3>
+            <textarea rows={7} value={words} onChange={e => setWords(e.target.value)} autoFocus aria-label="In your words" />
+            <div className="db-ask">
+              <button type="button" className={`db-ic${asking ? ' thinking' : ''}`} title="Lumen's Debrief" aria-label="Ask Lumen for the debrief" onClick={ask} disabled={asking || busy}><Sparkles size={16} /></button>
+              {err && <span className="db-err">{err}</span>}
+            </div>
           </div>
           <div className="db-card">
-            <h3><span className="db-n">2</span>Keep And File</h3>
+            <h3><span className="db-n">1</span>Closing Notes</h3>
+            <textarea rows={9} value={notes} onChange={e => setNotes(e.target.value)} aria-label="Closing notes" style={{ fontSize: 15.5 }} />
+          </div>
+        </div>
+
+        <div className="db-band">What Comes Next</div>
+        <div className="db-three">
+          <div className="db-card">
+            <h3><span className="db-n">2</span>Still To Happen</h3>
+            {(deb?.still_to_happen || []).map((x, i) => <div key={i} className={`db-r${yes[`todo:${i}`] === false ? ' off' : ''}`}><div>{x.text}{x.why && <small>{x.why}</small>}</div><YN on={yes[`todo:${i}`] ?? null} set={set(`todo:${i}`)} /></div>)}
+          </div>
+          <div className="db-card">
+            <h3><span className="db-n">3</span>Missions That Came Out Of This One</h3>
+            {(deb?.missions || []).map((x, i) => <div key={i} className={`db-r${yes[`mission:${i}`] === false ? ' off' : ''}`}><KindMark kind={x.kind} size={30} color={PURPLE} /><div>{x.title}<small>{x.kind}{x.why ? ` · ${x.why}` : ''}</small></div><YN on={yes[`mission:${i}`] ?? null} set={set(`mission:${i}`)} /></div>)}
+          </div>
+          <div className="db-card">
+            <h3><span className="db-n">4</span>Who Should Hear</h3>
+            {(deb?.who_should_hear || []).map((x, i) => <div key={i} className={`db-r${yes[`hear:${i}`] === false ? ' off' : ''}`}><div>{x.who}{x.why && <small>{x.why}</small>}</div><YN on={yes[`hear:${i}`] ?? null} set={set(`hear:${i}`)} /></div>)}
+          </div>
+        </div>
+
+        <div className="db-band">What Gets Put Away</div>
+        <div className="db-card">
+          <h3><span className="db-n">5</span>Keep And File<span className="db-tally">{KEEP.map(([k, l]) => `${(files || []).filter(f => pick[f.id] === k).length} ${l}`).join(' · ')}</span></h3>
+          <div className="db-files">
             {(files || []).map(f => (
               <div key={f.id} className="db-r">
                 <div title={f.name} style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.name}{why[f.id] && <small style={{ whiteSpace: 'normal' }}>{why[f.id]}</small>}</div>
@@ -149,19 +175,14 @@ export default function MissionDebrief({ project, tasks, onClose, onDone, drafte
               </div>
             ))}
           </div>
-          <div className="db-card">
-            <h3><span className="db-n">3</span>Still To Happen</h3>
-            {(deb?.still_to_happen || []).map((x, i) => <div key={i} className={`db-r${yes[`todo:${i}`] === false ? ' off' : ''}`}><div>{x.text}{x.why && <small>{x.why}</small>}</div><YN on={yes[`todo:${i}`] ?? null} set={set(`todo:${i}`)} /></div>)}
-          </div>
-          <div className="db-card">
-            <h3><span className="db-n">4</span>Who Should Hear</h3>
-            {(deb?.who_should_hear || []).map((x, i) => <div key={i} className={`db-r${yes[`hear:${i}`] === false ? ' off' : ''}`}><div>{x.who}{x.why && <small>{x.why}</small>}</div><YN on={yes[`hear:${i}`] ?? null} set={set(`hear:${i}`)} /></div>)}
-          </div>
         </div>
-        <div className="db-card wide">
-          <h3><span className="db-n">5</span>Missions That Came Out Of This One</h3>
-          {(deb?.missions || []).map((x, i) => <div key={i} className={`db-r${yes[`mission:${i}`] === false ? ' off' : ''}`}><KindMark kind={x.kind} size={30} color={PURPLE} /><div>{x.title}<small>{x.kind}{x.why ? ` · ${x.why}` : ''}</small></div><YN on={yes[`mission:${i}`] ?? null} set={set(`mission:${i}`)} /></div>)}
-        </div>
+        {openTasks.length > 0 && (
+          <div className="db-card wide">
+            <h3>{openTasks.length} {openTasks.length === 1 ? 'Gate' : 'Gates'} Still Open</h3>
+            {openTasks.map(t => <div key={t.id} className="db-r"><div>{String(t.text).replace(/^\s*(?:gate\s+)?\d+\s*[·.:)-]\s*/i, '')}</div></div>)}
+            <div className="db-r"><div>Extract Them With The Mission<small>Each pays its gate. Left off, they stay open on the closed mission.</small></div><YN on={closeOpen ? true : false} set={(v) => setCloseOpen(v === true)} /></div>
+          </div>
+        )}
 
         <div className="db-foot">
           <span className="db-miles">+100 Miles</span>

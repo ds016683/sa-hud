@@ -16,7 +16,7 @@ export async function debrief({ projectId, words, files = [], model }) {
   const tasks = await sb(`project_tasks?select=text,status,done,notes,released_at&project_id=eq.${projectId}&order=created_at`)
   const others = (await missions()).filter(m => m.id !== projectId).map(m => `${m.kind}: ${m.title}`).slice(0, 80)
   const fl = (Array.isArray(files) ? files : []).slice(0, 60).map(f => ({ id: String(f.id), name: flat(f.name, 140), note: flat(f.note, 160) }))
-  const prompt = `You are Lumen. David is closing a Main Mission and has written, in his own words, what is true now. Draft his debrief package from his words and the mission's record. Nothing you write is acted on until he checks it, so propose plainly and only what the record or his words support. If a part has nothing real in it, return an empty list for it. Never invent a person, a file, a date or a commitment.
+  const prompt = `You are Lumen. David is closing a Main Mission and has written, in his own words, what is true now. Draft his debrief package from his words and the mission's record. Nothing you write is acted on until he checks it, so propose plainly and only what the record or his words support. If a part has nothing real in it, return an empty list for it. Never invent a person, a file, a date or a commitment. The files are there to be sorted, not read as news: do not build a closing note, a loose end, a person to tell or a new mission out of a file's name or its note alone. Those come from the gates and from his words.
 
 Write the way he reads: plain, short, past tense for what happened. No em dashes. No praise. Title Case for any title you propose.
 

@@ -395,6 +395,7 @@ function ProjectDetail({ project, board: boardProp, api, onBack, initialTab, ini
     for (const f of drop) { try { await markFiled(f.id, `dropped:mission:${project.id}`) } catch (e) { console.warn('drop', e.message) } }
     if (closeOpen) for (const t of (tasks || []).filter(x => x.status !== 'done')) await api.updateTask(project.id, t.id, { status: 'done', done: true, released_at: new Date().toISOString() })
     const ok = await api.updateProject(project.id, { status: 'completed', archived_at: new Date().toISOString() })
+    if (!ok) throw new Error('The mission did not close: the Ledger refused the change. Nothing was filed. Try again, or tell a session.')
     try { await archiveSharesFor(project.id) } catch (e) { console.warn('shares archive', e.message) }
     try { await importProject(project.id, `${project.category === 'personal' ? 'Personal' : 'Third Horizon'}/Missions/${project.name.replace(/[/\\]/g, ' ')}`) } catch (e) { console.warn('cabinet import', e.message) }
     try {
