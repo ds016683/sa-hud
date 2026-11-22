@@ -99,7 +99,7 @@ async function loadRelated(item) {
       // A Main Mission gate (David 11/4): its number and the mission's count, the same way the Main Mission page numbers them.
       if (task) {
         try {
-          const { data: pts } = await supabase.from('project_tasks').select('id,text,notes,status,done,released_at,objective_id,created_at').eq('project_id', pid).order('created_at')
+          const { data: pts } = await supabase.from('project_tasks').select('id,text,notes,status,done,released_at,objective_id,created_at,due_date').eq('project_id', pid).order('created_at')
           const numOf = (t) => { const m = /^\s*(?:gate\s+)?(\d+)\s*[·.:)-]/i.exec(String(t?.text || '')); return m ? Number(m[1]) : null }
           const all = pts || []
           const numbered = all.filter(t => numOf(t) !== null)

@@ -15,7 +15,10 @@ const ICON = { ok: '<path d="M5 12.5l4.5 4.5L19 7.5"/>', no: '<path d="M6 6l12 1
 const svg = (k, size) => `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICON[k]}</svg>`
 const tc = (t) => String(t || '').replace(/\b\w/g, c => c.toUpperCase())
 
-function open({ kind, title, message, placeholder = '', value = '', multiline = false, confirm, cancel = 'Cancel', danger = false }) {
+// A prompt may also take a target date (David 11/22: "our step entry captures a target date that is compatible with the
+// gate's target date"): date: { value, max, maxWords }. It then resolves { text, date } (null on cancel), and a date past
+// max is held back with a line saying so.
+function open({ kind, title, message, placeholder = '', value = '', multiline = false, confirm, cancel = 'Cancel', danger = false, date = null }) {
   return new Promise((resolve) => {
     const prev = document.activeElement
     const root = document.createElement('div')
@@ -39,6 +42,28 @@ function open({ kind, title, message, placeholder = '', value = '', multiline = 
       field.addEventListener('blur', () => { field.style.borderColor = BORDER; field.style.boxShadow = 'none' })
       panel.append(field)
     }
+    let dateField = null, dateMsg = null
+    if (kind === 'prompt' && date) {
+      const wrap = document.createElement('label')
+      wrap.style.cssText = `display:flex;align-items:center;gap:12px;margin-top:14px;font-size:14px;color:${INK2}`
+      const lab = document.createElement('span'); lab.textContent = 'Target Date'
+      dateField = document.createElement('input'); dateField.type = 'date'; dateField.value = date.value || ''
+      if (date.max) dateField.max = date.max
+      dateField.style.cssText = `font:400 15px/1.3 inherit;font-family:inherit;color:${INK};background:rgba(255,255,255,0.05);border:1px solid ${BORDER};border-radius:10px;padding:8px 11px;outline:none;color-scheme:dark`
+      dateField.addEventListener('focus', () => { dateField.style.borderColor = rim })
+      dateField.addEventListener('blur', () => { dateField.style.borderColor = BORDER })
+      wrap.append(lab, dateField)
+      if (date.max) { const g = document.createElement('span'); g.textContent = `Gate Target ${date.maxWords || date.max}`; g.style.cssText = `margin-left:auto;font-size:13px;color:${INK2}`; wrap.append(g) }
+      dateMsg = document.createElement('div'); dateMsg.style.cssText = `font-size:13.5px;color:${RED};margin-top:8px;display:none`
+      dateField.addEventListener('input', () => { dateMsg.style.display = 'none' })
+      panel.append(wrap, dateMsg)
+    }
+    const answer = () => {
+      if (!dateField) return field.value
+      const d = dateField.value || null
+      if (d && date.max && d > date.max) { dateMsg.textContent = `That is after the gate's target, ${date.maxWords || date.max}. Pick a date on or before it.`; dateMsg.style.display = 'block'; dateField.focus(); return undefined }
+      return { text: field.value, date: d }
+    }
     const row = document.createElement('div'); row.style.cssText = `display:flex;gap:10px;justify-content:flex-end;margin-top:${kind === 'prompt' ? 16 : 6}px`
     const mk = (k, name, color) => {
       const b = document.createElement('button'); b.type = 'button'; b.innerHTML = svg(k, 18); b.title = tc(name); b.setAttribute('aria-label', tc(name))
@@ -47,14 +72,14 @@ function open({ kind, title, message, placeholder = '', value = '', multiline = 
       b.style.outline = 'none'; b.addEventListener('focus', () => { b.style.boxShadow = `0 0 0 3px ${alpha(color, 22)}` }); b.addEventListener('blur', () => { b.style.boxShadow = 'none' })
       return b
     }
-    const done = (val) => { window.removeEventListener('keydown', onKey, true); root.remove(); try { prev && prev.focus && prev.focus() } catch { /* no-op */ } resolve(val) }
+    const done = (val) => { if (val === undefined && kind === 'prompt') return; window.removeEventListener('keydown', onKey, true); root.remove(); try { prev && prev.focus && prev.focus() } catch { /* no-op */ } resolve(val) }
     const onKey = (e) => {
       if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); done(kind === 'prompt' ? null : kind === 'confirm' ? false : undefined) }
-      else if (e.key === 'Enter' && (kind !== 'prompt' || (multiline ? (e.metaKey || e.ctrlKey) : !e.shiftKey))) { e.preventDefault(); e.stopPropagation(); done(kind === 'prompt' ? field.value : kind === 'confirm' ? true : undefined) }
+      else if (e.key === 'Enter' && (kind !== 'prompt' || (multiline ? (e.metaKey || e.ctrlKey) : !e.shiftKey))) { e.preventDefault(); e.stopPropagation(); done(kind === 'prompt' ? answer() : kind === 'confirm' ? true : undefined) }
     }
     if (kind !== 'notice') { const c = mk('no', cancel, 'rgba(243,241,234,0.55)'); c.onclick = () => done(kind === 'prompt' ? null : false); row.append(c) }
     const ok = mk('ok', confirm || (kind === 'prompt' ? 'Save' : kind === 'confirm' ? 'Yes' : 'Continue'), danger ? RED : PURPLE)
-    ok.onclick = () => done(kind === 'prompt' ? field.value : kind === 'confirm' ? true : undefined)
+    ok.onclick = () => done(kind === 'prompt' ? answer() : kind === 'confirm' ? true : undefined)
     row.append(ok); panel.append(row); root.append(panel); document.body.append(root)
     root.addEventListener('mousedown', (e) => { if (e.target === root) done(kind === 'prompt' ? null : kind === 'confirm' ? false : undefined) })
     window.addEventListener('keydown', onKey, true)

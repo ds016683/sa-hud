@@ -6,8 +6,8 @@
 // The Workbench pulls up full: the header and the two lines fold to one strip.
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Pencil, ArrowUp, ListTree, PenLine, FolderOpen, Plus, Check, X as XMark, Sparkles } from 'lucide-react'
-import { readPath, savePathSteps, buildTrail } from '../../lib/path'
+import { Pencil, ArrowUp, ListTree, PenLine, FolderOpen, Plus, Check, X as XMark, Sparkles, CalendarDays } from 'lucide-react'
+import { readPath, savePathSteps, buildTrail, dueWords } from '../../lib/path'
 import { listBuilds, processAndPost } from '../../lib/lumenPanel'
 import { toggleStep } from '../../lib/objectives'
 import { hudPrompt, hudConfirm } from '../../lib/dialog'
@@ -71,6 +71,9 @@ button.gp-ic:hover { background: color-mix(in srgb, var(--c, var(--t)) 16%, tran
 .gp-o:hover { border-color: var(--t); }
 .gp-st.done .gp-o { background: var(--t); border-color: var(--t); }
 .gp-x { background: transparent; border: 0; color: rgba(243,241,234,.4); cursor: pointer; padding: 2px; opacity: 0; transition: opacity .15s; }
+.gp-due { flex: none; background: transparent; border: 0; padding: 1px 2px; font: 500 13px/1.4 inherit; font-family: inherit; color: rgba(243,241,234,.62); cursor: pointer; white-space: nowrap; }
+.gp-due:not(.set) { opacity: 0; transition: opacity .15s; } .gp-st:hover .gp-due:not(.set) { opacity: 1; }
+.gp-due:hover:not(:disabled) { color: var(--t); } .gp-due.late { color: #DE7E6E; } .gp-due:disabled { cursor: default; color: rgba(243,241,234,.38); }
 .gp-st:hover .gp-x { opacity: 1; } .gp-x:hover { color: #DE7E6E; }
 .gp-notes { width: 100%; box-sizing: border-box; font: 400 15px/1.6 'Lora', Georgia, serif; color: #F3F1EA; background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.12); border-radius: 10px; padding: 10px 12px; resize: vertical; outline: none; }
 .gp-notes:focus { border-color: var(--t); }
@@ -247,22 +250,28 @@ export default function GatePage({ card = null, benchRoot = null, tools = null, 
   // Steps: the card's own (objective_steps) and the ones set by hand on its line, one list, open first.
   const stepRows = card ? [
     ...(card.stops || []).map(x => ({ key: `s${x.id}`, kind: 'stop', id: x.id, text: x.text, done: !!x.done })),
-    ...psteps.filter(x => !x.vetted && !x.note).map(x => ({ key: `p${x.id}`, kind: 'path', id: x.id, text: x.text, done: !!x.done })),
+    ...psteps.filter(x => !x.vetted && !x.note).map(x => ({ key: `p${x.id}`, kind: 'path', id: x.id, text: x.text, done: !!x.done, due: x.due || null })),
   ].sort((a, b) => Number(a.done) - Number(b.done)) : []
+  // A step's target date sits on or before the gate's own (David 11/22).
+  const gateDue = (gate.due_date || card?.obj?.due_date || '').slice(0, 10) || null
+  const shortDay = (d) => new Date(`${d}T12:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+  const stepAsk = (o, due = null) => hudPrompt({ ...o, date: { value: due, max: gateDue, maxWords: gateDue ? shortDay(gateDue) : null } })
   const savePs = async (fn) => { const doc = await savePathSteps(groot, fn); setPsteps(doc.steps || []) }
   const addStepHere = async () => {
-    const t = String(await hudPrompt({ title: 'A Step On This Gate', placeholder: 'What is to be done' }) || '').replace(/\s+/g, ' ').trim().slice(0, 300)
+    const a = await stepAsk({ title: 'A Step On This Gate', placeholder: 'What is to be done' })
+    const t = String(a?.text || '').replace(/\s+/g, ' ').trim().slice(0, 300)
     if (!t) return
-    try { await savePs(list => [...list, { id: `p${Date.now().toString(36)}`, text: t, by: 'david', made_at: new Date().toISOString(), done: false, at: null }]) } catch (e) { setStepMsg(`Could not add it: ${e.message}`) }
+    try { await savePs(list => [...list, { id: `p${Date.now().toString(36)}`, text: t, by: 'david', made_at: new Date().toISOString(), done: false, at: null, due: a.date || null }]) } catch (e) { setStepMsg(`Could not add it: ${e.message}`) }
   }
   // A step dragged onto the gate's line (David 11/21: "i should be able to drag a step to the timeline (like the mission
   // page) where the modal opens"). Dropped among what happened, it is a step done then; dropped ahead, a step to do there.
   const dropOnLine = async (i) => {
     if (!cardLine) return
     const done = cardLine.filter(nd => nd.state === 'done'), past = i < done.length   // gap i sits before node i: inside the history, or after it
-    const t = String(await hudPrompt(past ? { title: 'A Step On The Trail', placeholder: 'What you did' } : { title: 'A Step On This Gate', placeholder: 'What is to be done' }) || '').replace(/\s+/g, ' ').trim().slice(0, 300)
+    const a = past ? { text: await hudPrompt({ title: 'A Step On The Trail', placeholder: 'What you did' }) } : await stepAsk({ title: 'A Step On This Gate', placeholder: 'What is to be done' })
+    const t = String(a?.text || '').replace(/\s+/g, ' ').trim().slice(0, 300)
     if (!t) return
-    const now = new Date().toISOString(), row = { id: `p${Date.now().toString(36)}`, text: t, by: 'david', made_at: now }
+    const now = new Date().toISOString(), row = { id: `p${Date.now().toString(36)}`, text: t, by: 'david', made_at: now, ...(past ? {} : { due: a.date || null }) }
     try {
       if (past) {
         const tt = (nd) => new Date(nd.at).getTime(), prev = done[i - 1], next = done[i]
@@ -293,6 +302,13 @@ export default function GatePage({ card = null, benchRoot = null, tools = null, 
       if (r.kind === 'stop') { await toggleStep(r.id, !r.done); card.onChanged && card.onChanged() }
       else await savePs(list => list.map(x => x.id === r.id ? { ...x, done: !r.done, at: !r.done ? new Date().toISOString() : null } : x))
     } catch (e) { setStepMsg(`Could not mark it: ${e.message}`) }
+  }
+  // Click a step's date to set or move it; the same cap holds.
+  const dateStep = async (r) => {
+    const a = await stepAsk({ title: 'When Is This Step Due?', value: r.text }, r.due)
+    if (!a) return
+    const t = String(a.text || '').replace(/\s+/g, ' ').trim().slice(0, 300) || r.text
+    try { await savePs(list => list.map(x => x.id === r.id ? { ...x, text: t, due: a.date || null } : x)) } catch (e) { setStepMsg(`Could not set the date: ${e.message}`) }
   }
   const dropStep = async (r) => {
     if (r.kind !== 'path' || !await hudConfirm({ title: 'Take This Step Off?', message: r.text, confirm: 'Take It Off', danger: true })) return
@@ -342,6 +358,7 @@ export default function GatePage({ card = null, benchRoot = null, tools = null, 
                 <div key={r.key} className={`gp-st${r.done ? ' done' : ''}`}>
                   <button type="button" className="gp-o" title={r.done ? 'Done · Click To Reopen' : 'Click When It Is Done'} aria-label={`${r.done ? 'Reopen' : 'Mark done'}: ${r.text}`} onClick={() => flipStep(r)}>{r.done && <Check size={11} />}</button>
                   <span>{r.text}</span>
+                  {r.kind === 'path' && (r.due || !r.done) && (() => { const w = r.due ? dueWords(r.due) : null, over = r.due && gateDue && r.due > gateDue; return <button type="button" className={`gp-due${r.due ? ' set' : ''}${!r.done && (w?.late || over) ? ' late' : ''}`} title={over ? `After The Gate's Target, ${shortDay(gateDue)}` : r.due ? 'Move The Date' : 'Set A Target Date'} aria-label={r.due ? `Target ${r.due}, move it` : 'Set a target date'} disabled={r.done} onClick={() => dateStep(r)}>{r.due ? shortDay(r.due) : <CalendarDays size={13} />}</button> })()}
                   {r.kind === 'path' && !r.done && <button type="button" className="gp-x" title="Take It Off" aria-label={`Take off: ${r.text}`} onClick={() => dropStep(r)}><XMark size={13} /></button>}
                 </div>
               ))}
