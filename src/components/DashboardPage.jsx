@@ -169,17 +169,17 @@ export default function DashboardPage({ onNavigate }) {
               ))}
             </section>
             <section>
-              <SectionTag name="Catches" style={{ minHeight: 30 }}><Light {...commitLight} /><Round title="Add one yourself" size={30} onClick={push}><Plus size={15} /></Round></SectionTag>
+              <SectionTag name="Items" style={{ minHeight: 30 }}><Light {...commitLight} /><Round title="Add one yourself" size={30} onClick={push}><Plus size={15} /></Round></SectionTag>
               {openCommits.map((c, i) => (
                 <Row key={c.id} first={i === 0} cols="minmax(0, 1fr) auto">
-                  <div style={{ minWidth: 0, cursor: 'pointer' }} role="button" tabIndex={0} title="Talk It Through With Lumen" onClick={() => setTalk(c)} onKeyDown={e => { if (e.key === 'Enter') setTalk(c) }}>
+                  <div style={{ minWidth: 0, cursor: 'pointer' }} role="button" tabIndex={0} title="Reconcile It With Lumen" onClick={() => setTalk(c)} onKeyDown={e => { if (e.key === 'Enter') setTalk(c) }}>
                     <div style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 16.5, lineHeight: 1.3, color: INK }}>{c.what}<span style={{ fontFamily: 'var(--font-sans)', fontSize: 13, color: c.by && c.by < day ? RED : BLUE, marginLeft: 10, whiteSpace: 'nowrap' }}>{byDay(c.by)}</span></div>
                     <div style={{ fontSize: 14.5, lineHeight: 1.45, color: INK2, marginTop: 3 }}>{c.source === 'catch' ? [c.heard, c.where].filter(Boolean).join(' · ') : (c.heard || `You added this yourself, ${fmtTime(c.at)}`)}</div>
                   </div>
                   <div style={{ display: 'flex', gap: 8 }}>
                     <Round title="Done" color={PURPLE} onClick={() => act(() => ruleCommitment(c.id, 'done'))}><Check size={16} /></Round>
-                    <Round title="Send To The Ideas Board" color={BLUE} onClick={() => act(() => parkIdea({ text: c.what, src: 'recon', where: c.where || 'Catches', catchId: c.id }))}><Lightbulb size={16} /></Round>
-                    <Round title="Out Of Context" color="rgba(243,241,234,0.44)" onClick={async () => { const why = await hudPrompt({ title: 'Why Is It Out Of Context?', placeholder: 'A few words; Lumen learns from it' }); if (why !== null) act(() => ruleCommitment(c.id, 'dropped', why || null)) }}><XIcon size={16} /></Round>
+                    <Round title="Send To The Ideas Board" color={BLUE} onClick={() => act(() => parkIdea({ text: c.what, src: 'recon', where: c.where || 'Items', catchId: c.id }))}><Lightbulb size={16} /></Round>
+                    <Round title="Close As Irrelevant" color="rgba(243,241,234,0.44)" onClick={async () => { const why = await hudPrompt({ title: 'Why Is It Irrelevant?', placeholder: 'A few words; Lumen learns from it' }); if (why !== null) act(() => ruleCommitment(c.id, 'dropped', why || null)) }}><XIcon size={16} /></Round>
                   </div>
                 </Row>
               ))}

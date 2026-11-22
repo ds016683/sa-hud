@@ -374,12 +374,12 @@ export default function GatePage({ card = null, benchRoot = null, tools = null, 
         )}
         {card && catches.length > 0 && (
           <div className="gp-card gp-catches">
-            <div className="gp-ch">Catches<span className="gp-cn">{catches.length}</span></div>
+            <div className="gp-ch">Items<span className="gp-cn">{catches.length}</span></div>
             {catches.map(c => (
               <div key={c.id} className="gp-st">
-                <span className="gp-catch" role="button" tabIndex={0} title="Talk It Through With Lumen" onClick={() => setTalk(c)} onKeyDown={e => { if (e.key === 'Enter') setTalk(c) }}>{c.what}<small>{[c.heard, c.by ? `Due ${new Date(`${c.by}T12:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}` : null].filter(Boolean).join(' · ')}</small></span>
+                <span className="gp-catch" role="button" tabIndex={0} title="Reconcile It With Lumen" onClick={() => setTalk(c)} onKeyDown={e => { if (e.key === 'Enter') setTalk(c) }}>{c.what}<small>{[c.heard, c.by ? `Due ${new Date(`${c.by}T12:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}` : null].filter(Boolean).join(' · ')}</small></span>
                 <button type="button" className="gp-ic sm" title="Done" aria-label={`Done: ${c.what}`} onClick={async () => { await ruleCommitment(c.id, 'done'); loadCatches() }}><Check size={13} /></button>
-                <button type="button" className="gp-ic sm" style={{ '--c': '#DE7E6E' }} title="Out Of Context" aria-label={`Out of context: ${c.what}`} onClick={async () => { const why = await hudPrompt({ title: 'Why Is It Out Of Context?', placeholder: 'A few words; Lumen learns from it' }); if (why !== null) { await ruleCommitment(c.id, 'dropped', why || null); loadCatches() } }}><XMark size={13} /></button>
+                <button type="button" className="gp-ic sm" style={{ '--c': '#DE7E6E' }} title="Close As Irrelevant" aria-label={`Close as irrelevant: ${c.what}`} onClick={async () => { const why = await hudPrompt({ title: 'Why Is It Irrelevant?', placeholder: 'A few words; Lumen learns from it' }); if (why !== null) { await ruleCommitment(c.id, 'dropped', why || null); loadCatches() } }}><XMark size={13} /></button>
               </div>
             ))}
           </div>

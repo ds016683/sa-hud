@@ -30,10 +30,10 @@ export async function addCommitment({ what, by = null }) {
   await write(doc)
   return doc.items
 }
-// state: 'done' | 'dropped' | 'made'. why: his reason on an X, read back to Lumen before the next catch (11/21).
-export async function ruleCommitment(id, state, why = null) {
+// state: 'done' | 'dropped' | 'made' | 'routed' | 'idea'. extra: what it became ({ made: 'adhoc' }, { to: { mission, as } }). why: his reason on an X, read back to Lumen before the next catch (11/21).
+export async function ruleCommitment(id, state, why = null, extra = null) {
   const doc = await read()
-  doc.items = doc.items.map(c => c.id === id ? { ...c, state, ruled_at: new Date().toISOString(), ...(why ? { why_dropped: String(why).slice(0, 300) } : {}) } : c)
+  doc.items = doc.items.map(c => c.id === id ? { ...c, state, ruled_at: new Date().toISOString(), ...(why ? { why_dropped: String(why).slice(0, 300) } : {}), ...(extra || {}) } : c)
   await write(doc)
   return doc.items
 }
