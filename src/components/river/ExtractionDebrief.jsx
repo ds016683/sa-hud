@@ -72,7 +72,9 @@ const CSS = `
 .xd-yn { display: inline-flex; gap: 7px; flex-shrink: 0; }
 .xd-end { margin-left: auto; display: inline-flex; align-items: center; gap: 10px; }
 .xd-tally { font: 400 13px var(--font-sans, 'Instrument Sans', sans-serif); color: rgba(243,241,234,.7); }
-.xd-files { display: grid; grid-template-columns: 1fr 1fr; column-gap: 28px; }
+.xd-files { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 28px; }
+.xd-files .xd-r > div { min-width: 0; flex: 1; }
+.xd-files .xd-sw { flex-shrink: 0; }
 .xd-files .xd-r:nth-of-type(2) { border-top: 0; }
 @media (max-width: 900px) { .xd-files { grid-template-columns: 1fr; } }
 .xd-ctx { display: flex; align-items: flex-start; gap: 10px; padding: 10px 12px; border: 1px solid rgba(138,202,255,.35); border-radius: 12px; background: rgba(138,202,255,.06); font: 400 15px/1.55 'Lora', Georgia, serif; margin-top: 10px; }
