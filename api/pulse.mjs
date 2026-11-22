@@ -222,6 +222,14 @@ export default async function handler(req, res) {
         await remember({ channel: 'email', direction: 'in', kind: 'text', body: text, external_id: m.id, meta: { from, subject: m.subject, conversation: m.conversationId, mode } })
         let reply
         try { reply = await think({ channel: 'email', text, spoken: false }) } catch (e) { reply = `I hit a wall answering this one: ${String(e.message || e).slice(0, 120)}` }
+        // Email is a container (David 11/22): "i don't want him to respond unless i directly ask him to send me something or tell
+        // me something." Lumen answers NO_REPLY when nothing was asked; the mail is routed, marked read, and nothing goes out.
+        if (/^\s*NO_REPLY\s*\.?\s*$/i.test(String(reply || ''))) {
+          await markRead(m.id).catch(() => null)
+          await remember({ channel: 'email', direction: 'out', kind: 'system', body: 'Routed to the Reconcile list; no reply (nothing was asked).', meta: { to: from, subject: m.subject, mode, kind: 'no-reply' } }).catch(() => null)
+          out.push({ kind: 'mail', item: m.subject, mode, routed: true, sent: false })
+          continue
+        }
         try {
           if (mode === 'forward') {
             const quoted = fresh.split('\n').map(l => `> ${l}`).join('\n')
