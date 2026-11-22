@@ -3,11 +3,11 @@
 // told one, and Send To The Ideas Board on the Catches list (reconciliation). Shelves By Concept or By Project, and a
 // hub and spoke Map ("like you can do in obsidian"): shelves are hubs, ideas orbit them, each layer is a spoke.
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { BookOpen, Gamepad2, Smartphone, Rocket, Sparkles, PenLine, Music, Users, Mic, Send, Inbox, Keyboard, FolderInput, X, Layers, Lightbulb, Mountain, Film, Landmark, Briefcase, Loader2 } from 'lucide-react'
+import { BookOpen, Gamepad2, Smartphone, Rocket, Sparkles, PenLine, Music, Users, Mic, Send, Inbox, Keyboard, FolderInput, X, Layers, Lightbulb, Mountain, Film, Landmark, Briefcase, Loader2, Archive } from 'lucide-react'
 import { loadIdeas, parkIdea, updateIdea, removeLayer } from '../lib/ideas'
 import { hudPrompt, hudConfirm } from '../lib/dialog'
 
-const SRC = { told: [Keyboard, 'Told Lumen'], voice: [Mic, 'Told Lumen Aloud'], recon: [Inbox, 'Sent From Reconciliation'] }
+const SRC = { told: [Keyboard, 'Told Lumen'], voice: [Mic, 'Told Lumen Aloud'], recon: [Inbox, 'Sent From Reconciliation'], import: [Archive, 'From The Old Ideas Board'] }
 const srcOf = (k) => SRC[k] || SRC.told
 const ICONS = [[/book|novel|writ/i, BookOpen], [/game/i, Gamepad2], [/tik ?tok|video|social|short/i, Smartphone], [/film|movie|show|tv/i, Film], [/venture|business|product|startup/i, Rocket], [/essay|article|op.?ed/i, PenLine], [/music|song|playlist/i, Music], [/family|kid|home/i, Users], [/hud|lumen|platform/i, Sparkles], [/polic|politic|govern/i, Landmark], [/third horizon|client|firm/i, Briefcase]]
 const iconFor = (name) => (ICONS.find(([re]) => re.test(name || '')) || [null, Lightbulb])[1]
