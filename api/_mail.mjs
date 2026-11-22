@@ -29,9 +29,30 @@ const box = () => `${G}/users/${encodeURIComponent(LUMEN_MAILBOX)}`
 
 export async function readUnread(limit = 10) {
   const token = await graphToken()
-  const r = await fetch(`${box()}/mailFolders/inbox/messages?$filter=isRead eq false&$top=${limit}&$select=id,subject,from,toRecipients,ccRecipients,receivedDateTime,bodyPreview,body,conversationId,internetMessageId&$orderby=receivedDateTime desc`, { headers: { Authorization: `Bearer ${token}`, Prefer: 'outlook.body-content-type="text"' } })
+  const r = await fetch(`${box()}/mailFolders/inbox/messages?$filter=isRead eq false&$top=${limit}&$select=id,subject,from,toRecipients,ccRecipients,receivedDateTime,bodyPreview,body,conversationId,internetMessageId,hasAttachments&$orderby=receivedDateTime desc`, { headers: { Authorization: `Bearer ${token}`, Prefer: 'outlook.body-content-type="text"' } })
   if (!r.ok) throw new Error(`lumen inbox -> ${r.status}: ${(await r.text()).slice(0, 200)}`)
   return (await r.json()).value || []
+}
+
+// The files on a mail to Lumen (David 11/22: an attachment rides on the Item it came with). Each non-inline file is
+// copied to project-files/items/<message>/<name>; returns [{ name, path, size, type }].
+export async function keepAttachments(id, putBytes) {
+  const token = await graphToken()
+  const r = await fetch(`${box()}/messages/${encodeURIComponent(id)}/attachments?$select=id,name,contentType,size,isInline`, { headers: { Authorization: `Bearer ${token}` } })
+  if (!r.ok) return []
+  const atts = ((await r.json()).value || []).filter(a => (a['@odata.type'] || '').includes('fileAttachment') && !a.isInline).slice(0, 8)
+  const out = []
+  const dir = `items/${String(id).replace(/[^A-Za-z0-9]/g, '').slice(-24)}`
+  for (const a of atts) {
+    if (a.size > 45 * 1024 * 1024) continue
+    const b = await fetch(`${box()}/messages/${encodeURIComponent(id)}/attachments/${encodeURIComponent(a.id)}/$value`, { headers: { Authorization: `Bearer ${token}` } })
+    if (!b.ok) continue
+    const name = String(a.name || 'file').replace(/[^A-Za-z0-9._ -]/g, '_')
+    const path = `${dir}/${name}`
+    await putBytes(path, Buffer.from(await b.arrayBuffer()), a.contentType || 'application/octet-stream')
+    out.push({ name, path, size: a.size || 0, type: a.contentType || null })
+  }
+  return out
 }
 
 export async function markRead(id) {

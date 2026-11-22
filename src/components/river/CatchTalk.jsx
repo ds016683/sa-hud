@@ -5,13 +5,13 @@
 // about what to do with it"). The catch, where it came from, a box to talk it through, and what it can become. Nothing
 // is made until David presses one of the three: make it a Bounty, mark it done, or throw it out with a reason.
 import { useEffect, useState } from 'react'
-import { Check, X, Send, Target, Zap, Gem, MountainSnow, Lightbulb, Clock } from 'lucide-react'
+import { Check, X, Send, Target, Zap, Gem, MountainSnow, Lightbulb, Clock, Paperclip } from 'lucide-react'
 import { askLumen } from '../../lib/lumenPanel'
 import { addObjective } from '../../lib/objectives'
 import { ruleCommitment, ruleDecision } from '../../lib/commitments'
 import { addImpromptu } from '../../lib/loadout'
 import { parkIdea } from '../../lib/ideas'
-import { loadMissions, sendToMission } from '../../lib/items'
+import { loadMissions, sendToMission, fileItemFiles, itemFileUrl } from '../../lib/items'
 import { hudPrompt } from '../../lib/dialog'
 
 const PURPLE = '#B4A3E8', BLUE = '#8ACAFF', RED = '#DE7E6E'
@@ -38,6 +38,8 @@ const CSS = `
 .ct-as button.on { background: rgba(138,202,255,.16); color: #F3F1EA; }
 .ct-rec { margin-top: 14px; display: grid; gap: 8px; font: 400 15px/1.55 'Lora', Georgia, serif; }
 .ct-rec b { display: block; font: 500 12.5px/1.4 var(--font-sans, 'Instrument Sans', sans-serif); color: ${BLUE}; margin-bottom: 1px; }
+.ct-files { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.ct-files button { display: inline-flex; align-items: center; gap: 7px; font: 500 13.5px/1.3 inherit; font-family: inherit; color: ${BLUE}; background: rgba(138,202,255,.08); border: 1px solid rgba(138,202,255,.3); border-radius: 9px; padding: 6px 11px; cursor: pointer; }
 .ct-done { margin-top: 12px; font-size: 14px; color: #57BE97; }
 .ct-err { color: ${RED}; font-size: 13.5px; margin-right: auto; }
 `
@@ -59,9 +61,9 @@ export default function CatchTalk({ c, onClose, onRuled }) {
     } catch (e) { setErr(e.message) } finally { setBusy(false) }
   }
   const rule = async (fn) => { if (busy) return; setBusy(true); setErr(null); try { await fn(); onRuled() } catch (e) { setErr(e.message); setBusy(false) } }
-  const bounty = () => rule(async () => { await addObjective({ title: c.what, size: 'light', tags: ['third-horizon'], description: `From a catch${c.where ? ` in ${c.where}` : ''}. ${c.heard || ''}`.trim(), due_date: c.by || null }); await ruleCommitment(c.id, 'made') })
-  const adhoc = () => rule(async () => { const r = await addImpromptu(c.what); if (!r.ok) throw new Error(r.reasons.join(' ')); await ruleCommitment(c.id, 'made', null, { made: 'adhoc' }) })
-  const mythic = () => rule(async () => { await addObjective({ title: c.what, size: 'heavy', tags: ['third-horizon'], description: `From an Item${c.where ? ` in ${c.where}` : ''}. ${c.heard || ''}`.trim(), due_date: c.by || null }); await ruleCommitment(c.id, 'made', null, { made: 'mythic' }) })
+  const bounty = () => rule(async () => { const o = await addObjective({ title: c.what, size: 'light', tags: ['third-horizon'], description: `From a catch${c.where ? ` in ${c.where}` : ''}. ${c.heard || ''}`.trim(), due_date: c.by || null }); await fileItemFiles(c, { objective_id: o.id }); await ruleCommitment(c.id, 'made') })
+  const adhoc = () => rule(async () => { const r = await addImpromptu(c.what); if (!r.ok) throw new Error(r.reasons.join(' ')); await fileItemFiles(c, { objective_id: r.id }); await ruleCommitment(c.id, 'made', null, { made: 'adhoc' }) })
+  const mythic = () => rule(async () => { const o = await addObjective({ title: c.what, size: 'heavy', tags: ['third-horizon'], description: `From an Item${c.where ? ` in ${c.where}` : ''}. ${c.heard || ''}`.trim(), due_date: c.by || null }); await fileItemFiles(c, { objective_id: o.id }); await ruleCommitment(c.id, 'made', null, { made: 'mythic' }) })
   const idea = () => rule(() => parkIdea({ text: c.what, src: 'recon', where: c.where || 'Items', catchId: c.id }))
   const [pick, setPick] = useState(null)   // { missions, id, as }
   const openPick = async () => { if (pick) { setPick(null); return } try { const ms = await loadMissions(); setPick({ missions: ms, id: ms[0]?.id || '', as: 'gate' }) } catch (e) { setErr(e.message) } }
@@ -75,6 +77,7 @@ export default function CatchTalk({ c, onClose, onRuled }) {
         <div className="ct-src">{[c.heard, c.where, c.by ? `Due ${dayOf(c.by)}` : null].filter(Boolean).join(' · ')}</div>
         {c.kind === 'decision' && (c.recommend || c.on_yes) && <div className="ct-rec">{c.recommend && <div><b>Recommendation</b>{c.recommend}</div>}{c.on_yes && <div><b>On Yes</b>{c.on_yes}</div>}</div>}
         {c.quote && <div className="ct-q">{c.quote}</div>}
+        {(c.files || []).length > 0 && <div className="ct-files">{c.files.map(f => <button key={f.path} type="button" title="Open It" onClick={async () => { try { window.open(await itemFileUrl(f), '_blank', 'noopener') } catch (e) { setErr(e.message) } }}><Paperclip size={14} />{f.name}</button>)}</div>}
         {turns.map((t, i) => <div key={i} className={`ct-turn ${t.me ? 'me' : 'lu'}`}>{t.text}</div>)}
         <div className="ct-say">
           <textarea rows={2} value={say} onChange={e => setSay(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() } }} aria-label="Talk it through with Lumen" autoFocus />

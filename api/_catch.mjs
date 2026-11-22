@@ -24,14 +24,18 @@ async function putJson(path, doc) {
 }
 // Route an Item to the list (David 11/22): "if it's a push communication to lumen, everything needs to go in the bucket."
 // kind 'decision' carries the recommendation first and what happens on yes; David rules it on the list or in a live chat.
-export async function routeItem({ what, heard = null, where = null, by = null, source = 'route', kind = null, recommend = null, on_yes = null, quote = null }) {
+export async function putBytes(path, buf, type) {
+  const r = await fetch(`${URL_BASE}/storage/v1/object/project-files/${enc(path)}`, { method: 'POST', headers: { ...svc(), 'Content-Type': type, 'x-upsert': 'true' }, body: buf })
+  if (!r.ok) throw new Error(`file save ${r.status}`)
+}
+export async function routeItem({ what, heard = null, where = null, by = null, source = 'route', kind = null, recommend = null, on_yes = null, quote = null, files = null }) {
   const text = String(what || '').replace(/\s+/g, ' ').trim().slice(0, 300)
   if (!text) throw new Error('nothing to route')
   const doc = (await getJson(CATCHES)) || { v: 1, items: [] }
   const items = Array.isArray(doc.items) ? doc.items : []
   const dup = items.find(c => c.state === 'open' && String(c.what).toLowerCase() === text.toLowerCase())
   if (dup) return { item: dup, dup: true }
-  const item = { id: Math.random().toString(36).slice(2, 10), what: text, by: by ? String(by).slice(0, 10) : null, heard: heard ? String(heard).slice(0, 300) : null, quote: quote ? String(quote).slice(0, 1200) : null, where: where ? String(where).slice(0, 160) : null, source, ...(kind === 'decision' ? { kind: 'decision', recommend: recommend ? String(recommend).slice(0, 400) : null, on_yes: on_yes ? String(on_yes).slice(0, 300) : null } : {}), at: new Date().toISOString(), state: 'open', ruled_at: null }
+  const item = { id: Math.random().toString(36).slice(2, 10), what: text, by: by ? String(by).slice(0, 10) : null, heard: heard ? String(heard).slice(0, 300) : null, quote: quote ? String(quote).slice(0, 1200) : null, where: where ? String(where).slice(0, 160) : null, source, ...(Array.isArray(files) && files.length ? { files } : {}), ...(kind === 'decision' ? { kind: 'decision', recommend: recommend ? String(recommend).slice(0, 400) : null, on_yes: on_yes ? String(on_yes).slice(0, 300) : null } : {}), at: new Date().toISOString(), state: 'open', ruled_at: null }
   await putJson(CATCHES, { v: 1, items: [...items, item] })
   return { item, dup: false }
 }

@@ -18,7 +18,8 @@ export const config = { maxDuration: 300 }
 
 import { sb, sbWrite, chiToday } from './_ledger.mjs'
 import { think, remember, alreadySeen } from './_lumen-brain.mjs'
-import { readUnread, markRead, sendMail, mailAllowed, isDavid, LUMEN_MAILBOX } from './_mail.mjs'
+import { readUnread, markRead, sendMail, mailAllowed, isDavid, LUMEN_MAILBOX, keepAttachments } from './_mail.mjs'
+import { putBytes } from './_catch.mjs'
 import { waSendText, waSendTemplate, davidNumber } from './_wa.mjs'
 
 const chiHour = () => Number(new Intl.DateTimeFormat('en-US', { timeZone: 'America/Chicago', hour: 'numeric', hour12: false }).format(new Date()))
@@ -221,7 +222,11 @@ export default async function handler(req, res) {
         if (dry) { out.push({ kind: 'mail', item: m.subject, mode, would_answer: text.slice(0, 200) }); continue }
         await remember({ channel: 'email', direction: 'in', kind: 'text', body: text, external_id: m.id, meta: { from, subject: m.subject, conversation: m.conversationId, mode } })
         let reply
-        try { reply = await think({ channel: 'email', text, spoken: false }) } catch (e) { reply = `I hit a wall answering this one: ${String(e.message || e).slice(0, 120)}` }
+        // Attachments ride on the Items routed from this mail (11/22); Lumen is told their names.
+        let files = []
+        if (m.hasAttachments) { try { files = await keepAttachments(m.id, putBytes) } catch { files = [] } }
+        const said = files.length ? `${text}\n[Attached: ${files.map(f => f.name).join(', ')}. They ride on every Item you route from this mail.]` : text
+        try { reply = await think({ channel: 'email', text: said, spoken: false, files }) } catch (e) { reply = `I hit a wall answering this one: ${String(e.message || e).slice(0, 120)}` }
         // Email is a container (David 11/22): "i don't want him to respond unless i directly ask him to send me something or tell
         // me something." Lumen answers NO_REPLY when nothing was asked; the mail is routed, marked read, and nothing goes out.
         if (/^\s*NO_REPLY\s*\.?\s*$/i.test(String(reply || ''))) {

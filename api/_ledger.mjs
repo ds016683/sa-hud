@@ -38,7 +38,7 @@ const DETAILS_MARK = '[Details]'
 const splitNotes = (notes) => { const t = String(notes || ''); const i = t.indexOf(DETAILS_MARK); return i < 0 ? { doneWhen: t.trim(), details: '' } : { doneWhen: t.slice(0, i).trim(), details: t.slice(i + DETAILS_MARK.length).trim() } }
 const joinNotes = (doneWhen, details) => { const a = String(doneWhen || '').trim(), b = String(details || '').trim(); return (b ? `${a}${a ? '\n\n' : ''}${DETAILS_MARK}\n${b}` : a) || null }
 // Where route_item calls come from this turn (set by the brain per channel).
-export const ROUTE_SOURCE = { current: null, where: null, count: 0 }
+export const ROUTE_SOURCE = { current: null, where: null, count: 0, files: null }
 export const DAVID = '9d28e8cf-3e35-48d9-a029-1327bd37fdd4'
 
 function sbHeaders() {
@@ -1693,7 +1693,7 @@ export async function callTool(name, args = {}) {
     }
     case 'route_item': {
       const { routeItem } = await import('./_catch.mjs')
-      const r = await routeItem({ what: args.what, heard: args.why || null, by: args.by || null, source: ROUTE_SOURCE.current || 'lumen', where: ROUTE_SOURCE.where || null, kind: args.kind === 'decision' ? 'decision' : null, recommend: args.recommend || null, on_yes: args.on_yes || null, quote: args.quote || null })
+      const r = await routeItem({ what: args.what, heard: args.why || null, by: args.by || null, source: ROUTE_SOURCE.current || 'lumen', where: ROUTE_SOURCE.where || null, kind: args.kind === 'decision' ? 'decision' : null, recommend: args.recommend || null, on_yes: args.on_yes || null, quote: args.quote || null, files: ROUTE_SOURCE.files })
       ROUTE_SOURCE.count = (ROUTE_SOURCE.count || 0) + 1
       return JSON.stringify({ ok: true, routed: r.item.what, already_there: r.dup, kind: r.item.kind || 'item' })
     }

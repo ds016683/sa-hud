@@ -135,9 +135,9 @@ async function runNote() {
 }
 
 // One turn: returns the reply text. Runs the tool loop against the Ledger.
-export async function think({ channel = 'whatsapp', text, spoken = false, frame = null }) {
+export async function think({ channel = 'whatsapp', text, spoken = false, frame = null, files = null }) {
   const push = channel === 'email'   // David 11/22: WhatsApp is live (he talks back and confirms); email is push
-  ROUTE_SOURCE.current = push ? channel : (channel === 'hud' ? 'lumen' : channel); ROUTE_SOURCE.where = push ? 'Sent To Lumen By Email' : null; ROUTE_SOURCE.count = 0
+  ROUTE_SOURCE.current = push ? channel : (channel === 'hud' ? 'lumen' : channel); ROUTE_SOURCE.where = push ? 'Sent To Lumen By Email' : null; ROUTE_SOURCE.count = 0; ROUTE_SOURCE.files = push && Array.isArray(files) && files.length ? files : null
   const [doc, ctx, constitution, rules, waiting, runNow] = await Promise.all([
     identityDoc('operating-context.md'), threadContext(),
     identityDoc('constitution.md').catch(() => ''),
@@ -270,7 +270,7 @@ export async function think({ channel = 'whatsapp', text, spoken = false, frame 
   foldMemory(ctx).catch(e => console.error('lumen: fold failed', e.message))
   // Everything pushed goes in the bucket (11/22): if Lumen routed nothing from a push message, the message itself goes.
   if (push && !ROUTE_SOURCE.count && String(text || '').trim().split(/\s+/).length >= 3) {
-    try { await routeItem({ what: String(text).replace(/\s+/g, ' ').trim().slice(0, 300), heard: 'The whole message; Lumen routed nothing from it', where: ROUTE_SOURCE.where, source: channel, quote: String(text).length > 300 ? String(text).slice(0, 1200) : null }) } catch { /* the reply still goes */ }
+    try { await routeItem({ what: String(text).replace(/\s+/g, ' ').trim().slice(0, 300), heard: 'The whole message; Lumen routed nothing from it', where: ROUTE_SOURCE.where, source: channel, quote: String(text).length > 300 ? String(text).slice(0, 1200) : null, files: ROUTE_SOURCE.files }) } catch { /* the reply still goes */ }
   }
   return reply
 }
