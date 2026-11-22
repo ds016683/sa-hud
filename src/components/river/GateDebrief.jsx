@@ -14,6 +14,7 @@ import { hudPrompt } from '../../lib/dialog'
 import { askGateDebrief } from '../../lib/lumenPanel'
 import { extract as extractItem } from '../../lib/loadout'
 import { fileAchieved } from '../../lib/archive'
+import { routeItem } from '../../lib/commitments'
 import { ExtractMarker } from './glyphs'
 import { GateGlyph } from './GatePage'
 
@@ -108,11 +109,13 @@ export default function GateDebrief({ item, tone = PURPLE, onClose, onDone, draf
   const items = (d?.items || []).filter(x => !x.on_mission)
   const up = items.filter(x => yes[`up:${x.key}`] === true)
   const chg = (d?.changes || []).filter((_, i) => yes[`chg:${i}`] === true)
+  const rec = (d?.reconcile || []).filter((_, i) => yes[`rec:${i}`] === true)
   const will = [
-    up.length ? plural(up.length, 'Item Pulled Up To The Mission', 'Items Pulled Up To The Mission') : null,
+    up.length ? plural(up.length, 'Piece Pulled Up To The Mission', 'Pieces Pulled Up To The Mission') : null,
     chg.some(c => c.kind === 'polaris') ? 'The Polaris Changed' : null,
     chg.filter(c => c.kind === 'reword_gate').length ? plural(chg.filter(c => c.kind === 'reword_gate').length, 'Gate Reworded', 'Gates Reworded') : null,
     chg.filter(c => c.kind === 'new_gate').length ? plural(chg.filter(c => c.kind === 'new_gate').length, 'Gate Added', 'Gates Added') : null,
+    rec.length ? plural(rec.length, 'Item Routed To Reconcile', 'Items Routed To Reconcile') : null,
   ].filter(Boolean)
 
   const go = async () => {
@@ -135,9 +138,10 @@ export default function GateDebrief({ item, tone = PURPLE, onClose, onDone, draf
         else if (c.kind === 'reword_gate') { const { error } = await supabase.from('project_tasks').update({ text: `${c.n} · ${c.text}` }).eq('id', c.task_id); if (error) throw new Error(`Gate ${c.n}: ${error.message}`) }
         else if (c.kind === 'new_gate') { top += 1; const { error } = await supabase.from('project_tasks').insert({ project_id: pid, text: `${top} · ${c.text}`, status: 'open', done: false, source: 'debrief', notes: `From the debrief of Gate ${d.gate.n}, ${d.gate.text}. ${c.why || ''}`.trim() }); if (error) throw new Error(`New gate: ${error.message}`) }
       }
+      for (const r of rec) await routeItem({ what: r.what, heard: r.why, where: `Gate ${d.gate.n} · ${d.gate.text}`, source: 'debrief' })
       if (record) await fileAchieved(item, record).catch(() => {})
       const r = await extractItem(item, { minutes: 0, note: record || null })
-      onDone(r, { gate: d?.gate || null, mission: d?.mission || null, next: d?.next || null, did: [...up.map(x => ({ tag: 'Up', text: x.name })), ...chg.map(c => ({ tag: CHANGE[c.kind], text: c.kind === 'reword_gate' ? `Gate ${c.n}: ${c.text}` : c.text }))] })
+      onDone(r, { gate: d?.gate || null, mission: d?.mission || null, next: d?.next || null, did: [...up.map(x => ({ tag: 'Up', text: x.name })), ...chg.map(c => ({ tag: CHANGE[c.kind], text: c.kind === 'reword_gate' ? `Gate ${c.n}: ${c.text}` : c.text })), ...rec.map(x => ({ tag: 'Routed', text: x.what }))] })
     } catch (e) { setErr(e?.message || String(e)); setBusy(false) }
   }
   const v = d ? VERDICT[d.verification.verdict] : null
@@ -174,6 +178,13 @@ export default function GateDebrief({ item, tone = PURPLE, onClose, onDone, draf
             <h3><span className="gd-n">4</span>Did This Gate Change The Mission</h3>
             {(d?.changes || []).map((c, i) => <div key={i} className={`gd-r${yes[`chg:${i}`] === false ? ' off' : ''}`}><div><span className="gd-k">{CHANGE[c.kind]}{c.kind === 'reword_gate' ? ` · Gate ${c.n}` : ''}</span>{c.text}{(c.from || c.why) && <small>{c.from ? `Was: ${c.from}. ` : ''}{c.why}</small>}</div><YN on={yes[`chg:${i}`] ?? null} set={set(`chg:${i}`)} /></div>)}
           </div>
+
+          {(d?.reconcile || []).length > 0 && (
+            <div className="gd-card full">
+              <h3><span className="gd-n">5</span>Things To Reconcile</h3>
+              {d.reconcile.map((r, i) => <div key={i} className={`gd-r${yes[`rec:${i}`] === false ? ' off' : ''}`}><div>{r.what}{r.why && <small>{r.why}</small>}</div><YN on={yes[`rec:${i}`] ?? null} set={set(`rec:${i}`)} /></div>)}
+            </div>
+          )}
 
           <div className="gd-band">Your Context
             <button type="button" className="gd-ic" title="Add Context" aria-label="Add your context" onClick={addContext} disabled={busy}><Plus size={17} /></button>

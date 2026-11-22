@@ -30,6 +30,15 @@ export async function addCommitment({ what, by = null }) {
   await write(doc)
   return doc.items
 }
+// Route an Item to the list (David 11/22): checked on a debrief, or sent by a session or Lumen. Nothing is decided here.
+export async function routeItem({ what, heard = null, where = null, by = null, source = 'route' }) {
+  const text = String(what || '').trim().slice(0, 300)
+  if (!text) throw new Error('nothing to route')
+  const doc = await read()
+  doc.items.push({ id: Math.random().toString(36).slice(2, 10), what: text, by: by || null, heard: heard ? String(heard).slice(0, 300) : null, quote: null, where: where ? String(where).slice(0, 160) : null, source, at: new Date().toISOString(), state: 'open', ruled_at: null })
+  await write(doc)
+  return doc.items
+}
 // state: 'done' | 'dropped' | 'made' | 'routed' | 'idea'. extra: what it became ({ made: 'adhoc' }, { to: { mission, as } }). why: his reason on an X, read back to Lumen before the next catch (11/21).
 export async function ruleCommitment(id, state, why = null, extra = null) {
   const doc = await read()

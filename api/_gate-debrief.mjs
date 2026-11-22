@@ -60,10 +60,11 @@ export async function gatherGate(objectiveId) {
 }
 
 const str = { type: 'string' }
-const TOOL = { name: 'gate_debrief', description: 'Hand David the gate debrief.', strict: true, input_schema: { type: 'object', additionalProperties: false, required: ['verification', 'closing_note', 'up', 'changes'], properties: {
+const TOOL = { name: 'gate_debrief', description: 'Hand David the gate debrief.', strict: true, input_schema: { type: 'object', additionalProperties: false, required: ['verification', 'closing_note', 'up', 'changes', 'reconcile'], properties: {
   verification: { type: 'object', additionalProperties: false, required: ['verdict', 'saw', 'need'], properties: { verdict: { type: 'string', enum: ['confirmed', 'not_confirmed', 'cannot_see'] }, saw: str, need: str } },
   closing_note: str,
   up: { type: 'array', items: { type: 'object', additionalProperties: false, required: ['key', 'pull', 'why'], properties: { key: str, pull: { type: 'boolean' }, why: str } } },
+  reconcile: { type: 'array', items: { type: 'object', additionalProperties: false, required: ['what', 'why'], properties: { what: str, why: str } } },
   changes: { type: 'array', items: { type: 'object', additionalProperties: false, required: ['kind', 'gate', 'text', 'why'], properties: { kind: { type: 'string', enum: ['polaris', 'reword_gate', 'new_gate'] }, gate: str, text: str, why: str } } },
 } } }
 
@@ -100,11 +101,12 @@ ${g.items.map(i => `- key ${i.key} · ${i.kind}: ${i.name}${i.note ? ` | ${i.not
 ## Context David added at the close
 ${said || 'none yet'}
 
-Answer four things:
+Answer five things:
 1. verification: can the record confirm this gate is done? verdict is "confirmed" when the record shows the done-when met (a session's proof counts as record: what it says it built and tested is evidence; what it says it did not test is not), "not_confirmed" when it shows it is not met, "cannot_see" when the record does not hold what would show it. saw: what the record shows, in one or two sentences. need: what the system would need to see to confirm it, or an empty string when confirmed.
 2. closing_note: two or three sentences on what this gate produced. His context, where he gave it, leads.
 3. up: for EVERY item on the gate's card, by its key: pull true when it is something the mission as a whole will want at hand (a deliverable, an agreement, an analysis others will use, a decision record), false when it is working material that belongs with the gate. A few words of why.
 4. changes: did this gate change the mission? Only where the record or his context shows it. kind "polaris" when what the mission is to make true has moved (text is the new Polaris, gate is an empty string); "reword_gate" when a gate still open ahead no longer says what it must (gate is that gate's current words exactly, text is the new words); "new_gate" when the record shows work the mission now needs that no gate holds (text is the gate's words, gate is an empty string). A few words of why, naming where in the record it comes from. If the gate changed nothing, return an empty list.
+5. reconcile: Items (David 11/22: "Item means a task, piece of information, email fragment, a document ... anything") in his context or the record that belong somewhere other than this mission: another mission, a gate or data elsewhere, a follow-up, an idea. Do not decide where it goes; he reconciles it on his list. what: the Item in his words where he gave them. why: a few words on why it does not belong to this mission's changes. Anything already in changes is not repeated here. An empty list is a right answer.
 
 Hand the debrief back by calling the gate_debrief tool exactly once, with every field. Do not answer in prose.`
   const res = await fetch('https://api.anthropic.com/v1/messages', { method: 'POST', headers: { 'x-api-key': process.env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' }, body: JSON.stringify({ model, max_tokens: 5000, tools: [TOOL], tool_choice: { type: 'auto' }, messages: [{ role: 'user', content: prompt }] }) })
@@ -130,5 +132,6 @@ Hand the debrief back by calling the gate_debrief tool exactly once, with every 
     proofs: g.proofs,
     items: g.items.map(i => ({ ...i, pull: !!byKey.get(i.key)?.pull, why: clean(byKey.get(i.key)?.why, 140) })),
     changes,
+    reconcile: (Array.isArray(out.reconcile) ? out.reconcile : []).slice(0, 6).map(r => ({ what: clean(r.what, 300), why: clean(r.why, 200) })).filter(r => r.what),
   }
 }
