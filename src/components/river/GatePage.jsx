@@ -234,7 +234,7 @@ export default function GatePage({ card = null, benchRoot = null, tools = null, 
     const nodes = ev.map((e, i) => ({ key: `e${i}`, label: label(e).slice(0, 80), sub: stamp(e.at), title: e.note || e.text, state: 'done', at: e.at }))
     // Steps still to do sit ahead on the line, in their order, before the close (David 11/21: "step should match on the timeline").
     const ahead = [...(card.stops || []).filter(x => !x.done).map(x => ({ key: `os${x.id}`, label: String(x.text).slice(0, 80), title: x.text, state: 'open' })),
-      ...psteps.filter(x => !x.done && !x.vetted && !x.note).map(x => ({ key: `op${x.id}`, label: String(x.text).slice(0, 80), title: x.text, state: 'open' }))]
+      ...psteps.filter(x => !x.done && !x.vetted && !x.note).map(x => ({ key: `op${x.id}`, label: String(x.text).slice(0, 80), sub: x.due ? new Date(`${x.due}T12:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : undefined, title: x.text, state: 'open' }))]
     return [...nodes, ...ahead, gate.done ? null : { key: 'close', label: 'Close', state: 'open' }].filter(Boolean)
   }, [card, tabs, builds, psteps, gate.done])
   // The gate's own line: where it came from, what was written on it, and its close.
