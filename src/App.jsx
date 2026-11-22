@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import {
   LayoutGrid, Network, LogOut, Menu, X, Target, Users,
-  FileText, Wallet, CreditCard, ListChecks, Compass, Waves, CalendarDays, LayoutDashboard, BookOpen, Activity, Award, Wrench, GraduationCap, Sparkles, Archive as ArchiveIcon, FolderOpen, PenTool, Briefcase, Mic, Wand2, Bot, PenLine, Footprints, BookMarked } from 'lucide-react'
+  FileText, Wallet, CreditCard, ListChecks, Compass, Waves, CalendarDays, LayoutDashboard, BookOpen, Activity, Award, Wrench, GraduationCap, Sparkles, Archive as ArchiveIcon, FolderOpen, PenTool, Briefcase, Mic, Wand2, Bot, PenLine, Footprints, BookMarked, Lightbulb } from 'lucide-react'
 import { getSession, onAuthStateChange, signOut } from './lib/auth'
 import { fetchProtocolState } from './lib/protocol'
 import ProtocolHud from './components/river/ProtocolHud'
@@ -40,6 +40,7 @@ import AiToolsPage from './components/AiToolsPage'
 import LumenProtocolsPage from './components/LumenProtocolsPage'
 import AnthropicPage from './components/AnthropicPage'
 import JourneyPage from './components/JourneyPage'
+import IdeasBoardPage from './components/IdeasBoardPage'
 
 const NAV_ITEMS = [
   { id: 'river',            label: 'The River',             icon: Waves,          group: 'LANDING' },
@@ -60,6 +61,7 @@ const NAV_ITEMS = [
   { id: 'maintenance',      label: 'Maintenance',           icon: Wrench,         group: 'MISSION BOARD' },
   { id: 'archive',          label: 'Archive',               icon: ArchiveIcon,    group: 'MISSION BOARD' },
   { id: 'cabinet',          label: 'File Cabinet',          icon: FolderOpen,     group: 'MISSION BOARD' },
+  { id: 'ideas',            label: 'Ideas Board',           icon: Lightbulb,      group: 'IDEAS' },
   { id: 'company-finance',  label: 'Third Horizon Finance', icon: Wallet,         group: 'RESOURCES' },
   { id: 'personal-finance', label: 'Personal Finance',      icon: CreditCard,     group: 'RESOURCES' },
   { id: 'network',          label: 'Network',               icon: Users,          group: 'RESOURCES' },
@@ -287,6 +289,7 @@ export default function App() {
           {active === 'maintenance'      && <MaintenancePage deepLink={params} />}
           {active === 'archive'          && <ArchivePage onNavigate={setRoute} />}
           {active === 'cabinet'          && <FileCabinetPage />}
+          {active === 'ideas'            && <IdeasBoardPage />}
           {active === 'company-finance'  && <CompanyFinancePage />}
           {active === 'personal-finance' && <PersonalFinancePage />}
           {active === 'network'          && <RelationshipsPage />}

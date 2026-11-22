@@ -6,7 +6,8 @@
 // tag; the tag's far end carries a light for the section's state and nothing written.
 import { sayLogged } from './river/LoggedPop'
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Play, Square, Video, Check, X as XIcon, Plus, Tag, ScrollText } from 'lucide-react'
+import { Play, Square, Video, Check, X as XIcon, Plus, Tag, ScrollText, Lightbulb } from 'lucide-react'
+import { parkIdea } from '../lib/ideas'
 import { supabase } from '../lib/supabase'
 import { startMeetingTimer, stopMeetingTimer, matchNotes } from '../lib/meetings'
 import { loadSteps, ruleStep } from '../lib/trailsteps'
@@ -177,6 +178,7 @@ export default function DashboardPage({ onNavigate }) {
                   </div>
                   <div style={{ display: 'flex', gap: 8 }}>
                     <Round title="Done" color={PURPLE} onClick={() => act(() => ruleCommitment(c.id, 'done'))}><Check size={16} /></Round>
+                    <Round title="Send To The Ideas Board" color={BLUE} onClick={() => act(() => parkIdea({ text: c.what, src: 'recon', where: c.where || 'Catches', catchId: c.id }))}><Lightbulb size={16} /></Round>
                     <Round title="Out Of Context" color="rgba(243,241,234,0.44)" onClick={async () => { const why = await hudPrompt({ title: 'Why Is It Out Of Context?', placeholder: 'A few words; Lumen learns from it' }); if (why !== null) act(() => ruleCommitment(c.id, 'dropped', why || null)) }}><XIcon size={16} /></Round>
                   </div>
                 </Row>

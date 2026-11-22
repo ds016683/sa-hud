@@ -28,6 +28,7 @@ import { loadout, checkFit, equip, holster, extract, effortOf, sizeOf, SIZES, bo
 import { markdownToDocx, DOCX_MIME, letterheadDocx, inspectDocx } from './_docx.mjs'
 import { createDraft } from './_draft.mjs'
 import { fillScorecard } from './_scorecard.mjs'
+import { parkIdea } from './_ideas.mjs'
 
 const URL_BASE = 'https://cmuvomnmaoseccxpeuxq.supabase.co'
 // A gate's title is a few words; the detail that came with it rides in notes under one marker line, after
@@ -928,6 +929,11 @@ export const TOOLS = [
     inputSchema: { type: 'object', properties: { project: { type: 'string' }, side_mission: { type: 'string' }, slug: { type: 'string' }, edits: { type: 'array', items: { type: 'object', properties: { find: { type: 'string' }, replace: { type: 'string' }, all: { type: 'boolean' } }, required: ['find', 'replace'] } } }, required: ['slug', 'edits'] },
   },
   {
+    name: 'park_idea',
+    description: "Park an idea on David's Ideas Board when he tells you one directly (\"park this\", \"idea:\", \"put this on the ideas board\", or he is plainly telling you an idea to keep: a book, a game, a video, a venture, anything). Nothing on the board is a task: never make a step, objective or catch from it. Pass his words verbatim; you place it on a shelf, and when it is an idea already there coming out again, it becomes a new layer on that idea. Only his direct word: something he asks you to flag or follow up goes to reconciliation (the Catches list), not here. Say in one line where it landed.",
+    inputSchema: { type: 'object', properties: { words: { type: 'string', description: 'his words, verbatim' }, spoken: { type: 'boolean', description: 'true when he said it aloud' } }, required: ['words'] },
+  },
+  {
     name: 'remove_workbench_tab',
     description: "Take a tab off a card's Workbench when David asks for it to be removed, deleted or killed: a typed tab or a built tab, by project or side_mission and its slug or title. The tab is moved to the card's removed folder, not destroyed, so it can be put back; say that in one line. Only on his word, and only the tabs he named. If he says to remove all but one, list what you removed.",
     inputSchema: { type: 'object', properties: { project: { type: 'string' }, side_mission: { type: 'string' }, slug: { type: 'string' } }, required: ['slug'] },
@@ -1430,6 +1436,10 @@ export async function callTool(name, args = {}) {
       const meta = { ...(prior || { v: 1, kind: 'build', slug, title: slug, created_at: now }), bytes: next.length, version: (prior?.version || 1) + 1, updated_at: now, updated_by: 'lumen' }
       await putStorage(`${pr.id}/build/${slug}.json`, JSON.stringify(meta), 'application/json')
       return JSON.stringify({ ok: true, on: pr.name, slug, title: meta.title, version: meta.version, edits: edits.length, note: `Changed in place; version ${meta.version - 1} is kept and can be put back. He sees it when the tab refreshes.` })
+    }
+    case 'park_idea': {
+      const out = await parkIdea({ words: args.words, src: args.spoken ? 'voice' : 'told', where: 'Told Lumen' })
+      return JSON.stringify({ ok: true, title: out.idea.title, shelf: out.idea.shelf, new_idea: out.new_idea, layers: out.idea.layers.length, note: out.new_idea ? 'A new idea on its shelf.' : `A new layer on an idea already there (${out.idea.layers.length} layers now).` })
     }
     // Take a tab off the Workbench (David 11/20: "You can kill the other tabs", and Lumen had no hand for it). Moved, never destroyed.
     case 'remove_workbench_tab': {

@@ -22,7 +22,8 @@ export const config = { maxDuration: 300, api: { bodyParser: false } }
 import { think, remember, MODEL } from './_lumen-brain.mjs'
 import { extractionDebrief } from './_extract.mjs'
 import { gateDebrief } from './_gate-debrief.mjs'
-import { processAndPost } from './_catch.mjs'
+import { processAndPost, CATCHES } from './_catch.mjs'
+import { parkIdea } from './_ideas.mjs'
 import { cardFrame, callTool, workbookOp } from './_ledger.mjs'
 import { transcribe, speak, voiceOf, waSendAudio, davidNumber } from './_wa.mjs'
 
@@ -109,6 +110,22 @@ export default async function handler(req, res) {
     if (body.action === 'process-post') {
       const root = typeof body.root === 'string' && /^(objectives\/)?[0-9a-f-]{8,}(\/gates\/[0-9a-f-]{8,})?$/i.test(body.root) ? body.root : null
       try { return res.status(200).json({ ok: true, ...(await processAndPost({ text: String(body.text || ''), where: String(body.where || ''), root, item: body.item && typeof body.item === 'object' ? { kind: String(body.item.kind || ''), id: String(body.item.id || ''), title: String(body.title || '') } : null, model: MODEL() })) }) } catch (e) { return res.status(500).json({ error: String(e.message || e).slice(0, 240) }) }
+    }
+    // The Ideas Board (api/_ideas.mjs): David parks an idea from the board's box, or sends a catch from the
+    // reconciliation page (catch_id: that catch is ruled 'idea' and leaves the list).
+    if (body.action === 'idea-park') {
+      try {
+        const out = await parkIdea({ words: String(body.text || ''), src: String(body.src || 'told'), where: String(body.where || ''), model: MODEL() })
+        if (body.catch_id) {
+          const g = await fetch(`${URL_BASE}/storage/v1/object/project-files/${CATCHES}?cb=${Date.now()}`, { headers: svc(), cache: 'no-store' })
+          const doc = g.ok ? await g.json().catch(() => null) : null
+          if (doc && Array.isArray(doc.items)) {
+            doc.items = doc.items.map(c => c.id === String(body.catch_id) ? { ...c, state: 'idea', ruled_at: new Date().toISOString(), idea_id: out.idea.id } : c)
+            await fetch(`${URL_BASE}/storage/v1/object/project-files/${CATCHES}`, { method: 'POST', headers: { ...svc(), 'Content-Type': 'application/json', 'x-upsert': 'true' }, body: JSON.stringify(doc) })
+          }
+        }
+        return res.status(200).json({ ok: true, ...out })
+      } catch (e) { return res.status(500).json({ error: String(e.message || e).slice(0, 240) }) }
     }
     // The gate debrief (api/_gate-debrief.mjs): one gate read in full. It writes nothing.
     if (body.action === 'gate-debrief') {
