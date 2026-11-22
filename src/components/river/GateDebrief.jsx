@@ -8,7 +8,7 @@
 // that would move or change something starts unblessed; the foot says what Extract will do; Extract does only that.
 // A change to the Polaris or to a gate is only ever a proposal here: his check is what makes it.
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Check, X, Sparkles, Plus } from 'lucide-react'
+import { Check, X, Sparkles, Plus, Pencil } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { hudPrompt } from '../../lib/dialog'
 import { askGateDebrief } from '../../lib/lumenPanel'
@@ -56,6 +56,11 @@ const CSS = `
 .gd-r.off > div { opacity: .45; }
 .gd-k { font-size: 12.5px; color: var(--t); margin-right: 8px; white-space: nowrap; }
 .gd-yn { display: inline-flex; gap: 7px; flex-shrink: 0; }
+.gd-edit { align-items: flex-start; } .gd-r.gd-edit > .gd-yn { flex: none; padding-top: 4px; }
+.gd-edit input, .gd-edit textarea { display: block; width: 100%; box-sizing: border-box; color: #F3F1EA; background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.14); border-radius: 10px; padding: 8px 11px; outline: none; }
+.gd-edit input { font: 500 15.5px/1.35 'Lora', Georgia, serif; }
+.gd-edit textarea { font: 400 13.5px/1.5 inherit; font-family: inherit; margin-top: 7px; resize: vertical; }
+.gd-edit input:focus, .gd-edit textarea:focus { border-color: #8ACAFF; }
 .gd-ctx { display: flex; align-items: flex-start; gap: 10px; padding: 10px 12px; border: 1px solid rgba(138,202,255,.35); border-radius: 12px; background: rgba(138,202,255,.06); font: 400 15px/1.55 'Lora', Georgia, serif; margin-top: 10px; }
 .gd-ctx > div { flex: 1; white-space: pre-wrap; }
 .gd-foot { position: sticky; bottom: 0; display: flex; align-items: center; gap: 16px; padding: 14px 28px; border-top: 1px solid rgba(255,255,255,.14); background: #0D1D2C; border-radius: 0 0 18px 18px; }
@@ -109,7 +114,12 @@ export default function GateDebrief({ item, tone = PURPLE, onClose, onDone, draf
   const items = (d?.items || []).filter(x => !x.on_mission)
   const up = items.filter(x => yes[`up:${x.key}`] === true)
   const chg = (d?.changes || []).filter((_, i) => yes[`chg:${i}`] === true)
-  const rec = (d?.reconcile || []).filter((_, i) => yes[`rec:${i}`] === true)
+  // His own words on an Item before it routes (David 11/22: "a little inline modal on the extract card so i can change the
+  // description or title"). recEdit[i] holds what he changed; ed is the row open for editing.
+  const [recEdit, setRecEdit] = useState({})
+  const [ed, setEd] = useState(null)   // { i, what, why }
+  const recs = (d?.reconcile || []).map((r, i) => ({ ...r, ...(recEdit[i] || {}) }))
+  const rec = recs.filter((_, i) => yes[`rec:${i}`] === true)
   const will = [
     up.length ? plural(up.length, 'Piece Pulled Up To The Mission', 'Pieces Pulled Up To The Mission') : null,
     chg.some(c => c.kind === 'polaris') ? 'The Polaris Changed' : null,
@@ -182,7 +192,20 @@ export default function GateDebrief({ item, tone = PURPLE, onClose, onDone, draf
           {(d?.reconcile || []).length > 0 && (
             <div className="gd-card full">
               <h3><span className="gd-n">5</span>Things To Reconcile</h3>
-              {d.reconcile.map((r, i) => <div key={i} className={`gd-r${yes[`rec:${i}`] === false ? ' off' : ''}`}><div>{r.what}{r.why && <small>{r.why}</small>}</div><YN on={yes[`rec:${i}`] ?? null} set={set(`rec:${i}`)} /></div>)}
+              {recs.map((r, i) => ed && ed.i === i ? (
+                <div key={i} className="gd-r gd-edit">
+                  <div>
+                    <input value={ed.what} onChange={e => setEd({ ...ed, what: e.target.value })} aria-label="Title" placeholder="Title" autoFocus onKeyDown={e => { if (e.key === 'Escape') { e.stopPropagation(); setEd(null) } }} />
+                    <textarea rows={2} value={ed.why} onChange={e => setEd({ ...ed, why: e.target.value })} aria-label="Description" placeholder="Description" onKeyDown={e => { if (e.key === 'Escape') { e.stopPropagation(); setEd(null) } }} />
+                  </div>
+                  <div className="gd-yn">
+                    <button type="button" className="gd-ic sm" style={{ '--c': 'rgba(243,241,234,.6)' }} title="Leave It" aria-label="Leave it as it was" onClick={() => setEd(null)}><X size={13} /></button>
+                    <button type="button" className="gd-ic sm" title="Keep These Words" aria-label="Keep these words" onClick={() => { const what = ed.what.replace(/\s+/g, ' ').trim(); if (what) setRecEdit(x => ({ ...x, [i]: { what: what.slice(0, 300), why: ed.why.trim().slice(0, 300) } })); setEd(null) }}><Check size={13} /></button>
+                  </div>
+                </div>
+              ) : (
+                <div key={i} className={`gd-r${yes[`rec:${i}`] === false ? ' off' : ''}`}><div>{r.what}{r.why && <small>{r.why}</small>}</div><span className="gd-yn"><button type="button" className="gd-ic sm" style={{ '--c': 'rgba(243,241,234,.6)' }} title="Change The Title Or Description" aria-label="Change the title or description" onClick={() => setEd({ i, what: r.what, why: r.why || '' })}><Pencil size={13} /></button><YN on={yes[`rec:${i}`] ?? null} set={set(`rec:${i}`)} /></span></div>
+              ))}
             </div>
           )}
 

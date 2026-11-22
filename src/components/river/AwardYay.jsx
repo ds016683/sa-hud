@@ -48,7 +48,9 @@ export const YAY_CSS = `
 .yay-river .nums { display: flex; justify-content: space-between; margin-top: 10px; font-size: 14px; color: rgba(243,241,234,.7); font-variant-numeric: tabular-nums; }
 .yay-river .nums b { color: #F3F1EA; font-weight: 600; }
 .yay-acts { display: inline-flex; align-items: center; gap: 12px; animation: yayup .6s ease 1.6s both; }
-.yay-acts .yay-go { animation: none; display: inline-flex; align-items: center; gap: 9px; max-width: min(520px, 70vw); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.yay-acts .yay-go { animation: none; display: inline-flex; align-items: center; gap: 9px; max-width: min(640px, 78vw); text-align: left; line-height: 1.35; border-radius: 26px; }
+.yay-acts .yay-go > svg { flex: none; }
+.yay-go-t { min-width: 0; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
 .yay-side { width: 44px; height: 44px; border-radius: 99px; border: 1.5px solid #B4A3E8; color: #B4A3E8; background: transparent; display: inline-grid; place-items: center; cursor: pointer; padding: 0; }
 .yay-side:hover { background: rgba(180,163,232,.18); }
 .yay-go { font: 600 15px var(--font-sans, 'Instrument Sans', sans-serif); color: #0D1D2C; background: ${BLUE}; border: 0; border-radius: 999px; padding: 12px 34px; cursor: pointer; box-shadow: 0 0 26px rgba(138,202,255,.3); animation: yayup .6s ease 1.6s both; }
@@ -93,7 +95,7 @@ export function AwardYay({ awards, done = [], banked, today, before, onContinue,
           <div className="nums"><span><b>{Math.round(banked).toLocaleString()}</b> Banked</span><span><b>{Math.round(today * 100) / 100}</b> Today</span><span><b>{Math.round(now.toNext).toLocaleString()}</b> To {now.next.short}</span></div>
         </div>}
         {children && <div className="yay-more">{children}</div>}
-        <div className="yay-acts"><button className="yay-go" autoFocus={keys} disabled={busy} onClick={onContinue}>{lead}{go}</button>{extra}</div>
+        <div className="yay-acts"><button className="yay-go" autoFocus={keys} disabled={busy} onClick={onContinue} title={typeof go === 'string' ? go : undefined}>{lead}<span className="yay-go-t">{go}</span></button>{extra}</div>
       </div>
     </div>
   )
