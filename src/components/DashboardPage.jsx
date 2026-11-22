@@ -6,12 +6,12 @@
 // tag; the tag's far end carries a light for the section's state and nothing written.
 import { sayLogged } from './river/LoggedPop'
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Play, Square, Video, Check, X as XIcon, Plus, Tag, ScrollText, Lightbulb } from 'lucide-react'
+import { Play, Square, Video, Check, X as XIcon, Plus, Tag, ScrollText, Lightbulb, Clock } from 'lucide-react'
 import { parkIdea } from '../lib/ideas'
 import { supabase } from '../lib/supabase'
 import { startMeetingTimer, stopMeetingTimer, matchNotes } from '../lib/meetings'
 import { loadSteps, ruleStep } from '../lib/trailsteps'
-import { loadCommitments, addCommitment, ruleCommitment } from '../lib/commitments'
+import { loadCommitments, addCommitment, ruleCommitment, ruleDecision } from '../lib/commitments'
 import { hudPrompt } from '../lib/dialog'
 import CatchTalk from './river/CatchTalk'
 import { useDayRecord } from './river/ActivityLog'
@@ -173,14 +173,22 @@ export default function DashboardPage({ onNavigate }) {
               {openCommits.map((c, i) => (
                 <Row key={c.id} first={i === 0} cols="minmax(0, 1fr) auto">
                   <div style={{ minWidth: 0, cursor: 'pointer' }} role="button" tabIndex={0} title="Reconcile It With Lumen" onClick={() => setTalk(c)} onKeyDown={e => { if (e.key === 'Enter') setTalk(c) }}>
-                    <div style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 16.5, lineHeight: 1.3, color: INK }}>{c.what}<span style={{ fontFamily: 'var(--font-sans)', fontSize: 13, color: c.by && c.by < day ? RED : BLUE, marginLeft: 10, whiteSpace: 'nowrap' }}>{byDay(c.by)}</span></div>
-                    <div style={{ fontSize: 14.5, lineHeight: 1.45, color: INK2, marginTop: 3 }}>{c.source === 'catch' ? [c.heard, c.where].filter(Boolean).join(' · ') : (c.heard || `You added this yourself, ${fmtTime(c.at)}`)}</div>
+                    <div style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 16.5, lineHeight: 1.3, color: INK }}>{c.kind === 'decision' && <span style={{ fontFamily: 'var(--font-sans)', fontSize: 12.5, fontWeight: 500, color: PURPLE, border: `1px solid ${PURPLE}66`, borderRadius: 99, padding: '1px 9px', marginRight: 9, verticalAlign: 2 }}>Decision</span>}{c.what}<span style={{ fontFamily: 'var(--font-sans)', fontSize: 13, color: c.by && c.by < day ? RED : BLUE, marginLeft: 10, whiteSpace: 'nowrap' }}>{byDay(c.by)}</span></div>
+                    <div style={{ fontSize: 14.5, lineHeight: 1.45, color: INK2, marginTop: 3 }}>{c.kind === 'decision' && c.recommend ? `Recommends: ${c.recommend}` : c.source === 'catch' ? [c.heard, c.where].filter(Boolean).join(' · ') : (c.heard || `You added this yourself, ${fmtTime(c.at)}`)}</div>
                   </div>
+                  {c.kind === 'decision' ? (
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <Round title="Yes" color={PURPLE} onClick={() => act(() => ruleDecision(c, 'yes'))}><Check size={16} /></Round>
+                    <Round title="Not Now" color="rgba(243,241,234,0.44)" onClick={() => act(() => ruleDecision(c, 'not_now'))}><Clock size={16} /></Round>
+                    <Round title="No" color="rgba(243,241,234,0.44)" onClick={async () => { const why = await hudPrompt({ title: 'Why Not?', placeholder: 'A few words; Lumen learns from it' }); if (why !== null) act(() => ruleDecision(c, 'no', why || null)) }}><XIcon size={16} /></Round>
+                  </div>
+                  ) : (
                   <div style={{ display: 'flex', gap: 8 }}>
                     <Round title="Done" color={PURPLE} onClick={() => act(() => ruleCommitment(c.id, 'done'))}><Check size={16} /></Round>
                     <Round title="Send To The Ideas Board" color={BLUE} onClick={() => act(() => parkIdea({ text: c.what, src: 'recon', where: c.where || 'Items', catchId: c.id }))}><Lightbulb size={16} /></Round>
                     <Round title="Close As Irrelevant" color="rgba(243,241,234,0.44)" onClick={async () => { const why = await hudPrompt({ title: 'Why Is It Irrelevant?', placeholder: 'A few words; Lumen learns from it' }); if (why !== null) act(() => ruleCommitment(c.id, 'dropped', why || null)) }}><XIcon size={16} /></Round>
                   </div>
+                  )}
                 </Row>
               ))}
             </section>

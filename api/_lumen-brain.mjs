@@ -2,7 +2,8 @@
 // Channel adapters (WhatsApp, SMS, voice, the pulse) call think() with the
 // inbound text and get the reply; they never talk to the model themselves.
 
-import { sb, sbWrite, identityDoc, chiToday, TOOLS, callTool } from './_ledger.mjs'
+import { sb, sbWrite, identityDoc, chiToday, TOOLS, callTool, ROUTE_SOURCE } from './_ledger.mjs'
+import { routeItem } from './_catch.mjs'
 import { stepsWaiting, CLEAR_AT } from './_trail.mjs'
 
 export const MODEL = () => process.env.LUMEN_MODEL || 'claude-opus-5-5'
@@ -48,6 +49,7 @@ function persona(doc, spoken, channel) {
 How to be:
 - Talk like a person he trusts, not an assistant. Short messages. This is ${channel}${spoken ? ', and he spoke this one aloud, so answer in two to four spoken sentences, no lists, no markdown' : ''}${channel === 'hud' ? '. He is inside the HUD right now (the bracketed prefix says where, for example a Morning Protocol step), clicking through things himself while you talk; answer in one to three plain sentences, act with your tools when he asks, and do not narrate what the HUD already shows him' : ''}. Never use em dashes. No bullet dumps unless he asks for a list.
 - Mail protocols (David 10/21): only David and Topher may talk to you by mail, ever; anyone else, Dacia included, is never answered, whether they write you, loop you on a thread, or forward a document. Two triggers in David's own words: "LUMEN" in all caps invites you into the thread, and your reply goes to David alone, never to the others on it. "@Lumen" directs you without joining the thread: you never answer there; your confirmation or question goes to David alone as a new note with what he sent quoted under it. The mail door enforces both; your job is the substance. A plain note to you with nobody else on it is answered in place.
+- The bucket (David 11/22): "if it's a push communication to lumen, everything needs to go in the bucket." ${channel === 'whatsapp' || channel === 'email' ? 'This turn came by push, so every Item in it (a task, a piece of information, an email fragment, a document, an ask) goes on the Reconcile list with route_item, besides anything else you do with it; routing decides nothing, David reconciles it later. ' : 'This is a live chat in the system: act on what he says here; route only what he asks you to park. '}When you need his call on something and he is not here live, route_item with kind decision, your recommendation first and what happens on yes.
 - Email: you also have your own address, lumen@thirdhorizon.com. Mail from David there is a turn like any other (channel email); answer in plain prose, a little fuller than a text, no markdown. send_email when he wants something in his inbox.
 - Truth over comfort. Say what the Ledger says. Never invent a meeting, a number, or a completion. If a tool errors, say so plainly.
 - His dispositions are law: when he says something is done, parked, or dropped, do it with the tools and confirm in one line. Nothing is created without him (David 11/9): no objective, task, gate, step, maintenance or project goes on his board unless he commissions that item himself in this turn, by name. Meeting notes, mail, a sweep or your own judgment produce recommendations in a message, never rows. If he says "add it" to a recommendation, add that one.
@@ -134,6 +136,8 @@ async function runNote() {
 
 // One turn: returns the reply text. Runs the tool loop against the Ledger.
 export async function think({ channel = 'whatsapp', text, spoken = false, frame = null }) {
+  const push = channel === 'whatsapp' || channel === 'email'
+  ROUTE_SOURCE.current = push ? channel : (channel === 'hud' ? 'lumen' : channel); ROUTE_SOURCE.where = push ? (channel === 'email' ? 'Sent To Lumen By Email' : 'Sent To Lumen On WhatsApp') : null; ROUTE_SOURCE.count = 0
   const [doc, ctx, constitution, rules, waiting, runNow] = await Promise.all([
     identityDoc('operating-context.md'), threadContext(),
     identityDoc('constitution.md').catch(() => ''),
@@ -264,6 +268,10 @@ export async function think({ channel = 'whatsapp', text, spoken = false, frame 
       .catch(e => console.error('lumen: trace failed', e.message))
   }
   foldMemory(ctx).catch(e => console.error('lumen: fold failed', e.message))
+  // Everything pushed goes in the bucket (11/22): if Lumen routed nothing from a push message, the message itself goes.
+  if (push && !ROUTE_SOURCE.count && String(text || '').trim().split(/\s+/).length >= 3) {
+    try { await routeItem({ what: String(text).replace(/\s+/g, ' ').trim().slice(0, 300), heard: 'The whole message; Lumen routed nothing from it', where: ROUTE_SOURCE.where, source: channel, quote: String(text).length > 300 ? String(text).slice(0, 1200) : null }) } catch { /* the reply still goes */ }
+  }
   return reply
 }
 

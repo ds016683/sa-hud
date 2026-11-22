@@ -5,10 +5,10 @@
 // about what to do with it"). The catch, where it came from, a box to talk it through, and what it can become. Nothing
 // is made until David presses one of the three: make it a Bounty, mark it done, or throw it out with a reason.
 import { useEffect, useState } from 'react'
-import { Check, X, Send, Target, Zap, Gem, MountainSnow, Lightbulb } from 'lucide-react'
+import { Check, X, Send, Target, Zap, Gem, MountainSnow, Lightbulb, Clock } from 'lucide-react'
 import { askLumen } from '../../lib/lumenPanel'
 import { addObjective } from '../../lib/objectives'
-import { ruleCommitment } from '../../lib/commitments'
+import { ruleCommitment, ruleDecision } from '../../lib/commitments'
 import { addImpromptu } from '../../lib/loadout'
 import { parkIdea } from '../../lib/ideas'
 import { loadMissions, sendToMission } from '../../lib/items'
@@ -36,6 +36,8 @@ const CSS = `
 .ct-as { display: inline-flex; border: 1px solid rgba(255,255,255,.14); border-radius: 10px; overflow: hidden; }
 .ct-as button { font: inherit; background: transparent; color: rgba(243,241,234,.7); border: 0; padding: 8px 14px; cursor: pointer; }
 .ct-as button.on { background: rgba(138,202,255,.16); color: #F3F1EA; }
+.ct-rec { margin-top: 14px; display: grid; gap: 8px; font: 400 15px/1.55 'Lora', Georgia, serif; }
+.ct-rec b { display: block; font: 500 12.5px/1.4 var(--font-sans, 'Instrument Sans', sans-serif); color: ${BLUE}; margin-bottom: 1px; }
 .ct-done { margin-top: 12px; font-size: 14px; color: #57BE97; }
 .ct-err { color: ${RED}; font-size: 13.5px; margin-right: auto; }
 `
@@ -71,6 +73,7 @@ export default function CatchTalk({ c, onClose, onRuled }) {
       <div className="ct" role="dialog" aria-modal="true" aria-label={`Item: ${c.what}`}>
         <h2>{c.what}</h2>
         <div className="ct-src">{[c.heard, c.where, c.by ? `Due ${dayOf(c.by)}` : null].filter(Boolean).join(' · ')}</div>
+        {c.kind === 'decision' && (c.recommend || c.on_yes) && <div className="ct-rec">{c.recommend && <div><b>Recommendation</b>{c.recommend}</div>}{c.on_yes && <div><b>On Yes</b>{c.on_yes}</div>}</div>}
         {c.quote && <div className="ct-q">{c.quote}</div>}
         {turns.map((t, i) => <div key={i} className={`ct-turn ${t.me ? 'me' : 'lu'}`}>{t.text}</div>)}
         <div className="ct-say">
@@ -84,6 +87,14 @@ export default function CatchTalk({ c, onClose, onRuled }) {
             <button type="button" className="ct-ic" style={{ '--c': PURPLE, marginLeft: 'auto' }} title="Send It" aria-label="Send it to that mission" onClick={send2} disabled={busy}><Check size={17} /></button>
           </div>
         )}
+        {c.kind === 'decision' ? (
+        <div className="ct-foot">
+          {err && err !== 'kept' && <span className="ct-err">{err}</span>}
+          <button type="button" className="ct-ic" style={{ '--c': 'rgba(243,241,234,.6)' }} title="Not Now" aria-label="Not now, park it" onClick={() => rule(() => ruleDecision(c, 'not_now'))} disabled={busy}><Clock size={17} /></button>
+          <button type="button" className="ct-ic" style={{ '--c': RED }} title="No" aria-label="No, close it with a reason" onClick={() => rule(async () => { const why = await hudPrompt({ title: 'Why Not?', placeholder: 'A few words; Lumen learns from it' }); if (why === null) throw new Error('kept'); await ruleDecision(c, 'no', why || null) }).catch(() => {})} disabled={busy}><X size={17} /></button>
+          <button type="button" className="ct-ic" style={{ '--c': PURPLE }} title="Yes" aria-label="Yes, make it" onClick={() => rule(() => ruleDecision(c, 'yes'))} disabled={busy}><Check size={17} /></button>
+        </div>
+        ) : (
         <div className="ct-foot">
           {err && err !== 'kept' && <span className="ct-err">{err}</span>}
           <button type="button" className="ct-ic" style={{ '--c': BLUE }} title="Equip As Ad Hoc" aria-label="Equip it as an Ad Hoc item" onClick={adhoc} disabled={busy}><Zap size={17} /></button>
@@ -94,6 +105,7 @@ export default function CatchTalk({ c, onClose, onRuled }) {
           <button type="button" className="ct-ic" style={{ '--c': PURPLE }} title="Done" aria-label="Done" onClick={() => rule(() => ruleCommitment(c.id, 'done'))} disabled={busy}><Check size={17} /></button>
           <button type="button" className="ct-ic" style={{ '--c': RED }} title="Close As Irrelevant" aria-label="Close it as irrelevant" onClick={drop} disabled={busy}><X size={17} /></button>
         </div>
+        )}
       </div>
     </div>
   )

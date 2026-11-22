@@ -20,6 +20,18 @@ async function write(doc) {
   if (error) throw new Error(error.message)
 }
 export async function loadCommitments() { return (await read()).items }
+// A decision ruled (David 11/22): yes makes it, X with a reason closes it, not now parks it. The ruling stays on the Item
+// so no session asks twice (sessions read it with ~/.claude/hud-board/item.py ruling <id>). On yes for one Lumen routed,
+// Lumen is handed it to carry out what he said would happen.
+export async function ruleDecision(c, ruling, why = null) {
+  const state = ruling === 'yes' ? 'ruled' : ruling === 'not_now' ? 'parked' : 'dropped'
+  await ruleCommitment(c.id, state, why, { ruling })
+  if (ruling === 'yes' && ['lumen', 'whatsapp', 'email'].includes(c.source)) {
+    const { askLumen } = await import('./lumenPanel')
+    return askLumen({ text: `I said yes to your decision: "${c.what}". ${c.recommend ? `You recommended: ${c.recommend}. ` : ''}${c.on_yes ? `You said on yes: ${c.on_yes}. ` : ''}Do it now, then tell me in one line what you did.`, where: 'Items' })
+  }
+  return null
+}
 // One he adds himself. by is a day (YYYY-MM-DD) or empty.
 export async function addCommitment({ what, by = null }) {
   const text = String(what || '').trim().slice(0, 300)

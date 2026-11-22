@@ -37,6 +37,8 @@ const TITLE_WORDS = 10
 const DETAILS_MARK = '[Details]'
 const splitNotes = (notes) => { const t = String(notes || ''); const i = t.indexOf(DETAILS_MARK); return i < 0 ? { doneWhen: t.trim(), details: '' } : { doneWhen: t.slice(0, i).trim(), details: t.slice(i + DETAILS_MARK.length).trim() } }
 const joinNotes = (doneWhen, details) => { const a = String(doneWhen || '').trim(), b = String(details || '').trim(); return (b ? `${a}${a ? '\n\n' : ''}${DETAILS_MARK}\n${b}` : a) || null }
+// Where route_item calls come from this turn (set by the brain per channel).
+export const ROUTE_SOURCE = { current: null, where: null, count: 0 }
 export const DAVID = '9d28e8cf-3e35-48d9-a029-1327bd37fdd4'
 
 function sbHeaders() {
@@ -693,6 +695,11 @@ export const TOOLS = [
     name: 'close_meeting',
     description: "Follow-ups become Side Missions only when David dictated those lines himself at the close (David 11/9); never add ones you inferred from the notes. Close out a calendar meeting: stops a running timer, attaches the Granola notes, records follow-ups (each becomes a Side Mission in Follow Up, due a week out) and special notes. Use when he gives you follow-ups or notes from a meeting, or asks to close one out.",
     inputSchema: { type: 'object', properties: { cancelled_by: { type: 'string', description: "'them' or 'me' when the meeting was canceled: them credits the meeting, me does not" }, reason: { type: 'string', description: 'why it was canceled' }, subject: { type: 'string' }, follow_ups: { type: 'array', items: { type: 'string' } }, special_notes: { type: 'string' }, day: { type: 'string' } }, required: ['subject'] },
+  },
+  {
+    name: 'route_item',
+    description: "Put an Item in David's bucket: the Reconcile list on the Board (David 11/22). An Item is anything: a task, a piece of information, an email fragment, a document, an ask. Routing decides nothing; David reconciles it later (equip it, make a gate or data on a mission, close it). Use it for every Item in a message that reached you by push (WhatsApp, email): everything that comes in that way goes in the bucket, besides anything else you do with it. In a live chat in the HUD, act on what he says and route only what he asks you to park. kind 'decision' when you need his call: recommend is your recommendation first, on_yes is what happens if he says yes. what is the Item in his words where he gave them.",
+    inputSchema: { type: 'object', properties: { what: { type: 'string' }, why: { type: 'string', description: 'a few words on what it is or why it is on the list' }, by: { type: 'string', description: 'YYYY-MM-DD if it has a date' }, kind: { type: 'string', enum: ['item', 'decision'] }, recommend: { type: 'string' }, on_yes: { type: 'string' }, quote: { type: 'string', description: 'the words it came from, verbatim, when short' } }, required: ['what'] },
   },
   {
     name: 'set_due',
@@ -1683,6 +1690,12 @@ export async function callTool(name, args = {}) {
         created.push(o?.[0]?.title || text)
       }
       return JSON.stringify({ ok: true, closed: ev.subject, day, hours, notes_attached: !!notes, follow_ups_on_board: created, follow_up_date: due })
+    }
+    case 'route_item': {
+      const { routeItem } = await import('./_catch.mjs')
+      const r = await routeItem({ what: args.what, heard: args.why || null, by: args.by || null, source: ROUTE_SOURCE.current || 'lumen', where: ROUTE_SOURCE.where || null, kind: args.kind === 'decision' ? 'decision' : null, recommend: args.recommend || null, on_yes: args.on_yes || null, quote: args.quote || null })
+      ROUTE_SOURCE.count = (ROUTE_SOURCE.count || 0) + 1
+      return JSON.stringify({ ok: true, routed: r.item.what, already_there: r.dup, kind: r.item.kind || 'item' })
     }
     case 'set_due': {
       const o = await findObjective(args.title)
