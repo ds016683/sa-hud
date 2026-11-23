@@ -178,7 +178,7 @@ export default function LumenPanel({ item, api = LEDGER }) {
     try { setHtml(await readBuildHtml(item.root, b.slug)) } catch (e) { setMsg(`Could not read the build: ${e.message}`) }
   }
   // The same door the Workbench gives a built page (useBuildState): what David enters in it is kept beside the page.
-  const buildFrame = useBuildState(item.root, sel, setMsg)
+  const buildFrame = useBuildState(item.root, (builds || []).find(b => b.slug === sel)?.state?.kept ? sel : null, setMsg)
   const downloadBuild = () => { if (!html || !sel) return; const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([html], { type: 'text/html' })); a.download = `${sel}.html`; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000) }
   const nCaps = wb?.captures?.length || 0, nBuilds = builds?.length || 0
 

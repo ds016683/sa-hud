@@ -4,8 +4,11 @@
 // was kept). Nothing here reaches the real Ledger. The stand-in answers the way the real storage does, a missing
 // file included: 400 with { statusCode: '404', message: 'Object not found' }.
 //
-// On the Workbench: Marks (a page that speaks the protocol), Plain (a page that never does, and counts anything
-// said to it), and any page dropped in dev/pages.local/<slug>.html (ignored by git; put a real built page there).
+// On the Workbench: Marks (a page that speaks the protocol, and whose meta says the HUD keeps its state), Marks Off
+// (the same page under a tab whose meta does not say so: the door stays shut and it is never answered), Plain (a page
+// that never speaks, and counts anything said to it), and any page dropped in dev/pages.local/<slug>.html (ignored by
+// git; put a real built page there; <slug>.meta.json beside it is laid over its meta, and <slug>.state.json is what
+// is kept for it, both optional).
 // Below it: a stranger, a second framed window that sends forged load and save messages for a tab's slug.
 //
 //   ?reset=1                 empty the bucket first
@@ -17,6 +20,9 @@
 // cannot reach into: it sets a field and fires its change the way a pick does, and reports the page's light). The
 // hand is one script the harness adds to each page it seeds; it is not part of the door and the door ignores it.
 // Its report also counts what the door has said to that page (door: { state, saved }).
+// __outside(slug, change, { event }) writes the kept state the way someone other than the page does (Lumen's
+// write_built_state): change is the new state, or a function from the kept state to the new one; with event true it
+// then says the Ledger changed, as the HUD does when Lumen answers.
 import { StrictMode, useEffect, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import { Trash2, UserX } from 'lucide-react'
@@ -90,7 +96,7 @@ const DRIVER = `<script>var __door = { state: 0, saved: 0 }; window.addEventList
     if (m.set) { var el = document.querySelectorAll(m.set.sel)[m.set.i || 0]; el.value = m.set.value; el.dispatchEvent(new Event(m.set.event || 'change', { bubbles: true })); out.set = el.value; }
     if (m.click) document.querySelector(m.click).click();
     if (m.post) parent.postMessage(m.post, '*');
-    if (m.read) out.read = [].slice.call(document.querySelectorAll(m.read), 0, m.max || 12).map(function (x) { return 'value' in x ? x.value : x.textContent; });
+    if (m.read) out.read = [].slice.call(document.querySelectorAll(m.read), 0, m.max || 12).map(function (x) { return /^(INPUT|SELECT|TEXTAREA)$/.test(x.tagName) ? x.value : x.textContent; });
     if (m.options) out.options = [].map.call(document.querySelector(m.options).options, function (o) { return o.value; });
     var light = document.getElementById('state'); out.light = light ? (light.hidden ? '(hidden)' : light.textContent) : null;
   } catch (err) { out.error = String(err); }
@@ -115,15 +121,35 @@ if (q.get('reset')) { try { localStorage.removeItem(KEEP) } catch { /* fine */ }
 try { for (const [path, o] of Object.entries(JSON.parse(localStorage.getItem(KEEP) || '{}'))) bucket.set(path, o) } catch { /* empty */ }
 const persist = () => { try { localStorage.setItem(KEEP, JSON.stringify(Object.fromEntries([...bucket].filter(([path]) => !path.endsWith('.html'))))) } catch { /* fine */ } }
 const put = (path, body, type) => { bucket.set(path, { body, type, at: new Date().toISOString() }); persist() }
-const seed = (slug, title, html, at) => {
+const seed = (slug, title, html, at, more = { state: { kept: true } }) => {
   bucket.set(`${ROOT}/build/${slug}.html`, { body: driven(html), type: 'text/html', at })
-  bucket.set(`${ROOT}/build/${slug}.json`, { body: JSON.stringify({ v: 1, kind: 'build', slug, title, note: '', bytes: html.length, version: 1, created_at: at, updated_at: at, updated_by: 'dev' }), type: 'application/json', at })
+  bucket.set(`${ROOT}/build/${slug}.json`, { body: JSON.stringify({ v: 1, kind: 'build', slug, title, note: '', bytes: html.length, version: 1, created_at: at, updated_at: at, updated_by: 'dev', ...more }), type: 'application/json', at })
 }
 seed('marks', 'Marks', MARKS, '2026-11-21T12:00:00.000Z')
-seed('plain', 'Plain', PLAIN, '2026-11-21T11:00:00.000Z')
-// A real built page, when one is in dev/pages.local (git ignores *.local): framed under its own slug.
+seed('marks-off', 'Marks Off', MARKS.replace("var SLUG = 'marks'", "var SLUG = 'marks-off'").replace('<h2>Marks</h2>', '<h2>Marks Off</h2>'), '2026-11-21T11:30:00.000Z', {})
+seed('plain', 'Plain', PLAIN, '2026-11-21T11:00:00.000Z', {})
+// A real built page, when one is in dev/pages.local (git ignores *.local): framed under its own slug. Its meta and
+// its kept state can sit beside it (<slug>.meta.json, <slug>.state.json); the state there replaces what this
+// origin kept for it, so the page opens on exactly that file.
 const local = import.meta.glob('./pages.local/*.html', { query: '?raw', import: 'default', eager: true })
-for (const [file, html] of Object.entries(local)) { const slug = file.split('/').pop().replace(/\.html$/, ''); seed(slug, (/<title>([^<]*)<\/title>/i.exec(html) || [])[1] || slug, html, '2026-11-21T13:00:00.000Z') }
+const localJson = import.meta.glob('./pages.local/*.json', { query: '?raw', import: 'default', eager: true })
+for (const [file, html] of Object.entries(local)) {
+  const slug = file.split('/').pop().replace(/\.html$/, '')
+  let more = { state: { kept: true } }
+  try { const m = localJson[`./pages.local/${slug}.meta.json`]; if (m) more = JSON.parse(m) } catch { /* the default meta */ }
+  seed(slug, more.title || (/<title>([^<]*)<\/title>/i.exec(html) || [])[1] || slug, html, '2026-11-21T13:00:00.000Z', more)
+  const kept = localJson[`./pages.local/${slug}.state.json`]
+  if (kept && !q.get('keep')) bucket.set(`${ROOT}/build/${slug}.state.json`, { body: kept, type: 'application/json', at: new Date().toISOString() })
+}
+window.__outside = (slug, change, { event = false } = {}) => {
+  const path = `${ROOT}/build/${slug}.state.json`
+  const cur = bucket.has(path) ? JSON.parse(bucket.get(path).body) : null
+  const next = typeof change === 'function' ? change(cur) : change
+  if (next == null) { bucket.delete(path); persist() } else put(path, JSON.stringify(next), 'application/json')
+  window.dispatchEvent(new Event('dev:storage'))
+  if (event) window.dispatchEvent(new CustomEvent('hud:ledger-changed', { detail: {} }))
+  return next
+}
 window.__bucket = () => Object.fromEntries([...bucket].map(([path, o]) => [path, o.body.length]))
 window.__read = (path) => bucket.get(path)?.body ?? null
 

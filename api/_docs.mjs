@@ -18,8 +18,18 @@ export async function extractText(bytes, filename = '', mime = '') {
   if (is('.xlsx') || is('.xls') || is('.csv') || mime.includes('spreadsheetml') || mime.includes('csv')) {
     const XLSX = (await import('xlsx')).default || await import('xlsx')
     const wb = XLSX.read(Buffer.from(bytes), { type: 'buffer' })
-    const parts = wb.SheetNames.map(s => `## ${s}\n${XLSX.utils.sheet_to_csv(wb.Sheets[s])}`)
-    return { kind: 'sheet', sheets: wb.SheetNames, text: parts.join('\n\n') }
+    // Each sheet as its own rows (11/22: Lumen could not reach the 2023 sheet of a workbook read as one text), so a
+    // reader can take one sheet, or the rows that match, and name a row by its number on the sheet. A row is its
+    // cells as the sheet shows them, comma separated, trailing empty cells dropped; rows[0] is sheet row `first_row`.
+    const cell = (v) => { const s = String(v ?? '').replace(/\r?\n/g, ' / '); return /[",]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s }
+    const parts = wb.SheetNames.map(name => {
+      const ws = wb.Sheets[name]
+      const first_row = ws && ws['!ref'] ? XLSX.utils.decode_range(ws['!ref']).s.r + 1 : 1
+      const rows = ws && ws['!ref'] ? XLSX.utils.sheet_to_json(ws, { header: 1, raw: false, defval: '', blankrows: true }).map(r => r.map(cell).join(',').replace(/,+$/, '')) : []
+      while (rows.length && !rows[rows.length - 1]) rows.pop()
+      return { name, first_row, rows }
+    })
+    return { kind: 'sheet', sheets: wb.SheetNames, parts, text: parts.map(p => `## ${p.name}\n${p.rows.join('\n')}`).join('\n\n') }
   }
   if (is('.pptx') || mime.includes('presentationml')) {
     const zip = await JSZip.loadAsync(bytes)

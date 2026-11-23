@@ -6,6 +6,7 @@
 
 import { graphToken, MAILBOX } from './_sync-core.mjs'
 import { waSendDocument, waSendAudio, waSendText, davidNumber } from './_wa.mjs'
+import { AsyncLocalStorage } from 'node:async_hooks'
 import { extractText, clip } from './_docs.mjs'
 import { logHours, setHours } from './time.mjs'
 import { sendMail } from './_mail.mjs'
@@ -39,6 +40,10 @@ const splitNotes = (notes) => { const t = String(notes || ''); const i = t.index
 const joinNotes = (doneWhen, details) => { const a = String(doneWhen || '').trim(), b = String(details || '').trim(); return (b ? `${a}${a ? '\n\n' : ''}${DETAILS_MARK}\n${b}` : a) || null }
 // Where route_item calls come from this turn (set by the brain per channel).
 export const ROUTE_SOURCE = { current: null, where: null, count: 0, files: null }
+// The turn a hand is called in (11/22): the brain runs each hand inside TURN.run({ text, channel }), so a hand that
+// must know what David said in this very message (write_built_state on a part he locked) reads it here. Empty when a
+// hand is called from anywhere else (the MCP door, a pulse), and such a caller is treated as David not having said it.
+export const TURN = new AsyncLocalStorage()
 export const DAVID = '9d28e8cf-3e35-48d9-a029-1327bd37fdd4'
 
 function sbHeaders() {
@@ -211,8 +216,8 @@ export async function vetOpenSteps(objectiveId, at = new Date().toISOString()) {
   await putStorage(path, JSON.stringify({ ...doc, steps: steps.map(x => (x.done || x.vetted) ? x : { ...x, vetted: true, at }) }), 'application/json')
   return open
 }
-async function listStorage(prefix, limit = 200) {
-  const res = await fetch(`${URL_BASE}/storage/v1/object/list/project-files`, { method: 'POST', headers: { ...sbHeaders(), 'Content-Type': 'application/json' }, body: JSON.stringify({ prefix, limit, sortBy: { column: 'updated_at', order: 'desc' } }) })
+async function listStorage(prefix, limit = 200, search = null) {
+  const res = await fetch(`${URL_BASE}/storage/v1/object/list/project-files`, { method: 'POST', headers: { ...sbHeaders(), 'Content-Type': 'application/json' }, body: JSON.stringify({ prefix, limit, sortBy: { column: 'updated_at', order: 'desc' }, ...(search ? { search } : {}) }) })
   if (!res.ok) return []
   return (await res.json()) || []
 }
@@ -229,6 +234,153 @@ const slugOf = (t) => String(t || 'page').toLowerCase().replace(/[^a-z0-9]+/g, '
 // not a tab, so every list of built tabs reads the folder through this.
 const builtSlugs = (rows) => rows.map(f => f.name).filter(n => n.endsWith('.json') && !n.endsWith('.state.json')).map(n => n.replace(/\.json$/, ''))
 const rootOf = (item) => item.kind === 'project' ? item.id : `objectives/${item.id}`
+
+// ---- Reading in parts (11/22) --------------------------------------------------------------------------------------
+// Every hand's answer reaches Lumen cut at 60,000 characters (api/_lumen-brain.mjs). On 11/22 that cut, and readers
+// that could hand back only the head of a thing, left him unable to find a line in a 460,000 character built tab or
+// to reach the 2023 sheet of a workbook (David: "something seems to still be insufficient with his base
+// functionality"). So a reader that may be long answers in parts. It takes find (the matches, each with the text
+// around it and where it sits) and offset (read on from there), it keeps its whole answer under ANSWER_MAX, and when
+// it leaves something out it says what was left out and what to pass to get it.
+export const ANSWER_MAX = 56000
+// A built tab's guide for Lumen (its meta's guide, written by the session that built it): this much of it is shown.
+const GUIDE_MAX = 2400
+const jlen = (v) => JSON.stringify(v).length
+const clampInt = (v, lo, hi) => Math.max(lo, Math.min(hi, Math.floor(Number(v) || 0)))
+const reEsc = (t) => String(t).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+// The longest run of text from `from` that fits in `room` once it rides inside a JSON answer (its escapes count).
+function fitLen(text, from, want, room) {
+  let len = Math.max(0, Math.min(Number(want) || 0, text.length - from))
+  for (let n = jlen(text.slice(from, from + len)); len > 0 && n > room; n = jlen(text.slice(from, from + len))) len = Math.floor(len * Math.min(0.98, room / n))
+  return len
+}
+// One answer from a long text: every place the words in find appear, each with the text around it, or the run that
+// starts at offset. `key` names the field the run goes in; `what` names the thing in the notes.
+function textPart(head, text, args, { key = 'text', what = 'it', hint = '' } = {}) {
+  const total = text.length
+  const room = ANSWER_MAX - jlen(head) - 700
+  if (args.find != null && String(args.find) !== '') {
+    const needle = String(args.find), from = clampInt(args.offset, 0, total), around = clampInt(args.around ?? 300, 0, 4000)
+    const re = new RegExp(reEsc(needle), 'gi'); re.lastIndex = from
+    const offs = []
+    for (let m; offs.length < 5000 && (m = re.exec(text));) { offs.push(m.index); if (m.index === re.lastIndex) re.lastIndex++ }
+    const pieces = []; let used = 0, covered = 0, end = -1
+    for (const o of offs) {
+      const a = Math.max(0, o - around), b = Math.min(total, o + needle.length + around)
+      if (pieces.length && a <= end) {   // it sits in or against the piece before: that piece grows
+        if (b > end) { const extra = text.slice(end, b), cost = jlen(extra); if (used + cost > room) break; pieces[pieces.length - 1].text += extra; used += cost; end = b }
+        pieces[pieces.length - 1].matches += 1; covered += 1; continue
+      }
+      const piece = text.slice(a, b), cost = jlen(piece) + 70
+      if (used + cost > room) break
+      pieces.push({ offset: o, starts_at: a, matches: 1, text: piece }); used += cost; end = b; covered += 1
+    }
+    if (!offs.length) return JSON.stringify({ ...head, chars: total, find: needle, matches: 0, how: `Nothing in ${what} carries those words${from ? ` from character ${from} on` : ''}. The search is for the exact words, in any case; try fewer words or another spelling.` })
+    const more = covered < offs.length
+    return JSON.stringify({ ...head, chars: total, find: needle, matches: offs.length, shown: covered, pieces, ...(more ? { truncated: true, next_offset: offs[covered], more: `${offs.length >= 5000 ? 'At least 5000' : offs.length} places carry those words${from ? ` from character ${from} on` : ''}; these are the first ${covered}. For the rest call again with the same find and offset ${offs[covered]}${around > 80 ? ', or ask for less text around each with around' : ''}.` } : {}), how: `Each piece is the text around a match: offset is where the match sits in ${what}, starts_at where the piece starts. To read more around one, pass offset (its starts_at) and length.` })
+  }
+  const from = clampInt(args.offset, 0, total)
+  const want = args.length != null ? clampInt(args.length, 1, Math.max(1, total)) : total
+  const len = fitLen(text, from, want, room), end = from + len
+  return JSON.stringify({ ...head, chars: total, offset: from, end, [key]: text.slice(from, end), ...(end < total ? { truncated: true, next_offset: end, more: `This is characters ${from} to ${end} of ${total}. Read on with offset ${end}, or search ${what} with find.${hint ? ` ${hint}` : ''}` } : {}) })
+}
+// A workbook in parts: one sheet by name, the rows that carry the words (with the sheet's header row and each row's
+// number on the sheet), or the text from offset. The answer always lists the sheets with their sizes.
+function sheetPart(head, doc, args, max) {
+  const list = doc.parts.map(p => ({ name: p.name, rows: p.rows.length, chars: p.rows.join('\n').length }))
+  let use = doc.parts
+  if (args.sheet != null && String(args.sheet).trim()) {
+    const want = norm(args.sheet)
+    const exact = doc.parts.filter(p => norm(p.name) === want), like = exact.length ? exact : doc.parts.filter(p => norm(p.name).includes(want))
+    if (like.length !== 1) return JSON.stringify({ ok: false, error: like.length ? `"${args.sheet}" matches more than one sheet of ${head.name}: ${like.map(p => p.name).join(' | ')}. Name one exactly.` : `no sheet "${args.sheet}" in ${head.name}`, sheets: list })
+    use = like
+  }
+  const one = use.length === 1 ? use[0] : null
+  head = { ...head, sheets: list, ...(one && args.sheet ? { sheet: one.name } : {}) }
+  if (args.find != null && String(args.find) !== '') {
+    const needle = String(args.find).toLowerCase(), skip = clampInt(args.offset, 0, 1e9), room = ANSWER_MAX - jlen(head) - 800
+    // The header is the fullest row near the top of the sheet: the column names, under any title lines.
+    const headerOf = (p) => { let best = -1, most = 1; p.rows.slice(0, 25).forEach((r, i) => { const n = r.split(',').filter(c => c.trim()).length; if (n > most) { most = n; best = i } }); return best }
+    const found = []; let total = 0, shown = 0, used = 0, full = false
+    for (const p of use) {
+      const h = headerOf(p); let g = null
+      p.rows.forEach((row, i) => {
+        if (!row.toLowerCase().includes(needle)) return
+        total += 1
+        if (total <= skip || full) return
+        const text = row.length > 2000 ? `${row.slice(0, 2000)} ...` : row
+        const cost = jlen(text) + 26 + (g ? 0 : jlen(p.name) + (h >= 0 ? jlen(p.rows[h].slice(0, 2000)) : 0) + 60)
+        if (used + cost > room) { full = true; return }
+        if (!g) { g = { sheet: p.name, ...(h >= 0 ? { header_row: p.first_row + h, header: p.rows[h].slice(0, 2000) } : {}), rows: [] }; found.push(g) }
+        g.rows.push({ row: p.first_row + i, text }); used += cost; shown += 1
+      })
+    }
+    if (!total) return JSON.stringify({ ...head, find: String(args.find), matches: 0, how: `No row of ${one && args.sheet ? `the sheet ${one.name}` : 'this workbook'} carries those words. The search is for the exact words, in any case, inside one row; try fewer words, or another sheet.` })
+    const more = skip + shown < total
+    return JSON.stringify({ ...head, find: String(args.find), matches: total, shown, found, ...(more ? { truncated: true, next_offset: skip + shown, more: `${total} rows carry those words; these are rows ${skip + 1} to ${skip + shown} of them. For the rest call again with the same find${args.sheet ? ' and sheet' : ''} and offset ${skip + shown}${args.sheet ? '' : ', or narrow it with sheet'}.` } : {}), how: 'Each row is the cells of one row, comma separated, under the header row of its sheet; row is its number on the sheet.' })
+  }
+  const text = one && args.sheet ? one.rows.join('\n') : doc.text
+  return textPart(head, text, { offset: args.offset, length: max }, { what: one && args.sheet ? `the sheet ${one.name}` : 'the workbook', hint: one && args.sheet ? 'Or find rows in it with find.' : 'Better: read one sheet with sheet (their names and sizes are in sheets), or find rows with find.' })
+}
+// A place in a JSON document: keys joined with / ("ovr/2023:45"), or a list of keys.
+const pathKeys = (p) => (Array.isArray(p) ? p.map(String) : String(p ?? '').split('/')).filter(k => k !== '')
+function walkTo(doc, keys) {
+  let at = doc
+  for (let i = 0; i < keys.length; i++) {
+    if (at == null || typeof at !== 'object' || !Object.prototype.hasOwnProperty.call(at, keys[i])) return { missing: true, at, upTo: keys.slice(0, i) }
+    at = at[keys[i]]
+  }
+  return { at }
+}
+const isMap = (v) => v != null && typeof v === 'object' && !Array.isArray(v)
+const kindOf = (v) => Array.isArray(v) ? `a list of ${v.length}` : isMap(v) ? `${Object.keys(v).length} keys` : v === null ? 'null' : typeof v
+// Set or remove one place in a JSON document, making the maps on the way. Returns what was there.
+function setAt(doc, keys, value, remove) {
+  if (!keys.length) throw new Error('a change names a place in the state (a path), not the whole state')
+  if (keys.some(k => ['__proto__', 'constructor', 'prototype'].includes(k))) throw new Error('that path cannot be written')
+  let at = doc
+  for (let i = 0; i < keys.length - 1; i++) {
+    const k = keys[i], here = keys.slice(0, i + 1).join('/')
+    if (!Object.prototype.hasOwnProperty.call(at, k) || at[k] == null) {
+      if (remove) return { had: false }
+      if (Array.isArray(at)) throw new Error(`nothing at ${here} yet; write the whole list one level up`)
+      at[k] = {}
+    } else if (typeof at[k] !== 'object') throw new Error(`${here} holds a value, not other entries; write ${here} itself`)
+    at = at[k]
+  }
+  const last = keys[keys.length - 1], where = keys.join('/')
+  if (Array.isArray(at)) {
+    if (!/^\d+$/.test(last) || Number(last) > at.length) throw new Error(`${keys.slice(0, -1).join('/')} is a list of ${at.length}; ${last} is not a place in it`)
+    const i = Number(last), had = i < at.length, was = had ? at[i] : undefined
+    if (remove) throw new Error(`${where} is one place in a list; set it to null, or write the whole list, rather than removing it`)
+    at[i] = value
+    return { had, was }
+  }
+  const had = Object.prototype.hasOwnProperty.call(at, last), was = had ? at[last] : undefined
+  if (remove) { if (had) delete at[last] } else at[last] = value
+  return { had, was }
+}
+// The locks on a built tab's kept state (its meta: state.locks, a list of { name, match, switch, locked }). match is
+// a pattern tested against the path being changed; switch is the place in the state where David's own lock for that
+// part lives (truthy locked, falsy unlocked), which wins over the lock's own default (locked unless it says false).
+// Unlocking a switch is itself a locked change. Returns the names of the locks a change runs into.
+function locksOn(meta, state, change) {
+  const locks = Array.isArray(meta?.state?.locks) ? meta.state.locks : []
+  const path = change.keys.join('/'), hit = []
+  for (const l of locks) {
+    if (!l || typeof l !== 'object') continue
+    const name = String(l.name || l.match || 'a locked part')
+    let re = null
+    if (l.match) { try { re = new RegExp(String(l.match)) } catch { throw new Error(`the lock "${name}" on this tab cannot be read, so nothing was changed`) } }
+    const sw = l.switch ? pathKeys(l.switch) : null
+    if (sw && path === sw.join('/')) { if (change.remove || !change.value) hit.push(name); continue }
+    if (!re || !re.test(path)) continue
+    let on = l.locked !== false
+    if (sw) { const w = walkTo(state, sw); if (!w.missing && w.at != null) on = !!w.at }
+    if (on) hit.push(name)
+  }
+  return hit
+}
 
 // The card's Workbook, reached from a Lumen panel outside the HUD (a deck or an app on David's machine, through its
 // local door). One op at a time, each a read, a change and a write here, so that panel and the HUD's own panel do
@@ -284,6 +436,18 @@ export async function cardFrame(item) {
   if (pages.length) lines.push(`Workbench tabs: ${pages.map(f => f.name.replace(/\.json$/, '')).join(', ')} (read one with read_workbench_tab; write with workbench_tab)`)
   const builds = builtSlugs(await listStorage(`${root}/build`))
   if (builds.length) lines.push(`Builds on the Build tab: ${builds.join(', ')} (rewrite one with build_page using the same slug)`)
+  // A built tab may carry a guide for Lumen (11/22): what it holds, where its lines are, how its kept state is shaped,
+  // how one mark is set. The session that built the tab writes it in the tab's meta; it is shown here, short.
+  if (builds.length) {
+    const metas = await Promise.all(builds.slice(0, 16).map(slug => getStorageJson(`${root}/build/${slug}.json`).catch(() => null)))
+    let room = 6000
+    metas.forEach((m, i) => {
+      const guide = String(m?.guide || '').trim()
+      if (!guide || room <= 0) return
+      const text = guide.slice(0, Math.min(GUIDE_MAX, room)); room -= text.length
+      lines.push(`Guide to the built tab "${m.title || builds[i]}" (slug ${builds[i]}${m?.state?.kept ? '; the HUD keeps its state, so write_built_state can change a mark on it' : '; the HUD does not keep its state, so write_built_state cannot change it'}), from the session that built it:\n${text}${guide.length > text.length ? ' ...' : ''}`)
+    })
+  }
   return lines.join('\n')
 }
 
@@ -646,8 +810,8 @@ export const TOOLS = [
   },
   {
     name: 'read_file',
-    description: "Read a document as text (PDF, Word, Excel, PowerPoint, text): a file on a card, a Live File, or one in the cabinet. Use it to answer questions about what a document says. A file is named by path (from search_files, list_folder, or a card file's path) or by name (part of the file name: the card first when side_mission or project is given, then Live Files, then the cabinet). Spaces, underscores and case do not matter. For how a Word file looks (its letterhead, logo, header and footer), look_at_file.",
-    inputSchema: { type: 'object', properties: { path: { type: 'string' }, name: { type: 'string' }, side_mission: { type: 'string', description: 'the card to look on first' }, project: { type: 'string' }, max_chars: { type: 'integer', description: 'default 24000' } }, required: [] },
+    description: "Read a document as text (PDF, Word, Excel, PowerPoint, text): a file on a card, a Live File, or one in the cabinet. Use it to answer questions about what a document says. A file is named by path (from search_files, list_folder, or a card file's path) or by name (part of the file name: the card first when side_mission or project is given, then Live Files, then the cabinet). Spaces, underscores and case do not matter. A long file comes in parts, and you can reach every part. A workbook answers with its sheets and their sizes: sheet reads one sheet by name, and find returns every row that carries the words (any sheet, or the one named), each with its row number under its sheet's header row, which is the way to pull the lines for one client, one year or one category. In any other file, find returns each place the words appear with the text around it. offset reads on from a character position. When an answer leaves something out it says so and says exactly what to pass to get it, so read on rather than saying you could not reach it. For how a Word file looks (its letterhead, logo, header and footer), look_at_file.",
+    inputSchema: { type: 'object', properties: { path: { type: 'string' }, name: { type: 'string' }, side_mission: { type: 'string', description: 'the card to look on first' }, project: { type: 'string' }, sheet: { type: 'string', description: 'a workbook: read only this sheet, by name' }, find: { type: 'string', description: 'exact words, any case. A workbook: the rows that carry them, with the header row. Any other file: each place they appear, with the text around it' }, offset: { type: 'integer', description: 'read on from this character position; with find, where to carry on from (the next_offset of the answer before)' }, around: { type: 'integer', description: 'with find in a document: characters of text kept on each side of a match, default 300' }, max_chars: { type: 'integer', description: 'how much text comes back, default 24000; an answer holds about 50000 at most' } }, required: [] },
   },
   {
     name: 'read_attachment',
@@ -926,17 +1090,22 @@ export const TOOLS = [
   {
     name: 'build_page',
     description: "Build something David can use right away on a card: a prototype, a mock-up, a small tool, a calculator, a one-page view, a form, a chart. html is ONE complete self-contained HTML document (inline CSS and JS, no external files except Google Fonts; fetch nothing). Wear the HUD's canon: navy ground #0F2334, ink #F3F1EA, Lora for headings, Instrument Sans for labels and chrome, the accent oklch(0.82 0.109 248), gold #F8C761 only for small wayfinding. It shows as a tab on the card's Workbench and on the Lumen panel's Build tab, and a Claude session can port it into a real app later, so keep it clean and commented. slug names it (reuse a slug to revise). title is what David sees; note is one line on what it does. Say it is on the Build tab when it lands.",
-    inputSchema: { type: 'object', properties: { project: { type: 'string' }, side_mission: { type: 'string' }, slug: { type: 'string' }, title: { type: 'string' }, html: { type: 'string' }, note: { type: 'string' } }, required: ['slug', 'title', 'html'] },
+    inputSchema: { type: 'object', properties: { project: { type: 'string' }, side_mission: { type: 'string' }, slug: { type: 'string' }, title: { type: 'string' }, html: { type: 'string' }, note: { type: 'string' }, guide: { type: 'string', description: 'optional, for your own later turns: what the page holds and where its lines are; shown in the card frame' } }, required: ['slug', 'title', 'html'] },
   },
   {
     name: 'read_built_page',
-    description: "Read the HTML of a built tab on a card's Workbench (a page made with build_page by you or by a Claude session), by project or side_mission and its slug or title. Use it before changing a built tab, and to answer what a built tab holds. Returns the page's title, note, version and its html.",
-    inputSchema: { type: 'object', properties: { project: { type: 'string' }, side_mission: { type: 'string' }, slug: { type: 'string' } }, required: ['slug'] },
+    description: "Read the HTML of a built tab on a card's Workbench (a page made with build_page by you or by a Claude session), by project or side_mission and its slug or title. Use it before changing a built tab, and to answer what a built tab holds. Returns the page's title, note, version, its guide when the session that built it left one, and its html. A long page comes in parts, and you can reach every part: find returns each place the words appear, with the text around it and its offset (around sets how much text, default 300 characters each side), which is how you land on one line of a big table by a name on it; offset and length read a run of the page from a character position. When an answer leaves something out it says what to pass to get the rest.",
+    inputSchema: { type: 'object', properties: { project: { type: 'string' }, side_mission: { type: 'string' }, slug: { type: 'string' }, find: { type: 'string', description: 'exact words, any case: each place they appear in the page, with the text around it' }, around: { type: 'integer', description: 'with find: characters kept on each side of a match, default 300, at most 4000' }, offset: { type: 'integer', description: 'read from this character position; with find, search from here on' }, length: { type: 'integer', description: 'how many characters to read from offset; an answer holds about 50000 at most' } }, required: ['slug'] },
   },
   {
     name: 'read_built_state',
-    description: "Read what David entered in a built tab on a card's Workbench: his marks, picks and typed values in a page that keeps its state (the Revenue Markup tab's overrides, for one), by project or side_mission and the tab's slug or title. It is the page's own JSON, whole, as it last saved it, with when. Read only: his entries are his, and nothing here changes them. Use it to answer what he marked, or to fold his marks into the work. stored false means the tab has kept nothing yet.",
-    inputSchema: { type: 'object', properties: { project: { type: 'string' }, side_mission: { type: 'string' }, slug: { type: 'string' } }, required: ['slug'] },
+    description: "Read what a built tab on a card's Workbench keeps: the marks, picks and typed values David entered in a page that keeps its state through the HUD, by project or side_mission and the tab's slug or title. It is the page's own JSON as it last saved it, with when. stored false means the tab has kept nothing yet; keeps_state false means the HUD does not keep this tab's state at all. The tab's guide in the card frame says how the state is shaped. path reads one part (keys joined with /, for example ovr/2023:45); find returns every entry whose place or value carries the words; a part too large to send whole comes as its entries in order from offset. Use it to answer what he marked, and before write_built_state so you know what is there.",
+    inputSchema: { type: 'object', properties: { project: { type: 'string' }, side_mission: { type: 'string' }, slug: { type: 'string' }, path: { type: 'string', description: 'one part of the state: its keys joined with /' }, find: { type: 'string', description: 'entries whose place or value carries these words' }, offset: { type: 'integer', description: 'entries to skip (the next_offset of the answer before)' } }, required: ['slug'] },
+  },
+  {
+    name: 'write_built_state',
+    description: "Change what a built tab keeps, so the table on the tab shows it: one change, or a few, merged into the tab's kept state. Use it when David asks you to set, change or clear a mark on a line of a built tab that keeps its state in the HUD (the card frame says which tabs do). Follow the tab's guide in the card frame for how its state is shaped and how one mark is set. First find the line with read_built_page (find, by a name on the line) and read what is kept for it with read_built_state, so you write the right place and the whole right value. changes is a list of { path, value } to set, or { path, remove: true } to take an entry out; path is the keys joined with / (for example ovr/2023:45). Only the places you name are touched. A part David locked is refused: it changes only when his own message in this same turn says to unlock it, and then you pass unlock true; never pass unlock on your own reading. The state before the change is kept, so tell him the change can be put back; undo true (with no changes) puts the last one back. After a change, read the place back with read_built_state and tell him what it was and what it is now. A tab that does not keep its state in the HUD is refused: say so plainly and hand the change to Claude Code.",
+    inputSchema: { type: 'object', properties: { project: { type: 'string' }, side_mission: { type: 'string' }, slug: { type: 'string' }, changes: { type: 'array', items: { type: 'object', properties: { path: { type: 'string', description: 'the place in the state: its keys joined with /' }, value: { description: 'what to put there (any JSON value)' }, remove: { type: 'boolean', description: 'take the entry out instead of setting it' } }, required: ['path'] } }, unlock: { type: 'boolean', description: 'only when David said to unlock in this same message' }, undo: { type: 'boolean', description: 'put back the state from before the last change' } }, required: ['slug'] },
   },
   {
     name: 'patch_built_page',
@@ -1416,7 +1585,9 @@ export async function callTool(name, args = {}) {
       const prior = await getStorageJson(`${pr.id}/build/${slug}.json`)
       const now = new Date().toISOString()
       await putStorage(`${pr.id}/build/${slug}.html`, html, 'text/html; charset=utf-8')
-      const meta = { v: 1, kind: 'build', slug, title: String(args.title || slug), note: String(args.note || prior?.note || ''), bytes: html.length, version: (prior?.version || 0) + 1, created_at: prior?.created_at || now, updated_at: now, updated_by: 'lumen' }
+      // A rewrite keeps what the page's meta carried for Lumen (its guide) and for its kept state (state).
+      const guide = String(args.guide || prior?.guide || '').trim()
+      const meta = { v: 1, kind: 'build', slug, title: String(args.title || slug), note: String(args.note || prior?.note || ''), bytes: html.length, version: (prior?.version || 0) + 1, created_at: prior?.created_at || now, updated_at: now, updated_by: 'lumen', ...(guide ? { guide } : {}), ...(prior?.state ? { state: prior.state } : {}) }
       await putStorage(`${pr.id}/build/${slug}.json`, JSON.stringify(meta), 'application/json')
       return JSON.stringify({ ok: true, on: pr.name, slug, title: meta.title, version: meta.version, note: `On the card's Workbench, as the tab named "${meta.title}", and on the Lumen panel's Build tab.` })
     }
@@ -1427,22 +1598,112 @@ export async function callTool(name, args = {}) {
       const slug = slugOf(args.slug)
       const [meta, html] = await Promise.all([getStorageJson(`${pr.id}/build/${slug}.json`), getStorageText(`${pr.id}/build/${slug}.html`)])
       if (html == null) { const have = builtSlugs(await listStorage(`${pr.id}/build`)); return JSON.stringify({ ok: false, error: `no built tab ${slug} on ${pr.name}`, built_tabs: have }) }
-      return JSON.stringify({ ok: true, on: pr.name, slug, title: meta?.title || slug, note: meta?.note || '', version: meta?.version || 1, updated_by: meta?.updated_by || null, bytes: html.length, html: html.slice(0, 120000), truncated: html.length > 120000 })
+      // In parts (11/22): the whole answer stays under the cut, find lands on a line anywhere in the page, offset reads on.
+      const head = { ok: true, on: pr.name, slug, title: meta?.title || slug, note: meta?.note || '', version: meta?.version || 1, updated_by: meta?.updated_by || null, bytes: html.length, ...(meta?.state?.kept ? { keeps_state: true } : {}) }
+      // The guide rides on the first look only (no find, no offset), so a search keeps its room for what it found.
+      const first = (args.find == null || String(args.find) === '') && args.offset == null
+      return textPart(first && meta?.guide ? { ...head, guide: String(meta.guide).slice(0, GUIDE_MAX) } : head, html, args, { key: 'html', what: 'the page' })
     }
-    // What David entered in a built tab (11/21). The page keeps it through its frame in the HUD (useBuildState), whole,
-    // at <root>/build/<slug>.state.json. Read only: no tool writes a state.
+    // What a built tab keeps (11/21): what David entered in it, kept through its frame in the HUD (useBuildState) at
+    // <root>/build/<slug>.state.json. Read whole when it fits; otherwise one part by path, the entries that carry
+    // the words in find, or the entries from offset (11/22).
     case 'read_built_state': {
       const pr = await resolveRoot(args)
       const slug = slugOf(args.slug)
       const rows = await listStorage(`${pr.id}/build`)
       if (!rows.some(f => f.name === `${slug}.html`)) return JSON.stringify({ ok: false, error: `no built tab ${slug} on ${pr.name}`, built_tabs: builtSlugs(rows) })
-      const text = await getStorageText(`${pr.id}/build/${slug}.state.json`)
-      if (text == null) return JSON.stringify({ ok: true, on: pr.name, slug, stored: false, state: null, note: 'This tab has kept nothing yet: either he has entered nothing in it, or the page does not keep its state.' })
+      const [text, meta] = await Promise.all([getStorageText(`${pr.id}/build/${slug}.state.json`), getStorageJson(`${pr.id}/build/${slug}.json`)])
+      const kept = !!meta?.state?.kept
+      if (text == null) return JSON.stringify({ ok: true, on: pr.name, slug, stored: false, keeps_state: kept, state: null, note: kept ? 'This tab keeps its state in the HUD and has kept nothing yet: every mark on it is still the one it was built with.' : 'This tab keeps nothing in the HUD: either the page does not keep its state, or it keeps it somewhere else (its guide says where).' })
       const saved_at = rows.find(f => f.name === `${slug}.state.json`)?.updated_at || null
-      // Past this size the JSON goes back as text, cut, so one read cannot flood the thread.
-      if (text.length > 400000) return JSON.stringify({ ok: true, on: pr.name, slug, stored: true, saved_at, bytes: text.length, truncated: true, state_json: text.slice(0, 400000) })
       let state; try { state = JSON.parse(text) } catch { return JSON.stringify({ ok: false, error: `the state kept for ${slug} is not JSON`, bytes: text.length }) }
-      return JSON.stringify({ ok: true, on: pr.name, slug, stored: true, saved_at, bytes: text.length, state })
+      const keys = pathKeys(args.path), w = walkTo(state, keys)
+      const head = { ok: true, on: pr.name, slug, stored: true, keeps_state: kept, saved_at, bytes: text.length, ...(keys.length ? { path: keys.join('/') } : {}) }
+      // Nothing kept at that place is an answer, not a failure: the tab still shows what it was built with there.
+      if (w.missing) return JSON.stringify({ ...head, kept_there: false, value: null, note: `Nothing is kept at ${keys.join('/')}: that place still stands as the tab was built.`, ...(isMap(w.at) ? { under: w.upTo.join('/') || '(the top)', keys_there: Object.keys(w.at).slice(0, 60) } : {}) })
+      const at = w.at, room = ANSWER_MAX - jlen(head) - 700
+      if (args.find != null && String(args.find) !== '') {
+        // Every entry under here whose place or value carries the words. An entry is a value or a list; maps are walked.
+        const needle = String(args.find).toLowerCase(), skip = clampInt(args.offset, 0, 1e9)
+        const found = []; let total = 0, used = 0, full = false
+        const visit = (v, path) => {
+          if (isMap(v)) { for (const [k, x] of Object.entries(v)) visit(x, [...path, k]); return }
+          const where = path.join('/')
+          if (!where.toLowerCase().includes(needle) && !JSON.stringify(v ?? null).toLowerCase().includes(needle)) return
+          total += 1
+          if (total <= skip || full) return
+          const cost = jlen(where) + jlen(v ?? null) + 24
+          if (used + cost > room) { full = true; return }
+          found.push({ path: where, value: v }); used += cost
+        }
+        visit(at, keys)
+        const more = skip + found.length < total
+        return JSON.stringify({ ...head, find: String(args.find), matches: total, shown: found.length, found, ...(more ? { truncated: true, next_offset: skip + found.length, more: `${total} entries carry those words; these are ${skip + 1} to ${skip + found.length}. For the rest call again with the same find and offset ${skip + found.length}.` } : {}), ...(total ? {} : { note: 'No entry here carries those words, in its place or its value.' }) })
+      }
+      if (jlen(at) <= room) return JSON.stringify({ ...head, [keys.length ? 'value' : 'state']: at })
+      if (!isMap(at)) return textPart(head, JSON.stringify(at), args, { key: 'json', what: 'this part of the state' })
+      // Too large to send whole: its entries in order from offset, as many as fit; one too large to ride along is named with its size.
+      const names = Object.keys(at), from = clampInt(args.offset, 0, names.length), entries = {}, large = {}
+      let used = 0, i = from
+      for (; i < names.length; i++) {
+        const k = names[i], v = at[k], size = jlen(v ?? null)
+        if (size > room / 2 && typeof v === 'object' && v) { const c = jlen(k) + 80; if (used + c > room) break; large[k] = `${kindOf(v)}, ${size} characters: read it with path ${[...keys, k].join('/')}`; used += c; continue }
+        const c = jlen(k) + size + 4
+        if (used + c > room) break
+        entries[k] = v; used += c
+      }
+      return JSON.stringify({ ...head, keys: names.length, offset: from, entries, ...(Object.keys(large).length ? { too_large_to_ride: large } : {}), ...(i < names.length ? { truncated: true, next_offset: i, more: `This part of the state has ${names.length} entries; these are ${from + 1} to ${i}. Read on with offset ${i}, read one with path, or search with find.` } : {}) })
+    }
+    // Change what a built tab keeps (11/22; David: "i need him to be able to push a few changes to the table"). One
+    // change or a few, merged into the tab's kept state: only the places named are touched, the state before is kept
+    // beside the removed versions so it can be put back, and a part David locked is refused unless his own message in
+    // this turn says to unlock. Only a tab whose meta says the HUD keeps its state (state.kept) can be changed here.
+    case 'write_built_state': {
+      const pr = await resolveRoot(args)
+      const slug = slugOf(args.slug)
+      const rows = await listStorage(`${pr.id}/build`)
+      if (!rows.some(f => f.name === `${slug}.html`)) return JSON.stringify({ ok: false, error: `no built tab ${slug} on ${pr.name}`, built_tabs: builtSlugs(rows) })
+      const meta = await getStorageJson(`${pr.id}/build/${slug}.json`)
+      if (!meta?.state?.kept) return JSON.stringify({ ok: false, refused: 'not kept here', note: `The tab ${meta?.title || slug} does not keep its state in the HUD, so there is nothing here to change and nothing was changed. If its marks are kept somewhere else, its guide says where. Tell David plainly, and hand the change to Claude Code if he wants it made.` })
+      const file = `${pr.id}/build/${slug}.state.json`
+      const text = await getStorageText(file)
+      const stamp = new Date().toISOString().replace(/[:.]/g, '-')
+      const keep = async () => { const name = `${slug}.state.${stamp}.json`; await putStorage(`${pr.id}/build-removed/${name}`, text == null ? 'null' : text, 'application/json'); return name }
+      if (args.undo) {
+        const kept = (await listStorage(`${pr.id}/build-removed`, 200, `${slug}.state.`)).map(f => f.name).filter(n => n.startsWith(`${slug}.state.`) && n.endsWith('.json')).sort().reverse()
+        if (!kept.length) return JSON.stringify({ ok: false, error: `no earlier state is kept for ${slug}, so there is nothing to put back` })
+        const prior = await getStorageText(`${pr.id}/build-removed/${kept[0]}`)
+        if (prior == null) throw new Error(`the kept state ${kept[0]} could not be read; nothing was changed`)
+        const mine = await keep()
+        if (prior.trim() === 'null') { if (text != null && !(await delStorage(file))) throw new Error('the state could not be cleared; nothing was put back') }
+        else await putStorage(file, prior, 'application/json')
+        return JSON.stringify({ ok: true, on: pr.name, slug, put_back: kept[0], kept_as: mine, note: 'The state from before the last change is back. What was there a moment ago is kept too, so undo once more brings it back. The tab shows it when it refreshes, which it does on its own after your reply.' })
+      }
+      let state
+      if (text == null) state = isMap(meta.state.empty) ? JSON.parse(JSON.stringify(meta.state.empty)) : {}
+      else { try { state = JSON.parse(text) } catch { return JSON.stringify({ ok: false, error: `the state kept for ${slug} is not JSON, so it was left alone`, bytes: text.length }) } }
+      if (!isMap(state)) return JSON.stringify({ ok: false, error: `the state kept for ${slug} is not a set of named parts, so one change cannot be merged into it` })
+      const list = (Array.isArray(args.changes) ? args.changes : []).filter(c => c && typeof c === 'object')
+      if (!list.length) throw new Error('changes (a list of { path, value } or { path, remove: true }) required')
+      if (list.length > 60) throw new Error('at most 60 changes in one call')
+      const changes = list.map(c => ({ keys: pathKeys(c.path), remove: c.remove === true, value: c.value === undefined ? null : c.value }))
+      // Locks first, on the state as it stands: nothing is written if any change runs into one David has not opened.
+      const locked = [...new Set(changes.flatMap(c => locksOn(meta, state, c)))]
+      if (locked.length) {
+        const turn = TURN.getStore()
+        const said = turn && !/\(A card event, not a message David typed\.\)/.test(String(turn.text || '')) && /\bunlock/i.test(String(turn.text || ''))
+        if (!(args.unlock === true && said)) return JSON.stringify({ ok: false, refused: 'locked', locked, saved: false, note: `Locked by David: ${locked.join(', ')}. Nothing was changed. A locked part changes only when his own message in this same turn says to unlock it${args.unlock === true ? (turn ? '; unlock was passed, but his message this turn does not say to unlock' : '; unlock was passed, but this call did not come from a live chat with David, where his own words can be read') : ''}. Tell him it is locked and ask whether to unlock it for this change; when he says so, call again with unlock true. The lock itself stays as he set it.` })
+      }
+      const changed = []
+      for (const c of changes) {
+        const r = setAt(state, c.keys, c.value, c.remove)
+        changed.push({ path: c.keys.join('/'), was: r.had ? r.was : '(nothing)', now: c.remove ? '(removed)' : c.value })
+      }
+      const next = JSON.stringify(state)
+      if (next.length > 1000000) return JSON.stringify({ ok: false, error: 'the state would pass the 1 MB a tab may keep; nothing was changed' })
+      const kept_as = await keep()
+      await putStorage(file, next, 'application/json')
+      return JSON.stringify({ ok: true, on: pr.name, slug, changed, kept_as, ...(locked.length ? { unlocked_for_this_change: locked } : {}), note: `Saved in the kept state of ${meta.title || slug}; nothing else in it was touched${locked.length ? ', and the lock stays as David set it' : ''}. The state before this change is kept, so it can be put back: tell David that (write_built_state with undo true does it). The tab shows the change when it refreshes, which it does on its own after your reply.` })
     }
     case 'patch_built_page': {
       const pr = await resolveRoot(args)
@@ -1575,7 +1836,18 @@ export async function callTool(name, args = {}) {
       try { f = await resolveFile(args) } catch (e) { return JSON.stringify({ ok: false, error: e.message }) }
       const path = f.path
       const doc = await extractText(new Uint8Array(f.bytes), f.name, f.mime || '')
-      return JSON.stringify({ ok: true, name: f.name, path, kind: doc.kind, pages: doc.pages, sheets: doc.sheets, slides: doc.slides, note: doc.note, text: clip(doc.text, Number(args.max_chars) || 24000) })
+      // In parts (11/22): a workbook by sheet or by matching rows, any file by find or from offset; nothing is cut in silence.
+      const head = { ok: true, name: f.name, path, kind: doc.kind, pages: doc.pages, slides: doc.slides, note: doc.note }
+      const max = clampInt(Number(args.max_chars) || 24000, 200, 400000)
+      if (doc.kind === 'sheet') return sheetPart(head, doc, args, max)
+      const text = String(doc.text || ''), total = text.length
+      if ((args.find != null && String(args.find) !== '') || args.offset != null) return textPart(head, text, { find: args.find, offset: args.offset, around: args.around, length: max }, { what: 'the file' })
+      if (total <= max) return textPart(head, text, { length: total }, { what: 'the file' })
+      // Longer than asked for: the head and the tail, as before, and now it says what was left out and how to read it.
+      const room = ANSWER_MAX - jlen(head) - 900
+      let h = Math.floor(max * 0.7), t = Math.floor(max * 0.3)
+      for (let n = jlen(text.slice(0, h)) + jlen(text.slice(total - t)); n > room; n = jlen(text.slice(0, h)) + jlen(text.slice(total - t))) { const k = Math.min(0.98, room / n); h = Math.floor(h * k); t = Math.floor(t * k) }
+      return JSON.stringify({ ...head, chars: total, text: `${text.slice(0, h)}\n\n[... characters ${h} to ${total - t} are left out ...]\n\n${text.slice(total - t)}`, truncated: true, left_out: { from: h, to: total - t }, more: `This file is ${total} characters; you have the first ${h} and the last ${t}. Read what was left out with offset ${h} (max_chars sets how much comes back), or search the file with find.` })
     }
     case 'read_attachment': {
       const token = await graphToken()

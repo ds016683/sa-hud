@@ -16,6 +16,7 @@
 // rendered through srcDoc the way the Lumen panel's Build tab renders it.
 // A built page keeps what David enters in it through its frame (useBuildState,
 // 11/21): the page asks, the frame reads and writes <root>/build/<slug>.state.json.
+// The door is on only for a tab whose meta carries state.kept (11/22).
 import { useEffect, useState } from 'react'
 import { Plus, RefreshCw, ExternalLink, Maximize2, Minimize2 } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
@@ -154,7 +155,8 @@ export default function WorkbenchSheet({ root, scopes = [], project = null }) {
     return () => { on = false }
   }, [currentBuild, root, nonce])
   // The built page's door to its kept state: only the frame under this tab is heard, and only for this tab's slug.
-  const buildFrame = useBuildState(root, currentBuild, setMsg)
+  // On only when the tab's meta says the HUD keeps its state (state.kept); any other tab is framed as before.
+  const buildFrame = useBuildState(root, current?.kind === 'build' && current.build.state?.kept ? currentBuild : null, setMsg)
 
   const add = async () => {
     const n = (pages || []).length + 1
