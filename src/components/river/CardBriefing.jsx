@@ -121,6 +121,7 @@ export default function CardBriefing({ tone = null, obj, root, kindLabel, steps 
   // Open a gate (David 11/19): its words, or the gate button beside them, open the gate's own page (river/GatePage.jsx).
   // The circle is the only thing on the trail that closes it.
   const [gateId, setGateId] = useState(null)
+  const [madeGate, setMadeGate] = useState(null)       // the gate just set on the trail, until the card's list carries it
   const [justClosed, setJustClosed] = useState([])     // closed in this sitting: they stay on the path, struck, with Reopen
   const [fresh, setFresh] = useState(null)             // the stop that just became the next move
   const [draft, setDraft] = useState('')
@@ -255,7 +256,7 @@ export default function CardBriefing({ tone = null, obj, root, kindLabel, steps 
         }
         await onReload()
         // a gate set on the trail opens on its own page (David 11/23: "not opening a new gate after i create one")
-        if (row?.id != null) setGateId(row.id)
+        if (row?.id != null) { setMadeGate(row); setGateId(row.id) }
       }
     } catch (err) { say(`Could not add it: ${err.message}`) } finally { setBusy(false) }
   }
@@ -375,7 +376,7 @@ export default function CardBriefing({ tone = null, obj, root, kindLabel, steps 
     </div>
     {/* What is in the air: the same icon, following the pointer. */}
     <DragOverlay dropAnimation={null}>{drag ? <div className="brf-tray"><span className={`pick ${drag} held`}><i className="m" />{drag === 'gate' ? 'Gate' : 'Step'}</span></div> : null}</DragOverlay>
-    {(() => { const g = gateId != null ? steps.find(x => x.id === gateId) : null; return g ? (
+    {(() => { const g = gateId != null ? (steps.find(x => x.id === gateId) || (madeGate?.id === gateId ? madeGate : null)) : null; return g ? (
       <GatePage benchRoot={g.objective_id ? `objectives/${g.objective_id}` : null} tone={tone} filesFor={kindLabel !== 'Main Mission' ? obj.id : null} gate={g} gates={steps} root={root} missionTitle={obj.title || mission?.name || kindLabel} source={side.sources[String(g.id)] || null}
         onClose={() => setGateId(null)} onPick={(x) => setGateId(x.id)} onRename={rename} onExtract={finishGate}
         onLoad={kindLabel !== 'Main Mission' ? loadMission : null} />
