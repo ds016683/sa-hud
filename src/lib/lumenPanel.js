@@ -41,6 +41,13 @@ export async function listBuilds(root) {
   return metas.sort((a, b) => String(b.updated_at || '').localeCompare(String(a.updated_at || '')))
 }
 export const buildUrl = (root, slug) => signed(`${root}/build/${slug}.html`, 600)
+// Storage serves a stored .html as plain text (David 11/22: "the open button is doing something weird", the tab opened as
+// source). Open a built page from its HTML instead, as a text/html blob in a new tab, so it renders the way the tab shows it.
+export function openHtml(html) {
+  const url = URL.createObjectURL(new Blob([html || ''], { type: 'text/html' }))
+  window.open(url, '_blank', 'noopener')
+  setTimeout(() => URL.revokeObjectURL(url), 60000)
+}
 export async function readBuildHtml(root, slug) {
   const url = await signed(`${root}/build/${slug}.html`, 60)
   const res = await fetch(`${url}&cb=${Date.now()}`, { cache: 'no-store' })

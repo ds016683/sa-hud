@@ -23,7 +23,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Sparkles, X as XIcon, BookOpen, Hammer, ExternalLink, Download, Trash2, FileText, Printer, Plus, Wrench, Check } from 'lucide-react'
 import { INK, INK2, GRAY, PANEL_BORDER, GOLD, GOLD_BRIGHT, BLUE, RED, SERIF, LABEL, SUCCESS, alpha } from './canon'
-import { readWorkbook, writeWorkbook, listBuilds, buildUrl, readBuildHtml, removeBuild, loadThread, askLumen, fireLedgerChanged, handToClaudeCode, listHandoffs } from '../../lib/lumenPanel'
+import { readWorkbook, writeWorkbook, listBuilds, openHtml, readBuildHtml, removeBuild, loadThread, askLumen, fireLedgerChanged, handToClaudeCode, listHandoffs } from '../../lib/lumenPanel'
 import { hudConfirm } from '../../lib/dialog'
 import { CARD_EVENT } from '../../lib/path'
 
@@ -295,7 +295,7 @@ export default function LumenPanel({ item, api = LEDGER }) {
             {sel && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8, flex: 1, minHeight: 320 }}>
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                  <button onClick={async () => window.open(await buildUrl(item.root, sel), '_blank', 'noopener')} style={btn(INK2)}><ExternalLink size={11} /> Open</button>
+                  <button onClick={() => openHtml(html)} disabled={!html} style={btn(INK2)}><ExternalLink size={11} /> Open</button>
                   <button onClick={downloadBuild} disabled={!html} style={btn(INK2)}><Download size={11} /> Download</button>
                   <button onClick={async () => { if (await hudConfirm(`Delete the build "${sel}"?`)) { await removeBuild(item.root, sel); setSel(null); setHtml(null); setBuilds(await api.listBuilds(item.root)) } }} style={btn(INK2)}><Trash2 size={11} /> Delete</button>
                 </div>

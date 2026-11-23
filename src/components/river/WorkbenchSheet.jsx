@@ -19,7 +19,7 @@ import { Plus, RefreshCw, ExternalLink, Maximize2, Minimize2 } from 'lucide-reac
 import { supabase } from '../../lib/supabase'
 import { listPages, readPage, writePage, blankPage, slugify, readOrder, writeOrder } from '../../lib/workspace'
 import { PROTOCOLS, protocolOf, isOpenRow } from '../../lib/protocols'
-import { LEDGER_EVENT, listBuilds, readBuildHtml, buildUrl } from '../../lib/lumenPanel'
+import { LEDGER_EVENT, listBuilds, readBuildHtml, openHtml } from '../../lib/lumenPanel'
 import { Page } from './Workspace'
 import ProtocolsTab from './Protocols'
 import PlanningCanvas from './PlanningCanvas'
@@ -202,7 +202,7 @@ export default function WorkbenchSheet({ root, scopes = [], project = null }) {
             <span style={mono}>Created {fmt(current.build.created_at)} · Updated {fmt(current.build.updated_at)}</span>
             {current.build.note && <span style={{ fontSize: 12.5, color: INK2, flex: 1, minWidth: 200 }}>{current.build.note}</span>}
             <button onClick={() => setNonce(n => n + 1)} title="Reread the page" style={smallBtn}><RefreshCw size={11} /> Refresh</button>
-            <button onClick={async () => window.open(await buildUrl(root, current.build.slug), '_blank', 'noopener')} title="Open in a new tab" style={smallBtn}><ExternalLink size={11} /> Open</button>
+            <button onClick={() => openHtml(renumber(html, tabs.findIndex(t => t.id === current.id) + 1))} disabled={!html} title="Open in a new tab" style={smallBtn}><ExternalLink size={11} /> Open</button>
           </div>
           {html === null
             ? <div style={mono}>Opening the page</div>
