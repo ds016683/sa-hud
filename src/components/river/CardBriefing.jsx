@@ -254,6 +254,8 @@ export default function CardBriefing({ tone = null, obj, root, kindLabel, steps 
           if (ahead) { const ids = steps.map(x => x.id); ids.splice(ids.indexOf(ahead.step.id), 0, row.id); await api.setStepOrder(ids) }
         }
         await onReload()
+        // a gate set on the trail opens on its own page (David 11/23: "not opening a new gate after i create one")
+        if (row?.id != null) setGateId(row.id)
       }
     } catch (err) { say(`Could not add it: ${err.message}`) } finally { setBusy(false) }
   }
