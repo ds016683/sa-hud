@@ -20,6 +20,7 @@ import { supabase } from '../../lib/supabase'
 import { listPages, readPage, writePage, blankPage, slugify, readOrder, writeOrder } from '../../lib/workspace'
 import { PROTOCOLS, protocolOf, isOpenRow } from '../../lib/protocols'
 import { LEDGER_EVENT, listBuilds, readBuildHtml, openHtml } from '../../lib/lumenPanel'
+import { withPresence } from '../../lib/presence'
 import { Page } from './Workspace'
 import ProtocolsTab from './Protocols'
 import PlanningCanvas from './PlanningCanvas'
@@ -208,7 +209,7 @@ export default function WorkbenchSheet({ root, scopes = [], project = null }) {
             ? <div style={mono}>Opening the page</div>
             : html === ''
               ? <div style={{ fontSize: 13, color: GRAY }}>Could not read this page. Open it in a new tab.</div>
-              : <iframe key={`${current.build.slug}:${nonce}`} title={current.label} srcDoc={renumber(html, tabs.findIndex(t => t.id === current.id) + 1)} sandbox="allow-scripts allow-popups allow-forms allow-modals" style={{ display: 'block', width: '100%', height: 'min(1100px, 78vh)', minHeight: 520, border: `1px solid ${PANEL_BORDER}`, borderRadius: 10, background: '#0F2334' }} />}
+              : <iframe key={`${current.build.slug}:${nonce}`} title={current.label} srcDoc={withPresence(renumber(html, tabs.findIndex(t => t.id === current.id) + 1))} sandbox="allow-scripts allow-popups allow-forms allow-modals" style={{ display: 'block', width: '100%', height: 'min(1100px, 78vh)', minHeight: 520, border: `1px solid ${PANEL_BORDER}`, borderRadius: 10, background: '#0F2334' }} />}
         </div>
       )}
       {current?.kind === 'page' && (open && open.slug === current.page.slug

@@ -3,6 +3,7 @@ import {
   LayoutGrid, Network, LogOut, Menu, X, Target, Users,
   FileText, Wallet, CreditCard, ListChecks, Compass, Waves, CalendarDays, LayoutDashboard, BookOpen, Activity, Award, Wrench, GraduationCap, Sparkles, Archive as ArchiveIcon, FolderOpen, PenTool, Briefcase, Mic, Wand2, Bot, PenLine, Footprints, BookMarked, Lightbulb } from 'lucide-react'
 import { getSession, onAuthStateChange, signOut } from './lib/auth'
+import { startPresence } from './lib/presence'
 import { fetchProtocolState } from './lib/protocol'
 import ProtocolHud from './components/river/ProtocolHud'
 import LoginPage from './components/LoginPage'
@@ -243,6 +244,7 @@ export default function App() {
     const { data: { subscription } } = onAuthStateChange(s => setSession(s))
     return () => subscription.unsubscribe()
   }, [])
+  useEffect(() => (session ? startPresence() : undefined), [session])
 
   if (session === undefined) {
     return (

@@ -1,6 +1,6 @@
 // Dormant clocks holster themselves (David, 10/13: a clock ran all night).
 // Every 15 minutes: if the one running Loadout clock has had no word from
-// David for two hours (no WhatsApp message in, no Loadout action), stop it at
+// David for two hours (no WhatsApp message in, no Loadout action, no movement in the HUD), stop it at
 // his last word plus ten minutes, the same grace the session clock uses.
 // A clock also stops at midnight Chicago, whatever happened.
 export const config = { maxDuration: 30 }
@@ -20,7 +20,9 @@ export default async function handler(req, res) {
     const now = Date.now()
     const [lastIn] = await sb('lumen_messages?select=at&direction=eq.in&order=at.desc&limit=1')
     const [lastAct] = await sb('clocks?select=started_at&order=started_at.desc&limit=1')
-    const lastWord = Math.max(...[lastIn?.at, lastAct?.started_at].filter(Boolean).map(x => new Date(x).getTime()))
+    // HUD presence (11/22): movement in a visible HUD tab is a sign of life too (src/lib/presence.js).
+    const seen = await fetch(`${URL_BASE}/storage/v1/object/project-files/presence/hud.json?cb=${Date.now()}`, { headers: hdr() }).then(r => (r.ok ? r.json() : null)).catch(() => null)
+    const lastWord = Math.max(...[lastIn?.at, lastAct?.started_at, seen?.at].filter(Boolean).map(x => new Date(x).getTime()))
     const out = []
     for (const c of running) {
       const started = new Date(c.started_at).getTime()
