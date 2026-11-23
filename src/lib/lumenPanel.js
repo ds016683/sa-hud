@@ -121,7 +121,7 @@ export const askExtraction = ({ projectId, words }) => hudDoor({ action: 'extrac
 // Process And Post (api/_catch.mjs): Lumen posts a summary on the card's line and catches what needs a follow-up.
 export const processAndPost = ({ text, where, root, item, title }) => hudDoor({ action: 'process-post', text, where, root, item, title })
 export const parkIdeaDoor = (payload) => hudDoor({ action: 'idea-park', ...payload })
-export const askGateDebrief = ({ objectiveId, words }) => hudDoor({ action: 'gate-debrief', item: { kind: 'objective', id: objectiveId }, words }).then(j => j.debrief)
+export const askGateDebrief = ({ objectiveId, taskId, words }) => hudDoor({ action: 'gate-debrief', item: taskId ? { kind: 'task', id: taskId } : { kind: 'objective', id: objectiveId }, words }).then(j => j.debrief)
 export const handToClaudeCode = ({ item, message_id, ask, gap }) => hudDoor({ action: 'handoff', item: { kind: item.kind, id: item.id }, title: item.title, message_id, ask, gap })
 export const listHandoffs = async (item) => (await hudDoor({ action: 'handoffs', item: { kind: item.kind, id: item.id } })).handoffs || []
 

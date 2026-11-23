@@ -31,19 +31,28 @@ async function storageJson(path) {
 }
 
 // Everything on the gate, and the mission it sits on.
-export async function gatherGate(objectiveId) {
-  const [o] = await sb(`objectives?select=id,title,description,north_star,captured_at&id=eq.${objectiveId}`)
-  if (!o) throw new Error('no such gate card')
-  const [task] = await sb(`project_tasks?select=id,text,notes,project_id&objective_id=eq.${objectiveId}&limit=1`)
-  if (!task) throw new Error('this card is not a Main Mission gate')
+// A gate with no card of its own (taskId, David 11/23: the trail's Extract on Gate 1 skipped the debrief) is read from
+// its task and the Workbench it keeps on the mission card, <project id>/gates/<task id>.
+export async function gatherGate(objectiveId, taskId = null) {
+  let o = null, task = null
+  if (objectiveId) {
+    ;[o] = await sb(`objectives?select=id,title,description,north_star,captured_at&id=eq.${objectiveId}`)
+    if (!o) throw new Error('no such gate card')
+    ;[task] = await sb(`project_tasks?select=id,text,notes,project_id&objective_id=eq.${objectiveId}&limit=1`)
+    if (!task) throw new Error('this card is not a Main Mission gate')
+  } else {
+    ;[task] = await sb(`project_tasks?select=id,text,notes,project_id&id=eq.${taskId}&limit=1`)
+    if (!task) throw new Error('no such gate')
+    o = { id: null, title: task.text, description: task.notes || '', north_star: null }
+  }
   const [[p], all] = await Promise.all([
     sb(`projects?select=id,name,key,description&id=eq.${task.project_id}`),
     sb(`project_tasks?select=id,text,status,done,notes,objective_id,created_at&project_id=eq.${task.project_id}&order=created_at`),
   ])
-  const root = `objectives/${objectiveId}`
+  const root = objectiveId ? `objectives/${objectiveId}` : `${task.project_id}/gates/${task.id}`
   const [ws, bd, files, path, proofs] = await Promise.all([
     storageList(`${root}/workspace`), storageList(`${root}/build`),
-    sb(`live_files?select=id,name,note,bucket,project_id&objective_id=eq.${objectiveId}&filed_at=is.null&superseded_by=is.null&order=created_at.desc&limit=60`).catch(() => []),
+    objectiveId ? sb(`live_files?select=id,name,note,bucket,project_id&objective_id=eq.${objectiveId}&filed_at=is.null&superseded_by=is.null&order=created_at.desc&limit=60`).catch(() => []) : Promise.resolve([]),
     storageJson(`${root}/path.json`),
     readProofs(task.project_id, task.id).catch(() => []),
   ])
@@ -68,9 +77,9 @@ const TOOL = { name: 'gate_debrief', description: 'Hand David the gate debrief.'
   changes: { type: 'array', items: { type: 'object', additionalProperties: false, required: ['kind', 'gate', 'text', 'why'], properties: { kind: { type: 'string', enum: ['polaris', 'reword_gate', 'new_gate'] }, gate: str, text: str, why: str } } },
 } } }
 
-export async function gateDebrief({ objectiveId, words = '', model }) {
+export async function gateDebrief({ objectiveId = null, taskId = null, words = '', model }) {
   if (!model) throw new Error('no model named for the gate debrief')
-  const g = await gatherGate(objectiveId)
+  const g = await gatherGate(objectiveId, taskId)
   const said = flat(words, 4000)
   const prompt = `You are Lumen. David is extracting one gate of a Main Mission. Brief him before it closes, from the gate's record${said ? ' and the context he has added' : ''}.
 

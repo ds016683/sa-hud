@@ -78,7 +78,7 @@ export default async function handler(req, res) {
     text = String(body.text || '').trim(); where = String(body.where || where).slice(0, 80)
     // The Lumen panel (11/4): the card David is in rides with the turn, and the brain gets its frame.
     const it = body.item && typeof body.item === 'object' ? body.item : null
-    if (it && ['objective', 'project'].includes(it.kind) && /^[0-9a-f-]{8,}$/i.test(String(it.id || ''))) item = { kind: it.kind, id: String(it.id) }
+    if (it && (['objective', 'project'].includes(it.kind) || (it.kind === 'task' && body.action === 'gate-debrief')) && /^[0-9a-f-]{8,}$/i.test(String(it.id || ''))) item = { kind: it.kind, id: String(it.id) }
     // A card event (David 11/11: "when i do something like that the lumen chat window should be able to notice and
     // ask a question (push)"): he clicked a stop on the card's path as done. It is kept in the thread as what
     // happened, and Lumen is asked to notice it, not handed words David never typed.
@@ -129,8 +129,8 @@ export default async function handler(req, res) {
     }
     // The gate debrief (api/_gate-debrief.mjs): one gate read in full. It writes nothing.
     if (body.action === 'gate-debrief') {
-      if (!item || item.kind !== 'objective') return res.status(400).json({ error: 'a gate card is required' })
-      try { return res.status(200).json({ ok: true, debrief: await gateDebrief({ objectiveId: item.id, words: String(body.words || ''), model: MODEL() }) }) } catch (e) { return res.status(500).json({ error: String(e.message || e).slice(0, 240) }) }
+      if (!item || (item.kind !== 'objective' && item.kind !== 'task')) return res.status(400).json({ error: 'a gate is required' })
+      try { return res.status(200).json({ ok: true, debrief: await gateDebrief({ ...(item.kind === 'task' ? { taskId: item.id } : { objectiveId: item.id }), words: String(body.words || ''), model: MODEL() }) }) } catch (e) { return res.status(500).json({ error: String(e.message || e).slice(0, 240) }) }
     }
     if (body.action === 'debrief' || body.action === 'extract-debrief') {
       if (!item || item.kind !== 'project') return res.status(400).json({ error: 'a Main Mission is required' })

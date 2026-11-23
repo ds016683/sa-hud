@@ -12,7 +12,7 @@ import LumenPanel from './river/LumenPanel'
 import { LEDGER_EVENT } from '../lib/lumenPanel'
 import SessionBoard from './river/SessionBoard'
 import { listShares, archiveShare, archiveSharesFor, shareUrl } from '../lib/shares'
-import { fileProject } from '../lib/archive'
+import { fileProject, fileEntry } from '../lib/archive'
 import { listLiveFiles, markFiled, listEvidence, openLiveFile } from '../lib/livefiles'
 import { supabase as sbAuth } from '../lib/supabase'
 import { equipTask, stashTask, unload, deleteMission } from '../lib/loadout'
@@ -22,6 +22,8 @@ import { NORTH_STAR_LABEL, LABEL, alpha, INK, INK2, NAVY_DEEP, BLUE, GRAY, PANEL
 import { importProject } from '../lib/cabinet'
 import BadgeMedallion from './BadgeArt'
 import ExtractionDebrief from './river/ExtractionDebrief'
+import GateDebrief from './river/GateDebrief'
+import { GateGlyph } from './river/GatePage'
 import { AwardYay } from './river/AwardYay'
 import { markPlayed } from '../lib/yay'
 import { addObjective } from '../lib/objectives'
@@ -372,7 +374,27 @@ function ProjectDetail({ project, board: boardProp, api, onBack, initialTab, ini
     // the mission's own files; a gate card's files come in with that gate's story
     listLiveFiles: async () => { const cards = new Set((live.current.project.tasks || []).map(t => t.objective_id).filter(Boolean)); const r = await listLiveFiles({ projectId: project.id }); return { rows: (r.rows || []).filter(f => !cards.has(f.objective_id)) } },
   }), [project.id])
-  const [award, setAward] = useState(null)
+  // A gate's Extract runs through its debrief (David 11/23: Gate 1's Extract on the trail skipped it and went straight
+  // to the old badge box). debrief is the gate in the pop-up; gateYay is what it did, for the yay that follows.
+  const [debrief, setDebrief] = useState(null)
+  const [gateYay, setGateYay] = useState(null)
+  const finishGate = async (st, record) => {
+    const { api: a, project: pr } = live.current
+    const t = (pr.tasks || []).find(x => x.id === st.id); if (!t) throw new Error('that gate is gone')
+    if (!(t.status === 'done' || t.done)) await a.toggleTask(project.id, t)
+    if (record) await fileEntry({ realm: project.category === 'personal' ? 'personal' : 'third-horizon', source_kind: 'project', source_id: project.id, source_title: project.name, tags: ['gate'], kind: 'summary', title: `Gate ${st.n} · ${st.text}`, summary: record, body: { achieved: record, gate_task_id: st.id } }).catch(e => console.warn('gate record', e.message))
+    await a.refresh?.()
+    return { minutes: 0 }
+  }
+  const toNextGate = async (load) => {
+    const info = gateYay, next = info?.next
+    if (info?.gate?.id) markPlayed(info.gate.id)
+    setGateYay(null)
+    try {
+      if (next && load) { const r = await equipTask({ id: next.task_id, text: `${next.n} · ${next.text}`, objective_id: next.objective_id }, project.name); if (r && r.ok === false) await hudNotice((r.reasons || []).join(' ') || 'It did not load.') }
+      if (next && next.objective_id) openCard(next.objective_id)
+    } catch (e) { console.warn('next gate', e.message) }
+  }
 
   // The debrief hands back David's words, the closing notes, what to file and what to drop, and what he checked to be
   // made (David 11/21). Only what he checked is made: a loose end or a note to send becomes a Bounty, a mission that
@@ -482,8 +504,7 @@ function ProjectDetail({ project, board: boardProp, api, onBack, initialTab, ini
             hereText={`${closed} of ${tasks.length} gates closed.${nowGate(plan) ? ` Next: ${stripNum(nowGate(plan).t.text)}` : ''}`}
             nextStepId={nowGate(plan) ? nowGate(plan).t.id : null}
             stopExtra={(st, h) => { const p = plan.find(x => x.t.id === st.id); return p ? <GateTools n={p.n} project={project} task={p.t} api={api} objState={objState} takeOff={h.takeOff} say={(m) => hudNotice(m)} /> : null }}
-            confirmClose={(st) => { const p = plan.find(x => x.t.id === st.id); return hudConfirm(`Close gate ${p ? p.n : ''}? 7 miles on the next update.`) }}
-            onClosed={(st) => { const p = plan.find(x => x.t.id === st.id); setAward({ n: p ? p.n : '', title: st.text }) }}
+            onExtract={(st) => setDebrief(st)}
             onReload={async () => { await api.refresh?.() }} onTab={setTab} onOpenCard={openCard} say={(m) => hudNotice(m)} notesCount={noteCount} />
         )}
         {tab === 'briefing' && (
@@ -582,17 +603,17 @@ function ProjectDetail({ project, board: boardProp, api, onBack, initialTab, ini
           {celebrate.achieved && <><h3>Achieved</h3><p>{celebrate.achieved}</p></>}
         </AwardYay>
       )}
-      {award && (
-        <div onClick={() => setAward(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(5,16,28,0.78)', display: 'grid', placeItems: 'center', zIndex: 60 }}>
-          <div onClick={e => e.stopPropagation()} style={{ ...S.panel, width: 'min(440px, 92vw)', textAlign: 'center', padding: '34px 28px 26px', display: 'grid', gap: 12, justifyItems: 'center' }}>
-            <BadgeMedallion id="gate" size={112} glow />
-            <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '2px', textTransform: 'uppercase', color: PURPLE }}>MMT badge awarded</div>
-            <div style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 22, letterSpacing: '-0.01em', color: INK, lineHeight: 1.25 }}>{award.n} · {award.title}</div>
-            <div style={{ fontSize: 13, color: TEXT_DIM, lineHeight: 1.5 }}>{BADGES['gate'].label} · {BADGES['gate'].miles} miles on the River at the next update.</div>
-            <div style={{ fontFamily: SERIF, fontStyle: 'italic', fontSize: 13, color: GRAY }}>{BADGES['gate'].lore}</div>
-            <button onClick={() => setAward(null)} style={{ ...S.btnPrimary, marginTop: 6 }}>Continue</button>
-          </div>
-        </div>
+      {debrief && (
+        <GateDebrief item={{ id: debrief.objective_id || null, task_id: debrief.id, project_id: project.id, title: `Gate ${debrief.n} · ${debrief.text}` }}
+          onClose={() => setDebrief(null)} finish={(record) => finishGate(debrief, record)}
+          onDone={(r, info) => { setDebrief(null); setGateYay(info || {}) }} />
+      )}
+      {gateYay && (
+        <AwardYay title="Gate Extracted" sub={gateYay.gate ? `Gate ${gateYay.gate.n} · ${gateYay.gate.text}` : project.name} awards={[{ badge: 'gate', n: 1, miles: BADGES['gate'].miles }]} banked={null}
+          done={(gateYay.did || []).slice(0, 6).map(x => ({ tag: x.tag, color: '#B4A3E8', text: x.text }))}
+          go={gateYay.next ? `Gate ${gateYay.next.n} · ${gateYay.next.text}` : 'Back To The Mission'} onContinue={() => toNextGate(false)}
+          extra={gateYay.next ? <button type="button" className="yay-side" title={`Load Gate ${gateYay.next.n} And Start The Clock`} aria-label={`Load gate ${gateYay.next.n} and start the clock`} onClick={() => toNextGate(true)}><GlyphLoadout size={20} /></button> : null}
+          lead={gateYay.next ? <GateGlyph size={17} /> : null} />
       )}
       </div>
       <LumenPanel item={onGate({ kind: 'project', id: project.id, title: project.name, root: project.id, summary: project.description || '' }, gateView)} />

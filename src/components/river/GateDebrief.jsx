@@ -87,7 +87,9 @@ async function copyObject(from, to, { optional = false } = {}) {
 
 // item: the gate's card on the close-out (id, title, minutes_today ...). onDone(result, info) after the gate is extracted;
 // info carries what was done and the next gate, for the yay. drafter and closer can be handed in for a dev harness.
-export default function GateDebrief({ item, tone = PURPLE, onClose, onDone, drafter = askGateDebrief, closer = null }) {
+// A gate with no card of its own (item.task_id, item.project_id, no id) is read from its task and its Workbench on the
+// mission card, and finish(record) closes it (the mission page's own close) in place of the card's Extract.
+export default function GateDebrief({ item, tone = PURPLE, onClose, onDone, drafter = askGateDebrief, closer = null, finish = null }) {
   const [d, setD] = useState(null)
   const [note, setNote] = useState('')
   const [yes, setYes] = useState({})              // 'up:<key>' | 'chg:<i>' -> true | false
@@ -99,9 +101,9 @@ export default function GateDebrief({ item, tone = PURPLE, onClose, onDone, draf
   const brief = useCallback(async (context) => {
     const me = ++run.current
     setAsking(true); setErr(null)
-    try { const out = await drafter({ objectiveId: item.id, words: context.join('\n\n') }); if (me !== run.current) return; setD(out); setNote(out.closing_note || '') }
+    try { const out = await drafter({ objectiveId: item.id || null, taskId: item.id ? null : item.task_id, words: context.join('\n\n') }); if (me !== run.current) return; setD(out); setNote(out.closing_note || '') }
     catch (e) { if (me === run.current) setErr(`Lumen could not brief it: ${e.message}`) } finally { if (me === run.current) setAsking(false) }
-  }, [drafter, item.id])
+  }, [drafter, item.id, item.task_id])
   useEffect(() => { Promise.resolve().then(() => brief([])) }, [brief])
   useEffect(() => { const k = (e) => { if (e.key === 'Escape' && !busy && !e.defaultPrevented) onClose() }; window.addEventListener('keydown', k); return () => window.removeEventListener('keydown', k) }, [onClose, busy])
   const addContext = async () => {
@@ -134,7 +136,7 @@ export default function GateDebrief({ item, tone = PURPLE, onClose, onDone, draf
     const words = ctx.join('\n\n').trim(), record = [words, note.trim()].filter(Boolean).join('\n\n')
     try {
       if (closer) { await closer({ up, chg, record }); return }
-      const pid = d?.mission?.id, root = `objectives/${item.id}`
+      const pid = d?.mission?.id, root = item.id ? `objectives/${item.id}` : `${item.project_id}/gates/${item.task_id}`
       // What he blessed, and only that. Each is its own step; one that fails is named and the gate stays open.
       for (const x of up) {
         const [kind, id] = [x.key.slice(0, x.key.indexOf(':')), x.key.slice(x.key.indexOf(':') + 1)]
@@ -150,8 +152,9 @@ export default function GateDebrief({ item, tone = PURPLE, onClose, onDone, draf
         else if (c.kind === 'new_gate') { top += 1; const { error } = await supabase.from('project_tasks').insert({ project_id: pid, text: `${top} · ${c.text}`, status: 'open', done: false, source: 'debrief', notes: `From the debrief of Gate ${d.gate.n}, ${d.gate.text}. ${c.why || ''}`.trim() }); if (error) throw new Error(`New gate: ${error.message}`) }
       }
       for (const r of rec) await routeItem({ what: r.what, heard: r.why, where: `Gate ${d.gate.n} · ${d.gate.text}`, source: 'debrief' })
-      if (record) await fileAchieved(item, record).catch(() => {})
-      const r = await extractItem(item, { minutes: 0, note: record || null })
+      let r
+      if (finish) r = await finish(record)
+      else { if (record) await fileAchieved(item, record).catch(() => {}); r = await extractItem(item, { minutes: 0, note: record || null }) }
       onDone(r, { gate: d?.gate || null, mission: d?.mission || null, next: d?.next || null, did: [...up.map(x => ({ tag: 'Up', text: x.name })), ...chg.map(c => ({ tag: CHANGE[c.kind], text: c.kind === 'reword_gate' ? `Gate ${c.n}: ${c.text}` : c.text })), ...rec.map(x => ({ tag: 'Routed', text: x.what }))] })
     } catch (e) { setErr(e?.message || String(e)); setBusy(false) }
   }
