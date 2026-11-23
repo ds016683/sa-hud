@@ -80,9 +80,9 @@ function YN({ on, set }) {
   )
 }
 // Copy one object in the Ledger's storage. A copy that is already there is left as it is.
-async function copyObject(from, to) {
+async function copyObject(from, to, { optional = false } = {}) {
   const { error } = await supabase.storage.from('project-files').copy(from, to)
-  if (error && !/exist|duplicate/i.test(error.message)) throw new Error(error.message)
+  if (error && !/exist|duplicate/i.test(error.message) && !(optional && /not.?found/i.test(error.message))) throw new Error(error.message)
 }
 
 // item: the gate's card on the close-out (id, title, minutes_today ...). onDone(result, info) after the gate is extracted;
@@ -140,7 +140,8 @@ export default function GateDebrief({ item, tone = PURPLE, onClose, onDone, draf
         const [kind, id] = [x.key.slice(0, x.key.indexOf(':')), x.key.slice(x.key.indexOf(':') + 1)]
         if (kind === 'file') { const { error } = await supabase.from('live_files').update({ project_id: pid }).eq('id', id); if (error) throw new Error(`${x.name}: ${error.message}`) }
         else if (kind === 'tab') await copyObject(`${root}/workspace/${id}.json`, `${pid}/workspace/${id}.json`)
-        else if (kind === 'build') { await copyObject(`${root}/build/${id}.html`, `${pid}/build/${id}.html`); await copyObject(`${root}/build/${id}.json`, `${pid}/build/${id}.json`) }
+        // A built tab goes up with what David entered in it (its kept state, when it has one).
+        else if (kind === 'build') { await copyObject(`${root}/build/${id}.html`, `${pid}/build/${id}.html`); await copyObject(`${root}/build/${id}.json`, `${pid}/build/${id}.json`); await copyObject(`${root}/build/${id}.state.json`, `${pid}/build/${id}.state.json`, { optional: true }) }
       }
       let top = d?.top || 0
       for (const c of chg) {

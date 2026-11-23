@@ -14,6 +14,8 @@
 // "i don't see the analytics module we built on the workbench anywhere"),
 // listed after the protocols and before the Workspace pages, newest first,
 // rendered through srcDoc the way the Lumen panel's Build tab renders it.
+// A built page keeps what David enters in it through its frame (useBuildState,
+// 11/21): the page asks, the frame reads and writes <root>/build/<slug>.state.json.
 import { useEffect, useState } from 'react'
 import { Plus, RefreshCw, ExternalLink, Maximize2, Minimize2 } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
@@ -27,6 +29,7 @@ import PlanningCanvas from './PlanningCanvas'
 import { readArtifact } from '../../lib/artifacts'
 import { INK, INK2, GRAY, GREEN, PANEL_BORDER, PANEL_BG, MONO, Label } from './canon'
 import { hudPrompt } from '../../lib/dialog'
+import useBuildState from './useBuildState'
 
 const fmt = (iso) => iso ? new Date(iso).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : ''
 const mono = { fontFamily: MONO, fontSize: 9.5, letterSpacing: '1px', textTransform: 'uppercase', color: GRAY }
@@ -150,6 +153,8 @@ export default function WorkbenchSheet({ root, scopes = [], project = null }) {
     readBuildHtml(root, currentBuild).then(h => { if (on) setHtml(h) }).catch(() => { if (on) setHtml('') })
     return () => { on = false }
   }, [currentBuild, root, nonce])
+  // The built page's door to its kept state: only the frame under this tab is heard, and only for this tab's slug.
+  const buildFrame = useBuildState(root, currentBuild, setMsg)
 
   const add = async () => {
     const n = (pages || []).length + 1
@@ -209,7 +214,7 @@ export default function WorkbenchSheet({ root, scopes = [], project = null }) {
             ? <div style={mono}>Opening the page</div>
             : html === ''
               ? <div style={{ fontSize: 13, color: GRAY }}>Could not read this page. Open it in a new tab.</div>
-              : <iframe key={`${current.build.slug}:${nonce}`} title={current.label} srcDoc={withPresence(renumber(html, tabs.findIndex(t => t.id === current.id) + 1))} sandbox="allow-scripts allow-popups allow-forms allow-modals" style={{ display: 'block', width: '100%', height: 'min(1100px, 78vh)', minHeight: 520, border: `1px solid ${PANEL_BORDER}`, borderRadius: 10, background: '#0F2334' }} />}
+              : <iframe ref={buildFrame} key={`${current.build.slug}:${nonce}`} title={current.label} srcDoc={withPresence(renumber(html, tabs.findIndex(t => t.id === current.id) + 1))} sandbox="allow-scripts allow-popups allow-forms allow-modals" style={{ display: 'block', width: '100%', height: 'min(1100px, 78vh)', minHeight: 520, border: `1px solid ${PANEL_BORDER}`, borderRadius: 10, background: '#0F2334' }} />}
         </div>
       )}
       {current?.kind === 'page' && (open && open.slug === current.page.slug

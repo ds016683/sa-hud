@@ -26,6 +26,7 @@ import { INK, INK2, GRAY, PANEL_BORDER, GOLD, GOLD_BRIGHT, BLUE, RED, SERIF, LAB
 import { readWorkbook, writeWorkbook, listBuilds, openHtml, readBuildHtml, removeBuild, loadThread, askLumen, fireLedgerChanged, handToClaudeCode, listHandoffs } from '../../lib/lumenPanel'
 import { hudConfirm } from '../../lib/dialog'
 import { CARD_EVENT } from '../../lib/path'
+import useBuildState from './useBuildState'
 
 // The panel's width: 460px on a wide window, less on a narrow one, so the page always keeps room beside it.
 const WIDTH = 460
@@ -176,6 +177,8 @@ export default function LumenPanel({ item, api = LEDGER }) {
     setSel(b.slug); setHtml(null)
     try { setHtml(await readBuildHtml(item.root, b.slug)) } catch (e) { setMsg(`Could not read the build: ${e.message}`) }
   }
+  // The same door the Workbench gives a built page (useBuildState): what David enters in it is kept beside the page.
+  const buildFrame = useBuildState(item.root, sel, setMsg)
   const downloadBuild = () => { if (!html || !sel) return; const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([html], { type: 'text/html' })); a.download = `${sel}.html`; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000) }
   const nCaps = wb?.captures?.length || 0, nBuilds = builds?.length || 0
 
@@ -299,7 +302,7 @@ export default function LumenPanel({ item, api = LEDGER }) {
                   <button onClick={downloadBuild} disabled={!html} style={btn(INK2)}><Download size={11} /> Download</button>
                   <button onClick={async () => { if (await hudConfirm(`Delete the build "${sel}"?`)) { await removeBuild(item.root, sel); setSel(null); setHtml(null); setBuilds(await api.listBuilds(item.root)) } }} style={btn(INK2)}><Trash2 size={11} /> Delete</button>
                 </div>
-                {html ? <iframe title={sel} sandbox="allow-scripts allow-forms allow-modals allow-popups" srcDoc={html} style={{ flex: 1, width: '100%', minHeight: 320, border: `1px solid ${PANEL_BORDER}`, borderRadius: 10, background: '#0F2334' }} /> : <div style={eyebrow}>Reading the build</div>}
+                {html ? <iframe ref={buildFrame} title={sel} sandbox="allow-scripts allow-forms allow-modals allow-popups" srcDoc={html} style={{ flex: 1, width: '100%', minHeight: 320, border: `1px solid ${PANEL_BORDER}`, borderRadius: 10, background: '#0F2334' }} /> : <div style={eyebrow}>Reading the build</div>}
               </div>
             )}
           </div>
