@@ -251,8 +251,9 @@ const reEsc = (t) => String(t).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 // The longest run of text from `from` that fits in `room` once it rides inside a JSON answer (its escapes count).
 function fitLen(text, from, want, room) {
   let len = Math.max(0, Math.min(Number(want) || 0, text.length - from))
+  if (room <= 2) return 0
   for (let n = jlen(text.slice(from, from + len)); len > 0 && n > room; n = jlen(text.slice(from, from + len))) len = Math.floor(len * Math.min(0.98, room / n))
-  return len
+  return Math.max(0, len)
 }
 // One answer from a long text: every place the words in find appear, each with the text around it, or the run that
 // starts at offset. `key` names the field the run goes in; `what` names the thing in the notes.
@@ -344,6 +345,8 @@ function setAt(doc, keys, value, remove) {
     if (!Object.prototype.hasOwnProperty.call(at, k) || at[k] == null) {
       if (remove) return { had: false }
       if (Array.isArray(at)) throw new Error(`nothing at ${here} yet; write the whole list one level up`)
+      // A place that is not there yet and would hold a numbered slot is most likely a list: it is not guessed at.
+      if (/^\d+$/.test(keys[i + 1])) throw new Error(`nothing is kept at ${here} yet, and ${keys[i + 1]} looks like one place in a list there; write the whole value at ${here} instead`)
       at[k] = {}
     } else if (typeof at[k] !== 'object') throw new Error(`${here} holds a value, not other entries; write ${here} itself`)
     at = at[k]
@@ -361,20 +364,32 @@ function setAt(doc, keys, value, remove) {
   return { had, was }
 }
 // The locks on a built tab's kept state (its meta: state.locks, a list of { name, match, switch, locked }). match is
-// a pattern tested against the path being changed; switch is the place in the state where David's own lock for that
-// part lives (truthy locked, falsy unlocked), which wins over the lock's own default (locked unless it says false).
-// Unlocking a switch is itself a locked change. Returns the names of the locks a change runs into.
+// a pattern tested against a path; switch is the place in the state where David's own lock for that part lives (truthy
+// locked, falsy unlocked), which wins over the lock's own default (locked unless it says false). A change runs into a
+// lock when the lock covers the place it names, any place above it (one slot of a locked entry), or any place under
+// it, in what is kept or in what would be written (the whole map that holds locked entries). Opening a switch, or
+// writing over the place that holds it, is itself a locked change. Returns the names of the locks a change runs into.
 function locksOn(meta, state, change) {
   const locks = Array.isArray(meta?.state?.locks) ? meta.state.locks : []
-  const path = change.keys.join('/'), hit = []
+  if (!locks.length) return []
+  const keys = change.keys, path = keys.join('/')
+  // Every place this change touches: itself, the places above it, and the places under it before and after.
+  const places = new Set()
+  for (let i = 1; i <= keys.length; i++) places.add(keys.slice(0, i).join('/'))
+  const under = (v, at, depth) => { if (!isMap(v) || depth > 6) return; for (const k of Object.keys(v)) { if (places.size > 20000) return; const p = `${at}/${k}`; places.add(p); under(v[k], p, depth + 1) } }
+  const was = walkTo(state, keys)
+  if (!was.missing) under(was.at, path, 0)
+  if (!change.remove) under(change.value, path, 0)
+  const hit = []
   for (const l of locks) {
     if (!l || typeof l !== 'object') continue
     const name = String(l.name || l.match || 'a locked part')
     let re = null
     if (l.match) { try { re = new RegExp(String(l.match)) } catch { throw new Error(`the lock "${name}" on this tab cannot be read, so nothing was changed`) } }
-    const sw = l.switch ? pathKeys(l.switch) : null
-    if (sw && path === sw.join('/')) { if (change.remove || !change.value) hit.push(name); continue }
-    if (!re || !re.test(path)) continue
+    const sw = l.switch ? pathKeys(l.switch) : null, swPath = sw ? sw.join('/') : null
+    // The switch itself: opening it, or writing over a place that holds it, needs his word. Setting it locked does not.
+    if (swPath && (path === swPath ? (change.remove || !change.value) : swPath.startsWith(`${path}/`))) { hit.push(name); continue }
+    if (!re || ![...places].some(p => re.test(p))) continue
     let on = l.locked !== false
     if (sw) { const w = walkTo(state, sw); if (!w.missing && w.at != null) on = !!w.at }
     if (on) hit.push(name)
@@ -1104,8 +1119,8 @@ export const TOOLS = [
   },
   {
     name: 'write_built_state',
-    description: "Change what a built tab keeps, so the table on the tab shows it: one change, or a few, merged into the tab's kept state. Use it when David asks you to set, change or clear a mark on a line of a built tab that keeps its state in the HUD (the card frame says which tabs do). Follow the tab's guide in the card frame for how its state is shaped and how one mark is set. First find the line with read_built_page (find, by a name on the line) and read what is kept for it with read_built_state, so you write the right place and the whole right value. changes is a list of { path, value } to set, or { path, remove: true } to take an entry out; path is the keys joined with / (for example ovr/2023:45). Only the places you name are touched. A part David locked is refused: it changes only when his own message in this same turn says to unlock it, and then you pass unlock true; never pass unlock on your own reading. The state before the change is kept, so tell him the change can be put back; undo true (with no changes) puts the last one back. After a change, read the place back with read_built_state and tell him what it was and what it is now. A tab that does not keep its state in the HUD is refused: say so plainly and hand the change to Claude Code.",
-    inputSchema: { type: 'object', properties: { project: { type: 'string' }, side_mission: { type: 'string' }, slug: { type: 'string' }, changes: { type: 'array', items: { type: 'object', properties: { path: { type: 'string', description: 'the place in the state: its keys joined with /' }, value: { description: 'what to put there (any JSON value)' }, remove: { type: 'boolean', description: 'take the entry out instead of setting it' } }, required: ['path'] } }, unlock: { type: 'boolean', description: 'only when David said to unlock in this same message' }, undo: { type: 'boolean', description: 'put back the state from before the last change' } }, required: ['slug'] },
+    description: "Change what a built tab keeps, so the table on the tab shows it: one change, or a few, merged into the tab's kept state. Use it when David asks you to set, change or clear a mark on a line of a built tab that keeps its state in the HUD (the card frame says which tabs do). Follow the tab's guide in the card frame for how its state is shaped and how one mark is set. First find the line with read_built_page (find, by a name on the line) and read what is kept for it with read_built_state, so you write the right place and the whole right value. changes is a list of { path, value_json } to set, or { path, remove: true } to take an entry out; path is the keys joined with / (for example ovr/2023:45) and value_json is the new value written as JSON text (for example [\"OT\", null, \"Tier 2 Adjacent\"]). Only the places you name are touched. A part David locked is refused: it changes only when his own message in this same turn says to unlock it, and then you pass unlock true; never pass unlock on your own reading. The state before the change is kept, so tell him the change can be put back; undo true (with no changes) puts the last one back. After a change, read the place back with read_built_state and tell him what it was and what it is now. A tab that does not keep its state in the HUD is refused: say so plainly and hand the change to Claude Code.",
+    inputSchema: { type: 'object', properties: { project: { type: 'string' }, side_mission: { type: 'string' }, slug: { type: 'string' }, changes: { type: 'array', items: { type: 'object', properties: { path: { type: 'string', description: 'the place in the state: its keys joined with /' }, value_json: { type: 'string', description: 'what to put there, written as JSON text: a list ["OT", null, "Tier 2 Adjacent"], words in quotes "a note", a number 1, or null' }, remove: { type: 'boolean', description: 'take the entry out instead of setting it' } }, required: ['path'] } }, unlock: { type: 'boolean', description: 'only when David said to unlock in this same message' }, undo: { type: 'boolean', description: 'put back the state from before the last change' } }, required: ['slug'] },
   },
   {
     name: 'patch_built_page',
@@ -1684,9 +1699,15 @@ export async function callTool(name, args = {}) {
       else { try { state = JSON.parse(text) } catch { return JSON.stringify({ ok: false, error: `the state kept for ${slug} is not JSON, so it was left alone`, bytes: text.length }) } }
       if (!isMap(state)) return JSON.stringify({ ok: false, error: `the state kept for ${slug} is not a set of named parts, so one change cannot be merged into it` })
       const list = (Array.isArray(args.changes) ? args.changes : []).filter(c => c && typeof c === 'object')
-      if (!list.length) throw new Error('changes (a list of { path, value } or { path, remove: true }) required')
+      if (!list.length) throw new Error('changes (a list of { path, value_json } or { path, remove: true }) required')
       if (list.length > 60) throw new Error('at most 60 changes in one call')
-      const changes = list.map(c => ({ keys: pathKeys(c.path), remove: c.remove === true, value: c.value === undefined ? null : c.value }))
+      // The value rides as JSON text (value_json), so the tool's schema declares a plain string; a value given
+      // outright (a caller that is not the model) is taken as it is.
+      const valueOf = (c) => {
+        if (c.value_json == null) return c.value === undefined ? null : c.value
+        try { return JSON.parse(String(c.value_json)) } catch { throw new Error(`value_json for ${pathKeys(c.path).join('/')} is not JSON: write a list as [..], words in double quotes, or null`) }
+      }
+      const changes = list.map(c => ({ keys: pathKeys(c.path), remove: c.remove === true, value: c.remove === true ? null : valueOf(c) }))
       // Locks first, on the state as it stands: nothing is written if any change runs into one David has not opened.
       const locked = [...new Set(changes.flatMap(c => locksOn(meta, state, c)))]
       if (locked.length) {
