@@ -22,6 +22,10 @@
 //     is handed the new state the same way, so a change Lumen made shows on the open tab without a reload. A page that
 //     keeps its state takes a { op: 'state' } at any time, not only as the answer to its load. If the kept state was
 //     cleared, the frame is reloaded instead, since a page has no way to be told "nothing".
+//   - A handed state is not known to have landed until the page's next save shows it. Until then the door holds both
+//     what the page last had for certain and what it was handed, and reads a save against whichever it is closer to,
+//     so a save sent just before the handed state arrived does not read as the page removing what was handed.
+//   - Two states are the same when they hold the same things, whatever order their keys are written in.
 // Use: const frame = useBuildState(root, keeps ? slug : null, setMsg), then <iframe ref={frame} srcDoc=... />.
 import { useEffect, useLayoutEffect, useRef } from 'react'
 import { readBuildState, writeBuildState, LEDGER_EVENT } from '../../lib/lumenPanel'
@@ -31,9 +35,17 @@ const HUD = 'build-state'
 const lines = new Map() // one line of reads and writes per page, shared by every frame of it
 const inLine = (key, job) => { const p = (lines.get(key) || Promise.resolve()).then(job); lines.set(key, p.catch(() => {})); return p }
 const wait = (ms) => new Promise(r => setTimeout(r, ms))
-const text = (v) => JSON.stringify(v ?? null)
 const isMap = (v) => v != null && typeof v === 'object' && !Array.isArray(v)
 const has = (o, k) => Object.prototype.hasOwnProperty.call(o, k)
+// A state as text with every map's keys in one order, so two states that hold the same things read the same.
+const text = (v) => JSON.stringify(v ?? null, (_, x) => isMap(x) ? Object.fromEntries(Object.keys(x).sort().map(k => [k, x[k]])) : x)
+// How far apart two states are: the number of entries that differ, maps counted entry by entry.
+export function apart(a, b) {
+  if (!isMap(a) || !isMap(b)) return text(a) === text(b) ? 0 : 1
+  let n = 0
+  for (const k of new Set([...Object.keys(a), ...Object.keys(b)])) n += has(a, k) && has(b, k) ? apart(a[k], b[k]) : 1
+  return n
+}
 
 // What the page changed since `base` (the state it last heard from the door, or last sent), laid over `theirs` (what is
 // kept now). An entry the page did not touch stays as theirs; one it set, changed or removed goes as the page has it;
@@ -59,23 +71,27 @@ export default function useBuildState(root, slug, onError = null, store = LEDGER
   useLayoutEffect(() => {
     if (!root || !slug) return undefined
     const key = `${root}/build/${slug}`
-    // base: the state the page last heard from the door or last sent it, which is what the page believes is kept.
-    let on = true, next = null, busy = false, blind = null, said = false, asked = false, base = null
+    // base: the state the page is known to have (the answer to its load, or its own last save). handed: a state given
+    // to it since, not yet seen in a save. page: the framed window those two belong to; a new one starts clean.
+    let on = true, next = null, busy = false, blind = null, said = false, asked = false, base = null, handed = null, page = null
     // A failure is said even after the tab is left (the save was his); a line is cleared only by the tab that wrote it.
     const here = () => on ? 'this tab' : `the tab ${slug}`
     const say = (words) => { if (!tell.current) return; if (words) { said = on; tell.current(words) } else if (said && on) { said = false; tell.current(null) } }
-    const answer = (win, msg) => { if (on && frame.current?.contentWindow === win) win.postMessage({ hud: HUD, slug, ...msg }, '*') }
+    const current = (win) => on && !!win && frame.current?.contentWindow === win
+    const answer = (win, msg) => { if (current(win)) win.postMessage({ hud: HUD, slug, ...msg }, '*') }
     // Hand the page a state it did not ask for: what is kept moved under it.
     const give = (win, state) => {
-      if (!on || frame.current?.contentWindow !== win) return
-      if (state == null) { const f = frame.current; asked = false; base = null; f.srcdoc = f.srcdoc; return } // eslint-disable-line no-self-assign
-      base = state
+      if (!current(win)) return
+      if (state == null) { const f = frame.current; asked = false; base = null; handed = null; f.srcdoc = f.srcdoc; return } // eslint-disable-line no-self-assign
+      handed = state
       answer(win, { op: 'state', state })
     }
-    const put = async (mine) => {
+    // What a save is read against: what the page was handed, if the save is closer to that than to what it had before.
+    const basis = (mine) => handed != null && apart(handed, mine) < apart(base, mine) ? handed : base
+    const put = async (mine, from) => {
       for (let tries = 1; ; tries++) {
         try {
-          const out = mergeState(base, mine, await store.read(root, slug))
+          const out = mergeState(from, mine, await store.read(root, slug))
           await store.write(root, slug, out)
           return out
         } catch (e) { if (tries >= 3 || e.final || next) throw e; await wait(1200 * tries) }
@@ -85,8 +101,9 @@ export default function useBuildState(root, slug, onError = null, store = LEDGER
       while (next) {
         const { state, win } = next; next = null
         try {
-          const out = await put(state)
-          base = state
+          // Read against what this page had; a save from a page since replaced is laid over what is kept as it is.
+          const out = await put(state, win === page ? basis(state) : null)
+          if (win === page) { base = state; handed = null }
           if (!next) { if (text(out) !== text(state)) give(win, out); answer(win, { op: 'saved' }); say(null) }
         } catch (e) { if (!next) say(`Could not save what you entered on ${here()}: ${e.message}`) }
       }
@@ -95,10 +112,12 @@ export default function useBuildState(root, slug, onError = null, store = LEDGER
     const onMessage = (e) => {
       const win = frame.current?.contentWindow, m = e.data
       if (!win || e.source !== win || !m || typeof m !== 'object' || m.hud !== HUD || m.slug !== slug) return
+      // A page framed anew (Refresh, or the frame reloaded) knows nothing the page before it knew.
+      if (win !== page) { page = win; asked = false; base = null; handed = null; blind = null }
       if (m.op === 'load') {
         inLine(key, () => store.read(root, slug)).then(
-          state => { blind = null; asked = true; base = state ?? null; answer(win, { op: 'state', state: state ?? null }); say(null) },
-          err => { blind = err; say(`Could not read what was saved on this tab: ${err.message}`) })
+          state => { if (win !== page) return; blind = null; asked = true; base = state ?? null; handed = null; answer(win, { op: 'state', state: state ?? null }); say(null) },
+          err => { if (win !== page) return; blind = err; say(`Could not read what was saved on this tab: ${err.message}`) })
       } else if (m.op === 'save') {
         if (blind) { say(`Not saved, what is already kept for this tab could not be read: ${blind.message}`); return }
         next = { state: m.state, win }
@@ -110,9 +129,10 @@ export default function useBuildState(root, slug, onError = null, store = LEDGER
     const onLedger = () => {
       if (!asked || blind || busy || next) return
       const win = frame.current?.contentWindow
+      if (win !== page) return
       inLine(key, () => store.read(root, slug)).then(state => {
-        if (!on || busy || next || !asked || frame.current?.contentWindow !== win) return
-        if (text(state) !== text(base)) give(win, state ?? null)
+        if (!current(win) || win !== page || busy || next || !asked) return
+        if (text(state) !== text(handed ?? base)) give(win, state ?? null)
       }, () => { /* the next save or load says so */ })
     }
     window.addEventListener('message', onMessage)

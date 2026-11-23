@@ -164,7 +164,8 @@ export default async function handler(req, res) {
   const said = event
     ? `[${where}] (A card event, not a message David typed.) David just clicked a stop on this card's path as done: "${event.text}". ${event.open.length ? `Still open on the path: ${event.open.map(x => `"${x}"`).join('; ')}.` : 'Nothing else is open on the path.'} Notice it in one or two sentences: ask him the one question this closing raises on this mission (a date, a name, a decision, how it went), or offer the one next thing you can do for him with your tools. Use only what he has told you and what is on the card. Do not add stops or anything else to the card, do not recap the card, and do not congratulate him.`
     : `[${where}] ${text}`
-  try { reply = await think({ channel: 'hud', spoken: false, text: said, frame }) }
+  // own: what he typed or said, without the where prefix; a card event is not his message.
+  try { reply = await think({ channel: 'hud', spoken: false, text: said, frame, own: event ? null : text }) }
   catch (e) { reply = `I hit a wall on that one: ${String(e.message || e).slice(0, 160)}` }
   await remember({ channel: 'hud', direction: 'out', kind: 'text', body: reply, meta })
   return res.status(200).json({ reply, transcript: kind === 'audio' ? text : undefined })

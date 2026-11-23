@@ -360,7 +360,8 @@ export default async function handler(req, res) {
       if (flushed.length && /^\s*(ok|okay|yes|yep|sure|go|send|send it|open|k|ready|please|yeah|y)\W*$/i.test(text)) continue
 
       let reply
-      try { reply = await think({ channel: 'whatsapp', text, spoken: kind === 'audio' }) }
+      // own: a message he typed or spoke; a photo's or a document's text is not his words.
+      try { reply = await think({ channel: 'whatsapp', text, spoken: kind === 'audio', own: (kind === 'text' || kind === 'audio') ? text : null }) }
       catch (e) { console.error('lumen: think failed', e && e.stack || e); reply = `I hit an error on my side and could not finish that: ${String(e && e.message || e).slice(0, 160)}. Claude has the trace; say it again in a minute.` }
 
       const sentId = await waSendText(from, reply)

@@ -46,7 +46,7 @@ export default async function handler(req, res) {
 
   await remember({ channel: 'voice', direction: 'in', kind, body: text, meta: { via: (req.query || {}).via || 'talk' } })
   let reply
-  try { reply = await think({ channel: 'voice', text, spoken: true }) }
+  try { reply = await think({ channel: 'voice', text, spoken: true, own: text }) }
   catch (e) { return res.status(200).json({ transcript: text, error: `brain failed: ${String(e.message || e)}` }) }
   await remember({ channel: 'voice', direction: 'out', kind: 'audio', body: reply, meta: { via: (req.query || {}).via || 'talk' } })
 

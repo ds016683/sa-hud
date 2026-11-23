@@ -25,9 +25,13 @@ export async function extractText(bytes, filename = '', mime = '') {
     const parts = wb.SheetNames.map(name => {
       const ws = wb.Sheets[name]
       const first_row = ws && ws['!ref'] ? XLSX.utils.decode_range(ws['!ref']).s.r + 1 : 1
-      const rows = ws && ws['!ref'] ? XLSX.utils.sheet_to_json(ws, { header: 1, raw: false, defval: '', blankrows: true }).map(r => r.map(cell).join(',').replace(/,+$/, '')) : []
+      const grid = ws && ws['!ref'] ? XLSX.utils.sheet_to_json(ws, { header: 1, raw: false, defval: '', blankrows: true }) : []
+      const rows = grid.map(r => r.map(cell).join(',').replace(/,+$/, ''))
       while (rows.length && !rows[rows.length - 1]) rows.pop()
-      return { name, first_row, rows }
+      // filled: how many cells of each of the first rows hold something, counted on the cells themselves (a comma
+      // inside a cell is not a second cell), so a reader can tell the header row from a title line or a data row.
+      const filled = grid.slice(0, 30).map(r => r.filter(v => String(v ?? '').trim()).length)
+      return { name, first_row, rows, filled }
     })
     return { kind: 'sheet', sheets: wb.SheetNames, parts, text: parts.map(p => `## ${p.name}\n${p.rows.join('\n')}`).join('\n\n') }
   }

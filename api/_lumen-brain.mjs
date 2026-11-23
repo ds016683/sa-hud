@@ -141,7 +141,9 @@ async function runNote() {
 }
 
 // One turn: returns the reply text. Runs the tool loop against the Ledger.
-export async function think({ channel = 'whatsapp', text, spoken = false, frame = null, files = null }) {
+// own: David's own words in this turn when it is his live message (typed or spoken), for the hands that must know
+// what he himself said (see TURN in _ledger.mjs). Left out by every caller whose text is not his words.
+export async function think({ channel = 'whatsapp', text, spoken = false, frame = null, files = null, own = null }) {
   const push = channel === 'email'   // David 11/22: WhatsApp is live (he talks back and confirms); email is push
   ROUTE_SOURCE.current = push ? channel : (channel === 'hud' ? 'lumen' : channel); ROUTE_SOURCE.where = push ? 'Sent To Lumen By Email' : null; ROUTE_SOURCE.count = 0; ROUTE_SOURCE.files = push && Array.isArray(files) && files.length ? files : null
   const [doc, ctx, constitution, rules, waiting, runNow] = await Promise.all([
@@ -241,7 +243,7 @@ export async function think({ channel = 'whatsapp', text, spoken = false, frame 
         content = `Loop guard: you have already called ${tu.name} with these exact inputs ${n - 1} times this turn. Do not call it again. Use the earlier result and reply to David now.`
         isError = true
       } else {
-        try { content = await TURN.run({ text: String(text || ''), channel }, () => callTool(tu.name, tu.input || {})) } catch (e) { content = `Tool error: ${e.message}`; isError = true }
+        try { content = await TURN.run({ own: typeof own === 'string' ? own : null, channel }, () => callTool(tu.name, tu.input || {})) } catch (e) { content = `Tool error: ${e.message}`; isError = true }
       }
       // look_at_file (16.4): the file rides in the same user message as the
       // tool_result, as image or document blocks, so the model sees it.

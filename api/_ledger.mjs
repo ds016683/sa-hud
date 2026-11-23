@@ -40,9 +40,12 @@ const splitNotes = (notes) => { const t = String(notes || ''); const i = t.index
 const joinNotes = (doneWhen, details) => { const a = String(doneWhen || '').trim(), b = String(details || '').trim(); return (b ? `${a}${a ? '\n\n' : ''}${DETAILS_MARK}\n${b}` : a) || null }
 // Where route_item calls come from this turn (set by the brain per channel).
 export const ROUTE_SOURCE = { current: null, where: null, count: 0, files: null }
-// The turn a hand is called in (11/22): the brain runs each hand inside TURN.run({ text, channel }), so a hand that
-// must know what David said in this very message (write_built_state on a part he locked) reads it here. Empty when a
-// hand is called from anywhere else (the MCP door, a pulse), and such a caller is treated as David not having said it.
+// The turn a hand is called in (11/22): the brain runs each hand inside TURN.run({ own, channel }), so a hand that
+// must know what David said in this very message (write_built_state on a part he locked) reads it here. own is his
+// own words, typed or spoken in a live chat (the HUD panel, WhatsApp, voice), and nothing else: not the bracketed
+// prefix that says where he is, not a card event, not a document's text, not mail, not a pulse's instruction. It is
+// null on any other turn, and there is no store at all when a hand is called from outside a turn (the MCP door); in
+// both cases the caller is treated as David not having said it.
 export const TURN = new AsyncLocalStorage()
 export const DAVID = '9d28e8cf-3e35-48d9-a029-1327bd37fdd4'
 
@@ -277,8 +280,10 @@ function textPart(head, text, args, { key = 'text', what = 'it', hint = '' } = {
       pieces.push({ offset: o, starts_at: a, matches: 1, text: piece }); used += cost; end = b; covered += 1
     }
     if (!offs.length) return JSON.stringify({ ...head, chars: total, find: needle, matches: 0, how: `Nothing in ${what} carries those words${from ? ` from character ${from} on` : ''}. The search is for the exact words, in any case; try fewer words or another spelling.` })
-    const more = covered < offs.length
-    return JSON.stringify({ ...head, chars: total, find: needle, matches: offs.length, shown: covered, pieces, ...(more ? { truncated: true, next_offset: offs[covered], more: `${offs.length >= 5000 ? 'At least 5000' : offs.length} places carry those words${from ? ` from character ${from} on` : ''}; these are the first ${covered}. For the rest call again with the same find and offset ${offs[covered]}${around > 80 ? ', or ask for less text around each with around' : ''}.` } : {}), how: `Each piece is the text around a match: offset is where the match sits in ${what}, starts_at where the piece starts. To read more around one, pass offset (its starts_at) and length.` })
+    // The search stops counting at 5,000 places; past that there may be more, and the answer says so.
+    const capped = offs.length >= 5000, more = covered < offs.length || capped
+    const nextAt = covered < offs.length ? offs[covered] : offs[offs.length - 1] + Math.max(1, needle.length)
+    return JSON.stringify({ ...head, chars: total, find: needle, matches: offs.length, ...(capped ? { matches_at_least: true } : {}), shown: covered, pieces, ...(more ? { truncated: true, next_offset: nextAt, more: `${offs.length >= 5000 ? 'At least 5000' : offs.length} places carry those words${from ? ` from character ${from} on` : ''}; these are the first ${covered}. For the rest call again with the same find and offset ${nextAt}${around > 80 ? ', or ask for less text around each with around' : ''}.` } : {}), how: `Each piece is the text around a match: offset is where the match sits in ${what}, starts_at where the piece starts. To read more around one, pass offset (its starts_at) and length.` })
   }
   const from = clampInt(args.offset, 0, total)
   const want = args.length != null ? clampInt(args.length, 1, Math.max(1, total)) : total
@@ -291,8 +296,11 @@ function sheetPart(head, doc, args, max) {
   const list = doc.parts.map(p => ({ name: p.name, rows: p.rows.length, chars: p.rows.join('\n').length }))
   let use = doc.parts
   if (args.sheet != null && String(args.sheet).trim()) {
-    const want = norm(args.sheet)
-    const exact = doc.parts.filter(p => norm(p.name) === want), like = exact.length ? exact : doc.parts.filter(p => norm(p.name).includes(want))
+    // The name as written first (any case), then without its spaces and marks, then as part of a name.
+    const asked = String(args.sheet).trim().toLowerCase(), want = norm(args.sheet)
+    const same = doc.parts.filter(p => p.name.trim().toLowerCase() === asked)
+    const exact = same.length ? same : want ? doc.parts.filter(p => norm(p.name) === want) : []
+    const like = exact.length ? exact : want ? doc.parts.filter(p => norm(p.name).includes(want)) : []
     if (like.length !== 1) return JSON.stringify({ ok: false, error: like.length ? `"${args.sheet}" matches more than one sheet of ${head.name}: ${like.map(p => p.name).join(' | ')}. Name one exactly.` : `no sheet "${args.sheet}" in ${head.name}`, sheets: list })
     use = like
   }
@@ -301,7 +309,7 @@ function sheetPart(head, doc, args, max) {
   if (args.find != null && String(args.find) !== '') {
     const needle = String(args.find).toLowerCase(), skip = clampInt(args.offset, 0, 1e9), room = ANSWER_MAX - jlen(head) - 800
     // The header is the fullest row near the top of the sheet: the column names, under any title lines.
-    const headerOf = (p) => { let best = -1, most = 1; p.rows.slice(0, 25).forEach((r, i) => { const n = r.split(',').filter(c => c.trim()).length; if (n > most) { most = n; best = i } }); return best }
+    const headerOf = (p) => { let best = -1, most = 1; (p.filled || []).slice(0, 25).forEach((n, i) => { if (n > most && i < p.rows.length) { most = n; best = i } }); return best }
     const found = []; let total = 0, shown = 0, used = 0, full = false
     for (const p of use) {
       const h = headerOf(p); let g = null
@@ -353,7 +361,8 @@ function setAt(doc, keys, value, remove) {
   }
   const last = keys[keys.length - 1], where = keys.join('/')
   if (Array.isArray(at)) {
-    if (!/^\d+$/.test(last) || Number(last) > at.length) throw new Error(`${keys.slice(0, -1).join('/')} is a list of ${at.length}; ${last} is not a place in it`)
+    // One spelling for a place in a list (2, never 02), so a lock's pattern is tested on the place that is written.
+    if (!/^(0|[1-9]\d*)$/.test(last) || Number(last) > at.length) throw new Error(`${keys.slice(0, -1).join('/')} is a list of ${at.length}; ${last} is not a place in it`)
     const i = Number(last), had = i < at.length, was = had ? at[i] : undefined
     if (remove) throw new Error(`${where} is one place in a list; set it to null, or write the whole list, rather than removing it`)
     at[i] = value
@@ -363,6 +372,18 @@ function setAt(doc, keys, value, remove) {
   if (remove) { if (had) delete at[last] } else at[last] = value
   return { had, was }
 }
+// Whether David's own words in this turn say to unlock. A word test, not a reading: it is the second key, beside the
+// hand passing unlock, and it leans toward no ("do not unlock", "without unlocking" do not count).
+const saysUnlock = (words) => /\bunlock/i.test(words) && !/\b(do not|don't|dont|never|not|no|without|rather than|instead of)\b[^.!?\n]{0,24}\bunlock/i.test(words)
+// The value a change carries. It rides as JSON text (value_json), so the tool's schema declares a plain string; plain
+// words with no quotes are taken as the words, and a value given outright (a caller that is not the model) as it is.
+function changeValue(c, where) {
+  if (c.value_json == null) { if (c.value === undefined) throw new Error(`the change at ${where} has no value: pass value_json (the new value as JSON text), or remove true to take the entry out`); return c.value }
+  const raw = String(c.value_json)
+  try { return JSON.parse(raw) } catch { if (/^\s*[[{"]/.test(raw)) throw new Error(`value_json for ${where} is not JSON: write a list as ["a", null], words in double quotes, or null`); return raw.trim() }
+}
+// What an answer says a place held: the value when it is small, else what kind of thing and how large.
+const brief = (v) => { const n = jlen(v ?? null); return n <= 600 ? v : `(${kindOf(v)}, ${n} characters)` }
 // The locks on a built tab's kept state (its meta: state.locks, a list of { name, match, switch, locked }). match is
 // a pattern tested against a path; switch is the place in the state where David's own lock for that part lives (truthy
 // locked, falsy unlocked), which wins over the lock's own default (locked unless it says false). A change runs into a
@@ -376,7 +397,8 @@ function locksOn(meta, state, change) {
   // Every place this change touches: itself, the places above it, and the places under it before and after.
   const places = new Set()
   for (let i = 1; i <= keys.length; i++) places.add(keys.slice(0, i).join('/'))
-  const under = (v, at, depth) => { if (!isMap(v) || depth > 6) return; for (const k of Object.keys(v)) { if (places.size > 20000) return; const p = `${at}/${k}`; places.add(p); under(v[k], p, depth + 1) } }
+  // Maps and lists are both walked, so a lock on one slot of a list is met by a write of the whole list.
+  const under = (v, at, depth) => { if (v == null || typeof v !== 'object' || depth > 6) return; for (const k of Object.keys(v)) { if (places.size > 20000) return; const p = `${at}/${k}`; places.add(p); under(v[k], p, depth + 1) } }
   const was = walkTo(state, keys)
   if (!was.missing) under(was.at, path, 0)
   if (!change.remove) under(change.value, path, 0)
@@ -1119,7 +1141,7 @@ export const TOOLS = [
   },
   {
     name: 'write_built_state',
-    description: "Change what a built tab keeps, so the table on the tab shows it: one change, or a few, merged into the tab's kept state. Use it when David asks you to set, change or clear a mark on a line of a built tab that keeps its state in the HUD (the card frame says which tabs do). Follow the tab's guide in the card frame for how its state is shaped and how one mark is set. First find the line with read_built_page (find, by a name on the line) and read what is kept for it with read_built_state, so you write the right place and the whole right value. changes is a list of { path, value_json } to set, or { path, remove: true } to take an entry out; path is the keys joined with / (for example ovr/2023:45) and value_json is the new value written as JSON text (for example [\"OT\", null, \"Tier 2 Adjacent\"]). Only the places you name are touched. A part David locked is refused: it changes only when his own message in this same turn says to unlock it, and then you pass unlock true; never pass unlock on your own reading. The state before the change is kept, so tell him the change can be put back; undo true (with no changes) puts the last one back. After a change, read the place back with read_built_state and tell him what it was and what it is now. A tab that does not keep its state in the HUD is refused: say so plainly and hand the change to Claude Code.",
+    description: "Change what a built tab keeps, so the table on the tab shows it: one change, or a few, merged into the tab's kept state. Use it when David asks you to set, change or clear a mark on a line of a built tab that keeps its state in the HUD (the card frame says which tabs do). Follow the tab's guide in the card frame for how its state is shaped and how one mark is set. First find the line with read_built_page (find, by a name on the line) and read what is kept for it with read_built_state, so you write the right place and the whole right value. changes is a list of { path, value_json } to set, or { path, remove: true } to take an entry out; path is the keys joined with / (for example ovr/2023:45) and value_json is the new value written as JSON text (for example [\"OT\", null, \"Tier 2 Adjacent\"]). Only the places you name are touched. A part David locked is refused: it changes only when his own message in this same turn says to unlock it, and then you pass unlock true; never pass unlock on your own reading. The state before the change is kept, so tell him the change can be put back; undo true (with no changes) puts back the places the last change touched and leaves everything else as it is. After a change, read the place back with read_built_state and tell him what it was and what it is now. A tab that does not keep its state in the HUD is refused: say so plainly and hand the change to Claude Code.",
     inputSchema: { type: 'object', properties: { project: { type: 'string' }, side_mission: { type: 'string' }, slug: { type: 'string' }, changes: { type: 'array', items: { type: 'object', properties: { path: { type: 'string', description: 'the place in the state: its keys joined with /' }, value_json: { type: 'string', description: 'what to put there, written as JSON text: a list ["OT", null, "Tier 2 Adjacent"], words in quotes "a note", a number 1, or null' }, remove: { type: 'boolean', description: 'take the entry out instead of setting it' } }, required: ['path'] } }, unlock: { type: 'boolean', description: 'only when David said to unlock in this same message' }, undo: { type: 'boolean', description: 'put back the state from before the last change' } }, required: ['slug'] },
   },
   {
@@ -1629,6 +1651,7 @@ export async function callTool(name, args = {}) {
       if (!rows.some(f => f.name === `${slug}.html`)) return JSON.stringify({ ok: false, error: `no built tab ${slug} on ${pr.name}`, built_tabs: builtSlugs(rows) })
       const [text, meta] = await Promise.all([getStorageText(`${pr.id}/build/${slug}.state.json`), getStorageJson(`${pr.id}/build/${slug}.json`)])
       const kept = !!meta?.state?.kept
+      if (text == null && rows.some(f => f.name === `${slug}.state.json`)) throw new Error(`what ${slug} keeps could not be read just now; try again`)
       if (text == null) return JSON.stringify({ ok: true, on: pr.name, slug, stored: false, keeps_state: kept, state: null, note: kept ? 'This tab keeps its state in the HUD and has kept nothing yet: every mark on it is still the one it was built with.' : 'This tab keeps nothing in the HUD: either the page does not keep its state, or it keeps it somewhere else (its guide says where).' })
       const saved_at = rows.find(f => f.name === `${slug}.state.json`)?.updated_at || null
       let state; try { state = JSON.parse(text) } catch { return JSON.stringify({ ok: false, error: `the state kept for ${slug} is not JSON`, bytes: text.length }) }
@@ -1647,7 +1670,9 @@ export async function callTool(name, args = {}) {
           if (!where.toLowerCase().includes(needle) && !JSON.stringify(v ?? null).toLowerCase().includes(needle)) return
           total += 1
           if (total <= skip || full) return
-          const cost = jlen(where) + jlen(v ?? null) + 24
+          const size = jlen(v ?? null), cost = jlen(where) + size + 24
+          // One entry too large to ride along is named with its size, so the walk never sticks on it.
+          if (cost > room / 2) { const c = jlen(where) * 2 + 90; if (used + c > room) { full = true; return } found.push({ path: where, too_large: `${kindOf(v)}, ${size} characters: read it with path ${where}` }); used += c; return }
           if (used + cost > room) { full = true; return }
           found.push({ path: where, value: v }); used += cost
         }
@@ -1662,7 +1687,7 @@ export async function callTool(name, args = {}) {
       let used = 0, i = from
       for (; i < names.length; i++) {
         const k = names[i], v = at[k], size = jlen(v ?? null)
-        if (size > room / 2 && typeof v === 'object' && v) { const c = jlen(k) + 80; if (used + c > room) break; large[k] = `${kindOf(v)}, ${size} characters: read it with path ${[...keys, k].join('/')}`; used += c; continue }
+        if (size > room / 2) { const c = jlen(k) * 2 + jlen(keys.join('/')) + 90; if (used + c > room) break; large[k] = `${kindOf(v)}, ${size} characters: read it with path ${[...keys, k].join('/')}`; used += c; continue }
         const c = jlen(k) + size + 4
         if (used + c > room) break
         entries[k] = v; used += c
@@ -1671,60 +1696,79 @@ export async function callTool(name, args = {}) {
     }
     // Change what a built tab keeps (11/22; David: "i need him to be able to push a few changes to the table"). One
     // change or a few, merged into the tab's kept state: only the places named are touched, the state before is kept
-    // beside the removed versions so it can be put back, and a part David locked is refused unless his own message in
-    // this turn says to unlock. Only a tab whose meta says the HUD keeps its state (state.kept) can be changed here.
+    // beside the removed versions, and a part David locked is refused unless his own words in this turn say to
+    // unlock. Only a tab whose meta says the HUD keeps its state (state.kept) can be changed here. Undo puts back
+    // the places the last change touched, and only those, through the same locks.
     case 'write_built_state': {
       const pr = await resolveRoot(args)
       const slug = slugOf(args.slug)
-      const rows = await listStorage(`${pr.id}/build`)
-      if (!rows.some(f => f.name === `${slug}.html`)) return JSON.stringify({ ok: false, error: `no built tab ${slug} on ${pr.name}`, built_tabs: builtSlugs(rows) })
       const meta = await getStorageJson(`${pr.id}/build/${slug}.json`)
+      const file = `${pr.id}/build/${slug}.state.json`, gone = `${pr.id}/build-removed`
+      // What is kept, read so that a read that fails is never taken for "nothing kept" (a write would then start from
+      // empty and lay that over his marks): the folder's own list says whether the file is there.
+      const readKept = async () => {
+        const rows = await listStorage(`${pr.id}/build`)
+        if (!rows.some(f => f.name === `${slug}.html`)) return { none: true, rows }
+        const text = await getStorageText(file)
+        if (text == null && rows.some(f => f.name === `${slug}.state.json`)) throw new Error(`what ${slug} keeps could not be read just now, so nothing was changed; try again`)
+        return { text }
+      }
+      const first = await readKept()
+      if (first.none) return JSON.stringify({ ok: false, error: `no built tab ${slug} on ${pr.name}`, built_tabs: builtSlugs(first.rows) })
       if (!meta?.state?.kept) return JSON.stringify({ ok: false, refused: 'not kept here', note: `The tab ${meta?.title || slug} does not keep its state in the HUD, so there is nothing here to change and nothing was changed. If its marks are kept somewhere else, its guide says where. Tell David plainly, and hand the change to Claude Code if he wants it made.` })
-      const file = `${pr.id}/build/${slug}.state.json`
-      const text = await getStorageText(file)
-      const stamp = new Date().toISOString().replace(/[:.]/g, '-')
-      const keep = async () => { const name = `${slug}.state.${stamp}.json`; await putStorage(`${pr.id}/build-removed/${name}`, text == null ? 'null' : text, 'application/json'); return name }
+      // The changes: the ones asked for, or for undo the reverse of the last ones made here.
+      let asked, undoing = null
       if (args.undo) {
-        const kept = (await listStorage(`${pr.id}/build-removed`, 200, `${slug}.state.`)).map(f => f.name).filter(n => n.startsWith(`${slug}.state.`) && n.endsWith('.json')).sort().reverse()
-        if (!kept.length) return JSON.stringify({ ok: false, error: `no earlier state is kept for ${slug}, so there is nothing to put back` })
-        const prior = await getStorageText(`${pr.id}/build-removed/${kept[0]}`)
-        if (prior == null) throw new Error(`the kept state ${kept[0]} could not be read; nothing was changed`)
-        const mine = await keep()
-        if (prior.trim() === 'null') { if (text != null && !(await delStorage(file))) throw new Error('the state could not be cleared; nothing was put back') }
-        else await putStorage(file, prior, 'application/json')
-        return JSON.stringify({ ok: true, on: pr.name, slug, put_back: kept[0], kept_as: mine, note: 'The state from before the last change is back. What was there a moment ago is kept too, so undo once more brings it back. The tab shows it when it refreshes, which it does on its own after your reply.' })
+        const names = (await listStorage(gone, 200, `${slug}.state.`)).map(f => f.name).filter(n => n.startsWith(`${slug}.state.`) && n.endsWith('.undo.json')).sort().reverse()
+        if (!names.length) return JSON.stringify({ ok: false, error: `no change made here is on record for ${slug}, so there is nothing to put back` })
+        const rec = await getStorageJson(`${gone}/${names[0]}`)
+        if (!rec || !Array.isArray(rec.changes) || !rec.changes.length) throw new Error(`the record of the last change (${names[0]}) could not be read; nothing was changed`)
+        undoing = names[0]
+        asked = rec.changes.slice().reverse().map(c => c.had ? { keys: c.keys, remove: false, value: c.was } : { keys: c.keys, remove: true, value: null })
+      } else {
+        const list = (Array.isArray(args.changes) ? args.changes : []).filter(c => c && typeof c === 'object')
+        if (!list.length) throw new Error('changes (a list of { path, value_json } or { path, remove: true }) required')
+        if (list.length > 60) throw new Error('at most 60 changes in one call')
+        asked = list.map(c => { const keys = pathKeys(c.path), remove = c.remove === true; return { keys, remove, value: remove ? null : changeValue(c, keys.join('/')) } })
       }
-      let state
-      if (text == null) state = isMap(meta.state.empty) ? JSON.parse(JSON.stringify(meta.state.empty)) : {}
-      else { try { state = JSON.parse(text) } catch { return JSON.stringify({ ok: false, error: `the state kept for ${slug} is not JSON, so it was left alone`, bytes: text.length }) } }
-      if (!isMap(state)) return JSON.stringify({ ok: false, error: `the state kept for ${slug} is not a set of named parts, so one change cannot be merged into it` })
-      const list = (Array.isArray(args.changes) ? args.changes : []).filter(c => c && typeof c === 'object')
-      if (!list.length) throw new Error('changes (a list of { path, value_json } or { path, remove: true }) required')
-      if (list.length > 60) throw new Error('at most 60 changes in one call')
-      // The value rides as JSON text (value_json), so the tool's schema declares a plain string; a value given
-      // outright (a caller that is not the model) is taken as it is.
-      const valueOf = (c) => {
-        if (c.value_json == null) return c.value === undefined ? null : c.value
-        try { return JSON.parse(String(c.value_json)) } catch { throw new Error(`value_json for ${pathKeys(c.path).join('/')} is not JSON: write a list as [..], words in double quotes, or null`) }
+      const turn = TURN.getStore()
+      const live = !!turn && typeof turn.own === 'string'
+      const said = live && saysUnlock(turn.own)
+      // Read, change, and write only if what is kept did not move meanwhile (the page saves here too); else once more.
+      for (let tries = 1; ; tries++) {
+        const kept = tries === 1 ? first : await readKept()
+        if (kept.none) return JSON.stringify({ ok: false, error: `the built tab ${slug} is no longer on ${pr.name}; nothing was changed` })
+        const text = kept.text
+        let state
+        if (text == null) state = isMap(meta.state.empty) ? JSON.parse(JSON.stringify(meta.state.empty)) : {}
+        else { try { state = JSON.parse(text) } catch { return JSON.stringify({ ok: false, error: `the state kept for ${slug} is not JSON, so it was left alone`, bytes: text.length }) } }
+        if (!isMap(state)) return JSON.stringify({ ok: false, error: `the state kept for ${slug} is not a set of named parts, so one change cannot be merged into it` })
+        // Locks first, on the state as it stands: nothing is written if any change runs into one David has not opened.
+        const locked = [...new Set(asked.flatMap(c => locksOn(meta, state, c)))]
+        if (locked.length && !(args.unlock === true && said)) {
+          const why = args.unlock !== true ? '' : live ? '; unlock was passed, but his own words this turn do not say to unlock' : '; unlock was passed, but this call did not come from his own message in a live chat (the HUD, WhatsApp or voice), where his words can be read'
+          return JSON.stringify({ ok: false, refused: 'locked', locked, saved: false, note: `Locked by David: ${locked.join(', ')}. Nothing was changed${undoing ? ' and nothing was put back' : ''}. A locked part changes only when his own message in this same turn says to unlock it${why}. Tell him it is locked and ask whether to unlock it for this; when he says so, call again with unlock true. The lock itself stays as he set it.` })
+        }
+        const done = []
+        for (const c of asked) {
+          const r = setAt(state, c.keys, c.value, c.remove)
+          done.push({ keys: c.keys, had: !!r.had, was: r.had ? r.was : null, now: c.remove ? undefined : c.value, removed: c.remove })
+        }
+        const next = JSON.stringify(state)
+        if (next.length > 1000000) return JSON.stringify({ ok: false, error: 'the state would pass the 1 MB a tab may keep; nothing was changed' })
+        const again = (await readKept()).text
+        if ((again ?? null) !== (text ?? null)) { if (tries >= 4) throw new Error('what the tab keeps kept changing while this was being written (the page is saving); nothing was changed, try again in a moment'); continue }
+        // The state before, whole, and the record that lets undo put back just these places.
+        const stamp = new Date().toISOString().replace(/[:.]/g, '-')
+        await putStorage(`${gone}/${slug}.state.${stamp}.json`, text == null ? 'null' : text, 'application/json')
+        await putStorage(file, next, 'application/json')
+        await putStorage(`${gone}/${slug}.state.${stamp}.undo.json`, JSON.stringify({ at: new Date().toISOString(), changes: done.map(d => ({ keys: d.keys, had: d.had, was: d.was })) }), 'application/json')
+        if (undoing) await delStorage(`${gone}/${undoing}`)
+        const changed = done.map(d => ({ path: d.keys.join('/'), was: d.had ? brief(d.was) : '(nothing)', now: d.removed ? '(removed)' : brief(d.now) }))
+        return JSON.stringify({ ok: true, on: pr.name, slug, ...(undoing ? { put_back: changed } : { changed }), kept_as: `${slug}.state.${stamp}.json`, ...(locked.length ? { unlocked_for_this_change: locked } : {}), note: undoing
+          ? 'The places the last change touched are back as they were; nothing else in the state was touched, so anything David marked since stays. Undo once more makes the change again. The tab shows it when it refreshes, which it does on its own after your reply.'
+          : `Saved in the kept state of ${meta.title || slug}; nothing else in it was touched${locked.length ? ', and the lock stays as David set it' : ''}. The state before this change is kept, so it can be put back: tell David that (write_built_state with undo true puts back just the places this change touched). The tab shows the change when it refreshes, which it does on its own after your reply.` })
       }
-      const changes = list.map(c => ({ keys: pathKeys(c.path), remove: c.remove === true, value: c.remove === true ? null : valueOf(c) }))
-      // Locks first, on the state as it stands: nothing is written if any change runs into one David has not opened.
-      const locked = [...new Set(changes.flatMap(c => locksOn(meta, state, c)))]
-      if (locked.length) {
-        const turn = TURN.getStore()
-        const said = turn && !/\(A card event, not a message David typed\.\)/.test(String(turn.text || '')) && /\bunlock/i.test(String(turn.text || ''))
-        if (!(args.unlock === true && said)) return JSON.stringify({ ok: false, refused: 'locked', locked, saved: false, note: `Locked by David: ${locked.join(', ')}. Nothing was changed. A locked part changes only when his own message in this same turn says to unlock it${args.unlock === true ? (turn ? '; unlock was passed, but his message this turn does not say to unlock' : '; unlock was passed, but this call did not come from a live chat with David, where his own words can be read') : ''}. Tell him it is locked and ask whether to unlock it for this change; when he says so, call again with unlock true. The lock itself stays as he set it.` })
-      }
-      const changed = []
-      for (const c of changes) {
-        const r = setAt(state, c.keys, c.value, c.remove)
-        changed.push({ path: c.keys.join('/'), was: r.had ? r.was : '(nothing)', now: c.remove ? '(removed)' : c.value })
-      }
-      const next = JSON.stringify(state)
-      if (next.length > 1000000) return JSON.stringify({ ok: false, error: 'the state would pass the 1 MB a tab may keep; nothing was changed' })
-      const kept_as = await keep()
-      await putStorage(file, next, 'application/json')
-      return JSON.stringify({ ok: true, on: pr.name, slug, changed, kept_as, ...(locked.length ? { unlocked_for_this_change: locked } : {}), note: `Saved in the kept state of ${meta.title || slug}; nothing else in it was touched${locked.length ? ', and the lock stays as David set it' : ''}. The state before this change is kept, so it can be put back: tell David that (write_built_state with undo true does it). The tab shows the change when it refreshes, which it does on its own after your reply.` })
     }
     case 'patch_built_page': {
       const pr = await resolveRoot(args)
