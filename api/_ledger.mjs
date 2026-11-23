@@ -1729,7 +1729,7 @@ export async function callTool(name, args = {}) {
         const list = (Array.isArray(args.changes) ? args.changes : []).filter(c => c && typeof c === 'object')
         if (!list.length) throw new Error('changes (a list of { path, value_json } or { path, remove: true }) required')
         if (list.length > 60) throw new Error('at most 60 changes in one call')
-        asked = list.map(c => { const keys = pathKeys(c.path), remove = c.remove === true; return { keys, remove, value: remove ? null : changeValue(c, keys.join('/')) } })
+        asked = list.map(c => { const keys = pathKeys(c.path), remove = c.remove === true; return { keys, remove, value: remove ? null : changeValue(c, keys.join('/')), raw: !remove && c.value_json != null ? String(c.value_json).trim() : null } })
       }
       const turn = TURN.getStore()
       const live = !!turn && typeof turn.own === 'string'
@@ -1751,8 +1751,11 @@ export async function callTool(name, args = {}) {
         }
         const done = []
         for (const c of asked) {
-          const r = setAt(state, c.keys, c.value, c.remove)
-          done.push({ keys: c.keys, had: !!r.had, was: r.had ? r.was : null, now: c.remove ? undefined : c.value, removed: c.remove })
+          // Words stay words: where the place holds text, "2024" written bare is kept as text, not turned into a number.
+          let value = c.value
+          if (c.raw != null && (typeof value === 'number' || typeof value === 'boolean')) { const cur = walkTo(state, c.keys); if (!cur.missing && typeof cur.at === 'string') value = c.raw }
+          const r = setAt(state, c.keys, value, c.remove)
+          done.push({ keys: c.keys, had: !!r.had, was: r.had ? r.was : null, now: c.remove ? undefined : value, removed: c.remove })
         }
         const next = JSON.stringify(state)
         if (next.length > 1000000) return JSON.stringify({ ok: false, error: 'the state would pass the 1 MB a tab may keep; nothing was changed' })
