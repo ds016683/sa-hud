@@ -344,7 +344,7 @@ export default async function handler(req, res) {
           const path = `inbox/${chiTodayStr()}/${new Date().toISOString().slice(11, 19).replace(/:/g, '')}-${name}`
           await putFile(path, bytes, mime || m.document.mime_type || 'application/octet-stream')
           let body = ''
-          try { body = clip(await extractText(bytes, name, mime || m.document.mime_type || ''), 20000) } catch (e) { body = `(could not extract text: ${String(e.message || e).slice(0, 120)})` }
+          try { body = clip((await extractText(bytes, name, mime || m.document.mime_type || '')).text, 20000) } catch (e) { body = `(could not extract text: ${String(e.message || e).slice(0, 120)})` }
           text = `[document "${name}" filed at files/${path}${m.document.caption ? `; David's caption: ${m.document.caption}` : ''}]\n${body}`
         } catch (e) { text = `[document message could not be fetched: ${String(e.message || e).slice(0, 140)}]` }
       } else {
