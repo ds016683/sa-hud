@@ -80,6 +80,8 @@ export default async function handler(req, res) {
     // The Lumen panel (11/4): the card David is in rides with the turn, and the brain gets its frame.
     const it = body.item && typeof body.item === 'object' ? body.item : null
     if (it && (['objective', 'project'].includes(it.kind) || (it.kind === 'task' && body.action === 'gate-debrief')) && /^[0-9a-f-]{8,}$/i.test(String(it.id || ''))) item = { kind: it.kind, id: String(it.id) }
+    // A gate on a Side Mission's card is a line on the card, known by its number.
+    if (it && it.kind === 'step' && body.action === 'gate-debrief' && /^\d{1,12}$/.test(String(it.id || ''))) item = { kind: 'step', id: String(it.id) }
     // A card event (David 11/11: "when i do something like that the lumen chat window should be able to notice and
     // ask a question (push)"): he clicked a stop on the card's path as done. It is kept in the thread as what
     // happened, and Lumen is asked to notice it, not handed words David never typed.
@@ -130,8 +132,8 @@ export default async function handler(req, res) {
     }
     // The gate debrief (api/_gate-debrief.mjs): one gate read in full. It writes nothing.
     if (body.action === 'gate-debrief') {
-      if (!item || (item.kind !== 'objective' && item.kind !== 'task')) return res.status(400).json({ error: 'a gate is required' })
-      try { return res.status(200).json({ ok: true, debrief: await gateDebrief({ ...(item.kind === 'task' ? { taskId: item.id } : { objectiveId: item.id }), words: String(body.words || ''), model: MODEL() }) }) } catch (e) { return res.status(500).json({ error: String(e.message || e).slice(0, 240) }) }
+      if (!item || !['objective', 'task', 'step'].includes(item.kind)) return res.status(400).json({ error: 'a gate is required' })
+      try { return res.status(200).json({ ok: true, debrief: await gateDebrief({ ...(item.kind === 'step' ? { stepId: item.id } : item.kind === 'task' ? { taskId: item.id } : { objectiveId: item.id }), words: String(body.words || ''), model: MODEL() }) }) } catch (e) { return res.status(500).json({ error: String(e.message || e).slice(0, 240) }) }
     }
     // The broom (api/_tidy.mjs): which of a card's files to archive. It writes nothing.
     if (body.action === 'tidy-files') {

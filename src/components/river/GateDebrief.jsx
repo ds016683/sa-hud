@@ -101,9 +101,9 @@ export default function GateDebrief({ item, tone = PURPLE, onClose, onDone, draf
   const brief = useCallback(async (context) => {
     const me = ++run.current
     setAsking(true); setErr(null)
-    try { const out = await drafter({ objectiveId: item.id || null, taskId: item.id ? null : item.task_id, words: context.join('\n\n') }); if (me !== run.current) return; setD(out); setNote(out.closing_note || '') }
+    try { const out = await drafter({ objectiveId: item.id || null, taskId: item.id ? null : item.task_id, stepId: item.step_id ?? null, words: context.join('\n\n') }); if (me !== run.current) return; setD(out); setNote(out.closing_note || '') }
     catch (e) { if (me === run.current) setErr(`Lumen could not brief it: ${e.message}`) } finally { if (me === run.current) setAsking(false) }
-  }, [drafter, item.id, item.task_id])
+  }, [drafter, item.id, item.task_id, item.step_id])
   useEffect(() => { Promise.resolve().then(() => brief([])) }, [brief])
   useEffect(() => { const k = (e) => { if (e.key === 'Escape' && !busy && !e.defaultPrevented) onClose() }; window.addEventListener('keydown', k); return () => window.removeEventListener('keydown', k) }, [onClose, busy])
   const addContext = async () => {
@@ -146,7 +146,13 @@ export default function GateDebrief({ item, tone = PURPLE, onClose, onDone, draf
         else if (kind === 'build') { await copyObject(`${root}/build/${id}.html`, `${pid}/build/${id}.html`); await copyObject(`${root}/build/${id}.json`, `${pid}/build/${id}.json`); await copyObject(`${root}/build/${id}.state.json`, `${pid}/build/${id}.state.json`, { optional: true }) }
       }
       let top = d?.top || 0
-      for (const c of chg) {
+      // A Side Mission's gate: the mission is the card, its gates the card's lines.
+      for (const c of d?.side ? chg : []) {
+        if (c.kind === 'polaris') { const { error } = await supabase.from('objectives').update({ north_star: c.text }).eq('id', pid); if (error) throw new Error(`Polaris: ${error.message}`) }
+        else if (c.kind === 'reword_gate') { const { error } = await supabase.from('objective_steps').update({ text: c.text }).eq('id', c.task_id); if (error) throw new Error(`Gate ${c.n}: ${error.message}`) }
+        else if (c.kind === 'new_gate') { top += 1; const { error } = await supabase.from('objective_steps').insert({ objective_id: pid, text: c.text.slice(0, 300), position: top - 1 }); if (error) throw new Error(`New gate: ${error.message}`) }
+      }
+      for (const c of d?.side ? [] : chg) {
         if (c.kind === 'polaris') { const { error } = await supabase.from('projects').update({ description: c.text }).eq('id', pid); if (error) throw new Error(`Polaris: ${error.message}`) }
         else if (c.kind === 'reword_gate') { const { error } = await supabase.from('project_tasks').update({ text: `${c.n} · ${c.text}` }).eq('id', c.task_id); if (error) throw new Error(`Gate ${c.n}: ${error.message}`) }
         else if (c.kind === 'new_gate') { top += 1; const { error } = await supabase.from('project_tasks').insert({ project_id: pid, text: `${top} · ${c.text}`, status: 'open', done: false, source: 'debrief', notes: `From the debrief of Gate ${d.gate.n}, ${d.gate.text}. ${c.why || ''}`.trim() }); if (error) throw new Error(`New gate: ${error.message}`) }
@@ -184,18 +190,18 @@ export default function GateDebrief({ item, tone = PURPLE, onClose, onDone, draf
               <textarea rows={7} value={note} onChange={e => setNote(e.target.value)} aria-label="Closing note" />
             </div>
           </div>
-          <div className="gd-card full">
+          <div className="gd-card full" style={d?.side ? { display: 'none' } : undefined}>
             <h3><span className="gd-n">3</span>What Goes Up To The Mission</h3>
             {items.map(x => <div key={x.key} className={`gd-r${yes[`up:${x.key}`] === false ? ' off' : ''}`}><div><span className="gd-k">{x.kind}</span>{x.name}{x.why && <small>{x.pull ? 'Lumen: Up' : 'Lumen: Stays'} · {x.why}</small>}</div><YN on={yes[`up:${x.key}`] ?? null} set={set(`up:${x.key}`)} /></div>)}
           </div>
           <div className="gd-card full">
-            <h3><span className="gd-n">4</span>Did This Gate Change The Mission</h3>
+            <h3><span className="gd-n">{d?.side ? 3 : 4}</span>Did This Gate Change The Mission</h3>
             {(d?.changes || []).map((c, i) => <div key={i} className={`gd-r${yes[`chg:${i}`] === false ? ' off' : ''}`}><div><span className="gd-k">{CHANGE[c.kind]}{c.kind === 'reword_gate' ? ` · Gate ${c.n}` : ''}</span>{c.text}{(c.from || c.why) && <small>{c.from ? `Was: ${c.from}. ` : ''}{c.why}</small>}</div><YN on={yes[`chg:${i}`] ?? null} set={set(`chg:${i}`)} /></div>)}
           </div>
 
           {(d?.reconcile || []).length > 0 && (
             <div className="gd-card full">
-              <h3><span className="gd-n">5</span>Things To Reconcile</h3>
+              <h3><span className="gd-n">{d?.side ? 4 : 5}</span>Things To Reconcile</h3>
               {recs.map((r, i) => ed && ed.i === i ? (
                 <div key={i} className="gd-r gd-edit">
                   <div>

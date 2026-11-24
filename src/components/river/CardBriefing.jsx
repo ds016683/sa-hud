@@ -35,6 +35,10 @@ import GatePage, { GateGlyph } from './GatePage'
 import { ExtractMarker } from './glyphs'
 import { openCard } from '../../lib/card'
 import { hudConfirm, hudPrompt } from '../../lib/dialog'
+import GateDebrief from './GateDebrief'
+import { AwardYay } from './AwardYay'
+import { fileEntry } from '../../lib/archive'
+import { markPlayed } from '../../lib/yay'
 
 // The Ledger's doors, as one object, so dev/briefing.html can run the page on sample data with no sign-in.
 const LEDGER = { addStep, toggleStep, removeStep, setStepOrder, listPages, readPage, listBuilds, listLiveFiles, readPath, noteSource, savePathSteps }
@@ -136,6 +140,19 @@ export default function CardBriefing({ tone = null, obj, root, kindLabel, steps 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }))
 
   const openSteps = steps.filter(s => !s.done)
+  // A gate on a Side Mission's card extracts through the gate debrief, the way a Main Mission's does (David 11/24:
+  // "i didn't get a debrief again"). A gate card's own steps and a dev harness's sample data keep the plain close.
+  const debriefs = !onExtract && !isGate && api === LEDGER
+  const [debriefOf, setDebriefOf] = useState(null)
+  const [gateYay, setGateYay] = useState(null)
+  const finishDebrief = async (st, record) => {
+    await api.toggleStep(st.id, true)
+    if (record) await fileEntry({ realm: (obj.tags || []).includes('personal') ? 'personal' : 'third-horizon', source_kind: 'objective', source_id: obj.id, source_title: obj.title, tags: ['gate'], kind: 'summary', title: `Gate ${gateN(st)} · ${st.text}`, summary: record, body: { achieved: record, gate_step_id: st.id } }).catch(e => console.warn('gate record', e.message))
+    setJustClosed(j => [...j, st.id]); await onReload()
+    if (onClosed) onClosed(st)
+    else fireCardEvent({ item: { kind: 'objective', id: obj.id }, event: { kind: 'stop_closed', text: st.text, open: openSteps.filter(x => x.id !== st.id).map(x => x.text) } })
+    return { minutes: 0 }
+  }
   // A Side Mission's gates are numbered by their place on the line, the way the gate page numbers them (David 11/24);
   // a Main Mission's gates keep the number the Ledger gives them. A gate card's own steps are not gates of their own.
   const gateN = (st) => st.n != null ? st.n : isGate ? null : (steps.findIndex(x => x.id === st.id) + 1) || null
@@ -192,6 +209,7 @@ export default function CardBriefing({ tone = null, obj, root, kindLabel, steps 
   const finishGate = async (st) => {
     if (busy) return
     if (onExtract) { setGateId(null); onExtract(st); return }
+    if (debriefs) { setGateId(null); setDebriefOf(st); return }
     if (!await hudConfirm({ title: 'Extract This Gate?', message: st.text, confirm: 'Extract' })) return
     if (confirmClose && !(await confirmClose(st))) return
     setBusy(true)
@@ -335,7 +353,7 @@ export default function CardBriefing({ tone = null, obj, root, kindLabel, steps 
                       : <span className="hit still" title={s.type === 'gate' ? 'This gate closes on its own card' : s.type === 'mission' ? 'This gate closes on the mission\'s page, or on its own card once it is on the Board' : 'This one lives on a session board'}><span className="o" style={s.blocked ? { borderColor: 'var(--hud-warn)' } : undefined} /></span>}
                     {isClosing && <span className="brf-spark" style={{ '--dy': `${closing.dy}px` }} />}
                     {isNext && <div className="when">{s.type === 'mission' ? `Gate ${s.gate.n} · This Gate` : 'Next Move'}</div>}
-                    <div className={`what${s.type === 'gate' || (s.type === 'step' && !s.done) ? ' link' : ''}`} title={s.type === 'step' && !s.done ? 'Open this gate' : undefined} onClick={s.type === 'gate' ? () => onOpenCard && onOpenCard(s.kid.id) : s.type === 'step' && !s.done ? () => (s.step.objective_id && s.step.objective_id !== obj.id ? openCard(s.step.objective_id) : setGateId(s.step.id)) : undefined}>{s.type === 'step' && gateN(s.step) != null && <span className="gn">Gate {gateN(s.step)}</span>}{s.text}{!s.done && (s.type === 'step' || s.type === 'gate') && <span style={{ display: 'inline-flex', gap: 7, marginLeft: 12, verticalAlign: 'middle' }} onClick={e => e.stopPropagation()}><button className="gp-ic sm" style={tone ? { '--c': tone } : undefined} title="Open The Gate" aria-label={`Open the gate: ${s.text}`} onClick={() => s.type === 'gate' ? (onOpenCard && onOpenCard(s.kid.id)) : (s.step.objective_id && s.step.objective_id !== obj.id ? openCard(s.step.objective_id) : setGateId(s.step.id))}><GateGlyph size={13} /></button>{s.type === 'step' && <ExtractMarker size={28} color={tone || '#8ACAFF'} title="Extract · Close This Gate, Bank The Miles" onClick={(e) => { if (onExtract) { onExtract(s.step); return } const ev = { currentTarget: e.currentTarget }; hudConfirm({ title: 'Extract This Gate?', message: s.text, confirm: 'Extract' }).then(ok => { if (ok) close(s.step, ev) }) }} />}</span>}</div>
+                    <div className={`what${s.type === 'gate' || (s.type === 'step' && !s.done) ? ' link' : ''}`} title={s.type === 'step' && !s.done ? 'Open this gate' : undefined} onClick={s.type === 'gate' ? () => onOpenCard && onOpenCard(s.kid.id) : s.type === 'step' && !s.done ? () => (s.step.objective_id && s.step.objective_id !== obj.id ? openCard(s.step.objective_id) : setGateId(s.step.id)) : undefined}>{s.type === 'step' && gateN(s.step) != null && <span className="gn">Gate {gateN(s.step)}</span>}{s.text}{!s.done && (s.type === 'step' || s.type === 'gate') && <span style={{ display: 'inline-flex', gap: 7, marginLeft: 12, verticalAlign: 'middle' }} onClick={e => e.stopPropagation()}><button className="gp-ic sm" style={tone ? { '--c': tone } : undefined} title="Open The Gate" aria-label={`Open the gate: ${s.text}`} onClick={() => s.type === 'gate' ? (onOpenCard && onOpenCard(s.kid.id)) : (s.step.objective_id && s.step.objective_id !== obj.id ? openCard(s.step.objective_id) : setGateId(s.step.id))}><GateGlyph size={13} /></button>{s.type === 'step' && <ExtractMarker size={28} color={tone || '#8ACAFF'} title="Extract · Close This Gate, Bank The Miles" onClick={(e) => { if (onExtract) { onExtract(s.step); return } if (debriefs) { setDebriefOf(s.step); return } const ev = { currentTarget: e.currentTarget }; hudConfirm({ title: 'Extract This Gate?', message: s.text, confirm: 'Extract' }).then(ok => { if (ok) close(s.step, ev) }) }} />}</span>}</div>
                     {s.done && <><span className="when">Closed just now</span><button className="tool" onClick={() => reopen(s.step)}>Reopen</button></>}
                     {!s.done && s.type === 'step' && (stopExtra ? stopExtra(s.step, { takeOff: () => drop(s.step) }) : <div className="src">{src.lead}{src.quote && <> <q>{src.quote}</q></>}<span className="gt-set" style={{ marginLeft: 10, verticalAlign: 'middle' }}><button className="gt-ic" title="Rename" aria-label={`Rename: ${s.text}`} onClick={() => rename(s.step)}><Pencil size={13} /></button><button className="gt-ic del" title="Take It Off" aria-label={`Take off: ${s.text}`} onClick={() => drop(s.step)}><XMark size={14} /></button></span></div>)}
                     {s.type === 'gate' && <div className="src">Gate {s.n} of {kids.length}{s.kid.due_date ? ` · ${dueWords(s.kid.due_date).short}` : ''}. It closes on its own card.</div>}
@@ -388,6 +406,18 @@ export default function CardBriefing({ tone = null, obj, root, kindLabel, steps 
         onClose={() => setGateId(null)} onPick={(x) => { if (x.objective_id) { setGateId(null); openCard(x.objective_id) } else setGateId(x.id) }} onRename={rename} onExtract={finishGate}
         onLoad={kindLabel !== 'Main Mission' ? loadMission : null} />
     ) : null })()}
+    {debriefOf && (
+      <GateDebrief item={{ id: null, step_id: debriefOf.id, objective_id: obj.id, title: `Gate ${gateN(debriefOf)} · ${debriefOf.text}` }} tone={tone || undefined}
+        onClose={() => setDebriefOf(null)} finish={(record) => finishDebrief(debriefOf, record)}
+        onDone={(r, info) => { setDebriefOf(null); setGateYay(info || {}) }} />
+    )}
+    {gateYay && (
+      <AwardYay title="Gate Extracted" sub={gateYay.gate ? `Gate ${gateYay.gate.n} · ${gateYay.gate.text}` : obj.title} awards={[{ badge: 'gate', n: 1, miles: 7 }]} banked={null}
+        done={(gateYay.did || []).slice(0, 6).map(x => ({ tag: x.tag, color: '#B4A3E8', text: x.text }))}
+        go={gateYay.next ? `Gate ${gateYay.next.n} · ${gateYay.next.text}` : 'Back To The Card'}
+        onContinue={() => { if (gateYay.gate?.id != null) markPlayed(gateYay.gate.id); const nx = gateYay.next; setGateYay(null); if (nx && nx.step_id != null) setGateId(nx.step_id) }}
+        lead={gateYay.next ? <GateGlyph size={17} /> : null} />
+    )}
     </DndContext>
   )
 }

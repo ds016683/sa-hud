@@ -33,7 +33,27 @@ async function storageJson(path) {
 // Everything on the gate, and the mission it sits on.
 // A gate with no card of its own (taskId, David 11/23: the trail's Extract on Gate 1 skipped the debrief) is read from
 // its task and the Workbench it keeps on the mission card, <project id>/gates/<task id>.
-export async function gatherGate(objectiveId, taskId = null) {
+// A gate on a Side Mission's card (stepId, David 11/24: "i didn't get a debrief again"): the gate is a line on the card
+// (objective_steps), the mission is the card, its Polaris the card's, and its gates the card's lines in order. The gate
+// works on the card's own Workbench, so nothing on it has anywhere further up to go.
+async function gatherStepGate(stepId) {
+  const [st] = await sb(`objective_steps?select=id,text,objective_id,done&id=eq.${Number(stepId)}&limit=1`)
+  if (!st) throw new Error('no such gate')
+  const [[o], all] = await Promise.all([
+    sb(`objectives?select=id,title,description,north_star&id=eq.${st.objective_id}`),
+    sb(`objective_steps?select=id,text,done,position&objective_id=eq.${st.objective_id}&order=position,id`),
+  ])
+  if (!o) throw new Error('no such card')
+  const gates = all.map((x, i) => ({ id: x.id, n: i + 1, text: flat(x.text, 300), done: !!x.done, notes: '', objective_id: null }))
+  const me = gates.find(g => g.id === st.id)
+  const next = gates.find(g => !g.done && g.id !== st.id && g.n > me.n) || gates.find(g => !g.done && g.id !== st.id) || null
+  const sources = (await storageJson(`objectives/${o.id}/path.json`))?.sources || {}
+  const src = sources[String(st.id)]
+  return { side: true, o, task: { id: st.id, notes: [flat(o.description, 700), src ? `Where the gate came from: ${flat(src.quote || src.text || '', 500)}` : ''].filter(Boolean).join(' | ') }, mission: { id: o.id, name: o.title, polaris: o.north_star || '', kind: 'side' }, gate: me, gates, next, items: [], proofs: [], steps: [] }
+}
+
+export async function gatherGate(objectiveId, taskId = null, stepId = null) {
+  if (stepId != null) return gatherStepGate(stepId)
   let o = null, task = null
   if (objectiveId) {
     ;[o] = await sb(`objectives?select=id,title,description,north_star,captured_at&id=eq.${objectiveId}`)
@@ -77,11 +97,12 @@ const TOOL = { name: 'gate_debrief', description: 'Hand David the gate debrief.'
   changes: { type: 'array', items: { type: 'object', additionalProperties: false, required: ['kind', 'gate', 'text', 'why'], properties: { kind: { type: 'string', enum: ['polaris', 'reword_gate', 'new_gate'] }, gate: str, text: str, why: str } } },
 } } }
 
-export async function gateDebrief({ objectiveId = null, taskId = null, words = '', model }) {
+export async function gateDebrief({ objectiveId = null, taskId = null, stepId = null, words = '', model }) {
   if (!model) throw new Error('no model named for the gate debrief')
-  const g = await gatherGate(objectiveId, taskId)
+  const g = await gatherGate(objectiveId, taskId, stepId)
+  const kind = g.side ? 'Side Mission' : 'Main Mission'
   const said = flat(words, 4000)
-  const prompt = `You are Lumen. David is extracting one gate of a Main Mission. Brief him before it closes, from the gate's record${said ? ' and the context he has added' : ''}.
+  const prompt = `You are Lumen. David is extracting one gate of a ${kind}. Brief him before it closes, from the gate's record${said ? ' and the context he has added' : ''}.
 
 His rule: "if he doesn't KNOW a thing, he doesn't say a thing." Every line must be something the record below states${said ? ' or his context says' : ''}. No guesses. An empty list is a right answer. Nothing you write is acted on until he checks it.
 
@@ -134,7 +155,7 @@ Hand the debrief back by calling the gate_debrief tool exactly once, with every 
   }).filter(Boolean)
   const v = out.verification || {}
   return {
-    mission: g.mission, gate: { id: g.gate.id, n: g.gate.n, text: g.gate.text }, next: g.next ? { task_id: g.next.id, n: g.next.n, text: g.next.text, objective_id: g.next.objective_id || null } : null,
+    side: !!g.side, mission: g.mission, gate: { id: g.gate.id, n: g.gate.n, text: g.gate.text }, next: g.next ? { task_id: g.side ? null : g.next.id, step_id: g.side ? g.next.id : null, n: g.next.n, text: g.next.text, objective_id: g.next.objective_id || null } : null,
     top: Math.max(0, ...g.gates.map(x => x.n || 0)),
     verification: { verdict: ['confirmed', 'not_confirmed', 'cannot_see'].includes(v.verdict) ? v.verdict : 'cannot_see', saw: clean(v.saw, 500), need: clean(v.need, 400) },
     closing_note: clean(out.closing_note, 900),
