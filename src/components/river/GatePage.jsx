@@ -10,6 +10,7 @@ import { Pencil, ArrowUp, ListTree, PenLine, FolderOpen, Plus, Check, X as XMark
 import { readPath, savePathSteps, buildTrail, dueWords } from '../../lib/path'
 import { listBuilds, processAndPost } from '../../lib/lumenPanel'
 import { toggleStep } from '../../lib/objectives'
+import { ExtractMarker } from './glyphs'
 import { hudPrompt, hudConfirm } from '../../lib/dialog'
 import { loadCommitments, ruleCommitment } from '../../lib/commitments'
 import CatchTalk from './CatchTalk'
@@ -20,7 +21,6 @@ import { setGateView } from '../../lib/gateView'
 
 export const GateGlyph = ({ size = 16 }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 20V10a7 7 0 0 1 14 0v10M3 20h18M9.5 20v-8M12 20V9M14.5 20v-8" /></svg>
 export const LoadGlyph = ({ size = 16 }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14" /></svg>
-export const ExtractGlyph = ({ size = 16 }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 20V9M7 14l5-5 5 5M5 4h14" /></svg>
 
 // One color per page (David 11/20, on my cleaner rule): the slot's color owns a loaded card, where you are is size
 // and glow, the gate's own line is the same color at a lighter weight, and a card that is not loaded reads in ink.
@@ -326,7 +326,7 @@ export default function GatePage({ card = null, benchRoot = null, tools = null, 
           <div className="gp-acts">
             {tools}
             {!tools && onLoad && <button className="gp-ic" title="Load The Mission" aria-label="Load the mission" onClick={onLoad}><LoadGlyph size={18} /></button>}
-            {!tools && !gate.done && onExtract && <button className="gp-ic" title="Extract: Close This Gate" aria-label="Close this gate" onClick={() => onExtract(gate)}><ExtractGlyph size={18} /></button>}
+            {!tools && !gate.done && onExtract && <ExtractMarker size={44} color={tone || '#B4A3E8'} title="Extract · Close This Gate, Bank The Miles" onClick={() => onExtract(gate)} />}
           </div>
         </div>
         {full ? (
