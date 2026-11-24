@@ -186,7 +186,8 @@ function SnakeLine({ nodes, dim = false, onDrop = null }) {
 // gate: the step ({ id, text, n, done, done_at, created_at }); gates: every gate on the card, in order.
 // card (a gate with its own card): { obj, stops, files, meetings, onSaveNotes, onOpenNotes, onChanged }. With it the
 // page carries the gate's steps, its notes and a timeline of everything that happened on it (David 11/21, Gate 35).
-export default function GatePage({ card = null, benchRoot = null, tools = null, filesFor = null, onTrail = null, tone = null, gate, gates, root, missionTitle, up = [], source = null, onClose, onPick, onRename, onExtract, onLoad }) {
+// filesNote (11/23): a gate with no card of its own keeps no files; the Files button still shows and says where they are.
+export default function GatePage({ card = null, benchRoot = null, tools = null, filesFor = null, filesNote = null, onTrail = null, tone = null, gate, gates, root, missionTitle, up = [], source = null, onClose, onPick, onRename, onExtract, onLoad }) {
   const full = false   // the Workbench's own button takes it to full screen now
   const [view, setView] = useState('bench')   // 'bench' | 'files'
   const [psteps, setPsteps] = useState([])     // steps set by hand on the gate's line (path.json)
@@ -388,13 +389,19 @@ export default function GatePage({ card = null, benchRoot = null, tools = null, 
         <div className="gp-bench">
           <div className="gp-benchhead">{view === 'files' ? 'Files' : 'Workbench'}
             <span style={{ order: 2, display: 'inline-flex', gap: 6 }}>
-              {filesFor != null && <button className={`gp-sq${view === 'bench' ? ' on' : ''}`} title="Workbench" aria-label="Workbench" aria-pressed={view === 'bench'} onClick={() => setView('bench')}><PenLine size={15} /></button>}
-              {filesFor != null && <button className={`gp-sq${view === 'files' ? ' on' : ''}`} title="Files" aria-label="Files" aria-pressed={view === 'files'} onClick={() => setView('files')}><FolderOpen size={15} /></button>}
+              {(filesFor != null || filesNote) && <button className={`gp-sq${view === 'bench' ? ' on' : ''}`} title="Workbench" aria-label="Workbench" aria-pressed={view === 'bench'} onClick={() => setView('bench')}><PenLine size={15} /></button>}
+              {(filesFor != null || filesNote) && <button className={`gp-sq${view === 'files' ? ' on' : ''}`} title="Files" aria-label="Files" aria-pressed={view === 'files'} onClick={() => setView('files')}><FolderOpen size={15} /></button>}
               {onTrail && <button className="gp-sq" title="Trail, Steps And Notes" aria-label="The gate's trail, steps and notes" onClick={onTrail}><ListTree size={15} /></button>}
             </span>
           </div>
           {view === 'bench' && ready && <WorkbenchSheet key={groot} root={groot} scopes={filesFor != null ? [{ objectiveId: filesFor, label: null }] : []} />}
           {view === 'files' && filesFor != null && <CardFiles key={`gate-files:${filesFor}`} objectiveId={filesFor} />}
+          {view === 'files' && filesFor == null && filesNote && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap', padding: '18px 2px', fontSize: 14.5, lineHeight: 1.6, color: 'rgba(243,241,234,.72)' }}>
+              <span>{filesNote.text}</span>
+              {filesNote.go && <button className="gp-sq" style={{ width: 'auto', padding: '0 12px', gap: 7, display: 'inline-flex', alignItems: 'center' }} title={filesNote.label} aria-label={filesNote.label} onClick={filesNote.go}><FolderOpen size={14} />{filesNote.label}</button>}
+            </div>
+          )}
         </div>
       </div>
     </div>

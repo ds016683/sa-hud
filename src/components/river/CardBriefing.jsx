@@ -120,6 +120,8 @@ export default function CardBriefing({ tone = null, obj, root, kindLabel, steps 
 
   const [closing, setClosing] = useState(null)        // { id, dy }: the stop whose circle was just clicked
   // Open a gate (David 11/19): its words, or the gate button beside them, open the gate's own page (river/GatePage.jsx).
+  // A gate with its own card always opens that card's full page, from every door (David 11/23: "why do i have two
+  // different access gates for a gate page?"); only a gate with no card opens the lighter page here.
   // The circle is the only thing on the trail that closes it.
   const [gateId, setGateId] = useState(null)
   const [madeGate, setMadeGate] = useState(null)       // the gate just set on the trail, until the card's list carries it
@@ -379,8 +381,8 @@ export default function CardBriefing({ tone = null, obj, root, kindLabel, steps 
     {/* What is in the air: the same icon, following the pointer. */}
     <DragOverlay dropAnimation={null}>{drag ? <div className="brf-tray"><span className={`pick ${drag} held`}><i className="m" />{drag === 'gate' ? 'Gate' : 'Step'}</span></div> : null}</DragOverlay>
     {(() => { const g = gateId != null ? (steps.find(x => x.id === gateId) || (madeGate?.id === gateId ? madeGate : null)) : null; return g ? (
-      <GatePage benchRoot={g.objective_id ? `objectives/${g.objective_id}` : null} tone={tone} filesFor={kindLabel !== 'Main Mission' ? obj.id : null} gate={g} gates={steps} root={root} missionTitle={obj.title || mission?.name || kindLabel} source={side.sources[String(g.id)] || null}
-        onClose={() => setGateId(null)} onPick={(x) => setGateId(x.id)} onRename={rename} onExtract={finishGate}
+      <GatePage benchRoot={g.objective_id ? `objectives/${g.objective_id}` : null} tone={tone} filesFor={kindLabel !== 'Main Mission' ? obj.id : null} filesNote={kindLabel === 'Main Mission' ? { text: 'This gate has no card of its own, so it keeps no files. Files for it sit on the mission.', label: 'The Mission\'s Files', go: onTab ? () => { setGateId(null); onTab('files') } : null } : null} gate={g} gates={steps} root={root} missionTitle={obj.title || mission?.name || kindLabel} source={side.sources[String(g.id)] || null}
+        onClose={() => setGateId(null)} onPick={(x) => { if (x.objective_id) { setGateId(null); openCard(x.objective_id) } else setGateId(x.id) }} onRename={rename} onExtract={finishGate}
         onLoad={kindLabel !== 'Main Mission' ? loadMission : null} />
     ) : null })()}
     </DndContext>
