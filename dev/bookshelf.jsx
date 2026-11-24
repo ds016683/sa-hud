@@ -29,6 +29,8 @@ const STD = {
   writing: { name: 'A Personal Writing', form: 'notebook', icon: Feather, open: 'service', openIs: 'Being written', closedIs: 'Finished, kept' },
   film: { name: 'A Short Film', form: 'film', icon: Tv, open: 'service', openIs: 'Showing, the current cut', closedIs: 'The final cut, kept' },
 }
+const APP_LOOK = new URLSearchParams(window.location.search).get('app') || 'laptop'
+const APP_LOOKS = [['laptop', 'Laptop'], ['monitor', 'Monitor'], ['tablet', 'Tablet'], ['window', 'Window'], ['box', 'Software Box']]
 const shelfOf = (t) => t.cart ? 'cart' : !t.open ? 'library' : STD[t.kind].open
 const SHELF = { service: ['In Service', GREEN], wild: ['Out In The Wild', BLUE], library: ['The Library', PURPLE] }
 
@@ -141,6 +143,40 @@ h1 { font:500 40px/1.1 var(--serif); letter-spacing:-.008em; margin:0; }
 .bk-deck .ky { height:10px; margin:0 0 8px; border-radius:2px; background:repeating-linear-gradient(90deg, rgba(13,29,44,.4) 0 13px, transparent 13px 17px); }
 .bk-deck .bk-lt { font-size:17px; }
 
+/* other forms for an application (David 11/24: "can we try a different graphic for the laptop?"), ?app=<look> or ?alt=1 */
+.bk-scr { display:grid; grid-template-columns:54px 1fr; background:var(--deep); overflow:hidden; }
+.bk-scr .nv { background:rgba(255,255,255,.05); padding:10px 8px; display:grid; gap:7px; align-content:start; }
+.bk-scr .nv i { display:block; height:5px; border-radius:3px; background:rgba(243,241,234,.22); } .bk-scr .nv i:first-child { background:var(--c); }
+.bk-scr .lb { padding:14px 16px; background:linear-gradient(135deg, color-mix(in srgb, var(--c) 54%, var(--deep)), color-mix(in srgb, var(--c) 44%, var(--deep))); }
+.bk-mon { display:flex; flex-direction:column; align-items:center; width:300px; filter:drop-shadow(14px -4px 14px rgba(0,0,0,.42)); }
+.bk-mon .bz { width:300px; padding:10px 10px 22px; background:linear-gradient(180deg, #1C2833, #0D151C); border-radius:12px; box-shadow:0 0 0 1px rgba(255,255,255,.12) inset; position:relative; }
+.bk-mon .bz::after { content:""; position:absolute; left:50%; bottom:8px; width:6px; height:6px; margin-left:-3px; border-radius:50%; background:var(--c); }
+.bk-mon .bk-scr { height:178px; border-radius:3px; }
+.bk-mon .nk { width:46px; height:34px; background:linear-gradient(90deg, #0D151C, #1C2833, #0D151C); }
+.bk-mon .bs { width:150px; height:10px; border-radius:6px 6px 2px 2px; background:#1C2833; box-shadow:0 0 0 1px rgba(255,255,255,.1) inset; }
+.bk-tab { position:relative; width:214px; height:288px; padding:12px; background:linear-gradient(180deg, #1C2833, #0D151C); border-radius:20px; box-shadow:0 0 0 1px rgba(255,255,255,.12) inset; filter:drop-shadow(14px -4px 14px rgba(0,0,0,.42)); transform:perspective(900px) rotateX(5deg); transform-origin:50% 100%; }
+.bk-tab .in { height:100%; border-radius:10px; overflow:hidden; display:flex; flex-direction:column; background:var(--deep); }
+.bk-tab .tl { display:grid; grid-template-columns:repeat(3, 1fr); gap:8px; padding:14px; }
+.bk-tab .tl i { display:block; aspect-ratio:1; border-radius:9px; background:color-mix(in srgb, var(--c) 34%, transparent); } .bk-tab .tl i:nth-child(2) { background:var(--c); }
+.bk-tab .lb { flex:1; padding:14px 16px; background:linear-gradient(135deg, color-mix(in srgb, var(--c) 54%, var(--deep)), color-mix(in srgb, var(--c) 44%, var(--deep))); }
+.bk-win { width:292px; border-radius:12px; overflow:hidden; background:var(--deep); box-shadow:0 0 0 1px rgba(255,255,255,.16), 14px -4px 26px -10px rgba(0,0,0,.6); }
+.bk-win .br { display:flex; align-items:center; gap:6px; padding:10px 12px; background:#1C2833; }
+.bk-win .br i { width:9px; height:9px; border-radius:50%; background:rgba(243,241,234,.3); } .bk-win .br i:first-child { background:var(--c); }
+.bk-win .br u { flex:1; height:16px; margin-left:8px; border-radius:99px; background:rgba(255,255,255,.08); }
+.bk-win .bk-scr { height:196px; }
+.bk-box { position:relative; width:214px; height:290px; display:flex; flex-direction:column; padding:20px 20px 16px; color:var(--ink); border-radius:4px;
+  background:linear-gradient(135deg, color-mix(in srgb, var(--c) 54%, var(--deep)), color-mix(in srgb, var(--c) 44%, var(--deep)));
+  box-shadow:16px 0 0 -1px color-mix(in srgb, var(--c) 26%, #0A1620), 17px 0 0 -1px rgba(255,255,255,.1), 0 0 0 1px rgba(255,255,255,.1) inset, 26px -4px 26px -10px rgba(0,0,0,.6); }
+.bk-box .dsc { align-self:center; width:120px; height:120px; margin:14px 0 0; border-radius:50%; background:conic-gradient(from 20deg, rgba(243,241,234,.5), rgba(243,241,234,.12), rgba(243,241,234,.42), rgba(243,241,234,.1), rgba(243,241,234,.5)); box-shadow:0 0 0 1px rgba(255,255,255,.25); display:grid; place-items:center; }
+.bk-box .dsc i { width:30px; height:30px; border-radius:50%; background:color-mix(in srgb, var(--c) 50%, var(--deep)); box-shadow:0 0 0 1px rgba(255,255,255,.3); }
+.bk-box .sp { flex:1; }
+.bk-alt { display:grid; grid-template-columns:repeat(5, auto); gap:34px; align-items:end; justify-content:space-between; margin-top:30px; }
+.bk-altc { display:grid; justify-items:center; }
+.bk-altc .f { height:320px; display:flex; align-items:flex-end; } .bk-altc .f > span { zoom:.74; }
+.bk-altc .pl { width:100%; height:6px; border-radius:2px; background:linear-gradient(to bottom, rgba(255,255,255,.16), rgba(255,255,255,.07)); }
+.bk-altc .nm { display:flex; align-items:center; gap:9px; font:500 17px var(--serif); margin-top:14px; }
+.bk-altc .nm b { width:23px; height:23px; border-radius:50%; border:1.3px solid var(--accent); color:var(--accent); font:600 13px var(--sans); display:grid; place-items:center; }
+
 /* the film: a television, its label the picture on the tube */
 .bk-tv { display:flex; flex-direction:column; align-items:center; width:286px; filter:drop-shadow(14px -4px 14px rgba(0,0,0,.42)); }
 .bk-ears { display:block; width:108px; height:40px; }
@@ -244,6 +280,12 @@ const Label = ({ t, noMark }) => (<>
 function Form({ t, c }) {
   const form = STD[t.kind].form
   const st = { '--c': c || SHELF[shelfOf(t)]?.[1] || BLUE, '--mix': `${t.mix || 44}%` }
+  const AppLabel = () => <><div className="bk-lt" style={{ fontSize: 17 }}>{t.title}</div><div className="bk-la">{t.author}</div><i className="bk-lr" /><div className="bk-li">{kindName(t)}</div></>
+  const look = form === 'app' ? (t.look || APP_LOOK) : null
+  if (look === 'monitor') return <span className="bk-mon" style={st}><span className="bz"><span className="bk-scr"><span className="nv"><i /><i /><i /><i /></span><span className="lb"><AppLabel /></span></span></span><span className="nk" /><span className="bs" /></span>
+  if (look === 'tablet') return <span className="bk-tab" style={{ ...st, display: 'block' }}><span className="in"><span className="tl"><i /><i /><i /></span><span className="lb"><AppLabel /></span></span></span>
+  if (look === 'window') return <span className="bk-win" style={{ ...st, display: 'block' }}><span className="br"><i /><i /><i /><u /></span><span className="bk-scr"><span className="nv"><i /><i /><i /><i /></span><span className="lb"><AppLabel /></span></span></span>
+  if (look === 'box') return <span className="bk-box" style={st}><Mark /><span className="dsc"><i /></span><span className="sp" /><AppLabel /></span>
   if (form === 'app') return (
     <span className="bk-laptop" style={st}>
       <span className="bk-lid"><span className="bk-screen"><span className="nv"><i /><i /><i /><i /></span><span className="pg"><em /><i /><i /><i /><u /></span></span></span>
@@ -266,7 +308,7 @@ function Form({ t, c }) {
 }
 
 const Tag = ({ name, c, children }) => <div className="bk-tag" style={{ '--c': c }}><i /><b>{name}</b><u />{children && <span>{children}</span>}</div>
-const widthOf = (t) => ({ app: 300, film: 286, letter: 238, book: 217, notebook: 200 }[STD[t.kind].form])
+const widthOf = (t) => ({ app: { tablet: 214, box: 230 }[APP_LOOK] || 300, film: 286, letter: 238, book: 217, notebook: 200 }[STD[t.kind].form])
 
 function Case({ t, onClose, toggle }) {
   const shelf = shelfOf(t), [sn, c] = SHELF[shelf]
@@ -300,6 +342,17 @@ function Case({ t, onClose, toggle }) {
       </div>
     </div>)
 }
+function AppOptions({ onClose }) {
+  return (
+    <div className="bk-veil" onClick={onClose}>
+      <div className="bk-std" style={{ width: 'min(1420px, 96vw)' }} onClick={e => e.stopPropagation()}>
+        <button className="bk-ib bk-x" title="Close The Window" aria-label="Close the window" onClick={onClose}><X size={18} /></button>
+        <h2>An Application On The Shelf</h2>
+        <div className="bk-alt">{APP_LOOKS.map(([k, name], i) => (
+          <div key={k} className="bk-altc"><div className="f"><Form t={{ kind: 'app', open: true, look: k, title: 'Client Test Lab', author: 'Third Horizon' }} /></div><div className="pl" /><div className="nm"><b>{i + 1}</b>{name}</div></div>))}</div>
+      </div>
+    </div>)
+}
 function Standard({ onClose }) {
   return (
     <div className="bk-veil" onClick={onClose}>
@@ -323,6 +376,7 @@ function App() {
   const [things, setThings] = useState(THINGS)
   const [open, setOpen] = useState(q.get('open'))
   const [std, setStd] = useState(q.get('std') === '1')
+  const [alt, setAlt] = useState(q.get('alt') === '1')
   const on = (shelf) => things.filter(t => shelfOf(t) === shelf)
   const opened = things.find(t => t.id === open)
   // Open or close: the one thing David does. The shelf follows from the kind.
@@ -378,6 +432,7 @@ function App() {
       </main>
       {opened && <Case t={opened} onClose={() => setOpen(null)} toggle={toggle} />}
       {std && <Standard onClose={() => setStd(false)} />}
+      {alt && <AppOptions onClose={() => setAlt(false)} />}
     </div>)
 }
 
