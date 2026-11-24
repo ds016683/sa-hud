@@ -13,10 +13,24 @@ const clean = (t, max = 300) => flat(t, max).replace(/\s*[—–]\s*/g, ', ')
 const enc = (p) => p.split('/').map(encodeURIComponent).join('/')
 export const CATCHES = 'commitments/index.json'
 
+// A writer here changes a file and puts the whole of it back, so it may only start from a file it truly read (11/24):
+// null only when storage says the file is not there yet (it answers 400 with a not_found body, or 404); anything else
+// throws, so nothing is written over a file that could not be read.
 async function getJson(path) {
   const r = await fetch(`${URL_BASE}/storage/v1/object/project-files/${enc(path)}?cb=${Date.now()}`, { headers: { ...svc(), 'Cache-Control': 'no-cache' }, cache: 'no-store' })
-  if (!r.ok) return null
-  try { return await r.json() } catch { return null }
+  if (!r.ok) {
+    const body = await r.text().catch(() => '')
+    if (r.status === 404 || (r.status === 400 && /"statusCode"\s*:\s*"?404|not_found|NoSuchKey/.test(body))) return null
+    throw new Error(`read ${r.status}: ${path} could not be read, so nothing was changed`)
+  }
+  try { return await r.json() } catch { throw new Error(`read: ${path} is not JSON, so nothing was changed`) }
+}
+// The list, for a writer: empty only when the file is not there yet; a file that is not the list throws.
+async function getList() {
+  const doc = await getJson(CATCHES)
+  if (doc === null) return []
+  if (!doc || !Array.isArray(doc.items)) throw new Error('read: the list is not a list, so nothing was changed')
+  return doc.items
 }
 async function putJson(path, doc) {
   const r = await fetch(`${URL_BASE}/storage/v1/object/project-files/${enc(path)}`, { method: 'POST', headers: { ...svc(), 'Content-Type': 'application/json', 'x-upsert': 'true' }, body: JSON.stringify(doc) })
@@ -31,8 +45,7 @@ export async function putBytes(path, buf, type) {
 export async function routeItem({ what, heard = null, where = null, by = null, source = 'route', kind = null, recommend = null, on_yes = null, quote = null, files = null }) {
   const text = String(what || '').replace(/\s+/g, ' ').trim().slice(0, 300)
   if (!text) throw new Error('nothing to route')
-  const doc = (await getJson(CATCHES)) || { v: 1, items: [] }
-  const items = Array.isArray(doc.items) ? doc.items : []
+  const items = await getList()
   const dup = items.find(c => c.state === 'open' && String(c.what).toLowerCase() === text.toLowerCase())
   if (dup) return { item: dup, dup: true }
   const item = { id: Math.random().toString(36).slice(2, 10), what: text, by: by ? String(by).slice(0, 10) : null, heard: heard ? String(heard).slice(0, 300) : null, quote: quote ? String(quote).slice(0, 1200) : null, where: where ? String(where).slice(0, 160) : null, source, ...(Array.isArray(files) && files.length ? { files } : {}), ...(kind === 'decision' ? { kind: 'decision', recommend: recommend ? String(recommend).slice(0, 400) : null, on_yes: on_yes ? String(on_yes).slice(0, 300) : null } : {}), at: new Date().toISOString(), state: 'open', ruled_at: null }
@@ -53,8 +66,7 @@ export async function processAndPost({ text, where = '', root = null, item = nul
   if (!model) throw new Error('no model named')
   const said = flat(text, 6000)
   if (!said) throw new Error('nothing written to process')
-  const doc = (await getJson(CATCHES)) || { v: 1, items: [] }
-  const items = Array.isArray(doc.items) ? doc.items : []
+  const items = await getList()
   const dropped = items.filter(c => c.state === 'dropped').slice(-25), kept = items.filter(c => c.state === 'done' || c.state === 'made').slice(-25), open = items.filter(c => c.state === 'open').slice(-40)
   const now = new Date()
   const prompt = `You are Lumen. David wrote this in ${where || 'the HUD'} and pressed Process And Post. Do two things.
@@ -83,8 +95,7 @@ Hand it back by calling the process_and_post tool exactly once. Do not answer in
   }
   // The catches go on the list, and nowhere else.
   if (caught.length) {
-    const fresh = (await getJson(CATCHES)) || { v: 1, items: [] }
-    const list = Array.isArray(fresh.items) ? fresh.items : []
+    const list = await getList()
     for (const c of caught) list.push({ id: Math.random().toString(36).slice(2, 10), what: c.text, by: c.due, heard: c.why, quote: said.slice(0, 280), source: 'catch', where: flat(where, 120) || null, item: item && item.id ? { kind: item.kind, id: item.id, title: flat(item.title, 120) } : null, at, state: 'open', ruled_at: null })
     await putJson(CATCHES, { v: 1, items: list })
   }
