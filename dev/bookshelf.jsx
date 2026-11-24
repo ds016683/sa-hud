@@ -11,7 +11,7 @@
 import { StrictMode, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import { Waves, Footprints, CalendarDays, BookOpen, Activity, Award, FileText, Mountain, Briefcase, Target, Archive, Lightbulb, LibraryBig,
-  Search, X, ExternalLink, Radio, BookMarked, Check, Circle, Users, MapPin, CalendarClock, Eye, PackageCheck, AppWindow, FileText as Doc, Mail, Feather, Tv, Ruler, BookOpenCheck, BookLock } from 'lucide-react'
+  Search, X, ExternalLink, Radio, BookMarked, Check, Circle, Users, MapPin, CalendarClock, Eye, PackageCheck, Package, AppWindow, FileText as Doc, Mail, Feather, Tv, Ruler, BookOpenCheck, BookLock } from 'lucide-react'
 
 const NAV = [
   ['Landing', [[Waves, 'The River'], [Footprints, 'Journey']]],
@@ -23,13 +23,17 @@ const NAV = [
 const GREEN = '#57BE97', BLUE = '#8ACAFF', PURPLE = '#B4A3E8', INKC = '#F3F1EA'
 // The standard: a kind, the form it takes on a shelf, and where it stands when it is open.
 const STD = {
-  app: { name: 'An Application', form: 'app', icon: AppWindow, open: 'service', openIs: 'Live, in use by the people it was built for', closedIs: 'Retired, kept as it last stood' },
+  // Two kinds of application (David 11/24): "the window for an application tool like a Relationship Platform. Any
+  // standing application that i ship as a stand alone for the masses.... that's the software box. And let's use our
+  // purple color here."
+  app: { name: 'An Application', form: 'app', look: 'window', icon: AppWindow, open: 'service', openIs: 'Live, in use by the people it was built for', closedIs: 'Retired, kept as it last stood' },
+  software: { name: 'A Standalone Application', form: 'app', look: 'box', color: PURPLE, icon: Package, open: 'service', openIs: 'Shipped, standing on its own for anyone', closedIs: 'Withdrawn, the last release kept' },
   doc: { name: 'A Document', form: 'book', icon: Doc, open: 'service', openIs: 'A living document, a new edition each time it changes', closedIs: 'Final, the last edition kept' },
   proposal: { name: 'A Proposal', form: 'letter', icon: Mail, open: 'wild', openIs: 'Sent, waiting on an answer', closedIs: 'Answered, kept with how it came back' },
   writing: { name: 'A Personal Writing', form: 'notebook', icon: Feather, open: 'service', openIs: 'Being written', closedIs: 'Finished, kept' },
   film: { name: 'A Short Film', form: 'film', icon: Tv, open: 'service', openIs: 'Showing, the current cut', closedIs: 'The final cut, kept' },
 }
-const APP_LOOK = new URLSearchParams(window.location.search).get('app') || 'laptop'
+const APP_LOOK = new URLSearchParams(window.location.search).get('app') || 'window'
 const APP_LOOKS = [['laptop', 'Laptop'], ['monitor', 'Monitor'], ['tablet', 'Tablet'], ['window', 'Window'], ['box', 'Software Box']]
 const shelfOf = (t) => t.cart ? 'cart' : !t.open ? 'library' : STD[t.kind].open
 const SHELF = { service: ['In Service', GREEN], wild: ['Out In The Wild', BLUE], library: ['The Library', PURPLE] }
@@ -42,6 +46,9 @@ const THINGS = [
   { id: 'memo', kind: 'doc', open: true, title: 'Memorandum On Outstanding Balances', author: 'David Smith', updated: 'November 24, 2026',
     plate: 'Third Edition', sub: 'Updated Today', withWho: 'A Lender', from: 'Side Mission · Payment Emails', since: 'November 19, 2026',
     editions: [['Third Edition', 'November 24', 'Two payments confirmed, one date moved'], ['Second Edition', 'November 21', 'Extension asked on one balance'], ['First Edition', 'November 19', 'The opening picture']] },
+  { id: 'index', kind: 'software', open: true, title: 'Price And Quality Index', author: 'Third Horizon', updated: 'November 12, 2026',
+    plate: 'Release 2.1', sub: 'Shipped November 12 · 212 Subscribers', withWho: 'Anyone Who Subscribes', from: 'Main Mission · Gate 5', since: 'September 1, 2026',
+    buttoned: [['Its Own Address', true], ['Sign-Up And Billing', true], ['Terms Posted', true], ['Support Inbox', true], ['Usage Watched', true], ['A Way To Roll Back', true]] },
   { id: 'essay', kind: 'writing', open: true, title: 'The Case For Boring Infrastructure', author: 'David Smith', updated: 'November 20, 2026',
     plate: 'Second Draft', sub: 'Last Written In Four Days Ago', withWho: 'No One Yet', from: 'Ideas Board · Essays', since: 'October 19, 2026' },
 
@@ -63,7 +70,7 @@ const SPINES = [
   ['Quarterly Meeting Package', 'doc', 2026, 240, 0], ['Rate Compass Launch Plan', 'doc', 2026, 252, 2],
   ['Field Hub', 'app', 2026, 236, 1], ['Talent Assessment', 'doc', 2026, 244, 2],
   ['Safety Net Paper One', 'doc', 2025, 250, 1], ['Safety Net Paper Two', 'doc', 2025, 250, 1], ['Charter', 'doc', 2025, 212, 0],
-  ['Price And Quality Index', 'app', 2025, 228, 2], ['Pilot Proposal, Declined', 'proposal', 2025, 220, 0], ['Night Shift, An Essay', 'writing', 2025, 206, 1],
+  ['Rate Lookup, First Release', 'software', 2025, 228, 2], ['Pilot Proposal, Declined', 'proposal', 2025, 220, 0], ['Night Shift, An Essay', 'writing', 2025, 206, 1],
 ]
 
 const CSS = `
@@ -210,7 +217,7 @@ h1 { font:500 40px/1.1 var(--serif); letter-spacing:-.008em; margin:0; }
 /* out in the wild: the place on the shelf is held, the thing is gone, a card says who has it */
 .bk-out { position:relative; }
 .bk-ghost { opacity:.34; filter:saturate(.5); }
-.bk-ghost .bk-cover, .bk-ghost .bk-tvb, .bk-ghost .bk-env, .bk-ghost .bk-note { box-shadow:none; outline:1.5px dashed rgba(243,241,234,.7); outline-offset:3px; }
+.bk-ghost .bk-cover, .bk-ghost .bk-tvb, .bk-ghost .bk-env, .bk-ghost .bk-note, .bk-ghost .bk-win, .bk-ghost .bk-box { box-shadow:none; outline:1.5px dashed rgba(243,241,234,.7); outline-offset:3px; }
 .bk-card { display:block; position:absolute; left:50%; bottom:22px; width:200px; margin-left:-84px; padding:13px 15px 12px; background:#EFEBDD; color:#16314A; border-radius:4px; transform:rotate(-2.4deg); box-shadow:0 10px 22px -8px rgba(0,0,0,.7); }
 .bk-card::before { content:""; position:absolute; left:50%; top:-7px; width:12px; height:12px; margin-left:-6px; border-radius:99px; background:var(--c); box-shadow:0 1px 2px rgba(0,0,0,.4); }
 .bk-card .w { font-size:12.5px; color:rgba(22,49,74,.66); }
@@ -236,9 +243,9 @@ h1 { font:500 40px/1.1 var(--serif); letter-spacing:-.008em; margin:0; }
 
 /* an open container */
 .bk-state { display:inline-flex; align-items:center; gap:9px; margin-top:12px; font-size:14.5px; font-weight:600; color:var(--c); border:1px solid color-mix(in srgb, var(--c) 50%, transparent); border-radius:99px; padding:5px 14px; }
-.bk-std { width:min(1120px, 94vw); background:var(--deep); border:1px solid var(--line); border-radius:18px; padding:38px 44px 34px; position:relative; }
+.bk-std { width:min(1320px, 96vw); background:var(--deep); border:1px solid var(--line); border-radius:18px; padding:38px 44px 34px; position:relative; }
 .bk-std h2 { font:500 30px/1.15 var(--serif); margin:0 0 6px; }
-.bk-stdrow { display:grid; grid-template-columns:repeat(5, 1fr); gap:22px; margin-top:26px; align-items:end; }
+.bk-stdrow { display:grid; grid-template-columns:repeat(6, 1fr); gap:22px; margin-top:26px; align-items:end; }
 .bk-stdc { display:grid; justify-items:center; gap:0; min-width:0; align-self:start; }
 .bk-stdc .f { height:190px; display:flex; align-items:flex-end; }
 .bk-stdc .f > span { zoom:.56; }
@@ -279,9 +286,9 @@ const Label = ({ t, noMark }) => (<>
 
 function Form({ t, c }) {
   const form = STD[t.kind].form
-  const st = { '--c': c || SHELF[shelfOf(t)]?.[1] || BLUE, '--mix': `${t.mix || 44}%` }
+  const st = { '--c': c || STD[t.kind].color || SHELF[shelfOf(t)]?.[1] || BLUE, '--mix': `${t.mix || 44}%` }
   const AppLabel = () => <><div className="bk-lt" style={{ fontSize: 17 }}>{t.title}</div><div className="bk-la">{t.author}</div><i className="bk-lr" /><div className="bk-li">{kindName(t)}</div></>
-  const look = form === 'app' ? (t.look || APP_LOOK) : null
+  const look = form === 'app' ? (t.look || (STD[t.kind].look === 'window' ? APP_LOOK : STD[t.kind].look)) : null
   if (look === 'monitor') return <span className="bk-mon" style={st}><span className="bz"><span className="bk-scr"><span className="nv"><i /><i /><i /><i /></span><span className="lb"><AppLabel /></span></span></span><span className="nk" /><span className="bs" /></span>
   if (look === 'tablet') return <span className="bk-tab" style={{ ...st, display: 'block' }}><span className="in"><span className="tl"><i /><i /><i /></span><span className="lb"><AppLabel /></span></span></span>
   if (look === 'window') return <span className="bk-win" style={{ ...st, display: 'block' }}><span className="br"><i /><i /><i /><u /></span><span className="bk-scr"><span className="nv"><i /><i /><i /><i /></span><span className="lb"><AppLabel /></span></span></span>
@@ -308,7 +315,7 @@ function Form({ t, c }) {
 }
 
 const Tag = ({ name, c, children }) => <div className="bk-tag" style={{ '--c': c }}><i /><b>{name}</b><u />{children && <span>{children}</span>}</div>
-const widthOf = (t) => ({ app: { tablet: 214, box: 230 }[APP_LOOK] || 300, film: 286, letter: 238, book: 217, notebook: 200 }[STD[t.kind].form])
+const widthOf = (t) => ({ app: t.kind === 'software' ? 230 : 292, film: 286, letter: 238, book: 217, notebook: 200 }[STD[t.kind].form])
 
 function Case({ t, onClose, toggle }) {
   const shelf = shelfOf(t), [sn, c] = SHELF[shelf]
@@ -404,7 +411,7 @@ function App() {
           <Tag name="In Service" c={GREEN}>{service.length} Open</Tag>
           <div className="bk-row">{service.map(t => <button key={t.id} className="bk-thing" onClick={() => setOpen(t.id)} aria-label={`Open ${t.title}`}><Form t={t} /></button>)}</div>
           <div className="bk-plank" />
-          <div className="bk-plates">{service.map(t => <div key={t.id} className="bk-plate" style={{ width: widthOf(t), '--c': GREEN }}><b><i className="bk-lamp" />{t.plate || 'Open'}</b>{t.sub || 'Opened Today'}</div>)}</div>
+          <div className="bk-plates">{service.map(t => <div key={t.id} className="bk-plate" style={{ width: widthOf(t), '--c': STD[t.kind].color || GREEN }}><b><i className="bk-lamp" />{t.plate || 'Open'}</b>{t.sub || 'Opened Today'}</div>)}</div>
         </section>
 
         <section className="bk-sec">
