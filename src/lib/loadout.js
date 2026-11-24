@@ -71,12 +71,22 @@ export async function fetchLoadout() {
   const running = clocks.find(c => !c.stopped_at) || null
   const now = Date.now()
   const minutesFor = (id) => clocks.filter(c => c.objective_id === id).reduce((s, c) => s + (c.stopped_at ? (Number(c.minutes) || 0) : (now - new Date(c.started_at).getTime()) / 60000), 0)
+  // The slot's timer is the gate's (David 11/24: "timer should reset on new gataes"): on a card with gates, only the
+  // time clocked since its last gate closed counts. The day's whole time on the card stays in minutes_today.
+  const lastGateAt = new Map()
+  for (const st of stepRows) if (st.done && st.done_at) { const at = new Date(st.done_at).getTime(); if (at > (lastGateAt.get(st.objective_id) || 0)) lastGateAt.set(st.objective_id, at) }
+  const minutesSince = (id, since) => clocks.filter(c => c.objective_id === id).reduce((s, c) => {
+    const a = new Date(c.started_at).getTime(), b = c.stopped_at ? new Date(c.stopped_at).getTime() : now
+    if (b <= since) return s
+    return s + (a >= since && c.stopped_at ? (Number(c.minutes) || 0) : (b - Math.max(a, since)) / 60000)
+  }, 0)
   const items = active.map(o => {
     const tags = o.tags || []
     return {
       id: o.id, title: o.title, tags, size: sizeOf(o), slots: slotsOf(o), hours: hoursOf(o), due_date: o.due_date, activated_at: o.activated_at,
       equipped: !!running && running.objective_id === o.id, running_since: running && running.objective_id === o.id ? running.started_at : null,
       minutes_today: minutesFor(o.id),
+      minutes_gate: lastGateAt.has(o.id) ? minutesSince(o.id, lastGateAt.get(o.id)) : minutesFor(o.id),
       session: tags.includes('session'),
       project: projByObj.get(o.id) || null, project_id: projIdByObj.get(o.id) || null, description: o.description || null,
       kind: tags.includes('impromptu') ? 'Ad Hoc' : (projByObj.has(o.id) || tags.includes('mission-task')) ? 'Main Mission' : tags.includes('session') ? 'Session' : 'Side Mission',

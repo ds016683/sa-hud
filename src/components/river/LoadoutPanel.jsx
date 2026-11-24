@@ -211,7 +211,7 @@ export function FilledSlot({ it, n, act, onOpen, onExtract, onRecall, dropFromSt
         <Fact label="Miles"><span style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 16, color: INK }}>{miles.n}</span><span style={{ fontSize: 12.5, color: MUTED, marginLeft: 6 }}>{miles.sub}</span></Fact>
         <div style={{ borderLeft: `1px solid ${PANEL_BORDER}`, paddingLeft: 12 }}><Fact label="Due">{due ? <span style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 16, color: late ? RED : INK }}>{due}{late ? <span style={{ fontFamily: 'var(--font-sans)', fontSize: 12.5, marginLeft: 6 }}>Overdue</span> : null}</span> : <span style={{ fontSize: 13, color: GRAY }}>none set</span>}</Fact></div>
       </div>
-      <ClockStrip color={color} minutes={it.minutes_today} hours={hoursOf(it)} running={!!it.equipped} onToggle={() => act(() => it.equipped ? holster(it.id) : equip(it.id), it.equipped ? `Clock stopped: ${it.title}` : `Clock running: ${it.title}`)} />
+      <ClockStrip color={color} minutes={it.minutes_gate ?? it.minutes_today} hours={hoursOf(it)} running={!!it.equipped} onToggle={() => act(() => it.equipped ? holster(it.id) : equip(it.id), it.equipped ? `Clock stopped: ${it.title}` : `Clock running: ${it.title}`)} />
       <VerbRow
         verbs={[
           <IconVerb key="holster" color={color} title="Holster · Back to the Mission Board" onClick={() => act(() => unload(it.id), `Holstered: ${it.title}`)}><GlyphHolster /></IconVerb>,
@@ -271,7 +271,7 @@ export function AdHocSlot({ item, act, onDispatch, onOpen, onChanged, onRecall }
           <Fact label="Miles"><span style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 16, color: INK }}>1</span><span style={{ fontSize: 12.5, color: MUTED, marginLeft: 6 }}>on dispatch</span></Fact>
           <div style={{ borderLeft: `1px solid ${PANEL_BORDER}`, paddingLeft: 12 }}><Fact label="Landed">{since ? <span style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 16, color: INK }}>{since}</span> : <span style={{ fontSize: 13, color: GRAY }}>today</span>}</Fact></div>
         </div>
-        <ClockStrip minutes={item.minutes_today} hours={hoursOf(item)} running={!!item.equipped} onToggle={() => act(() => item.equipped ? holster(item.id) : equip(item.id), item.equipped ? `Clock stopped: ${item.title}` : `Clock running: ${item.title}`)} />
+        <ClockStrip minutes={item.minutes_gate ?? item.minutes_today} hours={hoursOf(item)} running={!!item.equipped} onToggle={() => act(() => item.equipped ? holster(item.id) : equip(item.id), item.equipped ? `Clock stopped: ${item.title}` : `Clock running: ${item.title}`)} />
         <VerbRow
           verbs={[<IconVerb key="dispatch" color={GOLD} title="Dispatch · done, 1 mile" onClick={() => onDispatch(item)}><Swords size={14} /></IconVerb>]}
           tail={<BrainButton onClick={() => onRecall(item)} />}
