@@ -8,7 +8,7 @@
 // three things: can the system confirm the gate is done, what on the gate belongs up on the mission, and did the gate
 // change the mission (its Polaris, a gate ahead, a gate that is now needed). It writes nothing. A change to a gate or
 // the Polaris is only ever a proposal: David's check makes it, in the HUD.
-import { sb } from './_ledger.mjs'
+import { sb, callTool } from './_ledger.mjs'
 import { readProofs, proofLines } from './_proofs.mjs'
 
 const URL_BASE = 'https://cmuvomnmaoseccxpeuxq.supabase.co'
@@ -47,9 +47,13 @@ async function gatherStepGate(stepId) {
   const gates = all.map((x, i) => ({ id: x.id, n: i + 1, text: flat(x.text, 300), done: !!x.done, notes: '', objective_id: null }))
   const me = gates.find(g => g.id === st.id)
   const next = gates.find(g => !g.done && g.id !== st.id && g.n > me.n) || gates.find(g => !g.done && g.id !== st.id) || null
-  const sources = (await storageJson(`objectives/${o.id}/path.json`))?.sources || {}
-  const src = sources[String(st.id)]
-  return { side: true, o, task: { id: st.id, notes: [flat(o.description, 700), src ? `Where the gate came from: ${flat(src.quote || src.text || '', 500)}` : ''].filter(Boolean).join(' | ') }, mission: { id: o.id, name: o.title, polaris: o.north_star || '', kind: 'side' }, gate: me, gates, next, items: [], proofs: [], steps: [] }
+  const [pathDoc, files] = await Promise.all([
+    storageJson(`objectives/${o.id}/path.json`),
+    sb(`live_files?select=name,note,bucket,created_at&objective_id=eq.${o.id}&superseded_by=is.null&order=created_at.desc&limit=40`).catch(() => []),
+  ])
+  const src = (pathDoc?.sources || {})[String(st.id)]
+  const about = [flat(o.description, 900), files.length ? `Files and links on the card: ${files.map(f => `${flat(f.name, 100)}${f.note ? ` (${flat(f.note, 120)})` : ''}, ${String(f.created_at || '').slice(0, 10)}`).join('; ')}` : ''].filter(Boolean).join('\n')
+  return { side: true, about, o, task: { id: st.id, notes: src ? flat(src.quote || src.text || '', 500) : '' }, mission: { id: o.id, name: o.title, polaris: o.north_star || '', kind: 'side' }, gate: me, gates, next, items: [], proofs: [], steps: [] }
 }
 
 export async function gatherGate(objectiveId, taskId = null, stepId = null) {
@@ -89,6 +93,7 @@ export async function gatherGate(objectiveId, taskId = null, stepId = null) {
 }
 
 const str = { type: 'string' }
+const SEARCH = { name: 'search_mailbox', description: "Search David's whole live mailbox (Inbox, Sent, every folder, any age) by words in subject, sender, recipient or body. Returns folder, subject, from, to, date and a preview for each match.", input_schema: { type: 'object', additionalProperties: false, required: ['query'], properties: { query: { type: 'string' } } } }
 const TOOL = { name: 'gate_debrief', description: 'Hand David the gate debrief.', strict: true, input_schema: { type: 'object', additionalProperties: false, required: ['verification', 'closing_note', 'up', 'changes', 'reconcile'], properties: {
   verification: { type: 'object', additionalProperties: false, required: ['verdict', 'saw', 'need'], properties: { verdict: { type: 'string', enum: ['confirmed', 'not_confirmed', 'cannot_see'] }, saw: str, need: str } },
   closing_note: str,
@@ -118,7 +123,7 @@ ${g.gates.map(x => `- Gate ${x.n} (${x.done ? 'closed' : x.id === g.gate.id ? 'T
 ## This gate
 Gate ${g.gate.n}: ${g.gate.text}
 What came in with it, and its done-when: ${flat(g.task.notes, 1400) || 'none written'}
-
+${g.about ? `\n## The card this gate sits on (it describes the whole ${kind}, not this gate alone)\n${g.about}\n` : ''}
 ## Steps on its trail
 ${g.steps.map(s => `- ${s.done ? 'done' : 'OPEN'}: ${s.text}`).join('\n') || 'none'}
 
@@ -131,18 +136,35 @@ ${g.items.map(i => `- key ${i.key} · ${i.kind}: ${i.name}${i.note ? ` | ${i.not
 ## Context David added at the close
 ${said || 'none yet'}
 
+## Look before you answer
+You can search David's whole mailbox (Inbox, Sent, every folder) with the search_mailbox tool. When this gate is something that leaves a trace in mail (an email sent, an update, a reply, a document sent to someone), search for it before you give a verdict: the person's name, the subject, the thing sent. Two or three searches at most. A message in Sent that does what the gate says is record, and it confirms the gate; name it in saw (to whom, the subject, the date). Mail that is only near the topic confirms nothing.
+
 Answer five things:
-1. verification: can the record confirm this gate is done? verdict is "confirmed" when the record shows the done-when met (a session's proof counts as record: what it says it built and tested is evidence; what it says it did not test is not), "not_confirmed" when it shows it is not met, "cannot_see" when the record does not hold what would show it. saw: what the record shows, in one or two sentences. need: what the system would need to see to confirm it, or an empty string when confirmed.
+1. verification: can the record confirm this gate is done? verdict is "confirmed" when the record or the mail you found shows the gate done, or its done-when met where one is written (a session's proof counts as record: what it says it built and tested is evidence; what it says it did not test is not), "not_confirmed" when it shows it is not met, "cannot_see" when the record does not hold what would show it. saw: what the record shows, in one or two sentences. need: what the system would need to see to confirm it, or an empty string when confirmed.
 2. closing_note: two or three sentences on what this gate produced. His context, where he gave it, leads.
 3. up: for EVERY item on the gate's card, by its key: pull true when it is something the mission as a whole will want at hand (a deliverable, an agreement, an analysis others will use, a decision record), false when it is working material that belongs with the gate. A few words of why.
 4. changes: did this gate change the mission? Only where the record or his context shows it. kind "polaris" when what the mission is to make true has moved (text is the new Polaris, gate is an empty string); "reword_gate" when a gate still open ahead no longer says what it must (gate is that gate's current words exactly, text is the new words); "new_gate" when the record shows work the mission now needs that no gate holds (text is the gate's words, gate is an empty string). A few words of why, naming where in the record it comes from. If the gate changed nothing, return an empty list.
 5. reconcile: Items (David 11/22: "Item means a task, piece of information, email fragment, a document ... anything") in his context or the record that belong somewhere other than this mission: another mission, a gate or data elsewhere, a follow-up, an idea. Do not decide where it goes; he reconciles it on his list. what: the Item in his words where he gave them. why: a few words on why it does not belong to this mission's changes. Anything already in changes is not repeated here. An empty list is a right answer.
 
-Hand the debrief back by calling the gate_debrief tool exactly once, with every field. Do not answer in prose.`
-  const res = await fetch('https://api.anthropic.com/v1/messages', { method: 'POST', headers: { 'x-api-key': process.env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' }, body: JSON.stringify({ model, max_tokens: 5000, tools: [TOOL], tool_choice: { type: 'auto' }, messages: [{ role: 'user', content: prompt }] }) })
-  if (!res.ok) throw new Error(`anthropic -> ${res.status}: ${(await res.text()).slice(0, 160)}`)
-  const msg = await res.json()
-  const call = (msg.content || []).find(c => c.type === 'tool_use')
+When you have looked, hand the debrief back by calling the gate_debrief tool exactly once, with every field. Do not answer in prose.`
+  // Lumen looks before it answers (David 11/24, on a gate whose proof sat in Sent: "what is blocking the field of
+  // vision to verify that this was done"): a few mailbox searches, then the debrief. Reads only.
+  const messages = [{ role: 'user', content: prompt }]
+  let msg = null, call = null
+  for (let turn = 0; turn < 5 && !call; turn++) {
+    const res = await fetch('https://api.anthropic.com/v1/messages', { method: 'POST', headers: { 'x-api-key': process.env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' }, body: JSON.stringify({ model, max_tokens: 5000, tools: turn < 4 ? [SEARCH, TOOL] : [TOOL], tool_choice: { type: 'auto' }, messages }) })
+    if (!res.ok) throw new Error(`anthropic -> ${res.status}: ${(await res.text()).slice(0, 160)}`)
+    msg = await res.json()
+    const uses = (msg.content || []).filter(c => c.type === 'tool_use')
+    call = uses.find(c => c.name === 'gate_debrief') || null
+    const looks = uses.filter(c => c.name === 'search_mailbox')
+    if (call || !looks.length) break
+    const results = await Promise.all(looks.map(async c => {
+      try { return { type: 'tool_result', tool_use_id: c.id, content: String(await callTool('search_mailbox', { query: flat(c.input?.query, 160), limit: 8 })).slice(0, 6000) } }
+      catch (e) { return { type: 'tool_result', tool_use_id: c.id, is_error: true, content: `The mailbox could not be searched: ${String(e.message || e).slice(0, 160)}` } }
+    }))
+    messages.push({ role: 'assistant', content: msg.content }, { role: 'user', content: results })
+  }
   if (!call || !call.input) throw new Error(msg.stop_reason === 'max_tokens' ? 'the brief ran long; try again' : 'Lumen answered in prose instead of the brief; try again')
   const out = call.input
   const byKey = new Map((Array.isArray(out.up) ? out.up : []).map(u => [String(u.key), u]))
