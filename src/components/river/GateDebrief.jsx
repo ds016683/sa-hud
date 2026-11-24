@@ -70,6 +70,9 @@ const CSS = `
 `
 const VERDICT = { confirmed: ['Confirmed', GREEN], not_confirmed: ['Not Confirmed', RED], cannot_see: ['Cannot See It', AMBER] }
 const CHANGE = { polaris: 'Polaris', reword_gate: 'Reword', new_gate: 'New Gate' }
+// A step of the Extract that does not answer is named, not waited on forever (David 11/24: "i keep clicking the extract
+// button and nothing is working").
+const within = (p, what, ms = 25000) => Promise.race([p, new Promise((_, no) => setTimeout(() => no(new Error(`${what} did not answer. Nothing more was done; try Extract again.`)), ms))])
 const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`
 function YN({ on, set }) {
   return (
@@ -97,6 +100,7 @@ export default function GateDebrief({ item, tone = PURPLE, onClose, onDone, draf
   const [asking, setAsking] = useState(true)
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState(null)
+  const [stage, setStage] = useState('')
   const run = useRef(0)
   const brief = useCallback(async (context) => {
     const me = ++run.current
@@ -132,7 +136,7 @@ export default function GateDebrief({ item, tone = PURPLE, onClose, onDone, draf
 
   const go = async () => {
     if (busy || asking) return
-    setBusy(true); setErr(null)
+    setBusy(true); setErr(null); setStage('Extracting')
     const words = ctx.join('\n\n').trim(), record = [words, note.trim()].filter(Boolean).join('\n\n')
     try {
       if (closer) { await closer({ up, chg, record }); return }
@@ -157,9 +161,11 @@ export default function GateDebrief({ item, tone = PURPLE, onClose, onDone, draf
         else if (c.kind === 'reword_gate') { const { error } = await supabase.from('project_tasks').update({ text: `${c.n} · ${c.text}` }).eq('id', c.task_id); if (error) throw new Error(`Gate ${c.n}: ${error.message}`) }
         else if (c.kind === 'new_gate') { top += 1; const { error } = await supabase.from('project_tasks').insert({ project_id: pid, text: `${top} · ${c.text}`, status: 'open', done: false, source: 'debrief', notes: `From the debrief of Gate ${d.gate.n}, ${d.gate.text}. ${c.why || ''}`.trim() }); if (error) throw new Error(`New gate: ${error.message}`) }
       }
-      for (const r of rec) await routeItem({ what: r.what, heard: r.why, where: `Gate ${d.gate.n} · ${d.gate.text}`, source: 'debrief' })
+      if (rec.length) setStage('Routing To Reconcile')
+      for (const r of rec) await within(routeItem({ what: r.what, heard: r.why, where: `Gate ${d.gate.n} · ${d.gate.text}`, source: 'debrief' }), 'The Reconcile list')
+      setStage('Closing The Gate')
       let r
-      if (finish) r = await finish(record)
+      if (finish) r = await within(finish(record), 'The Ledger', 40000)
       else { if (record) await fileAchieved(item, record).catch(() => {}); r = await extractItem(item, { minutes: 0, note: record || null }) }
       onDone(r, { gate: d?.gate || null, mission: d?.mission || null, next: d?.next || null, did: [...up.map(x => ({ tag: 'Up', text: x.name })), ...chg.map(c => ({ tag: CHANGE[c.kind], text: c.kind === 'reword_gate' ? `Gate ${c.n}: ${c.text}` : c.text })), ...rec.map(x => ({ tag: 'Routed', text: x.what }))] })
     } catch (e) { setErr(e?.message || String(e)); setBusy(false) }
@@ -225,9 +231,9 @@ export default function GateDebrief({ item, tone = PURPLE, onClose, onDone, draf
           {ctx.map((c, i) => <div key={i} className="gd-ctx"><div>{c}</div><button type="button" className="gd-ic sm" style={{ '--c': 'rgba(243,241,234,.6)' }} title="Take It Out" aria-label="Take this context out" onClick={() => dropContext(i)}><X size={13} /></button></div>)}
         </div>
         <div className="gd-foot">
-          <div className="gd-will">{d || err ? (will.length ? will.join(' · ') : 'The Gate Closes. Nothing Else Is Moved Or Changed.') : null}</div>
+          <div className="gd-will" style={err ? { color: RED } : undefined}>{err ? err : asking ? 'Lumen Is Reading The Gate. Extract Opens When The Brief Is In.' : busy ? stage : d ? (will.length ? will.join(' · ') : 'The Gate Closes. Nothing Else Is Moved Or Changed.') : null}</div>
           <span className="gd-miles">+7 Miles</span>
-          <ExtractMarker size={44} color={tone} title={busy ? 'Extracting' : 'Extract The Gate · 7 Miles'} onClick={go} />
+          <span style={{ display: 'inline-flex', opacity: busy || asking ? 0.4 : 1, transition: 'opacity .15s' }}><ExtractMarker size={44} color={tone} title={asking ? 'Lumen Is Still Reading The Gate' : busy ? 'Extracting' : 'Extract The Gate · 7 Miles'} onClick={go} /></span>
         </div>
       </div>
     </div>

@@ -148,9 +148,9 @@ export default function CardBriefing({ tone = null, obj, root, kindLabel, steps 
   const finishDebrief = async (st, record) => {
     await api.toggleStep(st.id, true)
     if (record) await fileEntry({ realm: (obj.tags || []).includes('personal') ? 'personal' : 'third-horizon', source_kind: 'objective', source_id: obj.id, source_title: obj.title, tags: ['gate'], kind: 'summary', title: `Gate ${gateN(st)} · ${st.text}`, summary: record, body: { achieved: record, gate_step_id: st.id } }).catch(e => console.warn('gate record', e.message))
-    setJustClosed(j => [...j, st.id]); await onReload()
-    if (onClosed) onClosed(st)
-    else fireCardEvent({ item: { kind: 'objective', id: obj.id }, event: { kind: 'stop_closed', text: st.text, open: openSteps.filter(x => x.id !== st.id).map(x => x.text) } })
+    // The gate is closed in the Ledger by here. The card's refresh is not waited on past a few seconds.
+    setJustClosed(j => [...j, st.id]); await Promise.race([Promise.resolve(onReload()).catch(() => {}), wait(6000)])
+    try { if (onClosed) onClosed(st); else fireCardEvent({ item: { kind: 'objective', id: obj.id }, event: { kind: 'stop_closed', text: st.text, open: openSteps.filter(x => x.id !== st.id).map(x => x.text) } }) } catch (e) { console.warn('card event', e.message) }
     return { minutes: 0 }
   }
   // A Side Mission's gates are numbered by their place on the line, the way the gate page numbers them (David 11/24);
