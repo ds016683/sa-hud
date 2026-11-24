@@ -1,7 +1,7 @@
 // The Run's door (see _run.mjs).
 //   GET                 the minute's look (the schedule arrives as GET); does nothing unless a run is on
 //   GET  ?state=1       -> { run, today }                 what the Board shows
-//   POST { action }     start { focus: true | { objective_id } } | extract | file { word } | walk | mac { app, title }
+//   POST { action }     start { focus: true | { objective_id } } | extract { at: 'end' } | file { word } | walk | mac { app, title }
 // Auth: David's session or CRON_SECRET (the Mac watcher uses the secret).
 export const config = { maxDuration: 300 }
 
@@ -10,7 +10,8 @@ import { MODEL } from './_lumen-brain.mjs'
 import { strikeDay } from './_river.mjs'
 import { runState, startRun, tick, extractRun, fileRun, walkAway, macSample } from './_run.mjs'
 
-const chiToday = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Chicago', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date())
+const chiOf = (d) => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Chicago', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(d))
+const chiToday = () => chiOf(new Date())
 
 export default async function handler(req, res) {
   if (!(await authorized(req))) return res.status(401).json({ error: 'unauthorized' })
@@ -24,8 +25,8 @@ export default async function handler(req, res) {
     const action = String(body.action || '')
     if (action === 'mac') return res.status(200).json(await macSample({ app: body.app, title: body.title, probe: !!body.probe }))
     if (action === 'start') await startRun({ minutes: body.minutes, focus: body.focus || null })
-    else if (action === 'extract') await extractRun({ model: MODEL() })
-    else if (action === 'file') { const run = await fileRun({ word: body.word }); if (run.miles > 0) await strikeDay(chiToday()).catch(() => null) }
+    else if (action === 'extract') await extractRun({ model: MODEL(), atEnd: body.at === 'end' })
+    else if (action === 'file') { const run = await fileRun({ word: body.word }); if (run.miles > 0) await strikeDay(run.extracted_at ? chiOf(run.extracted_at) : chiToday()).catch(() => null) }
     else if (action === 'walk') await walkAway()
     else return res.status(400).json({ error: 'action: start | extract | file | walk | mac' })
     return res.status(200).json(await runState())

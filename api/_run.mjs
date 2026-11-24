@@ -48,8 +48,10 @@ async function earnedIn(run, before) {
 // samples and the run's start and extract marks.
 async function runLog(run, to = new Date().toISOString()) {
   const [stream, doc] = await Promise.all([eventsBetween(run.started_at, run.extracted_at || to), readJson(logPath(run.id), { log: [], mac: [] })])
-  const log = [...stream.map(e => ({ at: e.at, source: e.source, text: e.text, mission: e.mission || null })), ...(doc.log || [])].sort((a, b) => String(a.at).localeCompare(String(b.at)))
-  return { log, mac: doc.mac || [] }
+  // A run extracted as of an earlier moment (its 45-minute mark, David 11/24) reads only what came before it.
+  const upTo = (x) => !run.extracted_at || String(x.at) <= run.extracted_at
+  const log = [...stream.map(e => ({ at: e.at, source: e.source, text: e.text, mission: e.mission || null })), ...(doc.log || []).filter(upTo)].sort((a, b) => String(a.at).localeCompare(String(b.at)))
+  return { log, mac: (doc.mac || []).filter(upTo) }
 }
 
 export async function readIndex() { const d = await readJson(INDEX, { v: 1, runs: [] }); return Array.isArray(d.runs) ? d.runs : [] }
@@ -317,10 +319,14 @@ Reply with one JSON object and nothing else: {"headline":"<the headline>","accom
 }
 
 // Extract: the run closes, one last look is taken, and Lumen writes the report. Miles only at 45 minutes.
-export async function extractRun({ model }) {
+// atEnd (David 11/24, "go back into yesterday and shut down the last run timer at the 45 and extract based on the
+// first 45 min"): a run left on past its mark is extracted as of its 45-minute mark: the log, the report and the day
+// the miles land on all stop there. The debrief window still runs from now.
+export async function extractRun({ model, atEnd = false }) {
   const runs = await readIndex(), run = runs.find(r => r.state === 'running')
   if (!run) throw new Error('no run is on')
-  const now = new Date().toISOString()
+  const real = new Date().toISOString()
+  const now = atEnd && run.ends_at && run.ends_at < real ? run.ends_at : real
   if (run.focus) await focusEnd(run).catch(() => null)
   try { await canvass() } catch { /* the stream stands as it is */ }
   const own = await readJson(logPath(run.id), { log: [], mac: [] })
@@ -328,7 +334,7 @@ export async function extractRun({ model }) {
   own.log = [...(own.log || []), { at: now, source: 'hud', text: `Run ${run.n} extracted${full ? '' : ' early'}`, mission: null }]
   await writeJson(logPath(run.id), own)
   const doc = await runLog({ ...run, extracted_at: now })
-  const next = { ...run, state: 'debrief', extracted_at: now, debrief_ends_at: plus(now, DEBRIEF_MINUTES), miles: full ? RUN_MILES : 0, logged: doc.log.length }
+  const next = { ...run, state: 'debrief', extracted_at: now, debrief_ends_at: plus(real, DEBRIEF_MINUTES), miles: full ? RUN_MILES : 0, logged: doc.log.length }
   const rep = await report(next, doc, model)
   // The run goes on the index first (the ledger pays a run it can see there), then the miles are counted.
   await saveIndex((await readIndex()).map(r => r.id === run.id ? { ...next, ...rep } : r))
