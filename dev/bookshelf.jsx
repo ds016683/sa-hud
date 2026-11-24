@@ -2,11 +2,16 @@
 // finished products he wants to hang onto and retrieve quickly, one for "an enduring vehicle until we're done", one
 // for something "out in the wild and we're waiting". The shelf language is the Company Plan document's (a book, a
 // laptop for an application, a television for a film). A picture to rule on: sample data only, nothing is read or
-// written. ?open=<id> stages a container open.
+// written. ?open=<id> stages a container open, ?std=1 the standard.
+//
+// The standard (David 11/24: "let's create a standard for an app, a "document", an "application", a proposal, a personal
+// writing, i should be able to "open" or "close" and the system should organize accordingly"): every work product is
+// one of a few kinds, each kind has one form on the shelf, and each container is open or closed. Nobody picks a shelf.
+// Open and in use stands In Service; open and waiting on someone's answer is Out In The Wild; closed is The Library.
 import { StrictMode, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import { Waves, Footprints, CalendarDays, BookOpen, Activity, Award, FileText, Mountain, Briefcase, Target, Archive, Lightbulb, LibraryBig,
-  Search, X, ExternalLink, Radio, Send, BookMarked, Check, Circle, Users, MapPin, CalendarClock, Layers, Eye, Undo2, PackageCheck } from 'lucide-react'
+  Search, X, ExternalLink, Radio, BookMarked, Check, Circle, Users, MapPin, CalendarClock, Eye, PackageCheck, AppWindow, FileText as Doc, Mail, Feather, Tv, Ruler, BookOpenCheck, BookLock } from 'lucide-react'
 
 const NAV = [
   ['Landing', [[Waves, 'The River'], [Footprints, 'Journey']]],
@@ -15,38 +20,48 @@ const NAV = [
   ['Ideas', [[Lightbulb, 'Ideas Board']]],
 ]
 
-const GREEN = '#57BE97', BLUE = '#8ACAFF', PURPLE = '#B4A3E8'
-const KIND = { book: 'A Document', app: 'An Application', film: 'A Short Film', deck: 'A Deck', letter: 'A Memorandum' }
+const GREEN = '#57BE97', BLUE = '#8ACAFF', PURPLE = '#B4A3E8', INKC = '#F3F1EA'
+// The standard: a kind, the form it takes on a shelf, and where it stands when it is open.
+const STD = {
+  app: { name: 'An Application', form: 'app', icon: AppWindow, open: 'service', openIs: 'Live, in use by the people it was built for', closedIs: 'Retired, kept as it last stood' },
+  doc: { name: 'A Document', form: 'book', icon: Doc, open: 'service', openIs: 'A living document, a new edition each time it changes', closedIs: 'Final, the last edition kept' },
+  proposal: { name: 'A Proposal', form: 'letter', icon: Mail, open: 'wild', openIs: 'Sent, waiting on an answer', closedIs: 'Answered, kept with how it came back' },
+  writing: { name: 'A Personal Writing', form: 'notebook', icon: Feather, open: 'service', openIs: 'Being written', closedIs: 'Finished, kept' },
+  film: { name: 'A Short Film', form: 'film', icon: Tv, open: 'service', openIs: 'Showing, the current cut', closedIs: 'The final cut, kept' },
+}
+const shelfOf = (t) => t.cart ? 'cart' : !t.open ? 'library' : STD[t.kind].open
+const SHELF = { service: ['In Service', GREEN], wild: ['Out In The Wild', BLUE], library: ['The Library', PURPLE] }
 
-// One container per work product. shelf: service | wild | library | cart.
+// One container per work product: its kind, and whether it is open.
 const THINGS = [
-  { id: 'app', shelf: 'service', form: 'app', title: 'Client Test Lab', author: 'Third Horizon', updated: 'November 24, 2026', color: GREEN,
+  { id: 'app', kind: 'app', open: true, title: 'Client Test Lab', author: 'Third Horizon', updated: 'November 24, 2026',
     plate: 'Live', sub: 'Used Today · 14 Sign-Ins This Week', withWho: 'A Client Team', from: 'Client Mission · Gate 6', since: 'November 24, 2026',
     buttoned: [['Its Own Address', true], ['Access Code Set', true], ['Outside Party Named', true], ['Sign-Ins Watched', true], ['Sample Data Cleared', true], ['A Way To Roll Back', false]] },
-  { id: 'memo', shelf: 'service', form: 'letter', title: 'Memorandum On Outstanding Balances', author: 'David Smith', updated: 'November 24, 2026', color: GREEN,
-    plate: 'Third Edition', sub: 'Updated Today · Open Until The Balances Clear', withWho: 'A Lender', from: 'Side Mission · Payment Emails', since: 'November 19, 2026',
+  { id: 'memo', kind: 'doc', open: true, title: 'Memorandum On Outstanding Balances', author: 'David Smith', updated: 'November 24, 2026',
+    plate: 'Third Edition', sub: 'Updated Today', withWho: 'A Lender', from: 'Side Mission · Payment Emails', since: 'November 19, 2026',
     editions: [['Third Edition', 'November 24', 'Two payments confirmed, one date moved'], ['Second Edition', 'November 21', 'Extension asked on one balance'], ['First Edition', 'November 19', 'The opening picture']] },
-  { id: 'plan', shelf: 'service', form: 'book', title: 'The Operating Plan', author: 'Third Horizon', updated: 'November 22, 2026', color: GREEN, mix: 30,
-    plate: 'Sixth Edition', sub: 'Updated Two Days Ago', withWho: 'The Team', from: 'Main Mission · Company Plan', since: 'October 6, 2026' },
+  { id: 'essay', kind: 'writing', open: true, title: 'The Case For Boring Infrastructure', author: 'David Smith', updated: 'November 20, 2026',
+    plate: 'Second Draft', sub: 'Last Written In Four Days Ago', withWho: 'No One Yet', from: 'Ideas Board · Essays', since: 'October 19, 2026' },
 
-  { id: 'pilot', shelf: 'wild', form: 'book', title: 'Proposal For A Pilot', author: 'Third Horizon', updated: 'November 18, 2026', color: BLUE,
+  { id: 'pilot', kind: 'proposal', open: true, title: 'Proposal For A Pilot', author: 'Third Horizon', updated: 'November 18, 2026',
     withWho: 'A Health System', from: 'Client Mission · Gate 2', since: 'November 18, 2026', day: 6, opened: 2, last: 'November 22' },
-  { id: 'sow', shelf: 'wild', form: 'book', title: 'Statement Of Work, Year Two', author: 'Third Horizon', updated: 'November 21, 2026', color: BLUE, mix: 30,
+  { id: 'sow', kind: 'proposal', open: true, title: 'Statement Of Work, Year Two', author: 'Third Horizon', updated: 'November 21, 2026',
     withWho: 'A Foundation', from: 'Client Mission · Gate 3', since: 'November 21, 2026', day: 3, opened: 0 },
-  { id: 'deckout', shelf: 'wild', form: 'film', title: 'Our Growth Story', author: 'Third Horizon', updated: 'November 23, 2026', color: BLUE,
-    withWho: 'Two Investors', from: 'Main Mission · Company Plan', since: 'November 23, 2026', day: 1, opened: 1, last: 'November 23' },
 
-  { id: 'cart1', shelf: 'cart', form: 'book', title: 'Board Finance Review', from: 'Main Mission · Gate 4' },
-  { id: 'cart2', shelf: 'cart', form: 'app', title: 'Lunch Order Page', from: 'Ad Hoc · November 10' },
+  { id: 'plan', kind: 'doc', open: false, year: 2026, title: 'The Operating Plan', author: 'Third Horizon', updated: 'November 22, 2026', withWho: 'The Team', from: 'Main Mission · Company Plan', since: 'October 6, 2026', closed: 'November 22, 2026' },
+  { id: 'growth', kind: 'film', open: false, year: 2026, title: 'Our Growth Story', author: 'Third Horizon', updated: 'November 23, 2026', withWho: 'The Team', from: 'Main Mission · Company Plan', since: 'November 23, 2026', closed: 'November 23, 2026' },
+
+  { id: 'cart1', cart: true, kind: 'doc', title: 'Board Finance Review', author: 'Third Horizon', updated: 'November 24, 2026', from: 'Main Mission · Gate 4', since: 'November 24, 2026', withWho: 'The Board', plate: 'First Edition', sub: 'Shelved Today' },
+  { id: 'cart2', cart: true, kind: 'app', title: 'Lunch Order Page', author: 'Third Horizon', updated: 'November 24, 2026', from: 'Ad Hoc · November 10', since: 'November 24, 2026', withWho: 'A Client Team', plate: 'Live', sub: 'Shelved Today' },
 ]
 
 // The Library: spines. [title, kind, year, height, tone 0..2]
 const SPINES = [
-  ['Medicaid Rate Benchmark, 2026', 'book', 2026, 232, 0], ['Parity Index, Year Three', 'book', 2026, 248, 1], ['Proposal, Signed · Health Plan', 'book', 2026, 216, 2],
-  ['Quarterly Meeting Package', 'deck', 2026, 240, 0], ['Our Growth Story', 'film', 2026, 204, 1], ['Rate Compass Launch Plan', 'book', 2026, 252, 2],
-  ['Network Map, Sixty Days', 'deck', 2026, 224, 0], ['Field Hub', 'app', 2026, 236, 1], ['Talent Assessment', 'book', 2026, 244, 2],
-  ['Safety Net Paper One', 'book', 2025, 250, 1], ['Safety Net Paper Two', 'book', 2025, 250, 1], ['Charter', 'book', 2025, 212, 0],
-  ['Price And Quality Index', 'app', 2025, 228, 2], ['Conference Keynote', 'deck', 2025, 238, 0],
+  ['Medicaid Rate Benchmark, 2026', 'doc', 2026, 232, 0], ['Parity Index, Year Three', 'doc', 2026, 248, 1], ['Proposal, Signed · Health Plan', 'proposal', 2026, 216, 2],
+  ['Quarterly Meeting Package', 'doc', 2026, 240, 0], ['Rate Compass Launch Plan', 'doc', 2026, 252, 2],
+  ['Field Hub', 'app', 2026, 236, 1], ['Talent Assessment', 'doc', 2026, 244, 2],
+  ['Safety Net Paper One', 'doc', 2025, 250, 1], ['Safety Net Paper Two', 'doc', 2025, 250, 1], ['Charter', 'doc', 2025, 212, 0],
+  ['Price And Quality Index', 'app', 2025, 228, 2], ['Pilot Proposal, Declined', 'proposal', 2025, 220, 0], ['Night Shift, An Essay', 'writing', 2025, 206, 1],
 ]
 
 const CSS = `
@@ -149,10 +164,17 @@ h1 { font:500 40px/1.1 var(--serif); letter-spacing:-.008em; margin:0; }
 .bk-env::before { content:""; position:absolute; inset:0; background:rgba(13,29,44,.2); clip-path:polygon(0 0, 50% 58%, 100% 0, 100% 100%, 0 100%); border-radius:4px; }
 .bk-env span { position:absolute; left:18px; bottom:14px; font-size:13px; font-weight:500; color:var(--ink); }
 
+/* the personal writing: a notebook, its band around it, the title in his own hand */
+.bk-note { position:relative; display:flex; flex-direction:column; width:196px; height:272px; padding:22px 30px 18px 22px; border-radius:10px; color:var(--ink);
+  background:linear-gradient(135deg, color-mix(in srgb, var(--c) 30%, #0A1620), color-mix(in srgb, var(--c) 20%, #0A1620)); box-shadow:4px 0 0 -1px #E9E4D6, 0 0 0 1px rgba(255,255,255,.1) inset, 14px -4px 26px -10px rgba(0,0,0,.6); }
+.bk-note::before { content:""; position:absolute; right:20px; top:0; bottom:0; width:9px; background:rgba(5,10,15,.62); box-shadow:0 0 0 1px rgba(255,255,255,.07); }
+.bk-note .tt { font:italic 500 21px/1.22 var(--serif); margin-top:34px; padding-right:14px; }
+.bk-note .sp { flex:1; }
+
 /* out in the wild: the place on the shelf is held, the thing is gone, a card says who has it */
 .bk-out { position:relative; }
 .bk-ghost { opacity:.34; filter:saturate(.5); }
-.bk-ghost .bk-cover, .bk-ghost .bk-tvb { box-shadow:none; outline:1.5px dashed rgba(243,241,234,.7); outline-offset:3px; }
+.bk-ghost .bk-cover, .bk-ghost .bk-tvb, .bk-ghost .bk-env, .bk-ghost .bk-note { box-shadow:none; outline:1.5px dashed rgba(243,241,234,.7); outline-offset:3px; }
 .bk-card { display:block; position:absolute; left:50%; bottom:22px; width:200px; margin-left:-84px; padding:13px 15px 12px; background:#EFEBDD; color:#16314A; border-radius:4px; transform:rotate(-2.4deg); box-shadow:0 10px 22px -8px rgba(0,0,0,.7); }
 .bk-card::before { content:""; position:absolute; left:50%; top:-7px; width:12px; height:12px; margin-left:-6px; border-radius:99px; background:var(--c); box-shadow:0 1px 2px rgba(0,0,0,.4); }
 .bk-card .w { font-size:12.5px; color:rgba(22,49,74,.66); }
@@ -177,6 +199,18 @@ h1 { font:500 40px/1.1 var(--serif); letter-spacing:-.008em; margin:0; }
 .bk-lean:hover { transform:rotate(7deg) translate(8px,-14px); }
 
 /* an open container */
+.bk-state { display:inline-flex; align-items:center; gap:9px; margin-top:12px; font-size:14.5px; font-weight:600; color:var(--c); border:1px solid color-mix(in srgb, var(--c) 50%, transparent); border-radius:99px; padding:5px 14px; }
+.bk-std { width:min(1120px, 94vw); background:var(--deep); border:1px solid var(--line); border-radius:18px; padding:38px 44px 34px; position:relative; }
+.bk-std h2 { font:500 30px/1.15 var(--serif); margin:0 0 6px; }
+.bk-stdrow { display:grid; grid-template-columns:repeat(5, 1fr); gap:22px; margin-top:26px; align-items:end; }
+.bk-stdc { display:grid; justify-items:center; gap:0; min-width:0; align-self:start; }
+.bk-stdc .f { height:190px; display:flex; align-items:flex-end; }
+.bk-stdc .f > span { zoom:.56; }
+.bk-stdc .pl { width:100%; height:6px; border-radius:2px; background:linear-gradient(to bottom, rgba(255,255,255,.16), rgba(255,255,255,.07)); }
+.bk-stdc .nm { display:flex; align-items:center; gap:8px; font:500 17px var(--serif); margin-top:16px; justify-self:start; }
+.bk-stdc .ln { justify-self:start; font-size:13.5px; line-height:1.45; color:var(--ink2); margin-top:9px; display:grid; grid-template-columns:18px 1fr; gap:8px; }
+.bk-stdc .ln svg { margin-top:2px; }
+.bk-headr { display:flex; align-items:center; gap:12px; }
 .bk-veil { position:fixed; inset:0; background:rgba(6,14,22,.72); backdrop-filter:blur(3px); display:grid; place-items:center; z-index:20; }
 .bk-case { width:min(940px, 92vw); display:grid; grid-template-columns:auto 1fr; gap:48px; align-items:center; background:var(--deep); border:1px solid var(--line); border-radius:18px; padding:44px 48px; position:relative; }
 .bk-case h2 { font:500 30px/1.15 var(--serif); letter-spacing:-.008em; margin:0; }
@@ -197,76 +231,105 @@ h1 { font:500 40px/1.1 var(--serif); letter-spacing:-.008em; margin:0; }
 `
 
 const Mark = () => <svg className="bk-mark" viewBox="0 0 34 20" aria-hidden="true"><path d="M2 18 A15 15 0 0 1 32 18" /><path d="M8 18 A9 9 0 0 1 26 18" /><path d="M13.5 18 A3.5 3.5 0 0 1 20.5 18" /></svg>
+const kindName = (t) => STD[t.kind].name
 const Label = ({ t, noMark }) => (<>
   {!noMark && <Mark />}
   <div className="bk-lt" style={noMark ? undefined : { marginTop: 10 }}>{t.title}</div>
   <div className="bk-la">{t.author}</div>
   <i className="bk-lr" />
-  <div className="bk-li">{KIND[t.form]}</div>
+  <div className="bk-li">{kindName(t)}</div>
   <div className="bk-li">Updated {t.updated}</div>
 </>)
 
-function Form({ t }) {
-  const st = { '--c': t.color, '--mix': `${t.mix || 44}%` }
-  if (t.form === 'app') return (
+function Form({ t, c }) {
+  const form = STD[t.kind].form
+  const st = { '--c': c || SHELF[shelfOf(t)]?.[1] || BLUE, '--mix': `${t.mix || 44}%` }
+  if (form === 'app') return (
     <span className="bk-laptop" style={st}>
       <span className="bk-lid"><span className="bk-screen"><span className="nv"><i /><i /><i /><i /></span><span className="pg"><em /><i /><i /><i /><u /></span></span></span>
       <span className="bk-hinge" />
-      <span className="bk-deck"><div className="ky" /><div className="bk-lt">{t.title}</div><div className="bk-la">{t.author}</div><i className="bk-lr" /><div className="bk-li">{KIND.app}</div></span>
+      <span className="bk-deck"><div className="ky" /><div className="bk-lt">{t.title}</div><div className="bk-la">{t.author}</div><i className="bk-lr" /><div className="bk-li">{kindName(t)}</div></span>
     </span>)
-  if (t.form === 'film') return (
+  if (form === 'film') return (
     <span className="bk-tv" style={st}>
       <svg className="bk-ears" viewBox="0 0 120 46" aria-hidden="true"><path d="M60 46 L18 5 M60 46 L103 9" /><circle cx="18" cy="5" r="3.2" /><circle cx="103" cy="9" r="3.2" /></svg>
       <span className="bk-tvb"><span className="bk-tube"><Label t={t} /></span><span className="bk-tvs"><i className="bk-knob" /><i className="bk-knob" /><i className="bk-grille" /></span></span>
       <span className="bk-feet"><i /><i /></span>
     </span>)
-  if (t.form === 'letter') return (
+  if (form === 'notebook') return <span className="bk-note" style={st}><span className="tt">{t.title}</span><span className="sp" /><div className="bk-la">{t.author}</div><i className="bk-lr" /><div className="bk-li">{kindName(t)}</div></span>
+  if (form === 'letter') return (
     <span className="bk-letter" style={st}>
-      <span className="bk-sheet"><Mark /><div className="bk-lt">{t.title}</div><i className="bk-lr" /><div className="bk-li">{KIND.letter}</div></span>
+      <span className="bk-sheet"><Mark /><div className="bk-lt">{t.title}</div><i className="bk-lr" /><div className="bk-li">{kindName(t)}</div></span>
       <span className="bk-env"><span>{t.author}</span></span>
     </span>)
   return <span className="bk-cover" style={st}><Mark /><span className="sp" /><Label t={t} noMark /></span>
 }
 
 const Tag = ({ name, c, children }) => <div className="bk-tag" style={{ '--c': c }}><i /><b>{name}</b><u />{children && <span>{children}</span>}</div>
-const widthOf = (t) => ({ app: 300, film: 286, letter: 238, book: 217 }[t.form])
-const SpineIcon = { book: BookMarked, deck: Layers, film: Radio, app: PackageCheck }
+const widthOf = (t) => ({ app: 300, film: 286, letter: 238, book: 217, notebook: 200 }[STD[t.kind].form])
 
-function Case({ t, onClose }) {
-  const c = t.color
-  const acts = [['service', Radio, 'In Service', GREEN], ['wild', Send, 'Out In The Wild', BLUE], ['library', BookMarked, 'The Library', PURPLE]]
+function Case({ t, onClose, toggle }) {
+  const shelf = shelfOf(t), [sn, c] = SHELF[shelf]
+  const reopens = SHELF[STD[t.kind].open]
   return (
     <div className="bk-veil" onClick={onClose}>
       <div className="bk-case" style={{ '--c': c }} onClick={e => e.stopPropagation()}>
-        <button className="bk-ib bk-x" title="Close" aria-label="Close" onClick={onClose}><X size={18} /></button>
+        <button className="bk-ib bk-x" title="Close The Window" aria-label="Close the window" onClick={onClose}><X size={18} /></button>
         <Form t={t} />
         <div>
           <h2>{t.title}</h2>
+          <div className="bk-state">{t.open ? <BookOpenCheck size={16} /> : <BookLock size={16} />}{t.open ? 'Open' : 'Closed'} · {sn}</div>
           <div className="bk-facts">
+            <div className="bk-fact"><Ruler size={17} /><span>Kind</span>{kindName(t)}</div>
             <div className="bk-fact"><Users size={17} /><span>With</span>{t.withWho}</div>
             <div className="bk-fact"><MapPin size={17} /><span>Came From</span>{t.from}</div>
-            <div className="bk-fact"><CalendarClock size={17} /><span>{t.shelf === 'wild' ? 'Sent' : 'On The Shelf Since'}</span>{t.since}{t.day ? ` · Day ${t.day}` : ''}</div>
-            {t.shelf === 'wild' && <div className="bk-fact"><Eye size={17} /><span>Opened</span>{t.opened ? `${t.opened} Times · Last ${t.last}` : 'Not Yet'}</div>}
+            <div className="bk-fact"><CalendarClock size={17} /><span>{!t.open ? 'Closed' : shelf === 'wild' ? 'Sent' : 'Open Since'}</span>{!t.open ? t.closed || 'Today' : t.since}{t.open && t.day ? ` · Day ${t.day}` : ''}</div>
+            {shelf === 'wild' && <div className="bk-fact"><Eye size={17} /><span>Opened By Them</span>{t.opened ? `${t.opened} Times · Last ${t.last}` : 'Not Yet'}</div>}
           </div>
           {t.buttoned && <><div className="bk-sub">Buttoned Up</div>
             <div className="bk-chk">{t.buttoned.map(([w, y]) => <div key={w} className={y ? 'y' : 'n'}>{y ? <Check size={17} strokeWidth={2.4} /> : <Circle size={17} />}{w}</div>)}</div></>}
           {t.editions && <><div className="bk-sub">Editions</div>
             {t.editions.map(([e, d, w]) => <div key={e} className="bk-ed"><b style={{ fontWeight: 600 }}>{e}</b><span>{d}</span><span>{w}</span></div>)}</>}
           <div className="bk-acts">
-            <button className="bk-act on" style={{ '--c': INKC }}><span className="bk-ib" style={{ '--c': INKC }}><ExternalLink size={19} /></span>Open It</button>
-            {acts.map(([k, I, l, col]) => <button key={k} className={`bk-act${t.shelf === k ? ' on' : ''}`} style={{ '--c': col }}><span className="bk-ib"><I size={19} /></span>{l}</button>)}
+            <button className="bk-act on" style={{ '--c': INKC }}><span className="bk-ib" style={{ '--c': INKC }}><ExternalLink size={19} /></span>Look Inside</button>
+            {t.open
+              ? <button className="bk-act on" style={{ '--c': PURPLE }} onClick={() => toggle(t.id)}><span className="bk-ib"><BookLock size={19} /></span>Close It</button>
+              : <button className="bk-act on" style={{ '--c': reopens[1] }} onClick={() => toggle(t.id)}><span className="bk-ib"><BookOpenCheck size={19} /></span>Open It</button>}
           </div>
         </div>
       </div>
     </div>)
 }
-const INKC = '#F3F1EA'
+function Standard({ onClose }) {
+  return (
+    <div className="bk-veil" onClick={onClose}>
+      <div className="bk-std" onClick={e => e.stopPropagation()}>
+        <button className="bk-ib bk-x" title="Close The Window" aria-label="Close the window" onClick={onClose}><X size={18} /></button>
+        <h2>The Standard</h2>
+        <div className="bk-stdrow">{Object.entries(STD).map(([k, d]) => { const I = d.icon, [sn, sc] = SHELF[d.open]; return (
+          <div key={k} className="bk-stdc">
+            <div className="f"><Form t={{ kind: k, open: true, title: d.name.replace(/^An? /, ''), author: 'Third Horizon', updated: 'Today' }} /></div>
+            <div className="pl" />
+            <div className="nm"><I size={17} color={sc} />{d.name.replace(/^An? /, '')}</div>
+            <div className="ln"><BookOpenCheck size={15} color={sc} /><span><b style={{ color: sc, fontWeight: 600 }}>{sn}.</b> {d.openIs}</span></div>
+            <div className="ln"><BookLock size={15} color={PURPLE} /><span><b style={{ color: PURPLE, fontWeight: 600 }}>The Library.</b> {d.closedIs}</span></div>
+          </div>) })}</div>
+      </div>
+    </div>)
+}
 
 function App() {
   const q = new URLSearchParams(window.location.search)
+  const [things, setThings] = useState(THINGS)
   const [open, setOpen] = useState(q.get('open'))
-  const on = (shelf) => THINGS.filter(t => t.shelf === shelf)
-  const opened = THINGS.find(t => t.id === open)
+  const [std, setStd] = useState(q.get('std') === '1')
+  const on = (shelf) => things.filter(t => shelfOf(t) === shelf)
+  const opened = things.find(t => t.id === open)
+  // Open or close: the one thing David does. The shelf follows from the kind.
+  const toggle = (id) => setThings(ts => ts.map(t => t.id === id ? { ...t, open: !t.open, year: 2026, closed: 'November 24, 2026', day: 1, opened: 0, since: t.open ? t.since : 'November 24, 2026' } : t))
+  const shelve = (id) => setThings(ts => ts.map(t => t.id === id ? { ...t, cart: false, open: true, day: 1, opened: 0 } : t))
+  const spines = [...on('library').map(t => [t.title, t.kind, t.year || 2026, 244, 1, t.id]), ...SPINES].sort((a, b) => b[2] - a[2])
+  const service = on('service'), wild = on('wild'), cart = on('cart')
   return (
     <div className="bk-shell"><style>{CSS}</style>
       <aside className="bk-side">
@@ -274,25 +337,25 @@ function App() {
         {NAV.map(([g, items]) => <div key={g}><div className="bk-grp">{g}</div>{items.map(([I, l, here]) => <div key={l} className={`bk-nav${here ? ' on' : ''}`}><I size={17} strokeWidth={1.7} />{l}</div>)}</div>)}
       </aside>
       <main className="bk-page">
-        <div className="bk-head"><h1>Bookshelf</h1><div className="bk-find"><Search size={16} />Find A Book</div></div>
+        <div className="bk-head"><h1>Bookshelf</h1><div className="bk-headr"><button className="bk-ib" style={{ '--c': BLUE }} title="The Standard" aria-label="The standard" onClick={() => setStd(true)}><Ruler size={18} /></button><div className="bk-find"><Search size={16} />Find A Book</div></div></div>
+
+        {cart.length > 0 && <section className="bk-sec">
+          <Tag name="On The Cart" c={INKC}>{cart.length} To Shelve</Tag>
+          <div className="bk-cart">{cart.map(t => { const I = STD[t.kind].icon; return (
+            <div key={t.id} className="bk-ct"><I size={20} color={BLUE} /><div><div className="t">{t.title}</div><div className="m">{kindName(t)} · {t.from}</div></div>
+              <button className="bk-ib" style={{ '--c': BLUE }} title="Button It Up And Open It" aria-label={`Button up and open ${t.title}`} onClick={() => shelve(t.id)}><PackageCheck size={18} /></button></div>) })}</div>
+        </section>}
 
         <section className="bk-sec">
-          <Tag name="On The Cart" c={INKC}>2 To Shelve</Tag>
-          <div className="bk-cart">{on('cart').map(t => (
-            <div key={t.id} className="bk-ct"><div><div className="t">{t.title}</div><div className="m">{t.from}</div></div>
-              <button className="bk-ib" style={{ '--c': BLUE }} title="Button It Up And Shelve It" aria-label={`Button up and shelve ${t.title}`}><PackageCheck size={18} /></button></div>))}</div>
-        </section>
-
-        <section className="bk-sec">
-          <Tag name="In Service" c={GREEN}>3 Live</Tag>
-          <div className="bk-row">{on('service').map(t => <button key={t.id} className="bk-thing" onClick={() => setOpen(t.id)} aria-label={`Open ${t.title}`}><Form t={t} /></button>)}</div>
+          <Tag name="In Service" c={GREEN}>{service.length} Open</Tag>
+          <div className="bk-row">{service.map(t => <button key={t.id} className="bk-thing" onClick={() => setOpen(t.id)} aria-label={`Open ${t.title}`}><Form t={t} /></button>)}</div>
           <div className="bk-plank" />
-          <div className="bk-plates">{on('service').map(t => <div key={t.id} className="bk-plate" style={{ width: widthOf(t), '--c': GREEN }}><b><i className="bk-lamp" />{t.plate}</b>{t.sub}</div>)}</div>
+          <div className="bk-plates">{service.map(t => <div key={t.id} className="bk-plate" style={{ width: widthOf(t), '--c': GREEN }}><b><i className="bk-lamp" />{t.plate || 'Open'}</b>{t.sub || 'Opened Today'}</div>)}</div>
         </section>
 
         <section className="bk-sec">
-          <Tag name="Out In The Wild" c={BLUE}>3 Waiting</Tag>
-          <div className="bk-row">{on('wild').map(t => (
+          <Tag name="Out In The Wild" c={BLUE}>{wild.length} Waiting</Tag>
+          <div className="bk-row">{wild.map(t => (
             <button key={t.id} className="bk-thing bk-out" onClick={() => setOpen(t.id)} aria-label={`Open ${t.title}`} style={{ '--c': BLUE }}>
               <span className="bk-ghost" style={{ display: 'block' }}><Form t={t} /></span>
               <span className="bk-card"><div className="w">Out With</div><div className="p">{t.withWho}</div>
@@ -303,17 +366,18 @@ function App() {
         </section>
 
         <section className="bk-sec">
-          <Tag name="The Library" c={PURPLE}>14 Kept</Tag>
-          <div className="bk-lib">{SPINES.map(([title, kind, yr, h, tone], i) => {
-            const I = SpineIcon[kind], head = i === 0 || SPINES[i - 1][2] !== yr
+          <Tag name="The Library" c={PURPLE}>{spines.length} Closed</Tag>
+          <div className="bk-lib">{spines.map(([title, kind, yr, h, tone, id], i) => {
+            const I = STD[kind].icon, head = i === 0 || spines[i - 1][2] !== yr
             return [head && <span key={`y${yr}`} className="bk-yr" style={i ? { marginLeft: 26 } : undefined}>{yr}</span>,
-              <button key={title} className={`bk-spine${i === 8 || i === SPINES.length - 1 ? ' bk-lean' : ''}`} title={title} aria-label={`Open ${title}`} style={{ height: h, '--c': PURPLE, '--mix': `${[46, 30, 60][tone]}%` }}>
+              <button key={title} className={`bk-spine${i === spines.length - 1 ? ' bk-lean' : ''}`} title={title} aria-label={`Open ${title}`} onClick={id ? () => setOpen(id) : undefined} style={{ height: h, '--c': PURPLE, '--mix': `${[46, 30, 60][tone]}%` }}>
                 <span className="t">{title}</span><I size={15} strokeWidth={1.8} /></button>]
           })}</div>
           <div className="bk-plank" />
         </section>
       </main>
-      {opened && <Case t={opened} onClose={() => setOpen(null)} />}
+      {opened && <Case t={opened} onClose={() => setOpen(null)} toggle={toggle} />}
+      {std && <Standard onClose={() => setStd(false)} />}
     </div>)
 }
 
