@@ -93,7 +93,8 @@ export async function gatherGate(objectiveId, taskId = null, stepId = null) {
 }
 
 const str = { type: 'string' }
-const SEARCH = { name: 'search_mailbox', description: "Search David's whole live mailbox (Inbox, Sent, every folder, any age) by words in subject, sender, recipient or body. Returns folder, subject, from, to, date and a preview for each match.", input_schema: { type: 'object', additionalProperties: false, required: ['query'], properties: { query: { type: 'string' } } } }
+const READ = { name: 'read_email', description: 'Read one message in full: its whole body, who it went to, and its attachments by name. message_id comes from search_mailbox.', input_schema: { type: 'object', additionalProperties: false, required: ['message_id'], properties: { message_id: { type: 'string' } } } }
+const SEARCH = { name: 'search_mailbox', description: "Search David's whole live mailbox (Inbox, Sent, every folder, any age) by words in subject, sender, recipient or body. Returns message_id, folder, subject, from, to, date and a short preview for each match. The preview is only the first lines: read a message in full with read_email before you rely on it.", input_schema: { type: 'object', additionalProperties: false, required: ['query'], properties: { query: { type: 'string' } } } }
 const TOOL = { name: 'gate_debrief', description: 'Hand David the gate debrief.', strict: true, input_schema: { type: 'object', additionalProperties: false, required: ['verification', 'closing_note', 'up', 'changes', 'reconcile'], properties: {
   verification: { type: 'object', additionalProperties: false, required: ['verdict', 'saw', 'need'], properties: { verdict: { type: 'string', enum: ['confirmed', 'not_confirmed', 'cannot_see'] }, saw: str, need: str } },
   closing_note: str,
@@ -137,7 +138,7 @@ ${g.items.map(i => `- key ${i.key} · ${i.kind}: ${i.name}${i.note ? ` | ${i.not
 ${said || 'none yet'}
 
 ## Look before you answer
-You can search David's whole mailbox (Inbox, Sent, every folder) with the search_mailbox tool. When this gate is something that leaves a trace in mail (an email sent, an update, a reply, a document sent to someone), search for it before you give a verdict: the person's name, the subject, the thing sent. Two or three searches at most. A message in Sent that does what the gate says is record, and it confirms the gate; name it in saw (to whom, the subject, the date). Mail that is only near the topic confirms nothing.
+You can search David's whole mailbox (Inbox, Sent, every folder) with the search_mailbox tool. When this gate is something that leaves a trace in mail (an email sent, an update, a reply, a document sent to someone), search for it before you give a verdict: the person's name, the subject, the thing sent. Two or three searches at most. A search hands back only the first lines of each message, so read the one or two that matter in full with read_email before you rely on them. A message in Sent that does what the gate says is record, and it confirms the gate; name it in saw (to whom, the subject, the date). Mail that is only near the topic confirms nothing. Never quote a line that is cut off, and never mention a preview or that something was cut off: David reads only what you know from the whole message, or nothing.
 
 Answer five things:
 1. verification: can the record confirm this gate is done? verdict is "confirmed" when the record or the mail you found shows the gate done, or its done-when met where one is written (a session's proof counts as record: what it says it built and tested is evidence; what it says it did not test is not), "not_confirmed" when it shows it is not met, "cannot_see" when the record does not hold what would show it. saw: what the record shows, in one or two sentences. need: what the system would need to see to confirm it, or an empty string when confirmed.
@@ -151,17 +152,17 @@ When you have looked, hand the debrief back by calling the gate_debrief tool exa
   // vision to verify that this was done"): a few mailbox searches, then the debrief. Reads only.
   const messages = [{ role: 'user', content: prompt }]
   let msg = null, call = null
-  for (let turn = 0; turn < 5 && !call; turn++) {
-    const res = await fetch('https://api.anthropic.com/v1/messages', { method: 'POST', headers: { 'x-api-key': process.env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' }, body: JSON.stringify({ model, max_tokens: 5000, tools: turn < 4 ? [SEARCH, TOOL] : [TOOL], tool_choice: { type: 'auto' }, messages }) })
+  for (let turn = 0; turn < 7 && !call; turn++) {
+    const res = await fetch('https://api.anthropic.com/v1/messages', { method: 'POST', headers: { 'x-api-key': process.env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' }, body: JSON.stringify({ model, max_tokens: 5000, tools: turn < 6 ? [SEARCH, READ, TOOL] : [TOOL], tool_choice: { type: 'auto' }, messages }) })
     if (!res.ok) throw new Error(`anthropic -> ${res.status}: ${(await res.text()).slice(0, 160)}`)
     msg = await res.json()
     const uses = (msg.content || []).filter(c => c.type === 'tool_use')
     call = uses.find(c => c.name === 'gate_debrief') || null
-    const looks = uses.filter(c => c.name === 'search_mailbox')
+    const looks = uses.filter(c => c.name === 'search_mailbox' || c.name === 'read_email')
     if (call || !looks.length) break
     const results = await Promise.all(looks.map(async c => {
-      try { return { type: 'tool_result', tool_use_id: c.id, content: String(await callTool('search_mailbox', { query: flat(c.input?.query, 160), limit: 8 })).slice(0, 6000) } }
-      catch (e) { return { type: 'tool_result', tool_use_id: c.id, is_error: true, content: `The mailbox could not be searched: ${String(e.message || e).slice(0, 160)}` } }
+      try { return { type: 'tool_result', tool_use_id: c.id, content: c.name === 'read_email' ? String(await callTool('read_email', { message_id: String(c.input?.message_id || '') })).slice(0, 9000) : String(await callTool('search_mailbox', { query: flat(c.input?.query, 160), limit: 8 })).slice(0, 6000) } }
+      catch (e) { return { type: 'tool_result', tool_use_id: c.id, is_error: true, content: `The mailbox could not be read: ${String(e.message || e).slice(0, 160)}` } }
     }))
     messages.push({ role: 'assistant', content: msg.content }, { role: 'user', content: results })
   }
