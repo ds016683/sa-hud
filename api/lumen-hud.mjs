@@ -22,6 +22,7 @@ export const config = { maxDuration: 300, api: { bodyParser: false } }
 import { think, remember, MODEL } from './_lumen-brain.mjs'
 import { extractionDebrief } from './_extract.mjs'
 import { gateDebrief } from './_gate-debrief.mjs'
+import { tidyFiles } from './_tidy.mjs'
 import { processAndPost, CATCHES } from './_catch.mjs'
 import { parkIdea } from './_ideas.mjs'
 import { cardFrame, callTool, workbookOp } from './_ledger.mjs'
@@ -131,6 +132,10 @@ export default async function handler(req, res) {
     if (body.action === 'gate-debrief') {
       if (!item || (item.kind !== 'objective' && item.kind !== 'task')) return res.status(400).json({ error: 'a gate is required' })
       try { return res.status(200).json({ ok: true, debrief: await gateDebrief({ ...(item.kind === 'task' ? { taskId: item.id } : { objectiveId: item.id }), words: String(body.words || ''), model: MODEL() }) }) } catch (e) { return res.status(500).json({ error: String(e.message || e).slice(0, 240) }) }
+    }
+    // The broom (api/_tidy.mjs): which of a card's files to archive. It writes nothing.
+    if (body.action === 'tidy-files') {
+      try { return res.status(200).json({ ok: true, tidy: await tidyFiles({ files: body.files, card: String(body.card || ''), model: MODEL() }) }) } catch (e) { return res.status(500).json({ error: String(e.message || e).slice(0, 240) }) }
     }
     if (body.action === 'debrief' || body.action === 'extract-debrief') {
       if (!item || item.kind !== 'project') return res.status(400).json({ error: 'a Main Mission is required' })

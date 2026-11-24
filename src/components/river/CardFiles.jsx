@@ -16,10 +16,10 @@
 // Folders are an index beside the card's files (lib/livefiles readFileIndex), no schema.
 // Canon: labels in the body face, Title Case, nothing in small tracked capitals.
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { FileText, FileSpreadsheet, FileImage, Link2, Folder, FolderOpen, FolderPlus, Paperclip, Star, X as XIcon, ExternalLink, Download, Mail, Trash2, ChevronDown, ChevronRight, ArrowUp, ArrowDown, Search, Hourglass, Presentation, Eye, EyeOff, Lock, LockOpen } from 'lucide-react'
+import { FileText, FileSpreadsheet, FileImage, Link2, Folder, FolderOpen, FolderPlus, Paperclip, Star, X as XIcon, ExternalLink, Download, Mail, Trash2, ChevronDown, ChevronRight, ArrowUp, ArrowDown, Search, Hourglass, Presentation, Eye, EyeOff, Lock, LockOpen, BrushCleaning, Check, Loader2 } from 'lucide-react'
 import { listLiveFiles, putLiveFile, requestLiveFile, addLiveLink, openLiveFile, downloadLiveFile, draftMail, pinEvidence, removeLiveRow, readFileIndex, writeFileIndex, fileSynopsis, sourceOf, isRequest, isLink, fmtSize, extOf } from '../../lib/livefiles'
 import { pdfUrl } from '../../lib/cabinet'
-import { LEDGER_EVENT } from '../../lib/lumenPanel'
+import { LEDGER_EVENT, askTidy } from '../../lib/lumenPanel'
 import { hudConfirm, hudPrompt } from '../../lib/dialog'
 import { renderMarkdown } from './MeetingCloseout'
 import { INK, INK2, GRAY, MUTED, LABEL, BLUE, GOLD, RED, NAVY_DEEP, PANEL_BORDER, PANEL_BG, SERIF, alpha } from './canon'
@@ -47,6 +47,9 @@ function FileGlyph({ row, size = 17, color = LABEL, style }) {
 const READABLE = ['pdf', 'png', 'jpg', 'jpeg', 'gif', 'webp', 'docx', 'xlsx', 'xls', 'csv', 'tsv', 'pptx', 'txt', 'md', 'html', 'htm', 'json', 'log', 'yml', 'yaml']
 const canSynopsize = (r) => !isLink(r) && !isRequest(r) && READABLE.includes(extOf(r.name))
 const day = (iso) => iso ? new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'America/Chicago' }) : ''
+// The list shows the time too, in Chicago time (David 11/24: "i need these to have time stamps in ct").
+const when = (iso) => iso ? new Date(iso).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'America/Chicago' }) : ''
+const ARCHIVE = 'Archive'
 const stamp = (iso) => iso ? new Date(iso).toLocaleString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', timeZone: 'America/Chicago' }) : ''
 
 // One button shape for the pill: body face, Title Case, ink outline; the accent when on; gold for the one primary action.
@@ -323,7 +326,7 @@ function FileSheet({ api, row, folder, folders, locked = false, msg, onClose, on
 }
 
 // ---- the list --------------------------------------------------------------------------------
-const COLS = [['name', 'Name'], ['source', 'Source'], ['added', 'Added'], ['size', 'Size']]
+const COLS = [['name', 'Name'], ['source', 'Source'], ['added', 'Added (CT)'], ['size', 'Size']]
 const GRID = { display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 176px 116px 80px 58px', gap: 14, alignItems: 'center' }
 
 export default function CardFiles({ objectiveId, onChanged, api = LEDGER }) {
@@ -336,6 +339,7 @@ export default function CardFiles({ objectiveId, onChanged, api = LEDGER }) {
   const [adding, setAdding] = useState(false)
   const [previewId, setPreviewId] = useState(null)
   const [msg, setMsg] = useState(null)
+  const [tidy, setTidy] = useState(null)   // the broom: null | { busy } | { summary, archive: [{ id, why }], keep: { id: bool } }
 
   useEffect(() => {
     let on = true
@@ -357,7 +361,7 @@ export default function CardFiles({ objectiveId, onChanged, api = LEDGER }) {
     const key = (r) => sort.by === 'name' ? String(r.name || '').toLowerCase() : sort.by === 'source' ? sourceOf(r).label.toLowerCase() : sort.by === 'size' ? Number(r.size) || 0 : String(r.created_at || '')
     return list.sort((a, b) => { const x = key(a), y = key(b); return (x < y ? -1 : x > y ? 1 : 0) * (sort.dir === 'asc' ? 1 : -1) })
   }, [rows, filter, sort, index])
-  const folders = index.folders || []
+  const folders = [...(index.folders || [])].sort((a, b) => (a === ARCHIVE) - (b === ARCHIVE))
   const inFolder = (name) => shown.filter(r => index.of[r.id] === name)
   const loose = shown.filter(r => !folders.includes(index.of[r.id]))
   const preview = previewId ? (rows || []).find(r => r.id === previewId) || null : null
@@ -430,6 +434,24 @@ export default function CardFiles({ objectiveId, onChanged, api = LEDGER }) {
     const of = Object.fromEntries(Object.entries(index.of).filter(([, v]) => v !== name))
     saveIndex({ ...index, folders: folders.filter(f => f !== name), of })
   }
+  // The broom (David 11/24): Lumen reads the list and proposes what to archive; he keeps or drops each, and only what
+  // he keeps moves into the Archive folder (collapsed, last). Nothing is deleted; a file moves back out from its sheet.
+  const sweep = async () => {
+    if (tidy) return
+    setTidy({ busy: true }); setMsg(null)
+    try {
+      const files = (rows || []).map(r => ({ id: r.id, name: r.name, version: r.version || 1, added: `${day(r.created_at)} ${when(r.created_at)}`, source: sourceOf(r).label, size: r.size ? fmtSize(r.size) : '', folder: index.of[r.id] || null, note: r.note || '', locked: isLocked(r), pinned: !!r.evidence }))
+      const out = await askTidy({ files, card: '' })
+      if (!out.archive.length) { setTidy(null); setMsg(out.summary || 'Lumen found nothing to archive.'); return }
+      setTidy({ ...out, keep: Object.fromEntries(out.archive.map(a => [a.id, true])) })
+    } catch (e) { setTidy(null); setMsg(`Could not tidy: ${e.message}`) }
+  }
+  const applyTidy = async () => {
+    const ids = (tidy?.archive || []).filter(a => tidy.keep[a.id]).map(a => a.id)
+    if (!ids.length) { setTidy(null); return }
+    await saveIndex({ ...index, folders: folders.includes(ARCHIVE) ? folders : [...folders, ARCHIVE], of: { ...index.of, ...Object.fromEntries(ids.map(id => [id, ARCHIVE])) } })
+    setTidy(null); setMsg(`Archived ${ids.length} ${ids.length === 1 ? 'file' : 'files'}. They are in the Archive folder at the bottom; open one to move it back.`)
+  }
   const added = async (made, folder) => {
     setAdding(false)
     if (folder && made.length) await saveIndex({ ...index, of: { ...index.of, ...Object.fromEntries(made.filter(m => m?.id).map(m => [m.id, folder])) } })
@@ -452,7 +474,7 @@ export default function CardFiles({ objectiveId, onChanged, api = LEDGER }) {
           </span>
         </span>
         <span title={src.sender ? `Email from ${src.sender}, ${src.when}: ${src.subject}` : undefined} style={{ fontSize: 13, color: INK2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{src.label}</span>
-        <span style={{ fontSize: 13, color: INK2 }}>{day(r.created_at)}</span>
+        <span style={{ fontSize: 13, color: INK2, lineHeight: 1.35 }}>{day(r.created_at)}<span style={{ display: 'block', fontSize: 12.5, color: MUTED }}>{when(r.created_at)}</span></span>
         <span style={{ fontSize: 13, color: INK2, textAlign: 'right' }}>{r.size ? fmtSize(r.size) : ''}</span>
         <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'flex-end', gap: 6 }}>
           <span role="button" tabIndex={0} aria-pressed={isLocked(r)} aria-label={isLocked(r) ? `Unlock ${r.name}` : `Lock ${r.name}`} title={isLocked(r) ? 'Locked · Click to unlock' : 'Lock it in place'}
@@ -471,6 +493,29 @@ export default function CardFiles({ objectiveId, onChanged, api = LEDGER }) {
   return (
     <div style={{ minWidth: 0 }}>
       {adding && <AddModal api={api} owner={{ objectiveId }} folders={folders} onClose={() => setAdding(false)} onAdded={added} />}
+      {tidy && !tidy.busy && (
+        <div style={veil} onMouseDown={e => { if (e.target === e.currentTarget) setTidy(null) }}>
+          <div role="dialog" aria-modal="true" aria-label="Lumen's tidy" style={{ width: 'min(640px, 100%)', maxHeight: '86vh', overflowY: 'auto', background: '#0F2334', border: `1px solid ${PANEL_BORDER}`, borderRadius: 18, padding: '24px 26px 20px', boxShadow: '0 30px 90px rgba(0,0,0,0.55)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontFamily: SERIF, fontWeight: 500, fontSize: 22, color: INK }}><BrushCleaning size={20} color={LABEL} />Archive These?</div>
+            {tidy.summary && <div style={{ fontSize: 14, color: INK2, lineHeight: 1.55, margin: '8px 0 14px' }}>{tidy.summary}</div>}
+            {tidy.archive.map(a => { const r = (rows || []).find(x => x.id === a.id); const on = !!tidy.keep[a.id]; return r ? (
+              <button key={a.id} type="button" onClick={() => setTidy(t => ({ ...t, keep: { ...t.keep, [a.id]: !on } }))} aria-pressed={on}
+                style={{ display: 'flex', alignItems: 'flex-start', gap: 12, width: '100%', textAlign: 'left', background: 'transparent', border: 'none', borderTop: `1px solid ${PANEL_BORDER}`, padding: '11px 2px', cursor: 'pointer', fontFamily: 'inherit', color: INK, opacity: on ? 1 : 0.5 }}>
+                <span style={{ flexShrink: 0, width: 20, height: 20, marginTop: 1, borderRadius: 6, display: 'grid', placeItems: 'center', border: `1.5px solid ${on ? BLUE : alpha(INK2, 55)}`, background: on ? BLUE : 'transparent', color: NAVY_DEEP }}>{on && <Check size={13} strokeWidth={3} />}</span>
+                <span style={{ minWidth: 0 }}>
+                  <span style={{ display: 'block', fontSize: 14.5 }}>{r.name}</span>
+                  <span style={{ display: 'block', fontSize: 13, color: MUTED, marginTop: 2 }}>{a.why} · added {day(r.created_at)} {when(r.created_at)}</span>
+                </span>
+              </button>
+            ) : null })}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 16, borderTop: `1px solid ${PANEL_BORDER}`, paddingTop: 14 }}>
+              <span style={{ fontSize: 13, color: MUTED, flex: 1 }}>Checked files move to the Archive folder. Nothing is deleted.</span>
+              <button onClick={() => setTidy(null)} style={btn()}>Not Now</button>
+              <button onClick={applyTidy} style={btn('primary')}><Check size={14} /> Archive {Object.values(tidy.keep).filter(Boolean).length}</button>
+            </div>
+          </div>
+        </div>
+      )}
       {preview && <FileSheet key={preview.id} api={api} row={preview} folder={index.of[preview.id] || null} folders={folders} locked={isLocked(preview)} msg={msg} onClose={() => { setPreviewId(null); setMsg(null) }} onAct={(w) => act(preview, w)} onMove={(name) => move(preview, name)} />}
 
       {empty ? (
@@ -489,6 +534,7 @@ export default function CardFiles({ objectiveId, onChanged, api = LEDGER }) {
             </span>
             <span style={{ fontSize: 13, color: MUTED }}>{shown.length === rows.length ? `${rows.length} ${rows.length === 1 ? 'file' : 'files'}` : `${shown.length} of ${rows.length}`}</span>
             <span style={{ flex: 1 }} />
+            <button onClick={sweep} disabled={!!tidy?.busy} title="Have Lumen Tidy The Files" aria-label="Have Lumen tidy the files: archive what is no longer in use" style={{ ...btn(), padding: 8, width: 36, height: 36, justifyContent: 'center' }}>{tidy?.busy ? <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /> : <BrushCleaning size={16} />}</button>
             <button onClick={newFolder} style={btn()}><FolderPlus size={14} /> New Folder</button>
             <button onClick={() => setAdding(true)} style={btn('primary')}><Paperclip size={14} /> Add</button>
           </div>
@@ -502,7 +548,7 @@ export default function CardFiles({ objectiveId, onChanged, api = LEDGER }) {
           </div>
 
           {folders.map(name => {
-            const list = inFolder(name); const open = !closed[name]
+            const list = inFolder(name); const open = name === ARCHIVE ? closed[name] === false : !closed[name]
             return (
               <div key={name}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, borderTop: `1px solid ${PANEL_BORDER}`, padding: '11px 4px' }}>
