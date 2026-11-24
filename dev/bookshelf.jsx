@@ -27,7 +27,7 @@ const STD = {
   // standing application that i ship as a stand alone for the masses.... that's the software box. And let's use our
   // purple color here."
   app: { name: 'An Application', form: 'app', look: 'window', icon: AppWindow, open: 'service', openIs: 'Live, in use by the people it was built for', closedIs: 'Retired, kept as it last stood' },
-  software: { name: 'A Standalone Application', form: 'app', look: 'box', color: PURPLE, icon: Package, open: 'service', openIs: 'Shipped, standing on its own for anyone', closedIs: 'Withdrawn, the last release kept' },
+  software: { name: 'A Standalone Application', form: 'app', look: 'box', icon: Package, open: 'service', openIs: 'Shipped, standing on its own for anyone', closedIs: 'Withdrawn, the last release kept' },
   doc: { name: 'A Document', form: 'book', icon: Doc, open: 'service', openIs: 'A living document, a new edition each time it changes', closedIs: 'Final, the last edition kept' },
   proposal: { name: 'A Proposal', form: 'letter', icon: Mail, open: 'wild', openIs: 'Sent, waiting on an answer', closedIs: 'Answered, kept with how it came back' },
   writing: { name: 'A Personal Writing', form: 'notebook', icon: Feather, open: 'service', openIs: 'Being written', closedIs: 'Finished, kept' },
@@ -53,9 +53,9 @@ const THINGS = [
     plate: 'Second Draft', sub: 'Last Written In Four Days Ago', withWho: 'No One Yet', from: 'Ideas Board · Essays', since: 'October 19, 2026' },
 
   { id: 'pilot', kind: 'proposal', open: true, title: 'Proposal For A Pilot', author: 'Third Horizon', updated: 'November 18, 2026',
-    withWho: 'A Health System', from: 'Client Mission · Gate 2', since: 'November 18, 2026', day: 6, opened: 2, last: 'November 22' },
+    withWho: 'A Health System', what: 'A six-month pilot of the rate benchmark across four behavioral health service lines.', ask: '$180,000', term: 'January To June 2027 · Fixed Fee', from: 'Client Mission · Gate 2', since: 'November 18, 2026', day: 6, opened: 2, last: 'November 22' },
   { id: 'sow', kind: 'proposal', open: true, title: 'Statement Of Work, Year Two', author: 'Third Horizon', updated: 'November 21, 2026',
-    withWho: 'A Foundation', from: 'Client Mission · Gate 3', since: 'November 21, 2026', day: 3, opened: 0 },
+    withWho: 'A Foundation', what: 'The second year of the measurement program: the annual index, two briefings, the public dashboard.', ask: '$325,000', term: 'October 2026 To June 2027', from: 'Client Mission · Gate 3', since: 'November 21, 2026', day: 3, opened: 0 },
 
   { id: 'plan', kind: 'doc', open: false, year: 2026, title: 'The Operating Plan', author: 'Third Horizon', updated: 'November 22, 2026', withWho: 'The Team', from: 'Main Mission · Company Plan', since: 'October 6, 2026', closed: 'November 22, 2026' },
   { id: 'growth', kind: 'film', open: false, year: 2026, title: 'Our Growth Story', author: 'Third Horizon', updated: 'November 23, 2026', withWho: 'The Team', from: 'Main Mission · Company Plan', since: 'November 23, 2026', closed: 'November 23, 2026' },
@@ -214,12 +214,18 @@ h1 { font:500 40px/1.1 var(--serif); letter-spacing:-.008em; margin:0; }
 .bk-note .tt { font:italic 500 21px/1.22 var(--serif); margin-top:34px; padding-right:14px; }
 .bk-note .sp { flex:1; }
 
+.bk-letter.tall { width:262px; height:424px; }
+.bk-letter.tall .bk-sheet { height:332px; padding:20px 20px 0; }
+.bk-sheet .wh { font-size:13.5px; line-height:1.42; color:#16314A; margin-top:2px; }
+.bk-sheet .fx { display:grid; gap:3px; margin-top:11px; padding-top:10px; border-top:1px solid rgba(22,49,74,.18); font-size:12.5px; color:rgba(22,49,74,.74); }
+.bk-sheet .fx b { font:500 17px/1.2 var(--serif); color:#16314A; }
+
 /* out in the wild: the place on the shelf is held, the thing is gone, a card says who has it */
 .bk-out { position:relative; }
-.bk-ghost { opacity:.34; filter:saturate(.5); }
-.bk-ghost .bk-cover, .bk-ghost .bk-tvb, .bk-ghost .bk-env, .bk-ghost .bk-note, .bk-ghost .bk-win, .bk-ghost .bk-box { box-shadow:none; outline:1.5px dashed rgba(243,241,234,.7); outline-offset:3px; }
-.bk-card { display:block; position:absolute; left:50%; bottom:22px; width:200px; margin-left:-84px; padding:13px 15px 12px; background:#EFEBDD; color:#16314A; border-radius:4px; transform:rotate(-2.4deg); box-shadow:0 10px 22px -8px rgba(0,0,0,.7); }
-.bk-card::before { content:""; position:absolute; left:50%; top:-7px; width:12px; height:12px; margin-left:-6px; border-radius:99px; background:var(--c); box-shadow:0 1px 2px rgba(0,0,0,.4); }
+.bk-ghost { opacity:1; }
+.bk-ghost .bk-cover, .bk-ghost .bk-tvb, .bk-ghost .bk-env, .bk-ghost .bk-note, .bk-ghost .bk-win, .bk-ghost .bk-box { outline:1.5px dashed rgba(243,241,234,.5); outline-offset:4px; }
+.bk-card { display:block; position:absolute; left:50%; bottom:6px; width:204px; margin-left:-70px; padding:13px 15px 12px; background:#EFEBDD; color:#16314A; border-radius:4px; transform:rotate(-2.4deg); box-shadow:0 10px 22px -8px rgba(0,0,0,.7); }
+.bk-card::before { content:""; position:absolute; left:50%; top:-7px; width:12px; height:12px; margin-left:-6px; border-radius:99px; background:#B4A3E8; box-shadow:0 1px 2px rgba(0,0,0,.4); }
 .bk-card .w { font-size:12.5px; color:rgba(22,49,74,.66); }
 .bk-card .p { font:500 17px/1.2 var(--serif); margin-top:1px; }
 .bk-card .d { display:flex; align-items:baseline; gap:7px; margin-top:9px; padding-top:8px; border-top:1px solid rgba(22,49,74,.18); }
@@ -286,7 +292,7 @@ const Label = ({ t, noMark }) => (<>
 
 function Form({ t, c }) {
   const form = STD[t.kind].form
-  const st = { '--c': c || STD[t.kind].color || SHELF[shelfOf(t)]?.[1] || BLUE, '--mix': `${t.mix || 44}%` }
+  const st = { '--c': c || PURPLE, '--mix': `${t.mix || 44}%` }
   const AppLabel = () => <><div className="bk-lt" style={{ fontSize: 17 }}>{t.title}</div><div className="bk-la">{t.author}</div><i className="bk-lr" /><div className="bk-li">{kindName(t)}</div></>
   const look = form === 'app' ? (t.look || (STD[t.kind].look === 'window' ? APP_LOOK : STD[t.kind].look)) : null
   if (look === 'monitor') return <span className="bk-mon" style={st}><span className="bz"><span className="bk-scr"><span className="nv"><i /><i /><i /><i /></span><span className="lb"><AppLabel /></span></span></span><span className="nk" /><span className="bs" /></span>
@@ -307,15 +313,16 @@ function Form({ t, c }) {
     </span>)
   if (form === 'notebook') return <span className="bk-note" style={st}><span className="tt">{t.title}</span><span className="sp" /><div className="bk-la">{t.author}</div><i className="bk-lr" /><div className="bk-li">{kindName(t)}</div></span>
   if (form === 'letter') return (
-    <span className="bk-letter" style={st}>
-      <span className="bk-sheet"><Mark /><div className="bk-lt">{t.title}</div><i className="bk-lr" /><div className="bk-li">{kindName(t)}</div></span>
+    <span className={`bk-letter${t.what ? ' tall' : ''}`} style={st}>
+      <span className="bk-sheet"><Mark /><div className="bk-lt">{t.title}</div><i className="bk-lr" />
+        {t.what ? <><div className="wh">{t.what}</div><div className="fx"><b>{t.ask}</b><span>{t.term}</span><span>Prepared For {t.withWho}</span></div></> : <div className="bk-li">{kindName(t)}</div>}</span>
       <span className="bk-env"><span>{t.author}</span></span>
     </span>)
   return <span className="bk-cover" style={st}><Mark /><span className="sp" /><Label t={t} noMark /></span>
 }
 
 const Tag = ({ name, c, children }) => <div className="bk-tag" style={{ '--c': c }}><i /><b>{name}</b><u />{children && <span>{children}</span>}</div>
-const widthOf = (t) => ({ app: t.kind === 'software' ? 230 : 292, film: 286, letter: 238, book: 217, notebook: 200 }[STD[t.kind].form])
+const widthOf = (t) => ({ app: t.kind === 'software' ? 230 : 292, film: 286, letter: t.what ? 262 : 238, book: 217, notebook: 200 }[STD[t.kind].form])
 
 function Case({ t, onClose, toggle }) {
   const shelf = shelfOf(t), [sn, c] = SHELF[shelf]
@@ -390,7 +397,8 @@ function App() {
   const toggle = (id) => setThings(ts => ts.map(t => t.id === id ? { ...t, open: !t.open, year: 2026, closed: 'November 24, 2026', day: 1, opened: 0, since: t.open ? t.since : 'November 24, 2026' } : t))
   const shelve = (id) => setThings(ts => ts.map(t => t.id === id ? { ...t, cart: false, open: true, day: 1, opened: 0 } : t))
   const spines = [...on('library').map(t => [t.title, t.kind, t.year || 2026, 244, 1, t.id]), ...SPINES].sort((a, b) => b[2] - a[2])
-  const service = on('service'), wild = on('wild'), cart = on('cart')
+  const cloth = (ts) => ts.map((t, i) => ({ ...t, mix: [44, 30, 56, 36][i % 4] }))
+  const service = cloth(on('service')), wild = on('wild'), cart = on('cart')
   return (
     <div className="bk-shell"><style>{CSS}</style>
       <aside className="bk-side">
@@ -411,7 +419,7 @@ function App() {
           <Tag name="In Service" c={GREEN}>{service.length} Open</Tag>
           <div className="bk-row">{service.map(t => <button key={t.id} className="bk-thing" onClick={() => setOpen(t.id)} aria-label={`Open ${t.title}`}><Form t={t} /></button>)}</div>
           <div className="bk-plank" />
-          <div className="bk-plates">{service.map(t => <div key={t.id} className="bk-plate" style={{ width: widthOf(t), '--c': STD[t.kind].color || GREEN }}><b><i className="bk-lamp" />{t.plate || 'Open'}</b>{t.sub || 'Opened Today'}</div>)}</div>
+          <div className="bk-plates">{service.map(t => <div key={t.id} className="bk-plate" style={{ width: widthOf(t), '--c': GREEN }}><b><i className="bk-lamp" />{t.plate || 'Open'}</b>{t.sub || 'Opened Today'}</div>)}</div>
         </section>
 
         <section className="bk-sec">
