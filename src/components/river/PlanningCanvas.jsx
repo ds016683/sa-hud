@@ -1,7 +1,7 @@
 import { Fragment, useState, useEffect, useCallback } from 'react'
 import { Plus, RefreshCw, Save, ChevronRight, X, Flag } from 'lucide-react'
 import { readArtifact, writeArtifact } from '../../lib/artifacts'
-import { Waterfall, ItemModal } from '../ClientsPage'
+import { Waterfall, ItemModal } from './ClientTimeline'
 import { MMA_DOMAINS, PROGRAM_LANE, PLAN_LANES, PLAN_VIEWS } from '../../constants/domains'
 import { INK, INK2, GRAY, LABEL, MUTED, NAVY_DEEP, PANEL_BORDER, PANEL_BG, BLUE, SUCCESS, RED, MONO, SERIF, SubLabel, alpha } from './canon'
 

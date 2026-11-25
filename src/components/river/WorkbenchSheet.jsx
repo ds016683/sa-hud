@@ -84,7 +84,8 @@ function Tab({ active, live = false, onClick, onDoubleClick, children, title, n 
   )
 }
 
-export default function WorkbenchSheet({ root, scopes = [], project = null }) {
+// extra: tabs a card brings of its own (a client's Timeline, 11/25): [{ id, label, render }], listed after the pages.
+export default function WorkbenchSheet({ root, scopes = [], project = null, extra = [] }) {
   const [pages, setPages] = useState(null)
   const [builds, setBuilds] = useState([])
   const [html, setHtml] = useState(null) // the open built page
@@ -118,9 +119,10 @@ export default function WorkbenchSheet({ root, scopes = [], project = null }) {
 
   const tabs0 = [
     ...protocols.map(g => ({ id: `protocol:${g.key}`, kind: 'protocol', label: `${(PROTOCOLS[g.protocol] || { label: `${g.protocol} protocol` }).label}${g.scope ? ` · ${g.scope}` : ''}`, live: g.open > 0, g })),
-    ...builds.map(b => ({ id: `build:${b.slug}`, kind: 'build', label: b.title || b.slug, build: b })),
-    ...(pages || []).map(p => ({ id: `page:${p.slug}`, kind: 'page', label: p.title, page: p })),
+    ...builds.filter(b => !b.legacy).map(b => ({ id: `build:${b.slug}`, kind: 'build', label: b.title || b.slug, build: b })),
+    ...(pages || []).filter(p => !p.legacy).map(p => ({ id: `page:${p.slug}`, kind: 'page', label: p.title, page: p })),
     ...(planning ? [{ id: 'planning', kind: 'planning', label: 'Planning' }] : []),
+    ...extra.map(x => ({ id: `extra:${x.id}`, kind: 'extra', label: x.label, extra: x })),
   ]
   // His order first; a tab he has not placed falls in after, in the order it was made.
   const rank = (id) => { const i = order.indexOf(id); return i < 0 ? 1e6 : i }
@@ -203,6 +205,9 @@ export default function WorkbenchSheet({ root, scopes = [], project = null }) {
       )}
       {current?.kind === 'planning' && (
         <div style={{ border: `1px solid ${PANEL_BORDER}`, borderTop: 'none', borderRadius: '0 10px 10px 10px', background: PANEL_BG, padding: '12px 14px 14px', minWidth: 0, overflow: 'hidden' }}><PlanningCanvas project={planning} /></div>
+      )}
+      {current?.kind === 'extra' && (
+        <div style={{ border: `1px solid ${PANEL_BORDER}`, borderTop: 'none', borderRadius: '0 10px 10px 10px', background: PANEL_BG, padding: '12px 14px 14px', minWidth: 0, overflow: 'hidden' }}>{current.extra.render()}</div>
       )}
       {current?.kind === 'build' && (
         <div style={{ border: `1px solid ${PANEL_BORDER}`, borderTop: 'none', borderRadius: '0 10px 10px 10px', background: PANEL_BG, padding: '12px 14px 14px', minWidth: 0 }}>

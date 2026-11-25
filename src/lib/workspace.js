@@ -23,6 +23,8 @@ const summary = (d) => ({
   updated_by: d.updated_by || null,
   words: String(d.text || '').trim() ? String(d.text).trim().split(/\s+/).length : 0,
   strokes: (d.strokes || []).length,
+  // A tab moved to a client's Legacy Resources (11/25) keeps its file here but leaves this strip.
+  legacy: d.legacy || null,
 })
 
 export async function listPages(root) {

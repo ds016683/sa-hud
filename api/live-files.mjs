@@ -120,7 +120,8 @@ export default async function handler(req, res) {
       const name = String(body.name || 'file').replace(/[^A-Za-z0-9._ -]/g, '_')
       const bytes = Buffer.from(String(body.content_base64 || ''), 'base64')
       if (!bytes.length) return res.status(400).json({ error: 'empty file' })
-      const root = body.objective_id ? `objectives/${body.objective_id}/files` : body.project_id ? String(body.project_id) : 'live'
+      // A client's own files (11/25) live under clients/<client id>/files; the path is the tie until live_files.client_id lands.
+      const root = body.client_id ? `clients/${String(body.client_id).replace(/[^0-9a-f-]/gi, '')}/files` : body.objective_id ? `objectives/${body.objective_id}/files` : body.project_id ? String(body.project_id) : 'live'
       const path = `${root}/${name}`
       const up = await fetch(`${URL_BASE}/storage/v1/object/project-files/${enc(path)}`, { method: 'POST', headers: { ...hdr(), 'Content-Type': body.mime || 'application/octet-stream', 'x-upsert': 'true' }, body: bytes })
       if (!up.ok) return res.status(502).json({ error: `storage -> ${up.status}: ${(await up.text()).slice(0, 160)}` })

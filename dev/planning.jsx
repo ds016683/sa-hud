@@ -2,7 +2,7 @@
 import { StrictMode, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import '../src/sa-hud.css'   // the HUD tokens (accent, purple, fills), so the harness shows the real colors
-import { Waterfall, ItemModal } from '../src/components/ClientsPage'
+import { Waterfall, ItemModal } from '../src/components/river/ClientTimeline'
 import PlanningCanvas, { DomainStrip, DomainsSurface, DomainFlowSurface } from '../src/components/river/PlanningCanvas'
 import { MMA_DOMAINS, PLAN_LANES, PLAN_VIEWS } from '../src/constants/domains'
 import seedDoc from '../public/plans/mma-2027-program-plan.json'

@@ -32,7 +32,7 @@ function drawStroke(ctx, st) {
   }
   ctx.restore()
 }
-function paint(canvas, strokes, live) {
+export function paint(canvas, strokes, live) {
   const dpr = window.devicePixelRatio || 1
   const ctx = canvas.getContext('2d')
   ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, canvas.width, canvas.height); ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
