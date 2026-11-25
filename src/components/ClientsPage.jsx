@@ -9,7 +9,7 @@
 // from finished gates, read-only, reachable from the card but never on the tab strip. The ties are in
 // src/lib/clients.js (and sql/2026-11-25-clients.sql for the Ledger).
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
-import { ArrowUpRight, RefreshCw, X, Briefcase, Clock, Eye, EyeOff, Archive, Undo2, FileText, LayoutTemplate, PenLine, FolderOpen, ArrowDownToLine, Check } from 'lucide-react'
+import { ArrowUpRight, RefreshCw, X, Briefcase, Clock, Eye, EyeOff, Archive, Undo2, FileText, LayoutTemplate, PenLine, FolderOpen, ArrowDownToLine, Check, Flag } from 'lucide-react'
 import useProjects from '../hooks/useProjects'
 import { loadClients, setTracked, missionsOf, gatesOf, isOpenGate, gateText, harvestFor, clientFilesApi, clientRoot, readLegacy, legacySources, moveTabToLegacy, moveBuildToLegacy, moveFileToLegacy, returnFromLegacy, readLegacyTab, readLegacyBuild, newestClientFile } from '../lib/clients'
 import { clientByKey as lanesFor } from '../constants/clients'
@@ -93,9 +93,9 @@ button.cl-chip { cursor: pointer; } button.cl-chip:hover { border-color: ${BLUE}
 .cl-pick h4 small { font: 400 13px var(--font-sans, 'Instrument Sans', sans-serif); color: ${INK2}; margin-left: 8px; }
 .cl-pk { display: flex; align-items: center; gap: 10px; padding: 7px 0; font-size: 14px; border-top: 1px solid var(--line); cursor: pointer; }
 .cl-pk svg { flex: none; color: ${INK2}; }
-.cl-pk span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cl-pk .cl-lab { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .cl-pk small { color: ${INK2}; font-size: 12.5px; white-space: nowrap; }
-.cl-box { width: 17px; height: 17px; border-radius: 5px; border: 1.5px solid rgba(243,241,234,.5); display: grid; place-items: center; color: #0D1D2C; flex: none; }
+.cl-box { width: 17px; height: 17px; flex: 0 0 17px; border-radius: 5px; border: 1.5px solid rgba(243,241,234,.5); display: grid; place-items: center; color: #0D1D2C; flex: none; }
 .cl-pk.on .cl-box { background: ${BLUE}; border-color: ${BLUE}; }
 .cl-btn { display: inline-flex; align-items: center; gap: 7px; font: 600 13px var(--font-sans, 'Instrument Sans', sans-serif); color: #0D1D2C; background: ${BLUE}; border: 0; border-radius: 9px; padding: 8px 14px; cursor: pointer; }
 .cl-btn:disabled { opacity: .5; cursor: default; }
@@ -140,7 +140,7 @@ function ClientTile({ client, missions, onOpen }) {
         <Briefcase size={18} color={LABEL} style={{ flexShrink: 0, marginTop: 3 }} />
       </div>
       <div className="cl-live">
-        <div><KindMark kind="Main Mission" size={15} ring={false} color={LABEL} />
+        <div><Flag size={15} />
           {live.now
             ? <span><b>{live.open.length} Open {live.open.length === 1 ? 'Gate' : 'Gates'}</b> · Gate {live.now.n} · {gateText(live.now.t)}</span>
             : <span className={missions.length ? '' : 'off'}>{missions.length ? <><b>{missions.length} {missions.length === 1 ? 'Mission' : 'Missions'}</b> · Every Gate Closed</> : 'No Mission Work Tied'}</span>}
@@ -312,8 +312,8 @@ function BringIn({ client, missions, onClose, onMoved }) {
           {(sources || []).map(s => (
             <div key={s.root}>
               <h4>{s.label}<small>{s.gate != null ? s.mission : 'The mission itself'}{s.done ? ' · Closed' : ''}</small></h4>
-              {s.tabs.map(t => { const k = `${s.root}:${t.kind}:${t.slug}`; return <div key={k} className={`cl-pk${picked[k] ? ' on' : ''}`} onClick={() => toggle(k, { source: s, kind: t.kind, slug: t.slug, title: t.title })}><span className="cl-box">{picked[k] && <Check size={12} strokeWidth={3} />}</span><ItemGlyph kind={t.kind} size={15} /><span>{t.title}</span><small>{t.kind === 'build' ? 'Built Tab' : 'Blank Tab'} · {stamp(t.at)}</small></div> })}
-              {s.files.map(f => { const k = `${s.root}:file:${f.id}`; return <div key={k} className={`cl-pk${picked[k] ? ' on' : ''}`} onClick={() => toggle(k, { source: s, kind: 'file', row: f, title: f.name })}><span className="cl-box">{picked[k] && <Check size={12} strokeWidth={3} />}</span><FileText size={15} /><span>{f.name}</span><small>File · {stamp(f.created_at)}</small></div> })}
+              {s.tabs.map(t => { const k = `${s.root}:${t.kind}:${t.slug}`; return <div key={k} className={`cl-pk${picked[k] ? ' on' : ''}`} onClick={() => toggle(k, { source: s, kind: t.kind, slug: t.slug, title: t.title })}><span className="cl-box">{picked[k] && <Check size={12} strokeWidth={3} />}</span><ItemGlyph kind={t.kind} size={15} /><span className="cl-lab">{t.title}</span><small>{t.kind === 'build' ? 'Built Tab' : 'Blank Tab'} · {stamp(t.at)}</small></div> })}
+              {s.files.map(f => { const k = `${s.root}:file:${f.id}`; return <div key={k} className={`cl-pk${picked[k] ? ' on' : ''}`} onClick={() => toggle(k, { source: s, kind: 'file', row: f, title: f.name })}><span className="cl-box">{picked[k] && <Check size={12} strokeWidth={3} />}</span><FileText size={15} /><span className="cl-lab">{f.name}</span><small>File · {stamp(f.created_at)}</small></div> })}
             </div>
           ))}
         </div>
