@@ -34,6 +34,10 @@ const STD = {
   film: { name: 'A Short Film', form: 'film', icon: Tv, open: 'service', openIs: 'Showing, the current cut', closedIs: 'The final cut, kept' },
 }
 const APP_LOOK = new URLSearchParams(window.location.search).get('app') || 'window'
+const PROP_LOOK = new URLSearchParams(window.location.search).get('prop') || 'envelope'
+const OUT_LOOK = new URLSearchParams(window.location.search).get('out') || 'card'
+const PROP_LOOKS = [['envelope', 'Letter In Its Envelope'], ['sig', 'Signature Page'], ['folder', 'Presentation Folder'], ['plane', 'Paper Plane']]
+const OUT_LOOKS = [['card', 'Pinned Card'], ['plate', 'Plate Under The Shelf'], ['tag', 'Luggage Tag'], ['badge', 'Day Badge']]
 const APP_LOOKS = [['laptop', 'Laptop'], ['monitor', 'Monitor'], ['tablet', 'Tablet'], ['window', 'Window'], ['box', 'Software Box']]
 const shelfOf = (t) => t.cart ? 'cart' : !t.open ? 'library' : STD[t.kind].open
 const SHELF = { service: ['In Service', GREEN], wild: ['Out In The Wild', BLUE], library: ['The Library', PURPLE] }
@@ -220,10 +224,43 @@ h1 { font:500 40px/1.1 var(--serif); letter-spacing:-.008em; margin:0; }
 .bk-sheet .fx { display:grid; gap:3px; margin-top:11px; padding-top:10px; border-top:1px solid rgba(22,49,74,.18); font-size:12.5px; color:rgba(22,49,74,.74); }
 .bk-sheet .fx b { font:500 17px/1.2 var(--serif); color:#16314A; }
 
+/* other forms for a proposal (David 11/25: "still not loving the little out with or the image for Proposals"), ?prop= ?out= or ?alt=proposal */
+.bk-sig { position:relative; display:flex; flex-direction:column; width:250px; height:340px; padding:22px 22px 18px 38px; background:#EFEBDD; color:#16314A; border-radius:2px 6px 6px 2px;
+  box-shadow:6px 5px 0 -2px #E2DCCB, 11px 9px 0 -4px #D6CFBC, 14px -4px 26px -10px rgba(0,0,0,.6); }
+.bk-sig::before { content:""; position:absolute; left:0; top:0; bottom:0; width:18px; border-radius:2px 0 0 2px; background:linear-gradient(135deg, color-mix(in srgb, var(--c) 62%, var(--deep)), color-mix(in srgb, var(--c) 46%, var(--deep))); }
+.bk-sig .bk-mark { color:#16314A; margin-bottom:10px; } .bk-sig .bk-lt { font-size:19px; }
+.bk-sig .wh { font-size:13px; line-height:1.42; margin-top:2px; }
+.bk-sig .ask { font:500 22px/1.1 var(--serif); margin-top:12px; } .bk-sig .tm { font-size:12.5px; color:rgba(22,49,74,.72); margin-top:3px; }
+.bk-sig .sp { flex:1; }
+.bk-sig .ln { display:grid; grid-template-columns:auto 1fr; gap:8px; align-items:end; font:italic 500 20px var(--serif); color:var(--c); filter:brightness(.62); }
+.bk-sig .ln u { display:block; height:1px; margin-bottom:5px; background:repeating-linear-gradient(90deg, rgba(22,49,74,.55) 0 5px, transparent 5px 9px); }
+.bk-sig .sl { font-size:12px; color:rgba(22,49,74,.66); margin-top:5px; }
+.bk-fold { position:relative; display:block; width:262px; height:336px; filter:drop-shadow(14px -4px 14px rgba(0,0,0,.42)); }
+.bk-fold .pg { position:absolute; left:26px; right:20px; top:0; height:150px; padding:16px 18px; background:#EFEBDD; color:#16314A; border-radius:3px 3px 0 0; }
+.bk-fold .pg .bk-mark { color:#16314A; margin-bottom:8px; } .bk-fold .pg .bk-lt { font-size:16px; }
+.bk-fold .fr { position:absolute; left:0; right:0; bottom:0; height:262px; padding:74px 22px 0; color:var(--ink); border-radius:4px 10px 4px 4px;
+  background:linear-gradient(135deg, color-mix(in srgb, var(--c) 56%, var(--deep)), color-mix(in srgb, var(--c) 40%, var(--deep))); box-shadow:0 0 0 1px rgba(255,255,255,.12) inset; clip-path:polygon(0 0, 100% 46px, 100% 100%, 0 100%); }
+.bk-fold .fr .ask { font:500 24px/1.1 var(--serif); } .bk-fold .fr .tm { font-size:12.5px; color:rgba(243,241,234,.78); margin-top:5px; line-height:1.4; }
+.bk-fold .fr .bk-lr { margin:12px 0 9px; }
+.bk-plane { display:grid; justify-items:center; width:262px; filter:drop-shadow(14px -4px 14px rgba(0,0,0,.42)); }
+.bk-plane svg { display:block; width:220px; height:auto; }
+.bk-plane .cd { width:100%; margin-top:10px; padding:14px 16px; background:#EFEBDD; color:#16314A; border-radius:4px; }
+.bk-plane .cd .bk-lt { font-size:17px; } .bk-plane .cd .ask { font:500 19px/1.1 var(--serif); margin-top:8px; } .bk-plane .cd .tm { font-size:12.5px; color:rgba(22,49,74,.72); margin-top:3px; }
+/* who has it */
+.bk-oplate { font-size:13.5px; line-height:1.45; color:var(--ink2); margin-top:16px; }
+.bk-oplate b { display:flex; align-items:center; gap:9px; font:500 17px/1.2 var(--serif); color:var(--ink); }
+.bk-oplate b i { flex:none; width:8px; height:8px; border-radius:99px; background:#8ACAFF; box-shadow:0 0 0 4px rgba(138,202,255,.2); }
+.bk-ltag { position:absolute; right:-112px; top:150px; width:124px; padding:12px 12px 11px 30px; background:#EFEBDD; color:#16314A; border-radius:4px; transform:rotate(7deg); transform-origin:0 0; clip-path:polygon(16px 0, 100% 0, 100% 100%, 16px 100%, 0 50%); box-shadow:0 10px 22px -8px rgba(0,0,0,.7); }
+.bk-ltag::before { content:""; position:absolute; left:11px; top:50%; width:8px; height:8px; margin-top:-4px; border-radius:50%; background:#0F2334; }
+.bk-ltag b { display:block; font:500 22px/1 var(--serif); } .bk-ltag span { display:block; font-size:12px; line-height:1.3; margin-top:4px; color:rgba(22,49,74,.76); }
+.bk-dbadge { position:absolute; right:-22px; top:-22px; width:76px; height:76px; border-radius:50%; display:grid; place-content:center; justify-items:center; background:#0F2334; color:#8ACAFF; border:2px solid #8ACAFF; box-shadow:0 0 0 5px rgba(138,202,255,.14), 0 10px 20px -8px rgba(0,0,0,.7); }
+.bk-dbadge b { font:500 30px/.95 var(--serif); } .bk-dbadge span { font-size:12px; font-weight:600; margin-top:1px; }
+.bk-dbadge.quiet { color:rgba(243,241,234,.6); border-color:rgba(243,241,234,.4); box-shadow:0 10px 20px -8px rgba(0,0,0,.7); }
+
 /* out in the wild: the place on the shelf is held, the thing is gone, a card says who has it */
 .bk-out { position:relative; }
 .bk-ghost { opacity:1; }
-.bk-ghost .bk-cover, .bk-ghost .bk-tvb, .bk-ghost .bk-env, .bk-ghost .bk-note, .bk-ghost .bk-win, .bk-ghost .bk-box { outline:1.5px dashed rgba(243,241,234,.5); outline-offset:4px; }
+.bk-ghost.dash .bk-cover, .bk-ghost.dash .bk-tvb, .bk-ghost.dash .bk-env, .bk-ghost.dash .bk-note, .bk-ghost.dash .bk-win, .bk-ghost.dash .bk-box { outline:1.5px dashed rgba(243,241,234,.5); outline-offset:4px; }
 .bk-card { display:block; position:absolute; left:50%; bottom:6px; width:204px; margin-left:-70px; padding:13px 15px 12px; background:#EFEBDD; color:#16314A; border-radius:4px; transform:rotate(-2.4deg); box-shadow:0 10px 22px -8px rgba(0,0,0,.7); }
 .bk-card::before { content:""; position:absolute; left:50%; top:-7px; width:12px; height:12px; margin-left:-6px; border-radius:99px; background:#B4A3E8; box-shadow:0 1px 2px rgba(0,0,0,.4); }
 .bk-card .w { font-size:12.5px; color:rgba(22,49,74,.66); }
@@ -312,6 +349,18 @@ function Form({ t, c }) {
       <span className="bk-feet"><i /><i /></span>
     </span>)
   if (form === 'notebook') return <span className="bk-note" style={st}><span className="tt">{t.title}</span><span className="sp" /><div className="bk-la">{t.author}</div><i className="bk-lr" /><div className="bk-li">{kindName(t)}</div></span>
+  const plook = form === 'letter' ? (t.look || PROP_LOOK) : null
+  if (plook === 'sig') return (
+    <span className="bk-sig" style={st}><Mark /><div className="bk-lt">{t.title}</div><i className="bk-lr" />
+      {t.what && <div className="wh">{t.what}</div>}{t.ask && <><div className="ask">{t.ask}</div><div className="tm">{t.term}</div></>}{!t.what && <div className="bk-li" style={{ color: 'rgba(22,49,74,.72)' }}>{kindName(t)}</div>}
+      <span className="sp" /><div className="ln">x<u /></div><div className="sl">{t.withWho ? `For ${t.withWho}` : 'For Signature'}</div></span>)
+  if (plook === 'folder') return (
+    <span className="bk-fold" style={st}><span className="pg"><Mark /><div className="bk-lt">{t.title}</div></span>
+      <span className="fr"><div className="bk-lt" style={{ fontSize: 19 }}>{t.title}</div><i className="bk-lr" />{t.ask ? <><div className="ask">{t.ask}</div><div className="tm">{t.term}<br />Prepared For {t.withWho}</div></> : <div className="bk-li">{kindName(t)}</div>}</span></span>)
+  if (plook === 'plane') return (
+    <span className="bk-plane" style={st}>
+      <svg viewBox="0 0 220 150" aria-hidden="true"><path d="M8 78 L212 8 L150 140 L112 96 Z" fill="color-mix(in srgb, #B4A3E8 58%, #0D1D2C)" /><path d="M8 78 L212 8 L112 96 Z" fill="color-mix(in srgb, #B4A3E8 78%, #0D1D2C)" /><path d="M112 96 L212 8 L96 128 Z" fill="color-mix(in srgb, #B4A3E8 38%, #0D1D2C)" /></svg>
+      <span className="cd"><div className="bk-lt">{t.title}</div>{t.ask ? <><div className="ask">{t.ask}</div><div className="tm">{t.term}</div></> : <div className="bk-li" style={{ color: 'rgba(22,49,74,.72)' }}>{kindName(t)}</div>}</span></span>)
   if (form === 'letter') return (
     <span className={`bk-letter${t.what ? ' tall' : ''}`} style={st}>
       <span className="bk-sheet"><Mark /><div className="bk-lt">{t.title}</div><i className="bk-lr" />
@@ -322,8 +371,41 @@ function Form({ t, c }) {
 }
 
 const Tag = ({ name, c, children }) => <div className="bk-tag" style={{ '--c': c }}><i /><b>{name}</b><u />{children && <span>{children}</span>}</div>
-const widthOf = (t) => ({ app: t.kind === 'software' ? 230 : 292, film: 286, letter: t.what ? 262 : 238, book: 217, notebook: 200 }[STD[t.kind].form])
+const widthOf = (t) => ({ app: t.kind === 'software' ? 230 : 292, film: 286, letter: { sig: 250, folder: 262, plane: 262 }[PROP_LOOK] || (t.what ? 262 : 238), book: 217, notebook: 200 }[STD[t.kind].form])
 
+const opened = (t) => t.opened ? `Opened ${t.opened === 1 ? 'Once' : `${t.opened} Times`} · Last ${String(t.last).replace('November', 'Nov')}` : 'Not Opened Yet'
+function Out({ t, out = OUT_LOOK, onOpen }) {
+  const since = t.since.replace(', 2026', '').replace('November', 'Nov')
+  return (
+    <button className="bk-thing bk-out" onClick={onOpen} aria-label={`Open ${t.title}`} style={{ '--c': BLUE }}>
+      <span className={`bk-ghost${out === 'card' ? ' dash' : ''}`} style={{ display: 'block', position: 'relative' }}><Form t={t} />
+        {out === 'tag' && <span className="bk-ltag"><b>Day {t.day}</b><span>{t.withWho}</span></span>}
+        {out === 'badge' && <span className={`bk-dbadge${t.opened ? '' : ' quiet'}`}><b>{t.day}</b><span>{t.day === 1 ? 'Day' : 'Days'}</span></span>}
+      </span>
+      {out === 'card' && <span className="bk-card"><div className="w">Out With</div><div className="p">{t.withWho}</div>
+        <div className="d"><b>Day {t.day}</b><span>Since {since}</span></div>
+        <div className={`o${t.opened ? '' : ' no'}`}><Eye size={14} />{opened(t)}</div></span>}
+    </button>)
+}
+const OutPlate = ({ t, out = OUT_LOOK }) => out === 'card' ? null : (
+  <div className="bk-oplate" style={{ width: widthOf(t) }}><b><i style={t.opened ? undefined : { background: 'rgba(243,241,234,.4)', boxShadow: 'none' }} />{t.withWho}</b>{out === 'badge' ? opened(t) : out === 'tag' ? opened(t) : <>Day {t.day} · {opened(t)}</>}</div>)
+
+function ProposalOptions({ onClose }) {
+  const t = THINGS.find(x => x.id === 'pilot')
+  return (
+    <div className="bk-veil" onClick={onClose}>
+      <div className="bk-std" style={{ width: 'min(1480px, 97vw)', maxHeight: '96vh', overflow: 'auto' }} onClick={e => e.stopPropagation()}>
+        <button className="bk-ib bk-x" title="Close The Window" aria-label="Close the window" onClick={onClose}><X size={18} /></button>
+        <h2>A Proposal On The Shelf</h2>
+        <div className="bk-alt" style={{ gridTemplateColumns: 'repeat(4, auto)' }}>{PROP_LOOKS.map(([k, name], i) => (
+          <div key={k} className="bk-altc"><div className="f" style={{ height: 330 }}><Form t={{ ...t, look: k }} /></div><div className="pl" /><div className="nm"><b>{i + 1}</b>{name}</div></div>))}</div>
+        <h2 style={{ marginTop: 44 }}>Who Has It</h2>
+        <div className="bk-alt" style={{ gridTemplateColumns: 'repeat(4, auto)' }}>{OUT_LOOKS.map(([k, name], i) => (
+          <div key={k} className="bk-altc"><div className="f" style={{ height: 340, padding: '0 70px 0 40px' }}><span style={{ zoom: 0.74 }}><Out t={{ ...t, look: 'sig' }} out={k} /></span></div><div className="pl" />
+            <div style={{ zoom: 0.86, justifySelf: 'start', minHeight: 64 }}><OutPlate t={{ ...t, look: 'sig' }} out={k} /></div><div className="nm"><b>{'ABCD'[i]}</b>{name}</div></div>))}</div>
+      </div>
+    </div>)
+}
 function Case({ t, onClose, toggle }) {
   const shelf = shelfOf(t), [sn, c] = SHELF[shelf]
   const reopens = SHELF[STD[t.kind].open]
@@ -391,6 +473,7 @@ function App() {
   const [open, setOpen] = useState(q.get('open'))
   const [std, setStd] = useState(q.get('std') === '1')
   const [alt, setAlt] = useState(q.get('alt') === '1')
+  const [palt, setPalt] = useState(q.get('alt') === 'proposal')
   const on = (shelf) => things.filter(t => shelfOf(t) === shelf)
   const opened = things.find(t => t.id === open)
   // Open or close: the one thing David does. The shelf follows from the kind.
@@ -424,14 +507,9 @@ function App() {
 
         <section className="bk-sec">
           <Tag name="Out In The Wild" c={BLUE}>{wild.length} Waiting</Tag>
-          <div className="bk-row">{wild.map(t => (
-            <button key={t.id} className="bk-thing bk-out" onClick={() => setOpen(t.id)} aria-label={`Open ${t.title}`} style={{ '--c': BLUE }}>
-              <span className="bk-ghost" style={{ display: 'block' }}><Form t={t} /></span>
-              <span className="bk-card"><div className="w">Out With</div><div className="p">{t.withWho}</div>
-                <div className="d"><b>Day {t.day}</b><span>Since {t.since.replace(', 2026', '').replace('November', 'Nov')}</span></div>
-                <div className={`o${t.opened ? '' : ' no'}`}><Eye size={14} />{t.opened ? `Opened ${t.opened === 1 ? 'Once' : `${t.opened} Times`} · Last ${t.last.replace('November', 'Nov')}` : 'Not Opened Yet'}</div></span>
-            </button>))}</div>
+          <div className="bk-row">{wild.map(t => <Out key={t.id} t={t} onOpen={() => setOpen(t.id)} />)}</div>
           <div className="bk-plank" />
+          {OUT_LOOK !== 'card' && <div className="bk-plates" style={{ paddingTop: 0 }}>{wild.map(t => <OutPlate key={t.id} t={t} />)}</div>}
         </section>
 
         <section className="bk-sec">
@@ -448,6 +526,7 @@ function App() {
       {opened && <Case t={opened} onClose={() => setOpen(null)} toggle={toggle} />}
       {std && <Standard onClose={() => setStd(false)} />}
       {alt && <AppOptions onClose={() => setAlt(false)} />}
+      {palt && <ProposalOptions onClose={() => setPalt(false)} />}
     </div>)
 }
 
