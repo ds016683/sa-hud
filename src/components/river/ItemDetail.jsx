@@ -35,7 +35,7 @@ const TABS = CARD_PILLS.map(([id]) => id)
 const TAB_LABEL = Object.fromEntries(CARD_PILLS)
 // Deep links and callers from before 10/23 still name the old pills.
 const LEGACY_TAB = { overview: 'briefing', protocols: 'workbench', punchlist: 'workbench', artifacts: 'files', production: 'files', sessions: 'briefing' }
-const STOP = new Set(['the', 'and', 'with', 'for', 'from', 'about', 'notes', 'upload', 'interview', 'call', 'meeting', 'review', 'investigate', 'weekly', 'monthly', 'david', 'smith'])
+const STOP = new Set(['the', 'and', 'with', 'for', 'from', 'about', 'notes', 'upload', 'interview', 'call', 'meeting', 'review', 'investigate', 'weekly', 'monthly', 'david', 'smith', 'gate', 'gates', 'plan', 'page', 'pages', 'new', 'one', 'finalize', 'final', 'update', 'send', 'build', 'draft'])
 const words = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9 ]/g, ' ').split(/\s+/).filter(w => w.length > 2 && !STOP.has(w))
 const chiTime = (iso) => iso ? new Date(iso).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'America/Chicago' }) : ''
 
@@ -136,7 +136,9 @@ async function loadRelated(item) {
   if (ws.length) {
     const since = new Date(Date.now() - 60 * 86400e3).toISOString().slice(0, 10)
     const { data: gm } = await supabase.from('granola_meetings').select('id,title,meeting_date,summary').gte('meeting_date', since).or(ws.map(w => `title.ilike.%${w}%`).join(',')).order('meeting_date', { ascending: false }).limit(8)
-    out.meetings = gm || []
+    // Whole words only: "Plan" on a gate was pulling in every meeting with "planning" in its title (David 11/26).
+    const whole = (title) => { const t = ` ${String(title || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ')} `; return ws.some(w => t.includes(` ${w} `)) }
+    out.meetings = (gm || []).filter(m => whole(m.title))
   }
   if (item.event?.notes) out.meetings = [item.event.notes, ...out.meetings.filter(m => m.id !== item.event.notes.id)]
   try { out.loadout = await fetchLoadout() } catch { out.loadout = null }
@@ -484,6 +486,7 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
           gate={{ id: task.id, n: rel.gateN, text: String(obj.title || '').replace(/^\s*(?:gate\s+)?\d+\s*[·.:)-]\s*/i, ''), done: task.status === 'done' || !!task.done, done_at: task.released_at, created_at: obj.captured_at }}
           gates={(rel.missionGates || []).length ? rel.missionGates : [{ id: task.id, n: rel.gateN, text: obj.title, done: false }]}
           missionTitle={rel.mission?.name || rel.project?.name || 'The Mission'}
+          polaris={rel.mission?.polaris || obj.north_star || null} doneWhen={splitNotes(task.notes).doneWhen} details={splitNotes(task.notes).details}
           onClose={() => (rel.project ? go([rel.project.id]) : onClose())}
           onPick={(g) => (g.objective_id ? openCard(g.objective_id) : rel.project ? go([rel.project.id]) : null)}
           onRename={renameGate} />

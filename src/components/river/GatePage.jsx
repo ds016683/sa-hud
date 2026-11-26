@@ -6,7 +6,7 @@
 // The Workbench pulls up full: the header and the two lines fold to one strip.
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Pencil, ArrowUp, ListTree, PenLine, FolderOpen, Plus, Check, X as XMark, Sparkles, CalendarDays } from 'lucide-react'
+import { Pencil, ArrowUp, ListTree, PenLine, FolderOpen, Plus, Check, X as XMark, Sparkles, CalendarDays, Star, ChevronDown } from 'lucide-react'
 import { readPath, savePathSteps, buildTrail, dueWords } from '../../lib/path'
 import { listBuilds, processAndPost } from '../../lib/lumenPanel'
 import { toggleStep } from '../../lib/objectives'
@@ -187,7 +187,8 @@ function SnakeLine({ nodes, dim = false, onDrop = null }) {
 // card (a gate with its own card): { obj, stops, files, meetings, onSaveNotes, onOpenNotes, onChanged }. With it the
 // page carries the gate's steps, its notes and a timeline of everything that happened on it (David 11/21, Gate 35).
 // filesNote (11/23): a gate with no card of its own keeps no files; the Files button still shows and says where they are.
-export default function GatePage({ card = null, benchRoot = null, tools = null, filesFor = null, filesNote = null, onTrail = null, tone = null, gate, gates, root, missionTitle, up = [], source = null, onClose, onPick, onRename, onExtract, onLoad }) {
+export default function GatePage({ card = null, benchRoot = null, tools = null, filesFor = null, filesNote = null, onTrail = null, tone = null, gate, gates, root, missionTitle, up = [], source = null, polaris = null, doneWhen = null, details = null, onClose, onPick, onRename, onExtract, onLoad }) {
+  const [more, setMore] = useState(false)   // the gate's details, folded until asked for
   const full = false   // the Workbench's own button takes it to full screen now
   const [view, setView] = useState('bench')   // 'bench' | 'files'
   const [psteps, setPsteps] = useState([])     // steps set by hand on the gate's line (path.json)
@@ -329,6 +330,30 @@ export default function GatePage({ card = null, benchRoot = null, tools = null, 
             {!tools && !gate.done && onExtract && <ExtractMarker size={44} color={tone || '#B4A3E8'} title="Extract · Close This Gate, Bank The Miles" onClick={() => onExtract(gate)} />}
           </div>
         </div>
+        {/* What the gate is for (David 11/26, on a gate page that opened with only its name: "no polaris, or context. is
+            this the right one?"): its done-when and what came in with it, and the mission's Polaris beside it. */}
+        {!full && (doneWhen || details || polaris) && (
+          <div style={{ display: 'grid', gridTemplateColumns: (doneWhen || details) && polaris ? 'minmax(0, 1.25fr) minmax(0, 1fr)' : '1fr', gap: 44, margin: '6px 0 26px', alignItems: 'start' }}>
+            {(doneWhen || details) && (
+              <div>
+                <div style={{ fontSize: 14.5, fontWeight: 600, color: 'var(--t)', marginBottom: 7 }}>{doneWhen ? 'Done When' : 'This Gate'}</div>
+                {doneWhen && <div style={{ font: "400 17px/1.5 'Lora', Georgia, serif", color: '#F3F1EA', whiteSpace: 'pre-wrap' }}>{doneWhen}</div>}
+                {details && (doneWhen ? (
+                  <>
+                    <button type="button" onClick={() => setMore(m => !m)} aria-expanded={more} title={more ? 'Fold The Details' : 'What Came In With It'} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: 10, padding: 0, background: 'none', border: 'none', color: 'rgba(243,241,234,.7)', font: 'inherit', fontSize: 13.5, cursor: 'pointer' }}><ChevronDown size={15} style={{ transform: more ? 'rotate(180deg)' : 'none', transition: 'transform .15s' }} />What Came In With It</button>
+                    {more && <div style={{ fontSize: 14, lineHeight: 1.6, color: 'rgba(243,241,234,.82)', whiteSpace: 'pre-wrap', marginTop: 8 }}>{details}</div>}
+                  </>
+                ) : <div style={{ fontSize: 14.5, lineHeight: 1.6, color: 'rgba(243,241,234,.86)', whiteSpace: 'pre-wrap' }}>{details}</div>)}
+              </div>
+            )}
+            {polaris && (
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14.5, fontWeight: 600, color: '#8ACAFF', marginBottom: 7 }}><Star size={15} fill="#8ACAFF" />Polaris</div>
+                <div style={{ font: "italic 400 17px/1.5 'Lora', Georgia, serif", color: '#F3F1EA' }}>{polaris}</div>
+              </div>
+            )}
+          </div>
+        )}
         {full ? (
           <div className="gp-mini">
             <span className="k">Mission Trail</span>
