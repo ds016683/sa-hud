@@ -8,10 +8,10 @@
 // writing, i should be able to "open" or "close" and the system should organize accordingly"): every work product is
 // one of a few kinds, each kind has one form on the shelf, and each container is open or closed. Nobody picks a shelf.
 // Open and in use stands In Service; open and waiting on someone's answer is Out In The Wild; closed is The Library.
-import { StrictMode, useState } from 'react'
+import { StrictMode, useEffect, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import { Waves, Footprints, CalendarDays, BookOpen, Activity, Award, FileText, Mountain, Briefcase, Target, Archive, Lightbulb, LibraryBig,
-  Search, X, ExternalLink, Radio, BookMarked, Check, Circle, Users, MapPin, CalendarClock, Eye, PackageCheck, Package, AppWindow, FileText as Doc, Mail, Feather, Tv, Ruler, BookOpenCheck, BookLock } from 'lucide-react'
+  Search, X, ExternalLink, Radio, BookMarked, Check, Circle, Users, MapPin, CalendarClock, Eye, Timer, PackageCheck, Package, AppWindow, FileText as Doc, Mail, Feather, Tv, Ruler, BookOpenCheck, BookLock } from 'lucide-react'
 
 const NAV = [
   ['Landing', [[Waves, 'The River'], [Footprints, 'Journey']]],
@@ -34,10 +34,10 @@ const STD = {
   film: { name: 'A Short Film', form: 'film', icon: Tv, open: 'service', openIs: 'Showing, the current cut', closedIs: 'The final cut, kept' },
 }
 const APP_LOOK = new URLSearchParams(window.location.search).get('app') || 'window'
-const PROP_LOOK = new URLSearchParams(window.location.search).get('prop') || 'envelope'
-const OUT_LOOK = new URLSearchParams(window.location.search).get('out') || 'card'
+const PROP_LOOK = new URLSearchParams(window.location.search).get('prop') || 'sig'
+const OUT_LOOK = new URLSearchParams(window.location.search).get('out') || 'clock'
 const PROP_LOOKS = [['envelope', 'Letter In Its Envelope'], ['sig', 'Signature Page'], ['folder', 'Presentation Folder'], ['plane', 'Paper Plane']]
-const OUT_LOOKS = [['card', 'Pinned Card'], ['plate', 'Plate Under The Shelf'], ['tag', 'Luggage Tag'], ['badge', 'Day Badge']]
+const OUT_LOOKS = [['clock', 'Clock Above It'], ['card', 'Pinned Card'], ['plate', 'Plate Under The Shelf'], ['tag', 'Luggage Tag'], ['badge', 'Day Badge']]
 const APP_LOOKS = [['laptop', 'Laptop'], ['monitor', 'Monitor'], ['tablet', 'Tablet'], ['window', 'Window'], ['box', 'Software Box']]
 const shelfOf = (t) => t.cart ? 'cart' : !t.open ? 'library' : STD[t.kind].open
 const SHELF = { service: ['In Service', GREEN], wild: ['Out In The Wild', BLUE], library: ['The Library', PURPLE] }
@@ -67,6 +67,8 @@ const THINGS = [
   { id: 'cart1', cart: true, kind: 'doc', title: 'Board Finance Review', author: 'Third Horizon', updated: 'November 24, 2026', from: 'Main Mission · Gate 4', since: 'November 24, 2026', withWho: 'The Board', plate: 'First Edition', sub: 'Shelved Today' },
   { id: 'cart2', cart: true, kind: 'app', title: 'Lunch Order Page', author: 'Third Horizon', updated: 'November 24, 2026', from: 'Ad Hoc · November 10', since: 'November 24, 2026', withWho: 'A Client Team', plate: 'Live', sub: 'Shelved Today' },
 ]
+
+const SENT = { pilot: Date.now() - (6 * 86400 + 4 * 3600 + 12 * 60 + 37) * 1000, sow: Date.now() - (3 * 86400 + 1 * 3600 + 48 * 60 + 5) * 1000 }
 
 // The Library: spines. [title, kind, year, height, tone 0..2]
 const SPINES = [
@@ -246,6 +248,11 @@ h1 { font:500 40px/1.1 var(--serif); letter-spacing:-.008em; margin:0; }
 .bk-plane svg { display:block; width:220px; height:auto; }
 .bk-plane .cd { width:100%; margin-top:10px; padding:14px 16px; background:#EFEBDD; color:#16314A; border-radius:4px; }
 .bk-plane .cd .bk-lt { font-size:17px; } .bk-plane .cd .ask { font:500 19px/1.1 var(--serif); margin-top:8px; } .bk-plane .cd .tm { font-size:12.5px; color:rgba(22,49,74,.72); margin-top:3px; }
+/* the clock over a thing that is out (David 11/26): how long it has been gone, counting */
+.bk-oclock { display:flex; align-items:center; gap:10px; width:max-content; margin:0 auto 16px; padding:8px 16px 8px 12px; border:1.5px solid #8ACAFF; border-radius:999px; color:#8ACAFF; background:rgba(138,202,255,.07); }
+.bk-oclock b { font:500 19px/1 var(--serif); color:var(--ink); }
+.bk-oclock span { font:500 15px/1 ui-monospace, 'JetBrains Mono', Menlo, monospace; letter-spacing:.02em; }
+.bk-oclock.quiet { border-color:rgba(243,241,234,.4); color:rgba(243,241,234,.6); background:none; }
 /* who has it */
 .bk-oplate { font-size:13.5px; line-height:1.45; color:var(--ink2); margin-top:16px; }
 .bk-oplate b { display:flex; align-items:center; gap:9px; font:500 17px/1.2 var(--serif); color:var(--ink); }
@@ -374,10 +381,18 @@ const Tag = ({ name, c, children }) => <div className="bk-tag" style={{ '--c': c
 const widthOf = (t) => ({ app: t.kind === 'software' ? 230 : 292, film: 286, letter: { sig: 250, folder: 262, plane: 262 }[PROP_LOOK] || (t.what ? 262 : 238), book: 217, notebook: 200 }[STD[t.kind].form])
 
 const opened = (t) => t.opened ? `Opened ${t.opened === 1 ? 'Once' : `${t.opened} Times`} · Last ${String(t.last).replace('November', 'Nov')}` : 'Not Opened Yet'
+const two = (n) => String(n).padStart(2, '0')
+function OutClock({ t }) {
+  const [now, setNow] = useState(() => Date.now())
+  useEffect(() => { const id = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(id) }, [])
+  const ms = Math.max(0, now - (SENT[t.id] || now)), d = Math.floor(ms / 86400e3), h = Math.floor(ms / 3600e3) % 24, m = Math.floor(ms / 60e3) % 60, sec = Math.floor(ms / 1e3) % 60
+  return <span className={`bk-oclock${t.opened ? '' : ' quiet'}`} title={t.opened ? 'They Have Opened It' : 'Not Opened Yet'}><Timer size={17} /><b>{d} {d === 1 ? 'Day' : 'Days'}</b><span>{two(h)}:{two(m)}:{two(sec)}</span></span>
+}
 function Out({ t, out = OUT_LOOK, onOpen }) {
   const since = t.since.replace(', 2026', '').replace('November', 'Nov')
   return (
     <button className="bk-thing bk-out" onClick={onOpen} aria-label={`Open ${t.title}`} style={{ '--c': BLUE }}>
+      {out === 'clock' && <OutClock t={t} />}
       <span className={`bk-ghost${out === 'card' ? ' dash' : ''}`} style={{ display: 'block', position: 'relative' }}><Form t={t} />
         {out === 'tag' && <span className="bk-ltag"><b>Day {t.day}</b><span>{t.withWho}</span></span>}
         {out === 'badge' && <span className={`bk-dbadge${t.opened ? '' : ' quiet'}`}><b>{t.day}</b><span>{t.day === 1 ? 'Day' : 'Days'}</span></span>}
@@ -387,7 +402,7 @@ function Out({ t, out = OUT_LOOK, onOpen }) {
         <div className={`o${t.opened ? '' : ' no'}`}><Eye size={14} />{opened(t)}</div></span>}
     </button>)
 }
-const OutPlate = ({ t, out = OUT_LOOK }) => out === 'card' ? null : (
+const OutPlate = ({ t, out = OUT_LOOK }) => out === 'card' || out === 'clock' ? null : (
   <div className="bk-oplate" style={{ width: widthOf(t) }}><b><i style={t.opened ? undefined : { background: 'rgba(243,241,234,.4)', boxShadow: 'none' }} />{t.withWho}</b>{out === 'badge' ? opened(t) : out === 'tag' ? opened(t) : <>Day {t.day} · {opened(t)}</>}</div>)
 
 function ProposalOptions({ onClose }) {
@@ -400,9 +415,9 @@ function ProposalOptions({ onClose }) {
         <div className="bk-alt" style={{ gridTemplateColumns: 'repeat(4, auto)' }}>{PROP_LOOKS.map(([k, name], i) => (
           <div key={k} className="bk-altc"><div className="f" style={{ height: 330 }}><Form t={{ ...t, look: k }} /></div><div className="pl" /><div className="nm"><b>{i + 1}</b>{name}</div></div>))}</div>
         <h2 style={{ marginTop: 44 }}>Who Has It</h2>
-        <div className="bk-alt" style={{ gridTemplateColumns: 'repeat(4, auto)' }}>{OUT_LOOKS.map(([k, name], i) => (
+        <div className="bk-alt" style={{ gridTemplateColumns: 'repeat(5, auto)' }}>{OUT_LOOKS.map(([k, name], i) => (
           <div key={k} className="bk-altc"><div className="f" style={{ height: 340, padding: '0 70px 0 40px' }}><span style={{ zoom: 0.74 }}><Out t={{ ...t, look: 'sig' }} out={k} /></span></div><div className="pl" />
-            <div style={{ zoom: 0.86, justifySelf: 'start', minHeight: 64 }}><OutPlate t={{ ...t, look: 'sig' }} out={k} /></div><div className="nm"><b>{'ABCD'[i]}</b>{name}</div></div>))}</div>
+            <div style={{ zoom: 0.86, justifySelf: 'start', minHeight: 64 }}><OutPlate t={{ ...t, look: 'sig' }} out={k} /></div><div className="nm"><b>{'ABCDE'[i]}</b>{name}</div></div>))}</div>
       </div>
     </div>)
 }
@@ -509,7 +524,7 @@ function App() {
           <Tag name="Out In The Wild" c={BLUE}>{wild.length} Waiting</Tag>
           <div className="bk-row">{wild.map(t => <Out key={t.id} t={t} onOpen={() => setOpen(t.id)} />)}</div>
           <div className="bk-plank" />
-          {OUT_LOOK !== 'card' && <div className="bk-plates" style={{ paddingTop: 0 }}>{wild.map(t => <OutPlate key={t.id} t={t} />)}</div>}
+          {OUT_LOOK !== 'card' && OUT_LOOK !== 'clock' && <div className="bk-plates" style={{ paddingTop: 0 }}>{wild.map(t => <OutPlate key={t.id} t={t} />)}</div>}
         </section>
 
         <section className="bk-sec">
