@@ -49,11 +49,13 @@ async function gatherStepGate(stepId) {
   const next = gates.find(g => !g.done && g.id !== st.id && g.n > me.n) || gates.find(g => !g.done && g.id !== st.id) || null
   const [pathDoc, files] = await Promise.all([
     storageJson(`objectives/${o.id}/path.json`),
-    sb(`live_files?select=name,note,bucket,created_at&objective_id=eq.${o.id}&superseded_by=is.null&order=created_at.desc&limit=40`).catch(() => []),
+    sb(`live_files?select=id,name,note,bucket,path,created_at&objective_id=eq.${o.id}&filed_at=is.null&superseded_by=is.null&order=created_at.desc&limit=40`).catch(() => []),
   ])
   const src = (pathDoc?.sources || {})[String(st.id)]
   const about = [flat(o.description, 900), files.length ? `Files and links on the card: ${files.map(f => `${flat(f.name, 100)}${f.note ? ` (${flat(f.note, 120)})` : ''}, ${String(f.created_at || '').slice(0, 10)}`).join('; ')}` : ''].filter(Boolean).join('\n')
-  return { side: true, about, o, task: { id: st.id, notes: src ? flat(src.quote || src.text || '', 500) : '' }, mission: { id: o.id, name: o.title, polaris: o.north_star || '', kind: 'side' }, gate: me, gates, next, items: [], proofs: [], steps: [] }
+  return { side: true, about, o, task: { id: st.id, notes: src ? flat(src.quote || src.text || '', 500) : '' }, mission: { id: o.id, name: o.title, polaris: o.north_star || '', kind: 'side' }, gate: me, gates, next, root: `objectives/${o.id}`,
+    // the card's files are already the mission's: nothing to pull up, but any of them can be turned in as final
+    items: files.map(f => ({ key: `file:${f.id}`, kind: f.bucket === 'link' ? 'Link' : 'File', name: flat(f.name, 140), note: flat(f.note, 180), path: f.path || null, on_mission: true })), proofs: [], steps: [] }
 }
 
 export async function gatherGate(objectiveId, taskId = null, stepId = null) {
@@ -76,20 +78,20 @@ export async function gatherGate(objectiveId, taskId = null, stepId = null) {
   const root = objectiveId ? `objectives/${objectiveId}` : `${task.project_id}/gates/${task.id}`
   const [ws, bd, files, path, proofs] = await Promise.all([
     storageList(`${root}/workspace`), storageList(`${root}/build`),
-    objectiveId ? sb(`live_files?select=id,name,note,bucket,project_id&objective_id=eq.${objectiveId}&filed_at=is.null&superseded_by=is.null&order=created_at.desc&limit=60`).catch(() => []) : Promise.resolve([]),
+    objectiveId ? sb(`live_files?select=id,name,note,bucket,path,project_id&objective_id=eq.${objectiveId}&filed_at=is.null&superseded_by=is.null&order=created_at.desc&limit=60`).catch(() => []) : Promise.resolve([]),
     storageJson(`${root}/path.json`),
     readProofs(task.project_id, task.id).catch(() => []),
   ])
   const pages = (await Promise.all(ws.filter(f => f.name.endsWith('.json')).slice(0, 14).map(async f => { const d = await storageJson(`${root}/workspace/${f.name}`); const slug = f.name.replace(/\.json$/, ''); return d && (String(d.text || '').trim() || (Array.isArray(d.strokes) && d.strokes.length)) ? { key: `tab:${slug}`, kind: 'Tab', name: flat(d.title, 100) || slug, note: flat(d.text, 260) } : null }))).filter(Boolean)
   const builds = (await Promise.all(bd.filter(f => f.name.endsWith('.json') && !f.name.endsWith('.state.json')).slice(0, 16).map(async f => { const d = await storageJson(`${root}/build/${f.name}`); const slug = f.name.replace(/\.json$/, ''); return d ? { key: `build:${slug}`, kind: 'Built Tab', name: flat(d.title, 100) || slug, note: flat(d.note, 220) } : null }))).filter(Boolean)
-  const fl = files.map(f => ({ key: `file:${f.id}`, kind: f.bucket === 'link' ? 'Link' : 'File', name: flat(f.name, 140), note: flat(f.note, 180), on_mission: !!f.project_id }))
+  const fl = files.map(f => ({ key: `file:${f.id}`, kind: f.bucket === 'link' ? 'Link' : 'File', name: flat(f.name, 140), note: flat(f.note, 180), path: f.path || null, on_mission: !!f.project_id }))
   // The gates are the numbered tasks plus any open one without a number, the way the mission page counts them.
   const numbered = all.filter(t => numOf(t.text) !== null), top = Math.max(0, ...numbered.map(t => numOf(t.text)))
   const open = all.filter(t => numOf(t.text) === null && t.status !== 'done' && !t.done)
   const gates = [...numbered, ...open].map((t, i) => ({ id: t.id, n: numOf(t.text) !== null ? numOf(t.text) : top + (i - numbered.length) + 1, text: strip(t.text), done: t.status === 'done' || !!t.done, notes: flat(t.notes, 360), objective_id: t.objective_id })).sort((a, b) => a.n - b.n)
   const me = gates.find(g => g.id === task.id) || { id: task.id, n: numOf(task.text), text: strip(task.text) }
   const next = gates.find(g => !g.done && g.id !== task.id && g.n > (me.n || 0)) || gates.find(g => !g.done && g.id !== task.id) || null
-  return { o, task, mission: { id: p.id, name: p.name, polaris: p.description || '' }, gate: me, gates, next, items: [...builds, ...pages, ...fl], proofs, steps: (Array.isArray(path?.steps) ? path.steps : []).slice(0, 30).map(s => ({ text: flat(s.text, 160), done: !!s.done || !!s.vetted })) }
+  return { o, task, root, mission: { id: p.id, name: p.name, polaris: p.description || '' }, gate: me, gates, next, items: [...builds, ...pages, ...fl], proofs, steps: (Array.isArray(path?.steps) ? path.steps : []).slice(0, 30).map(s => ({ text: flat(s.text, 160), done: !!s.done || !!s.vetted })) }
 }
 
 const str = { type: 'string' }
@@ -103,6 +105,20 @@ async function recentMail({ person = '', days = 3 }) {
   const hit = rows.filter(r => !want || [r.from_name, r.subject, ...(Array.isArray(r.to_names) ? r.to_names : [])].some(x => String(x || '').toLowerCase().includes(want)))
   return JSON.stringify(hit.slice(0, 40).map(r => ({ message_id: r.id, folder: r.folder, subject: r.subject, from: r.from_name, to: r.to_names, at: r.received_at, preview: flat(r.preview, 240) })), null, 1)
 }
+// The final documents (David 11/27: "This is basically my report ... I should also be able to turn in or highlight any
+// final documents both for the checks and for prioritization for routing/keeping/archiving"). What he turns in is named
+// in the brief and can be read in full, so the verdict rests on what the documents say.
+const FINAL = { name: 'read_final', description: 'Read one of the final documents David turned in for this gate, by its key. A long file or a workbook comes back in parts: the first call lists its sheets or its length; call again with sheet (a sheet name), find (words to look for) or offset (where to read on from).', input_schema: { type: 'object', additionalProperties: false, required: ['key'], properties: { key: { type: 'string' }, sheet: { type: 'string' }, find: { type: 'string' }, offset: { type: 'integer' } } } }
+async function readFinal(g, key, part = {}) {
+  const it = g.items.find(i => i.key === String(key))
+  if (!it) return 'No item with that key is on this gate.'
+  const id = it.key.slice(it.key.indexOf(':') + 1)
+  if (it.kind === 'Link') return `A link, not a file: ${it.name}. ${it.note || ''}`
+  if (it.kind === 'File') return it.path ? String(await callTool('read_file', { path: it.path, ...(part.sheet ? { sheet: String(part.sheet) } : {}), ...(part.find ? { find: String(part.find) } : {}), ...(part.offset ? { offset: Number(part.offset) } : {}) })).slice(0, 14000) : 'The file has no stored copy to read.'
+  if (it.kind === 'Tab') { const d = await storageJson(`${g.root}/workspace/${id}.json`); return d ? `Workbench tab "${d.title || id}":\n${String(d.text || '').slice(0, 12000) || '(a drawing, no typed words)'}` : 'The tab could not be read.' }
+  const d = await storageJson(`${g.root}/build/${id}.json`); const st = await storageJson(`${g.root}/build/${id}.state.json`)
+  return d ? `Built tab "${d.title || id}": ${d.note || ''}${st ? `\nWhat is kept in it: ${JSON.stringify(st).slice(0, 8000)}` : ''}` : 'The built tab could not be read.'
+}
 const READ = { name: 'read_email', description: 'Read one message in full: its whole body, who it went to, and its attachments by name. message_id comes from search_mailbox.', input_schema: { type: 'object', additionalProperties: false, required: ['message_id'], properties: { message_id: { type: 'string' } } } }
 const SEARCH = { name: 'search_mailbox', description: "Search David's whole live mailbox (Inbox, Sent, every folder, any age) by words in subject, sender, recipient or body. Returns message_id, folder, subject, from, to, date and a short preview for each match. The preview is only the first lines: read a message in full with read_email before you rely on it.", input_schema: { type: 'object', additionalProperties: false, required: ['query'], properties: { query: { type: 'string' } } } }
 const TOOL = { name: 'gate_debrief', description: 'Hand David the gate debrief.', strict: true, input_schema: { type: 'object', additionalProperties: false, required: ['verification', 'closing_note', 'up', 'changes', 'reconcile'], properties: {
@@ -113,10 +129,11 @@ const TOOL = { name: 'gate_debrief', description: 'Hand David the gate debrief.'
   changes: { type: 'array', items: { type: 'object', additionalProperties: false, required: ['kind', 'gate', 'text', 'why'], properties: { kind: { type: 'string', enum: ['polaris', 'reword_gate', 'new_gate'] }, gate: str, text: str, why: str } } },
 } } }
 
-export async function gateDebrief({ objectiveId = null, taskId = null, stepId = null, words = '', model }) {
+export async function gateDebrief({ objectiveId = null, taskId = null, stepId = null, words = '', finals = [], model }) {
   if (!model) throw new Error('no model named for the gate debrief')
   const g = await gatherGate(objectiveId, taskId, stepId)
   const kind = g.side ? 'Side Mission' : 'Main Mission'
+  const turned = g.items.filter(i => (Array.isArray(finals) ? finals : []).includes(i.key))
   const said = flat(words, 4000)
   const prompt = `You are Lumen. David is extracting one gate of a ${kind}. Brief him before it closes, from the gate's record${said ? ' and the context he has added' : ''}.
 
@@ -144,6 +161,10 @@ ${proofLines(g.proofs)}
 ## What sits on the gate's card
 ${g.items.map(i => `- key ${i.key} · ${i.kind}: ${i.name}${i.note ? ` | ${i.note}` : ''}${i.on_mission ? ' | already on the mission' : ''}`).join('\n') || 'nothing'}
 
+## Final documents David turned in for this gate
+${turned.map(i => `- key ${i.key} · ${i.kind}: ${i.name}${i.note ? ` | ${i.note}` : ''}`).join('\n') || 'none turned in'}
+${turned.length ? 'These are what he says the gate produced. Read each one with read_final before you give a verdict, and check the done-when against what they actually say. In saw, name the document and the line or figure that shows it. In up, a final document is pulled up (pull true).' : ''}
+
 ## Context David added at the close
 ${said || 'none yet'}
 
@@ -162,16 +183,16 @@ When you have looked, hand the debrief back by calling the gate_debrief tool exa
   // vision to verify that this was done"): a few mailbox searches, then the debrief. Reads only.
   const messages = [{ role: 'user', content: prompt }]
   let msg = null, call = null
-  for (let turn = 0; turn < 9 && !call; turn++) {
-    const res = await fetch('https://api.anthropic.com/v1/messages', { method: 'POST', headers: { 'x-api-key': process.env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' }, body: JSON.stringify({ model, max_tokens: 5000, tools: turn < 8 ? [SEARCH, RECENT, READ, TOOL] : [TOOL], tool_choice: { type: 'auto' }, messages }) })
+  for (let turn = 0; turn < 12 && !call; turn++) {
+    const res = await fetch('https://api.anthropic.com/v1/messages', { method: 'POST', headers: { 'x-api-key': process.env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' }, body: JSON.stringify({ model, max_tokens: 5000, tools: turn < 11 ? [SEARCH, RECENT, READ, ...(turned.length ? [FINAL] : []), TOOL] : [TOOL], tool_choice: { type: 'auto' }, messages }) })
     if (!res.ok) throw new Error(`anthropic -> ${res.status}: ${(await res.text()).slice(0, 160)}`)
     msg = await res.json()
     const uses = (msg.content || []).filter(c => c.type === 'tool_use')
     call = uses.find(c => c.name === 'gate_debrief') || null
-    const looks = uses.filter(c => ['search_mailbox', 'read_email', 'recent_mail'].includes(c.name))
+    const looks = uses.filter(c => ['search_mailbox', 'read_email', 'recent_mail', 'read_final'].includes(c.name))
     if (call || !looks.length) break
     const results = await Promise.all(looks.map(async c => {
-      try { return { type: 'tool_result', tool_use_id: c.id, content: c.name === 'recent_mail' ? (await recentMail(c.input || {})).slice(0, 9000) : c.name === 'read_email' ? String(await callTool('read_email', { message_id: String(c.input?.message_id || '') })).slice(0, 9000) : String(await callTool('search_mailbox', { query: flat(c.input?.query, 160), limit: 8 })).slice(0, 6000) } }
+      try { return { type: 'tool_result', tool_use_id: c.id, content: c.name === 'read_final' ? await readFinal(g, c.input?.key, c.input || {}) : c.name === 'recent_mail' ? (await recentMail(c.input || {})).slice(0, 9000) : c.name === 'read_email' ? String(await callTool('read_email', { message_id: String(c.input?.message_id || '') })).slice(0, 9000) : String(await callTool('search_mailbox', { query: flat(c.input?.query, 160), limit: 8 })).slice(0, 6000) } }
       catch (e) { return { type: 'tool_result', tool_use_id: c.id, is_error: true, content: `The mailbox could not be read: ${String(e.message || e).slice(0, 160)}` } }
     }))
     messages.push({ role: 'assistant', content: msg.content }, { role: 'user', content: results })
@@ -193,7 +214,8 @@ When you have looked, hand the debrief back by calling the gate_debrief tool exa
     verification: { verdict: ['confirmed', 'not_confirmed', 'cannot_see'].includes(v.verdict) ? v.verdict : 'cannot_see', saw: clean(v.saw, 500), need: clean(v.need, 400) },
     closing_note: clean(out.closing_note, 900),
     proofs: g.proofs,
-    items: g.items.map(i => ({ ...i, pull: !!byKey.get(i.key)?.pull, why: clean(byKey.get(i.key)?.why, 140) })),
+    finals: turned.map(i => i.key),
+    items: g.items.map(i => ({ key: i.key, kind: i.kind, name: i.name, note: i.note, on_mission: !!i.on_mission, pull: !!byKey.get(i.key)?.pull, why: clean(byKey.get(i.key)?.why, 140) })),
     changes,
     reconcile: (Array.isArray(out.reconcile) ? out.reconcile : []).slice(0, 6).map(r => ({ what: clean(r.what, 300), why: clean(r.why, 200) })).filter(r => r.what),
   }

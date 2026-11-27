@@ -8,13 +8,14 @@
 // that would move or change something starts unblessed; the foot says what Extract will do; Extract does only that.
 // A change to the Polaris or to a gate is only ever a proposal here: his check is what makes it.
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Check, X, Sparkles, Plus, Pencil } from 'lucide-react'
+import { Check, X, Sparkles, Plus, Pencil, Award, Paperclip } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { hudPrompt } from '../../lib/dialog'
 import { askGateDebrief } from '../../lib/lumenPanel'
 import { extract as extractItem } from '../../lib/loadout'
 import { fileAchieved } from '../../lib/archive'
 import { routeItem } from '../../lib/commitments'
+import { putLiveFile, pinEvidence, readFileIndex, writeFileIndex } from '../../lib/livefiles'
 import { ExtractMarker } from './glyphs'
 import { GateGlyph } from './GatePage'
 
@@ -102,10 +103,17 @@ export default function GateDebrief({ item, tone = PURPLE, onClose, onDone, draf
   const [err, setErr] = useState(null)
   const [stage, setStage] = useState('')
   const run = useRef(0)
-  const brief = useCallback(async (context) => {
+  // The final documents (David 11/27: "I should also be able to turn in or highlight any final documents both for the
+  // checks and for prioritization for routing/keeping/archiving"). finals: the keys he has marked; d.finals: the ones
+  // Lumen had in hand for the brief on screen.
+  const [finals, setFinals] = useState([])
+  const [putting, setPutting] = useState(false)
+  const fileIn = useRef(null)
+  const cardId = item.id || item.objective_id || null   // where a turned-in file lands: the gate's card, or the Side Mission's
+  const brief = useCallback(async (context, fin = []) => {
     const me = ++run.current
     setAsking(true); setErr(null)
-    try { const out = await drafter({ objectiveId: item.id || null, taskId: item.id ? null : item.task_id, stepId: item.step_id ?? null, words: context.join('\n\n') }); if (me !== run.current) return; setD(out); setNote(out.closing_note || '') }
+    try { const out = await drafter({ objectiveId: item.id || null, taskId: item.id ? null : item.task_id, stepId: item.step_id ?? null, words: context.join('\n\n'), finals: fin }); if (me !== run.current) return; setD(out); setNote(out.closing_note || '') }
     catch (e) { if (me === run.current) setErr(`Lumen could not brief it: ${e.message}`) } finally { if (me === run.current) setAsking(false) }
   }, [drafter, item.id, item.task_id, item.step_id])
   useEffect(() => { Promise.resolve().then(() => brief([])) }, [brief])
@@ -113,9 +121,22 @@ export default function GateDebrief({ item, tone = PURPLE, onClose, onDone, draf
   const addContext = async () => {
     const t = String(await hudPrompt({ title: 'Your Context', multiline: true }) || '').trim()
     if (!t) return
-    const next = [...ctx, t]; setCtx(next); brief(next)
+    const next = [...ctx, t]; setCtx(next); brief(next, finals)
   }
-  const dropContext = (i) => { const next = ctx.filter((_, k) => k !== i); setCtx(next); brief(next) }
+  const dropContext = (i) => { const next = ctx.filter((_, k) => k !== i); setCtx(next); brief(next, finals) }
+  // Marking a document final also blesses it to go up to the mission, unless he has already ruled on that.
+  const toggleFinal = (x) => {
+    const on = !finals.includes(x.key)
+    setFinals(f => on ? [...f, x.key] : f.filter(k => k !== x.key))
+    if (on && !x.on_mission) setYes(y => (y[`up:${x.key}`] == null ? { ...y, [`up:${x.key}`]: true } : y))
+  }
+  const turnIn = async (file) => {
+    if (!file || !cardId || putting) return
+    setPutting(true); setErr(null)
+    try { const row = await putLiveFile(file, { objectiveId: cardId, note: 'Turned in as a final document at the gate\'s close' }); const next = [...finals, `file:${row.id}`]; setFinals(next); brief(ctx, next) }
+    catch (e) { setErr(`Could not turn it in: ${e.message}`) } finally { setPutting(false); if (fileIn.current) fileIn.current.value = '' }
+  }
+  const unread = finals.filter(k => !(d?.finals || []).includes(k)).length + (d?.finals || []).filter(k => !finals.includes(k)).length
   const set = (k) => (v) => setYes(y => ({ ...y, [k]: v }))
   const items = (d?.items || []).filter(x => !x.on_mission)
   const up = items.filter(x => yes[`up:${x.key}`] === true)
@@ -132,12 +153,14 @@ export default function GateDebrief({ item, tone = PURPLE, onClose, onDone, draf
     chg.filter(c => c.kind === 'reword_gate').length ? plural(chg.filter(c => c.kind === 'reword_gate').length, 'Gate Reworded', 'Gates Reworded') : null,
     chg.filter(c => c.kind === 'new_gate').length ? plural(chg.filter(c => c.kind === 'new_gate').length, 'Gate Added', 'Gates Added') : null,
     rec.length ? plural(rec.length, 'Item Routed To Reconcile', 'Items Routed To Reconcile') : null,
+    finals.length ? plural(finals.length, 'Final Document Kept And Locked', 'Final Documents Kept And Locked') : null,
   ].filter(Boolean)
 
   const go = async () => {
     if (busy || asking) return
     setBusy(true); setErr(null); setStage('Extracting')
-    const words = ctx.join('\n\n').trim(), record = [words, note.trim()].filter(Boolean).join('\n\n')
+    const fin = (d?.items || []).filter(x => finals.includes(x.key))
+    const words = ctx.join('\n\n').trim(), record = [words, note.trim(), fin.length ? `Final Documents: ${fin.map(x => x.name).join('; ')}` : ''].filter(Boolean).join('\n\n')
     try {
       if (closer) { await closer({ up, chg, record }); return }
       const pid = d?.mission?.id, root = item.id ? `objectives/${item.id}` : `${item.project_id}/gates/${item.task_id}`
@@ -161,13 +184,20 @@ export default function GateDebrief({ item, tone = PURPLE, onClose, onDone, draf
         else if (c.kind === 'reword_gate') { const { error } = await supabase.from('project_tasks').update({ text: `${c.n} · ${c.text}` }).eq('id', c.task_id); if (error) throw new Error(`Gate ${c.n}: ${error.message}`) }
         else if (c.kind === 'new_gate') { top += 1; const { error } = await supabase.from('project_tasks').insert({ project_id: pid, text: `${top} · ${c.text}`, status: 'open', done: false, source: 'debrief', notes: `From the debrief of Gate ${d.gate.n}, ${d.gate.text}. ${c.why || ''}`.trim() }); if (error) throw new Error(`New gate: ${error.message}`) }
       }
+      // A final document is marked as the gate's proof and locked on its card, so no clean-up ever archives or removes it.
+      const finFiles = fin.filter(x => x.kind === 'File' || x.kind === 'Link').map(x => x.key.slice(x.key.indexOf(':') + 1))
+      if (finFiles.length) {
+        setStage('Keeping The Final Documents')
+        for (const id of finFiles) await within(pinEvidence(id, true), 'The Ledger')
+        if (cardId) { const ix = await within(readFileIndex(cardId), 'The card\'s files'); await within(writeFileIndex(cardId, { ...ix, locked: { ...(ix.locked || {}), ...Object.fromEntries(finFiles.map(id => [id, true])) } }), 'The card\'s files') }
+      }
       if (rec.length) setStage('Routing To Reconcile')
       for (const r of rec) await within(routeItem({ what: r.what, heard: r.why, where: `Gate ${d.gate.n} · ${d.gate.text}`, source: 'debrief' }), 'The Reconcile list')
       setStage('Closing The Gate')
       let r
       if (finish) r = await within(finish(record), 'The Ledger', 40000)
       else { if (record) await fileAchieved(item, record).catch(() => {}); r = await extractItem(item, { minutes: 0, note: record || null }) }
-      onDone(r, { gate: d?.gate || null, mission: d?.mission || null, next: d?.next || null, did: [...up.map(x => ({ tag: 'Up', text: x.name })), ...chg.map(c => ({ tag: CHANGE[c.kind], text: c.kind === 'reword_gate' ? `Gate ${c.n}: ${c.text}` : c.text })), ...rec.map(x => ({ tag: 'Routed', text: x.what }))] })
+      onDone(r, { gate: d?.gate || null, mission: d?.mission || null, next: d?.next || null, did: [...fin.map(x => ({ tag: 'Final', text: x.name })), ...up.map(x => ({ tag: 'Up', text: x.name })), ...chg.map(c => ({ tag: CHANGE[c.kind], text: c.kind === 'reword_gate' ? `Gate ${c.n}: ${c.text}` : c.text })), ...rec.map(x => ({ tag: 'Routed', text: x.what }))] })
     } catch (e) { setErr(e?.message || String(e)); setBusy(false) }
   }
   const v = d ? VERDICT[d.verification.verdict] : null
@@ -196,18 +226,30 @@ export default function GateDebrief({ item, tone = PURPLE, onClose, onDone, draf
               <textarea rows={7} value={note} onChange={e => setNote(e.target.value)} aria-label="Closing note" />
             </div>
           </div>
+          <div className="gd-card full">
+            <h3><span className="gd-n">3</span>Final Documents
+              <span style={{ marginLeft: 'auto', display: 'inline-flex', gap: 8, alignItems: 'center' }}>
+                {unread > 0 && !asking && <button type="button" className="gd-ic sm" title="Have Lumen Check Against These" aria-label="Have Lumen check against the final documents" onClick={() => brief(ctx, finals)} disabled={busy}><Sparkles size={14} /></button>}
+                {cardId && <button type="button" className={`gd-ic sm${putting ? ' thinking' : ''}`} style={{ '--c': PURPLE }} title="Turn In A File" aria-label="Turn in a file as a final document" onClick={() => fileIn.current && fileIn.current.click()} disabled={busy || putting}><Paperclip size={14} /></button>}
+                <input ref={fileIn} type="file" style={{ display: 'none' }} onChange={e => turnIn(e.target.files && e.target.files[0])} />
+              </span>
+            </h3>
+            {(d?.items || []).map(x => { const on = finals.includes(x.key), read = on && (d?.finals || []).includes(x.key); return (
+              <div key={x.key} className="gd-r"><div><span className="gd-k">{x.kind}</span>{x.name}{on && <small>{read ? 'Final · Lumen Has Read It' : 'Final · Not Yet Read By Lumen'}</small>}</div>
+                <button type="button" className={`gd-ic sm${on ? ' on' : ''}`} style={{ '--c': PURPLE }} title={on ? 'Final · Click To Take It Back' : 'Turn It In As Final'} aria-label={on ? `Take back ${x.name}` : `Turn in ${x.name} as final`} aria-pressed={on} onClick={() => toggleFinal(x)} disabled={busy}><Award size={14} /></button></div>) })}
+          </div>
           <div className="gd-card full" style={d?.side ? { display: 'none' } : undefined}>
-            <h3><span className="gd-n">3</span>What Goes Up To The Mission</h3>
+            <h3><span className="gd-n">4</span>What Goes Up To The Mission</h3>
             {items.map(x => <div key={x.key} className={`gd-r${yes[`up:${x.key}`] === false ? ' off' : ''}`}><div><span className="gd-k">{x.kind}</span>{x.name}{x.why && <small>{x.pull ? 'Lumen: Up' : 'Lumen: Stays'} · {x.why}</small>}</div><YN on={yes[`up:${x.key}`] ?? null} set={set(`up:${x.key}`)} /></div>)}
           </div>
           <div className="gd-card full">
-            <h3><span className="gd-n">{d?.side ? 3 : 4}</span>Did This Gate Change The Mission</h3>
+            <h3><span className="gd-n">{d?.side ? 4 : 5}</span>Did This Gate Change The Mission</h3>
             {(d?.changes || []).map((c, i) => <div key={i} className={`gd-r${yes[`chg:${i}`] === false ? ' off' : ''}`}><div><span className="gd-k">{CHANGE[c.kind]}{c.kind === 'reword_gate' ? ` · Gate ${c.n}` : ''}</span>{c.text}{(c.from || c.why) && <small>{c.from ? `Was: ${c.from}. ` : ''}{c.why}</small>}</div><YN on={yes[`chg:${i}`] ?? null} set={set(`chg:${i}`)} /></div>)}
           </div>
 
           {(d?.reconcile || []).length > 0 && (
             <div className="gd-card full">
-              <h3><span className="gd-n">{d?.side ? 4 : 5}</span>Things To Reconcile</h3>
+              <h3><span className="gd-n">{d?.side ? 5 : 6}</span>Things To Reconcile</h3>
               {recs.map((r, i) => ed && ed.i === i ? (
                 <div key={i} className="gd-r gd-edit">
                   <div>

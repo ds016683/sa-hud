@@ -122,7 +122,7 @@ export const askExtraction = ({ projectId, words }) => hudDoor({ action: 'extrac
 export const processAndPost = ({ text, where, root, item, title }) => hudDoor({ action: 'process-post', text, where, root, item, title })
 export const parkIdeaDoor = (payload) => hudDoor({ action: 'idea-park', ...payload })
 export const askTidy = ({ files, card }) => hudDoor({ action: 'tidy-files', files, card }).then(j => j.tidy)
-export const askGateDebrief = ({ objectiveId, taskId, stepId, words }) => hudDoor({ action: 'gate-debrief', item: stepId != null ? { kind: 'step', id: String(stepId) } : taskId ? { kind: 'task', id: taskId } : { kind: 'objective', id: objectiveId }, words }).then(j => j.debrief)
+export const askGateDebrief = ({ objectiveId, taskId, stepId, words, finals = [] }) => hudDoor({ action: 'gate-debrief', finals, item: stepId != null ? { kind: 'step', id: String(stepId) } : taskId ? { kind: 'task', id: taskId } : { kind: 'objective', id: objectiveId }, words }).then(j => j.debrief)
 export const handToClaudeCode = ({ item, message_id, ask, gap }) => hudDoor({ action: 'handoff', item: { kind: item.kind, id: item.id }, title: item.title, message_id, ask, gap })
 export const listHandoffs = async (item) => (await hudDoor({ action: 'handoffs', item: { kind: item.kind, id: item.id } })).handoffs || []
 

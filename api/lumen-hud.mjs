@@ -133,7 +133,7 @@ export default async function handler(req, res) {
     // The gate debrief (api/_gate-debrief.mjs): one gate read in full. It writes nothing.
     if (body.action === 'gate-debrief') {
       if (!item || !['objective', 'task', 'step'].includes(item.kind)) return res.status(400).json({ error: 'a gate is required' })
-      try { return res.status(200).json({ ok: true, debrief: await gateDebrief({ ...(item.kind === 'step' ? { stepId: item.id } : item.kind === 'task' ? { taskId: item.id } : { objectiveId: item.id }), words: String(body.words || ''), model: MODEL() }) }) } catch (e) { return res.status(500).json({ error: String(e.message || e).slice(0, 240) }) }
+      try { return res.status(200).json({ ok: true, debrief: await gateDebrief({ ...(item.kind === 'step' ? { stepId: item.id } : item.kind === 'task' ? { taskId: item.id } : { objectiveId: item.id }), words: String(body.words || ''), finals: (Array.isArray(body.finals) ? body.finals : []).slice(0, 20).map(x => String(x).slice(0, 120)), model: MODEL() }) }) } catch (e) { return res.status(500).json({ error: String(e.message || e).slice(0, 240) }) }
     }
     // The broom (api/_tidy.mjs): which of a card's files to archive. It writes nothing.
     if (body.action === 'tidy-files') {
