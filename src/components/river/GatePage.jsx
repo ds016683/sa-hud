@@ -187,7 +187,7 @@ function SnakeLine({ nodes, dim = false, onDrop = null }) {
 // card (a gate with its own card): { obj, stops, files, meetings, onSaveNotes, onOpenNotes, onChanged }. With it the
 // page carries the gate's steps, its notes and a timeline of everything that happened on it (David 11/21, Gate 35).
 // filesNote (11/23): a gate with no card of its own keeps no files; the Files button still shows and says where they are.
-export default function GatePage({ card = null, benchRoot = null, tools = null, filesFor = null, filesNote = null, onTrail = null, tone = null, gate, gates, root, missionTitle, up = [], source = null, polaris = null, doneWhen = null, details = null, onClose, onPick, onRename, onExtract, onLoad }) {
+export default function GatePage({ card = null, benchRoot = null, tools = null, filesFor = null, filesNote = null, onTrail = null, tone = null, gate, gates, root, missionTitle, up = [], source = null, polaris = null, doneWhen = null, details = null, onEditPolaris = null, onClose, onPick, onRename, onExtract, onLoad }) {
   const [more, setMore] = useState(false)   // the gate's details, folded until asked for
   const full = false   // the Workbench's own button takes it to full screen now
   const [view, setView] = useState('bench')   // 'bench' | 'files'
@@ -332,8 +332,8 @@ export default function GatePage({ card = null, benchRoot = null, tools = null, 
         </div>
         {/* What the gate is for (David 11/26, on a gate page that opened with only its name: "no polaris, or context. is
             this the right one?"): its done-when and what came in with it, and the mission's Polaris beside it. */}
-        {!full && (doneWhen || details || polaris) && (
-          <div style={{ display: 'grid', gridTemplateColumns: (doneWhen || details) && polaris ? 'minmax(0, 1.25fr) minmax(0, 1fr)' : '1fr', gap: 44, margin: '6px 0 26px', alignItems: 'start' }}>
+        {!full && (doneWhen || details || polaris || onEditPolaris) && (
+          <div style={{ display: 'grid', gridTemplateColumns: (doneWhen || details) && (polaris || onEditPolaris) ? 'minmax(0, 1.25fr) minmax(0, 1fr)' : '1fr', gap: 44, margin: '6px 0 26px', alignItems: 'start' }}>
             {(doneWhen || details) && (
               <div>
                 <div style={{ fontSize: 14.5, fontWeight: 600, color: 'var(--t)', marginBottom: 7 }}>{doneWhen ? 'Done When' : 'This Gate'}</div>
@@ -346,10 +346,10 @@ export default function GatePage({ card = null, benchRoot = null, tools = null, 
                 ) : <div style={{ fontSize: 14.5, lineHeight: 1.6, color: 'rgba(243,241,234,.86)', whiteSpace: 'pre-wrap' }}>{details}</div>)}
               </div>
             )}
-            {polaris && (
+            {(polaris || onEditPolaris) && (
               <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14.5, fontWeight: 600, color: '#8ACAFF', marginBottom: 7 }}><Star size={15} fill="#8ACAFF" />Polaris</div>
-                <div style={{ font: "italic 400 17px/1.5 'Lora', Georgia, serif", color: '#F3F1EA' }}>{polaris}</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14.5, fontWeight: 600, color: '#8ACAFF', marginBottom: 7 }}><Star size={15} fill="#8ACAFF" />Polaris{onEditPolaris && <button className="gp-pen" style={{ paddingLeft: 4 }} title="Change The Polaris" aria-label="Change the Polaris" onClick={onEditPolaris}><Pencil size={14} /></button>}</div>
+                {polaris && <div style={{ font: "italic 400 17px/1.5 'Lora', Georgia, serif", color: '#F3F1EA' }}>{polaris}</div>}
               </div>
             )}
           </div>
