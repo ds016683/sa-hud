@@ -35,9 +35,10 @@ export const YAY_CSS = `
 .yay-badge .nm { font: 500 16px/1.25 'Lora', Georgia, serif; }
 .yay-badge .mi { font-size: 15px; font-weight: 600; color: var(--c); font-variant-numeric: tabular-nums; }
 .yay-badge .x { position: absolute; right: -8px; top: -6px; min-width: 28px; height: 28px; padding: 0 7px; border-radius: 99px; display: grid; place-items: center; font-size: 13.5px; font-weight: 700; color: #0D1D2C; background: var(--c); }
-.yay-done { display: inline-grid; row-gap: 10px; text-align: left; margin-bottom: 38px; max-width: 760px; animation: yayup .6s ease 1.1s both; }
-.yay-done div { display: flex; align-items: center; gap: 12px; font-size: 15.5px; line-height: 1.35; }
-.yay-done i { font-style: normal; font-size: 12.5px; font-weight: 500; color: var(--c); border: 1px solid color-mix(in srgb, var(--c) 45%, transparent); border-radius: 99px; padding: 2px 10px; white-space: nowrap; }
+.yay-done { display: grid; grid-template-columns: max-content minmax(0, 1fr); column-gap: 12px; align-items: start; width: max-content; max-width: min(760px, 100%); row-gap: 10px; text-align: left; margin: 0 auto 38px; animation: yayup .6s ease 1.1s both; }
+.yay-done div { display: contents; font-size: 15.5px; line-height: 1.35; }
+.yay-done span { min-width: 0; overflow-wrap: anywhere; font-size: 15.5px; line-height: 1.35; padding-top: 2px; }
+.yay-done i { font-style: normal; font-size: 12.5px; font-weight: 500; color: var(--c); border: 1px solid color-mix(in srgb, var(--c) 45%, transparent); border-radius: 99px; padding: 2px 10px; white-space: nowrap; justify-self: start; }
 .yay-more { text-align: left; max-width: 720px; margin: 0 auto 34px; animation: yayup .6s ease 1.3s both; }
 .yay-more h3 { font: 500 19px 'Lora', Georgia, serif; margin: 26px 0 10px; }
 .yay-more p { font: 400 16px/1.6 'Lora', Georgia, serif; color: rgba(243,241,234,.86); margin: 0; }
@@ -47,7 +48,7 @@ export const YAY_CSS = `
 .yay-river .bar i { display: block; height: 100%; border-radius: 99px; background: linear-gradient(90deg, ${BLUE}, ${PURPLE}); animation: yayfill 1.4s cubic-bezier(.2,.8,.2,1) 1.5s both; }
 .yay-river .nums { display: flex; justify-content: space-between; margin-top: 10px; font-size: 14px; color: rgba(243,241,234,.7); font-variant-numeric: tabular-nums; }
 .yay-river .nums b { color: #F3F1EA; font-weight: 600; }
-.yay-acts { display: inline-flex; align-items: center; gap: 12px; animation: yayup .6s ease 1.6s both; }
+.yay-acts { display: flex; justify-content: center; align-items: center; gap: 12px; animation: yayup .6s ease 1.6s both; }
 .yay-acts .yay-go { animation: none; display: inline-flex; align-items: center; gap: 9px; max-width: min(640px, 78vw); text-align: left; line-height: 1.35; border-radius: 26px; }
 .yay-acts .yay-go > svg { flex: none; }
 .yay-go-t { min-width: 0; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
@@ -88,7 +89,7 @@ export function AwardYay({ awards, done = [], banked, today, before, onContinue,
             </div>
           ))}
         </div>
-        {done.length > 0 && <div className="yay-done">{done.map((x, i) => <div key={i} style={{ '--c': x.color }}>{x.tag && <i>{x.tag}</i>}<span>{x.text}</span></div>)}</div>}
+        {done.length > 0 && <div className="yay-done">{done.map((x, i) => <div key={i} style={{ '--c': x.color }}>{x.tag && <i>{x.tag}</i>}<span style={x.tag ? undefined : { gridColumn: '1 / -1' }}>{x.text}</span></div>)}</div>}
         {cities.length > 0 && <div className="yay-city">You Reached {cities.map(c => c.short).join(', ')}</div>}
         {banked != null && <div className="yay-river">
           <div className="bar"><i style={{ '--from': `${cities.length ? 0 : pct(was)}%`, '--to': `${pct(now)}%` }} /></div>
