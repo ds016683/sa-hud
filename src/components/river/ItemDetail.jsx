@@ -324,20 +324,17 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
   const [briefs, setBriefs] = useState({})
   const readObjArtifact = useCallback(async (root, slug) => { const { data, error } = await supabase.storage.from('project-files').download(`${root}/artifacts/${slug}.json`); if (error) throw new Error(error.message); return JSON.parse(await data.text()) }, [])
   useEffect(() => { let on = true; const objArts = (rel?.objArtifacts || []); Promise.all(objArts.map(a => readObjArtifact(a.root || `objectives/${obj?.id}`, a.slug).then(d => [a.slug, d]).catch(() => [a.slug, null]))).then(ps => { if (on) setBriefs(Object.fromEntries(ps)) }); return () => { on = false } }, [rel, obj, readObjArtifact])
-  // The Polaris, changed where it is read on the gate page (David 11/26: "and how do i edit polaris from here?"). On a
-  // Main Mission's gate it is the mission's; on any other card it is the card's own.
+  // The Polaris on a gate's page is the gate's own (David 11/26: he changed it there meaning the gate, and it wrote over
+  // the mission's). A gate with none of its own shows the mission's, named as the mission's; the pencil always writes
+  // the gate's, and clearing it brings the mission's back. The mission's own is changed on the mission's page.
   const editPolaris = async () => {
-    const mission = rel?.mission?.id ? rel.mission : null
-    const cur = mission ? (mission.polaris || '') : (obj?.north_star || '')
-    const got = await hudPrompt({ title: 'Polaris', value: cur, multiline: true })
+    const cur = obj?.north_star || ''
+    const got = await hudPrompt({ title: 'This Gate\'s Polaris', value: cur, multiline: true })
     if (got == null) return
     const t = String(got).trim()
     if (t === cur.trim()) return
-    try {
-      if (mission) { const { error } = await supabase.from('projects').update({ description: t || null }).eq('id', mission.id); if (error) throw new Error(error.message) }
-      else await updateObjective(obj.id, { north_star: t || null })
-      await load(); onChange && onChange(); fireLedgerChanged({ id: obj.id, source: 'card' })
-    } catch (e) { setMsg(`Could not save the Polaris: ${e.message}`) }
+    try { await updateObjective(obj.id, { north_star: t || null }); await load(); onChange && onChange(); fireLedgerChanged({ id: obj.id, source: 'card' }) }
+    catch (e) { setMsg(`Could not save the Polaris: ${e.message}`) }
   }
   const patchObj = async (patch) => { try { await updateObjective(obj.id, patch); await load(); onChange && onChange(); fireLedgerChanged({ id: obj.id, source: 'card' }) } catch (e) { setMsg(`Could not save: ${e.message}`) } }
   const patchTask = async (patch) => { try { const { error } = await supabase.from('project_tasks').update(patch).eq('id', task.id); if (error) throw error; await load(); onChange && onChange(); fireLedgerChanged({ id: item.objective_id || item.id, source: 'card' }) } catch (e) { setMsg(`Could not save: ${e.message}`) } }
@@ -501,7 +498,7 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
           gate={{ id: task.id, n: rel.gateN, text: String(obj.title || '').replace(/^\s*(?:gate\s+)?\d+\s*[·.:)-]\s*/i, ''), done: task.status === 'done' || !!task.done, done_at: task.released_at, created_at: obj.captured_at }}
           gates={(rel.missionGates || []).length ? rel.missionGates : [{ id: task.id, n: rel.gateN, text: obj.title, done: false }]}
           missionTitle={rel.mission?.name || rel.project?.name || 'The Mission'}
-          polaris={rel.mission?.polaris || obj.north_star || null} doneWhen={splitNotes(task.notes).doneWhen} details={splitNotes(task.notes).details} onEditPolaris={editPolaris}
+          polaris={obj.north_star || rel.mission?.polaris || null} polarisLabel={obj.north_star || !rel.mission?.polaris ? 'Polaris' : 'Mission Polaris'} doneWhen={splitNotes(task.notes).doneWhen} details={splitNotes(task.notes).details} onEditPolaris={editPolaris}
           onClose={() => (rel.project ? go([rel.project.id]) : onClose())}
           onPick={(g) => (g.objective_id ? openCard(g.objective_id) : rel.project ? go([rel.project.id]) : null)}
           onRename={renameGate} />
