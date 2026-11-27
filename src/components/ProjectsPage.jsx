@@ -358,7 +358,7 @@ function ProjectDetail({ project, board: boardProp, api, onBack, initialTab, ini
   useEffect(() => { let on = true; sbClient2.from('project_notes').select('id', { count: 'exact', head: true }).eq('project_id', project.id).then(({ count }) => { if (on) setNoteCount(count ?? null) }); return () => { on = false } }, [project.id, tab])
   const live = useRef({ api, project, plan })
   useEffect(() => { live.current = { api, project, plan } })
-  const gateSteps = useMemo(() => planOf(project).plan.map(({ t, n }) => ({ id: t.id, n, text: stripNum(t.text), done: !isOpen(t), done_at: t.released_at, objective_id: t.objective_id || null, due_date: t.due_date || null })), [project])
+  const gateSteps = useMemo(() => planOf(project).plan.map(({ t, n }) => ({ id: t.id, n, text: stripNum(t.text), done: !isOpen(t), done_at: t.released_at, objective_id: t.objective_id || null, due_date: t.due_date || null, doneWhen: splitNotes(t.notes).doneWhen, details: splitNotes(t.notes).details })), [project])
   const cardGates = useMemo(() => planOf(project).plan.filter(({ t }) => t.objective_id).map(({ t, n }) => ({ n, text: stripNum(t.text), objective_id: t.objective_id })), [project])
   const stories = useGateStories(cardGates)
   const extraTrail = useMemo(() => [...stories, ...planOf(project).history.filter(t => t.released_at).map(t => ({ at: t.released_at, kind: 'Gate Closed', text: t.text, gate: true }))], [stories, project])
@@ -501,6 +501,7 @@ function ProjectDetail({ project, board: boardProp, api, onBack, initialTab, ini
       <div style={tab === 'briefing' ? { marginTop: 24 } : { ...S.panel, marginTop: 20 }}>
         {tab === 'briefing' && (
           <CardBriefing obj={missionObj} root={project.id} kindLabel="Main Mission" steps={gateSteps} extraTrail={extraTrail} api={missionApi}
+            onEditPolaris={async () => { const cur = project.description || ''; const got = await hudPrompt({ title: 'Polaris', value: cur, multiline: true }); if (got == null) return; const t = String(got).trim(); if (t !== cur.trim()) await api.updateProject(project.id, { description: t || null }) }}
             hereText={`${closed} of ${tasks.length} gates closed.${nowGate(plan) ? ` Next: ${stripNum(nowGate(plan).t.text)}` : ''}`}
             nextStepId={nowGate(plan) ? nowGate(plan).t.id : null}
             stopExtra={(st, h) => { const p = plan.find(x => x.t.id === st.id); return p ? <GateTools n={p.n} project={project} task={p.t} api={api} objState={objState} takeOff={h.takeOff} say={(m) => hudNotice(m)} /> : null }}
