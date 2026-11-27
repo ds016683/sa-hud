@@ -21,6 +21,7 @@ import { think, remember, alreadySeen } from './_lumen-brain.mjs'
 import { readUnread, markRead, sendMail, mailAllowed, isDavid, LUMEN_MAILBOX, keepAttachments } from './_mail.mjs'
 import { putBytes } from './_catch.mjs'
 import { waSendText, waSendTemplate, davidNumber } from './_wa.mjs'
+import { pushOn } from './_push.mjs'
 
 const chiHour = () => Number(new Intl.DateTimeFormat('en-US', { timeZone: 'America/Chicago', hour: 'numeric', hour12: false }).format(new Date()))
 const plusDays = (n) => { const d = new Date(); d.setDate(d.getDate() + n); return d.toISOString().slice(0, 10) }
@@ -51,6 +52,12 @@ function knockLabel(kind, day) {
 const QUIET_START = 21, QUIET_END = 7
 const quiet = () => chiHour() >= QUIET_START || chiHour() < QUIET_END
 async function say({ kind, day, item, instruction, dry }) {
+  // Pushes are off unless this kind is switched on (api/_push.mjs). Nothing is composed, so Lumen takes no action on it
+  // either; a line is kept so the same thing is not looked at again every half hour, or sent in a pile when one is turned on.
+  if (!dry && !pushOn(kind)) {
+    await remember({ channel: 'pulse', direction: 'out', kind: 'system', body: `Not sent: pushes are off (${kind}).`, meta: { kind, day, item: item || null, via: 'off', skipped: 'pushes off' } }).catch(() => null)
+    return { kind, item, sent: false, skipped: 'pushes off' }
+  }
   if (!dry && quiet()) return { kind, item, sent: false, skipped: 'quiet hours' }
   const text = await think({ channel: 'pulse', text: instruction, spoken: false })
   if (dry) return { kind, item, would_send: text }
@@ -71,6 +78,7 @@ async function say({ kind, day, item, instruction, dry }) {
 // Called by the WhatsApp door on every inbound message: deliver anything that
 // was knocked for but not yet sent, oldest first, then clear the flag.
 export async function flushPending(to) {
+  if (!pushOn('pending')) return []   // parked pushes are not delivered on his next message while pushes are off
   const rows = await sb(`lumen_messages?select=id,body,meta&channel=eq.pulse&direction=eq.out&meta->>pending=eq.true&order=id.asc&limit=10`)
   const sent = []
   for (const r of rows) {

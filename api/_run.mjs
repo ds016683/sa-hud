@@ -12,6 +12,7 @@
 // clocks. Two kinds of file in project-files/runs, written here only:
 //   index.json   { v, runs: [ the face of every run ] }
 //   <id>.json    { id, ledger, log, mac }   one run's own lines: its marks, the Mac's samples, and what the ledger held at Start
+import { pushOn } from './_push.mjs'
 import { sb, sbWrite } from './_ledger.mjs'
 import { missions, parseJson } from './_trail.mjs'
 import { canvass, eventsBetween, eventsAfter, namer, readJson, writeJson, chiDay, flat } from './_canvass.mjs'
@@ -157,8 +158,8 @@ async function drift(run) {
   if (off.length && !quiet) {
     const e = off[off.length - 1], now = new Date().toISOString()
     const text = `Mission Run ${run.n}: ${e.source === 'mail' ? 'you just sent mail' : 'you just wrote in Slack'} that is not the one thing (${flat(e.text.replace(/^Sent:\s*/, ''), 90)}). The one thing is ${f.title}.`
-    let id = null, via = null, skipped = null
-    try {
+    let id = null, via = null, skipped = pushOn('focus') ? null : 'pushes off'
+    if (!skipped) try {
       if (await waOpen().catch(() => false)) { via = 'text'; id = await waSendText(davidNumber(), text) }
       else { via = 'knock'; id = await waSendTemplate(davidNumber(), `focus check on Run ${run.n}`) }
     } catch (x) { skipped = String(x.message || x).slice(0, 200) }
@@ -222,7 +223,7 @@ async function warn(run) {
   const due = markDue(run)
   if (!due) return null
   const text = due.mark.say(run.n)
-  let id = null, skipped = due.late ? 'late' : null, via = null
+  let id = null, skipped = due.late ? 'late' : pushOn('run') ? null : 'pushes off', via = null
   if (!skipped) try {
     if (await waOpen().catch(() => false)) { via = 'text'; id = await waSendText(davidNumber(), text) }
     else { via = 'knock'; id = await waSendTemplate(davidNumber(), due.mark.knock(run.n)) }
