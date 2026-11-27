@@ -1348,6 +1348,8 @@ export async function callTool(name, args = {}) {
           if (o.released_at && TODAY === chiDayOf(o.released_at)) grouped.released_today.push(o)
           continue
         }
+        // A gate's card that is off the Board is the gate itself, read with its mission (get_projects), not a parked objective.
+        if (o.state === 'parked' && (o.tags || []).includes('mission-task') && !(o.tags || []).includes('stashed')) continue
         if (grouped[o.state]) grouped[o.state].push(o)
       }
       grouped.follow_up.sort((a, b) => String(a.follow_up_date || '9999').localeCompare(String(b.follow_up_date || '9999')))

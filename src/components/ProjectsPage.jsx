@@ -15,7 +15,7 @@ import { listShares, archiveShare, archiveSharesFor, shareUrl } from '../lib/sha
 import { fileProject, fileEntry } from '../lib/archive'
 import { listLiveFiles, markFiled, listEvidence, openLiveFile } from '../lib/livefiles'
 import { supabase as sbAuth } from '../lib/supabase'
-import { equipTask, stashTask, unload, deleteMission } from '../lib/loadout'
+import { equipTask, stashTask, unload, deleteMission, ensureGateCard } from '../lib/loadout'
 import { splitNotes, joinNotes } from '../lib/gateNotes'
 import { GlyphLoadout, GlyphHolster, GlyphStash } from './river/glyphs'
 import { NORTH_STAR_LABEL, LABEL, alpha, INK, INK2, NAVY_DEEP, BLUE, GRAY, PANEL_BORDER, PANEL_BG, GOLD, GREEN, SUCCESS, RED, CAUTION, PURPLE, CARD_PILLS, CardPill, Label as CanonLabel, Trail, KIND_COLOR, KindIcon } from './river/canon'
@@ -90,7 +90,7 @@ const boardStateOf = (p, objState) => {
   const states = open.map(t => t.objective_id ? objState[t.objective_id] : null).filter(Boolean)
   if (states.some(o => o.state === 'active')) return 'loadout'
   if (states.some(o => o.state === 'parked' && (o.tags || []).includes('stashed'))) return 'stash'
-  if (open.some(t => !!t.objective_id)) return 'loadout'   // promoted and live, state not read yet
+  if (open.some(t => t.objective_id && !objState[t.objective_id])) return 'loadout'   // a card whose state is not read yet; a card off the Board (every gate has one) is not the Loadout
   return 'off'
 }
 const EDGE = { loadout: GREEN, stash: INK2, off: INK2 }
@@ -378,6 +378,19 @@ function ProjectDetail({ project, board: boardProp, api, onBack, initialTab, ini
   // to the old badge box). debrief is the gate in the pop-up; gateYay is what it did, for the yay that follows.
   const [debrief, setDebrief] = useState(null)
   const [gateYay, setGateYay] = useState(null)
+  // Every open gate has a card (David 11/26). One that came in without one is given its card here, off the Board.
+  const carding = useRef(false)
+  const uncarded = gateSteps.filter(g => !g.done && !g.objective_id).map(g => g.id).join(',')
+  useEffect(() => {
+    if (!uncarded || carding.current) return
+    carding.current = true
+    ;(async () => {
+      try {
+        for (const id of uncarded.split(',')) { const t = (live.current.project.tasks || []).find(x => x.id === id); if (t) await ensureGateCard(t, live.current.project.name) }
+        await live.current.api.refresh?.()
+      } catch (e) { console.warn('gate cards', e.message) } finally { carding.current = false }
+    })()
+  }, [uncarded])
   const finishGate = async (st, record) => {
     const { api: a, project: pr } = live.current
     const t = (pr.tasks || []).find(x => x.id === st.id); if (!t) throw new Error('that gate is gone')

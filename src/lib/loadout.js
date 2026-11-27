@@ -282,6 +282,27 @@ export async function equipTask(task, projectName, { clock = true, ignoreStamina
   return { ok: true, title: data.title, id: data.id }
 }
 
+// Every gate gets a card (David 11/26: "every gate.... every gate..... gets a card. a step isn't for a card. the gates
+// are"). The card is made off the Board: parked, not stashed, no slot, no clock, and the gate's own status is left as
+// it is. A gate that already has a card keeps it; two tabs asking at once end with one card.
+export async function ensureGateCard(task, projectName) {
+  if (task.objective_id) return task.objective_id
+  const [fresh] = await q(supabase.from('project_tasks').select('id,text,objective_id').eq('id', task.id))
+  if (!fresh) return null
+  if (fresh.objective_id) return fresh.objective_id
+  const { data, error } = await supabase.from('objectives').insert({
+    user_id: DAVID, title: String(fresh.text || '').slice(0, 120), state: 'parked', kind: 'execution', effort: 1, importance: 2, needs_sizing: false,
+    tags: ['mission-task'], description: `Promoted from project: ${projectName || 'Project'}`, captured_at: new Date().toISOString(),
+  }).select().single()
+  if (error) throw new Error(error.message)
+  const { data: linked } = await supabase.from('project_tasks').update({ objective_id: data.id }).eq('id', task.id).is('objective_id', null).select('id')
+  if (linked && linked.length) return data.id
+  // another tab carded it first: this one steps back
+  await supabase.from('objectives').update({ deleted_at: new Date().toISOString() }).eq('id', data.id)
+  const [now] = await q(supabase.from('project_tasks').select('objective_id').eq('id', task.id))
+  return now?.objective_id || null
+}
+
 // A Main Mission task into the Stash (staging, no slot, no clock): reuse its
 // linked objective or create the bridge parked and tagged stashed.
 export async function stashTask(task, projectName) {
