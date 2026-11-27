@@ -328,11 +328,13 @@ export default function ItemDetail({ item, onClose, onNavigate, onChange, initia
   // the mission's). A gate with none of its own shows the mission's, named as the mission's; the pencil always writes
   // the gate's, and clearing it brings the mission's back. The mission's own is changed on the mission's page.
   const editPolaris = async () => {
-    const cur = obj?.north_star || ''
-    const got = await hudPrompt({ title: 'This Gate\'s Polaris', value: cur, multiline: true })
+    // The box opens on the words he is looking at (David 11/26: "the polaris card should have the draft text as editable
+    // instead of a blank box"): the gate's own, or the mission's when the gate has none. Left unchanged, nothing is saved.
+    const own = obj?.north_star || '', shown = own || rel?.mission?.polaris || ''
+    const got = await hudPrompt({ title: 'This Gate\'s Polaris', value: shown, multiline: true })
     if (got == null) return
     const t = String(got).trim()
-    if (t === cur.trim()) return
+    if (t === shown.trim()) return
     try { await updateObjective(obj.id, { north_star: t || null }); await load(); onChange && onChange(); fireLedgerChanged({ id: obj.id, source: 'card' }) }
     catch (e) { setMsg(`Could not save the Polaris: ${e.message}`) }
   }
