@@ -12,3 +12,5 @@ async function call(method, body, query = '') {
 }
 export const readRun = () => call('GET', null, '?state=1')
 export const runVerb = (action, more = {}) => call('POST', { action, ...more })
+// Bank today's miles on the River now, after an Extract (it never throws: the 11 PM close strikes the day either way).
+export const strikeToday = () => call('POST', { action: 'strike' }).catch(e => { console.warn('strike', e.message); return null })

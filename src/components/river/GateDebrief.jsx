@@ -12,6 +12,7 @@ import { Check, X, Sparkles, Plus, Pencil, Award, Paperclip } from 'lucide-react
 import { supabase } from '../../lib/supabase'
 import { hudPrompt } from '../../lib/dialog'
 import { askGateDebrief } from '../../lib/lumenPanel'
+import { strikeToday } from '../../lib/runs'
 import { extract as extractItem } from '../../lib/loadout'
 import { fileAchieved } from '../../lib/archive'
 import { routeItem } from '../../lib/commitments'
@@ -195,7 +196,7 @@ export default function GateDebrief({ item, tone = PURPLE, onClose, onDone, draf
       for (const r of rec) await within(routeItem({ what: r.what, heard: r.why, where: `Gate ${d.gate.n} · ${d.gate.text}`, source: 'debrief' }), 'The Reconcile list')
       setStage('Closing The Gate')
       let r
-      if (finish) r = await within(finish(record), 'The Ledger', 40000)
+      if (finish) { r = await within(finish(record), 'The Ledger', 40000); strikeToday() }   // the gate's miles land on the River now
       else { if (record) await fileAchieved(item, record).catch(() => {}); r = await extractItem(item, { minutes: 0, note: record || null }) }
       onDone(r, { gate: d?.gate || null, mission: d?.mission || null, next: d?.next || null, did: [...fin.map(x => ({ tag: 'Final', text: x.name })), ...up.map(x => ({ tag: 'Up', text: x.name })), ...chg.map(c => ({ tag: CHANGE[c.kind], text: c.kind === 'reword_gate' ? `Gate ${c.n}: ${c.text}` : c.text })), ...rec.map(x => ({ tag: 'Routed', text: x.what }))] })
     } catch (e) { setErr(e?.message || String(e)); setBusy(false) }

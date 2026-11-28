@@ -28,7 +28,10 @@ export default async function handler(req, res) {
     else if (action === 'extract') await extractRun({ model: MODEL(), atEnd: body.at === 'end' })
     else if (action === 'file') { const run = await fileRun({ word: body.word }); if (run.miles > 0) await strikeDay(run.extracted_at ? chiOf(run.extracted_at) : chiToday()).catch(() => null) }
     else if (action === 'walk') await walkAway()
-    else return res.status(400).json({ error: 'action: start | extract | file | walk | mac' })
+    // Strike today's miles now (David 11/27: "should have had way way way more miles today than this"): an Extract earns
+    // its miles the moment it is made, not at the 11 PM close. The same count the close makes; a re-strike moves nothing.
+    else if (action === 'strike') return res.status(200).json({ ok: true, river: await strikeDay(chiToday()) })
+    else return res.status(400).json({ error: 'action: start | extract | file | walk | mac | strike' })
     return res.status(200).json(await runState())
   } catch (e) { return res.status(409).json({ error: String(e.message || e).slice(0, 300) }) }
 }

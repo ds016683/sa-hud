@@ -9,6 +9,7 @@
 //   Equipped  exactly one clock runs at a time
 //   Hours     free hours before 6 PM Chicago after remaining meetings (shown, never enforced: David 10/21)
 //   Extract   release: stop the clock, sum the segments, bank the miles
+import { strikeToday } from './runs'
 import { supabase } from './supabase'
 import { focusBlock } from './focus'
 import { vetOpenSteps } from './path'
@@ -224,6 +225,7 @@ export async function extract(item, { minutes, note, day } = {}) {
     note: `${personal ? 'personal' : 'work'} · ${item.kind} clock · ${clocked ? `${clocked} clocked` : 'no clock'}${Number(minutes) > 0 ? ` · David stated ${mins}` : ''}${note ? ` · ${note}` : ''}`,
     source: `objective:${item.id}`,
   })
+  strikeToday()   // the miles land on the River now, not at the close
   return { minutes: mins, clocked, personal, day: onDay, vetted }
 }
 
